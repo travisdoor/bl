@@ -113,7 +113,7 @@ void arena_terminate(struct arena *arena)
     sync_delete(arena->sync);
 }
 
-void *arena_alloc(struct arena *arena)
+void *arena_safe_alloc(struct arena *arena)
 {
     pthread_mutex_lock(&arena->sync->mtx);
     if (!arena->current_chunk) {

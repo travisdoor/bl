@@ -51,7 +51,7 @@ void vm_tests_run(struct assembly *assembly)
 
     for (s64 i = 0; i < tc; ++i) {
         struct mir_fn *test_fn = cases[i];
-        bassert(IS_FLAG(test_fn->flags, FLAG_TEST_FN));
+        bassert(isflag(test_fn->flags, FLAG_TEST_FN));
         const f64   start      = get_tick_ms();
         const bool  passed     = vm_execute_fn(vm, assembly, test_fn, NULL, NULL);
         const f64   runtime_ms = get_tick_ms() - start;

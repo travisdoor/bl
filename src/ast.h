@@ -155,15 +155,15 @@ struct ast_ublock {
 };
 
 struct ast_block {
-    TSmallArray_AstPtr *nodes;
-    bool                has_return;
+    ast_nodes_t *nodes;
+    bool         has_return;
 };
 
 struct ast_stmt_return {
     // Optional return values.
-    TSmallArray_AstPtr *exprs;
-    struct ast         *fn_decl;
-    struct ast         *owner_block;
+    ast_nodes_t *exprs;
+    struct ast  *fn_decl;
+    struct ast  *owner_block;
 };
 
 struct ast_stmt_defer {

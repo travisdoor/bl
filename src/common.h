@@ -79,20 +79,15 @@ struct scope;
 
 #define alignment_of(T) _Alignof(T)
 
-#define IS_FLAG(_v, _flag) ((bool)(((_v) & (_flag)) == (_flag)))
-#define IS_NOT_FLAG(_v, _flag) ((bool)(((_v) & (_flag)) != (_flag)))
-#define SET_FLAG(_v, _flag) ((_v) |= (_flag))
-#define CLR_FLAG(_v, _flag) ((_v) &= ~(_flag))
-
-#define ARRAY_FOREACH(arr, it)                                                                     \
-    for (usize _keep = 1, i = 0, _size = static_arrlen((arr)); _keep && i != _size;                \
-         _keep = !_keep, i++)                                                                      \
-        for (it = (arr)[i]; _keep; _keep = !_keep)
+#define isflag(_v, _flag) ((bool)(((_v) & (_flag)) == (_flag)))
+#define isnotflag(_v, _flag) ((bool)(((_v) & (_flag)) != (_flag)))
+#define setflag(_v, _flag) ((_v) |= (_flag))
+#define clrflag(_v, _flag) ((_v) &= ~(_flag))
 
 enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 
-#define RUNTIME_MEASURE_BEGIN_S(name) f64 __##name = get_tick_ms()
-#define RUNTIME_MEASURE_END_S(name) ((get_tick_ms() - __##name) / 1000.)
+#define runtime_measure_begin(name) f64 __##name = get_tick_ms()
+#define runtime_measure_end(name) ((get_tick_ms() - __##name) / 1000.)
 
 #define LIB_NAME_MAX 256
 
@@ -132,16 +127,19 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
         T   _buf[C];                                                                               \
     }
 
+typedef sarr_t(u8, 1) sarr_any_t;
+
 #define SARR_ZERO                                                                                  \
     {                                                                                              \
         .len = 0, .cap = 0, ._data = NULL                                                          \
     }
+
 #define sarradd(A)                                                                                 \
     (sarradd_impl((A), sizeof((A)->_buf[0]), sizeof((A)->_buf) / sizeof((A)->_buf[0])),            \
      &sarrpeek(A, sarrlen(A) - 1))
 #define sarrput(A, V) (*sarradd(A) = (V))
 #define sarrpop(A) (sarrpeek(A, --(A)->len))
-#define sarrlen(A) ((A)->len)
+#define sarrlen(A) ((A) ? (A)->len : 0)
 #define sarrdata(A) ((A)->_data ? ((A)->_data) : ((A)->_buf))
 #define sarrpeek(A, I) (sarrdata(A)[I])
 #define sarrclear(A) ((A)->len = 0)
@@ -149,6 +147,8 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
     ((A)->_data ? bfree((A)->_data) : (void)0, (A)->_data = NULL, (A)->len = 0, (A)->cap = 0)
 
 void sarradd_impl(void *ptr, s32 elem_size, s32 elem_count);
+
+typedef sarr_t(struct ast *, 16) ast_nodes_t;
 
 TSMALL_ARRAY_TYPE(AstPtr, struct ast *, 16);
 TSMALL_ARRAY_TYPE(TypePtr, struct mir_type *, 16);

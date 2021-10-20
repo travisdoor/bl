@@ -111,7 +111,7 @@ static void append_linker_exec(TString *buf)
 
 s32 lld_link(struct assembly *assembly)
 {
-    RUNTIME_MEASURE_BEGIN_S(linking);
+    runtime_measure_begin(linking);
     TString             *buf     = get_tmpstr();
     const struct target *target  = assembly->target;
     const char          *out_dir = target->out_dir.data;
@@ -133,6 +133,6 @@ s32 lld_link(struct assembly *assembly)
     builder_log("%s", buf->data);
     s32 state = system(buf->data);
     put_tmpstr(buf);
-    assembly->stats.linking_s = RUNTIME_MEASURE_END_S(linking);
+    assembly->stats.linking_s = runtime_measure_end(linking);
     return state;
 }

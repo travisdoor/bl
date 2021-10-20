@@ -84,9 +84,16 @@ union _SmallArrays {
     TSmallArray_FnPtr         fn;
 };
 
+static const usize sarr_total_size = sizeof(union { ast_nodes_t; });
+
 static void small_array_dtor(TSmallArrayAny *arr)
 {
     tsa_terminate(arr);
+}
+
+static void sarr_dtor(sarr_any_t *arr)
+{
+    sarrfree(arr);
 }
 
 typedef struct AssemblySyncImpl {
@@ -585,6 +592,11 @@ struct assembly *assembly_new(const struct target *target)
                alignment_of(union _SmallArrays),
                EXPECTED_ARRAY_COUNT,
                (arena_elem_dtor_t)small_array_dtor);
+    arena_init(&assembly->arenas.sarr,
+               sarr_total_size,
+               16, // Is this correct?
+               EXPECTED_ARRAY_COUNT,
+               (arena_elem_dtor_t)sarr_dtor);
     assembly->gscope =
         scope_create(&assembly->arenas.scope, SCOPE_GLOBAL, NULL, EXPECTED_GSCOPE_COUNT, NULL);
 
@@ -650,6 +662,7 @@ void assembly_delete(struct assembly *assembly)
     tstring_terminate(&assembly->custom_linker_opt);
     vm_terminate(&assembly->vm);
     arena_terminate(&assembly->arenas.small_array);
+    arena_terminate(&assembly->arenas.sarr);
     ast_arena_terminate(&assembly->arenas.ast);
     scope_arenas_terminate(&assembly->arenas.scope);
     llvm_terminate(assembly);

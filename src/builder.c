@@ -419,9 +419,9 @@ static int compile(struct assembly *assembly)
         }
     } else {
         // Compile units in parallel.
-        RUNTIME_MEASURE_BEGIN_S(process_unit);
+        runtime_measure_begin(process_unit);
         async_compile(assembly, unit_pipeline);
-        assembly->stats.parsing_lexing_s = RUNTIME_MEASURE_END_S(process_unit);
+        assembly->stats.parsing_lexing_s = runtime_measure_end(process_unit);
     }
     // Compile assembly using pipeline.
     if (state == COMPILE_OK) state = compile_assembly(assembly, assembly_pipeline);

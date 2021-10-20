@@ -226,7 +226,10 @@ struct mir_fn_poly_recipe {
     // Scope layer solves symbol collisions in reused scopes.
     s32 scope_layer;
     // Cache of already generated functions (replacement hash -> struct mir_fn*).
-    THashTable entries;
+    struct {
+        hash_t                     key;
+        struct mir_instr_fn_proto *value;
+    } * entries;
 
     BL_MAGIC_ADD
 };

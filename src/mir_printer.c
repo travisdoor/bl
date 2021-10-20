@@ -77,12 +77,12 @@ static INLINE void print_flags(struct context *ctx, u32 flags)
 {
     if (flags == 0) return;
 
-    if (IS_FLAG(flags, FLAG_EXTERN)) fprintf(ctx->stream, "#extern");
-    if (IS_FLAG(flags, FLAG_COMPILER)) fprintf(ctx->stream, " #compiler");
-    if (IS_FLAG(flags, FLAG_TEST_FN)) fprintf(ctx->stream, " #test");
-    if (IS_FLAG(flags, FLAG_INLINE)) fprintf(ctx->stream, " #inline");
-    if (IS_FLAG(flags, FLAG_NO_INLINE)) fprintf(ctx->stream, " #noinline");
-    if (IS_FLAG(flags, FLAG_PRIVATE)) fprintf(ctx->stream, " #private");
+    if (isflag(flags, FLAG_EXTERN)) fprintf(ctx->stream, "#extern");
+    if (isflag(flags, FLAG_COMPILER)) fprintf(ctx->stream, " #compiler");
+    if (isflag(flags, FLAG_TEST_FN)) fprintf(ctx->stream, " #test");
+    if (isflag(flags, FLAG_INLINE)) fprintf(ctx->stream, " #inline");
+    if (isflag(flags, FLAG_NO_INLINE)) fprintf(ctx->stream, " #noinline");
+    if (isflag(flags, FLAG_PRIVATE)) fprintf(ctx->stream, " #private");
 
     fprintf(ctx->stream, " ");
 }
@@ -296,7 +296,7 @@ void print_comptime_value_or_id(struct context *ctx, struct mir_instr *instr)
         return;
     }
 
-    if (!instr->value.is_comptime || IS_NOT_FLAG(instr->flags, MIR_IS_ANALYZED)) {
+    if (!instr->value.is_comptime || isnotflag(instr->flags, MIR_IS_ANALYZED)) {
         fprintf(ctx->stream, "%%%llu", (unsigned long long)instr->id);
         return;
     }
@@ -938,7 +938,7 @@ void print_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_pro
     bassert(fn);
 
     fprintf(ctx->stream, "\n");
-    if (IS_FLAG(fn_proto->base.flags, MIR_IS_ANALYZED)) fprintf(ctx->stream, "/* analyzed */\n");
+    if (isflag(fn_proto->base.flags, MIR_IS_ANALYZED)) fprintf(ctx->stream, "/* analyzed */\n");
     if (fn->linkage_name)
         fprintf(ctx->stream, "@%s ", fn->linkage_name);
     else
@@ -971,7 +971,7 @@ void print_instr(struct context *ctx, struct mir_instr *instr)
 #if !PRINT_ANALYZED_COMPTIMES
     if ((instr->owner_block || instr->kind == MIR_INSTR_BLOCK) &&
         (instr->kind != MIR_INSTR_DECL_VAR) && instr->value.is_comptime &&
-        IS_FLAG(instr->flags, MIR_IS_ANALYZED))
+        isflag(instr->flags, MIR_IS_ANALYZED))
         return;
 #endif
 

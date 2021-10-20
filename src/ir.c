@@ -723,7 +723,7 @@ LLVMValueRef emit_global_var_proto(struct context *ctx, struct mir_var *var)
     // Linkage should be later set by user.
     LLVMSetLinkage(var->llvm_value, LLVMPrivateLinkage);
     LLVMSetAlignment(var->llvm_value, (unsigned)var->value.type->alignment);
-    if (IS_FLAG(var->flags, FLAG_THREAD_LOCAL)) {
+    if (isflag(var->flags, FLAG_THREAD_LOCAL)) {
         LLVMSetThreadLocalMode(var->llvm_value, LLVMGeneralDynamicTLSModel);
     }
     const bool emit_DI = ctx->is_debug_mode && !var->is_implicit && var->decl_node;
@@ -735,7 +735,7 @@ LLVMValueRef emit_fn_proto(struct context *ctx, struct mir_fn *fn, bool schedule
 {
     bassert(fn);
     const char *linkage_name = NULL;
-    if (IS_FLAG(fn->flags, FLAG_INTRINSIC)) {
+    if (isflag(fn->flags, FLAG_INTRINSIC)) {
         linkage_name = get_intrinsic(fn->linkage_name);
         bassert(linkage_name && "Unknown LLVM intrinsic!");
     } else {
@@ -760,7 +760,7 @@ LLVMValueRef emit_fn_proto(struct context *ctx, struct mir_fn *fn, bool schedule
     }
 
     // Setup attributes for sret.
-    if (IS_FLAG(fn->type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_SRET)) {
+    if (isflag(fn->type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_SRET)) {
         LLVMAddAttributeAtIndex(fn->llvm_value,
                                 LLVM_SRET_INDEX + 1,
                                 llvm_create_attribute(ctx->llvm_cnt, LLVM_ATTR_NOALIAS));
@@ -770,7 +770,7 @@ LLVMValueRef emit_fn_proto(struct context *ctx, struct mir_fn *fn, bool schedule
                                 llvm_create_attribute(ctx->llvm_cnt, LLVM_ATTR_STRUCTRET));
     }
     // Setup attributes for byval.
-    if (IS_FLAG(fn->type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_BYVAL)) {
+    if (isflag(fn->type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_BYVAL)) {
         TSmallArray_ArgPtr *args = fn->type->data.fn.args;
         bassert(args);
         struct mir_arg *arg;
@@ -785,17 +785,17 @@ LLVMValueRef emit_fn_proto(struct context *ctx, struct mir_fn *fn, bool schedule
             LLVMAddAttributeAtIndex(fn->llvm_value, arg->llvm_index + 1, llvm_attr);
         }
     }
-    if (IS_FLAG(fn->flags, FLAG_INLINE)) {
+    if (isflag(fn->flags, FLAG_INLINE)) {
         LLVMAttributeRef llvm_attr = llvm_create_attribute(ctx->llvm_cnt, LLVM_ATTR_ALWAYSINLINE);
         LLVMAddAttributeAtIndex(fn->llvm_value, (unsigned)LLVMAttributeFunctionIndex, llvm_attr);
     }
-    if (IS_FLAG(fn->flags, FLAG_NO_INLINE)) {
+    if (isflag(fn->flags, FLAG_NO_INLINE)) {
         LLVMAttributeRef llvm_attr = llvm_create_attribute(ctx->llvm_cnt, LLVM_ATTR_NOINLINE);
         LLVMAddAttributeAtIndex(fn->llvm_value, (unsigned)LLVMAttributeFunctionIndex, llvm_attr);
     }
-    if (IS_FLAG(fn->flags, FLAG_EXPORT)) {
+    if (isflag(fn->flags, FLAG_EXPORT)) {
         LLVMSetDLLStorageClass(fn->llvm_value, LLVMDLLExportStorageClass);
-    } else if (!IS_FLAG(fn->flags, FLAG_EXTERN)) {
+    } else if (!isflag(fn->flags, FLAG_EXTERN)) {
         LLVMSetVisibility(fn->llvm_value, LLVMHiddenVisibility);
     }
     return fn->llvm_value;
@@ -1145,7 +1145,7 @@ LLVMValueRef rtti_emit_fn(struct context *ctx, struct mir_type *type)
 
     // is_vargs
     struct mir_type *is_vargs_type = mir_get_struct_elem_type(rtti_type, 3);
-    const bool       is_vargs      = IS_FLAG(type->data.fn.flags, MIR_TYPE_FN_FLAG_IS_VARGS);
+    const bool       is_vargs      = isflag(type->data.fn.flags, MIR_TYPE_FN_FLAG_IS_VARGS);
     llvm_vals[3]                   = LLVMConstInt(
         get_type(ctx, is_vargs_type), (u64)is_vargs, is_vargs_type->data.integer.is_signed);
     return LLVMConstNamedStruct(get_type(ctx, rtti_type), llvm_vals, static_arrlen(llvm_vals));
@@ -2243,7 +2243,7 @@ State emit_instr_call(struct context *ctx, struct mir_instr_call *call)
     LLVMValueRef llvm_result           = NULL;
     // SRET must come first!!!
 
-    if (IS_FLAG(callee_type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_SRET)) {
+    if (isflag(callee_type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_SRET)) {
         // PERFORMANCE: Reuse ret_tmp inside function???
         INSERT_TMP(llvm_tmp, get_type(ctx, callee_type->data.fn.ret_type));
         sarrput(&llvm_args, llvm_tmp);
@@ -2333,7 +2333,7 @@ State emit_instr_call(struct context *ctx, struct mir_instr_call *call)
         ctx->llvm_builder, llvm_called_fn, sarrdata(&llvm_args), sarrlen(&llvm_args), "");
     DI_LOCATION_RESET();
 
-    if (IS_FLAG(callee_type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_SRET)) {
+    if (isflag(callee_type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_SRET)) {
         LLVMAddCallSiteAttribute(llvm_call,
                                  LLVM_SRET_INDEX + 1,
                                  llvm_create_attribute(ctx->llvm_cnt, LLVM_ATTR_STRUCTRET));
@@ -2436,7 +2436,7 @@ State emit_instr_ret(struct context *ctx, struct mir_instr_ret *ret)
     bassert(fn_type);
     DI_LOCATION_SET(&ret->base);
 
-    if (IS_FLAG(fn_type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_SRET)) {
+    if (isflag(fn_type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_SRET)) {
         LLVMValueRef llvm_ret_value = ret->value->llvm_value;
         LLVMValueRef llvm_sret      = LLVMGetParam(fn->llvm_value, LLVM_SRET_INDEX);
         LLVMBuildStore(ctx->llvm_builder, llvm_ret_value, llvm_sret);
@@ -2793,12 +2793,12 @@ State emit_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_pro
     emit_fn_proto(ctx, fn, false);
 
     // External functions does not have any body block.
-    if (IS_NOT_FLAG(fn->flags, FLAG_EXTERN) && IS_NOT_FLAG(fn->flags, FLAG_INTRINSIC)) {
+    if (isnotflag(fn->flags, FLAG_EXTERN) && isnotflag(fn->flags, FLAG_INTRINSIC)) {
         if (ctx->is_debug_mode) emit_DI_fn(ctx, fn);
         // Generate all blocks in the function body.
         struct mir_instr *block = (struct mir_instr *)fn->first_block;
         while (block) {
-            if (IS_NOT_FLAG(block->flags, MIR_IS_UNREACHABLE)) {
+            if (isnotflag(block->flags, MIR_IS_UNREACHABLE)) {
                 const State s = emit_instr(ctx, block);
                 if (s != STATE_PASSED) babort("Postpone for whole block is not supported!");
             }
@@ -2812,7 +2812,7 @@ State emit_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_pro
 State emit_instr(struct context *ctx, struct mir_instr *instr)
 {
     State state = STATE_PASSED;
-    bassert(IS_FLAG(instr->flags, MIR_IS_ANALYZED) &&
+    bassert(isflag(instr->flags, MIR_IS_ANALYZED) &&
               "Attempt to emit not-analyzed instruction!");
     if (!mir_type_has_llvm_representation((instr->value.type))) return state;
     switch (instr->kind) {
@@ -3022,7 +3022,7 @@ static void DI_complete_types(struct context *ctx)
 void ir_run(struct assembly *assembly)
 {
     zone();
-    RUNTIME_MEASURE_BEGIN_S(llvm);
+    runtime_measure_begin(llvm);
     struct context ctx;
     memset(&ctx, 0, sizeof(struct context));
     ctx.assembly      = assembly;
@@ -3079,6 +3079,6 @@ void ir_run(struct assembly *assembly)
     arrfree(ctx.incomplete_rtti);
     hmfree(ctx.gstring_cache);
     hmfree(ctx.llvm_fn_cache);
-    assembly->stats.llvm_s = RUNTIME_MEASURE_END_S(llvm);
+    assembly->stats.llvm_s = runtime_measure_end(llvm);
     return_zone();
 }

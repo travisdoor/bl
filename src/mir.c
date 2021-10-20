@@ -241,7 +241,7 @@ static void fn_dtor(struct mir_fn *fn)
 static void fn_poly_dtor(struct mir_fn_poly_recipe *recipe)
 {
     BL_MAGIC_ASSERT(recipe);
-    thtbl_terminate(&recipe->entries);
+    hmfree(recipe->entries);
 }
 
 // FW decls
@@ -1043,7 +1043,7 @@ static INLINE void usage_check_push(struct context *ctx, struct scope_entry *ent
     if (!entry->id) return;
     if (!entry->node) return;
     if (entry->kind != SCOPE_ENTRY_VAR && entry->kind != SCOPE_ENTRY_FN) return;
-    if (entry->kind == SCOPE_ENTRY_FN && IS_FLAG(entry->data.fn->flags, FLAG_TEST_FN)) return;
+    if (entry->kind == SCOPE_ENTRY_FN && isflag(entry->data.fn->flags, FLAG_TEST_FN)) return;
     // No usage checking in general is done only for symbols in function local scope and symbols
     // in global private scope.
     if (!scope_is_subtree_of_kind(scope, SCOPE_FN) &&
@@ -1055,7 +1055,7 @@ static INLINE void usage_check_push(struct context *ctx, struct scope_entry *ent
 
 static INLINE bool can_mutate_comptime_to_const(struct mir_instr *instr)
 {
-    bassert(IS_FLAG(instr->flags, MIR_IS_ANALYZED) && "Non-analyzed instruction.");
+    bassert(isflag(instr->flags, MIR_IS_ANALYZED) && "Non-analyzed instruction.");
     bassert(mir_is_comptime(instr));
 
     switch (instr->kind) {
@@ -1874,7 +1874,7 @@ void type_init_id(struct context *ctx, struct mir_type *type)
 
 struct mir_type *create_type(struct context *ctx, enum mir_type_kind kind, struct id *user_id)
 {
-    struct mir_type *type = arena_alloc(&ctx->assembly->arenas.mir.type);
+    struct mir_type *type = arena_safe_alloc(&ctx->assembly->arenas.mir.type);
     BL_MAGIC_SET(type);
     type->kind    = kind;
     type->user_id = user_id;
@@ -2214,9 +2214,9 @@ struct mir_type *create_type_fn(struct context     *ctx,
     tmp->data.fn.ret_type   = ret_type ? ret_type : ctx->builtin_types->t_void;
     tmp->data.fn.builtin_id = BUILTIN_ID_NONE;
 
-    if (is_vargs) SET_FLAG(tmp->data.fn.flags, MIR_TYPE_FN_FLAG_IS_VARGS);
-    if (has_default_args) SET_FLAG(tmp->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_DEFAULT_ARGS);
-    if (is_polymorph) SET_FLAG(tmp->data.fn.flags, MIR_TYPE_FN_FLAG_IS_POLYMORPH);
+    if (is_vargs) setflag(tmp->data.fn.flags, MIR_TYPE_FN_FLAG_IS_VARGS);
+    if (has_default_args) setflag(tmp->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_DEFAULT_ARGS);
+    if (is_polymorph) setflag(tmp->data.fn.flags, MIR_TYPE_FN_FLAG_IS_POLYMORPH);
     type_init_id(ctx, tmp);
     type_init_llvm_fn(ctx, tmp);
     return tmp;
@@ -2526,7 +2526,7 @@ void type_init_llvm_fn(struct context *ctx, struct mir_type *type)
     if (has_ret) {
         if (ctx->assembly->target->reg_split && mir_is_composit_type(ret_type) &&
             ret_type->store_size_bytes >= 16) {
-            SET_FLAG(type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_SRET);
+            setflag(type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_SRET);
             tsa_push_LLVMType(&llvm_args, LLVMPointerType(ret_type->llvm_type, 0));
             llvm_ret = LLVMVoidTypeInContext(ctx->assembly->llvm.ctx);
         } else {
@@ -2626,7 +2626,7 @@ void type_init_llvm_fn(struct context *ctx, struct mir_type *type)
     type->alignment = __alignof(struct mir_fn *);
     type->size_bits = sizeof(struct mir_fn *) * 8;
     type->store_size_bytes = sizeof(struct mir_fn *);
-    if (has_byval) SET_FLAG(type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_BYVAL);
+    if (has_byval) setflag(type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_BYVAL);
 
     tsa_terminate(&llvm_args);
 }
@@ -2749,7 +2749,7 @@ struct mir_var *create_var(struct context      *ctx,
                            enum builtin_id_kind builtin_id)
 {
     bassert(id);
-    struct mir_var *tmp    = arena_alloc(&ctx->assembly->arenas.mir.var);
+    struct mir_var *tmp    = arena_safe_alloc(&ctx->assembly->arenas.mir.var);
     tmp->value.type        = alloc_type;
     tmp->value.is_comptime = is_comptime;
     tmp->id                = id;
@@ -2774,7 +2774,7 @@ struct mir_var *create_var_impl(struct context  *ctx,
                                 bool             is_comptime)
 {
     bassert(name);
-    struct mir_var *tmp    = arena_alloc(&ctx->assembly->arenas.mir.var);
+    struct mir_var *tmp    = arena_safe_alloc(&ctx->assembly->arenas.mir.var);
     tmp->value.type        = alloc_type;
     tmp->value.is_comptime = is_comptime;
     tmp->is_mutable        = is_mutable;
@@ -2797,7 +2797,7 @@ struct mir_fn *create_fn(struct context            *ctx,
                          bool                       is_global,
                          enum builtin_id_kind       builtin_id)
 {
-    struct mir_fn *tmp = arena_alloc(&ctx->assembly->arenas.mir.fn);
+    struct mir_fn *tmp = arena_safe_alloc(&ctx->assembly->arenas.mir.fn);
     BL_MAGIC_SET(tmp);
     tmp->linkage_name = linkage_name;
     tmp->id           = id;
@@ -2815,7 +2815,7 @@ create_fn_group(struct context *ctx, struct ast *decl_node, TSmallArray_FnPtr *v
 {
     bassert(decl_node);
     bassert(variants);
-    struct mir_fn_group *tmp = arena_alloc(&ctx->assembly->arenas.mir.fn_group);
+    struct mir_fn_group *tmp = arena_safe_alloc(&ctx->assembly->arenas.mir.fn_group);
     BL_MAGIC_SET(tmp);
     tmp->decl_node = decl_node;
     tmp->variants  = variants;
@@ -2825,10 +2825,9 @@ create_fn_group(struct context *ctx, struct ast *decl_node, TSmallArray_FnPtr *v
 struct mir_fn_poly_recipe *create_fn_poly_recipe(struct context *ctx, struct ast *ast_lit_fn)
 {
     bassert(ast_lit_fn && ast_lit_fn->kind == AST_EXPR_LIT_FN);
-    struct mir_fn_poly_recipe *tmp = arena_alloc(&ctx->assembly->arenas.mir.fn_poly);
+    struct mir_fn_poly_recipe *tmp = arena_safe_alloc(&ctx->assembly->arenas.mir.fn_poly);
     BL_MAGIC_SET(tmp);
     tmp->ast_lit_fn = ast_lit_fn;
-    thtbl_init(&tmp->entries, sizeof(struct mir_instr *), 32);
     return tmp;
 }
 
@@ -2838,7 +2837,7 @@ struct mir_member *create_member(struct context  *ctx,
                                  s64              index,
                                  struct mir_type *type)
 {
-    struct mir_member *tmp = arena_alloc(&ctx->assembly->arenas.mir.member);
+    struct mir_member *tmp = arena_safe_alloc(&ctx->assembly->arenas.mir.member);
     BL_MAGIC_SET(tmp);
     tmp->decl_node = node;
     tmp->id        = id;
@@ -2854,7 +2853,7 @@ struct mir_arg *create_arg(struct context   *ctx,
                            struct mir_type  *type,
                            struct mir_instr *value)
 {
-    struct mir_arg *tmp = arena_alloc(&ctx->assembly->arenas.mir.arg);
+    struct mir_arg *tmp = arena_safe_alloc(&ctx->assembly->arenas.mir.arg);
     tmp->decl_node      = node;
     tmp->id             = id;
     tmp->type           = type;
@@ -2866,7 +2865,7 @@ struct mir_arg *create_arg(struct context   *ctx,
 struct mir_variant *
 create_variant(struct context *ctx, struct id *id, struct mir_type *value_type, const u64 value)
 {
-    struct mir_variant *tmp = arena_alloc(&ctx->assembly->arenas.mir.variant);
+    struct mir_variant *tmp = arena_safe_alloc(&ctx->assembly->arenas.mir.variant);
     tmp->id                 = id;
     tmp->value_type         = value_type;
     tmp->value              = value;
@@ -2899,7 +2898,7 @@ insert_instr_cast(struct context *ctx, struct mir_instr *src, struct mir_type *t
 {
     struct mir_instr_cast *tmp = create_instr(ctx, MIR_INSTR_CAST, src->node);
     tmp->base.value.type       = to_type;
-    SET_FLAG(tmp->base.flags, MIR_IS_IMPLICIT);
+    setflag(tmp->base.flags, MIR_IS_IMPLICIT);
     tmp->expr = src;
     tmp->op   = MIR_CAST_INVALID;
     ref_instr(&tmp->base);
@@ -2911,7 +2910,7 @@ insert_instr_cast(struct context *ctx, struct mir_instr *src, struct mir_type *t
 struct mir_instr *insert_instr_addrof(struct context *ctx, struct mir_instr *src)
 {
     struct mir_instr *tmp = create_instr_addrof(ctx, src->node, src);
-    SET_FLAG(tmp->flags, MIR_IS_IMPLICIT);
+    setflag(tmp->flags, MIR_IS_IMPLICIT);
     insert_instr_after(src, tmp);
     return tmp;
 }
@@ -2923,7 +2922,7 @@ struct mir_instr *insert_instr_toany(struct context *ctx, struct mir_instr *expr
 
     struct mir_instr_to_any *tmp = create_instr(ctx, MIR_INSTR_TOANY, expr->node);
     tmp->base.value.type         = ctx->builtin_types->t_Any_ptr;
-    SET_FLAG(tmp->base.flags, MIR_IS_IMPLICIT);
+    setflag(tmp->base.flags, MIR_IS_IMPLICIT);
     tmp->expr = expr;
     ref_instr(&tmp->base);
 
@@ -2937,7 +2936,7 @@ struct mir_instr *insert_instr_load(struct context *ctx, struct mir_instr *src)
     bassert(src->value.type);
     bassert(src->value.type->kind == MIR_TYPE_PTR);
     struct mir_instr_load *tmp = create_instr(ctx, MIR_INSTR_LOAD, src->node);
-    SET_FLAG(tmp->base.flags, MIR_IS_IMPLICIT);
+    setflag(tmp->base.flags, MIR_IS_IMPLICIT);
     tmp->src = src;
 
     ref_instr(&tmp->base);
@@ -3062,7 +3061,7 @@ static u64 _id_counter = 1;
 
 void *create_instr(struct context *ctx, enum mir_instr_kind kind, struct ast *node)
 {
-    struct mir_instr *tmp = arena_alloc(&ctx->assembly->arenas.mir.instr);
+    struct mir_instr *tmp = arena_safe_alloc(&ctx->assembly->arenas.mir.instr);
     tmp->value.data       = (vm_stack_ptr_t)&tmp->value._tmp;
     tmp->kind             = kind;
     tmp->node             = node;
@@ -3108,7 +3107,7 @@ struct mir_instr *create_instr_compound_impl(struct context       *ctx,
 {
     struct mir_instr *tmp = create_instr_compound(ctx, node, NULL, values, false);
     tmp->value.type       = type;
-    SET_FLAG(tmp->flags, MIR_IS_IMPLICIT);
+    setflag(tmp->flags, MIR_IS_IMPLICIT);
     return tmp;
 }
 
@@ -3319,7 +3318,7 @@ struct mir_instr *append_instr_set_initializer_impl(struct context       *ctx,
                                                     struct mir_instr     *src)
 {
     struct mir_instr *tmp = append_instr_set_initializer(ctx, NULL, dests, src);
-    SET_FLAG(tmp->flags, MIR_IS_IMPLICIT);
+    setflag(tmp->flags, MIR_IS_IMPLICIT);
     return tmp;
 }
 
@@ -3560,7 +3559,7 @@ struct mir_instr *append_instr_compound_impl(struct context       *ctx,
 {
     struct mir_instr *tmp = append_instr_compound(ctx, node, NULL, values, false);
     tmp->value.type       = type;
-    SET_FLAG(tmp->flags, MIR_IS_IMPLICIT);
+    setflag(tmp->flags, MIR_IS_IMPLICIT);
     return tmp;
 }
 
@@ -3941,7 +3940,7 @@ struct mir_instr *create_instr_decl_var_impl(struct context   *ctx,
     tmp->type                      = ref_instr(type);
     tmp->init                      = ref_instr(init);
     tmp->var = create_var_impl(ctx, node, name, NULL, is_mutable, is_global, false);
-    if (!init) SET_FLAG(tmp->var->flags, FLAG_NO_INIT);
+    if (!init) setflag(tmp->var->flags, FLAG_NO_INIT);
     SET_IS_NAKED_IF_COMPOUND(init, false);
     return &tmp->base;
 }
@@ -4235,8 +4234,7 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
         top = tsa_pop_InstrPtr64(&queue);
         if (!top) continue;
 
-        bassert(IS_FLAG(top->flags, MIR_IS_ANALYZED) &&
-                "Trying to erase not analyzed instruction.");
+        bassert(isflag(top->flags, MIR_IS_ANALYZED) && "Trying to erase not analyzed instruction.");
         if (!force) {
             if (top->ref_count == NO_REF_COUNTING) continue;
             if (top->ref_count > 0) continue;
@@ -4467,7 +4465,7 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
 bool evaluate(struct context *ctx, struct mir_instr *instr)
 {
     if (!instr) return true;
-    bassert(IS_FLAG(instr->flags, MIR_IS_ANALYZED) &&
+    bassert(isflag(instr->flags, MIR_IS_ANALYZED) &&
             "Non-analyzed instruction cannot be evaluated!");
     // We can evaluate compile time know instructions only.
     if (!instr->value.is_comptime) return true;
@@ -4537,7 +4535,7 @@ struct result analyze_resolve_type(struct context   *ctx,
     bassert(resolver_call->kind == MIR_INSTR_CALL &&
             "Type resolver is expected to be call to resolve function.");
 
-    if (IS_NOT_FLAG(resolver_call->flags, MIR_IS_ANALYZED) &&
+    if (isnotflag(resolver_call->flags, MIR_IS_ANALYZED) &&
         analyze_instr(ctx, resolver_call).state != ANALYZE_PASSED) {
         return ANALYZE_RESULT(POSTPONE, 0);
     }
@@ -4651,12 +4649,12 @@ struct result analyze_instr_phi(struct context *ctx, struct mir_instr_phi *phi)
         struct mir_instr **value_ref = &phi->incoming_values->data[i];
         struct mir_instr  *block     = phi->incoming_blocks->data[i];
         bassert(block && block->kind == MIR_INSTR_BLOCK);
-        bassert(IS_FLAG((*value_ref)->flags, MIR_IS_ANALYZED) &&
+        bassert(isflag((*value_ref)->flags, MIR_IS_ANALYZED) &&
                 "Phi incoming value is not analyzed!");
         if ((*value_ref)->kind == MIR_INSTR_COND_BR) {
             *value_ref = ((struct mir_instr_cond_br *)(*value_ref))->cond;
             bassert(value_ref && *value_ref);
-            bassert(IS_FLAG((*value_ref)->flags, MIR_IS_ANALYZED) &&
+            bassert(isflag((*value_ref)->flags, MIR_IS_ANALYZED) &&
                     "Phi incoming value is not analyzed!");
         } else if ((*value_ref)->kind == MIR_INSTR_BR) {
             const struct mir_instr_br *br = (struct mir_instr_br *)(*value_ref);
@@ -4753,7 +4751,7 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
     }
 
     struct mir_type *type = cmp->base.value.type;
-    if (IS_FLAG(cmp->base.flags, MIR_IS_IMPLICIT)) {
+    if (isflag(cmp->base.flags, MIR_IS_IMPLICIT)) {
         bassert(type && "Missing type for implicit compound!");
         bassert((cmp->is_zero_initialized || values->size) &&
                 "Missing type for implicit compound!");
@@ -4763,7 +4761,7 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
     // Setup compound type.
     if (!type) {
         // generate load instruction if needed
-        bassert(IS_FLAG(cmp->type->flags, MIR_IS_ANALYZED));
+        bassert(isflag(cmp->type->flags, MIR_IS_ANALYZED));
         if (analyze_slot(ctx, &analyze_slot_conf_basic, &cmp->type, NULL) != ANALYZE_PASSED)
             return_zone(ANALYZE_RESULT(FAILED, 0));
 
@@ -4967,7 +4965,7 @@ struct result analyze_instr_set_initializer(struct context                   *ct
     {
         // Just pre-scan to check if all destination variables are analyzed.
         bassert(dest && dest->kind == MIR_INSTR_DECL_VAR);
-        if (IS_NOT_FLAG(dest->flags, MIR_IS_ANALYZED))
+        if (isnotflag(dest->flags, MIR_IS_ANALYZED))
             return_zone(ANALYZE_RESULT(POSTPONE, 0)); // PERFORMANCE: use wait???
     }
 
@@ -5018,7 +5016,7 @@ struct result analyze_instr_set_initializer(struct context                   *ct
         // (mutable variables cannot be comptime)
         var->value.is_comptime = !var->is_mutable;
 
-        if (IS_FLAG(var->flags, FLAG_THREAD_LOCAL)) {
+        if (isflag(var->flags, FLAG_THREAD_LOCAL)) {
             switch (var->value.type->kind) {
             case MIR_TYPE_FN:
             case MIR_TYPE_FN_GROUP:
@@ -5238,7 +5236,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
 
             struct mir_instr_addrof *addrof_elem =
                 (struct mir_instr_addrof *)mutate_instr(&member_ptr->base, MIR_INSTR_ADDROF);
-            CLR_FLAG(addrof_elem->base.flags, MIR_IS_ANALYZED);
+            clrflag(addrof_elem->base.flags, MIR_IS_ANALYZED);
             addrof_elem->src = elem_ptr;
             ANALYZE_INSTR_RQ(&addrof_elem->base);
         } else {
@@ -5354,11 +5352,11 @@ struct result analyze_instr_addrof(struct context *ctx, struct mir_instr_addrof 
     zone();
     struct mir_instr *src = addrof->src;
     bassert(src);
-    if (IS_NOT_FLAG(src->flags, MIR_IS_ANALYZED)) return_zone(ANALYZE_RESULT(POSTPONE, 0));
+    if (isnotflag(src->flags, MIR_IS_ANALYZED)) return_zone(ANALYZE_RESULT(POSTPONE, 0));
     const enum mir_value_address_mode src_addr_mode = src->value.addr_mode;
     const bool                        is_source_polymorph =
         src->value.type->kind == MIR_TYPE_FN &&
-        IS_FLAG(src->value.type->data.fn.flags, MIR_TYPE_FN_FLAG_IS_POLYMORPH);
+        isflag(src->value.type->data.fn.flags, MIR_TYPE_FN_FLAG_IS_POLYMORPH);
     const bool can_grab_address =
         (src_addr_mode == MIR_VAM_LVALUE || src_addr_mode == MIR_VAM_LVALUE_CONST ||
          (src->value.type->kind == MIR_TYPE_FN && !is_source_polymorph));
@@ -5400,7 +5398,7 @@ analyze_instr_cast(struct context *ctx, struct mir_instr_cast *cast, bool analyz
             if (result.state != ANALYZE_PASSED) return_zone(result);
         }
 
-        const struct slot_config *config = IS_FLAG(cast->base.flags, MIR_IS_IMPLICIT)
+        const struct slot_config *config = isflag(cast->base.flags, MIR_IS_IMPLICIT)
                                                ? &analyze_slot_conf_dummy
                                                : &analyze_slot_conf_basic;
 
@@ -5499,7 +5497,7 @@ struct result analyze_instr_type_info(struct context *ctx, struct mir_instr_type
         return_zone(ANALYZE_RESULT(FAILED, 0));
     }
     if (type_info->rtti_type->kind == MIR_TYPE_FN &&
-        IS_FLAG(type_info->rtti_type->data.fn.flags, MIR_TYPE_FN_FLAG_IS_POLYMORPH)) {
+        isflag(type_info->rtti_type->data.fn.flags, MIR_TYPE_FN_FLAG_IS_POLYMORPH)) {
         report_error(INVALID_TYPE,
                      type_info->expr->node,
                      "No type info available for polymorph function recipe.");
@@ -5675,7 +5673,7 @@ struct result analyze_instr_decl_direct_ref(struct context                   *ct
     zone();
     bassert(ref->ref && "Missing declaration reference for direct ref.");
     if (ref->ref->kind == MIR_INSTR_DECL_VAR) {
-        if (IS_NOT_FLAG(ref->ref->flags, MIR_IS_ANALYZED)) return_zone(ANALYZE_RESULT(POSTPONE, 0));
+        if (isnotflag(ref->ref->flags, MIR_IS_ANALYZED)) return_zone(ANALYZE_RESULT(POSTPONE, 0));
         struct mir_var *var = ((struct mir_instr_decl_var *)ref->ref)->var;
         bassert(var);
         ++var->ref_count;
@@ -5686,7 +5684,7 @@ struct result analyze_instr_decl_direct_ref(struct context                   *ct
         ref->base.value.is_comptime = var->value.is_comptime;
         ref->base.value.addr_mode   = var->is_mutable ? MIR_VAM_LVALUE : MIR_VAM_LVALUE_CONST;
     } else if (ref->ref->kind == MIR_INSTR_FN_PROTO) {
-        if (IS_NOT_FLAG(ref->ref->flags, MIR_IS_ANALYZED)) return_zone(ANALYZE_RESULT(POSTPONE, 0));
+        if (isnotflag(ref->ref->flags, MIR_IS_ANALYZED)) return_zone(ANALYZE_RESULT(POSTPONE, 0));
         struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &ref->ref->value);
         BL_MAGIC_ASSERT(fn);
         bassert(fn->type && fn->type == ref->ref->value.type);
@@ -5783,7 +5781,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 
     const bool is_polymorph = fn->poly;
 
-    if (IS_FLAG(fn->flags, FLAG_TEST_FN)) {
+    if (isflag(fn->flags, FLAG_TEST_FN)) {
         // We must wait for builtin types for test cases.
         struct id *missing = lookup_builtins_test_cases(ctx);
         if (missing) return_zone(ANALYZE_RESULT(WAITING, missing->hash));
@@ -5826,8 +5824,8 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
         bassert(fn->full_name);
 
         // Setup function linkage name.
-        if (IS_FLAG(fn->flags, FLAG_EXTERN) || IS_FLAG(fn->flags, FLAG_ENTRY) ||
-            IS_FLAG(fn->flags, FLAG_EXPORT) || IS_FLAG(fn->flags, FLAG_INTRINSIC)) {
+        if (isflag(fn->flags, FLAG_EXTERN) || isflag(fn->flags, FLAG_ENTRY) ||
+            isflag(fn->flags, FLAG_EXPORT) || isflag(fn->flags, FLAG_INTRINSIC)) {
             fn->linkage_name = fn->id->str;
         } else {
             // Here we generate unique linkage name
@@ -5850,7 +5848,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
     if (!fn->full_name) fn->full_name = fn->linkage_name;
 
     // Check build entry function.
-    if (IS_FLAG(fn->flags, FLAG_BUILD_ENTRY)) {
+    if (isflag(fn->flags, FLAG_BUILD_ENTRY)) {
         if (fn->type->data.fn.args) {
             report_error(INVALID_ARG_COUNT,
                          fn_proto->base.node,
@@ -5876,11 +5874,11 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 
     bassert(fn->linkage_name && "Function without linkage name!");
 
-    if (IS_FLAG(fn->flags, FLAG_EXTERN)) {
+    if (isflag(fn->flags, FLAG_EXTERN)) {
         // lookup external function exec handle
         fn->dyncall.extern_entry = assembly_find_extern(ctx->assembly, fn->linkage_name);
         fn->is_fully_analyzed    = true;
-    } else if (IS_FLAG(fn->flags, FLAG_INTRINSIC)) {
+    } else if (isflag(fn->flags, FLAG_INTRINSIC)) {
         // For intrinsics we use shorter names defined in user code, so we need username ->
         // internal name mapping in this case.
         const char *intrinsic_name = get_intrinsic(fn->linkage_name);
@@ -5911,7 +5909,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
     }
 
     bool schedule_llvm_generation = false;
-    if (IS_FLAG(fn->flags, FLAG_EXPORT)) {
+    if (isflag(fn->flags, FLAG_EXPORT)) {
         schedule_llvm_generation = true;
         ++fn->ref_count;
         if (is_polymorph) {
@@ -5922,13 +5920,13 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
         }
     }
 
-    if (IS_FLAG(fn->flags, FLAG_ENTRY)) {
+    if (isflag(fn->flags, FLAG_ENTRY)) {
         schedule_llvm_generation = true;
         fn->ref_count            = NO_REF_COUNTING;
     }
 
     // Store test case for later use if it's going to be tested.
-    if (IS_FLAG(fn->flags, FLAG_TEST_FN)) {
+    if (isflag(fn->flags, FLAG_TEST_FN)) {
         schedule_llvm_generation = true;
         bassert(fn->id && "Test case without name!");
 
@@ -5988,7 +5986,7 @@ struct result analyze_instr_fn_group(struct context *ctx, struct mir_instr_fn_gr
     bassert(vc);
     for (usize i = 0; i < vc; ++i) {
         struct mir_instr *variant_ref = variants->data[i];
-        if (IS_NOT_FLAG(variant_ref->flags, MIR_IS_ANALYZED))
+        if (isnotflag(variant_ref->flags, MIR_IS_ANALYZED))
             return_zone(ANALYZE_RESULT(POSTPONE, 0));
     }
     struct result        result        = ANALYZE_RESULT(PASSED, 0);
@@ -6050,7 +6048,7 @@ struct result analyze_instr_cond_br(struct context *ctx, struct mir_instr_cond_b
 {
     zone();
     bassert(br->cond && br->then_block && br->else_block);
-    bassert(IS_FLAG(br->cond->flags, MIR_IS_ANALYZED));
+    bassert(isflag(br->cond->flags, MIR_IS_ANALYZED));
     if (analyze_slot(ctx, &analyze_slot_conf_default, &br->cond, ctx->builtin_types->t_bool) !=
         ANALYZE_PASSED) {
         return_zone(ANALYZE_RESULT(FAILED, 0));
@@ -6190,7 +6188,7 @@ struct result analyze_instr_load(struct context *ctx, struct mir_instr_load *loa
 struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_fn *type_fn)
 {
     zone();
-    bassert(type_fn->ret_type ? IS_FLAG(type_fn->ret_type->flags, MIR_IS_ANALYZED) : true);
+    bassert(type_fn->ret_type ? isflag(type_fn->ret_type->flags, MIR_IS_ANALYZED) : true);
 
     bool       is_vargs         = false;
     bool       has_default_args = false;
@@ -6205,7 +6203,7 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
             struct mir_instr_decl_arg *decl_arg =
                 (struct mir_instr_decl_arg *)type_fn->args->data[i];
             struct mir_arg *arg = decl_arg->arg;
-            if (arg->value && IS_NOT_FLAG(arg->value->flags, MIR_IS_ANALYZED)) {
+            if (arg->value && isnotflag(arg->value->flags, MIR_IS_ANALYZED)) {
                 return_zone(ANALYZE_RESULT(POSTPONE, 0));
             }
         }
@@ -6486,7 +6484,7 @@ struct result analyze_instr_decl_arg(struct context *ctx, struct mir_instr_decl_
         // There is no explicitly defined argument type, but we have default argument value
         // to infer type from.
         bassert(arg->value);
-        if (IS_NOT_FLAG(arg->value->flags, MIR_IS_ANALYZED)) {
+        if (isnotflag(arg->value->flags, MIR_IS_ANALYZED)) {
             // @PERFORMANCE: WAITING is preferred here, but we don't have ID to wait
             // for.
             return_zone(ANALYZE_RESULT(POSTPONE, 0));
@@ -6713,7 +6711,7 @@ struct result analyze_instr_type_array(struct context *ctx, struct mir_instr_typ
 {
     zone();
     bassert(type_arr->base.value.type);
-    bassert(IS_FLAG(type_arr->elem_type->flags, MIR_IS_ANALYZED));
+    bassert(isflag(type_arr->elem_type->flags, MIR_IS_ANALYZED));
 
     if (analyze_slot(ctx, &analyze_slot_conf_default, &type_arr->len, ctx->builtin_types->t_s64) !=
         ANALYZE_PASSED) {
@@ -6913,8 +6911,8 @@ struct result analyze_instr_binop(struct context *ctx, struct mir_instr_binop *b
     struct mir_instr *lhs = binop->lhs;
     struct mir_instr *rhs = binop->rhs;
     bassert(lhs && rhs);
-    bassert(IS_FLAG(lhs->flags, MIR_IS_ANALYZED));
-    bassert(IS_FLAG(rhs->flags, MIR_IS_ANALYZED));
+    bassert(isflag(lhs->flags, MIR_IS_ANALYZED));
+    bassert(isflag(rhs->flags, MIR_IS_ANALYZED));
     const bool lhs_valid = is_type_valid_for_binop(lhs->value.type, binop->op);
     const bool rhs_valid = is_type_valid_for_binop(rhs->value.type, binop->op);
     if (!(lhs_valid && rhs_valid)) {
@@ -7003,7 +7001,7 @@ struct result analyze_instr_unop(struct context *ctx, struct mir_instr_unop *uno
         return_zone(ANALYZE_RESULT(FAILED, 0));
     }
 
-    bassert(unop->expr && IS_FLAG(unop->expr->flags, MIR_IS_ANALYZED));
+    bassert(unop->expr && isflag(unop->expr->flags, MIR_IS_ANALYZED));
 
     struct mir_type *expr_type = unop->expr->value.type;
     bassert(expr_type);
@@ -7083,7 +7081,7 @@ struct result analyze_instr_ret(struct context *ctx, struct mir_instr_ret *ret)
 
     struct mir_instr *value = ret->value;
     if (value) {
-        bassert(IS_FLAG(value->flags, MIR_IS_ANALYZED));
+        bassert(isflag(value->flags, MIR_IS_ANALYZED));
     }
 
     const bool expected_ret_value =
@@ -7140,7 +7138,7 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
         return_zone(ANALYZE_RESULT(PASSED, 0));
     }
 
-    if (IS_FLAG(var->flags, FLAG_THREAD_LOCAL)) {
+    if (isflag(var->flags, FLAG_THREAD_LOCAL)) {
         report_error(INVALID_DIRECTIVE, var->decl_node, "Thread local variable must be global.");
         return_zone(ANALYZE_RESULT(FAILED, 0));
     }
@@ -7170,7 +7168,7 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
 
         // Immutable and comptime initializer value.
         is_decl_comptime &= decl->init->value.is_comptime;
-    } else if (IS_NOT_FLAG(var->flags, FLAG_NO_INIT)) {
+    } else if (isnotflag(var->flags, FLAG_NO_INIT)) {
         // Create default initializer for locals without explicit initialization.
         struct mir_type  *type         = var->value.type;
         struct mir_instr *default_init = create_default_value_for_type(ctx, type);
@@ -7327,7 +7325,6 @@ struct result generate_fn_poly(struct context             *ctx,
     zone();
     struct mir_fn_poly_recipe *recipe = fn->poly;
     BL_MAGIC_ASSERT(recipe);
-    THashTable *entries = &recipe->entries;
     bassert(out_fn_proto);
 
     struct mir_type *recipe_type = fn->type;
@@ -7401,9 +7398,8 @@ struct result generate_fn_poly(struct context             *ctx,
 
     const hash_t replacement_hash = get_current_poly_replacement_hash(ctx);
 
-    TIterator iter = thtbl_find(entries, replacement_hash);
-    TIterator end  = thtbl_end(entries);
-    if (TITERATOR_EQUAL(iter, end)) {
+    const s64 index = hmgeti(recipe->entries, replacement_hash);
+    if (index == -1) {
         const s32 prev_scope_layer_index         = ctx->polymorph.current_scope_layer_index;
         ctx->polymorph.current_scope_layer_index = ++recipe->scope_layer;
         ctx->polymorph.is_replacement_active     = true;
@@ -7436,13 +7432,11 @@ struct result generate_fn_poly(struct context             *ctx,
         ctx->polymorph.current_scope_layer_index = prev_scope_layer_index;
 
         // Feed the output
-        *out_fn_proto = (struct mir_instr_fn_proto *)instr_fn_proto;
-
-        thtbl_insert(entries, replacement_hash, instr_fn_proto);
+        (*out_fn_proto) = (struct mir_instr_fn_proto *)instr_fn_proto;
+        hmput(recipe->entries, replacement_hash, (struct mir_instr_fn_proto *)instr_fn_proto);
         ctx->assembly->stats.polymorph_count += 1;
     } else {
-        *out_fn_proto =
-            (struct mir_instr_fn_proto *)thtbl_iter_peek_value(struct mir_instr *, iter);
+        *out_fn_proto = recipe->entries[index].value;
     }
     queue->size = 0; // clear
     put_tmpstr(debug_replacement_str);
@@ -7458,7 +7452,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         if (missing_any) return_zone(ANALYZE_RESULT(WAITING, missing_any->hash));
 
         // callee has not been analyzed yet -> postpone call analyze
-        if (IS_NOT_FLAG(call->callee->flags, MIR_IS_ANALYZED)) {
+        if (isnotflag(call->callee->flags, MIR_IS_ANALYZED)) {
             bassert(call->callee->kind == MIR_INSTR_FN_PROTO);
             struct mir_instr_fn_proto *fn_proto = (struct mir_instr_fn_proto *)call->callee;
             if (!fn_proto->pushed_for_analyze) {
@@ -7585,16 +7579,16 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         }
     }
     bassert(is_fn && !is_group);
-    const bool is_polymorph = IS_FLAG(type->data.fn.flags, MIR_TYPE_FN_FLAG_IS_POLYMORPH);
+    const bool is_polymorph = isflag(type->data.fn.flags, MIR_TYPE_FN_FLAG_IS_POLYMORPH);
     if (is_polymorph) {
         struct mir_fn *fn = optional_fn_or_group.fn;
         BL_MAGIC_ASSERT(fn);
         struct mir_instr_fn_proto *instr_replacement_fn_proto = NULL;
-        RUNTIME_MEASURE_BEGIN_S(poly);
+        runtime_measure_begin(poly);
         struct result state =
             generate_fn_poly(ctx, call->base.node, fn, call->args, &instr_replacement_fn_proto);
         if (state.state != ANALYZE_PASSED) return_zone(ANALYZE_RESULT(FAILED, 0));
-        ctx->assembly->stats.polymorph_s += RUNTIME_MEASURE_END_S(poly);
+        ctx->assembly->stats.polymorph_s += runtime_measure_end(poly);
         bassert(instr_replacement_fn_proto);
 
         // Mutate callee instruction to direct declaration reference.
@@ -7602,7 +7596,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
             (struct mir_instr_decl_direct_ref *)mutate_instr(call->callee,
                                                              MIR_INSTR_DECL_DIRECT_REF);
         callee_replacement->ref = ref_instr(&instr_replacement_fn_proto->base);
-        CLR_FLAG(callee_replacement->base.flags, MIR_IS_ANALYZED);
+        clrflag(callee_replacement->base.flags, MIR_IS_ANALYZED);
 
         // We skip analyze of this instruction, newly created polymorph function is not analyzed
         // yet; however we've changed kind of callee instruction, so we have to roll-back in
@@ -7629,8 +7623,8 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
     // validate arguments
     usize       callee_argc      = type->data.fn.args ? type->data.fn.args->size : 0;
     const usize call_argc        = call->args ? call->args->size : 0;
-    const bool  is_vargs         = IS_FLAG(type->data.fn.flags, MIR_TYPE_FN_FLAG_IS_VARGS);
-    const bool  has_default_args = IS_FLAG(type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_DEFAULT_ARGS);
+    const bool  is_vargs         = isflag(type->data.fn.flags, MIR_TYPE_FN_FLAG_IS_VARGS);
+    const bool  has_default_args = isflag(type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_DEFAULT_ARGS);
 
     bool is_last_call_arg_vargs = false;
     if (call_argc) {
@@ -7678,7 +7672,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
 
         if (analyze_instr_vargs(ctx, (struct mir_instr_vargs *)vargs).state != ANALYZE_PASSED)
             return_zone(ANALYZE_RESULT(FAILED, 0));
-        SET_FLAG(vargs->flags, MIR_IS_ANALYZED);
+        setflag(vargs->flags, MIR_IS_ANALYZED);
         // Erase vargs from arguments. @NOTE: function does nothing when array size is equal
         // to callee_argc.
         tsa_resize_InstrPtr(call->args, callee_argc);
@@ -7772,7 +7766,7 @@ struct result analyze_instr_store(struct context *ctx, struct mir_instr_store *s
     zone();
     struct mir_instr *dest = store->dest;
     bassert(dest);
-    bassert(IS_FLAG(dest->flags, MIR_IS_ANALYZED));
+    bassert(isflag(dest->flags, MIR_IS_ANALYZED));
 
     if (!mir_is_pointer_type(dest->value.type)) {
         report_error(
@@ -7815,11 +7809,11 @@ struct result analyze_instr_block(struct context *ctx, struct mir_instr_block *b
     }
 
     if (block->base.ref_count == 0)
-        SET_FLAG(block->base.flags, MIR_IS_UNREACHABLE);
+        setflag(block->base.flags, MIR_IS_UNREACHABLE);
     else
-        CLR_FLAG(block->base.flags, MIR_IS_UNREACHABLE);
+        clrflag(block->base.flags, MIR_IS_UNREACHABLE);
 
-    if (!fn->first_unreachable_loc && IS_FLAG(block->base.flags, MIR_IS_UNREACHABLE) &&
+    if (!fn->first_unreachable_loc && isflag(block->base.flags, MIR_IS_UNREACHABLE) &&
         block->entry_instr && block->entry_instr->node) {
         // Report unreachable code if there is one only once inside function body.
         fn->first_unreachable_loc = block->entry_instr->node->location;
@@ -7857,7 +7851,7 @@ struct result analyze_instr_block(struct context *ctx, struct mir_instr_block *b
             bassert(fn->exit_block &&
                     "Current function does not have exit block set or even generated!");
             append_instr_br(ctx, block->base.node, fn->exit_block);
-        } else if (IS_FLAG(block->base.flags, MIR_IS_UNREACHABLE)) {
+        } else if (isflag(block->base.flags, MIR_IS_UNREACHABLE)) {
             set_current_block(ctx, block);
             append_instr_br(ctx, block->base.node, block);
         } else {
@@ -8122,7 +8116,7 @@ FORCEINLINE struct result analyze_instr(struct context *ctx, struct mir_instr *i
     if (!instr) return_zone(ANALYZE_RESULT(PASSED, 0));
 
     // skip already analyzed instructions
-    if (IS_FLAG(instr->flags, MIR_IS_ANALYZED)) return_zone(ANALYZE_RESULT(PASSED, 0));
+    if (isflag(instr->flags, MIR_IS_ANALYZED)) return_zone(ANALYZE_RESULT(PASSED, 0));
     struct result state = ANALYZE_RESULT(PASSED, 0);
 
     BL_TRACY_MESSAGE("ANALYZE", "[%llu] %s", instr->id, mir_instr_name(instr));
@@ -8280,7 +8274,7 @@ FORCEINLINE struct result analyze_instr(struct context *ctx, struct mir_instr *i
     }
     ctx->analyze.last_analyzed_instr = NULL;
     if (state.state == ANALYZE_PASSED) {
-        SET_FLAG(instr->flags, MIR_IS_ANALYZED);
+        setflag(instr->flags, MIR_IS_ANALYZED);
         if (instr->kind == MIR_INSTR_CAST && ((struct mir_instr_cast *)instr)->auto_cast) {
             // An auto cast cannot be directly evaluated because it's destination type
             // could change based on usage.
@@ -8328,7 +8322,7 @@ void analyze(struct context *ctx)
         pip = ip;
         ip  = skip ? NULL : analyze_try_get_next(ip);
         // Remove unused instructions here!
-        if (pip && IS_FLAG(pip->flags, MIR_IS_ANALYZED)) erase_instr_tree(pip, false, false);
+        if (pip && isflag(pip->flags, MIR_IS_ANALYZED)) erase_instr_tree(pip, false, false);
         if (ip == NULL) {
             if (i >= arrlen(ctx->analyze.stack[si])) {
                 // No other instructions in current analyzed stack, let's try the other one.
@@ -8994,7 +8988,7 @@ struct mir_var *rtti_gen_fn(struct context *ctx, struct mir_type *type)
     // is_vargs
     struct mir_type *dest_is_vargs_type = mir_get_struct_elem_type(rtti_type, 3);
     vm_stack_ptr_t   dest_is_vargs      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 3);
-    const bool       is_vargs           = IS_FLAG(type->data.fn.flags, MIR_TYPE_FN_FLAG_IS_VARGS);
+    const bool       is_vargs           = isflag(type->data.fn.flags, MIR_TYPE_FN_FLAG_IS_VARGS);
     vm_write_int(dest_is_vargs_type, dest_is_vargs, (u64)is_vargs);
 
     return rtti_var;
@@ -9045,8 +9039,10 @@ void ast_block(struct context *ctx, struct ast *block)
         bassert(current_fn);
     }
 
-    struct ast *tmp;
-    TSA_FOREACH(block->data.block.nodes, tmp) ast(ctx, tmp);
+    for (s64 i = 0; i < sarrlen(block->data.block.nodes); ++i) {
+        struct ast *tmp = sarrpeek(block->data.block.nodes, i);
+        ast(ctx, tmp);
+    }
 
     if (!block->data.block.has_return) ast_defer_block(ctx, block, false);
 }
@@ -9242,17 +9238,17 @@ void ast_stmt_return(struct context *ctx, struct ast *ret)
 {
     // Return statement produce only setup of .ret temporary and break into the exit
     // block of the function.
-    TSmallArray_AstPtr *ast_values     = ret->data.stmt_return.exprs;
-    const bool          is_multireturn = ast_values && ast_values->size > 1;
-    struct mir_instr   *value          = NULL;
+    ast_nodes_t      *ast_values     = ret->data.stmt_return.exprs;
+    const bool        is_multireturn = sarrlen(ast_values) > 1;
+    struct mir_instr *value          = NULL;
     if (is_multireturn) {
         // Generate multi-return compound expression to group all values into single one.
-        const usize           valc   = ast_values->size;
+        const usize           valc   = sarrlen(ast_values);
         TSmallArray_InstrPtr *values = create_sarr(TSmallArray_InstrPtr, ctx->assembly);
         tsa_resize_InstrPtr(values, valc);
         struct ast *ast_value = NULL;
         for (usize i = valc; i-- > 0;) {
-            ast_value = ast_values->data[i];
+            ast_value = sarrpeek(ast_values, i);
             value     = ast(ctx, ast_value);
             bassert(value);
             values->data[i] = value;
@@ -9260,8 +9256,8 @@ void ast_stmt_return(struct context *ctx, struct ast *ret)
         }
         bassert(ast_value);
         value = append_instr_compound(ctx, ast_value, NULL, values, true);
-    } else if (ast_values) {
-        struct ast *ast_value = ast_values->data[0];
+    } else if (sarrlen(ast_values) > 0) {
+        struct ast *ast_value = sarrpeek(ast_values, 0);
         bassert(ast_value &&
                 "Expected at least one return value when return expression array is not NULL.");
         value = ast(ctx, ast_value);
@@ -9563,12 +9559,12 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
 
     // FUNCTION BODY
     // External or intrinsic function declaration has no body so we can skip body generation.
-    if (IS_FLAG(flags, FLAG_EXTERN) || IS_FLAG(flags, FLAG_INTRINSIC)) {
+    if (isflag(flags, FLAG_EXTERN) || isflag(flags, FLAG_INTRINSIC)) {
         if (ast_block) {
             report_error(UNEXPECTED_FUNCTION_BODY,
                          ast_block,
                          "Unexpected body, for %s function.",
-                         IS_FLAG(flags, FLAG_EXTERN) ? "external" : "intrinsic");
+                         isflag(flags, FLAG_EXTERN) ? "external" : "intrinsic");
         }
         goto FINISH;
     }
@@ -9645,7 +9641,7 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
         }
     }
 
-    if (IS_FLAG(flags, FLAG_TEST_FN)) {
+    if (isflag(flags, FLAG_TEST_FN)) {
         ++ctx->testing.expected_test_count;
     }
 
@@ -9901,7 +9897,7 @@ static void ast_decl_fn(struct context *ctx, struct ast *ast_fn)
     const s32   flags                     = ast_fn->data.decl_entity.flags;
     const bool  is_mutable                = ast_fn->data.decl_entity.mut;
     const bool  generate_entry            = ctx->assembly->target->kind == ASSEMBLY_EXECUTABLE;
-    if (!generate_entry && IS_FLAG(flags, FLAG_ENTRY)) {
+    if (!generate_entry && isflag(flags, FLAG_ENTRY)) {
         // Generate entry function only in case we are compiling executable binary, otherwise
         // it's not needed, and main should be also optional.
         return;
@@ -9918,7 +9914,7 @@ static void ast_decl_fn(struct context *ctx, struct ast *ast_fn)
     }
 
     enum builtin_id_kind builtin_id  = BUILTIN_ID_NONE;
-    const bool           is_compiler = IS_FLAG(ast_fn->data.decl_entity.flags, FLAG_COMPILER);
+    const bool           is_compiler = isflag(ast_fn->data.decl_entity.flags, FLAG_COMPILER);
     if (is_compiler) builtin_id = check_symbol_marked_compiler(ctx, ast_name);
     const bool  is_global = ast_fn->data.decl_entity.is_global;
     const char *optional_explicit_linkage_name =
@@ -9945,7 +9941,7 @@ static void ast_decl_fn(struct context *ctx, struct ast *ast_fn)
         }
     }
 
-    if (IS_FLAG(flags, FLAG_EXPORT) &&
+    if (isflag(flags, FLAG_EXPORT) &&
         scope_is_subtree_of_kind(ast_name->owner_scope, SCOPE_PRIVATE)) {
         report_error(UNEXPECTED_DIRECTIVE,
                      ast_name,
@@ -9967,7 +9963,7 @@ static void ast_decl_var_local(struct context *ctx, struct ast *ast_local)
     // declaration.
     struct mir_instr *type        = ast_type ? CREATE_TYPE_RESOLVER_CALL(ast_type) : NULL;
     struct mir_instr *value       = ast(ctx, ast_value);
-    const bool        is_compiler = IS_FLAG(ast_local->data.decl_entity.flags, FLAG_COMPILER);
+    const bool        is_compiler = isflag(ast_local->data.decl_entity.flags, FLAG_COMPILER);
     const bool        is_unroll   = ast_value && ast_value->kind == AST_EXPR_CALL;
     const bool        is_mutable  = ast_local->data.decl_entity.mut;
 
@@ -10037,7 +10033,7 @@ static void ast_decl_var_global_or_struct(struct context *ctx, struct ast *ast_g
     const bool        is_struct_decl = ast_value && ast_value->kind == AST_EXPR_TYPE &&
                                 ast_value->data.expr_type.type->kind == AST_TYPE_STRUCT;
     const bool is_mutable  = ast_global->data.decl_entity.mut;
-    const bool is_compiler = IS_FLAG(ast_global->data.decl_entity.flags, FLAG_COMPILER);
+    const bool is_compiler = isflag(ast_global->data.decl_entity.flags, FLAG_COMPILER);
 
     struct mir_instr *value = NULL;
     struct scope     *scope = ast_name->owner_scope;
@@ -11221,7 +11217,7 @@ void mir_arenas_terminate(struct mir_arenas *arenas)
 
 void mir_run(struct assembly *assembly)
 {
-    RUNTIME_MEASURE_BEGIN_S(mir);
+    runtime_measure_begin(mir);
     struct context ctx;
     zone();
     memset(&ctx, 0, sizeof(struct context));
@@ -11268,7 +11264,7 @@ void mir_run(struct assembly *assembly)
 
     blog("Analyze queue push count: %i", push_count);
 SKIP:
-    assembly->stats.mir_s = RUNTIME_MEASURE_END_S(mir);
+    assembly->stats.mir_s = runtime_measure_end(mir);
     ast_free_defer_stack(&ctx);
     arrfree(ctx.analyze.stack[0]);
     arrfree(ctx.analyze.stack[1]);

@@ -128,7 +128,7 @@ static inline void bl_debug_break(void)
     }                                                                                              \
     (void)0
 
-#define BL_WARNING(format, ...)                                                                    \
+#define bwarn(format, ...)                                                                    \
     {                                                                                              \
         _log(LOG_WARNING, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                          \
     }                                                                                              \
@@ -141,7 +141,7 @@ static inline void bl_debug_break(void)
     }                                                                                              \
     (void)0
 
-#define BL_WARNING(format, ...)                                                                    \
+#define bwarn(format, ...)                                                                    \
     while (0) {                                                                                    \
     }                                                                                              \
     (void)0

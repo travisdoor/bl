@@ -188,7 +188,8 @@ struct assembly {
         struct scope_arenas scope;
         struct mir_arenas   mir;
         struct arena        ast;
-        struct arena        small_array; // Used for all SmallArrays
+        struct arena        small_array; // Used for all SmallArrays @Cleanup: remove this
+        struct arena        sarr;
     } arenas;
 
     struct {

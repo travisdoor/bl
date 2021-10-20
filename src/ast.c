@@ -35,7 +35,7 @@
 struct ast *
 ast_create_node(struct arena *arena, enum ast_kind c, struct token *tok, struct scope *parent_scope)
 {
-    struct ast *node  = arena_alloc(arena);
+    struct ast *node  = arena_safe_alloc(arena);
     node->kind        = c;
     node->owner_scope = parent_scope;
     node->location    = tok ? &tok->location : NULL;

@@ -348,7 +348,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         struct ast *if_stmt = parse_stmt_if(ctx, true);
         if (if_stmt) {
             set_satisfied(HD_STATIC_IF);
-            if (IS_NOT_FLAG(expected_mask, HD_STATIC_IF)) {
+            if (isnotflag(expected_mask, HD_STATIC_IF)) {
                 builder_msg(BUILDER_MSG_ERROR,
                             0,
                             if_stmt->location,
@@ -370,7 +370,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     const enum hash_directive_flags hd_flag = ctx->hash_directive_table[index].value;
     bassert(directive);
 
-    if (IS_NOT_FLAG(expected_mask, hd_flag)) {
+    if (isnotflag(expected_mask, hd_flag)) {
         PARSE_ERROR(
             ERR_UNEXPECTED_DIRECTIVE, tok_directive, BUILDER_CUR_WORD, "Unexpected directive.");
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
@@ -1174,9 +1174,10 @@ struct ast *parse_stmt_return(struct context *ctx)
 NEXT:
     expr = parse_expr(ctx);
     if (expr) {
-        if (!ret->data.stmt_return.exprs)
-            ret->data.stmt_return.exprs = create_sarr(TSmallArray_AstPtr, ctx->assembly);
-        tsa_push_AstPtr(ret->data.stmt_return.exprs, expr);
+        if (!ret->data.stmt_return.exprs) {
+            ret->data.stmt_return.exprs = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+        }
+        sarrput(ret->data.stmt_return.exprs, expr);
         if (tokens_consume_if(ctx->tokens, SYM_COMMA)) {
             rq = true;
             goto NEXT;
@@ -1939,7 +1940,7 @@ struct ast *parse_type_enum(struct context *ctx)
         if (curr_decl && curr_decl->kind == AST_DECL_ENTITY) {
             curr_decl->data.decl_entity.flags |= flags;
         }
-        enm->data.type_enm.is_flags = IS_FLAG(flags, FLAG_FLAGS);
+        enm->data.type_enm.is_flags = isflag(flags, FLAG_FLAGS);
     }
 
     struct token *tok = tokens_consume(ctx->tokens);
@@ -2446,7 +2447,7 @@ struct ast *parse_decl(struct context *ctx)
         // parse declaration expression
         decl->data.decl_entity.value = parse_expr(ctx);
 
-        if (IS_NOT_FLAG(decl->data.decl_entity.flags, FLAG_EXTERN)) {
+        if (isnotflag(decl->data.decl_entity.flags, FLAG_EXTERN)) {
             if (!decl->data.decl_entity.value) {
                 PARSE_ERROR(ERR_EXPECTED_INITIALIZATION,
                             tok_assign,
@@ -2471,7 +2472,7 @@ struct ast *parse_decl(struct context *ctx)
             hd_accepted &= ~found;
         }
 
-        if (IS_FLAG(flags, FLAG_NO_INIT) && !scope_is_local(scope_get(ctx))) {
+        if (isflag(flags, FLAG_NO_INIT) && !scope_is_local(scope_get(ctx))) {
             PARSE_ERROR(ERR_EXPECTED_INITIALIZATION,
                         tok_begin,
                         BUILDER_CUR_AFTER,
@@ -2598,7 +2599,7 @@ struct ast *parse_block(struct context *ctx, bool create_scope)
     struct ast   *block = ast_create_node(ctx->ast_arena, AST_BLOCK, tok_begin, scope_get(ctx));
     struct token *tok;
     struct ast   *tmp       = NULL;
-    block->data.block.nodes = create_sarr(TSmallArray_AstPtr, ctx->assembly);
+    block->data.block.nodes = arena_safe_alloc(&ctx->assembly->arenas.sarr);
 
 NEXT:
     switch (tokens_peek_sym(ctx->tokens)) {
@@ -2660,18 +2661,18 @@ NEXT:
 
     // Others
     if (tmp) {
-        tsa_push_AstPtr(block->data.block.nodes, tmp);
+        sarrput(block->data.block.nodes, tmp);
         goto NEXT;
     }
 
     if ((tmp = (struct ast *)parse_decl(ctx))) {
         if (AST_IS_OK(tmp)) parse_semicolon_rq(ctx);
-        tsa_push_AstPtr(block->data.block.nodes, tmp);
+        sarrput(block->data.block.nodes, tmp);
         goto NEXT;
     }
     if ((tmp = parse_expr(ctx))) {
         if (AST_IS_OK(tmp)) parse_semicolon_rq(ctx);
-        tsa_push_AstPtr(block->data.block.nodes, tmp);
+        sarrput(block->data.block.nodes, tmp);
         goto NEXT;
     }
 

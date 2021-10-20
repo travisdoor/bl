@@ -108,7 +108,7 @@ struct scope *scope_create(struct scope_arenas *arenas,
                            struct location     *loc)
 {
     bassert(expected_entry_count > 0);
-    struct scope *scope         = arena_alloc(&arenas->scopes);
+    struct scope *scope         = arena_safe_alloc(&arenas->scopes);
     scope->parent               = parent;
     scope->kind                 = kind;
     scope->location             = loc;
@@ -126,7 +126,7 @@ struct scope_entry *scope_create_entry(struct scope_arenas  *arenas,
                                        struct ast           *node,
                                        bool                  is_builtin)
 {
-    struct scope_entry *entry = arena_alloc(&arenas->entries);
+    struct scope_entry *entry = arena_safe_alloc(&arenas->entries);
     entry->id                 = id;
     entry->kind               = kind;
     entry->node               = node;

@@ -53,6 +53,6 @@ void arena_init(struct arena *    arena,
 
 void arena_terminate(struct arena *arena);
 
-void *arena_alloc(struct arena *arena);
+void *arena_safe_alloc(struct arena *arena);
 
 #endif

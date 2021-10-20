@@ -64,10 +64,10 @@ static INLINE void _print_head(struct ast *node, s32 pad, FILE *stream)
 static INLINE void print_flags(s32 flags, FILE *stream)
 {
     if (!flags) return;
-    if (IS_FLAG(flags, FLAG_EXTERN)) fprintf(stream, " #extern");
-    if (IS_FLAG(flags, FLAG_TEST_FN)) fprintf(stream, " #test");
-    if (IS_FLAG(flags, FLAG_COMPILER)) fprintf(stream, " #compiler");
-    if (IS_FLAG(flags, FLAG_PRIVATE)) fprintf(stream, " #private");
+    if (isflag(flags, FLAG_EXTERN)) fprintf(stream, " #extern");
+    if (isflag(flags, FLAG_TEST_FN)) fprintf(stream, " #test");
+    if (isflag(flags, FLAG_COMPILER)) fprintf(stream, " #compiler");
+    if (isflag(flags, FLAG_PRIVATE)) fprintf(stream, " #private");
 }
 
 static void print_node(struct ast *node, s32 pad, FILE *stream);
@@ -135,8 +135,10 @@ void print_ublock(struct ast *ublock, s32 pad, FILE *stream)
 void print_block(struct ast *block, s32 pad, FILE *stream)
 {
     print_head(block, pad, stream);
-    struct ast *tmp = NULL;
-    TSA_FOREACH(block->data.block.nodes, tmp) print_node(tmp, pad + 1, stream);
+    for (s64 i = 0; i < sarrlen(block->data.block.nodes); ++i) {
+        struct ast *tmp = sarrpeek(block->data.block.nodes, i);
+        print_node(tmp, pad + 1, stream);
+    }
 }
 
 void print_load(struct ast *load, s32 pad, FILE *stream)
@@ -319,13 +321,9 @@ void print_stmt_continue(struct ast *ctx, s32 pad, FILE *stream)
 void print_stmt_return(struct ast *ret, s32 pad, FILE *stream)
 {
     print_head(ret, pad, stream);
-    TSmallArray_AstPtr *exprs = ret->data.stmt_return.exprs;
-    if (exprs) {
-        struct ast *value;
-        TSA_FOREACH(exprs, value)
-        {
-            print_node(value, pad + 1, stream);
-        }
+    for (s64 i = 0; i < sarrlen(ret->data.stmt_return.exprs); ++i) {
+        struct ast *value = sarrpeek(ret->data.stmt_return.exprs, i);
+        print_node(value, pad + 1, stream);
     }
 }
 

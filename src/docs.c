@@ -463,7 +463,7 @@ void doc(struct context *ctx, struct ast *node)
     case AST_SCOPE:
         break;
     default:
-        BL_WARNING("Missing doc generation for AST node '%s'.", ast_get_name(node));
+        bwarn("Missing doc generation for AST node '%s'.", ast_get_name(node));
         break;
     }
 }

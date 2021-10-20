@@ -70,27 +70,20 @@ u64 main_thread_id = 0;
 // Small Array
 // =================================================================================================
 
-struct sarr_any {
-    s32 len;
-    s32 cap;
-    u8 *data;
-    u8  buf[1];
-};
-
 void sarradd_impl(void *ptr, s32 elem_size, s32 elem_count)
 {
-    struct sarr_any *arr     = (struct sarr_any *)ptr;
-    const bool       on_heap = arr->cap;
+    sarr_any_t *arr     = (sarr_any_t *)ptr;
+    const bool  on_heap = arr->cap;
     if (!on_heap && arr->len == elem_count) {
         arr->cap        = elem_count * 2;
         const s32 bytes = elem_size * arr->cap;
-        arr->data       = bmalloc(bytes);
-        if (!arr->data) abort();
-        memcpy(arr->data, arr->buf, bytes);
+        arr->_data       = bmalloc(bytes);
+        if (!arr->_data) abort();
+        memcpy(arr->_data, arr->_buf, bytes);
     } else if (on_heap && arr->len == arr->cap) {
         arr->cap *= 2;
-        void *tmp = arr->data;
-        if ((arr->data = brealloc(arr->data, arr->cap * elem_size)) == NULL) {
+        void *tmp = arr->_data;
+        if ((arr->_data = brealloc(arr->_data, arr->cap * elem_size)) == NULL) {
             bfree(tmp);
             abort();
         }
@@ -179,7 +172,7 @@ bool search_source_file(const char *filepath,
     }
 
     // Lookup in working directory.
-    if (wdir && IS_FLAG(flags, SEARCH_FLAG_WDIR)) {
+    if (wdir && isflag(flags, SEARCH_FLAG_WDIR)) {
         tstring_setf(tmp, "%s" PATH_SEPARATOR "%s", wdir, filepath);
         if (brealpath(tmp->data, tmp_result, static_arrlen(tmp_result))) {
             result = &tmp_result[0];
@@ -188,7 +181,7 @@ bool search_source_file(const char *filepath,
     }
 
     // file has not been found in current working directory -> search in LIB_DIR
-    if (builder_get_lib_dir() && IS_FLAG(flags, SEARCH_FLAG_LIB_DIR)) {
+    if (builder_get_lib_dir() && isflag(flags, SEARCH_FLAG_LIB_DIR)) {
         tstring_setf(tmp, "%s" PATH_SEPARATOR "%s", builder_get_lib_dir(), filepath);
         if (brealpath(tmp->data, tmp_result, static_arrlen(tmp_result))) {
             result = &tmp_result[0];
@@ -197,7 +190,7 @@ bool search_source_file(const char *filepath,
     }
 
     // file has not been found in current working directory -> search in PATH
-    if (IS_FLAG(flags, SEARCH_FLAG_SYSTEM_PATH)) {
+    if (isflag(flags, SEARCH_FLAG_SYSTEM_PATH)) {
         char *env = strdup(getenv(ENV_PATH));
         char *s   = env;
         char *p   = NULL;
@@ -580,7 +573,7 @@ void *_create_sarr(struct assembly *assembly, usize arr_size)
         arr_size <= assembly->arenas.small_array.elem_size_in_bytes &&
         "SmallArray is too big to be allocated inside arena, make array smaller or arena bigger.");
 
-    TSmallArrayAny *tmp = arena_alloc(&assembly->arenas.small_array);
+    TSmallArrayAny *tmp = arena_safe_alloc(&assembly->arenas.small_array);
     tsa_init(tmp);
     return tmp;
 }

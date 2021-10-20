@@ -730,7 +730,7 @@ char dyncall_cb_handler(DCCallback UNUSED(*cb), DCArgs *dc_args, DCValue *result
 
     struct mir_type *ret_type = fn->type->data.fn.ret_type;
     const bool       is_extern =
-        IS_FLAG(ctx->fn->flags, FLAG_EXTERN) || IS_FLAG(ctx->fn->flags, FLAG_INTRINSIC);
+        isflag(ctx->fn->flags, FLAG_EXTERN) || isflag(ctx->fn->flags, FLAG_INTRINSIC);
     const bool has_args = fn->type->data.fn.args;
 
     if (is_extern) {
@@ -1107,7 +1107,7 @@ bool execute_function(struct virtual_machine *vm, struct mir_fn *fn)
 void interp_instr(struct virtual_machine *vm, struct mir_instr *instr)
 {
     if (!instr) return;
-    if (IS_NOT_FLAG(instr->flags, MIR_IS_ANALYZED)) {
+    if (isnotflag(instr->flags, MIR_IS_ANALYZED)) {
         babort("Instruction %s has not been analyzed!", mir_instr_name(instr));
     }
     // Skip all comptimes.
@@ -1767,7 +1767,7 @@ void interp_instr_call(struct virtual_machine *vm, struct mir_instr_call *call)
         return;
     }
     bassert(fn->type);
-    if (IS_FLAG(fn->flags, FLAG_EXTERN) || IS_FLAG(fn->flags, FLAG_INTRINSIC)) {
+    if (isflag(fn->flags, FLAG_EXTERN) || isflag(fn->flags, FLAG_INTRINSIC)) {
         interp_extern_call(vm, fn, call);
     } else {
         // Push current frame stack top. (Later popped by ret instruction)
@@ -2380,7 +2380,7 @@ bool vm_execute_comptime_call(struct virtual_machine *vm,
 {
     zone();
     vm->assembly = assembly;
-    bassert(call && IS_FLAG(call->base.flags, MIR_IS_ANALYZED));
+    bassert(call && isflag(call->base.flags, MIR_IS_ANALYZED));
     bassert(mir_is_comptime(&call->base) && "Top level call is expected to be comptime.");
     struct mir_fn *fn = mir_get_callee(call);
     bassert(fn && "Callee of compile time executed top level function not found!");
