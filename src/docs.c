@@ -87,7 +87,7 @@
 
 struct context {
     struct unit *unit;
-    FILE        *stream;
+    FILE *       stream;
     TString      path_unit_dir;
     TString      path_tmp;
     s32          pad;
@@ -293,15 +293,13 @@ void doc_type_enum(struct context *ctx, struct ast *type)
         fprintf(ctx->stream, " ");
     }
     fprintf(ctx->stream, "{");
-    if (type->data.type_enm.variants) {
-        struct ast *variant;
-        TSA_FOREACH(type->data.type_enm.variants, variant)
-        {
-            CODE_BLOCK_NEW_LINE(ctx->stream);
-            fprintf(ctx->stream, "    ");
-            doc(ctx, variant);
-            fprintf(ctx->stream, ";");
-        }
+    ast_nodes_t *variants = type->data.type_enm.variants;
+    for (s64 i = 0; i < sarrlen(variants); ++i) {
+        struct ast *variant = sarrpeek(variants, i);
+        CODE_BLOCK_NEW_LINE(ctx->stream);
+        fprintf(ctx->stream, "    ");
+        doc(ctx, variant);
+        fprintf(ctx->stream, ";");
     }
     CODE_BLOCK_NEW_LINE(ctx->stream);
     fprintf(ctx->stream, "}");
@@ -314,19 +312,17 @@ void doc_type_struct(struct context *ctx, struct ast UNUSED(*type))
     else
         fprintf(ctx->stream, "(");
 
-    if (type->data.type_strct.members) {
-        struct ast *member;
-        TSA_FOREACH(type->data.type_strct.members, member)
-        {
-            if (ctx->is_multi_return) {
-                doc(ctx, member);
-                if (i + 1 < type->data.type_strct.members->size) fprintf(ctx->stream, ", ");
-            } else {
-                CODE_BLOCK_NEW_LINE(ctx->stream);
-                fprintf(ctx->stream, "    ");
-                doc(ctx, member);
-                fprintf(ctx->stream, ";");
-            }
+    ast_nodes_t *members = type->data.type_strct.members;
+    for (s64 i = 0; i < sarrlen(members); ++i) {
+        struct ast *member = sarrpeek(members, i);
+        if (ctx->is_multi_return) {
+            doc(ctx, member);
+            if (i + 1 < sarrlen(members)) fprintf(ctx->stream, ", ");
+        } else {
+            CODE_BLOCK_NEW_LINE(ctx->stream);
+            fprintf(ctx->stream, "    ");
+            doc(ctx, member);
+            fprintf(ctx->stream, ";");
         }
     }
     if (ctx->is_multi_return) {

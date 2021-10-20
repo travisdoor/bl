@@ -197,10 +197,10 @@ void print_type_struct(struct ast *strct, s32 pad, FILE *stream)
 {
     print_head(strct, pad, stream);
 
-    struct ast *node;
-    TSA_FOREACH(strct->data.type_strct.members, node)
-    {
-        print_node(node, pad + 1, stream);
+    ast_nodes_t *members = strct->data.type_strct.members;
+    for (s64 i = 0; i < sarrlen(members); ++i) {
+        struct ast *member = sarrpeek(members, i);
+        print_node(member, pad + 1, stream);
     }
 }
 
@@ -246,10 +246,9 @@ void print_type_fn(struct ast *fn, s32 pad, FILE *stream)
 void print_type_enum(struct ast *enm, s32 pad, FILE *stream)
 {
     print_head(enm, pad, stream);
-
-    struct ast *node;
-    TSA_FOREACH(enm->data.type_enm.variants, node)
-    {
+    ast_nodes_t *variants = enm->data.type_enm.variants;
+    for (s64 i = 0; i < sarrlen(variants); ++i) {
+        struct ast *node = sarrpeek(variants, i);
         print_node(node, pad + 1, stream);
     }
 }
@@ -516,9 +515,10 @@ void print_expr_call(struct ast *call, s32 pad, FILE *stream)
 
     print_node(call->data.expr_call.ref, pad + 1, stream);
 
-    if (call->data.expr_call.args) {
-        struct ast *arg;
-        TSA_FOREACH(call->data.expr_call.args, arg) print_node(arg, pad + 1, stream);
+    ast_nodes_t *args = call->data.expr_call.args;
+    for (s64 i = 0; i < sarrlen(args); ++i) {
+        struct ast *arg = sarrpeek(args, i);
+        print_node(arg, pad + 1, stream);
     }
 }
 
@@ -526,13 +526,10 @@ void print_expr_compound(struct ast *expr_compound, s32 pad, FILE *stream)
 {
     print_head(expr_compound, pad, stream);
 
-    TSmallArray_AstPtr *exprs = expr_compound->data.expr_compound.values;
-    if (exprs) {
-        struct ast *value;
-        TSA_FOREACH(exprs, value)
-        {
-            print_node(value, pad + 1, stream);
-        }
+    ast_nodes_t *exprs = expr_compound->data.expr_compound.values;
+    for (s64 i = 0; i < sarrlen(exprs); ++i) {
+        struct ast *value = sarrpeek(exprs, i);
+        print_node(value, pad + 1, stream);
     }
 }
 
