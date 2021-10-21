@@ -137,8 +137,8 @@ static LLVMValueRef rtti_emit_struct_members_slice(struct context        *ctx,
                                                    TSmallArray_MemberPtr *members);
 static LLVMValueRef rtti_emit_fn(struct context *ctx, struct mir_type *type);
 static LLVMValueRef rtti_emit_fn_arg(struct context *ctx, struct mir_arg *arg);
-static LLVMValueRef rtti_emit_fn_args_array(struct context *ctx, TSmallArray_ArgPtr *args);
-static LLVMValueRef rtti_emit_fn_args_slice(struct context *ctx, TSmallArray_ArgPtr *args);
+static LLVMValueRef rtti_emit_fn_args_array(struct context *ctx, mir_args_t *args);
+static LLVMValueRef rtti_emit_fn_args_slice(struct context *ctx, mir_args_t *args);
 static LLVMValueRef rtti_emit_fn_group(struct context *ctx, struct mir_type *type);
 static LLVMValueRef rtti_emit_fn_slice(struct context *ctx, TSmallArray_TypePtr *fns);
 static LLVMValueRef rtti_emit_fn_array(struct context *ctx, TSmallArray_TypePtr *fns);
@@ -451,12 +451,9 @@ LLVMMetadataRef DI_type_init(struct context *ctx, struct mir_type *type)
         llvm_metas_t params = SARR_ZERO;
         // return type is first
         sarrput(&params, DI_type_init(ctx, type->data.fn.ret_type));
-        if (type->data.fn.args) {
-            struct mir_arg *it;
-            TSA_FOREACH(type->data.fn.args, it)
-            {
-                sarrput(&params, DI_type_init(ctx, it->type));
-            }
+        for (s64 i = 0; i < sarrlen(type->data.fn.args); ++i) {
+            struct mir_arg *it = sarrpeek(type->data.fn.args, i);
+            sarrput(&params, DI_type_init(ctx, it->type));
         }
         type->llvm_meta =
             llvm_di_create_function_type(ctx->llvm_di_builder, sarrdata(&params), sarrlen(&params));
@@ -771,11 +768,10 @@ LLVMValueRef emit_fn_proto(struct context *ctx, struct mir_fn *fn, bool schedule
     }
     // Setup attributes for byval.
     if (isflag(fn->type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_BYVAL)) {
-        TSmallArray_ArgPtr *args = fn->type->data.fn.args;
+        mir_args_t *args = fn->type->data.fn.args;
         bassert(args);
-        struct mir_arg *arg;
-        TSA_FOREACH(args, arg)
-        {
+        for (s64 i = 0; i < sarrlen(args); ++i) {
+            struct mir_arg *arg = sarrpeek(args, i);
             if (arg->llvm_easgm != LLVM_EASGM_BYVAL) continue;
             // Setup attributes.
             LLVMAttributeRef llvm_attr = llvm_create_attribute_type(
@@ -1216,14 +1212,13 @@ LLVMValueRef rtti_emit_fn_arg(struct context *ctx, struct mir_arg *arg)
     return LLVMConstNamedStruct(get_type(ctx, rtti_type), llvm_vals, static_arrlen(llvm_vals));
 }
 
-LLVMValueRef rtti_emit_fn_args_array(struct context *ctx, TSmallArray_ArgPtr *args)
+LLVMValueRef rtti_emit_fn_args_array(struct context *ctx, mir_args_t *args)
 {
     struct mir_type *elem_type = ctx->builtin_types->t_TypeInfoFnArg;
     llvm_values_t    llvm_vals = SARR_ZERO;
 
-    struct mir_arg *it;
-    TSA_FOREACH(args, it)
-    {
+    for (s64 i = 0; i < sarrlen(args); ++i) {
+        struct mir_arg *it = sarrpeek(args, i);
         sarrput(&llvm_vals, rtti_emit_fn_arg(ctx, it));
     }
 
@@ -1240,11 +1235,11 @@ LLVMValueRef rtti_emit_fn_args_array(struct context *ctx, TSmallArray_ArgPtr *ar
     return llvm_rtti_var;
 }
 
-LLVMValueRef rtti_emit_fn_args_slice(struct context *ctx, TSmallArray_ArgPtr *args)
+LLVMValueRef rtti_emit_fn_args_slice(struct context *ctx, mir_args_t *args)
 {
     struct mir_type *type = ctx->builtin_types->t_TypeInfoFnArgs_slice;
     LLVMValueRef     llvm_vals[2];
-    const usize      argc = args ? args->size : 0;
+    const usize      argc = sarrlen(args);
 
     struct mir_type *len_type = mir_get_struct_elem_type(type, 0);
     struct mir_type *ptr_type = mir_get_struct_elem_type(type, 1);
@@ -1632,7 +1627,7 @@ State emit_instr_arg(struct context *ctx, struct mir_var *dest, struct mir_instr
     LLVMValueRef     llvm_fn = fn->llvm_value;
     bassert(llvm_fn);
 
-    struct mir_arg *arg       = fn_type->data.fn.args->data[arg_instr->i];
+    struct mir_arg *arg       = sarrpeek(fn_type->data.fn.args, arg_instr->i);
     LLVMValueRef    llvm_dest = dest->llvm_value;
     bassert(llvm_dest);
 
@@ -1905,7 +1900,7 @@ LLVMValueRef _emit_instr_compound_zero_initialized(struct context            *ct
     struct mir_type *type = cmp->base.value.type;
     bassert(type);
     bassert(mir_is_comptime(&cmp->base) &&
-              "Zero initialized compound expression is supposed to be compile time known!");
+            "Zero initialized compound expression is supposed to be compile time known!");
     if (!llvm_dest) {
         cmp->base.llvm_value = LLVMConstNull(get_type(ctx, type));
         return cmp->base.llvm_value;
@@ -1917,8 +1912,7 @@ LLVMValueRef _emit_instr_compound_zero_initialized(struct context            *ct
         cmp->base.llvm_value = LLVMConstNull(get_type(ctx, type));
         LLVMBuildStore(ctx->llvm_builder, cmp->base.llvm_value, llvm_dest);
     } else {
-        bassert(!mir_is_global(&cmp->base) &&
-                  "Cannot use memset for global zero initialization!");
+        bassert(!mir_is_global(&cmp->base) && "Cannot use memset for global zero initialization!");
         // Use memset intrinsic for zero initialization of variable
         LLVMValueRef args[4];
         args[0] = LLVMBuildBitCast(
@@ -1935,9 +1929,9 @@ LLVMValueRef _emit_instr_compound_zero_initialized(struct context            *ct
 
 #define EMIT_NESTED_COMPOUND_IF_NEEDED(ctx, instr)                                                 \
     if (!(instr)->llvm_value) {                                                                    \
-        bassert((instr)->kind == MIR_INSTR_COMPOUND);                                            \
+        bassert((instr)->kind == MIR_INSTR_COMPOUND);                                              \
         _emit_instr_compound_comptime(ctx, ((struct mir_instr_compound *)instr));                  \
-        bassert((instr)->llvm_value);                                                            \
+        bassert((instr)->llvm_value);                                                              \
     }
 
 // Generates comptime compound expression value, every nested member must be compile time known.
@@ -2260,7 +2254,7 @@ State emit_instr_call(struct context *ctx, struct mir_instr_call *call)
 
         TSA_FOREACH(call->args, arg_instr)
         {
-            arg                   = callee_type->data.fn.args->data[i];
+            arg                   = sarrpeek(callee_type->data.fn.args, i);
             LLVMValueRef llvm_arg = arg_instr->llvm_value;
 
             switch (arg->llvm_easgm) {
@@ -2344,15 +2338,12 @@ State emit_instr_call(struct context *ctx, struct mir_instr_call *call)
     // @Performance: LLVM API requires to set call side attributes after call is created.
     if (has_byval_arg) {
         bassert(has_args);
-        TSmallArray_ArgPtr *args = callee_type->data.fn.args;
-        struct mir_arg     *arg;
-        TSA_FOREACH(args, arg)
-        {
+        mir_args_t *args = callee_type->data.fn.args;
+        for (s64 i = 0; i < sarrlen(args); ++i) {
+            struct mir_arg *arg = sarrpeek(args, i);
             if (arg->llvm_easgm != LLVM_EASGM_BYVAL) continue;
-
             LLVMAttributeRef llvm_atrbt = llvm_create_attribute_type(
                 ctx->llvm_cnt, LLVM_ATTR_BYVAL, get_type(ctx, arg->type));
-
             bassert(llvm_atrbt && "Invalid call side attribute!");
             LLVMAddCallSiteAttribute(llvm_call, arg->llvm_index + 1, llvm_atrbt);
         }
@@ -2402,8 +2393,7 @@ State emit_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl)
     // Since we introduced lazy generation of IR instructions (mainly to reduce size of generated
     // binary and also to speed up compilation times) we do not generated global variables as they
     // come in global scope, but only in case they are used. (see also emit_global_var_proto).
-    bassert(!var->is_global &&
-              "Global variable IR is supposed to lazy generated only as needed!");
+    bassert(!var->is_global && "Global variable IR is supposed to lazy generated only as needed!");
     bassert(var->llvm_value);
     if (decl->init) {
         // There is special handling for initialization via compound instruction
@@ -2812,8 +2802,7 @@ State emit_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_pro
 State emit_instr(struct context *ctx, struct mir_instr *instr)
 {
     State state = STATE_PASSED;
-    bassert(isflag(instr->flags, MIR_IS_ANALYZED) &&
-              "Attempt to emit not-analyzed instruction!");
+    bassert(isflag(instr->flags, MIR_IS_ANALYZED) && "Attempt to emit not-analyzed instruction!");
     if (!mir_type_has_llvm_representation((instr->value.type))) return state;
     switch (instr->kind) {
     case MIR_INSTR_INVALID:

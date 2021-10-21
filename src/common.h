@@ -116,6 +116,13 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 #define qpop_front(Q) (_qcurrent(Q)[(Q)->i++])
 #define qsetcap(Q, c) (arrsetcap(_qother(Q), c))
 
+#define arrprint(A, fmt, ...)                                                                      \
+    {                                                                                              \
+        const s32 l = snprintf(NULL, 0, fmt, ##__VA_ARGS__) + 1;                                   \
+        arrsetlen(A, l);                                                                           \
+        snprintf(A, l, fmt, ##__VA_ARGS__);                                                        \
+    }
+
 // =================================================================================================
 // Small Array
 // =================================================================================================
@@ -149,6 +156,7 @@ typedef sarr_t(u8, 1) sarr_any_t;
 void sarradd_impl(void *ptr, s32 elem_size, s32 elem_count);
 
 typedef sarr_t(struct ast *, 16) ast_nodes_t;
+typedef sarr_t(struct mir_arg *, 16) mir_args_t;
 
 TSMALL_ARRAY_TYPE(TypePtr, struct mir_type *, 16);
 TSMALL_ARRAY_TYPE(MemberPtr, struct mir_member *, 16);
@@ -156,8 +164,7 @@ TSMALL_ARRAY_TYPE(VariantPtr, struct mir_variant *, 16);
 TSMALL_ARRAY_TYPE(ArgPtr, struct mir_arg *, 16);
 TSMALL_ARRAY_TYPE(InstrPtr, struct mir_instr *, 16);
 TSMALL_ARRAY_TYPE(ConstValuePtr, struct MirConstValue *, 16);
-TSMALL_ARRAY_TYPE(Char, char, 128);
-TSMALL_ARRAY_TYPE(CharPtr, char *, 8);
+TSMALL_ARRAY_TYPE(Char, char, 128); // @Cleanup
 TSMALL_ARRAY_TYPE(FnPtr, struct mir_fn *, 8);
 
 // =================================================================================================

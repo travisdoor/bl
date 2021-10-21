@@ -83,7 +83,10 @@ union _SmallArrays {
     TSmallArray_FnPtr         fn;
 };
 
-static const usize sarr_total_size = sizeof(union { ast_nodes_t; });
+static const usize sarr_total_size = sizeof(union {
+    ast_nodes_t _1;
+    mir_args_t  _2;
+});
 
 static void small_array_dtor(TSmallArrayAny *arr)
 {

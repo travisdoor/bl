@@ -731,7 +731,6 @@ char dyncall_cb_handler(DCCallback UNUSED(*cb), DCArgs *dc_args, DCValue *result
     struct mir_type *ret_type = fn->type->data.fn.ret_type;
     const bool       is_extern =
         isflag(ctx->fn->flags, FLAG_EXTERN) || isflag(ctx->fn->flags, FLAG_INTRINSIC);
-    const bool has_args = fn->type->data.fn.args;
 
     if (is_extern) {
         // TODO: external callback
@@ -741,16 +740,14 @@ char dyncall_cb_handler(DCCallback UNUSED(*cb), DCArgs *dc_args, DCValue *result
     TSmallArray_ConstExprValue arg_tmp;
     tsa_init(&arg_tmp);
 
-    if (has_args) {
-        TSmallArray_ArgPtr *args = fn->type->data.fn.args;
-        tsa_resize_ConstExprValue(&arg_tmp, args->size);
-
-        struct mir_arg *it;
-        TSA_FOREACH(args, it)
-        {
-            struct mir_const_expr_value *v = &arg_tmp.data[i];
-            v->type                        = it->type;
-            v->data                        = &v->_tmp[0];
+    mir_args_t *args = fn->type->data.fn.args;
+    if (sarrlen(args)) {
+        tsa_resize_ConstExprValue(&arg_tmp, sarrlen(args));
+        for (s64 i = 0; i < sarrlen(args); ++i) {
+            struct mir_arg              *it = sarrpeek(args, i);
+            struct mir_const_expr_value *v  = &arg_tmp.data[i];
+            v->type                         = it->type;
+            v->data                         = &v->_tmp[0];
 
             dyncall_cb_read_arg(vm, v, dc_args);
         }
@@ -775,12 +772,10 @@ void _dyncall_generate_signature(struct virtual_machine *vm, struct mir_type *ty
 
     switch (type->kind) {
     case MIR_TYPE_FN: {
-        if (type->data.fn.args) {
-            struct mir_arg *arg;
-            TSA_FOREACH(type->data.fn.args, arg)
-            {
-                _dyncall_generate_signature(vm, arg->type);
-            }
+        mir_args_t *args = type->data.fn.args;
+        for (s64 i = 0; i < sarrlen(args); ++i) {
+            struct mir_arg *arg = sarrpeek(args, i);
+            _dyncall_generate_signature(vm, arg->type);
         }
         tsa_push_Char(tmp, DC_SIGCHAR_ENDARG);
         _dyncall_generate_signature(vm, type->data.fn.ret_type);
@@ -1516,13 +1511,13 @@ void interp_instr_arg(struct virtual_machine *vm, struct mir_instr_arg *arg)
     bassert(fn && "Arg instruction cannot determinate current function");
 
     // All arguments must be already on the stack in reverse order.
-    TSmallArray_ArgPtr *args = fn->type->data.fn.args;
+    mir_args_t *args = fn->type->data.fn.args;
     bassert(args && "Function has no arguments");
 
     // starting point
     vm_stack_ptr_t arg_ptr = (vm_stack_ptr_t)vm->stack->ra;
     for (u32 i = 0; i <= arg->i; ++i) {
-        arg_ptr -= stack_alloc_size(args->data[i]->type->store_size_bytes);
+        arg_ptr -= stack_alloc_size(sarrpeek(args, i)->type->store_size_bytes);
     }
 
     stack_push(vm, (vm_stack_ptr_t)arg_ptr, arg->base.value.type);
@@ -2347,7 +2342,7 @@ bool vm_execute_fn(struct virtual_machine     *vm,
     vm->stack->aborted = false;
     if (optional_args) {
         bassert(fn->type->data.fn.args);
-        bassert(fn->type->data.fn.args->size == optional_args->size &&
+        bassert(sarrlen(fn->type->data.fn.args) == optional_args->size &&
                 "Invalid count of explicitly passed arguments");
         // Push all arguments in reverse order on the stack.
         for (usize i = optional_args->size; i-- > 0;) {
@@ -2386,7 +2381,7 @@ bool vm_execute_comptime_call(struct virtual_machine *vm,
     bassert(fn && "Callee of compile time executed top level function not found!");
     TSmallArray_InstrPtr *args = call->args;
     if (args) {
-        bassert(args->size == fn->type->data.fn.args->size);
+        bassert(args->size == sarrlen(fn->type->data.fn.args));
         // Push all arguments in reverse order on the stack.
         for (usize i = args->size; i-- > 0;) {
             struct mir_const_expr_value *value = &args->data[i]->value;

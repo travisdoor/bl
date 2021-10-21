@@ -246,7 +246,7 @@ int main(s32 argc, char *argv[])
     Options opt = {0};
     setlocale(LC_ALL, "C");
     tlib_set_allocator(&_bl_malloc, &_bl_free);
-
+    
     s32   state     = EXIT_SUCCESS;
     char *exec_dir  = NULL;
     char *conf_file = NULL;

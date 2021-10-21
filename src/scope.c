@@ -239,16 +239,15 @@ const char *scope_kind_name(const struct scope *scope)
 void scope_get_full_name(TString *dest, struct scope *scope)
 {
     bassert(dest && scope);
-    TSmallArray_CharPtr buffer;
-    tsa_init(&buffer);
+    sarr_t(char *, 8) tmp = SARR_ZERO;
     while (scope) {
-        if (scope->name) tsa_push_CharPtr(&buffer, (char *)scope->name);
+        if (scope->name) sarrput(&tmp, (char *)scope->name);
         scope = scope->parent;
     }
-    for (usize i = buffer.size; i-- > 0;) {
-        char *iter = buffer.data[i];
-        tstring_append(dest, iter);
+    for (s64 i = sarrlen(&tmp); i-- > 0;) {
+        const char *subname = sarrpeek(&tmp, i);
+        tstring_append(dest, subname);
         if (i > 0) tstring_append_c(dest, '.');
     }
-    tsa_terminate(&buffer);
+    sarrfree(&tmp);
 }

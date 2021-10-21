@@ -348,11 +348,12 @@ enum mir_type_fn_flags {
 };
 
 struct mir_type_fn {
-    struct mir_type     *ret_type;
-    TSmallArray_ArgPtr  *args;
-    hash_t               argument_hash;
+    struct mir_type *ret_type;
+    mir_args_t      *args;
+    hash_t           argument_hash;
+    u32              flags;
+
     enum builtin_id_kind builtin_id;
-    u32                  flags;
 };
 
 struct mir_type_poly {
@@ -912,11 +913,10 @@ static INLINE struct mir_type *mir_get_struct_elem_type(const struct mir_type *t
 static INLINE struct mir_type *mir_get_fn_arg_type(const struct mir_type *type, u32 i)
 {
     bassert(type->kind == MIR_TYPE_FN && "Expected function type");
-    TSmallArray_ArgPtr *args = type->data.fn.args;
+    mir_args_t *args = type->data.fn.args;
     if (!args) return NULL;
-    bassert(args->size > i);
-
-    return args->data[i]->type;
+    bassert(sarrlen(args) > i);
+    return sarrpeek(args, i)->type;
 }
 
 // Determinate if the instruction has compile time known value.
