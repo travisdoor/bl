@@ -236,7 +236,7 @@ static void llvm_init(struct assembly *assembly)
 
 static void llvm_terminate(struct assembly *assembly)
 {
-    for (s32 i = 0; i < arrlenu(assembly->llvm.modules); ++i) {
+    for (usize i = 0; i < arrlenu(assembly->llvm.modules); ++i) {
         LLVMDisposeModule(assembly->llvm.modules[i]);
     }
     arrfree(assembly->llvm.modules);

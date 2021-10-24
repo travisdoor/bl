@@ -163,7 +163,7 @@ typedef sarr_t(u8, 1) sarr_any_t;
     }                                                                                              \
     (void)0
 
-void sarradd_impl(void *ptr, s32 elem_size, s32 static_elem_count, s32 new_elem_count);
+void sarradd_impl(void *ptr, usize elem_size, usize static_elem_count, usize new_elem_count);
 
 typedef sarr_t(struct ast *, 16) ast_nodes_t;
 typedef sarr_t(struct mir_arg *, 16) mir_args_t;

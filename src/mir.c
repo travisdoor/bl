@@ -1644,7 +1644,7 @@ is_to_any_needed(struct context *ctx, struct mir_instr *src, struct mir_type *de
 
 void ast_push_defer_stack(struct context *ctx)
 {
-    if (++ctx->ast.current_defer_stack_index == arrlenu(ctx->ast.defer_stack)) {
+    if (++ctx->ast.current_defer_stack_index == arrlen(ctx->ast.defer_stack)) {
         arrput(ctx->ast.defer_stack, (defer_stack_t){0});
     }
 }
@@ -7264,7 +7264,7 @@ static INLINE hash_t get_current_poly_replacement_hash(struct context *ctx)
 
     zone();
     hash_t hash = sarrpeek(queue, 0)->id.hash;
-    for (usize i = 1; i < sarrlen(queue); ++i) {
+    for (usize i = 1; i < sarrlenu(queue); ++i) {
         struct mir_type *type = sarrpeek(queue, i);
         bassert(type->id.hash != 0);
         hash = hashcomb(hash, type->id.hash);
@@ -8285,7 +8285,7 @@ void analyze(struct context *ctx)
 {
     zone();
     struct result     result;
-    s32               pc = 0, i = 0, si = analyze_swap(ctx);
+    usize             pc = 0, i = 0, si = analyze_swap(ctx);
     struct mir_instr *ip = NULL, *pip = NULL;
     bool              skip = false;
 
@@ -8390,7 +8390,7 @@ void analyze_report_unresolved(struct context *ctx)
 
 void analyze_report_unused(struct context *ctx)
 {
-    for (s32 i = 0; i < arrlenu(ctx->analyze.usage_check_arr); ++i) {
+    for (usize i = 0; i < arrlenu(ctx->analyze.usage_check_arr); ++i) {
         struct scope_entry *entry = ctx->analyze.usage_check_arr[i];
         if (entry->ref_count > 0) continue;
         if (!entry->node || !entry->id) continue;

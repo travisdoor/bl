@@ -70,12 +70,12 @@ u64 main_thread_id = 0;
 // Small Array
 // =================================================================================================
 
-void sarradd_impl(void *ptr, s32 elem_size, s32 static_elem_count, s32 new_elem_count)
+void sarradd_impl(void *ptr, usize elem_size, usize static_elem_count, usize new_elem_count)
 {
     if (new_elem_count < 1) return;
     sarr_any_t *arr        = (sarr_any_t *)ptr;
     const bool  on_heap    = arr->cap;
-    const u32   needed_len = arr->len + new_elem_count;
+    const usize   needed_len = arr->len + new_elem_count;
     if (on_heap && needed_len > arr->cap) {
         arr->cap  = arr->cap * 2 > needed_len ? arr->cap * 2 : needed_len;
         void *tmp = arr->_data;

@@ -1181,7 +1181,7 @@ LLVMValueRef rtti_emit_fn_array(struct context *ctx, mir_types_t *fns)
     struct mir_type *elem_type = ctx->builtin_types->t_TypeInfoFn_ptr;
     llvm_values_t    llvm_vals = SARR_ZERO;
 
-    for (usize i = 0; i < sarrlen(fns); ++i) {
+    for (usize i = 0; i < sarrlenu(fns); ++i) {
         struct mir_type *it = sarrpeek(fns, i);
         sarrput(&llvm_vals,
                 LLVMBuildBitCast(ctx->llvm_builder, _rtti_emit(ctx, it), elem_type->llvm_type, ""));

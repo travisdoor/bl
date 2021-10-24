@@ -1010,7 +1010,7 @@ struct ast *parse_decl_member(struct context *ctx, s32 UNUSED(index))
         bassert(index >= 0);
         char      buf[64]; // More than enough.
         const s32 c = snprintf(buf, static_arrlenu(buf), "_%d", index);
-        bassert(c >= 0 && c < static_arrlenu(buf) && "Buffer overflow!");
+        bassert(c >= 0 && c < (s32)static_arrlenu(buf) && "Buffer overflow!");
         char *ident = scdup(&ctx->unit->string_cache, buf, c);
         name        = ast_create_node(ctx->ast_arena, AST_IDENT, tok_begin, scope_get(ctx));
         id_init(&name->data.ident.id, ident);
