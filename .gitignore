@@ -70,3 +70,5 @@ src/config.h
 /build-assert/
 /cmake-build*
 /bin
+/out/
+/.vs/
