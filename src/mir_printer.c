@@ -49,7 +49,7 @@ static INLINE void
 print_type(struct context *ctx, struct mir_type *type, bool aligned, bool prefer_name)
 {
     char tmp[256];
-    mir_type_to_str(tmp, static_arrlen(tmp), type, prefer_name);
+    mir_type_to_str(tmp, static_arrlenu(tmp), type, prefer_name);
     if (aligned)
         fprintf(ctx->stream, "%16s", tmp);
     else
@@ -1163,6 +1163,7 @@ void mir_print_fn(FILE *stream, struct assembly *assembly, struct mir_fn *fn)
 void mir_print_assembly(FILE *stream, struct assembly *assembly)
 {
     struct context ctx = {.assembly = assembly, .stream = stream};
-    for (s64 i = 0; i < arrlen(assembly->MIR.global_instrs); ++i)
+    for (usize i = 0; i < arrlenu(assembly->MIR.global_instrs); ++i) {
         print_instr(&ctx, assembly->MIR.global_instrs[i]);
+    }
 }

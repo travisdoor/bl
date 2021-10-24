@@ -41,7 +41,7 @@ enum tokens_lookahead_state {
 
 typedef enum tokens_lookahead_state (*token_cmp_func_t)(struct token *curr);
 
-#define tokens_len(tokens) arrlen((tokens)->buf)
+#define tokens_len(tokens) arrlenu((tokens)->buf)
 #define tokens_push(tokens, t) arrput((tokens)->buf, t)
 #define tokens_peek_nth(tokens, n)                                                                 \
     ((tokens)->iter + (n) < tokens_len(tokens) && (tokens)->iter + (n) >= 0                        \
@@ -63,11 +63,11 @@ static INLINE void tokens_consume_till(struct tokens *tokens, enum sym sym)
     }
 }
 
-static INLINE void tokens_consume_till2(struct tokens *tokens, s64 argc, enum sym *args)
+static INLINE void tokens_consume_till2(struct tokens *tokens, usize argc, enum sym *args)
 {
     bassert(argc && args);
     while (tokens_current_is_not(tokens, SYM_EOF)) {
-        for (s64 i = 0; i < argc; ++i) {
+        for (usize i = 0; i < argc; ++i) {
             if (tokens_current_is(tokens, args[i])) return;
         }
         tokens_consume(tokens);
@@ -76,24 +76,23 @@ static INLINE void tokens_consume_till2(struct tokens *tokens, s64 argc, enum sy
 
 static INLINE struct token *tokens_consume_if(struct tokens *tokens, enum sym sym)
 {
-    if (tokens->iter >= arrlen(tokens->buf)) return NULL;
+    if (tokens->iter >= arrlenu(tokens->buf)) return NULL;
     struct token *token = &tokens->buf[tokens->iter];
     if (token->sym != sym) return NULL;
     tokens->iter++;
     return token;
 }
 
-static INLINE bool tokens_is_seq(struct tokens *tokens, s64 argc, ...)
+static INLINE bool tokens_is_seq(struct tokens *tokens, usize argc, ...)
 {
     bool     ret = true;
-    s64      c   = arrlen(tokens->buf);
     enum sym sym = SYM_EOF;
     argc += tokens->iter;
 
     va_list valist;
     va_start(valist, argc);
 
-    for (s64 i = tokens->iter; i < argc && i < c; ++i) {
+    for (usize i = tokens->iter; i < argc && i < arrlenu(tokens->buf); ++i) {
         sym = va_arg(valist, enum sym);
         if ((&tokens->buf[i])->sym != sym) {
             ret = false;
@@ -125,7 +124,7 @@ static INLINE bool tokens_lookahead(struct tokens *tokens, token_cmp_func_t cmp)
     bassert(cmp);
     bool                        found  = false;
     const s64                   marker = tokens->iter;
-    struct token *              curr   = NULL;
+    struct token               *curr   = NULL;
     enum tokens_lookahead_state state  = TOK_LOOK_TERMINAL;
     while (true) {
         curr  = tokens_peek(tokens);

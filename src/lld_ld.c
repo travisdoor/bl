@@ -73,14 +73,14 @@ static const char *get_out_prefix(struct assembly *assembly)
 
 static void append_lib_paths(struct assembly *assembly, TString *buf)
 {
-    for (s64 i = 0; i < arrlen(assembly->lib_paths); ++i) {
+    for (usize i = 0; i < arrlenu(assembly->lib_paths); ++i) {
         tstring_appendf(buf, "%s%s ", FLAG_LIBPATH, assembly->lib_paths[i]);
     }
 }
 
 static void append_libs(struct assembly *assembly, TString *buf)
 {
-    for (s64 i = 0; i < arrlen(assembly->libs); ++i) {
+    for (usize i = 0; i < arrlenu(assembly->libs); ++i) {
         struct native_lib *lib = &assembly->libs[i];
         if (lib->is_internal) continue;
         if (!lib->user_name) continue;

@@ -55,7 +55,7 @@ static void sync_delete(scope_sync_impl *impl)
 static void scope_dtor(struct scope *scope)
 {
     BL_MAGIC_ASSERT(scope);
-    for (s64 i = 0; i < arrlen(scope->layers); ++i) {
+    for (usize i = 0; i < arrlenu(scope->layers); ++i) {
         hmfree(scope->layers[i].entries);
     }
     arrfree(scope->layers);
@@ -66,7 +66,7 @@ static void scope_dtor(struct scope *scope)
 static INLINE struct scope_layer *get_layer(struct scope *scope, s32 index)
 {
     if (index == SCOPE_DEFAULT_LAYER) return &scope->default_layer;
-    for (s64 i = 0; i < arrlen(scope->layers); ++i) {
+    for (usize i = 0; i < arrlenu(scope->layers); ++i) {
         if (scope->layers[i].index == index) return &scope->layers[i];
     }
     return NULL;
@@ -244,7 +244,7 @@ void scope_get_full_name(TString *dest, struct scope *scope)
         if (scope->name) sarrput(&tmp, (char *)scope->name);
         scope = scope->parent;
     }
-    for (s64 i = sarrlen(&tmp); i-- > 0;) {
+    for (usize i = sarrlenu(&tmp); i-- > 0;) {
         const char *subname = sarrpeek(&tmp, i);
         tstring_append(dest, subname);
         if (i > 0) tstring_append_c(dest, '.');

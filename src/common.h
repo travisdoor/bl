@@ -55,7 +55,9 @@ struct scope;
 // =================================================================================================
 #if BL_COMPILER_CLANG || BL_COMPILER_GNUC
 #define INLINE inline
+#ifndef FORCEINLINE
 #define FORCEINLINE inline
+#endif
 #define _SHUT_UP_BEGIN
 #define _SHUT_UP_END
 #define UNUSED(x) __attribute__((unused)) x
@@ -92,7 +94,7 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 #define LIB_NAME_MAX 256
 
 // Return size of of static array.
-#define static_arrlen(A) (sizeof(A) / sizeof((A)[0]))
+#define static_arrlenu(A) (sizeof(A) / sizeof((A)[0]))
 
 // =================================================================================================
 // STB utils
@@ -128,7 +130,7 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 // =================================================================================================
 #define sarr_t(T, C)                                                                               \
     struct {                                                                                       \
-        s32 len, cap;                                                                              \
+        u32 len, cap;                                                                              \
         union {                                                                                    \
             T *_data;                                                                              \
             T  _buf[C];                                                                            \
@@ -142,30 +144,36 @@ typedef sarr_t(u8, 1) sarr_any_t;
         .len = 0, .cap = 0                                                                         \
     }
 
-#define sarradd(A)                                                                                 \
-    (sarradd_impl((A), sizeof((A)->_buf[0]), sizeof((A)->_buf) / sizeof((A)->_buf[0])),            \
-     &sarrpeek(A, sarrlen(A) - 1))
+#define sarradd(A) sarraddn(A, 1)
+#define sarraddn(A, N)                                                                             \
+    (sarradd_impl((A), sizeof((A)->_buf[0]), sizeof((A)->_buf) / sizeof((A)->_buf[0]), N),         \
+     &sarrpeek(A, sarrlenu(A) - N))
 #define sarrput(A, V) (*sarradd(A) = (V))
-#define sarrpop(A) (sarrpeek(A, --(A)->len))
-#define sarrlen(A) ((A) ? (A)->len : 0)
+#define sarrpop(A) (sarrlenu(A) > 0 ? sarrpeek(A, --(A)->len) : (abort(), (A)->_data[0]))
+#define sarrlenu(A) ((usize)((A) ? (A)->len : 0))
+#define sarrlen(A) ((s64)((A) ? (A)->len : 0))
 #define sarrdata(A) ((A)->cap ? ((A)->_data) : ((A)->_buf))
 #define sarrpeek(A, I) (sarrdata(A)[I])
 #define sarrclear(A) ((A)->len = 0)
 #define sarrfree(A) ((A)->cap ? bfree((A)->_data) : (void)0, (A)->len = 0, (A)->cap = 0)
+#define sarrsetlen(A, L)                                                                           \
+    {                                                                                              \
+        const s64 d = ((s64)(L)) - sarrlen(A);                                                     \
+        if (d) sarraddn(A, d);                                                                     \
+    }                                                                                              \
+    (void)0
 
-void sarradd_impl(void *ptr, s32 elem_size, s32 elem_count);
+void sarradd_impl(void *ptr, s32 elem_size, s32 static_elem_count, s32 new_elem_count);
 
 typedef sarr_t(struct ast *, 16) ast_nodes_t;
 typedef sarr_t(struct mir_arg *, 16) mir_args_t;
+typedef sarr_t(struct mir_fn *, 16) mir_fns_t;
+typedef sarr_t(struct mir_type *, 16) mir_types_t;
 
-TSMALL_ARRAY_TYPE(TypePtr, struct mir_type *, 16);
 TSMALL_ARRAY_TYPE(MemberPtr, struct mir_member *, 16);
 TSMALL_ARRAY_TYPE(VariantPtr, struct mir_variant *, 16);
-TSMALL_ARRAY_TYPE(ArgPtr, struct mir_arg *, 16);
 TSMALL_ARRAY_TYPE(InstrPtr, struct mir_instr *, 16);
 TSMALL_ARRAY_TYPE(ConstValuePtr, struct MirConstValue *, 16);
-TSMALL_ARRAY_TYPE(Char, char, 128); // @Cleanup
-TSMALL_ARRAY_TYPE(FnPtr, struct mir_fn *, 8);
 
 // =================================================================================================
 // String cache
@@ -175,7 +183,8 @@ struct string_cache;
 // Allocate string inside the sting cache, passed cache pointer must be initialized to NULL for the
 // first time. The malloc is called only in case there is not enough space left for the string
 // inside the preallocated block. Internally len+1 is allocated to hold zero terminator. When 'str'
-// is NULL no data copy is done.
+// is NULL no data copy is done. Function returns pointer to new allocated block/copy of the
+// original string.
 char *scdup(struct string_cache **cache, const char *str, usize len);
 void  scfree(struct string_cache **cache);
 char *scprint(struct string_cache **cache, const char *fmt, ...);

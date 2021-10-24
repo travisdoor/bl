@@ -109,7 +109,7 @@ static void async_push(struct unit *unit)
 static struct unit *async_pop_unsafe(void)
 {
     struct threading_impl *threading = builder.threading;
-    if (arrlen(threading->queue)) {
+    if (arrlenu(threading->queue)) {
         return arrpop(threading->queue);
     }
     return NULL;
@@ -136,7 +136,7 @@ static void threading_delete(struct threading_impl *t)
     threading->will_exit = true;
     pthread_cond_broadcast(&threading->queue_condition);
     pthread_mutex_unlock(&threading->queue_mutex);
-    for (s64 i = 0; i < arrlen(t->workers); ++i) {
+    for (usize i = 0; i < arrlenu(t->workers); ++i) {
         pthread_join(t->workers[i], NULL);
     }
     pthread_mutex_destroy(&t->queue_mutex);
@@ -193,7 +193,7 @@ static void start_threads()
 static void async_compile(struct assembly *assembly, unit_stage_fn_t *unit_pipeline)
 {
     struct threading_impl *threading = builder.threading;
-    for (s64 i = 0; i < arrlen(assembly->units); ++i) {
+    for (usize i = 0; i < arrlenu(assembly->units); ++i) {
         struct unit *unit = assembly->units[i];
         async_push(unit);
     }
@@ -207,7 +207,7 @@ static void async_compile(struct assembly *assembly, unit_stage_fn_t *unit_pipel
     while (true) {
         pthread_mutex_lock(&threading->queue_mutex);
         pthread_mutex_lock(&threading->active_mutex);
-        if (threading->active || arrlen(threading->queue)) {
+        if (threading->active || arrlenu(threading->queue)) {
             pthread_mutex_unlock(&threading->queue_mutex);
             pthread_cond_wait(&threading->active_condition, &threading->active_mutex);
         } else {
@@ -220,7 +220,7 @@ static void async_compile(struct assembly *assembly, unit_stage_fn_t *unit_pipel
     threading->is_compiling = false;
     // Eventually use asserts here when there will be no threading-related errors.
     if (threading->active) babort("Not all units processed! (active)");
-    if (arrlen(threading->queue)) babort("Not all units processed! (queued)");
+    if (arrlenu(threading->queue)) babort("Not all units processed! (queued)");
 }
 
 // =================================================================================================
@@ -408,12 +408,12 @@ static int compile(struct assembly *assembly)
 
     unit_stage_fn_t     unit_pipeline[5];
     assembly_stage_fn_t assembly_pipeline[17];
-    setup_unit_pipeline(assembly, unit_pipeline, static_arrlen(unit_pipeline));
-    setup_assembly_pipeline(assembly, assembly_pipeline, static_arrlen(assembly_pipeline));
+    setup_unit_pipeline(assembly, unit_pipeline, static_arrlenu(unit_pipeline));
+    setup_assembly_pipeline(assembly, assembly_pipeline, static_arrlenu(assembly_pipeline));
 
     if (builder.options->no_jobs) {
         blog("Running in single thread mode!");
-        for (s64 i = 0; i < arrlen(assembly->units); ++i) {
+        for (usize i = 0; i < arrlenu(assembly->units); ++i) {
             struct unit *unit = assembly->units[i];
             if ((state = compile_unit(unit, assembly, unit_pipeline)) != COMPILE_OK) break;
         }
@@ -474,14 +474,14 @@ void builder_init(const struct builder_options *options, const char *exec_dir)
 
 void builder_terminate(void)
 {
-    for (s64 i = 0; i < arrlen(builder.targets); ++i) {
+    for (usize i = 0; i < arrlenu(builder.targets); ++i) {
         target_delete(builder.targets[i]);
     }
     arrfree(builder.targets);
-    for (s64 i = 0; i < arrlen(builder.tmp_strings); ++i) {
+    for (usize i = 0; i < arrlenu(builder.tmp_strings); ++i) {
         tstring_delete(builder.tmp_strings[i]);
     }
-    blog("Used %llu temp-strings.", arrlen(builder.tmp_strings));
+    blog("Used %llu temp-strings.", arrlenu(builder.tmp_strings));
     arrfree(builder.tmp_strings);
     conf_data_terminate(&builder.conf);
 
@@ -550,7 +550,7 @@ struct target *_builder_add_target(const char *name, bool is_default)
 int builder_compile_all(void)
 {
     s32 state = COMPILE_OK;
-    for (s64 i = 0; i < arrlen(builder.targets); ++i) {
+    for (usize i = 0; i < arrlenu(builder.targets); ++i) {
         struct target *target = builder.targets[i];
         if (target->kind == ASSEMBLY_BUILD_PIPELINE) continue;
         state = builder_compile(target);
@@ -591,7 +591,7 @@ void builder_print_location(FILE *stream, struct location *loc, s32 col, s32 len
         s32  written_bytes = 0;
         for (s32 i = 0; i < col + len - 1; ++i) {
             written_bytes += snprintf(buf + written_bytes,
-                                      static_arrlen(buf) - written_bytes,
+                                      static_arrlenu(buf) - written_bytes,
                                       "%s",
                                       i >= col - 1 ? "^" : " ");
         }
@@ -712,9 +712,8 @@ TString *get_tmpstr(void)
 {
     struct threading_impl *threading = builder.threading;
     pthread_mutex_lock(&threading->str_tmp_lock);
-    TString  *str  = NULL;
-    const s64 size = arrlen(builder.tmp_strings);
-    if (size) {
+    TString *str = NULL;
+    if (arrlenu(builder.tmp_strings)) {
         str = arrpop(builder.tmp_strings);
     } else {
         str = tstring_new();

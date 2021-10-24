@@ -108,14 +108,8 @@ struct rtti_incomplete {
 };
 
 typedef sarr_t(struct mir_instr *, 32) instrs_t;
-
-TSMALL_ARRAY_TYPE(LLVMType, LLVMTypeRef, 8);
-TSMALL_ARRAY_TYPE(LLVMMetadata, LLVMMetadataRef, 16);
-TSMALL_ARRAY_TYPE(DeferStack, struct ast *, 64);
-TSMALL_ARRAY_TYPE(InstrPtr64, struct mir_instr *, 64);
-TSMALL_ARRAY_TYPE(String, char *, 64);
-TSMALL_ARRAY_TYPE(RTTIIncomplete, struct rtti_incomplete, 64);
-
+typedef sarr_t(LLVMTypeRef, 8) llvm_types_t;
+typedef sarr_t(struct rtti_incomplete, 64) rttis_t;
 typedef sarr_t(struct ast *, 16) defer_stack_t;
 
 // Instance in run method is zero initialized, no need to set default values explicitly.
@@ -140,9 +134,9 @@ struct context {
     } ast;
 
     struct {
-        TSmallArray_TypePtr replacement_queue;
-        s32                 current_scope_layer_index;
-        bool                is_replacement_active;
+        mir_types_t replacement_queue;
+        s32         current_scope_layer_index;
+        bool        is_replacement_active;
     } polymorph;
 
     // Analyze MIR generated from Ast
@@ -162,10 +156,10 @@ struct context {
         // endless looping RTTI generation, to solve this problem we create dummy RTTI
         // variable for all pointer types and store them in this array. When structure RTTI
         // is complete we can fill missing pointer RTTIs in second generation pass.
-        TSmallArray_RTTIIncomplete incomplete_rtti;
+        rttis_t incomplete_rtti;
 
         // Incomplete type check stack.
-        TSmallArray_TypePtr  complete_check_type_stack;
+        mir_types_t          complete_check_type_stack;
         struct scope_entry **usage_check_arr;
         struct scope_entry  *void_entry;
         struct mir_instr    *last_analyzed_instr;
@@ -254,7 +248,7 @@ static struct mir_var *testing_gen_meta(struct context *ctx);
 static const char    *get_intrinsic(const char *name);
 static struct mir_fn *group_select_overload(struct context            *ctx,
                                             const struct mir_fn_group *group,
-                                            const TSmallArray_TypePtr *expected_args);
+                                            const mir_types_t         *expected_args);
 
 // Register incomplete scope entry for symbol.
 static struct scope_entry *register_symbol(struct context *ctx,
@@ -316,7 +310,7 @@ static struct mir_type *create_type_fn(struct context  *ctx,
                                        bool             has_default_args,
                                        bool             is_polymorph);
 static struct mir_type *
-create_type_fn_group(struct context *ctx, struct id *id, TSmallArray_TypePtr *variants);
+create_type_fn_group(struct context *ctx, struct id *id, mir_types_t *variants);
 static struct mir_type *
 create_type_array(struct context *ctx, struct id *id, struct mir_type *elem_type, s64 len);
 static struct mir_type *create_type_struct(struct context        *ctx,
@@ -395,7 +389,7 @@ static struct mir_fn *create_fn(struct context            *ctx,
                                 enum builtin_id_kind       builtin_id);
 
 static struct mir_fn_group *
-create_fn_group(struct context *ctx, struct ast *decl_node, TSmallArray_FnPtr *variants);
+create_fn_group(struct context *ctx, struct ast *decl_node, mir_fns_t *variants);
 static struct mir_fn_poly_recipe *create_fn_poly_recipe(struct context *ctx,
                                                         struct ast     *ast_lit_fn);
 static struct mir_member         *create_member(struct context  *ctx,
@@ -957,10 +951,10 @@ static void           rtti_gen_struct_members_slice(struct context        *ctx,
 static struct mir_var *rtti_gen_struct(struct context *ctx, struct mir_type *type);
 static void rtti_gen_fn_arg(struct context *ctx, vm_stack_ptr_t dest, struct mir_arg *arg);
 static vm_stack_ptr_t rtti_gen_fn_args_array(struct context *ctx, mir_args_t *args);
-static vm_stack_ptr_t rtti_gen_fns_array(struct context *ctx, TSmallArray_TypePtr *fns);
+static vm_stack_ptr_t rtti_gen_fns_array(struct context *ctx, mir_types_t *fns);
 static void rtti_gen_fn_args_slice(struct context *ctx, vm_stack_ptr_t dest, mir_args_t *args);
 static struct mir_var *rtti_gen_fn(struct context *ctx, struct mir_type *type);
-static void rtti_gen_fn_slice(struct context *ctx, vm_stack_ptr_t dest, TSmallArray_TypePtr *fns);
+static void rtti_gen_fn_slice(struct context *ctx, vm_stack_ptr_t dest, mir_types_t *fns);
 static struct mir_var *rtti_gen_fn_group(struct context *ctx, struct mir_type *type);
 
 // INLINES
@@ -1123,11 +1117,11 @@ static bool is_complete_type(struct context *ctx, struct mir_type *type)
         u8               value; // this is not used
     } *visited = NULL;
 
-    TSmallArray_TypePtr *stack = &ctx->analyze.complete_check_type_stack;
-    tsa_push_TypePtr(stack, type);
+    mir_types_t *stack = &ctx->analyze.complete_check_type_stack;
+    sarrput(stack, type);
     bool result = true;
-    while (stack->size > 0) {
-        struct mir_type *top = tsa_pop_TypePtr(stack);
+    while (sarrlenu(stack)) {
+        struct mir_type *top = sarrpop(stack);
         bassert(top);
         if (top->checked_and_complete) continue;
         if (is_incomplete_struct_type(top)) {
@@ -1136,18 +1130,18 @@ static bool is_complete_type(struct context *ctx, struct mir_type *type)
         }
         switch (top->kind) {
         case MIR_TYPE_PTR: {
-            tsa_push_TypePtr(stack, top->data.ptr.expr);
+            sarrput(stack, top->data.ptr.expr);
             break;
         }
         case MIR_TYPE_ARRAY: {
-            tsa_push_TypePtr(stack, top->data.array.elem_type);
+            sarrput(stack, top->data.array.elem_type);
             break;
         }
         case MIR_TYPE_FN: {
-            if (top->data.fn.ret_type) tsa_push_TypePtr(stack, top->data.fn.ret_type);
-            for (s64 i = 0; i < sarrlen(top->data.fn.args); ++i) {
+            if (top->data.fn.ret_type) sarrput(stack, top->data.fn.ret_type);
+            for (usize i = 0; i < sarrlenu(top->data.fn.args); ++i) {
                 struct mir_arg *arg = sarrpeek(top->data.fn.args, i);
-                tsa_push_TypePtr(stack, arg->type);
+                sarrput(stack, arg->type);
             }
             break;
         }
@@ -1162,7 +1156,7 @@ static bool is_complete_type(struct context *ctx, struct mir_type *type)
             struct mir_member *member;
             TSA_FOREACH(top->data.strct.members, member)
             {
-                tsa_push_TypePtr(stack, member->type);
+                sarrput(stack, member->type);
             }
             break;
         }
@@ -1171,7 +1165,7 @@ static bool is_complete_type(struct context *ctx, struct mir_type *type)
         }
     }
 DONE:
-    stack->size = 0;
+    sarrclear(stack);
     hmfree(visited);
     type->checked_and_complete = result;
     return_zone(result);
@@ -1314,11 +1308,10 @@ static INLINE void erase_instr(struct mir_instr *instr)
 
 static INLINE void erase_block(struct mir_instr *instr)
 {
-    TSmallArray_InstrPtr64 queue;
-    tsa_init(&queue);
-    tsa_push_InstrPtr64(&queue, instr);
-    while (queue.size) {
-        struct mir_instr *block = tsa_pop_InstrPtr64(&queue);
+    instrs_t queue = SARR_ZERO;
+    sarrput(&queue, instr);
+    while (sarrlenu(&queue)) {
+        struct mir_instr *block = sarrpop(&queue);
         bassert(block);
         bassert(block->kind == MIR_INSTR_BLOCK && "Use erase_instr instead.");
         bassert(block->ref_count == 0 && "Cannot erase referenced block!");
@@ -1330,17 +1323,17 @@ static INLINE void erase_block(struct mir_instr *instr)
         case MIR_INSTR_BR: {
             struct mir_instr_br *br = (struct mir_instr_br *)terminal;
             if (unref_instr(&br->then_block->base)->ref_count == 0) {
-                tsa_push_InstrPtr64(&queue, &br->then_block->base);
+                sarrput(&queue, &br->then_block->base);
             }
             break;
         }
         case MIR_INSTR_COND_BR: {
             struct mir_instr_cond_br *br = (struct mir_instr_cond_br *)terminal;
             if (unref_instr(&br->then_block->base)->ref_count == 0) {
-                tsa_push_InstrPtr64(&queue, &br->then_block->base);
+                sarrput(&queue, &br->then_block->base);
             }
             if (unref_instr(&br->else_block->base)->ref_count == 0) {
-                tsa_push_InstrPtr64(&queue, &br->else_block->base);
+                sarrput(&queue, &br->else_block->base);
             }
             break;
         }
@@ -1350,7 +1343,7 @@ static INLINE void erase_block(struct mir_instr *instr)
             for (usize i = 0; i < sw->cases->size; ++i) {
                 struct mir_switch_case *c = &sw->cases->data[i];
                 if (unref_instr(&c->block->base)->ref_count == 0) {
-                    tsa_push_InstrPtr64(&queue, &c->block->base);
+                    sarrput(&queue, &c->block->base);
                 }
             }
             break;
@@ -1360,7 +1353,7 @@ static INLINE void erase_block(struct mir_instr *instr)
             break;
         }
     }
-    tsa_terminate(&queue);
+    sarrfree(&queue);
 }
 
 static INLINE void insert_instr_after(struct mir_instr *after, struct mir_instr *instr)
@@ -1396,7 +1389,7 @@ static INLINE void insert_instr_before(struct mir_instr *before, struct mir_inst
 static INLINE void push_into_gscope(struct context *ctx, struct mir_instr *instr)
 {
     bassert(instr);
-    instr->id = arrlen(ctx->assembly->MIR.global_instrs);
+    instr->id = arrlenu(ctx->assembly->MIR.global_instrs);
     arrput(ctx->assembly->MIR.global_instrs, instr);
 };
 
@@ -1409,7 +1402,7 @@ static INLINE void push_into_gscope(struct context *ctx, struct mir_instr *instr
 // Swap analyze stacks and return previous index.
 #define analyze_swap(ctx) ((ctx)->analyze.si ^= 1, (ctx)->analyze.si ^ 1)
 #define analyze_pending_count(ctx)                                                                 \
-    (arrlen((ctx)->analyze.stack[0]) + arrlen((ctx)->analyze.stack[1]))
+    (arrlenu((ctx)->analyze.stack[0]) + arrlenu((ctx)->analyze.stack[1]))
 
 static int         push_count = 0;
 static INLINE void analyze_schedule(struct context *ctx, struct mir_instr *instr)
@@ -1427,7 +1420,7 @@ static INLINE void analyze_notify_provided(struct context *ctx, hash_t hash)
     instrs_t *wq = &ctx->analyze.waiting[index].value;
     bassert(wq);
 
-    for (s64 i = 0; i < sarrlen(wq); ++i) {
+    for (usize i = 0; i < sarrlenu(wq); ++i) {
         analyze_schedule(ctx, sarrpeek(wq, i));
     }
 
@@ -1461,7 +1454,7 @@ static enum builtin_id_kind get_builtin_kind(struct ast *ident)
     if (!ident) return false;
     bassert(ident->kind == AST_IDENT);
     // @PERFORMANCE: Eventually use hash table.
-    for (u32 i = 0; i < static_arrlen(builtin_ids); ++i) {
+    for (u32 i = 0; i < static_arrlenu(builtin_ids); ++i) {
         if (builtin_ids[i].hash == ident->data.ident.id.hash) {
             return i;
         }
@@ -1651,7 +1644,7 @@ is_to_any_needed(struct context *ctx, struct mir_instr *src, struct mir_type *de
 
 void ast_push_defer_stack(struct context *ctx)
 {
-    if (++ctx->ast.current_defer_stack_index == arrlen(ctx->ast.defer_stack)) {
+    if (++ctx->ast.current_defer_stack_index == arrlenu(ctx->ast.defer_stack)) {
         arrput(ctx->ast.defer_stack, (defer_stack_t){0});
     }
 }
@@ -1665,7 +1658,7 @@ void ast_pop_defer_stack(struct context *ctx)
 
 void ast_free_defer_stack(struct context *ctx)
 {
-    for (s64 i = 0; i < arrlen(ctx->ast.defer_stack); ++i) {
+    for (usize i = 0; i < arrlenu(ctx->ast.defer_stack); ++i) {
         sarrfree(&ctx->ast.defer_stack[i]);
     }
     arrfree(ctx->ast.defer_stack);
@@ -1719,7 +1712,7 @@ void type_init_id(struct context *ctx, struct mir_type *type)
         static u64 serial = 0;
         bassert(type->user_id);
         char prefix[37];
-        snprintf(prefix, static_arrlen(prefix), "?%llu.", ++serial);
+        snprintf(prefix, static_arrlenu(prefix), "?%llu.", ++serial);
         tstring_append(tmp, prefix);
         tstring_append(tmp, type->user_id->str);
         break;
@@ -1736,11 +1729,11 @@ void type_init_id(struct context *ctx, struct mir_type *type)
         tstring_append(tmp, "f.(");
 
         // append all arg types isd
-        for (s64 i = 0; i < sarrlen(type->data.fn.args); ++i) {
+        for (usize i = 0; i < sarrlenu(type->data.fn.args); ++i) {
             struct mir_arg *arg = sarrpeek(type->data.fn.args, i);
             bassert(arg->type->id.str);
             tstring_append(tmp, arg->type->id.str);
-            if (i != sarrlen(type->data.fn.args) - 1) tstring_append(tmp, ",");
+            if (i != sarrlenu(type->data.fn.args) - 1) tstring_append(tmp, ",");
         }
 
         tstring_append(tmp, ")");
@@ -1759,15 +1752,12 @@ void type_init_id(struct context *ctx, struct mir_type *type)
     case MIR_TYPE_FN_GROUP: {
         tstring_append(tmp, "f.{");
         // append all arg types isd
-        if (type->data.fn_group.variants) {
-            struct mir_type *variant;
-            TSA_FOREACH(type->data.fn_group.variants, variant)
-            {
-                bassert(variant->id.str);
-                tstring_append(tmp, variant->id.str);
-
-                if (i != type->data.fn_group.variants->size - 1) tstring_append(tmp, ",");
-            }
+        mir_types_t *variants = type->data.fn_group.variants;
+        for (usize i = 0; i < sarrlenu(variants); ++i) {
+            struct mir_type *variant = sarrpeek(variants, i);
+            bassert(variant->id.str);
+            tstring_append(tmp, variant->id.str);
+            if (i != sarrlenu(variants) - 1) tstring_append(tmp, ",");
         }
         tstring_append(tmp, "}");
         break;
@@ -1812,7 +1802,7 @@ void type_init_id(struct context *ctx, struct mir_type *type)
         const bool is_union = type->data.strct.is_union;
         if (type->user_id) {
             char prefix[37];
-            snprintf(prefix, static_arrlen(prefix), "%s%llu.", is_union ? "u" : "s", ++serial);
+            snprintf(prefix, static_arrlenu(prefix), "%s%llu.", is_union ? "u" : "s", ++serial);
 
             tstring_append(tmp, prefix);
             tstring_append(tmp, type->user_id->str);
@@ -1836,7 +1826,7 @@ void type_init_id(struct context *ctx, struct mir_type *type)
             TSA_FOREACH(type->data.enm.variants, variant)
             {
                 char value_str[35];
-                snprintf(value_str, static_arrlen(value_str), "%lld", variant->value);
+                snprintf(value_str, static_arrlenu(value_str), "%lld", variant->value);
                 tstring_append(tmp, value_str);
                 if (i != type->data.enm.variants->size - 1) tstring_append(tmp, ",");
             }
@@ -2214,10 +2204,9 @@ struct mir_type *create_type_fn(struct context  *ctx,
     return tmp;
 }
 
-struct mir_type *
-create_type_fn_group(struct context *ctx, struct id *id, TSmallArray_TypePtr *variants)
+struct mir_type *create_type_fn_group(struct context *ctx, struct id *id, mir_types_t *variants)
 {
-    bassert(variants);
+    bassert(sarrlenu(variants));
     struct mir_type *tmp        = create_type(ctx, MIR_TYPE_FN_GROUP, id);
     tmp->data.fn_group.variants = variants;
     type_init_id(ctx, tmp);
@@ -2511,14 +2500,12 @@ void type_init_llvm_fn(struct context *ctx, struct mir_type *type)
         return;
     }
 
-    TSmallArray_LLVMType llvm_args;
-    tsa_init(&llvm_args);
-
+    llvm_types_t llvm_args = SARR_ZERO;
     if (has_ret) {
         if (ctx->assembly->target->reg_split && mir_is_composit_type(ret_type) &&
             ret_type->store_size_bytes >= 16) {
             setflag(type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_SRET);
-            tsa_push_LLVMType(&llvm_args, LLVMPointerType(ret_type->llvm_type, 0));
+            sarrput(&llvm_args, LLVMPointerType(ret_type->llvm_type, 0));
             llvm_ret = LLVMVoidTypeInContext(ctx->assembly->llvm.ctx);
         } else {
             llvm_ret = ret_type->llvm_type;
@@ -2529,9 +2516,9 @@ void type_init_llvm_fn(struct context *ctx, struct mir_type *type)
 
     bassert(llvm_ret);
 
-    for (s64 i = 0; i < sarrlen(args); ++i) {
+    for (usize i = 0; i < sarrlenu(args); ++i) {
         struct mir_arg *arg = sarrpeek(args, i);
-        arg->llvm_index     = (u32)llvm_args.size;
+        arg->llvm_index     = (u32)sarrlenu(&llvm_args);
 
         // Composit types.
         if (ctx->assembly->target->reg_split && mir_is_composit_type(arg->type)) {
@@ -2552,46 +2539,46 @@ void type_init_llvm_fn(struct context *ctx, struct mir_type *type)
                 arg->llvm_easgm = LLVM_EASGM_BYVAL;
 
                 bassert(arg->type->llvm_type);
-                tsa_push_LLVMType(&llvm_args, LLVMPointerType(arg->type->llvm_type, 0));
+                sarrput(&llvm_args, LLVMPointerType(arg->type->llvm_type, 0));
             } else {
                 switch (low) {
                 case 1:
                     arg->llvm_easgm = LLVM_EASGM_8;
-                    tsa_push_LLVMType(&llvm_args, LLVMInt8TypeInContext(llvm_cnt));
+                    sarrput(&llvm_args, LLVMInt8TypeInContext(llvm_cnt));
                     break;
                 case 2:
                     arg->llvm_easgm = LLVM_EASGM_16;
-                    tsa_push_LLVMType(&llvm_args, LLVMInt16TypeInContext(llvm_cnt));
+                    sarrput(&llvm_args, LLVMInt16TypeInContext(llvm_cnt));
                     break;
                 case 4:
                     arg->llvm_easgm = LLVM_EASGM_32;
-                    tsa_push_LLVMType(&llvm_args, LLVMInt32TypeInContext(llvm_cnt));
+                    sarrput(&llvm_args, LLVMInt32TypeInContext(llvm_cnt));
                     break;
                 case 8: {
                     switch (high) {
                     case 0:
                         arg->llvm_easgm = LLVM_EASGM_64;
-                        tsa_push_LLVMType(&llvm_args, LLVMInt64TypeInContext(llvm_cnt));
+                        sarrput(&llvm_args, LLVMInt64TypeInContext(llvm_cnt));
                         break;
                     case 1:
                         arg->llvm_easgm = LLVM_EASGM_64_8;
-                        tsa_push_LLVMType(&llvm_args, LLVMInt64TypeInContext(llvm_cnt));
-                        tsa_push_LLVMType(&llvm_args, LLVMInt8TypeInContext(llvm_cnt));
+                        sarrput(&llvm_args, LLVMInt64TypeInContext(llvm_cnt));
+                        sarrput(&llvm_args, LLVMInt8TypeInContext(llvm_cnt));
                         break;
                     case 2:
                         arg->llvm_easgm = LLVM_EASGM_64_16;
-                        tsa_push_LLVMType(&llvm_args, LLVMInt64TypeInContext(llvm_cnt));
-                        tsa_push_LLVMType(&llvm_args, LLVMInt16TypeInContext(llvm_cnt));
+                        sarrput(&llvm_args, LLVMInt64TypeInContext(llvm_cnt));
+                        sarrput(&llvm_args, LLVMInt16TypeInContext(llvm_cnt));
                         break;
                     case 4:
                         arg->llvm_easgm = LLVM_EASGM_64_32;
-                        tsa_push_LLVMType(&llvm_args, LLVMInt64TypeInContext(llvm_cnt));
-                        tsa_push_LLVMType(&llvm_args, LLVMInt32TypeInContext(llvm_cnt));
+                        sarrput(&llvm_args, LLVMInt64TypeInContext(llvm_cnt));
+                        sarrput(&llvm_args, LLVMInt32TypeInContext(llvm_cnt));
                         break;
                     case 8:
                         arg->llvm_easgm = LLVM_EASGM_64_64;
-                        tsa_push_LLVMType(&llvm_args, LLVMInt64TypeInContext(llvm_cnt));
-                        tsa_push_LLVMType(&llvm_args, LLVMInt64TypeInContext(llvm_cnt));
+                        sarrput(&llvm_args, LLVMInt64TypeInContext(llvm_cnt));
+                        sarrput(&llvm_args, LLVMInt64TypeInContext(llvm_cnt));
                         break;
                     default:
                         bassert(false);
@@ -2606,17 +2593,17 @@ void type_init_llvm_fn(struct context *ctx, struct mir_type *type)
             }
         } else {
             bassert(arg->type->llvm_type);
-            tsa_push_LLVMType(&llvm_args, arg->type->llvm_type);
+            sarrput(&llvm_args, arg->type->llvm_type);
         }
     }
 
-    type->llvm_type = LLVMFunctionType(llvm_ret, llvm_args.data, (unsigned)llvm_args.size, false);
-    type->alignment = __alignof(struct mir_fn *);
-    type->size_bits = sizeof(struct mir_fn *) * 8;
+    type->llvm_type =
+        LLVMFunctionType(llvm_ret, sarrdata(&llvm_args), (unsigned)sarrlenu(&llvm_args), false);
+    type->alignment        = __alignof(struct mir_fn *);
+    type->size_bits        = sizeof(struct mir_fn *) * 8;
     type->store_size_bytes = sizeof(struct mir_fn *);
     if (has_byval) setflag(type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_BYVAL);
-
-    tsa_terminate(&llvm_args);
+    sarrfree(&llvm_args);
 }
 
 void type_init_llvm_array(struct context *ctx, struct mir_type *type)
@@ -2646,8 +2633,7 @@ void type_init_llvm_struct(struct context *ctx, struct mir_type *type)
     const bool is_union  = type->data.strct.is_union;
     bassert(members->size > 0);
 
-    TSmallArray_LLVMType llvm_members;
-    tsa_init(&llvm_members);
+    llvm_types_t llvm_members = SARR_ZERO;
 
     // When structure is union we have to find biggest member and use only found one since LLVM
     // has no explicit union representation. We select biggest one. We have to consider better
@@ -2668,11 +2654,11 @@ void type_init_llvm_struct(struct context *ctx, struct mir_type *type)
             if (member->type->store_size_bytes > union_member->type->store_size_bytes)
                 union_member = member;
         } else {
-            tsa_push_LLVMType(&llvm_members, member->type->llvm_type);
+            sarrput(&llvm_members, member->type->llvm_type);
         }
     }
 
-    if (union_member) tsa_push_LLVMType(&llvm_members, union_member->type->llvm_type);
+    if (union_member) sarrput(&llvm_members, union_member->type->llvm_type);
 
     // named structure type
     if (type->user_id) {
@@ -2683,17 +2669,19 @@ void type_init_llvm_struct(struct context *ctx, struct mir_type *type)
         }
 
         LLVMStructSetBody(
-            type->llvm_type, llvm_members.data, (unsigned)llvm_members.size, is_packed);
+            type->llvm_type, sarrdata(&llvm_members), (unsigned)sarrlenu(&llvm_members), is_packed);
     } else {
-        type->llvm_type = LLVMStructTypeInContext(
-            ctx->assembly->llvm.ctx, llvm_members.data, (unsigned)llvm_members.size, is_packed);
+        type->llvm_type = LLVMStructTypeInContext(ctx->assembly->llvm.ctx,
+                                                  sarrdata(&llvm_members),
+                                                  (unsigned)sarrlenu(&llvm_members),
+                                                  is_packed);
     }
 
     type->size_bits        = LLVMSizeOfTypeInBits(ctx->assembly->llvm.TD, type->llvm_type);
     type->store_size_bytes = LLVMStoreSizeOfType(ctx->assembly->llvm.TD, type->llvm_type);
     type->alignment        = (s8)LLVMABIAlignmentOfType(ctx->assembly->llvm.TD, type->llvm_type);
 
-    tsa_terminate(&llvm_members);
+    sarrfree(&llvm_members);
 
     // set offsets for members
     TSA_FOREACH(members, member)
@@ -2799,7 +2787,7 @@ struct mir_fn *create_fn(struct context            *ctx,
 }
 
 struct mir_fn_group *
-create_fn_group(struct context *ctx, struct ast *decl_node, TSmallArray_FnPtr *variants)
+create_fn_group(struct context *ctx, struct ast *decl_node, mir_fns_t *variants)
 {
     bassert(decl_node);
     bassert(variants);
@@ -4214,12 +4202,11 @@ struct mir_instr *append_instr_msg(struct context *ctx, struct ast *node)
 void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
 {
     if (!instr) return;
-    TSmallArray_InstrPtr64 queue;
-    tsa_init(&queue);
-    tsa_push_InstrPtr64(&queue, instr);
+    instrs_t queue = SARR_ZERO;
+    sarrput(&queue, instr);
     struct mir_instr *top;
-    while (queue.size) {
-        top = tsa_pop_InstrPtr64(&queue);
+    while (sarrlenu(&queue)) {
+        top = sarrpop(&queue);
         if (!top) continue;
 
         bassert(isflag(top->flags, MIR_IS_ANALYZED) && "Trying to erase not analyzed instruction.");
@@ -4237,7 +4224,7 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
             TSA_FOREACH(compound->values, it)
             {
                 unref_instr(it);
-                tsa_push_InstrPtr64(&queue, it);
+                sarrput(&queue, it);
             }
             break;
         }
@@ -4246,29 +4233,29 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
             struct mir_instr_binop *binop = (struct mir_instr_binop *)top;
             unref_instr(binop->lhs);
             unref_instr(binop->rhs);
-            tsa_push_InstrPtr64(&queue, binop->rhs);
-            tsa_push_InstrPtr64(&queue, binop->lhs);
+            sarrput(&queue, binop->rhs);
+            sarrput(&queue, binop->lhs);
             break;
         }
 
         case MIR_INSTR_LOAD: {
             struct mir_instr_load *load = (struct mir_instr_load *)top;
             unref_instr(load->src);
-            tsa_push_InstrPtr64(&queue, load->src);
+            sarrput(&queue, load->src);
             break;
         }
 
         case MIR_INSTR_ALIGNOF: {
             struct mir_instr_alignof *alof = (struct mir_instr_alignof *)top;
             unref_instr(alof->expr);
-            tsa_push_InstrPtr64(&queue, alof->expr);
+            sarrput(&queue, alof->expr);
             break;
         }
 
         case MIR_INSTR_SIZEOF: {
             struct mir_instr_sizeof *szof = (struct mir_instr_sizeof *)top;
             unref_instr(szof->expr);
-            tsa_push_InstrPtr64(&queue, szof->expr);
+            sarrput(&queue, szof->expr);
             break;
         }
 
@@ -4276,22 +4263,22 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
             struct mir_instr_elem_ptr *ep = (struct mir_instr_elem_ptr *)top;
             unref_instr(ep->arr_ptr);
             unref_instr(ep->index);
-            tsa_push_InstrPtr64(&queue, ep->arr_ptr);
-            tsa_push_InstrPtr64(&queue, ep->index);
+            sarrput(&queue, ep->arr_ptr);
+            sarrput(&queue, ep->index);
             break;
         }
 
         case MIR_INSTR_MEMBER_PTR: {
             struct mir_instr_member_ptr *mp = (struct mir_instr_member_ptr *)top;
             unref_instr(mp->target_ptr);
-            tsa_push_InstrPtr64(&queue, mp->target_ptr);
+            sarrput(&queue, mp->target_ptr);
             break;
         }
 
         case MIR_INSTR_TYPE_INFO: {
             struct mir_instr_type_info *info = (struct mir_instr_type_info *)top;
             unref_instr(info->expr);
-            tsa_push_InstrPtr64(&queue, info->expr);
+            sarrput(&queue, info->expr);
             break;
         }
 
@@ -4299,8 +4286,8 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
             struct mir_instr_cast *cast = (struct mir_instr_cast *)top;
             unref_instr(cast->expr);
             unref_instr(cast->type);
-            tsa_push_InstrPtr64(&queue, cast->expr);
-            tsa_push_InstrPtr64(&queue, cast->type);
+            sarrput(&queue, cast->expr);
+            sarrput(&queue, cast->type);
             break;
         }
 
@@ -4311,7 +4298,7 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
                 TSA_FOREACH(call->args, it)
                 {
                     unref_instr(it);
-                    tsa_push_InstrPtr64(&queue, it);
+                    sarrput(&queue, it);
                 }
             }
             break;
@@ -4320,34 +4307,34 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
         case MIR_INSTR_ADDROF: {
             struct mir_instr_addrof *addrof = (struct mir_instr_addrof *)top;
             unref_instr(addrof->src);
-            tsa_push_InstrPtr64(&queue, addrof->src);
+            sarrput(&queue, addrof->src);
             break;
         }
 
         case MIR_INSTR_UNOP: {
             struct mir_instr_unop *unop = (struct mir_instr_unop *)top;
             unref_instr(unop->expr);
-            tsa_push_InstrPtr64(&queue, unop->expr);
+            sarrput(&queue, unop->expr);
             break;
         }
 
         case MIR_INSTR_TYPE_PTR: {
             struct mir_instr_type_ptr *tp = (struct mir_instr_type_ptr *)top;
             unref_instr(tp->type);
-            tsa_push_InstrPtr64(&queue, tp->type);
+            sarrput(&queue, tp->type);
             break;
         }
 
         case MIR_INSTR_TYPE_ENUM: {
             struct mir_instr_type_enum *te = (struct mir_instr_type_enum *)top;
             unref_instr(te->base_type);
-            tsa_push_InstrPtr64(&queue, te->base_type);
+            sarrput(&queue, te->base_type);
 
             struct mir_instr *it;
             TSA_FOREACH(te->variants, it)
             {
                 unref_instr(it);
-                tsa_push_InstrPtr64(&queue, it);
+                sarrput(&queue, it);
             }
             break;
         }
@@ -4355,14 +4342,14 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
         case MIR_INSTR_TYPE_FN: {
             struct mir_instr_type_fn *tf = (struct mir_instr_type_fn *)top;
             unref_instr(tf->ret_type);
-            tsa_push_InstrPtr64(&queue, tf->ret_type);
+            sarrput(&queue, tf->ret_type);
 
             if (tf->args) {
                 struct mir_instr *it;
                 TSA_FOREACH(tf->args, it)
                 {
                     unref_instr(it);
-                    tsa_push_InstrPtr64(&queue, it);
+                    sarrput(&queue, it);
                 }
             }
             break;
@@ -4375,7 +4362,7 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
             TSA_FOREACH(group->variants, it)
             {
                 unref_instr(it);
-                tsa_push_InstrPtr64(&queue, it);
+                sarrput(&queue, it);
             }
             break;
         }
@@ -4383,7 +4370,7 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
         case MIR_INSTR_TYPE_VARGS: {
             struct mir_instr_type_vargs *vargs = (struct mir_instr_type_vargs *)top;
             unref_instr(vargs->elem_type);
-            tsa_push_InstrPtr64(&queue, vargs->elem_type);
+            sarrput(&queue, vargs->elem_type);
             break;
         }
 
@@ -4391,8 +4378,8 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
             struct mir_instr_type_array *ta = (struct mir_instr_type_array *)top;
             unref_instr(ta->elem_type);
             unref_instr(ta->len);
-            tsa_push_InstrPtr64(&queue, ta->elem_type);
-            tsa_push_InstrPtr64(&queue, ta->len);
+            sarrput(&queue, ta->elem_type);
+            sarrput(&queue, ta->len);
             break;
         }
 
@@ -4406,7 +4393,7 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
                 TSA_FOREACH(ts->members, it)
                 {
                     unref_instr(it);
-                    tsa_push_InstrPtr64(&queue, it);
+                    sarrput(&queue, it);
                 }
             }
             break;
@@ -4419,7 +4406,7 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
                 TSA_FOREACH(vargs->values, it)
                 {
                     unref_instr(it);
-                    tsa_push_InstrPtr64(&queue, it);
+                    sarrput(&queue, it);
                 }
             }
             break;
@@ -4447,7 +4434,7 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
         if (keep_root && top == instr) continue;
         erase_instr(top);
     }
-    tsa_terminate(&queue);
+    sarrfree(&queue);
 }
 
 bool evaluate(struct context *ctx, struct mir_instr *instr)
@@ -5837,7 +5824,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 
     // Check build entry function.
     if (isflag(fn->flags, FLAG_BUILD_ENTRY)) {
-        if (sarrlen(fn->type->data.fn.args) > 0) {
+        if (sarrlenu(fn->type->data.fn.args) > 0) {
             report_error(INVALID_ARG_COUNT,
                          fn_proto->base.node,
                          "Build entry function cannot take arguments.");
@@ -5918,7 +5905,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
         schedule_llvm_generation = true;
         bassert(fn->id && "Test case without name!");
 
-        if (sarrlen(fn->type->data.fn.args) > 0) {
+        if (sarrlenu(fn->type->data.fn.args) > 0) {
             report_error(INVALID_ARG_COUNT,
                          fn_proto->base.node,
                          "Test case function cannot have arguments.");
@@ -5977,14 +5964,13 @@ struct result analyze_instr_fn_group(struct context *ctx, struct mir_instr_fn_gr
         if (isnotflag(variant_ref->flags, MIR_IS_ANALYZED))
             return_zone(ANALYZE_RESULT(POSTPONE, 0));
     }
-    struct result        result        = ANALYZE_RESULT(PASSED, 0);
-    TSmallArray_TypePtr *variant_types = create_sarr(TSmallArray_TypePtr, ctx->assembly);
-    TSmallArray_FnPtr   *variant_fns   = create_sarr(TSmallArray_FnPtr, ctx->assembly);
-    TSmallArray_FnPtr    validation_queue;
-    tsa_init(&validation_queue);
-    tsa_resize_TypePtr(variant_types, vc);
-    tsa_resize_FnPtr(variant_fns, vc);
-    tsa_resize_FnPtr(&validation_queue, vc);
+    struct result result           = ANALYZE_RESULT(PASSED, 0);
+    mir_types_t  *variant_types    = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+    mir_fns_t    *variant_fns      = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+    mir_fns_t     validation_queue = SARR_ZERO;
+    sarrsetlen(variant_types, vc);
+    sarrsetlen(variant_fns, vc);
+    sarrsetlen(&validation_queue, vc);
     for (usize i = 0; i < vc; ++i) {
         struct mir_instr **variant_ref = &variants->data[i];
         if (analyze_slot(ctx, &analyze_slot_conf_basic, variant_ref, NULL) != ANALYZE_PASSED) {
@@ -6002,19 +5988,21 @@ struct result analyze_instr_fn_group(struct context *ctx, struct mir_instr_fn_gr
         struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &variant->value);
         BL_MAGIC_ASSERT(fn);
         bassert(fn->type && "Missing function type!");
-        variant_fns->data[i]     = fn;
-        variant_types->data[i]   = fn->type;
-        validation_queue.data[i] = fn;
+        sarrpeek(variant_fns, i)       = fn;
+        sarrpeek(variant_types, i)     = fn->type;
+        sarrpeek(&validation_queue, i) = fn;
         if (variant->kind == MIR_INSTR_FN_PROTO) {
             ++fn->ref_count;
         }
     }
     // Validate group.
-    qsort(
-        &validation_queue.data[0], validation_queue.size, sizeof(struct mir_fn *), &_group_compare);
+    qsort(sarrdata(&validation_queue),
+          sarrlenu(&validation_queue),
+          sizeof(struct mir_fn *),
+          &_group_compare);
     struct mir_fn *prev_fn = NULL;
-    for (usize i = validation_queue.size; i-- > 0;) {
-        struct mir_fn *it = validation_queue.data[i];
+    for (usize i = sarrlenu(&validation_queue); i-- > 0;) {
+        struct mir_fn *it = sarrpeek(&validation_queue, i);
         const hash_t   h1 = it->type->data.fn.argument_hash;
         const hash_t   h2 = prev_fn ? prev_fn->type->data.fn.argument_hash : 0;
         if (h1 == h2) {
@@ -6028,7 +6016,7 @@ struct result analyze_instr_fn_group(struct context *ctx, struct mir_instr_fn_gr
                      &group->base.value,
                      create_fn_group(ctx, group->base.node, variant_fns));
 FINALLY:
-    tsa_terminate(&validation_queue);
+    sarrfree(&validation_queue);
     return_zone(result);
 }
 
@@ -6300,8 +6288,8 @@ struct result analyze_instr_type_fn_group(struct context                 *ctx,
                      "Function group type must contain one function type at least.");
         return_zone(ANALYZE_RESULT(FAILED, 0));
     }
-    TSmallArray_TypePtr *variant_types = create_sarr(TSmallArray_TypePtr, ctx->assembly);
-    tsa_resize_TypePtr(variant_types, varc);
+    mir_types_t *variant_types = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+    sarrsetlen(variant_types, varc);
     for (usize i = 0; i < varc; ++i) {
         struct mir_instr **variant_ref = &variants->data[i];
         if (analyze_slot(ctx, &analyze_slot_conf_basic, variant_ref, NULL) != ANALYZE_PASSED) {
@@ -6323,7 +6311,7 @@ struct result analyze_instr_type_fn_group(struct context                 *ctx,
                          "Function group type variant is supposed to be function type.");
             return_zone(ANALYZE_RESULT(FAILED, 0));
         }
-        variant_types->data[i] = variant_type;
+        sarrpeek(variant_types, i) = variant_type;
     }
     MIR_CEV_WRITE_AS(
         struct mir_type *, &group->base.value, create_type_fn_group(ctx, NULL, variant_types));
@@ -6951,7 +6939,7 @@ struct result analyze_instr_call_loc(struct context *ctx, struct mir_instr_call_
     TString *str_hash = get_tmpstr();
     tstring_append(str_hash, filepath);
     char str_line[10];
-    snprintf(str_line, static_arrlen(str_line), "%d", loc->call_location->line);
+    snprintf(str_line, static_arrlenu(str_line), "%d", loc->call_location->line);
     tstring_append(str_hash, str_line);
     const hash_t hash = strhash(str_hash->data);
     put_tmpstr(str_hash);
@@ -7180,20 +7168,19 @@ static void poly_type_match(struct mir_type  *recipe,
                             struct mir_type **poly_type,
                             struct mir_type **matching_type)
 {
-#define PUSH_IF_VALID(expr)                                                                        \
+#define push_if_valid(expr)                                                                        \
     if (is_valid) {                                                                                \
-        tsa_push_TypePtr(&queue, (expr));                                                          \
+        sarrput(&queue, (expr));                                                                   \
     }
 
-    TSmallArray_TypePtr queue;
-    tsa_init(&queue);
+    mir_types_t queue = SARR_ZERO;
 
     bool is_valid = other != NULL;
-    PUSH_IF_VALID(other);
-    tsa_push_TypePtr(&queue, recipe);
-    while (queue.size) {
-        struct mir_type *current_recipe = tsa_pop_TypePtr(&queue);
-        struct mir_type *current_other  = is_valid ? tsa_pop_TypePtr(&queue) : NULL;
+    push_if_valid(other);
+    sarrput(&queue, recipe);
+    while (sarrlen(&queue)) {
+        struct mir_type *current_recipe = sarrpop(&queue);
+        struct mir_type *current_other  = is_valid ? sarrpop(&queue) : NULL;
         bassert(current_recipe);
         const bool is_master =
             current_recipe->kind == MIR_TYPE_POLY && current_recipe->data.poly.is_master;
@@ -7209,51 +7196,50 @@ static void poly_type_match(struct mir_type  *recipe,
                 mir_deref_type(mir_get_struct_elem_type(current_recipe, MIR_SLICE_PTR_INDEX));
             if (is_valid) {
                 if (current_other->kind == MIR_TYPE_ARRAY) {
-                    PUSH_IF_VALID(current_other->data.array.elem_type);
+                    push_if_valid(current_other->data.array.elem_type);
                 } else if (current_other->kind == MIR_TYPE_DYNARR) {
-                    PUSH_IF_VALID(mir_deref_type(
+                    push_if_valid(mir_deref_type(
                         mir_get_struct_elem_type(current_other, MIR_DYNARR_PTR_INDEX)));
                 } else if (current_other->kind == MIR_TYPE_SLICE) {
-                    PUSH_IF_VALID(mir_deref_type(
+                    push_if_valid(mir_deref_type(
                         mir_get_struct_elem_type(current_other, MIR_SLICE_PTR_INDEX)));
                 } else {
                     is_valid = false;
                 }
             }
-            tsa_push_TypePtr(&queue, slice_elem_type);
+            sarrput(&queue, slice_elem_type);
             continue;
         }
         if (current_other && (current_recipe->kind != current_other->kind)) is_valid = false;
         switch (current_recipe->kind) {
         case MIR_TYPE_PTR:
-            PUSH_IF_VALID(current_other->data.ptr.expr);
-            tsa_push_TypePtr(&queue, current_recipe->data.ptr.expr);
+            push_if_valid(current_other->data.ptr.expr);
+            sarrput(&queue, current_recipe->data.ptr.expr);
             break;
         case MIR_TYPE_FN: {
             mir_args_t *recipe_args = current_recipe->data.fn.args;
             mir_args_t *other_args  = is_valid ? current_other->data.fn.args : NULL;
-            for (s64 i = 0; i < sarrlen(recipe_args); ++i) {
+            for (usize i = 0; i < sarrlenu(recipe_args); ++i) {
                 struct mir_arg *arg = sarrpeek(recipe_args, i);
-                if (i < sarrlen(other_args))
-                    tsa_push_TypePtr(&queue, sarrpeek(other_args, i)->type);
+                if (i < sarrlenu(other_args))
+                    sarrput(&queue, sarrpeek(other_args, i)->type);
                 else
                     is_valid = false;
-                tsa_push_TypePtr(&queue, arg->type);
+                sarrput(&queue, arg->type);
             }
             break;
         }
         case MIR_TYPE_DYNARR: {
-            PUSH_IF_VALID(
+            push_if_valid(
                 mir_deref_type(mir_get_struct_elem_type(current_other, MIR_DYNARR_PTR_INDEX)));
-            tsa_push_TypePtr(
-                &queue,
-                mir_deref_type(mir_get_struct_elem_type(current_recipe, MIR_DYNARR_PTR_INDEX)));
+            sarrput(&queue,
+                    mir_deref_type(mir_get_struct_elem_type(current_recipe, MIR_DYNARR_PTR_INDEX)));
 
             break;
         }
         case MIR_TYPE_ARRAY: {
-            PUSH_IF_VALID(current_other->data.array.elem_type);
-            tsa_push_TypePtr(&queue, current_recipe->data.array.elem_type);
+            push_if_valid(current_other->data.array.elem_type);
+            sarrput(&queue, current_recipe->data.array.elem_type);
             break;
         }
         case MIR_TYPE_BOOL:
@@ -7267,19 +7253,19 @@ static void poly_type_match(struct mir_type  *recipe,
             is_valid = false;
         }
     }
-    tsa_terminate(&queue);
-#undef PUSH_IF_VALID
+    sarrfree(&queue);
+#undef push_if_valid
 }
 
 static INLINE hash_t get_current_poly_replacement_hash(struct context *ctx)
 {
-    TSmallArray_TypePtr *queue = &ctx->polymorph.replacement_queue;
-    if (!queue->size) return 0;
+    mir_types_t *queue = &ctx->polymorph.replacement_queue;
+    if (!sarrlenu(queue)) return 0;
 
     zone();
-    hash_t hash = queue->data[0]->id.hash;
-    for (usize i = 1; i < queue->size; ++i) {
-        struct mir_type *type = queue->data[i];
+    hash_t hash = sarrpeek(queue, 0)->id.hash;
+    for (usize i = 1; i < sarrlen(queue); ++i) {
+        struct mir_type *type = sarrpeek(queue, i);
         bassert(type->id.hash != 0);
         hash = hashcomb(hash, type->id.hash);
     }
@@ -7320,10 +7306,10 @@ struct result generate_fn_poly(struct context             *ctx,
     bassert(ast_recipe && "Missing struct ast recipe for polymorph function!");
     bassert(ast_recipe->kind == AST_EXPR_LIT_FN);
 
-    TString             *debug_replacement_str = get_tmpstr();
-    TSmallArray_TypePtr *queue                 = &ctx->polymorph.replacement_queue;
-    const s64            argc                  = sarrlen(recipe_args);
-    for (s64 i = 0; i < argc; ++i) {
+    TString     *debug_replacement_str = get_tmpstr();
+    mir_types_t *queue                 = &ctx->polymorph.replacement_queue;
+    const usize  argc                  = sarrlenu(recipe_args);
+    for (usize i = 0; i < argc; ++i) {
         const bool       is_expected_arg_valid = expected_args && i < expected_args->size;
         struct mir_type *call_arg_type =
             is_expected_arg_valid ? expected_args->data[i]->value.type : NULL;
@@ -7365,7 +7351,7 @@ struct result generate_fn_poly(struct context             *ctx,
                                  poly_type->user_id->str);
                     report_note(call, "Called from here.");
                 }
-                tsa_push_TypePtr(queue, ctx->builtin_types->t_s32);
+                sarrput(queue, ctx->builtin_types->t_s32);
                 put_tmpstr(debug_replacement_str);
                 return_zone(ANALYZE_RESULT(FAILED, 0));
             } else {
@@ -7377,7 +7363,7 @@ struct result generate_fn_poly(struct context             *ctx,
                 mir_type_to_str(type_name2, 256, matching_type, true);
                 tstring_appendf(debug_replacement_str, "%s = %s; ", type_name1, type_name2);
 
-                tsa_push_TypePtr(queue, matching_type);
+                sarrput(queue, matching_type);
             }
         }
     }
@@ -7424,7 +7410,7 @@ struct result generate_fn_poly(struct context             *ctx,
     } else {
         *out_fn_proto = recipe->entries[index].value;
     }
-    queue->size = 0; // clear
+    sarrclear(queue);
     put_tmpstr(debug_replacement_str);
     return_zone(ANALYZE_RESULT(PASSED, 0));
 }
@@ -7521,19 +7507,18 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         BL_MAGIC_ASSERT(group);
         struct mir_fn *selected_overload_fn;
         { // lookup best call candidate in group
-            TSmallArray_TypePtr arg_types;
-            tsa_init(&arg_types);
+            mir_types_t arg_types = SARR_ZERO;
             if (call->args) {
-                tsa_resize_TypePtr(&arg_types, call->args->size);
+                sarrsetlen(&arg_types, call->args->size);
                 struct mir_instr *it;
                 TSA_FOREACH(call->args, it)
                 {
-                    struct mir_type *t = it->value.type;
-                    arg_types.data[i]  = is_load_needed(it) ? mir_deref_type(t) : t;
+                    struct mir_type *t      = it->value.type;
+                    sarrpeek(&arg_types, i) = is_load_needed(it) ? mir_deref_type(t) : t;
                 }
             }
             selected_overload_fn = group_select_overload(ctx, group, &arg_types);
-            tsa_terminate(&arg_types);
+            sarrfree(&arg_types);
         }
         BL_MAGIC_ASSERT(selected_overload_fn);
 
@@ -7607,7 +7592,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
     }
 
     // validate arguments
-    usize       callee_argc      = sarrlen(type->data.fn.args);
+    usize       callee_argc      = sarrlenu(type->data.fn.args);
     const usize call_argc        = call->args ? call->args->size : 0;
     const bool  is_vargs         = isflag(type->data.fn.flags, MIR_TYPE_FN_FLAG_IS_VARGS);
     const bool  has_default_args = isflag(type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_DEFAULT_ARGS);
@@ -8310,12 +8295,12 @@ void analyze(struct context *ctx)
         // Remove unused instructions here!
         if (pip && isflag(pip->flags, MIR_IS_ANALYZED)) erase_instr_tree(pip, false, false);
         if (ip == NULL) {
-            if (i >= arrlen(ctx->analyze.stack[si])) {
+            if (i >= arrlenu(ctx->analyze.stack[si])) {
                 // No other instructions in current analyzed stack, let's try the other one.
                 arrsetlen(ctx->analyze.stack[si], 0);
                 i  = 0;
                 si = analyze_swap(ctx);
-                if (arrlen(ctx->analyze.stack[si]) == 0) break;
+                if (arrlenu(ctx->analyze.stack[si]) == 0) break;
             }
             ip   = ctx->analyze.stack[si][i++];
             skip = false;
@@ -8369,10 +8354,10 @@ void analyze_report_unresolved(struct context *ctx)
 {
     s32 reported = 0;
 
-    for (s64 i = 0; i < hmlen(ctx->analyze.waiting); ++i) {
+    for (usize i = 0; i < hmlenu(ctx->analyze.waiting); ++i) {
         instrs_t *wq = &ctx->analyze.waiting[i].value;
         bassert(wq);
-        for (s64 j = 0; j < sarrlen(wq); ++j) {
+        for (usize j = 0; j < sarrlenu(wq); ++j) {
             struct mir_instr *instr = sarrpeek(wq, j);
             bassert(instr);
             const char *sym_name = NULL;
@@ -8437,7 +8422,7 @@ INLINE void testing_add_test_case(struct context *ctx, struct mir_fn *fn)
     bassert(var->value.data);
 
     arrput(ctx->assembly->testing.cases, fn);
-    const s64 i = arrlen(ctx->assembly->testing.cases) - 1;
+    const usize i = arrlenu(ctx->assembly->testing.cases) - 1;
 
     vm_stack_ptr_t   var_ptr  = vm_read_var(ctx->vm, var);
     struct mir_type *var_type = var->value.type;
@@ -8460,11 +8445,10 @@ INLINE void testing_add_test_case(struct context *ctx, struct mir_fn *fn)
 // Top-level rtti generation.
 INLINE struct mir_var *rtti_gen(struct context *ctx, struct mir_type *type)
 {
-    struct mir_var *tmp = _rtti_gen(ctx, type);
-
-    TSmallArray_RTTIIncomplete *pending = &ctx->analyze.incomplete_rtti;
-    while (pending->size) {
-        struct rtti_incomplete incomplete = tsa_pop_RTTIIncomplete(pending);
+    struct mir_var *tmp     = _rtti_gen(ctx, type);
+    rttis_t        *pending = &ctx->analyze.incomplete_rtti;
+    while (sarrlenu(pending)) {
+        struct rtti_incomplete incomplete = sarrpop(pending);
         rtti_satisfy_incomplete(ctx, &incomplete);
     }
 
@@ -8525,8 +8509,8 @@ struct mir_var *_rtti_gen(struct context *ctx, struct mir_type *type)
         // We generate dummy pointer RTTI when incomplete is enabled and complete
         // this in second pass to prove endless looping.
         rtti_var = rtti_gen_ptr(ctx, ctx->builtin_types->t_u8_ptr, NULL);
-        tsa_push_RTTIIncomplete(&ctx->analyze.incomplete_rtti,
-                                (struct rtti_incomplete){.var = rtti_var, .type = type});
+        sarrput(&ctx->analyze.incomplete_rtti,
+                ((struct rtti_incomplete){.var = rtti_var, .type = type}));
         break;
 
     case MIR_TYPE_ARRAY:
@@ -8881,11 +8865,11 @@ void rtti_gen_fn_arg(struct context *ctx, vm_stack_ptr_t dest, struct mir_arg *a
 vm_stack_ptr_t rtti_gen_fn_args_array(struct context *ctx, mir_args_t *args)
 {
     struct mir_type *rtti_type    = ctx->builtin_types->t_TypeInfoFnArg;
-    struct mir_type *arr_tmp_type = create_type_array(ctx, NULL, rtti_type, (s64)sarrlen(args));
+    struct mir_type *arr_tmp_type = create_type_array(ctx, NULL, rtti_type, (s64)sarrlenu(args));
 
     vm_stack_ptr_t dest_arr_tmp = vm_alloc_raw(ctx->vm, ctx->assembly, arr_tmp_type);
 
-    for (s64 i = 0; i < sarrlen(args); ++i) {
+    for (usize i = 0; i < sarrlenu(args); ++i) {
         struct mir_arg *it = sarrpeek(args, i);
         vm_stack_ptr_t  dest_arr_tmp_elem =
             vm_get_array_elem_ptr(arr_tmp_type, dest_arr_tmp, (u32)i);
@@ -8895,15 +8879,14 @@ vm_stack_ptr_t rtti_gen_fn_args_array(struct context *ctx, mir_args_t *args)
     return dest_arr_tmp;
 }
 
-vm_stack_ptr_t rtti_gen_fns_array(struct context *ctx, TSmallArray_TypePtr *fns)
+vm_stack_ptr_t rtti_gen_fns_array(struct context *ctx, mir_types_t *fns)
 {
     struct mir_type *rtti_type    = ctx->builtin_types->t_TypeInfoFn_ptr;
-    struct mir_type *arr_tmp_type = create_type_array(ctx, NULL, rtti_type, (s64)fns->size);
+    struct mir_type *arr_tmp_type = create_type_array(ctx, NULL, rtti_type, sarrlen(fns));
     vm_stack_ptr_t   dest_arr_tmp = vm_alloc_raw(ctx->vm, ctx->assembly, arr_tmp_type);
-    struct mir_type *it;
-    TSA_FOREACH(fns, it)
-    {
-        vm_stack_ptr_t dest_arr_tmp_elem =
+    for (usize i = 0; i < sarrlenu(fns); ++i) {
+        struct mir_type *it = sarrpeek(fns, i);
+        vm_stack_ptr_t   dest_arr_tmp_elem =
             vm_get_array_elem_ptr(arr_tmp_type, dest_arr_tmp, (u32)i);
         struct mir_var *fn = _rtti_gen(ctx, it);
         vm_write_ptr(rtti_type, dest_arr_tmp_elem, vm_read_var(ctx->vm, fn));
@@ -8920,15 +8903,14 @@ void rtti_gen_fn_args_slice(struct context *ctx, vm_stack_ptr_t dest, mir_args_t
     struct mir_type *dest_ptr_type = mir_get_struct_elem_type(rtti_type, 1);
     vm_stack_ptr_t   dest_ptr      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
 
-    const usize    argc     = sarrlen(args);
-    vm_stack_ptr_t args_ptr = NULL;
-    if (argc) args_ptr = rtti_gen_fn_args_array(ctx, args);
+    const usize    argc     = sarrlenu(args);
+    vm_stack_ptr_t args_ptr = argc ? rtti_gen_fn_args_array(ctx, args) : NULL;
 
-    vm_write_int(dest_len_type, dest_len, (u64)argc);
+    vm_write_int(dest_len_type, dest_len, argc);
     vm_write_ptr(dest_ptr_type, dest_ptr, args_ptr);
 }
 
-void rtti_gen_fn_slice(struct context *ctx, vm_stack_ptr_t dest, TSmallArray_TypePtr *fns)
+void rtti_gen_fn_slice(struct context *ctx, vm_stack_ptr_t dest, mir_types_t *fns)
 {
     struct mir_type *rtti_type     = ctx->builtin_types->t_TypeInfoFn_ptr_slice;
     struct mir_type *dest_len_type = mir_get_struct_elem_type(rtti_type, 0);
@@ -8937,11 +8919,10 @@ void rtti_gen_fn_slice(struct context *ctx, vm_stack_ptr_t dest, TSmallArray_Typ
     struct mir_type *dest_ptr_type = mir_get_struct_elem_type(rtti_type, 1);
     vm_stack_ptr_t   dest_ptr      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
 
-    const usize    fnc     = fns ? fns->size : 0;
-    vm_stack_ptr_t fns_ptr = NULL;
-    if (fnc) fns_ptr = rtti_gen_fns_array(ctx, fns);
+    const usize    fnc     = sarrlenu(fns);
+    vm_stack_ptr_t fns_ptr = fnc ? fns_ptr = rtti_gen_fns_array(ctx, fns) : NULL;
 
-    vm_write_int(dest_len_type, dest_len, (u64)fnc);
+    vm_write_int(dest_len_type, dest_len, fnc);
     vm_write_ptr(dest_ptr_type, dest_ptr, fns_ptr);
 }
 
@@ -8999,7 +8980,7 @@ void ast_defer_block(struct context *ctx, struct ast *block, bool whole_tree)
     bassert(ctx->ast.current_defer_stack_index >= 0);
     defer_stack_t *stack = &ctx->ast.defer_stack[ctx->ast.current_defer_stack_index];
     struct ast    *defer;
-    for (s64 i = sarrlen(stack); i-- > 0;) {
+    for (usize i = sarrlenu(stack); i-- > 0;) {
         defer = sarrpeek(stack, i);
         if (defer->owner_scope == block->owner_scope) {
             sarrpop(stack);
@@ -9012,7 +8993,7 @@ void ast_defer_block(struct context *ctx, struct ast *block, bool whole_tree)
 
 void ast_ublock(struct context *ctx, struct ast *ublock)
 {
-    for (s64 i = 0; i < arrlen(ublock->data.ublock.nodes); ++i) {
+    for (usize i = 0; i < arrlenu(ublock->data.ublock.nodes); ++i) {
         ast(ctx, ublock->data.ublock.nodes[i]);
     }
 }
@@ -9024,7 +9005,7 @@ void ast_block(struct context *ctx, struct ast *block)
         bassert(current_fn);
     }
 
-    for (s64 i = 0; i < sarrlen(block->data.block.nodes); ++i) {
+    for (usize i = 0; i < sarrlenu(block->data.block.nodes); ++i) {
         struct ast *tmp = sarrpeek(block->data.block.nodes, i);
         ast(ctx, tmp);
     }
@@ -9173,7 +9154,7 @@ void ast_stmt_switch(struct context *ctx, struct ast *stmt_switch)
     struct mir_instr_block *default_block        = cont_block;
     bool                    user_defined_default = false;
 
-    for (s64 i = sarrlen(ast_cases); i-- > 0;) {
+    for (usize i = sarrlenu(ast_cases); i-- > 0;) {
         struct ast *ast_case   = sarrpeek(ast_cases, i);
         const bool  is_default = ast_case->data.stmt_case.is_default;
 
@@ -9203,7 +9184,7 @@ void ast_stmt_switch(struct context *ctx, struct ast *stmt_switch)
 
         ast_nodes_t *ast_exprs = ast_case->data.stmt_case.exprs;
 
-        for (s64 i2 = sarrlen(ast_exprs); i2-- > 0;) {
+        for (usize i2 = sarrlenu(ast_exprs); i2-- > 0;) {
             struct ast *ast_expr = sarrpeek(ast_exprs, i2);
 
             set_current_block(ctx, src_block);
@@ -9224,11 +9205,11 @@ void ast_stmt_return(struct context *ctx, struct ast *ret)
     // Return statement produce only setup of .ret temporary and break into the exit
     // block of the function.
     ast_nodes_t      *ast_values     = ret->data.stmt_return.exprs;
-    const bool        is_multireturn = sarrlen(ast_values) > 1;
+    const bool        is_multireturn = sarrlenu(ast_values) > 1;
     struct mir_instr *value          = NULL;
     if (is_multireturn) {
         // Generate multi-return compound expression to group all values into single one.
-        const usize           valc   = sarrlen(ast_values);
+        const usize           valc   = sarrlenu(ast_values);
         TSmallArray_InstrPtr *values = create_sarr(TSmallArray_InstrPtr, ctx->assembly);
         tsa_resize_InstrPtr(values, valc);
         struct ast *ast_value = NULL;
@@ -9241,7 +9222,7 @@ void ast_stmt_return(struct context *ctx, struct ast *ret)
         }
         bassert(ast_value);
         value = append_instr_compound(ctx, ast_value, NULL, values, true);
-    } else if (sarrlen(ast_values) > 0) {
+    } else if (sarrlenu(ast_values) > 0) {
         struct ast *ast_value = sarrpeek(ast_values, 0);
         bassert(ast_value &&
                 "Expected at least one return value when return expression array is not NULL.");
@@ -9293,7 +9274,7 @@ struct mir_instr *ast_expr_compound(struct context *ctx, struct ast *cmp)
     type = ast(ctx, ast_type);
     bassert(type);
     if (!ast_values) return append_instr_compound(ctx, cmp, type, NULL, false);
-    const s64             valc   = sarrlen(ast_values);
+    const usize           valc   = sarrlenu(ast_values);
     TSmallArray_InstrPtr *values = create_sarr(TSmallArray_InstrPtr, ctx->assembly);
     tsa_resize_InstrPtr(values, valc);
     struct ast       *ast_value;
@@ -9469,7 +9450,7 @@ struct mir_instr *ast_expr_call(struct context *ctx, struct ast *call)
     // arguments need to be generated into reverse order due to bytecode call
     // conventions
     if (ast_args) {
-        const s64 argc = sarrlen(ast_args);
+        const s64 argc = sarrlenu(ast_args);
         tsa_resize_InstrPtr(args, argc);
         struct mir_instr *arg;
         struct ast       *ast_arg;
@@ -9520,7 +9501,7 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
     fn_proto->type = CREATE_TYPE_RESOLVER_CALL(ast_fn_type);
     bassert(fn_proto->type);
 
-    bassert(!(ctx->polymorph.is_replacement_active && ctx->polymorph.replacement_queue.size));
+    bassert(!(ctx->polymorph.is_replacement_active && sarrlenu(&ctx->polymorph.replacement_queue)));
     ctx->polymorph.is_replacement_active = false;
 
     // Prepare new function context. Must be in sync with pop at the end of scope!
@@ -9599,9 +9580,7 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
     if (ast_args) {
         struct ast *ast_arg;
         struct ast *ast_arg_name;
-
-        const s64 argc = sarrlen(ast_args);
-        for (s64 i = argc; i-- > 0;) {
+        for (usize i = sarrlenu(ast_args); i-- > 0;) {
             ast_arg = sarrpeek(ast_args, i);
             bassert(ast_arg->kind == AST_DECL_ARG);
             ast_arg_name = ast_arg->data.decl.name;
@@ -9643,10 +9622,10 @@ struct mir_instr *ast_expr_lit_fn_group(struct context *ctx, struct ast *group)
 {
     ast_nodes_t *ast_variants = group->data.expr_fn_group.variants;
     bassert(ast_variants);
-    bassert(sarrlen(ast_variants));
+    bassert(sarrlenu(ast_variants));
     TSmallArray_InstrPtr *variants = create_sarr(TSmallArray_InstrPtr, ctx->assembly);
-    tsa_resize_InstrPtr(variants, sarrlen(ast_variants));
-    for (s64 i = 0; i < sarrlen(ast_variants); ++i) {
+    tsa_resize_InstrPtr(variants, sarrlenu(ast_variants));
+    for (usize i = 0; i < sarrlenu(ast_variants); ++i) {
         struct ast       *it = sarrpeek(ast_variants, i);
         struct mir_instr *variant;
         if (it->kind == AST_EXPR_LIT_FN) {
@@ -10152,9 +10131,9 @@ struct mir_instr *ast_decl_member(struct context *ctx, struct ast *arg)
     if (ast_tags) {
         ast_nodes_t *ast_values = ast_tags->data.tags.values;
         bassert(ast_values && "Invalid tag values array.");
-        bassert(sarrlen(ast_values) && "Tag array must contains one value at least.");
+        bassert(sarrlenu(ast_values) && "Tag array must contains one value at least.");
         tags = create_sarr(TSmallArray_InstrPtr, ctx->assembly);
-        for (s64 i = 0; i < sarrlen(ast_values); ++i) {
+        for (usize i = 0; i < sarrlenu(ast_values); ++i) {
             struct ast       *ast_value = sarrpeek(ast_values, i);
             struct mir_instr *value     = ast(ctx, ast_value);
             tsa_push_InstrPtr(tags, value);
@@ -10222,14 +10201,14 @@ struct mir_instr *ast_type_fn(struct context *ctx, struct ast *type_fn)
         ref_instr(ret_type);
     }
     TSmallArray_InstrPtr *args = NULL;
-    if (sarrlen(ast_arg_types) > 0) {
-        const s64 c = sarrlen(ast_arg_types);
-        args        = create_sarr(TSmallArray_InstrPtr, ctx->assembly);
+    if (sarrlenu(ast_arg_types) > 0) {
+        const usize c = sarrlenu(ast_arg_types);
+        args          = create_sarr(TSmallArray_InstrPtr, ctx->assembly);
         tsa_resize_InstrPtr(args, c);
 
         struct ast       *ast_arg_type;
         struct mir_instr *arg;
-        for (s64 i = c; i-- > 0;) {
+        for (usize i = c; i-- > 0;) {
             ast_arg_type = sarrpeek(ast_arg_types, i);
             arg          = ast(ctx, ast_arg_type);
             ref_instr(arg);
@@ -10244,9 +10223,9 @@ struct mir_instr *ast_type_fn_group(struct context *ctx, struct ast *group)
     ast_nodes_t *ast_variants = group->data.type_fn_group.variants;
     bassert(ast_variants);
     TSmallArray_InstrPtr *variants = create_sarr(TSmallArray_InstrPtr, ctx->assembly);
-    tsa_resize_InstrPtr(variants, sarrlen(ast_variants));
+    tsa_resize_InstrPtr(variants, sarrlenu(ast_variants));
 
-    for (s64 i = 0; i < sarrlen(ast_variants); ++i) {
+    for (usize i = 0; i < sarrlenu(ast_variants); ++i) {
         struct ast *it    = sarrpeek(ast_variants, i);
         variants->data[i] = ast(ctx, it);
     }
@@ -10318,8 +10297,7 @@ struct mir_instr *ast_type_enum(struct context *ctx, struct ast *type_enum)
     const bool   is_flags      = type_enum->data.type_enm.is_flags;
     bassert(ast_variants);
 
-    const s64 varc = sarrlen(ast_variants);
-    if (varc == 0) {
+    if (!sarrlenu(ast_variants)) {
         report_error(EMPTY_ENUM, type_enum, "Empty enumerator.");
         return NULL;
     }
@@ -10333,7 +10311,7 @@ struct mir_instr *ast_type_enum(struct context *ctx, struct ast *type_enum)
     // Build variant instructions
     struct mir_instr   *variant;
     struct mir_variant *prev_variant = NULL;
-    for (s64 i = 0; i < sarrlen(ast_variants); ++i) {
+    for (usize i = 0; i < sarrlenu(ast_variants); ++i) {
         struct ast *ast_variant = sarrpeek(ast_variants, i);
         bassert(ast_variant->kind == AST_DECL_VARIANT);
         variant = ast_decl_variant(ctx, ast_variant, base_type, prev_variant, is_flags);
@@ -10362,7 +10340,7 @@ struct mir_instr *ast_type_struct(struct context *ctx, struct ast *type_struct)
     const bool   is_multiple_return_type = type_struct->data.type_strct.is_multiple_return_type;
     bassert(ast_members);
     struct ast *ast_base_type = type_struct->data.type_strct.base_type;
-    const usize memc          = sarrlen(ast_members);
+    const usize memc          = sarrlenu(ast_members);
     if (!memc && !ast_base_type) {
         report_error(EMPTY_STRUCT, type_struct, "Empty structure.");
         return NULL;
@@ -10387,7 +10365,7 @@ struct mir_instr *ast_type_struct(struct context *ctx, struct ast *type_struct)
     }
 
     struct mir_instr *tmp = NULL;
-    for (s64 i = 0; i < sarrlen(ast_members); ++i) {
+    for (usize i = 0; i < sarrlenu(ast_members); ++i) {
         struct ast *ast_member = sarrpeek(ast_members, i);
         tmp                    = ast(ctx, ast_member);
         bassert(tmp);
@@ -10404,12 +10382,12 @@ struct mir_instr *ast_type_poly(struct context *ctx, struct ast *poly)
     struct scope *scope     = poly->owner_scope;
     bassert(ast_ident);
 
-    TSmallArray_TypePtr *queue       = &ctx->polymorph.replacement_queue;
-    struct id           *T_id        = &ast_ident->data.ident.id;
-    struct scope_entry  *scope_entry = register_symbol(ctx, ast_ident, T_id, scope, false);
+    mir_types_t        *queue       = &ctx->polymorph.replacement_queue;
+    struct id          *T_id        = &ast_ident->data.ident.id;
+    struct scope_entry *scope_entry = register_symbol(ctx, ast_ident, T_id, scope, false);
     if (!scope_entry) goto USE_DUMMY;
     if (ctx->polymorph.is_replacement_active) {
-        if (queue->size == 0) {
+        if (sarrlen(queue) == 0) {
             // Use s32 as dummy when polymorph replacement fails.
             goto USE_DUMMY;
         } else {
@@ -10417,7 +10395,7 @@ struct mir_instr *ast_type_poly(struct context *ctx, struct ast *poly)
             // types.
             // Notice that pop takes the last element from the queue, this is possible due to
             // reverse order of generated argument instructions.
-            struct mir_type *replacement_type = tsa_pop_TypePtr(queue);
+            struct mir_type *replacement_type = sarrpop(queue);
             BL_MAGIC_ASSERT(replacement_type);
 
             scope_entry->kind      = SCOPE_ENTRY_TYPE;
@@ -10439,7 +10417,7 @@ struct mir_instr *ast_type_poly(struct context *ctx, struct ast *poly)
     MIR_CEV_WRITE_AS(struct mir_type *, &instr_poly->value, master_type);
     return instr_poly;
 USE_DUMMY:
-    queue->size = 0;
+    sarrclear(queue);
     return append_instr_const_type(ctx, poly, ctx->builtin_types->t_s32);
 }
 
@@ -10851,7 +10829,7 @@ static void _type_to_str(char *buf, usize len, const struct mir_type *type, bool
                 append_buf(buf, len, variant->id->str);
                 append_buf(buf, len, " :: ");
                 char value_str[35];
-                snprintf(value_str, static_arrlen(value_str), "%lld", variant->value);
+                snprintf(value_str, static_arrlenu(value_str), "%lld", variant->value);
                 append_buf(buf, len, value_str);
                 if (i < variants->size - 1) append_buf(buf, len, ", ");
             }
@@ -10862,11 +10840,11 @@ static void _type_to_str(char *buf, usize len, const struct mir_type *type, bool
 
     case MIR_TYPE_FN: {
         append_buf(buf, len, "fn(");
-        mir_args_t     *args = type->data.fn.args;
-        for (s64 i = 0; i < sarrlen(args); ++i) {
+        mir_args_t *args = type->data.fn.args;
+        for (usize i = 0; i < sarrlenu(args); ++i) {
             struct mir_arg *arg = sarrpeek(args, i);
             _type_to_str(buf, len, arg->type, true);
-            if (i < sarrlen(args) - 1) append_buf(buf, len, ", ");
+            if (i < sarrlenu(args) - 1) append_buf(buf, len, ", ");
         }
         append_buf(buf, len, ") ");
         _type_to_str(buf, len, type->data.fn.ret_type, true);
@@ -10875,14 +10853,11 @@ static void _type_to_str(char *buf, usize len, const struct mir_type *type, bool
 
     case MIR_TYPE_FN_GROUP: {
         append_buf(buf, len, "fn{");
-        struct mir_type     *it;
-        TSmallArray_TypePtr *variants = type->data.fn_group.variants;
-        if (variants) {
-            TSA_FOREACH(variants, it)
-            {
-                _type_to_str(buf, len, it, true);
-                if (i < variants->size - 1) append_buf(buf, len, "; ");
-            }
+        mir_types_t *variants = type->data.fn_group.variants;
+        for (usize i = 0; i < sarrlenu(variants); ++i) {
+            struct mir_type *it = sarrpeek(variants, i);
+            _type_to_str(buf, len, it, true);
+            if (i < sarrlenu(variants) - 1) append_buf(buf, len, "; ");
         }
         append_buf(buf, len, "} ");
         break;
@@ -10936,11 +10911,11 @@ static void provide_builtin_arch(struct context *ctx)
     struct scope           *scope    = scope_create(&ctx->assembly->arenas.scope,
                                        SCOPE_TYPE_ENUM,
                                        ctx->assembly->gscope,
-                                       static_arrlen(arch_names),
+                                       static_arrlenu(arch_names),
                                        NULL);
     TSmallArray_VariantPtr *variants = create_sarr(TSmallArray_VariantPtr, ctx->assembly);
-    static struct id        ids[static_arrlen(arch_names)];
-    for (usize i = 0; i < static_arrlen(arch_names); ++i) {
+    static struct id        ids[static_arrlenu(arch_names)];
+    for (usize i = 0; i < static_arrlenu(arch_names); ++i) {
         struct mir_variant *variant =
             create_variant(ctx, id_init(&ids[i], arch_names[i]), bt->t_s32, i);
         tsa_push_VariantPtr(variants, variant);
@@ -10958,11 +10933,11 @@ static void provide_builtin_os(struct context *ctx)
     struct scope           *scope    = scope_create(&ctx->assembly->arenas.scope,
                                        SCOPE_TYPE_ENUM,
                                        ctx->assembly->gscope,
-                                       static_arrlen(os_names),
+                                       static_arrlenu(os_names),
                                        NULL);
     TSmallArray_VariantPtr *variants = create_sarr(TSmallArray_VariantPtr, ctx->assembly);
-    static struct id        ids[static_arrlen(os_names)];
-    for (usize i = 0; i < static_arrlen(os_names); ++i) {
+    static struct id        ids[static_arrlenu(os_names)];
+    for (usize i = 0; i < static_arrlenu(os_names); ++i) {
         struct mir_variant *variant =
             create_variant(ctx, id_init(&ids[i], os_names[i]), bt->t_s32, i);
         tsa_push_VariantPtr(variants, variant);
@@ -10980,11 +10955,11 @@ static void provide_builtin_env(struct context *ctx)
     struct scope           *scope    = scope_create(&ctx->assembly->arenas.scope,
                                        SCOPE_TYPE_ENUM,
                                        ctx->assembly->gscope,
-                                       static_arrlen(env_names),
+                                       static_arrlenu(env_names),
                                        NULL);
     TSmallArray_VariantPtr *variants = create_sarr(TSmallArray_VariantPtr, ctx->assembly);
-    static struct id        ids[static_arrlen(env_names)];
-    for (usize i = 0; i < static_arrlen(env_names); ++i) {
+    static struct id        ids[static_arrlenu(env_names)];
+    for (usize i = 0; i < static_arrlenu(env_names); ++i) {
         struct mir_variant *variant =
             create_variant(ctx, id_init(&ids[i], env_names[i]), bt->t_s32, i);
         tsa_push_VariantPtr(variants, variant);
@@ -11088,26 +11063,24 @@ const char *get_intrinsic(const char *name)
 
 struct mir_fn *group_select_overload(struct context            *ctx,
                                      const struct mir_fn_group *group,
-                                     const TSmallArray_TypePtr *expected_args)
+                                     const mir_types_t         *expected_args)
 {
     BL_MAGIC_ASSERT(group);
     bassert(expected_args);
-    const TSmallArray_FnPtr *variants = group->variants;
-    bassert(variants && variants->size);
-    struct mir_fn *selected          = variants->data[0];
+    const mir_fns_t *variants = group->variants;
+    bassert(sarrlenu(variants));
+    struct mir_fn *selected          = sarrpeek(variants, 0);
     s32            selected_priority = 0;
-    struct mir_fn *it_fn;
-    TSA_FOREACH(variants, it_fn)
-    {
-        s32 p = 0;
-
+    for (usize i = 0; i < sarrlenu(variants); ++i) {
+        struct mir_fn    *it_fn = sarrpeek(variants, i);
+        s32               p     = 0;
         const mir_args_t *args  = it_fn->type->data.fn.args;
-        const usize       argc  = sarrlen(args);
-        const usize       eargc = expected_args->size;
+        const usize       argc  = sarrlenu(args);
+        const usize       eargc = sarrlenu(expected_args);
         if (argc == eargc) p += 1;
-        for (usize j = 0; j < sarrlen(args) && j < expected_args->size; ++j) {
+        for (usize j = 0; j < sarrlenu(args) && j < sarrlenu(expected_args); ++j) {
             const struct mir_type *t  = sarrpeek(args, j)->type;
-            const struct mir_type *et = expected_args->data[j];
+            const struct mir_type *et = sarrpeek(expected_args, j);
             if (type_cmp(et, t)) {
                 p += 3;
                 continue;
@@ -11206,10 +11179,6 @@ void mir_run(struct assembly *assembly)
     arrsetcap(ctx.analyze.usage_check_arr, 256);
     arrsetcap(ctx.analyze.stack[0], 256);
     arrsetcap(ctx.analyze.stack[1], 256);
-    tsa_init(&ctx.analyze.incomplete_rtti);
-    tsa_init(&ctx.analyze.complete_check_type_stack);
-
-    tsa_init(&ctx.polymorph.replacement_queue);
 
     ctx.analyze.void_entry =
         scope_create_entry(&ctx.assembly->arenas.scope, SCOPE_ENTRY_VOID, NULL, NULL, true);
@@ -11218,7 +11187,7 @@ void mir_run(struct assembly *assembly)
     initialize_builtins(&ctx);
 
     // Gen MIR from ast pass
-    for (s64 i = 0; i < arrlen(assembly->units); ++i) {
+    for (usize i = 0; i < arrlenu(assembly->units); ++i) {
         struct unit *unit = assembly->units[i];
         ast(&ctx, unit->ast);
     }
@@ -11242,11 +11211,11 @@ SKIP:
     ast_free_defer_stack(&ctx);
     arrfree(ctx.analyze.stack[0]);
     arrfree(ctx.analyze.stack[1]);
-    tsa_terminate(&ctx.polymorph.replacement_queue);
     hmfree(ctx.analyze.waiting);
 
     arrfree(ctx.analyze.usage_check_arr);
-    tsa_terminate(&ctx.analyze.incomplete_rtti);
-    tsa_terminate(&ctx.analyze.complete_check_type_stack);
+    sarrfree(&ctx.analyze.incomplete_rtti);
+    sarrfree(&ctx.polymorph.replacement_queue);
+    sarrfree(&ctx.analyze.complete_check_type_stack);
     return_zone();
 }

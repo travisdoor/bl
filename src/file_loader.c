@@ -49,7 +49,7 @@ void file_loader_run(struct assembly *UNUSED(assembly), struct unit *unit)
     HANDLE f = CreateFileA(
         path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (f == INVALID_HANDLE_VALUE) {
-        get_last_error(error_buf, static_arrlen(error_buf));
+        get_last_error(error_buf, static_arrlenu(error_buf));
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_FILE_NOT_FOUND,
                     TOKEN_OPTIONAL_LOCATION(unit->loaded_from),
@@ -76,7 +76,7 @@ void file_loader_run(struct assembly *UNUSED(assembly), struct unit *unit)
     if (!ReadFile(f, data, bytes, &rbytes, NULL)) {
         bfree(data);
         CloseHandle(f);
-        get_last_error(error_buf, static_arrlen(error_buf));
+        get_last_error(error_buf, static_arrlenu(error_buf));
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_FILE_NOT_FOUND,
                     TOKEN_OPTIONAL_LOCATION(unit->loaded_from),

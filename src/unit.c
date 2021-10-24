@@ -58,7 +58,7 @@ struct unit *unit_new(const char *filepath, struct token *load_from)
                        &unit->dirpath);
     unit->name         = strdup(filepath);
     char tmp[PATH_MAX] = {0};
-    if (get_filename_from_filepath(tmp, static_arrlen(tmp), filepath)) {
+    if (get_filename_from_filepath(tmp, static_arrlenu(tmp), filepath)) {
         unit->filename = strdup(tmp);
     } else {
         babort("invalid file");
@@ -71,7 +71,7 @@ struct unit *unit_new(const char *filepath, struct token *load_from)
 
 void unit_delete(struct unit *unit)
 {
-    for (s64 i = 0; i < arrlen(unit->large_string_cache); ++i) {
+    for (usize i = 0; i < arrlenu(unit->large_string_cache); ++i) {
         arrfree(unit->large_string_cache[i]);
     }
     arrfree(unit->large_string_cache);

@@ -73,19 +73,18 @@ const char *env_names[] = {
 };
 
 union _SmallArrays {
-    TSmallArray_TypePtr       type;
     TSmallArray_MemberPtr     member;
     TSmallArray_VariantPtr    variant;
     TSmallArray_InstrPtr      instr;
     TSmallArray_ConstValuePtr cv;
-    TSmallArray_ArgPtr        arg;
     TSmallArray_SwitchCase    switch_case;
-    TSmallArray_FnPtr         fn;
 };
 
 static const usize sarr_total_size = sizeof(union {
     ast_nodes_t _1;
     mir_args_t  _2;
+    mir_fns_t   _3;
+    mir_types_t _4;
 });
 
 static void small_array_dtor(TSmallArrayAny *arr)
@@ -158,7 +157,7 @@ static void parse_triple(const char *normalized_triple, struct target_triple *ou
     }
 
     out_triple->arch = ARCH_unknown;
-    for (usize i = 0; i < static_arrlen(arch_names); ++i) {
+    for (usize i = 0; i < static_arrlenu(arch_names); ++i) {
         if (strcmp(arch, arch_names[i]) == 0) {
             out_triple->arch = i;
             break;
@@ -166,7 +165,7 @@ static void parse_triple(const char *normalized_triple, struct target_triple *ou
     }
 
     out_triple->vendor = VENDOR_unknown;
-    for (usize i = 0; i < static_arrlen(vendor_names); ++i) {
+    for (usize i = 0; i < static_arrlenu(vendor_names); ++i) {
         if (strcmp(vendor, vendor_names[i]) == 0) {
             out_triple->vendor = i;
             break;
@@ -174,7 +173,7 @@ static void parse_triple(const char *normalized_triple, struct target_triple *ou
     }
 
     out_triple->os = OS_unknown;
-    for (usize i = 0; i < static_arrlen(os_names); ++i) {
+    for (usize i = 0; i < static_arrlenu(os_names); ++i) {
         if (strncmp(os, os_names[i], strlen(os_names[i])) == 0) {
             out_triple->os = i;
             break;
@@ -182,7 +181,7 @@ static void parse_triple(const char *normalized_triple, struct target_triple *ou
     }
 
     out_triple->env = ENV_unknown;
-    for (usize i = 0; i < static_arrlen(env_names); ++i) {
+    for (usize i = 0; i < static_arrlenu(env_names); ++i) {
         if (strcmp(env, env_names[i]) == 0) {
             out_triple->env = i;
             break;
@@ -237,7 +236,7 @@ static void llvm_init(struct assembly *assembly)
 
 static void llvm_terminate(struct assembly *assembly)
 {
-    for (s32 i = 0; i < arrlen(assembly->llvm.modules); ++i) {
+    for (s32 i = 0; i < arrlenu(assembly->llvm.modules); ++i) {
         LLVMDisposeModule(assembly->llvm.modules[i]);
     }
     arrfree(assembly->llvm.modules);
@@ -318,7 +317,7 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, TString *o
 static conf_data_t *load_module_config(const char *modulepath, struct token *import_from)
 {
     char tmp_path[PATH_MAX] = {0};
-    snprintf(tmp_path, static_arrlen(tmp_path), "%s/%s", modulepath, MODULE_CONFIG_FILE);
+    snprintf(tmp_path, static_arrlenu(tmp_path), "%s/%s", modulepath, MODULE_CONFIG_FILE);
     conf_data_t *config = conf_data_new();
     if (builder_compile_config(tmp_path, config, import_from) != COMPILE_OK) {
         conf_data_delete(config);
@@ -454,11 +453,11 @@ struct target *target_dup(const char *name, const struct target *other)
 
 void target_delete(struct target *target)
 {
-    for (s64 i = 0; i < arrlen(target->files); ++i)
+    for (usize i = 0; i < arrlenu(target->files); ++i)
         free(target->files[i]);
-    for (s64 i = 0; i < arrlen(target->default_lib_paths); ++i)
+    for (usize i = 0; i < arrlenu(target->default_lib_paths); ++i)
         free(target->default_lib_paths[i]);
-    for (s64 i = 0; i < arrlen(target->default_libs); ++i)
+    for (usize i = 0; i < arrlenu(target->default_libs); ++i)
         free(target->default_libs[i]);
 
     arrfree(target->files);
@@ -562,10 +561,10 @@ char *target_triple_to_string(const struct target_triple *triple)
     const char *vendor = "";
     const char *os     = "";
     const char *env    = "";
-    if (triple->arch < static_arrlen(arch_names)) arch = arch_names[triple->arch];
-    if (triple->vendor < static_arrlen(vendor_names)) vendor = vendor_names[triple->vendor];
-    if (triple->os < static_arrlen(os_names)) os = os_names[triple->os];
-    if (triple->env < static_arrlen(env_names)) env = env_names[triple->env];
+    if (triple->arch < static_arrlenu(arch_names)) arch = arch_names[triple->arch];
+    if (triple->vendor < static_arrlenu(vendor_names)) vendor = vendor_names[triple->vendor];
+    if (triple->os < static_arrlenu(os_names)) os = os_names[triple->os];
+    if (triple->env < static_arrlenu(env_names)) env = env_names[triple->env];
     const usize len =
         strlen(arch) + strlen(vendor) + strlen(os) + strlen(env) + 4; // 3x'-' + terminator
     char *str = bmalloc(len);
@@ -606,7 +605,7 @@ struct assembly *assembly_new(const struct target *target)
     mir_init(assembly);
 
     // Add units from target
-    for (s64 i = 0; i < arrlen(target->files); ++i) {
+    for (usize i = 0; i < arrlenu(target->files); ++i) {
         assembly_add_unit_safe(assembly, target->files[i], NULL);
     }
 
@@ -633,11 +632,11 @@ struct assembly *assembly_new(const struct target *target)
     }
 
     // Duplicate default library paths
-    for (s64 i = 0; i < arrlen(target->default_lib_paths); ++i)
+    for (usize i = 0; i < arrlenu(target->default_lib_paths); ++i)
         assembly_add_lib_path(assembly, target->default_lib_paths[i]);
 
     // Duplicate default libs
-    for (s64 i = 0; i < arrlen(target->default_libs); ++i)
+    for (usize i = 0; i < arrlenu(target->default_libs); ++i)
         assembly_add_native_lib(assembly, target->default_libs[i], NULL);
 
     // Append custom linker options
@@ -649,11 +648,11 @@ struct assembly *assembly_new(const struct target *target)
 void assembly_delete(struct assembly *assembly)
 {
     zone();
-    for (s64 i = 0; i < arrlen(assembly->units); ++i)
+    for (usize i = 0; i < arrlenu(assembly->units); ++i)
         unit_delete(assembly->units[i]);
-    for (s64 i = 0; i < arrlen(assembly->libs); ++i)
+    for (usize i = 0; i < arrlenu(assembly->libs); ++i)
         native_lib_terminate(&assembly->libs[i]);
-    for (s64 i = 0; i < arrlen(assembly->lib_paths); ++i)
+    for (usize i = 0; i < arrlenu(assembly->lib_paths); ++i)
         free(assembly->lib_paths[i]);
 
     arrfree(assembly->libs);
@@ -693,7 +692,7 @@ void assembly_append_linker_options(struct assembly *assembly, const char *opt)
 
 static INLINE bool assembly_has_unit(struct assembly *assembly, const hash_t hash)
 {
-    for (s64 i = 0; i < arrlen(assembly->units); ++i) {
+    for (usize i = 0; i < arrlenu(assembly->units); ++i) {
         struct unit *unit = assembly->units[i];
         if (hash == unit->hash) {
             return true;
@@ -725,7 +724,7 @@ void assembly_add_native_lib(struct assembly *assembly,
 {
     const hash_t hash = strhash(lib_name);
     { // Search for duplicity.
-        for (s64 i = 0; i < arrlen(assembly->libs); ++i) {
+        for (usize i = 0; i < arrlenu(assembly->libs); ++i) {
             struct native_lib *lib = &assembly->libs[i];
             if (lib->hash == hash) return;
         }
@@ -805,7 +804,7 @@ bool assembly_import_module(struct assembly *assembly,
             if (local_found) {
                 TString *backup_name = get_tmpstr();
                 char     date[26];
-                date_time(date, static_arrlen(date), "%d-%m-%Y_%H-%M-%S");
+                date_time(date, static_arrlenu(date), "%d-%m-%Y_%H-%M-%S");
                 tstring_setf(backup_name, "%s_%s.bak", local_path->data, date);
                 copy_dir(local_path->data, backup_name->data);
                 remove_dir(local_path->data);
@@ -843,7 +842,7 @@ DCpointer assembly_find_extern(struct assembly *assembly, const char *symbol)
 {
     void              *handle = NULL;
     struct native_lib *lib;
-    for (s64 i = 0; i < arrlen(assembly->libs); ++i) {
+    for (usize i = 0; i < arrlenu(assembly->libs); ++i) {
         lib    = &assembly->libs[i];
         handle = dlFindSymbol(lib->handle, symbol);
         if (handle) break;

@@ -127,7 +127,7 @@ void print_ublock(struct ast *ublock, s32 pad, FILE *stream)
 {
     print_head(ublock, pad, stream);
     fprintf(stream, "%s", ublock->data.ublock.unit->name);
-    for (s64 i = 0; i < arrlen(ublock->data.ublock.nodes); ++i) {
+    for (usize i = 0; i < arrlenu(ublock->data.ublock.nodes); ++i) {
         print_node(ublock->data.ublock.nodes[i], pad + 1, stream);
     }
 }
@@ -135,7 +135,7 @@ void print_ublock(struct ast *ublock, s32 pad, FILE *stream)
 void print_block(struct ast *block, s32 pad, FILE *stream)
 {
     print_head(block, pad, stream);
-    for (s64 i = 0; i < sarrlen(block->data.block.nodes); ++i) {
+    for (usize i = 0; i < sarrlenu(block->data.block.nodes); ++i) {
         struct ast *tmp = sarrpeek(block->data.block.nodes, i);
         print_node(tmp, pad + 1, stream);
     }
@@ -198,7 +198,7 @@ void print_type_struct(struct ast *strct, s32 pad, FILE *stream)
     print_head(strct, pad, stream);
 
     ast_nodes_t *members = strct->data.type_strct.members;
-    for (s64 i = 0; i < sarrlen(members); ++i) {
+    for (usize i = 0; i < sarrlenu(members); ++i) {
         struct ast *member = sarrpeek(members, i);
         print_node(member, pad + 1, stream);
     }
@@ -226,7 +226,7 @@ void print_type_fn_group(struct ast *group, s32 pad, FILE *stream)
     print_head(group, pad, stream);
 
     ast_nodes_t *variants = group->data.type_fn_group.variants;
-    for (s64 i = 0; i < sarrlen(variants); ++i) {
+    for (usize i = 0; i < sarrlenu(variants); ++i) {
         struct ast *node = sarrpeek(variants, i);
         print_node(node, pad + 1, stream);
     }
@@ -236,7 +236,7 @@ void print_type_fn(struct ast *fn, s32 pad, FILE *stream)
 {
     print_head(fn, pad, stream);
     ast_nodes_t *args = fn->data.type_fn.args;
-    for (s64 i = 0; i < sarrlen(args); ++i) {
+    for (usize i = 0; i < sarrlenu(args); ++i) {
         struct ast *node = sarrpeek(args, i);
         print_node(node, pad + 1, stream);
     }
@@ -247,7 +247,7 @@ void print_type_enum(struct ast *enm, s32 pad, FILE *stream)
 {
     print_head(enm, pad, stream);
     ast_nodes_t *variants = enm->data.type_enm.variants;
-    for (s64 i = 0; i < sarrlen(variants); ++i) {
+    for (usize i = 0; i < sarrlenu(variants); ++i) {
         struct ast *node = sarrpeek(variants, i);
         print_node(node, pad + 1, stream);
     }
@@ -267,7 +267,7 @@ void print_stmt_switch(struct ast *stmt_switch, s32 pad, FILE *stream)
     print_node(stmt_switch->data.stmt_switch.expr, pad + 1, stream);
 
     ast_nodes_t *cases = stmt_switch->data.stmt_switch.cases;
-    for (s64 i = 0; i < sarrlen(cases); ++i) {
+    for (usize i = 0; i < sarrlenu(cases); ++i) {
         struct ast *stmt_case = sarrpeek(cases, i);
         print_node(stmt_case, pad + 1, stream);
     }
@@ -279,7 +279,7 @@ void print_stmt_case(struct ast *stmt_case, s32 pad, FILE *stream)
     if (stmt_case->data.stmt_case.is_default) fprintf(stream, "default");
 
     ast_nodes_t *exprs = stmt_case->data.stmt_case.exprs;
-    for (s64 i = 0; i < sarrlen(exprs); ++i) {
+    for (usize i = 0; i < sarrlenu(exprs); ++i) {
         struct ast *expr = sarrpeek(exprs, i);
         print_node(expr, pad + 1, stream);
     }
@@ -311,7 +311,7 @@ void print_stmt_continue(struct ast *ctx, s32 pad, FILE *stream)
 void print_stmt_return(struct ast *ret, s32 pad, FILE *stream)
 {
     print_head(ret, pad, stream);
-    for (s64 i = 0; i < sarrlen(ret->data.stmt_return.exprs); ++i) {
+    for (usize i = 0; i < sarrlenu(ret->data.stmt_return.exprs); ++i) {
         struct ast *value = sarrpeek(ret->data.stmt_return.exprs, i);
         print_node(value, pad + 1, stream);
     }
@@ -503,7 +503,7 @@ void print_expr_lit_fn_group(struct ast *group, s32 pad, FILE *stream)
 {
     print_head(group, pad, stream);
     ast_nodes_t *variants = group->data.expr_fn_group.variants;
-    for (s64 i = 0; i < sarrlen(variants); ++i) {
+    for (usize i = 0; i < sarrlenu(variants); ++i) {
         struct ast *tmp = sarrpeek(variants, i);
         print_node(tmp, pad + 1, stream);
     }
@@ -516,7 +516,7 @@ void print_expr_call(struct ast *call, s32 pad, FILE *stream)
     print_node(call->data.expr_call.ref, pad + 1, stream);
 
     ast_nodes_t *args = call->data.expr_call.args;
-    for (s64 i = 0; i < sarrlen(args); ++i) {
+    for (usize i = 0; i < sarrlenu(args); ++i) {
         struct ast *arg = sarrpeek(args, i);
         print_node(arg, pad + 1, stream);
     }
@@ -527,7 +527,7 @@ void print_expr_compound(struct ast *expr_compound, s32 pad, FILE *stream)
     print_head(expr_compound, pad, stream);
 
     ast_nodes_t *exprs = expr_compound->data.expr_compound.values;
-    for (s64 i = 0; i < sarrlen(exprs); ++i) {
+    for (usize i = 0; i < sarrlenu(exprs); ++i) {
         struct ast *value = sarrpeek(exprs, i);
         print_node(value, pad + 1, stream);
     }
@@ -750,7 +750,7 @@ void print_node(struct ast *node, s32 pad, FILE *stream)
 
 void ast_printer_run(struct assembly *assembly)
 {
-    for (s64 i = 0; i < arrlen(assembly->units); ++i) {
+    for (usize i = 0; i < arrlenu(assembly->units); ++i) {
         struct unit *unit = assembly->units[i];
         print_node(unit->ast, 0, stdout);
     }

@@ -87,7 +87,7 @@
 
 struct context {
     struct unit *unit;
-    FILE *       stream;
+    FILE        *stream;
     TString      path_unit_dir;
     TString      path_tmp;
     s32          pad;
@@ -126,7 +126,7 @@ void append_section(struct context *ctx, const char *name, const char *content)
 
 void doc_ublock(struct context *ctx, struct ast *block)
 {
-    for (s64 i = 0; i < arrlen(block->data.ublock.nodes); ++i) {
+    for (usize i = 0; i < arrlenu(block->data.ublock.nodes); ++i) {
         doc(ctx, block->data.ublock.nodes[i]);
     }
 }
@@ -273,10 +273,10 @@ void doc_type_fn(struct context *ctx, struct ast *type)
     PUSH_IS_INLINE(ctx);
 
     ast_nodes_t *args = type->data.type_fn.args;
-    for (s64 i = 0; i < sarrlen(args); ++i) {
+    for (usize i = 0; i < sarrlenu(args); ++i) {
         struct ast *arg = sarrpeek(args, i);
         doc(ctx, arg);
-        if (i + 1 < sarrlen(args)) fprintf(ctx->stream, ", ");
+        if (i + 1 < sarrlenu(args)) fprintf(ctx->stream, ", ");
     }
     fprintf(ctx->stream, ") ");
     PUSH_IS_MULTI_RETURN(ctx);
@@ -294,7 +294,7 @@ void doc_type_enum(struct context *ctx, struct ast *type)
     }
     fprintf(ctx->stream, "{");
     ast_nodes_t *variants = type->data.type_enm.variants;
-    for (s64 i = 0; i < sarrlen(variants); ++i) {
+    for (usize i = 0; i < sarrlenu(variants); ++i) {
         struct ast *variant = sarrpeek(variants, i);
         CODE_BLOCK_NEW_LINE(ctx->stream);
         fprintf(ctx->stream, "    ");
@@ -313,11 +313,11 @@ void doc_type_struct(struct context *ctx, struct ast UNUSED(*type))
         fprintf(ctx->stream, "(");
 
     ast_nodes_t *members = type->data.type_strct.members;
-    for (s64 i = 0; i < sarrlen(members); ++i) {
+    for (usize i = 0; i < sarrlenu(members); ++i) {
         struct ast *member = sarrpeek(members, i);
         if (ctx->is_multi_return) {
             doc(ctx, member);
-            if (i + 1 < sarrlen(members)) fprintf(ctx->stream, ", ");
+            if (i + 1 < sarrlenu(members)) fprintf(ctx->stream, ", ");
         } else {
             CODE_BLOCK_NEW_LINE(ctx->stream);
             fprintf(ctx->stream, "    ");
@@ -384,10 +384,10 @@ void doc_expr_lit_fn_group(struct context *ctx, struct ast *lit)
 {
     ast_nodes_t *variants = lit->data.expr_fn_group.variants;
     fprintf(ctx->stream, "fn { ");
-    for (s64 i = 0; i < sarrlen(variants); ++i) {
+    for (usize i = 0; i < sarrlenu(variants); ++i) {
         struct ast *variant = sarrpeek(variants, i);
         doc(ctx, variant);
-        if (i < sarrlen(variants)) fprintf(ctx->stream, "; ");
+        if (i < sarrlenu(variants)) fprintf(ctx->stream, "; ");
     }
     fprintf(ctx->stream, "}");
 }
@@ -511,7 +511,7 @@ void docs_run(struct assembly *assembly)
     // prepare output directory
     if (!dir_exists(OUT_DIR)) create_dir(OUT_DIR);
 
-    for (s64 i = 0; i < arrlen(assembly->units); ++i) {
+    for (usize i = 0; i < arrlenu(assembly->units); ++i) {
         struct unit *unit = assembly->units[i];
         doc_unit(&ctx, unit);
     }

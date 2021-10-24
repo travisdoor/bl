@@ -45,7 +45,7 @@ static void copy_user_libs(struct assembly *assembly)
     TString             *dest_path = get_tmpstr();
     const struct target *target    = assembly->target;
     const char          *out_dir   = target->out_dir.data;
-    for (s64 i = 0; i < arrlen(assembly->libs); ++i) {
+    for (usize i = 0; i < arrlenu(assembly->libs); ++i) {
         struct native_lib *lib = &assembly->libs[i];
         if (lib->is_internal) continue;
         if (!lib->user_name) continue;
@@ -55,7 +55,7 @@ static void copy_user_libs(struct assembly *assembly)
         lstat(lib->filepath, &statbuf);
         if (S_ISLNK(statbuf.st_mode)) {
             char buf[PATH_MAX] = {0};
-            if (readlink(lib->filepath, buf, static_arrlen(buf)) == -1) {
+            if (readlink(lib->filepath, buf, static_arrlenu(buf)) == -1) {
                 builder_error("Cannot follow symlink '%s' with error: %d", lib->filepath, errno);
                 continue;
             }

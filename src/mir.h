@@ -293,8 +293,8 @@ struct mir_fn {
 };
 
 struct mir_fn_group {
-    struct ast        *decl_node;
-    TSmallArray_FnPtr *variants;
+    struct ast *decl_node;
+    mir_fns_t  *variants;
     BL_MAGIC_ADD
 };
 
@@ -361,7 +361,7 @@ struct mir_type_poly {
 };
 
 struct mir_type_fn_group {
-    TSmallArray_TypePtr *variants;
+    mir_types_t *variants;
 };
 
 struct mir_type_named_scope {
@@ -915,7 +915,7 @@ static INLINE struct mir_type *mir_get_fn_arg_type(const struct mir_type *type, 
     bassert(type->kind == MIR_TYPE_FN && "Expected function type");
     mir_args_t *args = type->data.fn.args;
     if (!args) return NULL;
-    bassert(sarrlen(args) > i);
+    bassert(sarrlenu(args) > i);
     return sarrpeek(args, i)->type;
 }
 

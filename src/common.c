@@ -70,26 +70,26 @@ u64 main_thread_id = 0;
 // Small Array
 // =================================================================================================
 
-void sarradd_impl(void *ptr, s32 elem_size, s32 elem_count)
+void sarradd_impl(void *ptr, s32 elem_size, s32 static_elem_count, s32 new_elem_count)
 {
-    sarr_any_t *arr     = (sarr_any_t *)ptr;
-    const bool  on_heap = arr->cap;
-    if (!on_heap && arr->len == elem_count) {
-        arr->cap        = elem_count * 2;
-        const s32 bytes = elem_size * arr->cap;
-        void     *data  = bmalloc(bytes);
-        if (!data) abort();
-        memcpy(data, arr->_buf, bytes);
-        arr->_data = data;
-    } else if (on_heap && arr->len == arr->cap) {
-        arr->cap *= 2;
+    if (new_elem_count < 1) return;
+    sarr_any_t *arr        = (sarr_any_t *)ptr;
+    const bool  on_heap    = arr->cap;
+    const u32   needed_len = arr->len + new_elem_count;
+    if (on_heap && needed_len > arr->cap) {
+        arr->cap  = arr->cap * 2 > needed_len ? arr->cap * 2 : needed_len;
         void *tmp = arr->_data;
         if ((arr->_data = brealloc(arr->_data, arr->cap * elem_size)) == NULL) {
             bfree(tmp);
             abort();
         }
+    } else if (!on_heap && needed_len > static_elem_count) {
+        arr->cap   = static_elem_count * 2 > needed_len ? static_elem_count * 2 : needed_len;
+        void *data = bmalloc(arr->cap * elem_size);
+        memcpy(data, arr->_buf, elem_size * arr->len);
+        arr->_data = data;
     }
-    arr->len++;
+    arr->len += new_elem_count;
 }
 
 // =================================================================================================
@@ -168,7 +168,7 @@ bool search_source_file(const char *filepath,
     if (!filepath) goto NOT_FOUND;
     char        tmp_result[PATH_MAX] = {0};
     const char *result               = NULL;
-    if (brealpath(filepath, tmp_result, static_arrlen(tmp_result))) {
+    if (brealpath(filepath, tmp_result, static_arrlenu(tmp_result))) {
         result = &tmp_result[0];
         goto FOUND;
     }
@@ -176,7 +176,7 @@ bool search_source_file(const char *filepath,
     // Lookup in working directory.
     if (wdir && isflag(flags, SEARCH_FLAG_WDIR)) {
         tstring_setf(tmp, "%s" PATH_SEPARATOR "%s", wdir, filepath);
-        if (brealpath(tmp->data, tmp_result, static_arrlen(tmp_result))) {
+        if (brealpath(tmp->data, tmp_result, static_arrlenu(tmp_result))) {
             result = &tmp_result[0];
             goto FOUND;
         }
@@ -185,7 +185,7 @@ bool search_source_file(const char *filepath,
     // file has not been found in current working directory -> search in LIB_DIR
     if (builder_get_lib_dir() && isflag(flags, SEARCH_FLAG_LIB_DIR)) {
         tstring_setf(tmp, "%s" PATH_SEPARATOR "%s", builder_get_lib_dir(), filepath);
-        if (brealpath(tmp->data, tmp_result, static_arrlen(tmp_result))) {
+        if (brealpath(tmp->data, tmp_result, static_arrlenu(tmp_result))) {
             result = &tmp_result[0];
             goto FOUND;
         }
@@ -202,7 +202,7 @@ bool search_source_file(const char *filepath,
                 p[0] = 0;
             }
             tstring_setf(tmp, "%s" PATH_SEPARATOR "%s", s, filepath);
-            if (brealpath(tmp->data, tmp_result, static_arrlen(tmp_result)))
+            if (brealpath(tmp->data, tmp_result, static_arrlenu(tmp_result)))
                 result = &tmp_result[0];
             s = p + 1;
         } while (p && !result);
@@ -220,7 +220,7 @@ FOUND:
     if (out_dirpath) {
         // Absolute directory path.
         char dirpath[PATH_MAX] = {0};
-        if (get_dir_from_filepath(dirpath, static_arrlen(dirpath), result)) {
+        if (get_dir_from_filepath(dirpath, static_arrlenu(dirpath), result)) {
             *out_dirpath = strdup(dirpath);
         }
     }
@@ -571,10 +571,6 @@ s32 get_last_error(char *buf, s32 buf_len)
 
 void *_create_sarr(struct assembly *assembly, usize arr_size)
 {
-    bassert(
-        arr_size <= assembly->arenas.small_array.elem_size_in_bytes &&
-        "SmallArray is too big to be allocated inside arena, make array smaller or arena bigger.");
-
     TSmallArrayAny *tmp = arena_safe_alloc(&assembly->arenas.small_array);
     tsa_init(tmp);
     return tmp;

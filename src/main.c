@@ -49,7 +49,7 @@ static char *get_exec_dir(void)
 static bool load_conf_file(const char *exec_dir)
 {
     char path[PATH_MAX] = {0};
-    snprintf(path, static_arrlen(path), "%s/../%s", exec_dir, BL_CONF_FILE);
+    snprintf(path, static_arrlenu(path), "%s/../%s", exec_dir, BL_CONF_FILE);
     if (!file_exists(path)) {
         builder_error("Configuration file '%s' not found, run 'blc --configure' or 'bl-config' to "
                       "generate one.",
@@ -111,12 +111,12 @@ void print_help(FILE *stream)
     fprintf(stream, "%s", text);
 
     char buf[256];
-    for (u32 i = 0; i < static_arrlen(ARGS); ++i) {
+    for (u32 i = 0; i < static_arrlenu(ARGS); ++i) {
         const Arg *arg = &ARGS[i];
         if (strlen(arg->s)) {
-            snprintf(buf, static_arrlen(buf), "-%s, -%s", arg->s, arg->l);
+            snprintf(buf, static_arrlenu(buf), "-%s, -%s", arg->s, arg->l);
         } else {
-            snprintf(buf, static_arrlen(buf), "-%s", arg->l);
+            snprintf(buf, static_arrlenu(buf), "-%s", arg->l);
         }
         fprintf(stream, "  %-30s = %s\n", buf, arg->help);
     }
@@ -242,11 +242,16 @@ int main(s32 argc, char *argv[])
 #ifdef BL_DEBUG
     puts("Running in DEBUG mode");
     printf("CPU count: %d\n", cpu_thread_count());
+
+    char cwdbuf[PATH_MAX];
+    if (get_current_working_dir(cwdbuf, static_arrlenu(cwdbuf))) {
+        printf("Running in '%s'\n", cwdbuf);
+    }
 #endif
     Options opt = {0};
     setlocale(LC_ALL, "C");
     tlib_set_allocator(&_bl_malloc, &_bl_free);
-    
+
     s32   state     = EXIT_SUCCESS;
     char *exec_dir  = NULL;
     char *conf_file = NULL;

@@ -33,10 +33,9 @@ void token_printer_run(struct assembly *UNUSED(assembly), struct unit *unit)
 {
     struct token *tokens_arr = unit->tokens.buf;
     fprintf(stdout, "Tokens: \n");
-    const s64     c = arrlen(tokens_arr);
     struct token *tok;
     s32           line = -1;
-    for (s64 i = 0; i < c; ++i) {
+    for (usize i = 0; i < arrlenu(tokens_arr); ++i) {
         tok = &tokens_arr[i];
 
         if (line == -1) {

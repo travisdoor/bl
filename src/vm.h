@@ -66,7 +66,7 @@ struct vm_stack {
 struct virtual_machine {
     struct vm_stack *stack;
     struct assembly *assembly;
-    TSmallArray_Char dyncall_sig_tmp;
+    char *           dcsigtmp;
     bool             aborted;
 };
 

@@ -60,7 +60,7 @@
 #define CONSUME_TILL(tokens, ...)                                                                  \
     {                                                                                              \
         enum sym _[] = {__VA_ARGS__};                                                              \
-        tokens_consume_till2((tokens), static_arrlen(_), &_[0]);                                   \
+        tokens_consume_till2((tokens), static_arrlenu(_), &_[0]);                                   \
     }
 
 enum hash_directive_flags {
@@ -567,7 +567,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
             return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
         }
 
-        if (!sarrlen(values)) {
+        if (!sarrlenu(values)) {
             struct token *tok_err = tokens_peek(ctx->tokens);
             PARSE_ERROR(
                 ERR_EXPECTED_NAME, tok_err, BUILDER_CUR_WORD, "Expected tag value after #tags.");
@@ -1009,8 +1009,8 @@ struct ast *parse_decl_member(struct context *ctx, s32 UNUSED(index))
     if (!name) {
         bassert(index >= 0);
         char      buf[64]; // More than enough.
-        const s32 c = snprintf(buf, static_arrlen(buf), "_%d", index);
-        bassert(c >= 0 && c < static_arrlen(buf) && "Buffer overflow!");
+        const s32 c = snprintf(buf, static_arrlenu(buf), "_%d", index);
+        bassert(c >= 0 && c < static_arrlenu(buf) && "Buffer overflow!");
         char *ident = scdup(&ctx->unit->string_cache, buf, c);
         name        = ast_create_node(ctx->ast_arena, AST_IDENT, tok_begin, scope_get(ctx));
         id_init(&name->data.ident.id, ident);
@@ -2225,7 +2225,7 @@ struct ast *parse_type_fn_return(struct context *ctx)
             return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
         }
         scope_pop(ctx);
-        if (!sarrlen(type_struct->data.type_strct.members)) {
+        if (!sarrlenu(type_struct->data.type_strct.members)) {
             PARSE_ERROR(ERR_INVALID_TYPE,
                         tok_begin,
                         BUILDER_CUR_WORD,
@@ -2742,13 +2742,13 @@ void init_hash_directives(struct context *ctx)
 #undef HD_GEN
     };
 
-    static u32 hash_directive_flags[static_arrlen(hash_directive_names)] = {
+    static u32 hash_directive_flags[static_arrlenu(hash_directive_names)] = {
 #define HD_GEN(kind, name, flag) flag,
 #include "parser.inc"
 #undef HD_GEN
     };
 
-    for (usize i = 0; i < static_arrlen(hash_directive_names); ++i) {
+    for (usize i = 0; i < static_arrlenu(hash_directive_names); ++i) {
         const hash_t hash = strhash(hash_directive_names[i]);
         hmput(ctx->hash_directive_table, hash, hash_directive_flags[i]);
     }

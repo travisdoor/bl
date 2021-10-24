@@ -39,7 +39,7 @@ enum sym {
 #undef sm
 };
 
-extern char *        sym_strings[];
+extern char         *sym_strings[];
 extern s32           sym_lens[];
 extern struct token *token_end;
 
@@ -78,7 +78,7 @@ struct token_precedence {
 
 struct tokens {
     struct token *buf;
-    s64           iter;
+    usize         iter;
 };
 
 static INLINE bool sym_is_binop(enum sym sym)

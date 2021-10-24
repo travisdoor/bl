@@ -210,7 +210,7 @@ bool scan_string(struct context *ctx, struct token *tok)
     }
 DONE:
     tok->value.str =
-        scdup(&ctx->unit->string_cache, sarrdata(&ctx->strtmp), sarrlen(&ctx->strtmp));
+        scdup(&ctx->unit->string_cache, sarrdata(&ctx->strtmp), sarrlenu(&ctx->strtmp));
     tok->location.len = len;
     tok->location.col += 1;
     ctx->col += len + 2;
