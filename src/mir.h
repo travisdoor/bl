@@ -373,8 +373,8 @@ struct mir_type_ptr {
 };
 
 struct mir_type_struct {
-    struct scope          *scope; // struct body scope
-    TSmallArray_MemberPtr *members;
+    struct scope  *scope; // struct body scope
+    mir_members_t *members;
     // This is optional base type, only structures with #base hash directive has this
     // information.
     struct mir_type *base_type;
@@ -390,10 +390,10 @@ struct mir_type_struct {
 
 // Enum variants must be baked into enum type.
 struct mir_type_enum {
-    struct scope           *scope;
-    struct mir_type        *base_type;
-    TSmallArray_VariantPtr *variants; // struct mir_variant *
-    bool                    is_flags;
+    struct scope    *scope;
+    struct mir_type *base_type;
+    mir_variants_t  *variants;
+    bool             is_flags;
 };
 
 struct mir_type_null {
@@ -901,16 +901,15 @@ static INLINE bool mir_is_composit_type(const struct mir_type *type)
     return false;
 }
 
-static INLINE struct mir_type *mir_get_struct_elem_type(const struct mir_type *type, u32 i)
+static INLINE struct mir_type *mir_get_struct_elem_type(const struct mir_type *type, usize i)
 {
     bassert(mir_is_composit_type(type) && "Expected structure type");
-    TSmallArray_MemberPtr *members = type->data.strct.members;
-    bassert(members && members->size > i);
-
-    return members->data[i]->type;
+    mir_members_t *members = type->data.strct.members;
+    bassert(sarrlenu(members) > i);
+    return sarrpeek(members, i)->type;
 }
 
-static INLINE struct mir_type *mir_get_fn_arg_type(const struct mir_type *type, u32 i)
+static INLINE struct mir_type *mir_get_fn_arg_type(const struct mir_type *type, usize i)
 {
     bassert(type->kind == MIR_TYPE_FN && "Expected function type");
     mir_args_t *args = type->data.fn.args;

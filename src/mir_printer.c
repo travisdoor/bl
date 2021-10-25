@@ -205,16 +205,14 @@ _print_const_value(struct context *ctx, struct mir_type *type, vm_stack_ptr_t va
     case MIR_TYPE_VARGS:
     case MIR_TYPE_STRUCT: {
         fprintf(ctx->stream, "{");
-
-        struct mir_member *it;
-        TSA_FOREACH(type->data.strct.members, it)
-        {
-            struct mir_type *member_type = it->type;
-            const ptrdiff_t  offset2     = vm_get_struct_elem_offset(ctx->assembly, type, (u32)i);
+        mir_members_t *members = type->data.strct.members;
+        for (usize i = 0; i < sarrlenu(members); ++i) {
+            struct mir_member *it          = sarrpeek(members, i);
+            struct mir_type   *member_type = it->type;
+            const ptrdiff_t    offset2     = vm_get_struct_elem_offset(ctx->assembly, type, (u32)i);
             _print_const_value(ctx, member_type, value + offset2);
-            if (i < (usize)type->data.strct.members->size - 1) fprintf(ctx->stream, ",");
+            if (i < sarrlenu(members) - 1) fprintf(ctx->stream, ",");
         }
-
         fprintf(ctx->stream, "}");
         break;
     }

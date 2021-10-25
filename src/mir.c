@@ -313,36 +313,36 @@ static struct mir_type *
 create_type_fn_group(struct context *ctx, struct id *id, mir_types_t *variants);
 static struct mir_type *
 create_type_array(struct context *ctx, struct id *id, struct mir_type *elem_type, s64 len);
-static struct mir_type *create_type_struct(struct context        *ctx,
-                                           enum mir_type_kind     kind,
-                                           struct id             *id,
-                                           struct scope          *scope,
-                                           TSmallArray_MemberPtr *members,   // struct mir_member
-                                           struct mir_type       *base_type, // optional
-                                           bool                   is_union,
-                                           bool                   is_packed,
-                                           bool                   is_multiple_return_type);
+static struct mir_type *create_type_struct(struct context    *ctx,
+                                           enum mir_type_kind kind,
+                                           struct id         *id,
+                                           struct scope      *scope,
+                                           mir_members_t     *members,   // struct mir_member
+                                           struct mir_type   *base_type, // optional
+                                           bool               is_union,
+                                           bool               is_packed,
+                                           bool               is_multiple_return_type);
 
 // Make incomplete type struct declaration complete. This function sets all desired information
 // about struct to the forward declaration type.
-static struct mir_type *complete_type_struct(struct context        *ctx,
-                                             struct mir_instr      *fwd_decl,
-                                             struct scope          *scope,
-                                             TSmallArray_MemberPtr *members,
-                                             struct mir_type       *base_type, // optional
-                                             bool                   is_packed,
-                                             bool                   is_union,
-                                             bool                   is_multiple_return_type);
+static struct mir_type *complete_type_struct(struct context   *ctx,
+                                             struct mir_instr *fwd_decl,
+                                             struct scope     *scope,
+                                             mir_members_t    *members,
+                                             struct mir_type  *base_type, // optional
+                                             bool              is_packed,
+                                             bool              is_union,
+                                             bool              is_multiple_return_type);
 
 // Create incomplete struct type placeholder to be filled later.
 static struct mir_type *
 create_type_struct_incomplete(struct context *ctx, struct id *user_id, bool is_union);
-static struct mir_type *create_type_enum(struct context         *ctx,
-                                         struct id              *id,
-                                         struct scope           *scope,
-                                         struct mir_type        *base_type,
-                                         TSmallArray_VariantPtr *variants,
-                                         const bool              is_flags);
+static struct mir_type *create_type_enum(struct context  *ctx,
+                                         struct id       *id,
+                                         struct scope    *scope,
+                                         struct mir_type *base_type,
+                                         mir_variants_t  *variants,
+                                         const bool       is_flags);
 
 struct mir_type *_create_type_struct_slice(struct context    *ctx,
                                            enum mir_type_kind kind,
@@ -934,19 +934,15 @@ rtti_gen_empty(struct context *ctx, struct mir_type *type, struct mir_type *rtti
 static struct mir_var *rtti_gen_enum(struct context *ctx, struct mir_type *type);
 static void
 rtti_gen_enum_variant(struct context *ctx, vm_stack_ptr_t dest, struct mir_variant *variant);
-static vm_stack_ptr_t rtti_gen_enum_variants_array(struct context         *ctx,
-                                                   TSmallArray_VariantPtr *variants);
-static void           rtti_gen_enum_variants_slice(struct context         *ctx,
-                                                   vm_stack_ptr_t          dest,
-                                                   TSmallArray_VariantPtr *variants);
+static vm_stack_ptr_t rtti_gen_enum_variants_array(struct context *ctx, mir_variants_t *variants);
+static void
+rtti_gen_enum_variants_slice(struct context *ctx, vm_stack_ptr_t dest, mir_variants_t *variants);
 
 static void
 rtti_gen_struct_member(struct context *ctx, vm_stack_ptr_t dest, struct mir_member *member);
-static vm_stack_ptr_t rtti_gen_struct_members_array(struct context        *ctx,
-                                                    TSmallArray_MemberPtr *members);
-static void           rtti_gen_struct_members_slice(struct context        *ctx,
-                                                    vm_stack_ptr_t         dest,
-                                                    TSmallArray_MemberPtr *members);
+static vm_stack_ptr_t rtti_gen_struct_members_array(struct context *ctx, mir_members_t *members);
+static void
+rtti_gen_struct_members_slice(struct context *ctx, vm_stack_ptr_t dest, mir_members_t *members);
 
 static struct mir_var *rtti_gen_struct(struct context *ctx, struct mir_type *type);
 static void rtti_gen_fn_arg(struct context *ctx, vm_stack_ptr_t dest, struct mir_arg *arg);
@@ -1153,9 +1149,9 @@ static bool is_complete_type(struct context *ctx, struct mir_type *type)
             const s64 index = hmgeti(visited, top);
             if (index != -1) break;
             hmput(visited, top, 0);
-            struct mir_member *member;
-            TSA_FOREACH(top->data.strct.members, member)
-            {
+            mir_members_t *members = top->data.strct.members;
+            for (usize i = 0; i < sarrlenu(members); ++i) {
+                struct mir_member *member = sarrpeek(members, i);
                 sarrput(stack, member->type);
             }
             break;
@@ -1673,15 +1669,11 @@ void type_init_id(struct context *ctx, struct mir_type *type)
     }                                                                                              \
                                                                                                    \
     tstring_append(tmp, "{");                                                                      \
-    if (type->data.strct.members) {                                                                \
-        struct mir_member *member;                                                                 \
-        TSA_FOREACH(type->data.strct.members, member)                                              \
-        {                                                                                          \
-            bassert(member->type->id.str);                                                         \
-            tstring_append(tmp, member->type->id.str);                                             \
-                                                                                                   \
-            if (i != type->data.strct.members->size - 1) tstring_append(tmp, ",");                 \
-        }                                                                                          \
+    for (usize i = 0; i < sarrlenu(type->data.strct.members); ++i) {                               \
+        struct mir_member *member = sarrpeek(type->data.strct.members, i);                         \
+        bassert(member->type->id.str);                                                             \
+        tstring_append(tmp, member->type->id.str);                                                 \
+        if (i != sarrlen(type->data.strct.members) - 1) tstring_append(tmp, ",");                  \
     }                                                                                              \
                                                                                                    \
     tstring_append(tmp, "}");
@@ -1821,15 +1813,13 @@ void type_init_id(struct context *ctx, struct mir_type *type)
         tstring_append(tmp, type->data.enm.base_type->id.str);
         tstring_append(tmp, ")");
         tstring_append(tmp, "{");
-        if (type->data.enm.variants) {
-            struct mir_variant *variant;
-            TSA_FOREACH(type->data.enm.variants, variant)
-            {
-                char value_str[35];
-                snprintf(value_str, static_arrlenu(value_str), "%lld", variant->value);
-                tstring_append(tmp, value_str);
-                if (i != type->data.enm.variants->size - 1) tstring_append(tmp, ",");
-            }
+        mir_variants_t *variants = type->data.enm.variants;
+        for (usize i = 0; i < sarrlenu(variants); ++i) {
+            struct mir_variant *variant = sarrpeek(variants, i);
+            char                value_str[35];
+            snprintf(value_str, static_arrlenu(value_str), "%lld", variant->value);
+            tstring_append(tmp, value_str);
+            if (i != sarrlenu(type->data.enm.variants) - 1) tstring_append(tmp, ",");
         }
         tstring_append(tmp, "}");
         break;
@@ -2226,15 +2216,15 @@ create_type_array(struct context *ctx, struct id *id, struct mir_type *elem_type
     return tmp;
 }
 
-struct mir_type *create_type_struct(struct context        *ctx,
-                                    enum mir_type_kind     kind,
-                                    struct id             *id, // optional
-                                    struct scope          *scope,
-                                    TSmallArray_MemberPtr *members,   // struct mir_member
-                                    struct mir_type       *base_type, // optional
-                                    bool                   is_union,
-                                    bool                   is_packed,
-                                    bool                   is_multiple_return_type)
+struct mir_type *create_type_struct(struct context    *ctx,
+                                    enum mir_type_kind kind,
+                                    struct id         *id, // optional
+                                    struct scope      *scope,
+                                    mir_members_t     *members,   // struct mir_member
+                                    struct mir_type   *base_type, // optional
+                                    bool               is_union,
+                                    bool               is_packed,
+                                    bool               is_multiple_return_type)
 {
     struct mir_type *tmp                    = create_type(ctx, kind, id);
     tmp->data.strct.members                 = members;
@@ -2248,14 +2238,14 @@ struct mir_type *create_type_struct(struct context        *ctx,
     return tmp;
 }
 
-struct mir_type *complete_type_struct(struct context        *ctx,
-                                      struct mir_instr      *fwd_decl,
-                                      struct scope          *scope,
-                                      TSmallArray_MemberPtr *members,
-                                      struct mir_type       *base_type,
-                                      bool                   is_packed,
-                                      bool                   is_union,
-                                      bool                   is_multiple_return_type)
+struct mir_type *complete_type_struct(struct context   *ctx,
+                                      struct mir_instr *fwd_decl,
+                                      struct scope     *scope,
+                                      mir_members_t    *members,
+                                      struct mir_type  *base_type,
+                                      bool              is_packed,
+                                      bool              is_union,
+                                      bool              is_multiple_return_type)
 {
     bassert(fwd_decl && "Invalid fwd_decl pointer!");
 
@@ -2306,9 +2296,7 @@ struct mir_type *_create_type_struct_slice(struct context    *ctx,
 {
     bassert(mir_is_pointer_type(elem_ptr_type));
     bassert(kind == MIR_TYPE_STRING || kind == MIR_TYPE_VARGS || kind == MIR_TYPE_SLICE);
-
-    TSmallArray_MemberPtr *members = create_sarr(TSmallArray_MemberPtr, ctx->assembly);
-
+    mir_members_t *members = arena_safe_alloc(&ctx->assembly->arenas.sarr);
     // Slice layout struct { s64, *T }
     struct scope *body_scope = scope_create(
         &ctx->assembly->arenas.scope, SCOPE_TYPE_STRUCT, ctx->assembly->gscope, 2, NULL);
@@ -2316,12 +2304,12 @@ struct mir_type *_create_type_struct_slice(struct context    *ctx,
     struct mir_member *tmp;
     tmp = create_member(ctx, NULL, &builtin_ids[BUILTIN_ID_ARR_LEN], 0, ctx->builtin_types->t_s64);
 
-    tsa_push_MemberPtr(members, tmp);
+    sarrput(members, tmp);
     provide_builtin_member(ctx, body_scope, tmp);
 
     tmp = create_member(ctx, NULL, &builtin_ids[BUILTIN_ID_ARR_PTR], 1, elem_ptr_type);
 
-    tsa_push_MemberPtr(members, tmp);
+    sarrput(members, tmp);
     provide_builtin_member(ctx, body_scope, tmp);
 
     return create_type_struct(ctx, kind, id, body_scope, members, NULL, false, false, false);
@@ -2331,9 +2319,7 @@ struct mir_type *
 create_type_struct_dynarr(struct context *ctx, struct id *id, struct mir_type *elem_ptr_type)
 {
     bassert(mir_is_pointer_type(elem_ptr_type));
-
-    TSmallArray_MemberPtr *members = create_sarr(TSmallArray_MemberPtr, ctx->assembly);
-
+    mir_members_t *members = arena_safe_alloc(&ctx->assembly->arenas.sarr);
     // Dynamic array layout struct { s64, *T, usize, allocator }
     struct scope *body_scope = scope_create(
         &ctx->assembly->arenas.scope, SCOPE_TYPE_STRUCT, ctx->assembly->gscope, 2, NULL);
@@ -2343,14 +2329,14 @@ create_type_struct_dynarr(struct context *ctx, struct id *id, struct mir_type *e
         tmp = create_member(
             ctx, NULL, &builtin_ids[BUILTIN_ID_ARR_LEN], 0, ctx->builtin_types->t_s64);
 
-        tsa_push_MemberPtr(members, tmp);
+        sarrput(members, tmp);
         provide_builtin_member(ctx, body_scope, tmp);
     }
 
     { // .ptr
         tmp = create_member(ctx, NULL, &builtin_ids[BUILTIN_ID_ARR_PTR], 1, elem_ptr_type);
 
-        tsa_push_MemberPtr(members, tmp);
+        sarrput(members, tmp);
         provide_builtin_member(ctx, body_scope, tmp);
     }
 
@@ -2358,7 +2344,7 @@ create_type_struct_dynarr(struct context *ctx, struct id *id, struct mir_type *e
         tmp = create_member(
             ctx, NULL, &builtin_ids[BUILTIN_ID_ARR_ALLOCATED], 2, ctx->builtin_types->t_usize);
 
-        tsa_push_MemberPtr(members, tmp);
+        sarrput(members, tmp);
         provide_builtin_member(ctx, body_scope, tmp);
     }
 
@@ -2366,7 +2352,7 @@ create_type_struct_dynarr(struct context *ctx, struct id *id, struct mir_type *e
         tmp = create_member(
             ctx, NULL, &builtin_ids[BUILTIN_ID_ARR_ALLOCATOR], 3, ctx->builtin_types->t_u8_ptr);
 
-        tsa_push_MemberPtr(members, tmp);
+        sarrput(members, tmp);
         provide_builtin_member(ctx, body_scope, tmp);
     }
 
@@ -2374,12 +2360,12 @@ create_type_struct_dynarr(struct context *ctx, struct id *id, struct mir_type *e
         ctx, MIR_TYPE_DYNARR, id, body_scope, members, NULL, false, false, false);
 }
 
-struct mir_type *create_type_enum(struct context         *ctx,
-                                  struct id              *id,
-                                  struct scope           *scope,
-                                  struct mir_type        *base_type,
-                                  TSmallArray_VariantPtr *variants,
-                                  const bool              is_flags)
+struct mir_type *create_type_enum(struct context  *ctx,
+                                  struct id       *id,
+                                  struct scope    *scope,
+                                  struct mir_type *base_type,
+                                  mir_variants_t  *variants,
+                                  const bool       is_flags)
 {
     bassert(base_type);
     struct mir_type *tmp    = create_type(ctx, MIR_TYPE_ENUM, id);
@@ -2476,7 +2462,7 @@ static INLINE usize struct_split_fit(struct context  *ctx,
     u32 offset = 0;
     u32 size   = 0;
     u32 total  = 0;
-    for (; *start < struct_type->data.strct.members->size; ++(*start)) {
+    for (; *start < sarrlenu(struct_type->data.strct.members); ++(*start)) {
         offset = (u32)vm_get_struct_elem_offset(ctx->assembly, struct_type, *start) - (u32)so;
         size   = (u32)mir_get_struct_elem_type(struct_type, *start)->store_size_bytes;
         if (offset + size > bound) return bound;
@@ -2532,10 +2518,10 @@ void type_init_llvm_fn(struct context *ctx, struct mir_type *type)
 
             low = struct_split_fit(ctx, arg->type, sizeof(usize), &start);
 
-            if (start < arg->type->data.strct.members->size)
+            if (start < sarrlenu(arg->type->data.strct.members))
                 high = struct_split_fit(ctx, arg->type, sizeof(usize), &start);
 
-            if (start < arg->type->data.strct.members->size) {
+            if (start < sarrlenu(arg->type->data.strct.members)) {
                 arg->llvm_easgm = LLVM_EASGM_BYVAL;
 
                 bassert(arg->type->llvm_type);
@@ -2626,12 +2612,12 @@ void type_init_llvm_struct(struct context *ctx, struct mir_type *type)
         return;
     }
 
-    TSmallArray_MemberPtr *members = type->data.strct.members;
+    mir_members_t *members = type->data.strct.members;
     bassert(members);
 
     const bool is_packed = type->data.strct.is_packed;
     const bool is_union  = type->data.strct.is_union;
-    bassert(members->size > 0);
+    bassert(sarrlen(members) > 0);
 
     llvm_types_t llvm_members = SARR_ZERO;
 
@@ -2640,17 +2626,14 @@ void type_init_llvm_struct(struct context *ctx, struct mir_type *type)
     // selection later due to correct union alignment.
     struct mir_member *union_member = NULL;
 
-    struct mir_member *member;
-    TSA_FOREACH(members, member)
-    {
+    for (usize i = 0; i < sarrlenu(members); ++i) {
+        struct mir_member *member = sarrpeek(members, i);
         bassert(member->type->llvm_type);
-
         if (is_union) {
             if (!union_member) {
                 union_member = member;
                 continue;
             }
-
             if (member->type->store_size_bytes > union_member->type->store_size_bytes)
                 union_member = member;
         } else {
@@ -2676,16 +2659,14 @@ void type_init_llvm_struct(struct context *ctx, struct mir_type *type)
                                                   (unsigned)sarrlenu(&llvm_members),
                                                   is_packed);
     }
-
     type->size_bits        = LLVMSizeOfTypeInBits(ctx->assembly->llvm.TD, type->llvm_type);
     type->store_size_bytes = LLVMStoreSizeOfType(ctx->assembly->llvm.TD, type->llvm_type);
     type->alignment        = (s8)LLVMABIAlignmentOfType(ctx->assembly->llvm.TD, type->llvm_type);
-
     sarrfree(&llvm_members);
 
-    // set offsets for members
-    TSA_FOREACH(members, member)
-    {
+    for (usize i = 0; i < sarrlenu(members); ++i) {
+        struct mir_member *member = sarrpeek(members, i);
+        // set offsets for members
         // Note: Union members has 0 offset.
         member->offset_bytes = (s32)vm_get_struct_elem_offset(ctx->assembly, type, (u32)i);
     }
@@ -3551,7 +3532,7 @@ struct mir_instr *create_default_value_for_type(struct context *ctx, struct mir_
     case MIR_TYPE_ENUM: {
         // Use first enum variant as default.
         struct mir_type    *base_type = type->data.enm.base_type;
-        struct mir_variant *variant   = type->data.enm.variants->data[0];
+        struct mir_variant *variant   = sarrpeek(type->data.enm.variants, 0);
         default_value = create_instr_const_int(ctx, NULL, base_type, variant->value);
         break;
     }
@@ -4675,7 +4656,7 @@ struct result analyze_instr_unroll(struct context *ctx, struct mir_instr_unroll 
     struct mir_type *src_type = src->value.type;
     struct mir_type *type     = src_type;
     if (mir_is_composit_type(src_type) && src_type->data.strct.is_multiple_return_type) {
-        if (index >= (s32)src_type->data.strct.members->size) {
+        if (index >= (s32)sarrlen(src_type->data.strct.members)) {
             report_error(INVALID_MEMBER_ACCESS, unroll->base.node, "Expected more return values.");
             return_zone(ANALYZE_RESULT(FAILED, 0));
         }
@@ -4809,7 +4790,7 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
         if (cmp->is_zero_initialized) break;
         const bool  is_union                = type->data.strct.is_union;
         const bool  is_multiple_return_type = type->data.strct.is_multiple_return_type;
-        const usize memc                    = type->data.strct.members->size;
+        const usize memc                    = sarrlenu(type->data.strct.members);
 
         if (is_union) {
             report_error(
@@ -6109,18 +6090,16 @@ struct result analyze_instr_switch(struct context *ctx, struct mir_instr_switch 
     }
     hmfree(presented);
 
-    s64 expected_case_count = expected_case_type->kind == MIR_TYPE_ENUM
-                                  ? (s64)expected_case_type->data.enm.variants->size
-                                  : -1;
+    mir_variants_t *variants = expected_case_type->data.enm.variants;
+    s64 expected_case_count  = expected_case_type->kind == MIR_TYPE_ENUM ? sarrlen(variants) : -1;
 
     if ((expected_case_count > (s64)sw->cases->size) && !sw->has_user_defined_default) {
         report_warning(sw->base.node, "Switch does not handle all possible enumerator values.");
 
         bassert(expected_case_type->kind == MIR_TYPE_ENUM);
-        struct mir_variant *variant;
-        TSA_FOREACH(expected_case_type->data.enm.variants, variant)
-        {
-            bool hit = false;
+        for (usize i = 0; i < sarrlenu(variants); ++i) {
+            struct mir_variant *variant = sarrpeek(variants, i);
+            bool                hit     = false;
             for (usize i2 = 0; i2 < sw->cases->size; ++i2) {
                 c                       = &sw->cases->data[i2];
                 const s64 on_value      = MIR_CEV_READ_AS(s64, &c->on_value->value);
@@ -6482,17 +6461,16 @@ struct result analyze_instr_type_struct(struct context               *ctx,
                                         struct mir_instr_type_struct *type_struct)
 {
     zone();
-    TSmallArray_MemberPtr *members   = NULL;
-    struct mir_type       *base_type = NULL;
-    const bool             is_union  = type_struct->is_union;
+    mir_members_t   *members   = NULL;
+    struct mir_type *base_type = NULL;
+    const bool       is_union  = type_struct->is_union;
 
     if (type_struct->members) {
         struct mir_instr            **member_instr;
         struct mir_instr_decl_member *decl_member;
         struct mir_type              *member_type;
-        const usize                   memc = type_struct->members->size;
-        members                            = create_sarr(TSmallArray_MemberPtr, ctx->assembly);
-        for (usize i = 0; i < memc; ++i) {
+        members = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+        for (usize i = 0; i < type_struct->members->size; ++i) {
             member_instr = &type_struct->members->data[i];
             if (analyze_slot(ctx, &analyze_slot_conf_basic, member_instr, NULL) != ANALYZE_PASSED) {
                 return_zone(ANALYZE_RESULT(FAILED, 0));
@@ -6530,7 +6508,7 @@ struct result analyze_instr_type_struct(struct context               *ctx,
                 base_type = member_type;
             }
 
-            tsa_push_MemberPtr(members, member);
+            sarrput(members, member);
             commit_member(ctx, member);
         }
     }
@@ -6773,14 +6751,14 @@ struct result analyze_instr_type_enum(struct context *ctx, struct mir_instr_type
         base_type = is_flags ? ctx->builtin_types->t_u32 : ctx->builtin_types->t_s32;
     }
     bassert(base_type && "Invalid enum base type.");
-    TSmallArray_VariantPtr *variants = create_sarr(TSmallArray_VariantPtr, ctx->assembly);
-    struct mir_instr       *it;
+    mir_variants_t   *variants = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+    struct mir_instr *it;
     TSA_FOREACH(variant_instrs, it)
     {
         struct mir_instr_decl_variant *variant_instr = (struct mir_instr_decl_variant *)it;
         struct mir_variant            *variant       = variant_instr->variant;
         bassert(variant && "Missing variant.");
-        tsa_push_VariantPtr(variants, variant);
+        sarrput(variants, variant);
     }
     struct mir_type *type =
         create_type_enum(ctx, type_enum->id, scope, base_type, variants, is_flags);
@@ -8669,38 +8647,31 @@ void rtti_gen_enum_variant(struct context *ctx, vm_stack_ptr_t dest, struct mir_
     vm_write_int(dest_value_type, dest_value, variant->value);
 }
 
-vm_stack_ptr_t rtti_gen_enum_variants_array(struct context *ctx, TSmallArray_VariantPtr *variants)
+vm_stack_ptr_t rtti_gen_enum_variants_array(struct context *ctx, mir_variants_t *variants)
 {
     struct mir_type *rtti_type    = ctx->builtin_types->t_TypeInfoEnumVariant;
-    struct mir_type *arr_tmp_type = create_type_array(ctx, NULL, rtti_type, variants->size);
-
-    vm_stack_ptr_t dest_arr_tmp = vm_alloc_raw(ctx->vm, ctx->assembly, arr_tmp_type);
-
-    struct mir_variant *it;
-    TSA_FOREACH(variants, it)
-    {
-        vm_stack_ptr_t dest_arr_tmp_elem =
+    struct mir_type *arr_tmp_type = create_type_array(ctx, NULL, rtti_type, sarrlen(variants));
+    vm_stack_ptr_t   dest_arr_tmp = vm_alloc_raw(ctx->vm, ctx->assembly, arr_tmp_type);
+    for (usize i = 0; i < sarrlenu(variants); ++i) {
+        struct mir_variant *it = sarrpeek(variants, i);
+        vm_stack_ptr_t      dest_arr_tmp_elem =
             vm_get_array_elem_ptr(arr_tmp_type, dest_arr_tmp, (u32)i);
         rtti_gen_enum_variant(ctx, dest_arr_tmp_elem, it);
     }
-
     return dest_arr_tmp;
 }
 
-void rtti_gen_enum_variants_slice(struct context         *ctx,
-                                  vm_stack_ptr_t          dest,
-                                  TSmallArray_VariantPtr *variants)
+void rtti_gen_enum_variants_slice(struct context *ctx,
+                                  vm_stack_ptr_t  dest,
+                                  mir_variants_t *variants)
 {
     struct mir_type *rtti_type     = ctx->builtin_types->t_TypeInfoEnumVariants_slice;
     struct mir_type *dest_len_type = mir_get_struct_elem_type(rtti_type, 0);
     vm_stack_ptr_t   dest_len      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 0);
-
     struct mir_type *dest_ptr_type = mir_get_struct_elem_type(rtti_type, 1);
     vm_stack_ptr_t   dest_ptr      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
-
-    vm_stack_ptr_t variants_ptr = rtti_gen_enum_variants_array(ctx, variants);
-
-    vm_write_int(dest_len_type, dest_len, (u64)variants->size);
+    vm_stack_ptr_t   variants_ptr  = rtti_gen_enum_variants_array(ctx, variants);
+    vm_write_int(dest_len_type, dest_len, sarrlenu(variants));
     vm_write_ptr(dest_ptr_type, dest_ptr, variants_ptr);
 }
 
@@ -8771,27 +8742,21 @@ void rtti_gen_struct_member(struct context *ctx, vm_stack_ptr_t dest, struct mir
     vm_write_int(dest_is_base_type, dest_is_base, (u64)member->is_base);
 }
 
-vm_stack_ptr_t rtti_gen_struct_members_array(struct context *ctx, TSmallArray_MemberPtr *members)
+vm_stack_ptr_t rtti_gen_struct_members_array(struct context *ctx, mir_members_t *members)
 {
     struct mir_type *rtti_type    = ctx->builtin_types->t_TypeInfoStructMember;
-    struct mir_type *arr_tmp_type = create_type_array(ctx, NULL, rtti_type, (s64)members->size);
-
-    vm_stack_ptr_t dest_arr_tmp = vm_alloc_raw(ctx->vm, ctx->assembly, arr_tmp_type);
-
-    struct mir_member *it;
-    TSA_FOREACH(members, it)
-    {
-        vm_stack_ptr_t dest_arr_tmp_elem =
+    struct mir_type *arr_tmp_type = create_type_array(ctx, NULL, rtti_type, sarrlen(members));
+    vm_stack_ptr_t   dest_arr_tmp = vm_alloc_raw(ctx->vm, ctx->assembly, arr_tmp_type);
+    for (usize i = 0; i < sarrlenu(members); ++i) {
+        struct mir_member *it = sarrpeek(members, i);
+        vm_stack_ptr_t     dest_arr_tmp_elem =
             vm_get_array_elem_ptr(arr_tmp_type, dest_arr_tmp, (u32)i);
         rtti_gen_struct_member(ctx, dest_arr_tmp_elem, it);
     }
-
     return dest_arr_tmp;
 }
 
-void rtti_gen_struct_members_slice(struct context        *ctx,
-                                   vm_stack_ptr_t         dest,
-                                   TSmallArray_MemberPtr *members)
+void rtti_gen_struct_members_slice(struct context *ctx, vm_stack_ptr_t dest, mir_members_t *members)
 {
     struct mir_type *rtti_type     = ctx->builtin_types->t_TypeInfoStructMembers_slice;
     struct mir_type *dest_len_type = mir_get_struct_elem_type(rtti_type, 0);
@@ -8802,7 +8767,7 @@ void rtti_gen_struct_members_slice(struct context        *ctx,
 
     vm_stack_ptr_t members_ptr = rtti_gen_struct_members_array(ctx, members);
 
-    vm_write_int(dest_len_type, dest_len, (u64)members->size);
+    vm_write_int(dest_len_type, dest_len, sarrlenu(members));
     vm_write_ptr(dest_ptr_type, dest_ptr, members_ptr);
 }
 
@@ -10801,38 +10766,32 @@ static void _type_to_str(char *buf, usize len, const struct mir_type *type, bool
     }
 
     case MIR_TYPE_STRUCT: {
-        TSmallArray_MemberPtr *members = type->data.strct.members;
-        struct mir_member     *tmp;
+        mir_members_t *members = type->data.strct.members;
         if (type->data.strct.is_union) {
             append_buf(buf, len, "union{");
         } else {
             append_buf(buf, len, "struct{");
         }
-        if (members) {
-            TSA_FOREACH(members, tmp)
-            {
-                _type_to_str(buf, len, tmp->type, true);
-                if (i < members->size - 1) append_buf(buf, len, ", ");
-            }
+        for (usize i = 0; i < sarrlenu(members); ++i) {
+            struct mir_member *member = sarrpeek(members, i);
+            _type_to_str(buf, len, member->type, true);
+            if (i < sarrlenu(members) - 1) append_buf(buf, len, ", ");
         }
         append_buf(buf, len, "}");
         break;
     }
 
     case MIR_TYPE_ENUM: {
-        TSmallArray_VariantPtr *variants = type->data.enm.variants;
+        mir_variants_t *variants = type->data.enm.variants;
         append_buf(buf, len, "enum{");
-        if (variants) {
-            struct mir_variant *variant;
-            TSA_FOREACH(variants, variant)
-            {
-                append_buf(buf, len, variant->id->str);
-                append_buf(buf, len, " :: ");
-                char value_str[35];
-                snprintf(value_str, static_arrlenu(value_str), "%lld", variant->value);
-                append_buf(buf, len, value_str);
-                if (i < variants->size - 1) append_buf(buf, len, ", ");
-            }
+        for (usize i = 0; i < sarrlenu(variants); ++i) {
+            struct mir_variant *variant = sarrpeek(variants, i);
+            append_buf(buf, len, variant->id->str);
+            append_buf(buf, len, " :: ");
+            char value_str[35];
+            snprintf(value_str, static_arrlenu(value_str), "%lld", variant->value);
+            append_buf(buf, len, value_str);
+            if (i < sarrlenu(variants) - 1) append_buf(buf, len, ", ");
         }
         append_buf(buf, len, "}");
         break;
@@ -10907,18 +10866,18 @@ void mir_type_to_str(char *buf, usize len, const struct mir_type *type, bool pre
 
 static void provide_builtin_arch(struct context *ctx)
 {
-    struct BuiltinTypes    *bt       = ctx->builtin_types;
-    struct scope           *scope    = scope_create(&ctx->assembly->arenas.scope,
+    struct BuiltinTypes *bt       = ctx->builtin_types;
+    struct scope        *scope    = scope_create(&ctx->assembly->arenas.scope,
                                        SCOPE_TYPE_ENUM,
                                        ctx->assembly->gscope,
                                        static_arrlenu(arch_names),
                                        NULL);
-    TSmallArray_VariantPtr *variants = create_sarr(TSmallArray_VariantPtr, ctx->assembly);
-    static struct id        ids[static_arrlenu(arch_names)];
+    mir_variants_t      *variants = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+    static struct id     ids[static_arrlenu(arch_names)];
     for (usize i = 0; i < static_arrlenu(arch_names); ++i) {
         struct mir_variant *variant =
             create_variant(ctx, id_init(&ids[i], arch_names[i]), bt->t_s32, i);
-        tsa_push_VariantPtr(variants, variant);
+        sarrput(variants, variant);
         provide_builtin_variant(ctx, scope, variant);
     }
     struct mir_type *t_arch =
@@ -10929,18 +10888,18 @@ static void provide_builtin_arch(struct context *ctx)
 
 static void provide_builtin_os(struct context *ctx)
 {
-    struct BuiltinTypes    *bt       = ctx->builtin_types;
-    struct scope           *scope    = scope_create(&ctx->assembly->arenas.scope,
+    struct BuiltinTypes *bt       = ctx->builtin_types;
+    struct scope        *scope    = scope_create(&ctx->assembly->arenas.scope,
                                        SCOPE_TYPE_ENUM,
                                        ctx->assembly->gscope,
                                        static_arrlenu(os_names),
                                        NULL);
-    TSmallArray_VariantPtr *variants = create_sarr(TSmallArray_VariantPtr, ctx->assembly);
-    static struct id        ids[static_arrlenu(os_names)];
+    mir_variants_t      *variants = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+    static struct id     ids[static_arrlenu(os_names)];
     for (usize i = 0; i < static_arrlenu(os_names); ++i) {
         struct mir_variant *variant =
             create_variant(ctx, id_init(&ids[i], os_names[i]), bt->t_s32, i);
-        tsa_push_VariantPtr(variants, variant);
+        sarrput(variants, variant);
         provide_builtin_variant(ctx, scope, variant);
     }
     struct mir_type *t_os =
@@ -10951,18 +10910,18 @@ static void provide_builtin_os(struct context *ctx)
 
 static void provide_builtin_env(struct context *ctx)
 {
-    struct BuiltinTypes    *bt       = ctx->builtin_types;
-    struct scope           *scope    = scope_create(&ctx->assembly->arenas.scope,
+    struct BuiltinTypes *bt       = ctx->builtin_types;
+    struct scope        *scope    = scope_create(&ctx->assembly->arenas.scope,
                                        SCOPE_TYPE_ENUM,
                                        ctx->assembly->gscope,
                                        static_arrlenu(env_names),
                                        NULL);
-    TSmallArray_VariantPtr *variants = create_sarr(TSmallArray_VariantPtr, ctx->assembly);
-    static struct id        ids[static_arrlenu(env_names)];
+    mir_variants_t      *variants = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+    static struct id     ids[static_arrlenu(env_names)];
     for (usize i = 0; i < static_arrlenu(env_names); ++i) {
         struct mir_variant *variant =
             create_variant(ctx, id_init(&ids[i], env_names[i]), bt->t_s32, i);
-        tsa_push_VariantPtr(variants, variant);
+        sarrput(variants, variant);
         provide_builtin_variant(ctx, scope, variant);
     }
     struct mir_type *t_env =

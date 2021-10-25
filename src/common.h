@@ -169,9 +169,9 @@ typedef sarr_t(struct ast *, 16) ast_nodes_t;
 typedef sarr_t(struct mir_arg *, 16) mir_args_t;
 typedef sarr_t(struct mir_fn *, 16) mir_fns_t;
 typedef sarr_t(struct mir_type *, 16) mir_types_t;
+typedef sarr_t(struct mir_member *, 16) mir_members_t;
+typedef sarr_t(struct mir_variant *, 16) mir_variants_t;
 
-TSMALL_ARRAY_TYPE(MemberPtr, struct mir_member *, 16);
-TSMALL_ARRAY_TYPE(VariantPtr, struct mir_variant *, 16);
 TSMALL_ARRAY_TYPE(InstrPtr, struct mir_instr *, 16);
 TSMALL_ARRAY_TYPE(ConstValuePtr, struct MirConstValue *, 16);
 

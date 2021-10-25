@@ -125,16 +125,12 @@ static LLVMValueRef
 rtti_emit_empty(struct context *ctx, struct mir_type *type, struct mir_type *rtti_type);
 static LLVMValueRef rtti_emit_enum(struct context *ctx, struct mir_type *type);
 static LLVMValueRef rtti_emit_enum_variant(struct context *ctx, struct mir_variant *variant);
-static LLVMValueRef rtti_emit_enum_variants_array(struct context         *ctx,
-                                                  TSmallArray_VariantPtr *variants);
-static LLVMValueRef rtti_emit_enum_variants_slice(struct context         *ctx,
-                                                  TSmallArray_VariantPtr *variants);
+static LLVMValueRef rtti_emit_enum_variants_array(struct context *ctx, mir_variants_t *variants);
+static LLVMValueRef rtti_emit_enum_variants_slice(struct context *ctx, mir_variants_t *variants);
 static LLVMValueRef rtti_emit_struct(struct context *ctx, struct mir_type *type);
 static LLVMValueRef rtti_emit_struct_member(struct context *ctx, struct mir_member *member);
-static LLVMValueRef rtti_emit_struct_members_array(struct context        *ctx,
-                                                   TSmallArray_MemberPtr *members);
-static LLVMValueRef rtti_emit_struct_members_slice(struct context        *ctx,
-                                                   TSmallArray_MemberPtr *members);
+static LLVMValueRef rtti_emit_struct_members_array(struct context *ctx, mir_members_t *members);
+static LLVMValueRef rtti_emit_struct_members_slice(struct context *ctx, mir_members_t *members);
 static LLVMValueRef rtti_emit_fn(struct context *ctx, struct mir_type *type);
 static LLVMValueRef rtti_emit_fn_arg(struct context *ctx, struct mir_arg *arg);
 static LLVMValueRef rtti_emit_fn_args_array(struct context *ctx, mir_args_t *args);
@@ -420,13 +416,13 @@ LLVMMetadataRef DI_type_init(struct context *ctx, struct mir_type *type)
             // This applies for builtin types without source location.
             file_meta = scope_meta;
         }
-        struct mir_type    *base_type  = type->data.enm.base_type;
-        const char         *enm_name   = type->user_id ? type->user_id->str : "enum";
-        llvm_metas_t        llvm_elems = SARR_ZERO;
-        struct mir_variant *variant;
-        TSA_FOREACH(type->data.enm.variants, variant)
-        {
-            LLVMMetadataRef llvm_variant =
+        struct mir_type *base_type  = type->data.enm.base_type;
+        const char      *enm_name   = type->user_id ? type->user_id->str : "enum";
+        llvm_metas_t     llvm_elems = SARR_ZERO;
+        mir_variants_t  *variants   = type->data.enm.variants;
+        for (usize i = 0; i < sarrlenu(variants); ++i) {
+            struct mir_variant *variant = sarrpeek(variants, i);
+            LLVMMetadataRef     llvm_variant =
                 llvm_di_create_enum_variant(ctx->llvm_di_builder,
                                             variant->id->str,
                                             variant->value,
@@ -535,13 +531,11 @@ LLVMMetadataRef DI_complete_type(struct context *ctx, struct mir_type *type)
             }
         }
 
-        llvm_metas_t llvm_elems = SARR_ZERO;
-
-        struct mir_member *elem;
-        TSA_FOREACH(type->data.strct.members, elem)
-        {
+        llvm_metas_t   llvm_elems = SARR_ZERO;
+        mir_members_t *members    = type->data.strct.members;
+        for (usize i = 0; i < sarrlenu(members); ++i) {
+            struct mir_member *elem = sarrpeek(members, i);
             unsigned elem_line = elem->decl_node ? (unsigned)elem->decl_node->location->line : 0;
-
             LLVMMetadataRef llvm_elem = llvm_di_create_member_type(
                 ctx->llvm_di_builder,
                 llvm_scope,
@@ -978,17 +972,14 @@ LLVMValueRef rtti_emit_enum_variant(struct context *ctx, struct mir_variant *var
     return LLVMConstNamedStruct(get_type(ctx, rtti_type), llvm_vals, static_arrlenu(llvm_vals));
 }
 
-LLVMValueRef rtti_emit_enum_variants_array(struct context *ctx, TSmallArray_VariantPtr *variants)
+LLVMValueRef rtti_emit_enum_variants_array(struct context *ctx, mir_variants_t *variants)
 {
     struct mir_type *elem_type = ctx->builtin_types->t_TypeInfoEnumVariant;
     llvm_values_t    llvm_vals = SARR_ZERO;
-
-    struct mir_variant *it;
-    TSA_FOREACH(variants, it)
-    {
+    for (usize i = 0; i < sarrlenu(variants); ++i) {
+        struct mir_variant *it = sarrpeek(variants, i);
         sarrput(&llvm_vals, rtti_emit_enum_variant(ctx, it));
     }
-
     LLVMValueRef llvm_result =
         LLVMConstArray(get_type(ctx, elem_type), sarrdata(&llvm_vals), sarrlenu(&llvm_vals));
 
@@ -1002,14 +993,14 @@ LLVMValueRef rtti_emit_enum_variants_array(struct context *ctx, TSmallArray_Vari
     return llvm_rtti_var;
 }
 
-LLVMValueRef rtti_emit_enum_variants_slice(struct context *ctx, TSmallArray_VariantPtr *variants)
+LLVMValueRef rtti_emit_enum_variants_slice(struct context *ctx, mir_variants_t *variants)
 {
     struct mir_type *type = ctx->builtin_types->t_TypeInfoEnumVariants_slice;
     LLVMValueRef     llvm_vals[2];
     struct mir_type *len_type = mir_get_struct_elem_type(type, 0);
     struct mir_type *ptr_type = mir_get_struct_elem_type(type, 1);
     llvm_vals[0] =
-        LLVMConstInt(get_type(ctx, len_type), variants->size, len_type->data.integer.is_signed);
+        LLVMConstInt(get_type(ctx, len_type), sarrlenu(variants), len_type->data.integer.is_signed);
     llvm_vals[1] =
         LLVMConstBitCast(rtti_emit_enum_variants_array(ctx, variants), get_type(ctx, ptr_type));
     return LLVMConstNamedStruct(get_type(ctx, type), llvm_vals, static_arrlenu(llvm_vals));
@@ -1085,14 +1076,13 @@ LLVMValueRef rtti_emit_struct_member(struct context *ctx, struct mir_member *mem
     return LLVMConstNamedStruct(get_type(ctx, rtti_type), llvm_vals, static_arrlenu(llvm_vals));
 }
 
-LLVMValueRef rtti_emit_struct_members_array(struct context *ctx, TSmallArray_MemberPtr *members)
+LLVMValueRef rtti_emit_struct_members_array(struct context *ctx, mir_members_t *members)
 {
     struct mir_type *elem_type = ctx->builtin_types->t_TypeInfoStructMember;
     llvm_values_t    llvm_vals = SARR_ZERO;
 
-    struct mir_member *it;
-    TSA_FOREACH(members, it)
-    {
+    for (usize i = 0; i < sarrlenu(members); ++i) {
+        struct mir_member *it = sarrpeek(members, i);
         sarrput(&llvm_vals, rtti_emit_struct_member(ctx, it));
     }
 
@@ -1109,7 +1099,7 @@ LLVMValueRef rtti_emit_struct_members_array(struct context *ctx, TSmallArray_Mem
     return llvm_rtti_var;
 }
 
-LLVMValueRef rtti_emit_struct_members_slice(struct context *ctx, TSmallArray_MemberPtr *members)
+LLVMValueRef rtti_emit_struct_members_slice(struct context *ctx, mir_members_t *members)
 {
     struct mir_type *type = ctx->builtin_types->t_TypeInfoStructMembers_slice;
     LLVMValueRef     llvm_vals[2];
@@ -1117,7 +1107,7 @@ LLVMValueRef rtti_emit_struct_members_slice(struct context *ctx, TSmallArray_Mem
     struct mir_type *ptr_type = mir_get_struct_elem_type(type, 1);
 
     llvm_vals[0] =
-        LLVMConstInt(get_type(ctx, len_type), members->size, len_type->data.integer.is_signed);
+        LLVMConstInt(get_type(ctx, len_type), sarrlenu(members), len_type->data.integer.is_signed);
 
     llvm_vals[1] =
         LLVMConstBitCast(rtti_emit_struct_members_array(ctx, members), get_type(ctx, ptr_type));

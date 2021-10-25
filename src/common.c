@@ -77,19 +77,19 @@ void sarradd_impl(void *ptr, usize elem_size, usize static_elem_count, usize new
     const bool  on_heap    = arr->cap;
     const usize   needed_len = arr->len + new_elem_count;
     if (on_heap && needed_len > arr->cap) {
-        arr->cap  = arr->cap * 2 > needed_len ? arr->cap * 2 : needed_len;
+        arr->cap  = (u32)(arr->cap * 2 > needed_len ? arr->cap * 2 : needed_len);
         void *tmp = arr->_data;
         if ((arr->_data = brealloc(arr->_data, arr->cap * elem_size)) == NULL) {
             bfree(tmp);
             abort();
         }
     } else if (!on_heap && needed_len > static_elem_count) {
-        arr->cap   = static_elem_count * 2 > needed_len ? static_elem_count * 2 : needed_len;
+        arr->cap   = (u32)(static_elem_count * 2 > needed_len ? static_elem_count * 2 : needed_len);
         void *data = bmalloc(arr->cap * elem_size);
         memcpy(data, arr->_buf, elem_size * arr->len);
         arr->_data = data;
     }
-    arr->len += new_elem_count;
+    arr->len += (u32)new_elem_count;
 }
 
 // =================================================================================================
