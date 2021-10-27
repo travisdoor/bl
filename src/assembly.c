@@ -73,7 +73,7 @@ const char *env_names[] = {
 };
 
 union _SmallArrays {
-    TSmallArray_SwitchCase    switch_case;
+    TSmallArray_SwitchCase switch_case;
 };
 
 static const usize sarr_total_size = sizeof(union {

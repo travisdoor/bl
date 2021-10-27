@@ -365,7 +365,7 @@ is_directory :: fn (path: string) (bool, Error) #inline {
 DirScanFilterFn :: *fn(info: *Info) bool;
 
 /// Scan `dirpath` directory and return list of information for every file system
-/// entry found on success. Otherwise return empty list and error. Use :ref:`Fs.info_list_delete
+/// entry found on success. Otherwise return empty list and error. Use :ref:`Fs.info_list_delete`
 /// to release list when there was no error reported by this function.
 ///
 /// Optional `filter` funtion :ref:`Fs.DirScanFilterFn` can be used to filter scan results
