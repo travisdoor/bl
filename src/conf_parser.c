@@ -32,7 +32,7 @@
 
 struct context {
     struct tokens *tokens;
-    conf_data_t   *data;
+    conf_data_t *  data;
 };
 
 static bool parse_key_value_rq(struct context *ctx)

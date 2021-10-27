@@ -39,7 +39,7 @@ enum sym {
 #undef sm
 };
 
-extern char         *sym_strings[];
+extern char *        sym_strings[];
 extern s32           sym_lens[];
 extern struct token *token_end;
 

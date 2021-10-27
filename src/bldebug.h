@@ -76,7 +76,7 @@ static inline void bl_debug_break(void)
 
 #define BL_DEBUG_BREAK bl_debug_break()
 
-#define bassert(e)                                                                               \
+#define bassert(e)                                                                                 \
     if (!(e)) {                                                                                    \
         _log(LOG_ASSERT, __FILENAME__, __LINE__, #e);                                              \
         print_trace();                                                                             \
@@ -87,8 +87,8 @@ static inline void bl_debug_break(void)
 
 #define BL_MAGIC_ASSERT(O)                                                                         \
     {                                                                                              \
-        bassert(O && "Invalid reference!");                                                      \
-        bassert((O)->_magic == (void *)&(O)->_magic && "Invalid magic!");                        \
+        bassert(O && "Invalid reference!");                                                        \
+        bassert((O)->_magic == (void *)&(O)->_magic && "Invalid magic!");                          \
     }                                                                                              \
     (void)0
 #define BL_MAGIC_ADD void *_magic;
@@ -101,7 +101,7 @@ static inline void bl_debug_break(void)
     while (0) {                                                                                    \
     }
 
-#define bassert(e)                                                                               \
+#define bassert(e)                                                                                 \
     while (0) {                                                                                    \
     }                                                                                              \
     (void)0
@@ -122,13 +122,13 @@ static inline void bl_debug_break(void)
 
 #if defined(BL_DEBUG)
 // =================================================================================================
-#define blog(format, ...)                                                                        \
+#define blog(format, ...)                                                                          \
     {                                                                                              \
         _log(LOG_MSG, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                              \
     }                                                                                              \
     (void)0
 
-#define bwarn(format, ...)                                                                    \
+#define bwarn(format, ...)                                                                         \
     {                                                                                              \
         _log(LOG_WARNING, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                          \
     }                                                                                              \
@@ -136,19 +136,19 @@ static inline void bl_debug_break(void)
 // =================================================================================================
 #else
 // =================================================================================================
-#define blog(format, ...)                                                                        \
+#define blog(format, ...)                                                                          \
     while (0) {                                                                                    \
     }                                                                                              \
     (void)0
 
-#define bwarn(format, ...)                                                                    \
+#define bwarn(format, ...)                                                                         \
     while (0) {                                                                                    \
     }                                                                                              \
     (void)0
 // =================================================================================================
 #endif
 
-#define babort(format, ...)                                                                      \
+#define babort(format, ...)                                                                        \
     {                                                                                              \
         _log(LOG_ABORT, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                            \
         print_trace();                                                                             \
@@ -179,7 +179,7 @@ static inline void bl_debug_break(void)
 #define BL_TRACY_MESSAGE(tag, format, ...)                                                         \
     {                                                                                              \
         char buf[256];                                                                             \
-        snprintf(buf, static_arrlenu(buf), "#%s " format, tag, ##__VA_ARGS__);                        \
+        snprintf(buf, static_arrlenu(buf), "#%s " format, tag, ##__VA_ARGS__);                     \
         TracyCMessageC(buf, strlen(buf), strhash(tag));                                            \
     }                                                                                              \
     (void)0

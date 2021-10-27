@@ -44,10 +44,10 @@ struct context {
 };
 
 static bool search_library(struct context *ctx,
-                           const char     *lib_name,
-                           char          **out_lib_name,
-                           char          **out_lib_dir,
-                           char          **out_lib_filepath)
+                           const char *    lib_name,
+                           char **         out_lib_name,
+                           char **         out_lib_dir,
+                           char **         out_lib_filepath)
 {
     TString *lib_filepath                = get_tmpstr();
     char     lib_name_full[LIB_NAME_MAX] = {0};

@@ -42,9 +42,9 @@ s32 lld_ld(struct assembly *assembly);
 
 static void copy_user_libs(struct assembly *assembly)
 {
-    TString             *dest_path = get_tmpstr();
+    TString *            dest_path = get_tmpstr();
     const struct target *target    = assembly->target;
-    const char          *out_dir   = target->out_dir.data;
+    const char *         out_dir   = target->out_dir.data;
     for (usize i = 0; i < arrlenu(assembly->libs); ++i) {
         struct native_lib *lib = &assembly->libs[i];
         if (lib->is_internal) continue;

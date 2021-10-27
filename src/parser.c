@@ -60,7 +60,7 @@
 #define CONSUME_TILL(tokens, ...)                                                                  \
     {                                                                                              \
         enum sym _[] = {__VA_ARGS__};                                                              \
-        tokens_consume_till2((tokens), static_arrlenu(_), &_[0]);                                   \
+        tokens_consume_till2((tokens), static_arrlenu(_), &_[0]);                                  \
     }
 
 enum hash_directive_flags {

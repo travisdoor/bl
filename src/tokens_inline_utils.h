@@ -124,7 +124,7 @@ static INLINE bool tokens_lookahead(struct tokens *tokens, token_cmp_func_t cmp)
     bassert(cmp);
     bool                        found  = false;
     const s64                   marker = tokens->iter;
-    struct token               *curr   = NULL;
+    struct token *              curr   = NULL;
     enum tokens_lookahead_state state  = TOK_LOOK_TERMINAL;
     while (true) {
         curr  = tokens_peek(tokens);

@@ -75,7 +75,7 @@ void sarradd_impl(void *ptr, usize elem_size, usize static_elem_count, usize new
     if (new_elem_count < 1) return;
     sarr_any_t *arr        = (sarr_any_t *)ptr;
     const bool  on_heap    = arr->cap;
-    const usize   needed_len = arr->len + new_elem_count;
+    const usize needed_len = arr->len + new_elem_count;
     if (on_heap && needed_len > arr->cap) {
         arr->cap  = (u32)(arr->cap * 2 > needed_len ? arr->cap * 2 : needed_len);
         void *tmp = arr->_data;
@@ -161,8 +161,8 @@ char *scprint(struct string_cache **cache, const char *fmt, ...)
 bool search_source_file(const char *filepath,
                         const u32   flags,
                         const char *wdir,
-                        char      **out_filepath,
-                        char      **out_dirpath)
+                        char **     out_filepath,
+                        char **     out_dirpath)
 {
     TString *tmp = get_tmpstr();
     if (!filepath) goto NOT_FOUND;

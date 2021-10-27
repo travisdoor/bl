@@ -79,8 +79,8 @@ static bool llvm_initialized = false;
 // =================================================================================================
 struct threading_impl {
     struct assembly *assembly;
-    pthread_t       *workers;
-    struct unit    **queue;
+    pthread_t *      workers;
+    struct unit **   queue;
     volatile s32     active;       // count of currently active workers
     volatile s32     will_exit;    // true when main thread will exit
     volatile bool    is_compiling; // true when async compilation is running
@@ -609,9 +609,9 @@ void builder_print_location(FILE *stream, struct location *loc, s32 col, s32 len
 
 void builder_vmsg(enum builder_msg_type type,
                   s32                   code,
-                  struct location      *src,
+                  struct location *     src,
                   enum builder_cur_pos  pos,
-                  const char           *format,
+                  const char *          format,
                   va_list               args)
 {
     struct threading_impl *threading = builder.threading;
@@ -696,9 +696,9 @@ DONE:
 
 void builder_msg(enum builder_msg_type type,
                  s32                   code,
-                 struct location      *src,
+                 struct location *     src,
                  enum builder_cur_pos  pos,
-                 const char           *format,
+                 const char *          format,
                  ...)
 {
     va_list args;

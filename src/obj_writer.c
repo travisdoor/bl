@@ -38,9 +38,9 @@
 void obj_writer_run(struct assembly *assembly)
 {
     zone();
-    TString             *buf    = get_tmpstr();
+    TString *            buf    = get_tmpstr();
     const struct target *target = assembly->target;
-    const char          *name   = target->name;
+    const char *         name   = target->name;
     blog("out_dir = %s", target->out_dir.data);
     blog("name = %s", name);
     tstring_setf(buf, "%s/%s.%s", target->out_dir.data, name, OBJ_EXT);

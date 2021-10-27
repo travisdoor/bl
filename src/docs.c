@@ -87,7 +87,7 @@
 
 struct context {
     struct unit *unit;
-    FILE        *stream;
+    FILE *       stream;
     TString      path_unit_dir;
     TString      path_tmp;
     s32          pad;

@@ -44,11 +44,11 @@
 
 struct context {
     struct assembly *assembly;
-    struct unit     *unit;
-    struct tokens   *tokens;
+    struct unit *    unit;
+    struct tokens *  tokens;
     sarr_t(char, 64) strtmp; // @Cleanup: Use tmp string from builder.
     jmp_buf jmp_error;
-    char   *c;
+    char *  c;
     s32     line;
     s32     col;
 };

@@ -9,11 +9,13 @@ Args :: struct #base ArgParser.Ctx {
     is_debug: bool;
     make: bool;
     tracy_enable: bool;
+    format: bool;
 }
 
 TRACY_VERSION :: "0.7.8";
 BIN_DIR :: "bin";
 BUILD_DIR :: "build";
+SRC_DIR :: "src";
 CMAKE_CACHE :: "CMakeCache.txt";
 
 HELP_TEXT ::
@@ -23,12 +25,13 @@ HELP_TEXT ::
 "Requirements:\n"
 "  - MS Build tools/gcc/clang\n"
 "  - CMake\n"
-"  - x64 development environment injected on Windows (use VS command line).\n\n"
+"  - x64 development environment injected on Windows (use VS command line).\n"
+"  - clang-format.\n\n"
 "Usage:\n"
 "  baker [options]\n";
 
-_args: Args;
-_root_dir: string;
+g_args: Args;
+g_root_dir: string;
 
 
 main :: fn () s32 {
@@ -37,15 +40,15 @@ main :: fn () s32 {
     parser :: ArgParser.new(HELP_TEXT);
     defer ArgParser.delete(parser);
 
-    _root_dir = Fs.get_cwd();
-    defer String.delete(_root_dir);
+    g_root_dir = Fs.get_cwd();
+    defer String.delete(g_root_dir);
     
     ArgParser.add(
         parser,
         "-m",
         "--make",
         "Make project.",
-        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: ArgParser.Parser, _: []string, ctx: *ArgParser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             a.generate = true;
             a.make = true;
@@ -57,7 +60,7 @@ main :: fn () s32 {
         "-g",
         "--generate",
         "Generate project.",
-        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: ArgParser.Parser, _: []string, ctx: *ArgParser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             a.generate = true;
             return 1, ok();
@@ -68,7 +71,7 @@ main :: fn () s32 {
         "-d",
         "--debug",
         "Switch from release to debug mode. (must be used with '--generate' or '--make').",
-        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: ArgParser.Parser, _: []string, ctx: *ArgParser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             a.is_debug = true;
             return 1, ok();
@@ -79,7 +82,7 @@ main :: fn () s32 {
         "-te",
         "--tracy-enable",
         "Enable and compile Tracy profiler.",
-        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: ArgParser.Parser, _: []string, ctx: *ArgParser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             a.tracy_enable = true;
             a.generate = true;
@@ -89,41 +92,56 @@ main :: fn () s32 {
         
     ArgParser.add(
         parser,
+        "-f",
+        "--format-source",
+        "Format source code using clang-format.",
+        &fn (_: ArgParser.Parser, _: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+            a: *Args = auto ctx;
+            a.format = true;
+            return 1, ok();
+        });
+
+    ArgParser.add(
+        parser,
         "",
         "--clear-cache",
         "Clear the cmake cache.",
-        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: ArgParser.Parser, _: []string, ctx: *ArgParser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
-            _args.cmake_cache_clear = true;
+            a.cmake_cache_clear = true;
             return 1, ok();
         });
    
-    state :: ArgParser.run(parser, command_line_arguments, &_args, 1);   
+    state :: ArgParser.run(parser, command_line_arguments, &g_args, 1);
     if !is_ok(state) {
         print_err("%", state);
         ArgParser.print_help(parser);
         return 1;
     }
-    if _args.help { return 0; }
+    if g_args.help { return 0; }
     if command_line_arguments.len == 1 {
-        _args.cmake_cache_clear = true;
-        _args.generate = true;
-        _args.make = true;
+        g_args.cmake_cache_clear = true;
+        g_args.generate = true;
+        g_args.make = true;
     }
      
     Fs.dir_create(BUILD_DIR);
     Fs.dir_create(BIN_DIR);
     
-    conf :: conf_name(_args.is_debug);
-    if _args.generate { 
+    conf :: conf_name(g_args.is_debug);
+    if g_args.format {
+        print("Formating source files.\n");
+        format();
+    }
+    if g_args.generate {
         print("Generate configuration '%' in '%'.\n", conf, BUILD_DIR);
         cmake_generate();
     }
-    if _args.make {
+    if g_args.make {
         print("Build configuration '%' in '%'.\n", conf, BUILD_DIR);
         cmake_compile();
     }
-    if _args.tracy_enable {
+    if g_args.tracy_enable {
         print("Build Tracy profiler client.\n");
         tracy_compile();
     }
@@ -136,19 +154,19 @@ conf_name :: fn (is_debug: bool) string #inline {
 }
 
 cmake_generate :: fn () s32 #inline {
-    is_debug :: _args.is_debug;
+    is_debug :: g_args.is_debug;
     conf :: conf_name(is_debug);
     cmd: string;
     
     Fs.set_cwd(BUILD_DIR);
-    defer Fs.set_cwd(_root_dir);
-    if _args.cmake_cache_clear { Fs.remove(CMAKE_CACHE); }
-    if PLATFORM == Platform.windows {
+    defer Fs.set_cwd(g_root_dir);
+    if g_args.cmake_cache_clear { Fs.remove(CMAKE_CACHE); }
+    #if PLATFORM == Platform.windows {
         cmd = tprint("cmake .. -G \"Visual Studio 16 2019\" -Thost=x64 -DCMAKE_BUILD_TYPE=%", conf);
     } else {
         cmd = tprint("cmake .. -DCMAKE_BUILD_TYPE=%", conf);
     }
-    if _args.tracy_enable {
+    if g_args.tracy_enable {
         String.append(&cmd, " -DTRACY_ENABLE=ON");
         String.append(&cmd, " -DTRACY_VER=");
         String.append(&cmd, TRACY_VERSION);
@@ -157,12 +175,12 @@ cmake_generate :: fn () s32 #inline {
 }
 
 cmake_compile :: fn () s32 #inline {
-    is_debug :: _args.is_debug;
+    is_debug :: g_args.is_debug;
     conf :: conf_name(is_debug);
     cmd: string;
     Fs.set_cwd(BUILD_DIR);
-    defer Fs.set_cwd(_root_dir);
-    if PLATFORM == Platform.windows {
+    defer Fs.set_cwd(g_root_dir);
+    #if PLATFORM == Platform.windows {
         cmd = tprint("cmake --build . --config %", conf);
     } else {
         cmd = tprint("make -j");
@@ -170,14 +188,20 @@ cmake_compile :: fn () s32 #inline {
     return os_execute(cmd);
 }
 
+format :: fn () s32 #inline {
+    Fs.set_cwd(SRC_DIR);
+    defer Fs.set_cwd(g_root_dir);
+    return os_execute("clang-format --verbose -i -style=file  *.c *.h *.cpp");
+}
+
 tracy_compile :: fn () s32 {
     path := String.new();
     defer String.delete(path);
     
     Fs.set_cwd(String.clear_concat(&path, "deps/tracy-", TRACY_VERSION));
-    defer Fs.set_cwd(_root_dir);
+    defer Fs.set_cwd(g_root_dir);
     
-    if PLATFORM == Platform.windows { 
+    #if PLATFORM == Platform.windows {
         { // Deps
             print("Install Tracy dependencies...\n");
             Fs.set_cwd("vcpkg");
@@ -193,7 +217,7 @@ tracy_compile :: fn () s32 {
                 print_err("Failed to compile Tracy profiler!");
                 return -1;   
             }
-            err :: Fs.copy("profiler/build/win32/x64/Release/Tracy.exe", String.clear_concat(&path, _root_dir, "/bin/Tracy.exe"), true);
+            err :: Fs.copy("profiler/build/win32/x64/Release/Tracy.exe", String.clear_concat(&path, g_root_dir, "/bin/Tracy.exe"), true);
             if is_ok(err) {
                 print("Success, created executable 'bin/Tracy.exe'.\n");
             } else {

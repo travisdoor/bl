@@ -102,7 +102,7 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 
 #define queue_t(T)                                                                                 \
     struct {                                                                                       \
-        T  *q[2];                                                                                  \
+        T * q[2];                                                                                  \
         s64 i;                                                                                     \
         s32 qi;                                                                                    \
     }
@@ -171,8 +171,8 @@ typedef sarr_t(struct mir_fn *, 16) mir_fns_t;
 typedef sarr_t(struct mir_type *, 16) mir_types_t;
 typedef sarr_t(struct mir_member *, 16) mir_members_t;
 typedef sarr_t(struct mir_variant *, 16) mir_variants_t;
+typedef sarr_t(struct mir_instr *, 16) mir_instrs_t;
 
-TSMALL_ARRAY_TYPE(InstrPtr, struct mir_instr *, 16);
 TSMALL_ARRAY_TYPE(ConstValuePtr, struct MirConstValue *, 16);
 
 // =================================================================================================
@@ -250,8 +250,8 @@ enum search_flags {
 bool search_source_file(const char *filepath,
                         const u32   flags,
                         const char *wdir,
-                        char      **out_filepath,
-                        char      **out_dirpath);
+                        char **     out_filepath,
+                        char **     out_dirpath);
 
 // Replace all backslashes in passed path with forward slash, this is used as workaround on Windows
 // platform due to inconsistency 'Unix vs Windows' path separators. This function will modify passed

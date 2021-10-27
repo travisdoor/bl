@@ -73,7 +73,6 @@ const char *env_names[] = {
 };
 
 union _SmallArrays {
-    TSmallArray_InstrPtr      instr;
     TSmallArray_ConstValuePtr cv;
     TSmallArray_SwitchCase    switch_case;
 };
@@ -85,6 +84,7 @@ static const usize sarr_total_size = sizeof(union {
     mir_types_t    _4;
     mir_members_t  _5;
     mir_variants_t _6;
+    mir_instrs_t   _7;
 });
 
 static void small_array_dtor(TSmallArrayAny *arr)
@@ -133,8 +133,8 @@ static void parse_triple(const char *normalized_triple, struct target_triple *ou
     char *arch, *vendor, *os, *env;
     arch = vendor = os = env = "";
     const char *delimiter    = "-";
-    char       *tmp          = strdup(normalized_triple);
-    char       *token        = strtok(tmp, delimiter);
+    char *      tmp          = strdup(normalized_triple);
+    char *      token        = strtok(tmp, delimiter);
     s32         state        = 0;
     while (token) {
         switch (state++) {
@@ -292,7 +292,7 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, TString *o
     if (!path) babort("Invalid directory copy.");
     win_path_to_unix(path, strlen(path));
 #else
-    const char *path  = _path;
+    const char *path = _path;
 #endif
     if (!dir_exists(path)) {
         if (!create_dir_tree(path)) {
@@ -336,9 +336,9 @@ static INLINE s32 get_module_version(conf_data_t *config)
 }
 
 static bool import_module(struct assembly *assembly,
-                          conf_data_t     *config,
-                          const char      *modulepath,
-                          struct token    *import_from)
+                          conf_data_t *    config,
+                          const char *     modulepath,
+                          struct token *   import_from)
 {
     zone();
     bassert(config);
@@ -705,7 +705,7 @@ struct unit *
 assembly_add_unit_safe(struct assembly *assembly, const char *filepath, struct token *load_from)
 {
     zone();
-    struct unit      *unit = NULL;
+    struct unit *     unit = NULL;
     const hash_t      hash = unit_hash(filepath, load_from);
     AssemblySyncImpl *sync = assembly->sync;
     pthread_mutex_lock(&sync->units_lock);
@@ -719,8 +719,8 @@ DONE:
 }
 
 void assembly_add_native_lib(struct assembly *assembly,
-                             const char      *lib_name,
-                             struct token    *link_token)
+                             const char *     lib_name,
+                             struct token *   link_token)
 {
     const hash_t hash = strhash(lib_name);
     { // Search for duplicity.
@@ -746,8 +746,8 @@ static INLINE bool module_exist(const char *module_dir, const char *modulepath)
 }
 
 bool assembly_import_module(struct assembly *assembly,
-                            const char      *modulepath,
-                            struct token    *import_from)
+                            const char *     modulepath,
+                            struct token *   import_from)
 {
     zone();
     bool state = false;
@@ -760,10 +760,10 @@ bool assembly_import_module(struct assembly *assembly,
         goto DONE;
     }
 
-    TString             *local_path = get_tmpstr();
-    conf_data_t         *config     = NULL;
+    TString *            local_path = get_tmpstr();
+    conf_data_t *        config     = NULL;
     const struct target *target     = assembly->target;
-    const char          *module_dir = target->module_dir.len > 0 ? target->module_dir.data : NULL;
+    const char *         module_dir = target->module_dir.len > 0 ? target->module_dir.data : NULL;
     const enum module_import_policy policy = assembly->target->module_policy;
     const bool local_found = module_dir ? module_exist(module_dir, modulepath) : false;
     switch (policy) {
@@ -781,7 +781,7 @@ bool assembly_import_module(struct assembly *assembly,
     case IMPORT_POLICY_BUNDLE_LATEST:
     case IMPORT_POLICY_BUNDLE: {
         bassert(module_dir);
-        TString   *system_path   = get_tmpstr();
+        TString *  system_path   = get_tmpstr();
         const bool check_version = policy == IMPORT_POLICY_BUNDLE_LATEST;
         tstring_setf(local_path, "%s/%s", module_dir, modulepath);
         tstring_setf(system_path, "%s/%s", builder_get_lib_dir(), modulepath);
@@ -840,7 +840,7 @@ DONE:
 
 DCpointer assembly_find_extern(struct assembly *assembly, const char *symbol)
 {
-    void              *handle = NULL;
+    void *             handle = NULL;
     struct native_lib *lib;
     for (usize i = 0; i < arrlenu(assembly->libs); ++i) {
         lib    = &assembly->libs[i];

@@ -33,9 +33,9 @@
 void bc_writer_run(struct assembly *assembly)
 {
     zone();
-    TString             *export_file = get_tmpstr();
+    TString *            export_file = get_tmpstr();
     const struct target *target      = assembly->target;
-    const char          *name        = target->name;
+    const char *         name        = target->name;
     tstring_setf(export_file, "%s/%s.ll", target->out_dir.data, name);
     char *str = LLVMPrintModuleToString(assembly->llvm.modules[0]);
     FILE *f   = fopen(export_file->data, "w");

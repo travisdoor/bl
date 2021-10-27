@@ -40,7 +40,7 @@
 
 struct context {
     struct assembly *assembly;
-    FILE            *stream;
+    FILE *           stream;
 };
 
 static void print_comptime_value_or_id(struct context *ctx, struct mir_instr *instr);
@@ -208,7 +208,7 @@ _print_const_value(struct context *ctx, struct mir_type *type, vm_stack_ptr_t va
         mir_members_t *members = type->data.strct.members;
         for (usize i = 0; i < sarrlenu(members); ++i) {
             struct mir_member *it          = sarrpeek(members, i);
-            struct mir_type   *member_type = it->type;
+            struct mir_type *  member_type = it->type;
             const ptrdiff_t    offset2     = vm_get_struct_elem_offset(ctx->assembly, type, (u32)i);
             _print_const_value(ctx, member_type, value + offset2);
             if (i < sarrlenu(members) - 1) fprintf(ctx->stream, ",");
@@ -264,7 +264,7 @@ static void print_instr_type_ptr(struct context *ctx, struct mir_instr_type_ptr 
 static void print_instr_type_poly(struct context *ctx, struct mir_instr_type_poly *type_poly);
 static void print_instr_type_array(struct context *ctx, struct mir_instr_type_array *type_array);
 static void print_instr_type_slice(struct context *ctx, struct mir_instr_type_slice *type_slice);
-static void print_instr_type_dynarr(struct context                *ctx,
+static void print_instr_type_dynarr(struct context *               ctx,
                                     struct mir_instr_type_dyn_arr *type_dynarr);
 static void print_instr_type_vargs(struct context *ctx, struct mir_instr_type_vargs *type_vargs);
 static void print_instr_block(struct context *ctx, struct mir_instr_block *block);
@@ -312,13 +312,10 @@ void print_instr_type_fn(struct context *ctx, struct mir_instr_type_fn *type_fn)
 {
     print_instr_head(ctx, &type_fn->base, "const fn");
     fprintf(ctx->stream, "(");
-    if (type_fn->args) {
-        struct mir_instr *tmp;
-        TSA_FOREACH(type_fn->args, tmp)
-        {
-            fprintf(ctx->stream, "%%%llu", (unsigned long long)tmp->id);
-            if (i + 1 < type_fn->args->size) fprintf(ctx->stream, ", ");
-        }
+    for (usize i = 0; i < sarrlenu(type_fn->args); ++i) {
+        struct mir_instr *tmp = sarrpeek(type_fn->args, i);
+        fprintf(ctx->stream, "%%%llu", (unsigned long long)tmp->id);
+        if (i + 1 < sarrlenu(type_fn->args)) fprintf(ctx->stream, ", ");
     }
 
     fprintf(ctx->stream, ")");
@@ -331,13 +328,10 @@ void print_instr_type_fn_group(struct context *ctx, struct mir_instr_type_fn_gro
 {
     print_instr_head(ctx, &group->base, "const fn");
     fprintf(ctx->stream, "{");
-    if (group->variants) {
-        struct mir_instr *tmp;
-        TSA_FOREACH(group->variants, tmp)
-        {
-            fprintf(ctx->stream, "%%%llu", (unsigned long long)tmp->id);
-            if (i + 1 < group->variants->size) fprintf(ctx->stream, ", ");
-        }
+    for (usize i = 0; i < sarrlenu(group->variants); ++i) {
+        struct mir_instr *tmp = sarrpeek(group->variants, i);
+        fprintf(ctx->stream, "%%%llu", (unsigned long long)tmp->id);
+        if (i + 1 < sarrlenu(group->variants)) fprintf(ctx->stream, ", ");
     }
     fprintf(ctx->stream, "}");
 }
@@ -348,10 +342,9 @@ void print_instr_set_initializer(struct context *ctx, struct mir_instr_set_initi
     print_comptime_value_or_id(ctx, si->src);
     fprintf(ctx->stream, " -> ");
 
-    struct mir_instr *_dest;
-    TSA_FOREACH(si->dests, _dest)
-    {
-        struct mir_instr_decl_var *dest = (struct mir_instr_decl_var *)_dest;
+    for (usize i = 0; i < sarrlenu(si->dests); ++i) {
+        struct mir_instr *         _dest = sarrpeek(si->dests, i);
+        struct mir_instr_decl_var *dest  = (struct mir_instr_decl_var *)_dest;
         if (dest && dest->var->linkage_name) {
             fprintf(ctx->stream, "%s", dest->var->linkage_name);
         } else {
@@ -364,22 +357,22 @@ void print_instr_phi(struct context *ctx, struct mir_instr_phi *phi)
 {
     print_instr_head(ctx, &phi->base, "phi");
 
-    if (phi->incoming_blocks->size != phi->incoming_values->size) {
+    if (sarrlen(phi->incoming_blocks) != sarrlen(phi->incoming_values)) {
         fprintf(ctx->stream, "<value_count_does_not_match_block_count>");
         return;
     }
 
-    struct mir_instr       *value;
+    struct mir_instr *      value;
     struct mir_instr_block *block;
-    const usize             c = phi->incoming_values->size;
+    const usize             c = sarrlenu(phi->incoming_values);
 
     if (c == 0) {
         fprintf(ctx->stream, "<empty incomes>");
     }
 
     for (usize i = 0; i < c; ++i) {
-        value = phi->incoming_values->data[i];
-        block = (struct mir_instr_block *)phi->incoming_blocks->data[i];
+        value = sarrpeek(phi->incoming_values, i);
+        block = (struct mir_instr_block *)sarrpeek(phi->incoming_blocks, i);
 
         fprintf(ctx->stream, "[");
         print_comptime_value_or_id(ctx, value);
@@ -400,12 +393,11 @@ void print_instr_type_struct(struct context *ctx, struct mir_instr_type_struct *
     print_instr_head(ctx, &type_struct->base, "const struct");
     fprintf(ctx->stream, "{");
 
-    TSmallArray_InstrPtr *members = type_struct->members;
-    struct mir_instr     *member;
-    TSA_FOREACH(members, member)
-    {
+    mir_instrs_t *members = type_struct->members;
+    for (usize i = 0; i < sarrlenu(members); ++i) {
+        struct mir_instr *member = sarrpeek(members, i);
         print_comptime_value_or_id(ctx, member);
-        if (i + 1 < members->size) fprintf(ctx->stream, ", ");
+        if (i + 1 < sarrlenu(members)) fprintf(ctx->stream, ", ");
     }
 
     fprintf(ctx->stream, "}");
@@ -416,12 +408,11 @@ void print_instr_type_enum(struct context *ctx, struct mir_instr_type_enum *type
     print_instr_head(ctx, &type_enum->base, "const enum");
     fprintf(ctx->stream, "{");
 
-    TSmallArray_InstrPtr *variants = type_enum->variants;
-    struct mir_instr     *variant;
-    TSA_FOREACH(variants, variant)
-    {
+    mir_instrs_t *variants = type_enum->variants;
+    for (usize i = 0; i < sarrlenu(variants); ++i) {
+        struct mir_instr *variant = sarrpeek(variants, i);
         fprintf(ctx->stream, "%%%llu", (unsigned long long)variant->id);
-        if (i + 1 < variants->size) fprintf(ctx->stream, ", ");
+        if (i + 1 < sarrlenu(variants)) fprintf(ctx->stream, ", ");
     }
 
     fprintf(ctx->stream, "}");
@@ -530,13 +521,12 @@ void print_instr_compound(struct context *ctx, struct mir_instr_compound *init)
     }
 
     fprintf(ctx->stream, " {");
-    TSmallArray_InstrPtr *values = init->values;
+    mir_instrs_t *values = init->values;
     if (values) {
-        struct mir_instr *value;
-        TSA_FOREACH(values, value)
-        {
+        for (usize i = 0; i < sarrlenu(values); ++i) {
+            struct mir_instr *value = sarrpeek(values, i);
             print_comptime_value_or_id(ctx, value);
-            if (i < values->size - 1) fprintf(ctx->stream, ", ");
+            if (i < sarrlenu(values) - 1) fprintf(ctx->stream, ", ");
         }
     } else {
         fprintf(ctx->stream, "<ZERO INITIALIZER>");
@@ -552,13 +542,12 @@ void print_instr_vargs(struct context *ctx, struct mir_instr_vargs *vargs)
     print_type(ctx, vargs->type, false, true);
 
     fprintf(ctx->stream, " {");
-    TSmallArray_InstrPtr *values = vargs->values;
+    mir_instrs_t *values = vargs->values;
     if (values) {
-        struct mir_instr *value;
-        TSA_FOREACH(values, value)
-        {
+        for (usize i = 0; i < sarrlenu(values); ++i) {
+            struct mir_instr *value = sarrpeek(values, i);
             print_comptime_value_or_id(ctx, value);
-            if (i < values->size - 1) fprintf(ctx->stream, ", ");
+            if (i < sarrlenu(values) - 1) fprintf(ctx->stream, ", ");
         }
     } else {
         fprintf(ctx->stream, "<INVALID VALUES>");
@@ -838,20 +827,17 @@ void print_instr_call(struct context *ctx, struct mir_instr_call *call)
     struct mir_fn *callee      = mir_is_comptime(call->callee)
                                      ? MIR_CEV_READ_AS(struct mir_fn *, &call->callee->value)
                                      : NULL;
-    const char    *callee_name = callee ? callee->linkage_name : NULL;
+    const char *   callee_name = callee ? callee->linkage_name : NULL;
     if (callee_name)
         fprintf(ctx->stream, "@%s", callee_name);
     else
         fprintf(ctx->stream, "%%%llu", (unsigned long long)call->callee->id);
 
     fprintf(ctx->stream, "(");
-    if (call->args) {
-        struct mir_instr *tmp;
-        TSA_FOREACH(call->args, tmp)
-        {
-            print_comptime_value_or_id(ctx, tmp);
-            if (i < call->args->size - 1) fprintf(ctx->stream, ", ");
-        }
+    for (usize i = 0; i < sarrlenu(call->args); ++i) {
+        struct mir_instr *tmp = sarrpeek(call->args, i);
+        print_comptime_value_or_id(ctx, tmp);
+        if (i < sarrlenu(call->args) - 1) fprintf(ctx->stream, ", ");
     }
     fprintf(ctx->stream, ")");
 }
@@ -885,12 +871,11 @@ void print_instr_fn_group(struct context *ctx, struct mir_instr_fn_group *group)
 {
     print_instr_head(ctx, &group->base, "const fn");
     fprintf(ctx->stream, "{");
-    TSmallArray_InstrPtr *variants = group->variants;
-    struct mir_instr     *variant;
-    TSA_FOREACH(variants, variant)
-    {
+    mir_instrs_t *variants = group->variants;
+    for (usize i = 0; i < sarrlenu(variants); ++i) {
+        struct mir_instr *variant = sarrpeek(variants, i);
         fprintf(ctx->stream, "%%%llu", (unsigned long long)variant->id);
-        if (i + 1 < variants->size) fprintf(ctx->stream, ", ");
+        if (i + 1 < sarrlenu(variants)) fprintf(ctx->stream, ", ");
     }
     fprintf(ctx->stream, "}");
 }

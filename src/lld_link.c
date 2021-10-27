@@ -112,10 +112,10 @@ static void append_linker_exec(TString *buf)
 s32 lld_link(struct assembly *assembly)
 {
     runtime_measure_begin(linking);
-    TString             *buf     = get_tmpstr();
+    TString *            buf     = get_tmpstr();
     const struct target *target  = assembly->target;
-    const char          *out_dir = target->out_dir.data;
-    const char          *name    = target->name;
+    const char *         out_dir = target->out_dir.data;
+    const char *         name    = target->name;
 
     tstring_append(buf, "call ");
 
