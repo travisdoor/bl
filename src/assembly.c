@@ -73,7 +73,6 @@ const char *env_names[] = {
 };
 
 union _SmallArrays {
-    TSmallArray_ConstValuePtr cv;
     TSmallArray_SwitchCase    switch_case;
 };
 

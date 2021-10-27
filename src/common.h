@@ -173,8 +173,6 @@ typedef sarr_t(struct mir_member *, 16) mir_members_t;
 typedef sarr_t(struct mir_variant *, 16) mir_variants_t;
 typedef sarr_t(struct mir_instr *, 16) mir_instrs_t;
 
-TSMALL_ARRAY_TYPE(ConstValuePtr, struct MirConstValue *, 16);
-
 // =================================================================================================
 // String cache
 // =================================================================================================
