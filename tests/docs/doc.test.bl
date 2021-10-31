@@ -1,0 +1,98 @@
+#import "std/test"
+#import "std/fs"
+
+TEMPLATE_DIR :: "template";
+OUT_DIR :: "out";
+
+//! Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Pellentesque
+//! habitant morbi tristique senectus et netus et malesuada fames ac turpis
+//! egestas. Etiam dui sem, fermentum vitae, sagittis id, malesuada in, quam.
+//! Morbi scelerisque luctus velit. Donec ipsum massa, ullamcorper in,
+//! auctor et, scelerisque sed, est. Excepteur sint occaecat cupidatat non
+
+/// Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Pellentesque
+/// habitant morbi tristique senectus et netus et malesuada fames ac turpis
+/// egestas. Etiam dui sem, fermentum vitae, sagittis id, malesuada in, quam.
+/// Morbi scelerisque luctus velit. Donec ipsum massa, ullamcorper in,
+/// auctor et, scelerisque sed, est. Excepteur sint occaecat cupidatat non
+///
+/// proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+/// Proin in tellus sit amet nibh dignissim sagittis. Maecenas libero.
+///
+/// Subsection
+/// ----------
+/// Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Pellentesque
+/// habitant morbi tristique senectus et netus et malesuada fames ac turpis
+/// egestas. Etiam dui sem, fermentum vitae, sagittis id, malesuada in, quam.
+/// Morbi scelerisque luctus velit. Donec ipsum massa, ullamcorper in,
+/// auctor et, scelerisque sed, est. Excepteur sint occaecat cupidatat non
+function_1 :: fn () {
+}
+
+//! Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Pellentesque
+//! habitant morbi tristique senectus et netus et malesuada fames ac turpis
+//! egestas. Etiam dui sem, fermentum vitae, sagittis id, malesuada in, quam.
+//! Morbi scelerisque luctus velit. Donec ipsum massa, ullamcorper in,
+//! auctor et, scelerisque sed, est. Excepteur sint occaecat cupidatat non
+
+// =================================================================================================
+// Testing
+// =================================================================================================
+compare_files :: fn (first: string, second: string) {
+    defer temporary_release();
+    file1, err1 :: Fs.open(first);
+    defer Fs.close(file1);
+    test_ok(err1);
+
+    file2, err2 :: Fs.open(second);
+    defer Fs.close(file2);
+    test_ok(err2);
+
+    content1, err_read1 :: Fs.read_string(file1);
+    content2, err_read2 :: Fs.read_string(file2);
+    test_ok(err_read1);
+    test_ok(err_read2);
+    defer String.delete(content1);
+    defer String.delete(content2);
+
+    test_eq(content1, content2);
+}
+
+currdir :: fn () string #inline {
+    return Fs.get_directory(#file);
+}
+
+compiler_path :: fn () string {
+    #if PLATFORM == Platform.windows { 
+        return tprint("%/../../bin/blc.exe", currdir());
+    } else {
+        return tprint("%/../../bin/blc", currdir());
+    }
+}
+
+generate :: fn () #test {
+    defer temporary_release();
+    print("%\n", Fs.get_cwd());
+    state :: os_execute(tprint("% --docs %", compiler_path(), #file));
+    test_eq(state, 0);
+}
+
+global :: fn () #test {
+    defer temporary_release();
+    file :: "doc.test.rst";
+    template :: tprint("%/%/%", currdir(), TEMPLATE_DIR, file);
+    test :: tprint("%/../../.temp/%/%", currdir(), OUT_DIR, file);
+    compare_files(template, test);
+}
+
+function_1_test :: fn () #test {
+    defer temporary_release();
+    file :: "doc.test/function_1.rst";
+    template :: tprint("%/%/%", currdir(), TEMPLATE_DIR, file);
+    test :: tprint("%/../../.temp/%/%", currdir(), OUT_DIR, file);
+    compare_files(template, test);
+}
+
+main :: fn () s32 {
+    return test_run();
+}
