@@ -29,6 +29,7 @@
 #include "bldebug.h"
 #include "builder.h"
 #include "mir_printer.h"
+#include "stb_ds.h"
 
 static void print_header(const char *name, const char *filename, FILE *stream)
 {
@@ -52,18 +53,18 @@ static void print_header(const char *name, const char *filename, FILE *stream)
 void mir_writer_run(struct assembly *assembly)
 {
     const char *         name        = assembly->target->name;
-    TString *            export_file = get_tmpstr();
+    char *               export_file = gettmpstr();
     const struct target *target      = assembly->target;
-    tstring_setf(export_file, "%s/%s.blm", target->out_dir.data, name);
-    FILE *f = fopen(export_file->data, "w");
+    strprint(export_file, "%s/%s.blm", target->out_dir.data, name);
+    FILE *f = fopen(export_file, "w");
     if (f == NULL) {
-        builder_error("cannot open file %s", export_file->data);
-        put_tmpstr(export_file);
+        builder_error("cannot open file %s", export_file);
+        puttmpstr(export_file);
         return;
     }
-    print_header(name, export_file->data, f);
+    print_header(name, export_file, f);
     mir_print_assembly(f, assembly);
     fclose(f);
-    builder_note("Mir code written into %s", export_file->data);
-    put_tmpstr(export_file);
+    builder_note("Mir code written into %s", export_file);
+    puttmpstr(export_file);
 }

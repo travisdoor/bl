@@ -42,7 +42,7 @@ s32 lld_ld(struct assembly *assembly);
 
 static void copy_user_libs(struct assembly *assembly)
 {
-    TString *            dest_path = get_tmpstr();
+    char *               dest_path = gettmpstr();
     const struct target *target    = assembly->target;
     const char *         out_dir   = target->out_dir.data;
     for (usize i = 0; i < arrlenu(assembly->libs); ++i) {
@@ -63,14 +63,14 @@ static void copy_user_libs(struct assembly *assembly)
         }
 #endif
 
-        tstring_setf(dest_path, "%s/%s", out_dir, lib_dest_name);
-        if (file_exists(dest_path->data)) continue;
-        builder_warning("Copy '%s' to '%s'.", lib->filepath, dest_path->data);
-        if (!copy_file(lib->filepath, dest_path->data)) {
-            builder_error("Cannot copy '%s' to '%s'.", lib->filepath, dest_path->data);
+        strprint(dest_path, "%s/%s", out_dir, lib_dest_name);
+        if (file_exists(dest_path)) continue;
+        builder_warning("Copy '%s' to '%s'.", lib->filepath, dest_path);
+        if (!copy_file(lib->filepath, dest_path)) {
+            builder_error("Cannot copy '%s' to '%s'.", lib->filepath, dest_path);
         }
     }
-    put_tmpstr(dest_path);
+    puttmpstr(dest_path);
 }
 
 void native_bin_run(struct assembly *assembly)

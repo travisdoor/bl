@@ -91,7 +91,7 @@ struct mir_const_expr_value {
     bool                        is_comptime;
 };
 
-TSMALL_ARRAY_TYPE(ConstExprValue, struct mir_const_expr_value, 32);
+typedef sarr_t(struct mir_const_expr_value, 32) mir_const_values_t;
 
 void vm_init(struct virtual_machine *vm, usize stack_size);
 void vm_terminate(struct virtual_machine *vm);
@@ -103,11 +103,11 @@ bool vm_execute_comptime_call(struct virtual_machine *vm,
                               struct assembly *       assembly,
                               struct mir_instr_call * call);
 
-bool vm_execute_fn(struct virtual_machine *    vm,
-                   struct assembly *           assembly,
-                   struct mir_fn *             fn,
-                   TSmallArray_ConstExprValue *optional_args,
-                   vm_stack_ptr_t *            optional_return);
+bool vm_execute_fn(struct virtual_machine *vm,
+                   struct assembly *       assembly,
+                   struct mir_fn *         fn,
+                   mir_const_values_t *    optional_args,
+                   vm_stack_ptr_t *        optional_return);
 
 void vm_provide_command_line_arguments(struct virtual_machine *vm, s32 argc, char *argv[]);
 void vm_override_var(struct virtual_machine *vm, struct mir_var *var, u64 value);

@@ -57,19 +57,19 @@ enum scope_entry_kind {
 };
 
 union scope_entry_data {
-    struct mir_type *   type;
-    struct mir_fn *     fn;
-    struct mir_var *    var;
-    struct mir_member * member;
+    struct mir_type    *type;
+    struct mir_fn      *fn;
+    struct mir_var     *var;
+    struct mir_member  *member;
     struct mir_variant *variant;
-    struct scope *      scope;
+    struct scope       *scope;
 };
 
 struct scope_entry {
-    struct id *            id;
+    struct id             *id;
     enum scope_entry_kind  kind;
-    struct scope *         parent_scope;
-    struct ast *           node;
+    struct scope          *parent_scope;
+    struct ast            *node;
     bool                   is_builtin;
     s32                    ref_count;
     union scope_entry_data data;
@@ -100,13 +100,13 @@ struct scope_layer {
 struct scope {
     enum scope_kind         kind;
     u32                     expected_entry_count;
-    const char *            name; // optional
-    struct scope *          parent;
+    const char             *name; // optional
+    struct scope           *parent;
     struct scope_sync_impl *sync;
-    struct location *       location;
+    struct location        *location;
     LLVMMetadataRef         llvm_meta;
     struct scope_layer      default_layer;
-    struct scope_layer *    layers;
+    struct scope_layer     *layers;
 
     BL_MAGIC_ADD
 };
@@ -116,14 +116,14 @@ void scope_arenas_terminate(struct scope_arenas *arenas);
 
 struct scope *scope_create(struct scope_arenas *arenas,
                            enum scope_kind      kind,
-                           struct scope *       parent,
+                           struct scope        *parent,
                            u32                  expected_entry_count,
-                           struct location *    loc);
+                           struct location     *loc);
 
-struct scope_entry *scope_create_entry(struct scope_arenas * arenas,
+struct scope_entry *scope_create_entry(struct scope_arenas  *arenas,
                                        enum scope_entry_kind kind,
-                                       struct id *           id,
-                                       struct ast *          node,
+                                       struct id            *id,
+                                       struct ast           *node,
                                        bool                  is_builtin);
 
 void scope_insert(struct scope *scope, s32 layer_index, struct scope_entry *entry);
@@ -132,15 +132,15 @@ void scope_unlock(struct scope *scope);
 
 struct scope_entry *scope_lookup(struct scope *scope,
                                  s32           preferred_layer_index,
-                                 struct id *   id,
+                                 struct id    *id,
                                  bool          in_tree,
                                  bool          ignore_global,
-                                 bool *        out_of_fn_local_scope);
+                                 bool         *out_of_fn_local_scope);
 
 // Checks whether passed scope is of kind or is nested in scope of kind.
 bool        scope_is_subtree_of_kind(const struct scope *scope, enum scope_kind kind);
 const char *scope_kind_name(const struct scope *scope);
-void        scope_get_full_name(TString *dest, struct scope *scope);
+void        scope_get_full_name(char **dest, struct scope *scope);
 
 static INLINE bool scope_is_local(const struct scope *scope)
 {

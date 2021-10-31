@@ -79,8 +79,8 @@ static bool llvm_initialized = false;
 // =================================================================================================
 struct threading_impl {
     struct assembly *assembly;
-    pthread_t *      workers;
-    struct unit **   queue;
+    pthread_t       *workers;
+    struct unit    **queue;
     volatile s32     active;       // count of currently active workers
     volatile s32     will_exit;    // true when main thread will exit
     volatile bool    is_compiling; // true when async compilation is running
@@ -466,7 +466,7 @@ void builder_init(const struct builder_options *options, const char *exec_dir)
     for (s32 i = 0; i < _BUILTIN_ID_COUNT; ++i) {
         builtin_ids[i].hash = strhash(builtin_ids[i].str);
     }
-    arrsetcap(builder.tmp_strings, 256);
+    arrsetcap(builder.tmp_strs, 16);
     start_threads();
 
     builder.is_initialized = true;
@@ -478,13 +478,13 @@ void builder_terminate(void)
         target_delete(builder.targets[i]);
     }
     arrfree(builder.targets);
-    for (usize i = 0; i < arrlenu(builder.tmp_strings); ++i) {
-        tstring_delete(builder.tmp_strings[i]);
+    for (usize i = 0; i < arrlenu(builder.tmp_strs); ++i) {
+        strfree(builder.tmp_strs[i]);
     }
-    blog("Used %llu temp-strings.", arrlenu(builder.tmp_strings));
-    arrfree(builder.tmp_strings);
-    conf_data_terminate(&builder.conf);
+    blog("Used %llu temp-strings.", arrlenu(builder.tmp_strs));
+    arrfree(builder.tmp_strs);
 
+    conf_data_terminate(&builder.conf);
     llvm_terminate();
     threading_delete(builder.threading);
     free(builder.exec_dir);
@@ -609,9 +609,9 @@ void builder_print_location(FILE *stream, struct location *loc, s32 col, s32 len
 
 void builder_vmsg(enum builder_msg_type type,
                   s32                   code,
-                  struct location *     src,
+                  struct location      *src,
                   enum builder_cur_pos  pos,
-                  const char *          format,
+                  const char           *format,
                   va_list               args)
 {
     struct threading_impl *threading = builder.threading;
@@ -696,9 +696,9 @@ DONE:
 
 void builder_msg(enum builder_msg_type type,
                  s32                   code,
-                 struct location *     src,
+                 struct location      *src,
                  enum builder_cur_pos  pos,
-                 const char *          format,
+                 const char           *format,
                  ...)
 {
     va_list args;
@@ -707,30 +707,28 @@ void builder_msg(enum builder_msg_type type,
     va_end(args);
 }
 
-// @Incomplete: Use string small array instead of TString.
-TString *get_tmpstr(void)
+char *gettmpstr(void)
 {
     struct threading_impl *threading = builder.threading;
     pthread_mutex_lock(&threading->str_tmp_lock);
-    TString *str = NULL;
-    if (arrlenu(builder.tmp_strings)) {
-        str = arrpop(builder.tmp_strings);
+    char *str = NULL;
+    if (arrlenu(builder.tmp_strs)) {
+        str = arrpop(builder.tmp_strs);
     } else {
-        str = tstring_new();
-        tstring_reserve(str, 256);
+        strsetcap(str, 255);
     }
     bassert(str);
+    strclr(str); // also set zero terminator
     pthread_mutex_unlock(&threading->str_tmp_lock);
     return str;
 }
 
-void put_tmpstr(TString *str)
+void puttmpstr(char *str)
 {
     bassert(str);
     struct threading_impl *threading = builder.threading;
     pthread_mutex_lock(&threading->str_tmp_lock);
-    tstring_clear(str);
-    arrput(builder.tmp_strings, str);
+    arrput(builder.tmp_strs, str);
     pthread_mutex_unlock(&threading->str_tmp_lock);
 }
 

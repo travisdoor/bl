@@ -55,27 +55,27 @@ static const char *get_out_extension(struct assembly *assembly)
     }
 }
 
-static void append_lib_paths(struct assembly *assembly, TString *buf)
+static void append_lib_paths(struct assembly *assembly, char **buf)
 {
     for (usize i = 0; i < arrlenu(assembly->lib_paths); ++i) {
-        tstring_appendf(buf, "%s:\"%s\" ", FLAG_LIBPATH, assembly->lib_paths[i]);
+        strappend(*buf, "%s:\"%s\" ", FLAG_LIBPATH, assembly->lib_paths[i]);
     }
 }
 
-static void append_libs(struct assembly *assembly, TString *buf)
+static void append_libs(struct assembly *assembly, char **buf)
 {
     for (usize i = 0; i < arrlenu(assembly->libs); ++i) {
         struct native_lib *lib = &assembly->libs[i];
         if (lib->is_internal) continue;
         if (!lib->user_name) continue;
-        tstring_appendf(buf, "%s.%s ", lib->user_name, LIB_EXT);
+        strappend(*buf, "%s.%s ", lib->user_name, LIB_EXT);
     }
 }
 
-static void append_default_opt(struct assembly *assembly, TString *buf)
+static void append_default_opt(struct assembly *assembly, char **buf)
 {
     const bool is_debug = assembly->target->opt == ASSEMBLY_OPT_DEBUG;
-    if (is_debug) tstring_appendf(buf, "%s ", FLAG_DEBUG);
+    if (is_debug) strappend(*buf, "%s ", FLAG_DEBUG);
     const char *default_opt = "";
     switch (assembly->target->kind) {
     case ASSEMBLY_EXECUTABLE:
@@ -87,52 +87,52 @@ static void append_default_opt(struct assembly *assembly, TString *buf)
     default:
         babort("Unknown output kind!");
     }
-    tstring_appendf(buf, "%s ", default_opt);
+    strappend(*buf, "%s ", default_opt);
 }
 
-static void append_custom_opt(struct assembly *assembly, TString *buf)
+static void append_custom_opt(struct assembly *assembly, char **buf)
 {
     const char *custom_opt = assembly->custom_linker_opt.data;
-    if (custom_opt) tstring_appendf(buf, "%s ", custom_opt);
+    if (custom_opt) strappend(*buf, "%s ", custom_opt);
 }
 
-static void append_linker_exec(TString *buf)
+static void append_linker_exec(char **buf)
 {
     if (conf_data_has_key(&builder.conf, CONF_LINKER_EXECUTABLE)) {
         const char *custom_linker = conf_data_get_str(&builder.conf, CONF_LINKER_EXECUTABLE);
         if (strlen(custom_linker)) {
-            tstring_appendf(buf, "\"%s\" ", custom_linker);
+            strappend(*buf, "\"%s\" ", custom_linker);
             return;
         }
     }
     // Use LLD as default.
-    tstring_appendf(buf, "\"%s/%s\" -flavor %s ", builder.exec_dir, BL_LINKER, LLD_FLAVOR);
+    strappend(*buf, "\"%s/%s\" -flavor %s ", builder.exec_dir, BL_LINKER, LLD_FLAVOR);
 }
 
 s32 lld_link(struct assembly *assembly)
 {
     runtime_measure_begin(linking);
-    TString *            buf     = get_tmpstr();
+    char *               buf     = gettmpstr();
     const struct target *target  = assembly->target;
     const char *         out_dir = target->out_dir.data;
     const char *         name    = target->name;
 
-    tstring_append(buf, "call ");
+    strappend(buf, "call ");
 
     // set executable
-    append_linker_exec(buf);
+    append_linker_exec(&buf);
     // set input file
-    tstring_appendf(buf, "\"%s/%s.%s\" ", out_dir, name, OBJECT_EXT);
+    strappend(buf, "\"%s/%s.%s\" ", out_dir, name, OBJECT_EXT);
     // set output file
-    tstring_appendf(buf, "%s:\"%s/%s.%s\" ", FLAG_OUT, out_dir, name, get_out_extension(assembly));
-    append_lib_paths(assembly, buf);
-    append_libs(assembly, buf);
-    append_default_opt(assembly, buf);
-    append_custom_opt(assembly, buf);
+    strappend(buf, "%s:\"%s/%s.%s\" ", FLAG_OUT, out_dir, name, get_out_extension(assembly));
+    append_lib_paths(assembly, &buf);
+    append_libs(assembly, &buf);
+    append_default_opt(assembly, &buf);
+    append_custom_opt(assembly, &buf);
 
-    builder_log("%s", buf->data);
-    s32 state = system(buf->data);
-    put_tmpstr(buf);
+    builder_log("%s", buf);
+    s32 state = system(buf);
+    puttmpstr(buf);
     assembly->stats.linking_s = runtime_measure_end(linking);
     return state;
 }

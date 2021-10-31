@@ -6,9 +6,11 @@ BL_EXE_PATH_WIN  :: "bin/blc.exe";
 BL_EXE_PATH_UNIX :: "bin/blc";
 
 // paths
+TMP_DIR :: ".temp";
 MAIN_TEST_SUITE_FILEPATH :: "tests/src/main.test.bl";
 EXAMPLES_DIR :: "examples";
 EXAMPLES_DOCS_DIR :: "examples/docs";
+DOC_TEST :: "tests/docs/doc.test.bl";
 EXPECT_FAIL_DIR :: "tests/src/expect_fail";
 
 HARDCODED_MODULES :: {:[10]string:
@@ -28,9 +30,11 @@ main :: fn () s32 {
     defer temporary_release();
     
     wdir_init();
+    Fs.dir_create(get_path(TMP_DIR));
+    Fs.set_cwd(get_path(TMP_DIR));
     _args.test_count = 1;
     if !parse_args() { return 1; }
-    if PLATFORM == Platform.windows {
+    #if PLATFORM == Platform.windows {
         _compiler_path = get_path(BL_EXE_PATH_WIN);
     } else {
         _compiler_path = get_path(BL_EXE_PATH_UNIX);
@@ -68,7 +72,7 @@ main :: fn () s32 {
             path :: get_path(EXAMPLES_DOCS_DIR);
             test_all_in_dir(path);
         }
-        
+
         print("Test misc:\n");    
         { // gen-docs
             path :: get_path("gen-docs.bl");
@@ -86,6 +90,11 @@ main :: fn () s32 {
             test_all_in_dir(path, true);
         }
 
+        { // docs
+            path :: get_path(DOC_TEST);
+            test_file(path, TestKind.Test);
+        }
+
         duration_ms :: os_tick_ms() - start_time_ms;
         print("\n----------------------------------- RESULTS ------------------------------------\n");
         print("Test suite count:  %\n", _suitec);
@@ -94,16 +103,8 @@ main :: fn () s32 {
         print("--------------------------------------------------------------------------------\n\n");
     }
     
-    
     // cleanup
-    if PLATFORM == Platform.windows {
-        Fs.remove("out.exe");
-        Fs.remove("out.obj");
-        Fs.remove("out.pdb");
-    } else {
-        Fs.remove("out");
-        Fs.remove("out.o");
-    }        
+    Fs.dir_remove_all(get_path(TMP_DIR));
     return _errc;
 }
 
@@ -269,7 +270,7 @@ test_file :: fn (file: string, kind := TestKind.Runtime, expected_state := TEST_
 
             tmp := String.new();
             defer String.delete(tmp);
-            if PLATFORM == Platform.windows { 
+            #if PLATFORM == Platform.windows {
                 String.append(&tmp, "out.exe ");
             } else {
                 String.append(&tmp, "./out ");
@@ -310,6 +311,7 @@ test_file :: fn (file: string, kind := TestKind.Runtime, expected_state := TEST_
             }
         }
     }
+    Fs.dir_remove_all(get_path(TMP_DIR), false);
 }
 
 test_all_in_dir :: fn (dir: string, expect_fail := false) {
@@ -341,7 +343,6 @@ test_all_in_dir :: fn (dir: string, expect_fail := false) {
         }
     }
 }
-
 
 // ERROR CODES (This must be keept in sync with src/error.h)
 BlError :: enum s32 {

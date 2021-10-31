@@ -72,14 +72,14 @@ static bool load_conf_file(const char *exec_dir)
 
 static int generate_conf(void)
 {
-    TString *cmd = get_tmpstr();
+    char *cmd = gettmpstr();
 #if BL_PLATFORM_LINUX || BL_PLATFORM_MACOS
-    tstring_setf(cmd, "%s/%s -f -s", builder_get_exec_dir(), BL_CONFIGURE_SH);
+    strprint(cmd, "%s/%s -f -s", builder_get_exec_dir(), BL_CONFIGURE_SH);
 #else
-    tstring_setf(cmd, "call \"%s/%s\" -f -s", builder_get_exec_dir(), BL_CONFIGURE_SH);
+    strprint(cmd, "call \"%s/%s\" -f -s", builder_get_exec_dir(), BL_CONFIGURE_SH);
 #endif
-    const s32 state = system(cmd->data);
-    put_tmpstr(cmd);
+    const s32 state = system(cmd);
+    puttmpstr(cmd);
     return state;
 }
 

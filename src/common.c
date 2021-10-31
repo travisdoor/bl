@@ -164,7 +164,7 @@ bool search_source_file(const char *filepath,
                         char **     out_filepath,
                         char **     out_dirpath)
 {
-    TString *tmp = get_tmpstr();
+    char *tmp = gettmpstr();
     if (!filepath) goto NOT_FOUND;
     char        tmp_result[PATH_MAX] = {0};
     const char *result               = NULL;
@@ -175,8 +175,8 @@ bool search_source_file(const char *filepath,
 
     // Lookup in working directory.
     if (wdir && isflag(flags, SEARCH_FLAG_WDIR)) {
-        tstring_setf(tmp, "%s" PATH_SEPARATOR "%s", wdir, filepath);
-        if (brealpath(tmp->data, tmp_result, static_arrlenu(tmp_result))) {
+        strprint(tmp, "%s" PATH_SEPARATOR "%s", wdir, filepath);
+        if (brealpath(tmp, tmp_result, static_arrlenu(tmp_result))) {
             result = &tmp_result[0];
             goto FOUND;
         }
@@ -184,8 +184,8 @@ bool search_source_file(const char *filepath,
 
     // file has not been found in current working directory -> search in LIB_DIR
     if (builder_get_lib_dir() && isflag(flags, SEARCH_FLAG_LIB_DIR)) {
-        tstring_setf(tmp, "%s" PATH_SEPARATOR "%s", builder_get_lib_dir(), filepath);
-        if (brealpath(tmp->data, tmp_result, static_arrlenu(tmp_result))) {
+        strprint(tmp, "%s" PATH_SEPARATOR "%s", builder_get_lib_dir(), filepath);
+        if (brealpath(tmp, tmp_result, static_arrlenu(tmp_result))) {
             result = &tmp_result[0];
             goto FOUND;
         }
@@ -201,9 +201,8 @@ bool search_source_file(const char *filepath,
             if (p != NULL) {
                 p[0] = 0;
             }
-            tstring_setf(tmp, "%s" PATH_SEPARATOR "%s", s, filepath);
-            if (brealpath(tmp->data, tmp_result, static_arrlenu(tmp_result)))
-                result = &tmp_result[0];
+            strprint(tmp, "%s" PATH_SEPARATOR "%s", s, filepath);
+            if (brealpath(tmp, tmp_result, static_arrlenu(tmp_result))) result = &tmp_result[0];
             s = p + 1;
         } while (p && !result);
         free(env);
@@ -211,7 +210,7 @@ bool search_source_file(const char *filepath,
     }
 
 NOT_FOUND:
-    put_tmpstr(tmp);
+    puttmpstr(tmp);
     return false;
 
 FOUND:
@@ -224,7 +223,7 @@ FOUND:
             *out_dirpath = strdup(dirpath);
         }
     }
-    put_tmpstr(tmp);
+    puttmpstr(tmp);
     return true;
 }
 
@@ -357,56 +356,56 @@ bool create_dir_tree(const char *dirpath)
 
 bool copy_dir(const char *src, const char *dest)
 {
-    TString *tmp = get_tmpstr();
+    char *tmp = gettmpstr();
 #if BL_PLATFORM_WIN
     char *_src  = strdup(src);
     char *_dest = strdup(dest);
     unix_path_to_win(_src, strlen(_src));
     unix_path_to_win(_dest, strlen(_dest));
-    tstring_setf(tmp, "xcopy /H /E /Y /I \"%s\" \"%s\" 2>nul 1>nul", _src, _dest);
+    strprint(tmp, "xcopy /H /E /Y /I \"%s\" \"%s\" 2>nul 1>nul", _src, _dest);
     free(_src);
     free(_dest);
 #else
-    tstring_setf(tmp, "mkdir -p %s && cp -rf %s/* %s", dest, src, dest);
-    blog("%s", tmp->data);
+    strprint(tmp, "mkdir -p %s && cp -rf %s/* %s", dest, src, dest);
+    blog("%s", tmp);
 #endif
-    const bool result = system(tmp->data) == 0;
-    put_tmpstr(tmp);
+    const bool result = system(tmp) == 0;
+    puttmpstr(tmp);
     return result;
 }
 
 bool copy_file(const char *src, const char *dest)
 {
-    TString *tmp = get_tmpstr();
+    char *tmp = gettmpstr();
 #if BL_PLATFORM_WIN
     char *_src  = strdup(src);
     char *_dest = strdup(dest);
     unix_path_to_win(_src, strlen(_src));
     unix_path_to_win(_dest, strlen(_dest));
-    tstring_setf(tmp, "copy /Y /B \"%s\" \"%s\" 2>nul 1>nul", _src, _dest);
+    strprint(tmp, "copy /Y /B \"%s\" \"%s\" 2>nul 1>nul", _src, _dest);
     free(_src);
     free(_dest);
 #else
-    tstring_setf(tmp, "cp -f %s %s", src, dest);
+    strprint(tmp, "cp -f %s %s", src, dest);
 #endif
-    const bool result = system(tmp->data) == 0;
-    put_tmpstr(tmp);
+    const bool result = system(tmp) == 0;
+    puttmpstr(tmp);
     return result;
 }
 
 bool remove_dir(const char *path)
 {
-    TString *tmp = get_tmpstr();
+    char *tmp = gettmpstr();
 #if BL_PLATFORM_WIN
     char *_path = strdup(path);
     unix_path_to_win(_path, strlen(_path));
-    tstring_setf(tmp, "del \"%s\" /q /s 2>nul 1>nul", _path);
+    strprint(tmp, "del \"%s\" /q /s 2>nul 1>nul", _path);
     free(_path);
 #else
-    tstring_setf(tmp, "rm -rf %s", path);
+    strprint(tmp, "rm -rf %s", path);
 #endif
-    const bool result = system(tmp->data) == 0;
-    put_tmpstr(tmp);
+    const bool result = system(tmp) == 0;
+    puttmpstr(tmp);
     return result;
 }
 void date_time(char *buf, s32 len, const char *format)
@@ -567,13 +566,6 @@ s32 get_last_error(char *buf, s32 buf_len)
 #else
     babort("Cannot get last error!");
 #endif
-}
-
-void *_create_sarr(struct assembly *assembly, usize arr_size)
-{
-    TSmallArrayAny *tmp = arena_safe_alloc(&assembly->arenas.small_array);
-    tsa_init(tmp);
-    return tmp;
 }
 
 u32 next_pow_2(u32 n)

@@ -102,7 +102,7 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 
 #define queue_t(T)                                                                                 \
     struct {                                                                                       \
-        T * q[2];                                                                                  \
+        T  *q[2];                                                                                  \
         s64 i;                                                                                     \
         s32 qi;                                                                                    \
     }
@@ -118,12 +118,27 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 #define qpop_front(Q) (_qcurrent(Q)[(Q)->i++])
 #define qsetcap(Q, c) (arrsetcap(_qother(Q), c))
 
-#define arrprint(A, fmt, ...)                                                                      \
+#define strprint(A, fmt, ...)                                                                      \
     {                                                                                              \
         const s32 l = snprintf(NULL, 0, fmt, ##__VA_ARGS__) + 1;                                   \
         arrsetlen(A, l);                                                                           \
         snprintf(A, l, fmt, ##__VA_ARGS__);                                                        \
-    }
+    }                                                                                              \
+    (void)0
+
+#define strinit(A, C) (strsetcap(A, C), (A)[0] = '\0')
+#define strfree(A) (arrfree(A))
+#define strlenu(A) (arrlenu(A) ? arrlenu(A) - 1 : 0)
+#define strclr(A) (arrsetlen(A, 1), (A)[0] = '\0')
+#define strsetcap(A, C) (arrsetcap(A, (C) + 1))
+#define strappend(A, fmt, ...)                                                                     \
+    {                                                                                              \
+        const s32 orig_len = strlenu(A);                                                           \
+        const s32 text_len = snprintf(NULL, 0, fmt, ##__VA_ARGS__) + 1;                            \
+        arrsetlen(A, orig_len + text_len);                                                         \
+        snprintf((A) + orig_len, text_len, fmt, ##__VA_ARGS__);                                    \
+    }                                                                                              \
+    (void)0
 
 // =================================================================================================
 // Small Array
@@ -248,39 +263,37 @@ enum search_flags {
 bool search_source_file(const char *filepath,
                         const u32   flags,
                         const char *wdir,
-                        char **     out_filepath,
-                        char **     out_dirpath);
+                        char      **out_filepath,
+                        char      **out_dirpath);
 
 // Replace all backslashes in passed path with forward slash, this is used as workaround on Windows
 // platform due to inconsistency 'Unix vs Windows' path separators. This function will modify passed
 // buffer.
-void  win_path_to_unix(char *buf, usize buf_size);
-void  unix_path_to_win(char *buf, usize buf_size);
-bool  file_exists(const char *filepath);
-bool  dir_exists(const char *dirpath);
-bool  brealpath(const char *file, char *out, s32 out_len);
-bool  get_current_working_dir(char *buf, usize buf_size);
-bool  get_dir_from_filepath(char *buf, const usize l, const char *filepath);
-bool  get_filename_from_filepath(char *buf, const usize l, const char *filepath);
-bool  get_current_exec_path(char *buf, usize buf_size);
-bool  get_current_exec_dir(char *buf, usize buf_size);
-bool  create_dir(const char *dirpath);
-bool  create_dir_tree(const char *dirpath);
-bool  copy_dir(const char *src, const char *dest);
-bool  copy_file(const char *src, const char *dest);
-bool  remove_dir(const char *path);
-void  date_time(char *buf, s32 len, const char *format);
-bool  is_aligned(const void *p, usize alignment);
-void  align_ptr_up(void **p, usize alignment, ptrdiff_t *adjustment);
-void  print_bits(s32 const size, void const *const ptr);
-int   count_bits(u64 n);
-void  platform_lib_name(const char *name, char *buffer, usize max_len);
-f64   get_tick_ms(void);
-s32   get_last_error(char *buf, s32 buf_len);
-void *_create_sarr(struct assembly *ctx, usize arr_size); // @Cleanup
-u32   next_pow_2(u32 n);
-void  color_print(FILE *stream, s32 color, const char *format, ...);
-s32   cpu_thread_count(void);
-#define create_sarr(T, Asm) ((T *)_create_sarr((Asm), sizeof(T))) // @Cleanup
+void win_path_to_unix(char *buf, usize buf_size);
+void unix_path_to_win(char *buf, usize buf_size);
+bool file_exists(const char *filepath);
+bool dir_exists(const char *dirpath);
+bool brealpath(const char *file, char *out, s32 out_len);
+bool get_current_working_dir(char *buf, usize buf_size);
+bool get_dir_from_filepath(char *buf, const usize l, const char *filepath);
+bool get_filename_from_filepath(char *buf, const usize l, const char *filepath);
+bool get_current_exec_path(char *buf, usize buf_size);
+bool get_current_exec_dir(char *buf, usize buf_size);
+bool create_dir(const char *dirpath);
+bool create_dir_tree(const char *dirpath);
+bool copy_dir(const char *src, const char *dest);
+bool copy_file(const char *src, const char *dest);
+bool remove_dir(const char *path);
+void date_time(char *buf, s32 len, const char *format);
+bool is_aligned(const void *p, usize alignment);
+void align_ptr_up(void **p, usize alignment, ptrdiff_t *adjustment);
+void print_bits(s32 const size, void const *const ptr);
+int  count_bits(u64 n);
+void platform_lib_name(const char *name, char *buffer, usize max_len);
+f64  get_tick_ms(void);
+s32  get_last_error(char *buf, s32 buf_len);
+u32  next_pow_2(u32 n);
+void color_print(FILE *stream, s32 color, const char *format, ...);
+s32  cpu_thread_count(void);
 
 #endif

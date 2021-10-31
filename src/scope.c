@@ -103,9 +103,9 @@ void scope_arenas_terminate(struct scope_arenas *arenas)
 
 struct scope *scope_create(struct scope_arenas *arenas,
                            enum scope_kind      kind,
-                           struct scope *       parent,
+                           struct scope        *parent,
                            u32                  expected_entry_count,
-                           struct location *    loc)
+                           struct location     *loc)
 {
     bassert(expected_entry_count > 0);
     struct scope *scope         = arena_safe_alloc(&arenas->scopes);
@@ -120,10 +120,10 @@ struct scope *scope_create(struct scope_arenas *arenas,
     return scope;
 }
 
-struct scope_entry *scope_create_entry(struct scope_arenas * arenas,
+struct scope_entry *scope_create_entry(struct scope_arenas  *arenas,
                                        enum scope_entry_kind kind,
-                                       struct id *           id,
-                                       struct ast *          node,
+                                       struct id            *id,
+                                       struct ast           *node,
                                        bool                  is_builtin)
 {
     struct scope_entry *entry = arena_safe_alloc(&arenas->entries);
@@ -151,10 +151,10 @@ void scope_insert(struct scope *scope, s32 layer_index, struct scope_entry *entr
 
 struct scope_entry *scope_lookup(struct scope *scope,
                                  s32           preferred_layer_index,
-                                 struct id *   id,
+                                 struct id    *id,
                                  bool          in_tree,
                                  bool          ignore_global,
-                                 bool *        out_of_fn_local_scope)
+                                 bool         *out_of_fn_local_scope)
 {
     zone();
     bassert(scope && id);
@@ -236,7 +236,7 @@ const char *scope_kind_name(const struct scope *scope)
     return "<INVALID>";
 }
 
-void scope_get_full_name(TString *dest, struct scope *scope)
+void scope_get_full_name(char **dest, struct scope *scope)
 {
     bassert(dest && scope);
     sarr_t(char *, 8) tmp = SARR_ZERO;
@@ -246,8 +246,11 @@ void scope_get_full_name(TString *dest, struct scope *scope)
     }
     for (usize i = sarrlenu(&tmp); i-- > 0;) {
         const char *subname = sarrpeek(&tmp, i);
-        tstring_append(dest, subname);
-        if (i > 0) tstring_append_c(dest, '.');
+        if (i > 0) {
+            strappend(*dest, "%s.", subname);
+        } else {
+            strappend(*dest, "%s", subname);
+        }
     }
     sarrfree(&tmp);
 }

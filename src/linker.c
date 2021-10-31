@@ -49,28 +49,28 @@ static bool search_library(struct context *ctx,
                            char **         out_lib_dir,
                            char **         out_lib_filepath)
 {
-    TString *lib_filepath                = get_tmpstr();
-    char     lib_name_full[LIB_NAME_MAX] = {0};
-    bool     found                       = false;
+    char *lib_filepath                = gettmpstr();
+    char  lib_name_full[LIB_NAME_MAX] = {0};
+    bool  found                       = false;
     platform_lib_name(lib_name, lib_name_full, static_arrlenu(lib_name_full));
     builder_log("- Looking for: '%s'", lib_name_full);
     for (usize i = 0; i < arrlenu(ctx->assembly->lib_paths); ++i) {
         char *dir = ctx->assembly->lib_paths[i];
         builder_log("- Search in: '%s'", dir);
-        tstring_setf(lib_filepath, "%s/%s", dir, lib_name_full);
-        if (file_exists(lib_filepath->data)) {
-            builder_log("  Found: '%s'", lib_filepath->data);
+        strprint(lib_filepath, "%s/%s", dir, lib_name_full);
+        if (file_exists(lib_filepath)) {
+            builder_log("  Found: '%s'", lib_filepath);
             if (out_lib_name) (*out_lib_name) = strdup(lib_name_full);
             if (out_lib_dir) (*out_lib_dir) = strdup(dir);
-            if (out_lib_filepath) (*out_lib_filepath) = strdup(lib_filepath->data);
+            if (out_lib_filepath) (*out_lib_filepath) = strdup(lib_filepath);
             found = true;
             goto DONE;
         }
     }
 
 DONE:
-    if (!found) builder_log("  Not found: '%s'", lib_filepath->data);
-    put_tmpstr(lib_filepath);
+    if (!found) builder_log("  Not found: '%s'", lib_filepath);
+    puttmpstr(lib_filepath);
     return found;
 }
 

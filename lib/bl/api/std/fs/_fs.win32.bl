@@ -252,32 +252,6 @@ normalize :: fn (filepath: *string) Error {
     return ok();
 }
 
-remove_extension :: fn (filename: string) string #inline {
-    if String.is_empty(filename) { return String.empty; }
-    tmp := filename;
-    tmp.len = 0;
-    loop i := 0; i < filename.len; i += 1 {
-        c :: filename[i];
-        if c == '.' && i > 0 { break; }
-        tmp.len += 1;
-    }
-    return tmp;
-}
-
-get_extension :: fn (filename: string) string #inline {
-    if String.is_empty(filename) { return String.empty; }
-    if filename[0] == '.' {
-        if filename.len == 1 { return String.empty; }
-        filename.ptr = &filename[1]; 
-        filename.len -= 1; 
-    }
-    rhs: string;
-    if String.split_by_first(filename, '.', null, &rhs) {
-        return rhs;
-    }
-    return String.empty;
-}
-
 #private
 modes_to_flags :: fn (modes: []Fs.OpenMode) (access: u32, create: u32, append: bool) #inline {
     access: u32;

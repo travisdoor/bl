@@ -48,6 +48,7 @@ _SHUT_UP_END
 #define LLVM_ATTR_BYVAL llvm_get_attribute_kind("byval")
 #define LLVM_ATTR_NOALIAS llvm_get_attribute_kind("noalias")
 #define LLVM_ATTR_STRUCTRET llvm_get_attribute_kind("sret")
+#define LLVM_ATTR_ALIGNMENT llvm_get_attribute_kind("align")
 
 #ifdef __cplusplus
 extern "C" {

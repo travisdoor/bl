@@ -140,7 +140,7 @@ struct mir_switch_case {
     struct mir_instr_block *block;
 };
 
-TSMALL_ARRAY_TYPE(SwitchCase, struct mir_switch_case, 64)
+typedef sarr_t(struct mir_switch_case, 32) mir_switch_cases_t;
 
 enum mir_type_kind {
     MIR_TYPE_INVALID     = 0,
@@ -867,7 +867,7 @@ struct mir_instr_switch {
 
     struct mir_instr *      value;
     struct mir_instr_block *default_block;
-    TSmallArray_SwitchCase *cases;
+    mir_switch_cases_t *    cases;
     bool                    has_user_defined_default;
 };
 

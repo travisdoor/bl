@@ -72,24 +72,16 @@ const char *env_names[] = {
 #undef GEN_ENV
 };
 
-union _SmallArrays {
-    TSmallArray_SwitchCase switch_case;
-};
-
 static const usize sarr_total_size = sizeof(union {
-    ast_nodes_t    _1;
-    mir_args_t     _2;
-    mir_fns_t      _3;
-    mir_types_t    _4;
-    mir_members_t  _5;
-    mir_variants_t _6;
-    mir_instrs_t   _7;
+    ast_nodes_t        _1;
+    mir_args_t         _2;
+    mir_fns_t          _3;
+    mir_types_t        _4;
+    mir_members_t      _5;
+    mir_variants_t     _6;
+    mir_instrs_t       _7;
+    mir_switch_cases_t _8;
 });
-
-static void small_array_dtor(TSmallArrayAny *arr)
-{
-    tsa_terminate(arr);
-}
 
 static void sarr_dtor(sarr_any_t *arr)
 {
@@ -291,7 +283,7 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, TString *o
     if (!path) babort("Invalid directory copy.");
     win_path_to_unix(path, strlen(path));
 #else
-    const char *path = _path;
+    const char *path  = _path;
 #endif
     if (!dir_exists(path)) {
         if (!create_dir_tree(path)) {
@@ -359,31 +351,31 @@ static bool import_module(struct assembly *assembly,
     { // entry file
         const char *entry_file = conf_data_get_str(config, CONF_MODULE_ENTRY);
         bassert(entry_file && strlen(entry_file) > 0);
-        TString *entry_file_path = get_tmpstr();
-        tstring_setf(entry_file_path, "%s/%s", modulepath, entry_file);
-        assembly_add_unit_safe(assembly, entry_file_path->data, NULL);
-        put_tmpstr(entry_file_path);
+        char *entry_file_path = gettmpstr();
+        strprint(entry_file_path, "%s/%s", modulepath, entry_file);
+        assembly_add_unit_safe(assembly, entry_file_path, NULL);
+        puttmpstr(entry_file_path);
     }
 
     // Optional lib path
     if (conf_data_has_key(config, CONF_MODULE_LIB_PATH)) {
         const char *lib_path = conf_data_get_str(config, CONF_MODULE_LIB_PATH);
         bassert(lib_path && strlen(lib_path) > 0);
-        TString *path = get_tmpstr();
-        tstring_setf(path, "%s/%s", modulepath, lib_path);
-        if (!dir_exists(path->data)) {
+        char *path = gettmpstr();
+        strprint(path, "%s/%s", modulepath, lib_path);
+        if (!dir_exists(path)) {
             builder_msg(BUILDER_MSG_ERROR,
                         ERR_FILE_NOT_FOUND,
                         TOKEN_OPTIONAL_LOCATION(import_from),
                         BUILDER_CUR_WORD,
                         "Cannot find module imported library path '%s' defined by '%s'.",
-                        path->data,
+                        path,
                         CONF_MODULE_LIB_PATH);
-            put_tmpstr(path);
+            puttmpstr(path);
             return_zone(false);
         }
-        assembly_add_lib_path(assembly, path->data);
-        put_tmpstr(path);
+        assembly_add_lib_path(assembly, path);
+        puttmpstr(path);
     }
 
     // Optional linker options
@@ -587,11 +579,6 @@ struct assembly *assembly_new(const struct target *target)
     // set defaults
     scope_arenas_init(&assembly->arenas.scope);
     ast_arena_init(&assembly->arenas.ast);
-    arena_init(&assembly->arenas.small_array,
-               sizeof(union _SmallArrays),
-               alignment_of(union _SmallArrays),
-               EXPECTED_ARRAY_COUNT,
-               (arena_elem_dtor_t)small_array_dtor);
     arena_init(&assembly->arenas.sarr,
                sarr_total_size,
                16, // Is this correct?
@@ -661,7 +648,6 @@ void assembly_delete(struct assembly *assembly)
 
     tstring_terminate(&assembly->custom_linker_opt);
     vm_terminate(&assembly->vm);
-    arena_terminate(&assembly->arenas.small_array);
     arena_terminate(&assembly->arenas.sarr);
     ast_arena_terminate(&assembly->arenas.ast);
     scope_arenas_terminate(&assembly->arenas.scope);
@@ -737,10 +723,10 @@ void assembly_add_native_lib(struct assembly *assembly,
 
 static INLINE bool module_exist(const char *module_dir, const char *modulepath)
 {
-    TString *local_conf_path = get_tmpstr();
-    tstring_setf(local_conf_path, "%s/%s/%s", module_dir, modulepath, MODULE_CONFIG_FILE);
-    const bool found = search_source_file(local_conf_path->data, SEARCH_FLAG_ABS, NULL, NULL, NULL);
-    put_tmpstr(local_conf_path);
+    char *local_conf_path = gettmpstr();
+    strprint(local_conf_path, "%s/%s/%s", module_dir, modulepath, MODULE_CONFIG_FILE);
+    const bool found = search_source_file(local_conf_path, SEARCH_FLAG_ABS, NULL, NULL, NULL);
+    puttmpstr(local_conf_path);
     return found;
 }
 
@@ -759,7 +745,7 @@ bool assembly_import_module(struct assembly *assembly,
         goto DONE;
     }
 
-    TString *            local_path = get_tmpstr();
+    char *               local_path = gettmpstr();
     conf_data_t *        config     = NULL;
     const struct target *target     = assembly->target;
     const char *         module_dir = target->module_dir.len > 0 ? target->module_dir.data : NULL;
@@ -768,11 +754,11 @@ bool assembly_import_module(struct assembly *assembly,
     switch (policy) {
     case IMPORT_POLICY_SYSTEM: {
         if (local_found) {
-            tstring_setf(local_path, "%s/%s", module_dir, modulepath);
-            config = load_module_config(local_path->data, import_from);
+            strprint(local_path, "%s/%s", module_dir, modulepath);
+            config = load_module_config(local_path, import_from);
         } else {
-            tstring_setf(local_path, "%s/%s", builder_get_lib_dir(), modulepath);
-            config = load_module_config(local_path->data, import_from);
+            strprint(local_path, "%s/%s", builder_get_lib_dir(), modulepath);
+            config = load_module_config(local_path, import_from);
         }
         break;
     }
@@ -780,20 +766,20 @@ bool assembly_import_module(struct assembly *assembly,
     case IMPORT_POLICY_BUNDLE_LATEST:
     case IMPORT_POLICY_BUNDLE: {
         bassert(module_dir);
-        TString *  system_path   = get_tmpstr();
+        char *     system_path   = gettmpstr();
         const bool check_version = policy == IMPORT_POLICY_BUNDLE_LATEST;
-        tstring_setf(local_path, "%s/%s", module_dir, modulepath);
-        tstring_setf(system_path, "%s/%s", builder_get_lib_dir(), modulepath);
+        strprint(local_path, "%s/%s", module_dir, modulepath);
+        strprint(system_path, "%s/%s", builder_get_lib_dir(), modulepath);
         const bool system_found = module_exist(builder_get_lib_dir(), modulepath);
         // Check if module is present in module directory.
         bool do_copy = !local_found;
         if (check_version && local_found && system_found) {
             s32 system_version = 0;
             s32 local_version  = 0;
-            tstring_setf(system_path, "%s/%s", builder_get_lib_dir(), modulepath);
-            config = load_module_config(system_path->data, import_from);
+            strprint(system_path, "%s/%s", builder_get_lib_dir(), modulepath);
+            config = load_module_config(system_path, import_from);
             if (config) system_version = get_module_version(config);
-            conf_data_t *local_config = load_module_config(local_path->data, import_from);
+            conf_data_t *local_config = load_module_config(local_path, import_from);
             if (local_config) local_version = get_module_version(local_config);
             conf_data_delete(local_config);
             do_copy = system_version > local_version;
@@ -801,26 +787,26 @@ bool assembly_import_module(struct assembly *assembly,
         if (do_copy) {
             // Delete old one.
             if (local_found) {
-                TString *backup_name = get_tmpstr();
-                char     date[26];
+                char *backup_name = gettmpstr();
+                char  date[26];
                 date_time(date, static_arrlenu(date), "%d-%m-%Y_%H-%M-%S");
-                tstring_setf(backup_name, "%s_%s.bak", local_path->data, date);
-                copy_dir(local_path->data, backup_name->data);
-                remove_dir(local_path->data);
-                builder_warning("Backup module '%s'.", backup_name->data);
-                put_tmpstr(backup_name);
+                strprint(backup_name, "%s_%s.bak", local_path, date);
+                copy_dir(local_path, backup_name);
+                remove_dir(local_path);
+                builder_warning("Backup module '%s'.", backup_name);
+                puttmpstr(backup_name);
             }
             // Copy module from system to module directory.
             builder_warning("%s module '%s' in '%s'.",
                             (check_version && local_found) ? "Update" : "Import",
                             modulepath,
                             module_dir);
-            if (!copy_dir(system_path->data, local_path->data)) {
+            if (!copy_dir(system_path, local_path)) {
                 builder_error("Cannot import module '%s'.", modulepath);
             }
         }
-        if (!config) config = load_module_config(local_path->data, import_from);
-        put_tmpstr(system_path);
+        if (!config) config = load_module_config(local_path, import_from);
+        puttmpstr(system_path);
         break;
     }
 
@@ -828,10 +814,10 @@ bool assembly_import_module(struct assembly *assembly,
         bassert("Invalid module import policy!");
     }
     if (config) {
-        builder_log("%s", local_path->data);
-        state = import_module(assembly, config, local_path->data, import_from);
+        builder_log("%s", local_path);
+        state = import_module(assembly, config, local_path, import_from);
     }
-    put_tmpstr(local_path);
+    puttmpstr(local_path);
     conf_data_delete(config);
 DONE:
     return_zone(state);

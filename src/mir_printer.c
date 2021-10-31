@@ -690,14 +690,11 @@ void print_instr_switch(struct context *ctx, struct mir_instr_switch *sw)
     print_comptime_value_or_id(ctx, sw->value);
     fprintf(ctx->stream, " {");
 
-    struct mir_switch_case *c;
-    for (usize i = 0; i < sw->cases->size; ++i) {
-        c = &sw->cases->data[i];
-
+    for (usize i = 0; i < sarrlenu(sw->cases); ++i) {
+        struct mir_switch_case *c = &sarrpeek(sw->cases, i);
         print_comptime_value_or_id(ctx, c->on_value);
         fprintf(ctx->stream, ": %%%s_%llu", c->block->name, (unsigned long long)c->block->base.id);
-
-        if (i < sw->cases->size - 1) fprintf(ctx->stream, "; ");
+        if (i < sarrlenu(sw->cases) - 1) fprintf(ctx->stream, "; ");
     }
 
     fprintf(ctx->stream,

@@ -1,7 +1,19 @@
+#import "std/test"
+
+my_test :: fn () #test {
+    print("Hello from test case!\n");
+}
+
+my_test2 :: fn () #test {
+    print("Hello from test case!\n");
+}
+
 main :: fn () s32 {
+    cases :: testcases();
+    print("cases = %\n", cases);
     return 0;
 }
-// 5974
+
 // =================================================================================================
 // TODO
 // =================================================================================================

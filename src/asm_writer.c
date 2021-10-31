@@ -27,6 +27,7 @@
 // =================================================================================================
 
 #include "builder.h"
+#include "stb_ds.h"
 
 #define ASM_EXT "s"
 
@@ -34,22 +35,22 @@
 void asm_writer_run(struct assembly *assembly)
 {
     zone();
-    TString *            buf    = get_tmpstr();
+    char *               buf    = gettmpstr();
     const struct target *target = assembly->target;
     const char *         name   = target->name;
     blog("out_dir = %s", target->out_dir.data);
     blog("name = %s", name);
-    tstring_setf(buf, "%s/%s.%s", target->out_dir.data, name, ASM_EXT);
+    strprint(buf, "%s/%s.%s", target->out_dir.data, name, ASM_EXT);
     char *error_msg = NULL;
     if (LLVMTargetMachineEmitToFile(assembly->llvm.TM,
                                     assembly->llvm.modules[0],
-                                    buf->data,
+                                    buf,
                                     LLVMAssemblyFile,
                                     &error_msg)) {
-        builder_error("Cannot emit assembly file: %s with error: %s", buf->data, error_msg);
+        builder_error("Cannot emit assembly file: %s with error: %s", buf, error_msg);
         LLVMDisposeMessage(error_msg);
     }
-    builder_note("Assembly code written into %s", buf->data);
-    put_tmpstr(buf);
+    builder_note("Assembly code written into %s", buf);
+    puttmpstr(buf);
     return_zone();
 }

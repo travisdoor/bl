@@ -737,15 +737,13 @@ char dyncall_cb_handler(DCCallback UNUSED(*cb), DCArgs *dc_args, DCValue *result
         babort("External function used as callback is not supported yet!");
     }
 
-    TSmallArray_ConstExprValue arg_tmp;
-    tsa_init(&arg_tmp);
-
-    mir_args_t *args = fn->type->data.fn.args;
+    mir_const_values_t arg_tmp = SARR_ZERO;
+    mir_args_t *       args    = fn->type->data.fn.args;
     if (sarrlenu(args)) {
-        tsa_resize_ConstExprValue(&arg_tmp, sarrlenu(args));
+        sarrsetlen(&arg_tmp, sarrlenu(args));
         for (usize i = 0; i < sarrlenu(args); ++i) {
             struct mir_arg *             it = sarrpeek(args, i);
-            struct mir_const_expr_value *v  = &arg_tmp.data[i];
+            struct mir_const_expr_value *v  = &sarrpeek(&arg_tmp, i);
             v->type                         = it->type;
             v->data                         = &v->_tmp[0];
 
@@ -762,7 +760,7 @@ char dyncall_cb_handler(DCCallback UNUSED(*cb), DCArgs *dc_args, DCValue *result
         result->L = vm_read_int(ret_type, ret_ptr);
     }
 
-    tsa_terminate(&arg_tmp);
+    sarrfree(&arg_tmp);
     return dyncall_generate_signature(vm, ret_type)[0];
 }
 
@@ -1428,17 +1426,15 @@ void interp_instr_switch(struct virtual_machine *vm, struct mir_instr_switch *sw
     const s64 value       = vm_read_int(value_type, value_ptr);
     vm->stack->prev_block = sw->base.owner_block;
 
-    TSmallArray_SwitchCase *cases = sw->cases;
-    for (usize i = 0; i < cases->size; ++i) {
-        struct mir_switch_case *c = &cases->data[i];
-
-        const s64 on_value = vm_read_int(value_type, c->on_value->value.data);
+    mir_switch_cases_t *cases = sw->cases;
+    for (usize i = 0; i < sarrlenu(cases); ++i) {
+        struct mir_switch_case *c        = &sarrpeek(cases, i);
+        const s64               on_value = vm_read_int(value_type, c->on_value->value.data);
         if (value == on_value) {
             set_pc(vm, c->block->entry_instr);
             return;
         }
     }
-
     set_pc(vm, sw->default_block->entry_instr);
 }
 
@@ -2296,22 +2292,22 @@ void vm_override_var(struct virtual_machine *vm, struct mir_var *var, const u64 
     vm_write_int(type, dest_ptr, value);
 }
 
-bool vm_execute_fn(struct virtual_machine *    vm,
-                   struct assembly *           assembly,
-                   struct mir_fn *             fn,
-                   TSmallArray_ConstExprValue *optional_args,
-                   vm_stack_ptr_t *            optional_return)
+bool vm_execute_fn(struct virtual_machine *vm,
+                   struct assembly *       assembly,
+                   struct mir_fn *         fn,
+                   mir_const_values_t *    optional_args,
+                   vm_stack_ptr_t *        optional_return)
 {
     BL_MAGIC_ASSERT(fn);
     vm->assembly       = assembly;
     vm->stack->aborted = false;
     if (optional_args) {
         bassert(fn->type->data.fn.args);
-        bassert(sarrlenu(fn->type->data.fn.args) == optional_args->size &&
+        bassert(sarrlenu(fn->type->data.fn.args) == sarrlenu(optional_args) &&
                 "Invalid count of explicitly passed arguments");
         // Push all arguments in reverse order on the stack.
-        for (usize i = optional_args->size; i-- > 0;) {
-            struct mir_const_expr_value *value = &optional_args->data[i];
+        for (usize i = sarrlenu(optional_args); i-- > 0;) {
+            struct mir_const_expr_value *value = &sarrpeek(optional_args, i);
             stack_push(vm, value->data, value->type);
         }
     }
@@ -2324,8 +2320,8 @@ bool vm_execute_fn(struct virtual_machine *    vm,
         if (optional_return) (*optional_return) = return_ptr;
         if (optional_args) {
             // Cleanup
-            for (usize i = 0; i < optional_args->size; ++i) {
-                struct mir_const_expr_value *value = &optional_args->data[i];
+            for (usize i = 0; i < sarrlenu(optional_args); ++i) {
+                struct mir_const_expr_value *value = &sarrpeek(optional_args, i);
                 stack_pop(vm, value->type);
             }
         }

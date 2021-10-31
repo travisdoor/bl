@@ -87,15 +87,12 @@
 
 struct context {
     struct unit *unit;
-    FILE *       stream;
-    TString      path_unit_dir;
-    TString      path_tmp;
-    s32          pad;
+    FILE        *stream;
     bool         is_inline;
     bool         is_multi_return;
-
-    TString section_variants;
-    TString section_members;
+    char        *path_unit_dir;
+    char        *section_variants;
+    char        *section_members;
 };
 
 static void append_section(struct context *ctx, const char *name, const char *content);
@@ -159,26 +156,27 @@ void doc_decl_entity(struct context *ctx, struct ast *decl)
     if (!decl->owner_scope) return;
     if (decl->owner_scope->kind != SCOPE_GLOBAL && decl->owner_scope->kind != SCOPE_NAMED) return;
 
-    TString *full_name = get_tmpstr();
+    char *full_name = gettmpstr();
     if (decl->owner_scope->name) {
-        tstring_append(full_name, decl->owner_scope->name);
-        tstring_append(full_name, ".");
+        strprint(full_name, "%s.%s", decl->owner_scope->name, ident->data.ident.id.str);
+    } else {
+        strprint(full_name, "%s", ident->data.ident.id.str);
     }
-    tstring_append(full_name, ident->data.ident.id.str);
 
-    tstring_clear(&ctx->path_tmp);
-    tstring_setf(&ctx->path_tmp, "%s/%s.rst", ctx->path_unit_dir.data, full_name->data);
-    char *export_file = ctx->path_tmp.data;
-    FILE *f           = fopen(export_file, "w");
+    char *export_file = gettmpstr();
+    strprint(export_file, "%s/%s.rst", ctx->path_unit_dir, full_name);
+    FILE *f = fopen(export_file, "w");
     if (f == NULL) {
         builder_error("Cannot open file '%s'", export_file);
-        put_tmpstr(full_name);
+        puttmpstr(full_name);
+        puttmpstr(export_file);
         return;
     }
+    puttmpstr(export_file);
     ctx->stream = f;
 
-    REF(ctx->stream, full_name->data);
-    H1(ctx->stream, full_name->data);
+    REF(ctx->stream, full_name);
+    H1(ctx->stream, full_name);
     CODE_BLOCK_BEGIN(ctx->stream, "bl");
     CODE_BLOCK_NEW_LINE(ctx->stream);
     fprintf(ctx->stream, "%s :", name);
@@ -195,21 +193,21 @@ void doc_decl_entity(struct context *ctx, struct ast *decl)
     fprintf(ctx->stream, "\n\n");
     if (text) fprintf(ctx->stream, "%s\n\n", text);
 
-    if (ctx->section_variants.len > 0) {
-        append_section(ctx, "Variants", ctx->section_variants.data);
-        tstring_clear(&ctx->section_variants);
+    if (strlenu(ctx->section_variants) > 0) {
+        append_section(ctx, "Variants", ctx->section_variants);
+        strclr(ctx->section_variants);
     }
 
-    if (ctx->section_members.len > 0) {
-        append_section(ctx, "Members", ctx->section_members.data);
-        tstring_clear(&ctx->section_members);
+    if (strlenu(ctx->section_members) > 0) {
+        append_section(ctx, "Members", ctx->section_members);
+        strclr(ctx->section_members);
     }
 
     fprintf(ctx->stream, "\n\n*Declared in: %s*\n", ctx->unit->filename);
 
     ctx->stream = NULL;
     fclose(f);
-    put_tmpstr(full_name);
+    puttmpstr(full_name);
 }
 
 void doc_decl_arg(struct context *ctx, struct ast *decl)
@@ -230,14 +228,8 @@ void doc_decl_variant(struct context *ctx, struct ast *decl)
     if (ident) {
         const char *name = ident->data.ident.id.str;
         fprintf(ctx->stream, "%s", name);
-
         if (decl->docs) {
-            TString *section = &ctx->section_variants;
-            tstring_append(section, "**");
-            tstring_append(section, name);
-            tstring_append(section, "** - ");
-            tstring_append(section, decl->docs);
-            tstring_append(section, "\n\n");
+            strappend(ctx->section_variants, "**%s** - %s\n\n", name, decl->docs);
         }
     }
     if (value && value->kind == AST_EXPR_LIT_INT) {
@@ -255,12 +247,7 @@ void doc_decl_member(struct context *ctx, struct ast *decl)
         fprintf(ctx->stream, "%s: ", name);
 
         if (decl->docs) {
-            TString *section = &ctx->section_members;
-            tstring_append(section, "**");
-            tstring_append(section, name);
-            tstring_append(section, "** - ");
-            tstring_append(section, decl->docs);
-            tstring_append(section, "\n\n");
+            strappend(ctx->section_members, "**%s** - %s\n\n", name, decl->docs);
         }
     }
     doc(ctx, type);
@@ -465,37 +452,37 @@ void doc(struct context *ctx, struct ast *node)
 void doc_unit(struct context *ctx, struct unit *unit)
 {
     if (!unit->filename) return;
-    TString unit_name;
-    tstring_init(&unit_name);
-    tstring_append_n(&unit_name, unit->filename, strlen(unit->filename) - 3); // -3 ('.bl')
+    char *unit_name = gettmpstr();
+    strprint(unit_name, "%.*s", (s32)strlen(unit->filename) - 3, unit->filename); // -3 ('.bl')
     ctx->unit = unit;
     // prepare unit output directory
     {
-        tstring_clear(&ctx->path_unit_dir);
-        tstring_setf(&ctx->path_unit_dir, "%s/%s", OUT_DIR, unit_name.data);
-        const char *dirpath = ctx->path_unit_dir.data;
+        strclr(ctx->path_unit_dir);
+        strprint(ctx->path_unit_dir, "%s/%s", OUT_DIR, unit_name);
+        const char *dirpath = ctx->path_unit_dir;
         if (!dir_exists(dirpath)) create_dir(dirpath);
     }
 
     doc(ctx, unit->ast);
 
     // write unit global docs
-    tstring_clear(&ctx->path_tmp);
-    tstring_setf(&ctx->path_tmp, "%s/%s.rst", OUT_DIR, unit_name.data);
-    char *export_file = ctx->path_tmp.data;
-    FILE *f           = fopen(export_file, "w");
+    char *export_file = gettmpstr();
+    strprint(export_file, "%s/%s.rst", OUT_DIR, unit_name);
+    FILE *f = fopen(export_file, "w");
     if (f == NULL) {
         builder_error("Cannot open file '%s'", export_file);
+        puttmpstr(export_file);
         return;
     }
+    puttmpstr(export_file);
     if (unit->ast->docs) {
         fprintf(f, "%s", unit->ast->docs);
     } else {
         H1(f, unit->filename);
     }
-    DEFAULT_TOC(f, unit_name.data);
+    DEFAULT_TOC(f, unit_name);
     fclose(f);
-    tstring_terminate(&unit_name);
+    puttmpstr(unit_name);
 }
 
 void docs_run(struct assembly *assembly)
@@ -503,10 +490,9 @@ void docs_run(struct assembly *assembly)
     zone();
     struct context ctx;
     memset(&ctx, 0, sizeof(struct context));
-    tstring_init(&ctx.path_tmp);
-    tstring_init(&ctx.path_unit_dir);
-    tstring_init(&ctx.section_variants);
-    tstring_init(&ctx.section_members);
+    strinit(ctx.path_unit_dir, 128);
+    strinit(ctx.section_variants, 128);
+    strinit(ctx.section_members, 128);
 
     // prepare output directory
     if (!dir_exists(OUT_DIR)) create_dir(OUT_DIR);
@@ -517,10 +503,9 @@ void docs_run(struct assembly *assembly)
     }
 
     // cleanup
-    tstring_terminate(&ctx.path_tmp);
-    tstring_terminate(&ctx.path_unit_dir);
-    tstring_terminate(&ctx.section_variants);
-    tstring_terminate(&ctx.section_members);
+    strfree(ctx.path_unit_dir);
+    strfree(ctx.section_variants);
+    strfree(ctx.section_members);
 
     builder_note("Documentation written into '%s' directory.", OUT_DIR);
     return_zone();
