@@ -39,12 +39,12 @@
 void obj_writer_run(struct assembly *assembly)
 {
     zone();
-    char *               buf    = gettmpstr();
+    char                *buf    = gettmpstr();
     const struct target *target = assembly->target;
-    const char *         name   = target->name;
-    blog("out_dir = %s", target->out_dir.data);
+    const char          *name   = target->name;
+    blog("out_dir = %s", target->out_dir);
     blog("name = %s", name);
-    strprint(buf, "%s/%s.%s", target->out_dir.data, name, OBJ_EXT);
+    strprint(buf, "%s/%s.%s", target->out_dir, name, OBJ_EXT);
     char *error_msg = NULL;
     if (LLVMTargetMachineEmitToFile(
             assembly->llvm.TM, assembly->llvm.modules[0], buf, LLVMObjectFile, &error_msg)) {

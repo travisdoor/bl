@@ -92,7 +92,7 @@ static void append_default_opt(struct assembly *assembly, char **buf)
 
 static void append_custom_opt(struct assembly *assembly, char **buf)
 {
-    const char *custom_opt = assembly->custom_linker_opt.data;
+    const char *custom_opt = assembly->custom_linker_opt;
     if (custom_opt) strappend(*buf, "%s ", custom_opt);
 }
 
@@ -112,10 +112,10 @@ static void append_linker_exec(char **buf)
 s32 lld_link(struct assembly *assembly)
 {
     runtime_measure_begin(linking);
-    char *               buf     = gettmpstr();
+    char                *buf     = gettmpstr();
     const struct target *target  = assembly->target;
-    const char *         out_dir = target->out_dir.data;
-    const char *         name    = target->name;
+    const char          *out_dir = target->out_dir;
+    const char          *name    = target->name;
 
     strappend(buf, "call ");
 

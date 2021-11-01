@@ -37,7 +37,7 @@
 hash_t unit_hash(const char *filepath, struct token *load_from)
 {
     struct unit *parent_unit = load_from ? load_from->location.unit : NULL;
-    char *       real_path   = NULL;
+    char        *real_path   = NULL;
     search_source_file(
         filepath, SEARCH_FLAG_ALL, parent_unit ? parent_unit->dirpath : NULL, &real_path, NULL);
     const hash_t hash = strhash(real_path ? real_path : filepath);

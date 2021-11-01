@@ -42,9 +42,9 @@ s32 lld_ld(struct assembly *assembly);
 
 static void copy_user_libs(struct assembly *assembly)
 {
-    char *               dest_path = gettmpstr();
+    char                *dest_path = gettmpstr();
     const struct target *target    = assembly->target;
-    const char *         out_dir   = target->out_dir.data;
+    const char          *out_dir   = target->out_dir;
     for (usize i = 0; i < arrlenu(assembly->libs); ++i) {
         struct native_lib *lib = &assembly->libs[i];
         if (lib->is_internal) continue;
@@ -85,7 +85,7 @@ void native_bin_run(struct assembly *assembly)
 #error "Unknown platform"
 #endif
 
-    const char *out_dir = assembly->target->out_dir.data;
+    const char *out_dir = assembly->target->out_dir;
     zone();
     if (linker(assembly) != 0) {
         builder_msg(BUILDER_MSG_ERROR,

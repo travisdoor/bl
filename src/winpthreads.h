@@ -117,7 +117,7 @@
 typedef struct _pthread_cleanup _pthread_cleanup;
 struct _pthread_cleanup {
     void (*func)(void *);
-    void *            arg;
+    void             *arg;
     _pthread_cleanup *next;
 };
 
@@ -129,7 +129,7 @@ struct _pthread_v {
     int               cancelled;
     unsigned          p_state;
     int               keymax;
-    void **           keyval;
+    void            **keyval;
 
     jmp_buf jb;
 };
@@ -147,7 +147,7 @@ struct pthread_barrier_t {
 typedef struct pthread_attr_t pthread_attr_t;
 struct pthread_attr_t {
     unsigned p_state;
-    void *   stack;
+    void    *stack;
     size_t   s_size;
 };
 
@@ -156,7 +156,7 @@ typedef unsigned           pthread_mutexattr_t;
 typedef SRWLOCK            pthread_rwlock_t;
 typedef CRITICAL_SECTION   pthread_mutex_t;
 typedef unsigned           pthread_key_t;
-typedef void *             pthread_barrierattr_t;
+typedef void              *pthread_barrierattr_t;
 typedef long               pthread_spinlock_t;
 typedef int                pthread_condattr_t;
 typedef CONDITION_VARIABLE pthread_cond_t;
@@ -906,7 +906,7 @@ static inline int pthread_mutex_timedlock(pthread_mutex_t *m, struct timespec *t
     unsigned long long t, ct;
 
     struct _pthread_crit_t {
-        void *    debug;
+        void     *debug;
         LONG      count;
         LONG      r_count;
         HANDLE    owner;

@@ -34,10 +34,10 @@
 void bc_writer_run(struct assembly *assembly)
 {
     zone();
-    char *               export_file = gettmpstr();
+    char                *export_file = gettmpstr();
     const struct target *target      = assembly->target;
-    const char *         name        = target->name;
-    strprint(export_file, "%s/%s.ll", target->out_dir.data, name);
+    const char          *name        = target->name;
+    strprint(export_file, "%s/%s.ll", target->out_dir, name);
     char *str = LLVMPrintModuleToString(assembly->llvm.modules[0]);
     FILE *f   = fopen(export_file, "w");
     if (f == NULL) {

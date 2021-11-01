@@ -1,11 +1,11 @@
 // =================================================================================================
-// bl
+// blc
 //
-// File:   arena.h
+// File:   basic_types.h
 // Author: Martin Dorazil
-// Date:   3/14/18
+// Date:   11/01/2021
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2021 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,33 +26,21 @@
 // SOFTWARE.
 // =================================================================================================
 
-#ifndef BL_ARENA_H
-#define BL_ARENA_H
+#ifndef BL_BASIC_TYPES
+#define BL_BASIC_TYPES
 
-#include "common.h"
+#include <stdbool.h>
 
-typedef void (*arena_elem_dtor_t)(void *);
-
-struct arena_chunk;
-
-struct arena {
-    struct arena_chunk     *first_chunk;
-    struct arena_chunk     *current_chunk;
-    usize                   elem_size_bytes;
-    s32                     elem_alignment;
-    s32                     elems_per_chunk;
-    arena_elem_dtor_t       elem_dtor;
-    struct arena_sync_impl *sync;
-};
-
-void arena_init(struct arena     *arena,
-                usize             elem_size_bytes,
-                s32               elem_alignment,
-                s32               elems_per_chunk,
-                arena_elem_dtor_t elem_dtor);
-
-void arena_terminate(struct arena *arena);
-
-void *arena_safe_alloc(struct arena *arena);
+typedef char               s8;
+typedef short              s16;
+typedef int                s32;
+typedef long long          s64;
+typedef unsigned char      u8;
+typedef unsigned short     u16;
+typedef unsigned int       u32;
+typedef unsigned long long u64;
+typedef size_t             usize;
+typedef float              f32;
+typedef double             f64;
 
 #endif

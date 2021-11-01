@@ -40,7 +40,7 @@
 
 struct context {
     struct assembly *assembly;
-    FILE *           stream;
+    FILE            *stream;
 };
 
 static void print_comptime_value_or_id(struct context *ctx, struct mir_instr *instr);
@@ -208,7 +208,7 @@ _print_const_value(struct context *ctx, struct mir_type *type, vm_stack_ptr_t va
         mir_members_t *members = type->data.strct.members;
         for (usize i = 0; i < sarrlenu(members); ++i) {
             struct mir_member *it          = sarrpeek(members, i);
-            struct mir_type *  member_type = it->type;
+            struct mir_type   *member_type = it->type;
             const ptrdiff_t    offset2     = vm_get_struct_elem_offset(ctx->assembly, type, (u32)i);
             _print_const_value(ctx, member_type, value + offset2);
             if (i < sarrlenu(members) - 1) fprintf(ctx->stream, ",");
@@ -264,7 +264,7 @@ static void print_instr_type_ptr(struct context *ctx, struct mir_instr_type_ptr 
 static void print_instr_type_poly(struct context *ctx, struct mir_instr_type_poly *type_poly);
 static void print_instr_type_array(struct context *ctx, struct mir_instr_type_array *type_array);
 static void print_instr_type_slice(struct context *ctx, struct mir_instr_type_slice *type_slice);
-static void print_instr_type_dynarr(struct context *               ctx,
+static void print_instr_type_dynarr(struct context                *ctx,
                                     struct mir_instr_type_dyn_arr *type_dynarr);
 static void print_instr_type_vargs(struct context *ctx, struct mir_instr_type_vargs *type_vargs);
 static void print_instr_block(struct context *ctx, struct mir_instr_block *block);
@@ -343,7 +343,7 @@ void print_instr_set_initializer(struct context *ctx, struct mir_instr_set_initi
     fprintf(ctx->stream, " -> ");
 
     for (usize i = 0; i < sarrlenu(si->dests); ++i) {
-        struct mir_instr *         _dest = sarrpeek(si->dests, i);
+        struct mir_instr          *_dest = sarrpeek(si->dests, i);
         struct mir_instr_decl_var *dest  = (struct mir_instr_decl_var *)_dest;
         if (dest && dest->var->linkage_name) {
             fprintf(ctx->stream, "%s", dest->var->linkage_name);
@@ -362,7 +362,7 @@ void print_instr_phi(struct context *ctx, struct mir_instr_phi *phi)
         return;
     }
 
-    struct mir_instr *      value;
+    struct mir_instr       *value;
     struct mir_instr_block *block;
     const usize             c = sarrlenu(phi->incoming_values);
 
@@ -824,7 +824,7 @@ void print_instr_call(struct context *ctx, struct mir_instr_call *call)
     struct mir_fn *callee      = mir_is_comptime(call->callee)
                                      ? MIR_CEV_READ_AS(struct mir_fn *, &call->callee->value)
                                      : NULL;
-    const char *   callee_name = callee ? callee->linkage_name : NULL;
+    const char    *callee_name = callee ? callee->linkage_name : NULL;
     if (callee_name)
         fprintf(ctx->stream, "@%s", callee_name);
     else

@@ -124,8 +124,8 @@ static void parse_triple(const char *normalized_triple, struct target_triple *ou
     char *arch, *vendor, *os, *env;
     arch = vendor = os = env = "";
     const char *delimiter    = "-";
-    char *      tmp          = strdup(normalized_triple);
-    char *      token        = strtok(tmp, delimiter);
+    char       *tmp          = strdup(normalized_triple);
+    char       *token        = strtok(tmp, delimiter);
     s32         state        = 0;
     while (token) {
         switch (state++) {
@@ -262,19 +262,18 @@ static INLINE void mir_terminate(struct assembly *assembly)
     mir_arenas_terminate(&assembly->arenas.mir);
 }
 
-static INLINE void set_default_out_dir(TString *dir)
+static INLINE void set_default_out_dir(char **dir)
 {
     char path[PATH_MAX] = {0};
     if (!get_current_working_dir(&path[0], PATH_MAX)) {
         builder_error("Cannot get current working directory!");
         return;
     }
-    tstring_clear(dir);
-    tstring_append(dir, path);
+    strprint(*dir, "%s", path);
 }
 
 // Create directory tree and set out_path.
-static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, TString *out_path)
+static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, char **out_path)
 {
     bassert(_path);
     bassert(out_path);
@@ -297,8 +296,7 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, TString *o
     if (!brealpath(path, full_path, PATH_MAX)) {
         return false;
     }
-    tstring_clear(out_path);
-    tstring_append(out_path, full_path);
+    strprint(*out_path, "%s", full_path);
 #if BL_PLATFORM_WIN
     free(path);
 #endif
@@ -327,9 +325,9 @@ static INLINE s32 get_module_version(conf_data_t *config)
 }
 
 static bool import_module(struct assembly *assembly,
-                          conf_data_t *    config,
-                          const char *     modulepath,
-                          struct token *   import_from)
+                          conf_data_t     *config,
+                          const char      *modulepath,
+                          struct token    *import_from)
 {
     zone();
     bassert(config);
@@ -403,9 +401,9 @@ struct target *target_new(const char *name)
     struct target *target = bmalloc(sizeof(struct target));
     memset(target, 0, sizeof(struct target));
     BL_MAGIC_SET(target);
-    tstring_init(&target->default_custom_linker_opt);
-    tstring_init(&target->module_dir);
-    tstring_init(&target->out_dir);
+    strinit(target->default_custom_linker_opt, 128);
+    strinit(target->module_dir, 128);
+    strinit(target->out_dir, 128);
     target->name = strdup(name);
 
     set_default_out_dir(&target->out_dir);
@@ -436,7 +434,7 @@ struct target *target_dup(const char *name, const struct target *other)
     BL_MAGIC_ASSERT(other);
     struct target *target = target_new(name);
     memcpy(target, other, sizeof(struct {TARGET_COPYABLE_CONTENT}));
-    target_set_output_dir(target, other->out_dir.data);
+    target_set_output_dir(target, other->out_dir);
     target->vm = other->vm;
     BL_MAGIC_SET(target);
     return target;
@@ -454,9 +452,9 @@ void target_delete(struct target *target)
     arrfree(target->files);
     arrfree(target->default_lib_paths);
     arrfree(target->default_libs);
-    tstring_terminate(&target->out_dir);
-    tstring_terminate(&target->default_custom_linker_opt);
-    tstring_terminate(&target->module_dir);
+    strfree(target->out_dir);
+    strfree(target->default_custom_linker_opt);
+    strfree(target->module_dir);
     free(target->name);
     bfree(target);
 }
@@ -507,8 +505,7 @@ void target_append_linker_options(struct target *target, const char *option)
 {
     BL_MAGIC_ASSERT(target);
     if (!option) return;
-    tstring_append(&target->default_custom_linker_opt, option);
-    tstring_append(&target->default_custom_linker_opt, " ");
+    strappend(target->default_custom_linker_opt, "%s ", option);
 }
 
 void target_set_module_dir(struct target *target, const char *dir, enum module_import_policy policy)
@@ -573,7 +570,7 @@ struct assembly *assembly_new(const struct target *target)
 
     llvm_init(assembly);
     arrsetcap(assembly->units, 64);
-    tstring_init(&assembly->custom_linker_opt);
+    strinit(assembly->custom_linker_opt, 128);
     vm_init(&assembly->vm, VM_STACK_SIZE);
 
     // set defaults
@@ -626,7 +623,7 @@ struct assembly *assembly_new(const struct target *target)
         assembly_add_native_lib(assembly, target->default_libs[i], NULL);
 
     // Append custom linker options
-    assembly_append_linker_options(assembly, target->default_custom_linker_opt.data);
+    assembly_append_linker_options(assembly, target->default_custom_linker_opt);
 
     return assembly;
 }
@@ -646,7 +643,7 @@ void assembly_delete(struct assembly *assembly)
     arrfree(assembly->testing.cases);
     arrfree(assembly->units);
 
-    tstring_terminate(&assembly->custom_linker_opt);
+    strfree(assembly->custom_linker_opt);
     vm_terminate(&assembly->vm);
     arena_terminate(&assembly->arenas.sarr);
     ast_arena_terminate(&assembly->arenas.ast);
@@ -671,8 +668,7 @@ void assembly_add_lib_path(struct assembly *assembly, const char *path)
 void assembly_append_linker_options(struct assembly *assembly, const char *opt)
 {
     if (!opt) return;
-    tstring_append(&assembly->custom_linker_opt, opt);
-    tstring_append(&assembly->custom_linker_opt, " ");
+    strappend(assembly->custom_linker_opt, "%s ", opt);
 }
 
 static INLINE bool assembly_has_unit(struct assembly *assembly, const hash_t hash)
@@ -690,7 +686,7 @@ struct unit *
 assembly_add_unit_safe(struct assembly *assembly, const char *filepath, struct token *load_from)
 {
     zone();
-    struct unit *     unit = NULL;
+    struct unit      *unit = NULL;
     const hash_t      hash = unit_hash(filepath, load_from);
     AssemblySyncImpl *sync = assembly->sync;
     pthread_mutex_lock(&sync->units_lock);
@@ -704,8 +700,8 @@ DONE:
 }
 
 void assembly_add_native_lib(struct assembly *assembly,
-                             const char *     lib_name,
-                             struct token *   link_token)
+                             const char      *lib_name,
+                             struct token    *link_token)
 {
     const hash_t hash = strhash(lib_name);
     { // Search for duplicity.
@@ -731,8 +727,8 @@ static INLINE bool module_exist(const char *module_dir, const char *modulepath)
 }
 
 bool assembly_import_module(struct assembly *assembly,
-                            const char *     modulepath,
-                            struct token *   import_from)
+                            const char      *modulepath,
+                            struct token    *import_from)
 {
     zone();
     bool state = false;
@@ -745,10 +741,10 @@ bool assembly_import_module(struct assembly *assembly,
         goto DONE;
     }
 
-    char *               local_path = gettmpstr();
-    conf_data_t *        config     = NULL;
+    char                *local_path = gettmpstr();
+    conf_data_t         *config     = NULL;
     const struct target *target     = assembly->target;
-    const char *         module_dir = target->module_dir.len > 0 ? target->module_dir.data : NULL;
+    const char          *module_dir = strlenu(target->module_dir) > 0 ? target->module_dir : NULL;
     const enum module_import_policy policy = assembly->target->module_policy;
     const bool local_found = module_dir ? module_exist(module_dir, modulepath) : false;
     switch (policy) {
@@ -766,7 +762,7 @@ bool assembly_import_module(struct assembly *assembly,
     case IMPORT_POLICY_BUNDLE_LATEST:
     case IMPORT_POLICY_BUNDLE: {
         bassert(module_dir);
-        char *     system_path   = gettmpstr();
+        char      *system_path   = gettmpstr();
         const bool check_version = policy == IMPORT_POLICY_BUNDLE_LATEST;
         strprint(local_path, "%s/%s", module_dir, modulepath);
         strprint(system_path, "%s/%s", builder_get_lib_dir(), modulepath);
@@ -825,7 +821,7 @@ DONE:
 
 DCpointer assembly_find_extern(struct assembly *assembly, const char *symbol)
 {
-    void *             handle = NULL;
+    void              *handle = NULL;
     struct native_lib *lib;
     for (usize i = 0; i < arrlenu(assembly->libs); ++i) {
         lib    = &assembly->libs[i];

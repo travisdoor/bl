@@ -91,7 +91,7 @@ static INLINE struct arena_chunk *free_chunk(struct arena *arena, struct arena_c
     return next;
 }
 
-void arena_init(struct arena *    arena,
+void arena_init(struct arena     *arena,
                 usize             elem_size_bytes,
                 s32               elem_alignment,
                 s32               elems_per_chunk,

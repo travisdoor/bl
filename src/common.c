@@ -161,8 +161,8 @@ char *scprint(struct string_cache **cache, const char *fmt, ...)
 bool search_source_file(const char *filepath,
                         const u32   flags,
                         const char *wdir,
-                        char **     out_filepath,
-                        char **     out_dirpath)
+                        char      **out_filepath,
+                        char      **out_dirpath)
 {
     char *tmp = gettmpstr();
     if (!filepath) goto NOT_FOUND;

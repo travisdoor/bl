@@ -95,7 +95,7 @@ static Intrinsic::ID llvm_map_to_intrinsic_id(unsigned ID)
 
 LLVMValueRef llvm_get_intrinsic_decl(LLVMModuleRef mod_ref,
                                      u32           id,
-                                     LLVMTypeRef * param_types_ref,
+                                     LLVMTypeRef  *param_types_ref,
                                      usize         param_types_count)
 {
     ArrayRef<Type *> types(CAST(Type **)(param_types_ref), param_types_count);
@@ -106,7 +106,7 @@ LLVMValueRef llvm_get_intrinsic_decl(LLVMModuleRef mod_ref,
 
 LLVMValueRef llvm_const_string_in_context(LLVMContextRef UNUSED(context_ref),
                                           LLVMTypeRef    t,
-                                          const char *   str,
+                                          const char    *str,
                                           bool           zero_terminate)
 {
     size_t                      len = strlen(str);

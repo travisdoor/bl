@@ -70,7 +70,7 @@ void print_trace(void)
 {
 #if BL_PLATFORM_MACOS || BL_PLATFORM_LINUX
 #include <execinfo.h>
-    void * tmp[32];
+    void  *tmp[32];
     usize  size;
     char **strings;
     usize  i;

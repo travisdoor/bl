@@ -49,7 +49,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_SOURCE_DIR}/bin")
 set(BL_CONF_FILE ${CMAKE_INSTALL_SYSCONFDIR}/bl.conf)
 
 add_subdirectory(deps/dyncall-1.2)
-add_subdirectory(deps/tlib-c)
 
 # deps
 if(MSVC)
@@ -258,7 +257,6 @@ target_link_libraries(
   PRIVATE dynload_s
           dyncall_s
           dyncallback_s
-          tlib
           ${CMAKE_DL_LIBS}
           #LLVM) #use only LLVM to link dynamically
           ${LLVM_LIBS})
@@ -269,7 +267,6 @@ target_include_directories(
           deps/dyncall-1.2/dyncall
           deps/dyncall-1.2/dynload
           deps/dyncall-1.2/dyncallback
-          deps/tlib-c/include
           deps/tracy-${TRACY_VER}
           ${LLVM_INCLUDE_DIRS})
 

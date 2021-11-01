@@ -52,10 +52,10 @@ static void print_header(const char *name, const char *filename, FILE *stream)
 
 void mir_writer_run(struct assembly *assembly)
 {
-    const char *         name        = assembly->target->name;
-    char *               export_file = gettmpstr();
+    const char          *name        = assembly->target->name;
+    char                *export_file = gettmpstr();
     const struct target *target      = assembly->target;
-    strprint(export_file, "%s/%s.blm", target->out_dir.data, name);
+    strprint(export_file, "%s/%s.blm", target->out_dir, name);
     FILE *f = fopen(export_file, "w");
     if (f == NULL) {
         builder_error("cannot open file %s", export_file);

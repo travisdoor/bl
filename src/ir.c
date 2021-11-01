@@ -1808,11 +1808,13 @@ build_call_memcpy(struct context *ctx, LLVMValueRef src, LLVMValueRef dest, cons
     LLVMValueRef llvm_call = LLVMBuildCall(
         ctx->llvm_builder, ctx->intrinsic_memcpy, llvm_args, static_arrlenu(llvm_args), "");
 
+    /*
     LLVMAttributeRef llvm_attr = llvm_create_attribute_int(
         ctx->llvm_cnt, LLVM_ATTR_ALIGNMENT, ctx->builtin_types->t_u8_ptr->alignment);
     // NOTE: Index + 1, 0 is reserved for return value.
     LLVMAddCallSiteAttribute(llvm_call, 1, llvm_attr);
     LLVMAddCallSiteAttribute(llvm_call, 2, llvm_attr);
+    */
     return llvm_call;
 }
 

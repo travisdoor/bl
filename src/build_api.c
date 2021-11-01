@@ -30,6 +30,7 @@
 // are needed here.
 
 #include "builder.h"
+#include "stb_ds.h"
 
 BL_EXPORT struct target *__add_target(const char *name, enum assembly_kind kind)
 {
@@ -76,7 +77,7 @@ BL_EXPORT void __set_output_dir(struct target *target, const char *dir)
 BL_EXPORT const char *__get_output_dir(struct target *target)
 {
     BL_MAGIC_ASSERT(target);
-    return target->out_dir.len > 0 ? target->out_dir.data : NULL;
+    return strlenu(target->out_dir) > 0 ? target->out_dir : NULL;
 }
 
 BL_EXPORT void __set_module_dir(struct target *target, const char *dir, const s32 policy)
@@ -87,7 +88,7 @@ BL_EXPORT void __set_module_dir(struct target *target, const char *dir, const s3
 BL_EXPORT const char *__get_module_dir(struct target *target)
 {
     BL_MAGIC_ASSERT(target);
-    return target->module_dir.len > 0 ? target->module_dir.data : NULL;
+    return strlenu(target->module_dir) > 0 ? target->module_dir : NULL;
 }
 
 BL_EXPORT s32 __get_module_import_policy(struct target *target)

@@ -218,57 +218,56 @@ test_run :: fn () s32 {
     sighup :: fn (_: c_int) {};
     _signal(_SIGHUP, &sighup);
 
-    cases :: testcases();
-    #if cases.len > 0 {
-        print("\n");
-        prev_abort_handler :: _context.abort_fn;
-        defer _context.abort_fn = prev_abort_handler;
-
-        _context.abort_fn = &abort_handler;
-        _ci = 0;
-
-        // setup cases
-        array_init(&_queue);
-        array_reserve(&_queue, cases.len);
-        defer array_terminate(&_queue);
-
-        print("\nTesting start\n");
-        print("%\n", TEXT_LINE);
-
-        loop i := 0; i < cases.len; i += 1 {
-            array_push(&_queue, {:TestRun: &cases[i], false, 0.});
-        }
-
-        loop _ci < _queue.len {
-            t :: Thread.create(&worker);
-            Thread.join(t);
-        }
-
-        print("\nResults:\n");
-        print("%\n", TEXT_LINE);
-
-        fc: s64;
-        loop i := 0; i < _queue.len; i += 1 {
-            t :: &_queue[i];
-            if t.passed { continue; }
-
-            fc += 1;
-            print("[      | FAIL ] % (% ms)\n", t.case.name, t.runtime_ms);
-        }
-
-        perc := 100;
-        if fc > 0 { 
-            perc = cast(s32) (cast(f32) (_queue.len - fc) / ((cast(f32) _queue.len) * 0.01f));
-            print("%\n", TEXT_LINE);
-        }
-
-        // @HACK: Cannot print percent, escape sequence cannot be easily detected here.
-        print("Executed: %, passed %%.\n", _queue.len, perc, "%");
-        print("%\n", TEXT_LINE);
-        return auto fc;
-    } else {
+    cases := testcases();
+    if cases.len == 0 {
         return 0;
     }
+    print("\n");
+    prev_abort_handler :: _context.abort_fn;
+    defer _context.abort_fn = prev_abort_handler;
+
+    _context.abort_fn = &abort_handler;
+    _ci = 0;
+
+    // setup cases
+    array_init(&_queue);
+    array_reserve(&_queue, cases.len);
+    defer array_terminate(&_queue);
+
+    print("\nTesting start\n");
+    print("%\n", TEXT_LINE);
+
+    loop i := 0; i < cases.len; i += 1 {
+        array_push(&_queue, {:TestRun: &cases[i], false, 0.});
+    }
+
+    loop _ci < _queue.len {
+        t :: Thread.create(&worker);
+        Thread.join(t);
+    }
+
+    print("\nResults:\n");
+    print("%\n", TEXT_LINE);
+
+    fc: s64;
+    loop i := 0; i < _queue.len; i += 1 {
+        t :: &_queue[i];
+        if t.passed { continue; }
+
+        fc += 1;
+        print("[      | FAIL ] % (% ms)\n", t.case.name, t.runtime_ms);
+    }
+
+    perc := 100;
+    if fc > 0 { 
+        perc = cast(s32) (cast(f32) (_queue.len - fc) / ((cast(f32) _queue.len) * 0.01f));
+        print("%\n", TEXT_LINE);
+    }
+
+    // @HACK: Cannot print percent, escape sequence cannot be easily detected here.
+    print("Executed: %, passed %%.\n", _queue.len, perc, "%");
+    print("%\n", TEXT_LINE);
+    return auto fc;
 }
 
 #private

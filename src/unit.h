@@ -39,23 +39,23 @@ struct token;
 struct unit {
     hash_t               hash;
     struct tokens        tokens;
-    struct ast *         ast;
-    struct ast **        ublock_ast;
-    struct scope *       private_scope;
-    char *               filename;
-    char *               filepath;
-    char *               dirpath;
-    char *               name;
-    char *               src;
-    struct token *       loaded_from;
+    struct ast          *ast;
+    struct ast         **ublock_ast;
+    struct scope        *private_scope;
+    char                *filename;
+    char                *filepath;
+    char                *dirpath;
+    char                *name;
+    char                *src;
+    struct token        *loaded_from;
     LLVMMetadataRef      llvm_file_meta;
     struct string_cache *string_cache;
-    char **              large_string_cache;
+    char               **large_string_cache;
 };
 
 hash_t       unit_hash(const char *filepath, struct token *load_from);
 struct unit *unit_new(const char *filepath, struct token *load_from);
 void         unit_delete(struct unit *unit);
-const char * unit_get_src_ln(struct unit *unit, s32 line, long *len);
+const char  *unit_get_src_ln(struct unit *unit, s32 line, long *len);
 
 #endif

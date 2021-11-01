@@ -29,6 +29,7 @@
 #ifndef BL_BLMEMORY_H
 #define BL_BLMEMORY_H
 
+#include "basic_types.h"
 #include "config.h"
 
 #if BL_PLATFORM_WIN && BL_DEBUG
@@ -37,8 +38,6 @@
 // This is available only on windows.
 #define BL_CRTDBG_ALLOC 0
 #endif
-
-#include <tlib/tlib.h>
 
 #define bmalloc(size) _bl_malloc(size, __FILE__, __LINE__)
 #define brealloc(ptr, size) _bl_realloc(ptr, size, __FILE__, __LINE__)

@@ -29,11 +29,11 @@
 #ifndef BL_DEBUG_H
 #define BL_DEBUG_H
 
+#include "basic_types.h"
 #include "config.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <tlib/tlib.h>
 
 #if BL_PLATFORM_LINUX
 #include <signal.h>

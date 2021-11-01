@@ -64,7 +64,7 @@ typedef enum {
 
 void llvm_add_module_flag_int(LLVMModuleRef          module_ref,
                               LLVMModuleFlagBehavior behavior,
-                              const char *           key,
+                              const char            *key,
                               s32                    val);
 s32  llvm_get_dwarf_version(void);
 
@@ -76,15 +76,15 @@ void llvm_di_builder_finalize(LLVMDIBuilderRef builder_ref);
 
 LLVMMetadataRef llvm_di_create_compile_unit(LLVMDIBuilderRef builder_ref,
                                             LLVMMetadataRef  file_ref,
-                                            const char *     producer);
+                                            const char      *producer);
 
 LLVMMetadataRef
 llvm_di_create_file(LLVMDIBuilderRef builder_ref, const char *filename, const char *dir);
 
 LLVMMetadataRef llvm_di_create_fn_fwd_decl(LLVMDIBuilderRef builder_ref,
                                            LLVMMetadataRef  scope_ref,
-                                           const char *     name,
-                                           const char *     linkage_name,
+                                           const char      *name,
+                                           const char      *linkage_name,
                                            LLVMMetadataRef  file_ref,
                                            unsigned         line,
                                            LLVMMetadataRef  type_ref,
@@ -97,8 +97,8 @@ LLVMMetadataRef llvm_di_create_lexical_scope(LLVMDIBuilderRef builder_ref,
                                              unsigned         col);
 LLVMMetadataRef llvm_di_create_fn(LLVMDIBuilderRef builder_ref,
                                   LLVMMetadataRef  scope_ref,
-                                  const char *     name,
-                                  const char *     linkage_name,
+                                  const char      *name,
+                                  const char      *linkage_name,
                                   LLVMMetadataRef  file_ref,
                                   unsigned         line,
                                   LLVMMetadataRef  type_ref,
@@ -106,22 +106,22 @@ LLVMMetadataRef llvm_di_create_fn(LLVMDIBuilderRef builder_ref,
 
 LLVMMetadataRef llvm_di_create_auto_variable(LLVMDIBuilderRef builder_ref,
                                              LLVMMetadataRef  scope_ref,
-                                             const char *     name,
+                                             const char      *name,
                                              LLVMMetadataRef  file_ref,
                                              unsigned         line,
                                              LLVMMetadataRef  type_ref);
 
 LLVMMetadataRef llvm_di_create_global_variable(LLVMDIBuilderRef builder_ref,
                                                LLVMMetadataRef  scope_ref,
-                                               const char *     name,
+                                               const char      *name,
                                                LLVMMetadataRef  file_ref,
                                                unsigned         line,
                                                LLVMMetadataRef  type_ref);
 
 LLVMMetadataRef llvm_di_create_global_variable_expression(LLVMDIBuilderRef builder_ref,
                                                           LLVMMetadataRef  scope_ref,
-                                                          const char *     name,
-                                                          const char *     linkage_name,
+                                                          const char      *name,
+                                                          const char      *linkage_name,
                                                           LLVMMetadataRef  file_ref,
                                                           unsigned         line,
                                                           LLVMMetadataRef  type_ref);
@@ -143,13 +143,13 @@ void llvm_di_reset_current_location(LLVMBuilderRef builder_ref);
 
 LLVMMetadataRef llvm_di_create_replecable_composite_type(LLVMDIBuilderRef builder_ref,
                                                          DW_TAG           tag,
-                                                         const char *     name,
+                                                         const char      *name,
                                                          LLVMMetadataRef  scope_ref,
                                                          LLVMMetadataRef  file_ref,
                                                          unsigned         line);
 
 LLVMMetadataRef llvm_di_create_basic_type(LLVMDIBuilderRef builder_ref,
-                                          const char *     name,
+                                          const char      *name,
                                           unsigned         size_in_bits,
                                           DW_ATE_Encoding  encoding);
 
@@ -161,7 +161,7 @@ LLVMMetadataRef llvm_di_create_pointer_type(LLVMDIBuilderRef builder_ref,
                                             LLVMMetadataRef  pointee_type_ref,
                                             u64              size_in_bits,
                                             u32              align_in_bits,
-                                            const char *     name);
+                                            const char      *name);
 
 LLVMMetadataRef llvm_di_create_array_type(LLVMDIBuilderRef builder_ref,
                                           u64              size_in_bits,
@@ -171,7 +171,7 @@ LLVMMetadataRef llvm_di_create_array_type(LLVMDIBuilderRef builder_ref,
 
 LLVMMetadataRef llvm_di_create_enum_type(LLVMDIBuilderRef builder_ref,
                                          LLVMMetadataRef  scope_ref,
-                                         const char *     name,
+                                         const char      *name,
                                          LLVMMetadataRef  file_ref,
                                          unsigned         line,
                                          u64              size_in_bits,
@@ -181,7 +181,7 @@ LLVMMetadataRef llvm_di_create_enum_type(LLVMDIBuilderRef builder_ref,
                                          LLVMMetadataRef  type_ref);
 
 LLVMMetadataRef llvm_di_create_enum_variant(LLVMDIBuilderRef builder_ref,
-                                            const char *     name,
+                                            const char      *name,
                                             u64              val,
                                             bool             is_unsigned);
 
@@ -189,7 +189,7 @@ LLVMMetadataRef llvm_di_create_null_type(LLVMDIBuilderRef builder_ref);
 
 LLVMMetadataRef llvm_di_create_struct_type(LLVMDIBuilderRef builder_ref,
                                            LLVMMetadataRef  scope_ref,
-                                           const char *     name,
+                                           const char      *name,
                                            LLVMMetadataRef  file_ref,
                                            unsigned         line,
                                            u64              size_in_bits,
@@ -199,7 +199,7 @@ LLVMMetadataRef llvm_di_create_struct_type(LLVMDIBuilderRef builder_ref,
 
 LLVMMetadataRef llvm_di_create_union_type(LLVMDIBuilderRef builder_ref,
                                           LLVMMetadataRef  scope_ref,
-                                          const char *     name,
+                                          const char      *name,
                                           LLVMMetadataRef  file_ref,
                                           unsigned         line,
                                           u64              size_in_bits,
@@ -209,7 +209,7 @@ LLVMMetadataRef llvm_di_create_union_type(LLVMDIBuilderRef builder_ref,
 
 LLVMMetadataRef llvm_di_create_member_type(LLVMDIBuilderRef builder_ref,
                                            LLVMMetadataRef  scope_ref,
-                                           const char *     name,
+                                           const char      *name,
                                            LLVMMetadataRef  file_ref,
                                            unsigned         line,
                                            u64              size_in_bits,

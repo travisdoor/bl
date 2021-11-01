@@ -101,7 +101,7 @@ typedef struct ApplicationOptions {
 typedef struct Options {
     ApplicationOptions     app;
     struct builder_options builder;
-    struct target *        target;
+    struct target         *target;
 } Options;
 
 void print_help(FILE *stream)
@@ -250,7 +250,6 @@ int main(s32 argc, char *argv[])
 #endif
     Options opt = {0};
     setlocale(LC_ALL, "C");
-    tlib_set_allocator(&_bl_malloc, &_bl_free);
 
     s32   state     = EXIT_SUCCESS;
     char *exec_dir  = NULL;

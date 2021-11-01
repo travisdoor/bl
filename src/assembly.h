@@ -119,12 +119,12 @@ struct target_triple {
 
 struct native_lib {
     hash_t        hash;
-    DLLib *       handle;
+    DLLib        *handle;
     struct token *linked_from;
-    char *        user_name;
-    char *        filename;
-    char *        filepath;
-    char *        dir;
+    char         *user_name;
+    char         *filename;
+    char         *filepath;
+    char         *dir;
     // Disable appending of this library to the linker options.
     bool is_internal;
 };
@@ -158,13 +158,13 @@ struct target {
     // usually target containing some setup acquired from command line arguments of application.
     TARGET_COPYABLE_CONTENT
 
-    char *  name;
-    char ** files;
-    char ** default_lib_paths;
-    char ** default_libs;
-    TString default_custom_linker_opt;
-    TString out_dir;
-    TString module_dir;
+    char  *name;
+    char **files;
+    char **default_lib_paths;
+    char **default_libs;
+    char  *default_custom_linker_opt;
+    char  *out_dir;
+    char  *module_dir;
 
     enum module_import_policy module_policy;
 
@@ -178,10 +178,10 @@ struct target {
 struct assembly {
     const struct target *target;
 
-    TString custom_linker_opt;
-    char ** lib_paths;
+    char  *custom_linker_opt;
+    char **lib_paths;
 
-    struct native_lib *  libs;
+    struct native_lib   *libs;
     struct string_cache *string_cache;
 
     struct {
@@ -201,11 +201,11 @@ struct assembly {
     } MIR;
 
     struct {
-        LLVMModuleRef *      modules;
+        LLVMModuleRef       *modules;
         LLVMContextRef       ctx;
         LLVMTargetDataRef    TD;
         LLVMTargetMachineRef TM;
-        char *               triple;
+        char                *triple;
     } llvm;
 
     struct {
@@ -214,8 +214,8 @@ struct assembly {
     } testing;
 
     struct {
-        struct mir_fn * entry;                  // Main function
-        struct mir_fn * build_entry;            // Set for build assembly
+        struct mir_fn  *entry;                  // Main function
+        struct mir_fn  *build_entry;            // Set for build assembly
         struct mir_var *command_line_arguments; // Command line arguments variable.
         // Provide information whether application run in compile time or not.
         struct mir_var *is_comptime_run;
@@ -235,7 +235,7 @@ struct assembly {
     } stats;
 
     // DynCall/Lib data used for external method execution in compile time
-    DCCallVM *             dc_vm;
+    DCCallVM              *dc_vm;
     struct virtual_machine vm;
 
     struct unit **units;  // array of all units in assembly
@@ -263,12 +263,12 @@ void           target_add_lib(struct target *target, const char *lib);
 void           target_append_linker_options(struct target *target, const char *option);
 void           target_set_vm_args(struct target *target, s32 argc, char **argv);
 void           target_set_output_dir(struct target *target, const char *dirpath);
-void           target_set_module_dir(struct target *           target,
-                                     const char *              dir,
+void           target_set_module_dir(struct target            *target,
+                                     const char               *dir,
                                      enum module_import_policy policy);
 bool           target_is_triple_valid(struct target_triple *triple);
 bool           target_init_default_triple(struct target_triple *triple);
-char *         target_triple_to_string(const struct target_triple *triple);
+char          *target_triple_to_string(const struct target_triple *triple);
 
 struct assembly *assembly_new(const struct target *target);
 void             assembly_delete(struct assembly *assembly);
@@ -277,11 +277,11 @@ assembly_add_unit_safe(struct assembly *assembly, const char *filepath, struct t
 void      assembly_add_lib_path(struct assembly *assembly, const char *path);
 void      assembly_append_linker_options(struct assembly *assembly, const char *opt);
 void      assembly_add_native_lib(struct assembly *assembly,
-                                  const char *     lib_name,
-                                  struct token *   link_token);
+                                  const char      *lib_name,
+                                  struct token    *link_token);
 bool      assembly_import_module(struct assembly *assembly,
-                                 const char *     modulepath,
-                                 struct token *   import_from);
+                                 const char      *modulepath,
+                                 struct token    *import_from);
 DCpointer assembly_find_extern(struct assembly *assembly, const char *symbol);
 
 #define assembly_has_rtti(assembly, type_id) (hmgeti((assembly)->MIR.rtti_table, type_id) != -1)
