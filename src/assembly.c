@@ -37,7 +37,6 @@
 #include "stb_ds.h"
 #include <string.h>
 
-#define EXPECTED_GSCOPE_COUNT 4094
 #define EXPECTED_ARRAY_COUNT 256
 
 const char *arch_names[] = {
@@ -582,7 +581,7 @@ struct assembly *assembly_new(const struct target *target)
                EXPECTED_ARRAY_COUNT,
                (arena_elem_dtor_t)sarr_dtor);
     assembly->gscope =
-        scope_create(&assembly->arenas.scope, SCOPE_GLOBAL, NULL, EXPECTED_GSCOPE_COUNT, NULL);
+        scope_create(&assembly->arenas.scope, SCOPE_GLOBAL, NULL, NULL);
 
     dl_init(assembly);
     mir_init(assembly);

@@ -104,15 +104,12 @@ void scope_arenas_terminate(struct scope_arenas *arenas)
 struct scope *scope_create(struct scope_arenas *arenas,
                            enum scope_kind      kind,
                            struct scope        *parent,
-                           u32                  expected_entry_count,
                            struct location     *loc)
 {
-    bassert(expected_entry_count > 0);
-    struct scope *scope         = arena_safe_alloc(&arenas->scopes);
-    scope->parent               = parent;
-    scope->kind                 = kind;
-    scope->location             = loc;
-    scope->expected_entry_count = expected_entry_count;
+    struct scope *scope = arena_safe_alloc(&arenas->scopes);
+    scope->parent       = parent;
+    scope->kind         = kind;
+    scope->location     = loc;
 
     // Global scopes must be thread safe!
     if (kind == SCOPE_GLOBAL) scope->sync = sync_new();
@@ -138,6 +135,7 @@ struct scope_entry *scope_create_entry(struct scope_arenas  *arenas,
 
 void scope_insert(struct scope *scope, s32 layer_index, struct scope_entry *entry)
 {
+    zone();
     bassert(scope);
     bassert(entry && entry->id);
     bassert(layer_index >= 0);
@@ -147,6 +145,7 @@ void scope_insert(struct scope *scope, s32 layer_index, struct scope_entry *entr
     bassert(hmgeti(layer->entries, entry->id->hash) == -1 && "Duplicate scope entry key!!!");
     entry->parent_scope = scope;
     hmput(layer->entries, entry->id->hash, entry);
+    return_zone();
 }
 
 struct scope_entry *scope_lookup(struct scope *scope,
@@ -166,9 +165,20 @@ struct scope_entry *scope_lookup(struct scope *scope,
         // We can implicitly switch to default layer when scope is not local.
         if (!layer && !scope_is_local(scope)) layer = get_layer(scope, SCOPE_DEFAULT_LAYER);
         if (layer) {
+            if (layer->cached && layer->cached->id->hash == id->hash) {
+                layer->cached->lookup_count += 1;
+                return_zone(layer->cached);
+            }
             const s64 i = hmgeti(layer->entries, id->hash);
-            if (i != -1) {
-                return_zone(layer->entries[i].value);
+            if (i != -1) { // found!!!
+                struct scope_entry *entry = layer->entries[i].value;
+                bassert(entry);
+                entry->lookup_count += 1;
+                const u32 cached_lookup_count = layer->cached ? layer->cached->lookup_count : 0;
+                if (cached_lookup_count < entry->lookup_count) {
+                    layer->cached = entry;
+                }
+                return_zone(entry);
             }
         }
         // Lookup in parent.

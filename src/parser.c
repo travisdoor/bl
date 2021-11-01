@@ -30,9 +30,6 @@
 #include "tokens_inline_utils.h"
 #include <setjmp.h>
 
-#define EXPECTED_PRIVATE_SCOPE_COUNT 256
-#define EXPECTED_NAMED_SCOPE_COUNT 4094
-
 #define PARSE_ERROR(kind, tok, pos, format, ...)                                                   \
     {                                                                                              \
         builder_msg(BUILDER_MSG_ERROR, (kind), &(tok)->location, (pos), (format), ##__VA_ARGS__);  \
@@ -632,11 +629,8 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         // and it is visible only from such unit.
         // Private scope contains only global entity declarations with 'private' flag set
         // in ast node.
-        struct scope *scope = scope_create(ctx->scope_arenas,
-                                           SCOPE_PRIVATE,
-                                           scope_get(ctx),
-                                           EXPECTED_PRIVATE_SCOPE_COUNT,
-                                           &tok_directive->location);
+        struct scope *scope = scope_create(
+            ctx->scope_arenas, SCOPE_PRIVATE, scope_get(ctx), &tok_directive->location);
 
         ctx->current_private_scope = scope;
         scope->llvm_meta           = scope->parent->llvm_meta;
@@ -673,13 +667,10 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
             scope_entry = scope_create_entry(
                 &ctx->assembly->arenas.scope, SCOPE_ENTRY_NAMED_SCOPE, id, scope, false);
             scope_insert(scope_get(ctx), SCOPE_DEFAULT_LAYER, scope_entry);
-            struct scope *named_scope = scope_create(ctx->scope_arenas,
-                                                     SCOPE_NAMED,
-                                                     scope_get(ctx),
-                                                     EXPECTED_NAMED_SCOPE_COUNT,
-                                                     &tok_directive->location);
-            named_scope->name         = id->str;
-            scope_entry->data.scope   = named_scope;
+            struct scope *named_scope = scope_create(
+                ctx->scope_arenas, SCOPE_NAMED, scope_get(ctx), &tok_directive->location);
+            named_scope->name       = id->str;
+            scope_entry->data.scope = named_scope;
         }
         if (scope_get(ctx)->kind == SCOPE_GLOBAL) scope_unlock(scope_get(ctx));
         if (ctx->current_named_scope) {
@@ -1379,7 +1370,7 @@ struct ast *parse_stmt_loop(struct context *ctx)
     ctx->is_inside_loop      = true;
 
     struct scope *scope =
-        scope_create(ctx->scope_arenas, SCOPE_LEXICAL, scope_get(ctx), 128, &tok_begin->location);
+        scope_create(ctx->scope_arenas, SCOPE_LEXICAL, scope_get(ctx), &tok_begin->location);
 
     scope_push(ctx, scope);
 
@@ -1741,7 +1732,7 @@ struct ast *parse_expr_lit_fn(struct context *ctx)
             ? SCOPE_FN
             : SCOPE_FN_LOCAL;
     struct scope *scope =
-        scope_create(ctx->scope_arenas, scope_kind, scope_get(ctx), 256, &tok_fn->location);
+        scope_create(ctx->scope_arenas, scope_kind, scope_get(ctx), &tok_fn->location);
 
     scope_push(ctx, scope);
 
@@ -1947,7 +1938,7 @@ struct ast *parse_type_enum(struct context *ctx)
     }
 
     struct scope *scope =
-        scope_create(ctx->scope_arenas, SCOPE_TYPE_ENUM, scope_get(ctx), 512, &tok->location);
+        scope_create(ctx->scope_arenas, SCOPE_TYPE_ENUM, scope_get(ctx), &tok->location);
     enm->data.type_enm.scope = scope;
     scope_push(ctx, scope);
 
@@ -2195,7 +2186,7 @@ struct ast *parse_type_fn_return(struct context *ctx)
         // eat (
         struct token *tok_begin = tokens_consume(ctx->tokens);
         struct scope *scope     = scope_create(
-            ctx->scope_arenas, SCOPE_TYPE_STRUCT, scope_get(ctx), 16, &tok_begin->location);
+            ctx->scope_arenas, SCOPE_TYPE_STRUCT, scope_get(ctx), &tok_begin->location);
         scope_push(ctx, scope);
 
         struct ast *type_struct =
@@ -2364,7 +2355,7 @@ struct ast *parse_type_struct(struct context *ctx)
     }
 
     struct scope *scope =
-        scope_create(ctx->scope_arenas, SCOPE_TYPE_STRUCT, scope_get(ctx), 128, &tok->location);
+        scope_create(ctx->scope_arenas, SCOPE_TYPE_STRUCT, scope_get(ctx), &tok->location);
     scope_push(ctx, scope);
 
     struct ast *type_struct =
@@ -2590,8 +2581,8 @@ struct ast *parse_block(struct context *ctx, bool create_scope)
     if (!tok_begin) return NULL;
 
     if (create_scope) {
-        struct scope *scope = scope_create(
-            ctx->scope_arenas, SCOPE_LEXICAL, scope_get(ctx), 1024, &tok_begin->location);
+        struct scope *scope =
+            scope_create(ctx->scope_arenas, SCOPE_LEXICAL, scope_get(ctx), &tok_begin->location);
 
         scope_push(ctx, scope);
     }

@@ -71,8 +71,9 @@ struct scope_entry {
     struct scope          *parent_scope;
     struct ast            *node;
     bool                   is_builtin;
-    s32                    ref_count;
     union scope_entry_data data;
+    s32                    ref_count;
+    u32                    lookup_count;
     BL_MAGIC_ADD
 };
 
@@ -91,15 +92,16 @@ enum scope_kind {
 
 struct scope_layer {
     struct {
-        u64                 key;
+        hash_t              key;
         struct scope_entry *value;
     } * entries;
+    struct scope_entry *cached;
+
     s32 index;
 };
 
 struct scope {
     enum scope_kind         kind;
-    u32                     expected_entry_count;
     const char             *name; // optional
     struct scope           *parent;
     struct scope_sync_impl *sync;
@@ -117,7 +119,6 @@ void scope_arenas_terminate(struct scope_arenas *arenas);
 struct scope *scope_create(struct scope_arenas *arenas,
                            enum scope_kind      kind,
                            struct scope        *parent,
-                           u32                  expected_entry_count,
                            struct location     *loc);
 
 struct scope_entry *scope_create_entry(struct scope_arenas  *arenas,
