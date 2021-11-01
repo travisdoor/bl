@@ -240,6 +240,9 @@ static void llvm_init(void)
     LLVMInitializeAArch64TargetMC();
     LLVMInitializeAArch64AsmPrinter();
 
+    bassert(LLVMIsMultithreaded() &&
+            "LLVM must be compiled in multi-thread mode with flag 'LLVM_ENABLE_THREADS'");
+
     llvm_initialized = true;
 }
 

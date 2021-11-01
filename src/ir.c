@@ -2911,7 +2911,7 @@ State emit_instr(struct context *ctx, struct mir_instr *instr)
     return state;
 }
 
-static void init_llvm_moules(struct context *ctx)
+static void init_llvm_modules(struct context *ctx)
 {
     // const s32 cpu_count = cpu_thread_count();
     struct assembly *assembly = ctx->assembly;
@@ -3011,7 +3011,7 @@ void ir_run(struct assembly *assembly)
     qsetcap(&ctx.incomplete_queue, 256);
     qsetcap(&ctx.queue, 256);
 
-    init_llvm_moules(&ctx);
+    init_llvm_modules(&ctx);
 
     if (ctx.is_debug_mode) {
         DI_init(&ctx);
