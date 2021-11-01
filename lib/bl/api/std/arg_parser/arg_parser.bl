@@ -35,6 +35,8 @@ Parser :: *u8;
 /// one for successfully parsed argument with no additional input) and status.
 ///
 /// See also: :ref:`add`
+///
+/// .. todo:: Is reference to parent parser needed here?
 HandlerFn :: *fn (parser: Parser, args: []string, ctx: *Ctx) (s32, Error);
 
 /// Create new instance of parser with possibility to set custom help text. Use

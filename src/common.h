@@ -133,8 +133,8 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 #define strsetcap(A, C) (arrsetcap(A, (C) + 1))
 #define strappend(A, fmt, ...)                                                                     \
     {                                                                                              \
-        const s32 orig_len = strlenu(A);                                                           \
-        const s32 text_len = snprintf(NULL, 0, fmt, ##__VA_ARGS__) + 1;                            \
+        const usize orig_len = strlenu(A);                                                         \
+        const s32   text_len = snprintf(NULL, 0, fmt, ##__VA_ARGS__) + 1;                          \
         arrsetlen(A, orig_len + text_len);                                                         \
         snprintf((A) + orig_len, text_len, fmt, ##__VA_ARGS__);                                    \
     }                                                                                              \
@@ -256,7 +256,7 @@ enum search_flags {
 //
 // Search order:
 //     1) exec_dir (working directory if not NULL)
-//     2) LIB_DIR specified in global congig file
+//     2) LIB_DIR specified in global config file
 //     3) system PATH
 //
 // Function returns true and modify output variables if file was found otherwise returns false.

@@ -230,14 +230,11 @@ else()
 
   # C
   set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG")
-  set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Wno-missing-braces -Werror -O0"
-  )
+  set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Wno-missing-braces -Werror -O0")
 
   # CXX
-  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG -fno-strict-aliasing -fno-exceptions -fno-rtti"
-  )
-  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-strict-aliasing -fno-exceptions -fno-rtti -g -Wall -Wextra -Wno-unused-function -Wno-unused-parameter -Wno-missing-braces -O0"
-  )
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG -fno-exceptions -fno-rtti")
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-exceptions -fno-rtti -g -Wall -Wextra -O0")
 endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
@@ -290,7 +287,7 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
   set(BL_CONFIG_EXE "bl-config")
   set(BL_CONFIG "${CMAKE_SOURCE_DIR}/deps/bl-config/bin/linux/${BL_CONFIG_EXE}")
   if(NOT EXISTS ${BL_CONFIG})
-    message(FATAL_ERROR "BL configuration tool not found expected location is ${BL_CONFIG}" )
+    message(FATAL_ERROR "BL configuration tool not found, expected location is ${BL_CONFIG}" )
   endif()
   add_custom_command(TARGET blc POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy ${BL_CONFIG} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${BL_CONFIG_EXE}

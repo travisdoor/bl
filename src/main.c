@@ -232,12 +232,10 @@ s32 parse_input_files(Options *opt, s32 argc, char *argv[])
 int main(s32 argc, char *argv[])
 {
     // _crtBreakAlloc = 1782;
-    // setvbuf(stdout, NULL, _IONBF, 0);
-    //  =============================================================================================
+
 #define EXIT(_state)                                                                               \
     state = _state;                                                                                \
     goto RELEASE;                                                                                  \
-    // =============================================================================================
 
 #ifdef BL_DEBUG
     puts("Running in DEBUG mode");

@@ -152,7 +152,7 @@ parse_args :: fn () bool {
         "-d",
         "--diag",
         "Diagnostic mode.",
-        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: ArgParser.Parser, _: []string, ctx: *ArgParser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             a.diag_mode = true;
             return 1, ok();
@@ -163,7 +163,7 @@ parse_args :: fn () bool {
         "-nv",
         "--no-vcvars",
         "Disable injection of Visual Studio environment on Windows.",
-        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: ArgParser.Parser, _: []string, ctx: *ArgParser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             a.no_vcvars = true;
             return 1, ok();
@@ -174,7 +174,7 @@ parse_args :: fn () bool {
         "-sf",
         "--stop-on-fail",
         "Stop testing on fail.",
-        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: ArgParser.Parser, _: []string, ctx: *ArgParser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             a.stop_on_fail = true;
             return 1, ok();
@@ -185,7 +185,7 @@ parse_args :: fn () bool {
         "-c",
         "--count",
         "<N> Specify test repeat count.",
-        &fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             if (args.len < 2) {
                 return 0, error("Expected count of test repeat!");
@@ -210,11 +210,11 @@ parse_args :: fn () bool {
 
 get_verbosity :: fn () string #inline {
     if _args.diag_mode { return ""; } // print all
-    if PLATFORM == Platform.windows {
+    #if PLATFORM == Platform.windows {
         return "2>nul 1>nul";
+    } else {
+        return "1>/dev/null 2>/dev/null";
     }
-    
-    return "1>/dev/null 2>/dev/null";
 }
 
 get_expected_error :: fn (filepath: string, out_err: *s32) bool {
