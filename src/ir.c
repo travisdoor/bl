@@ -410,7 +410,6 @@ LLVMMetadataRef DI_type_init(struct context *ctx, struct mir_type *type)
     case MIR_TYPE_STRUCT: {
         // Struct type will be generated as forward declaration and postponed to be filled
         // later. This approach solves problems with circular references.
-        const DW_TAG dw_tag = type->data.strct.is_union ? DW_TAG_union_type : DW_TAG_structure_type;
         type->llvm_meta     = type->data.strct.scope->llvm_meta =
             LLVMDIBuilderCreateReplaceableCompositeType(
                 ctx->llvm_di_builder, 0, "", 0, NULL, NULL, 0, 0, 0, 0, LLVMDIFlagZero, "", 0);
@@ -850,7 +849,6 @@ LLVMValueRef emit_const_string(struct context *ctx, const char *str, usize len)
     struct mir_type *type     = ctx->builtin_types->t_string;
     LLVMValueRef     llvm_str = NULL;
     if (str) {
-        struct mir_type *raw_str_elem_type = mir_deref_type(mir_get_struct_elem_type(type, 1));
         const hash_t     hash              = strhash(str);
         const s64        index             = hmgeti(ctx->gstring_cache, hash);
         if (index != -1) {

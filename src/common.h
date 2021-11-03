@@ -41,6 +41,7 @@
 #include <limits.h>
 #include <stddef.h>
 #include <time.h>
+#include <string.h>
 
 struct assembly;
 struct scope;

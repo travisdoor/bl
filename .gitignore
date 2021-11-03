@@ -50,6 +50,7 @@
 # Other
 build
 deps/llvm*
+deps/lld*
 *.md
 *.blm
 bl.conf

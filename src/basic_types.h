@@ -30,6 +30,7 @@
 #define BL_BASIC_TYPES
 
 #include <stdbool.h>
+#include <stddef.h>
 
 typedef char               s8;
 typedef short              s16;

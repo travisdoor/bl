@@ -4401,7 +4401,7 @@ bool evaluate(struct context *ctx, struct mir_instr *instr)
         // Comptime PHI instruction must be resolvable in this stage; it must have only one
         // possible income. It's converted to constant value containing resolved phi value.
         struct mir_instr_phi *phi = (struct mir_instr_phi *)instr;
-        bassert(sarrlenu(phi->incoming_blocks) == sarrlenu(phi->incoming_values) == 1);
+        bassert((sarrlenu(phi->incoming_blocks) == sarrlenu(phi->incoming_values)) == 1);
         struct mir_instr *value = sarrpeek(phi->incoming_values, 0);
         bassert(value);
         // @Incomplete: Check if the value is constant?

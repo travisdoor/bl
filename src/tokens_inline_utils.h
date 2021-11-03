@@ -44,7 +44,7 @@ typedef enum tokens_lookahead_state (*token_cmp_func_t)(struct token *curr);
 #define tokens_len(tokens) arrlenu((tokens)->buf)
 #define tokens_push(tokens, t) arrput((tokens)->buf, t)
 #define tokens_peek_nth(tokens, n)                                                                 \
-    ((tokens)->iter + (n) < tokens_len(tokens) && (tokens)->iter + (n) >= 0                        \
+    ((tokens)->iter + (n) < tokens_len(tokens)                        \
          ? &(tokens)->buf[(tokens)->iter + (n)]                                                    \
          : token_end)
 #define tokens_peek(tokens) tokens_peek_nth(tokens, 0)
