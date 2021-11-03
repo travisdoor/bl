@@ -268,6 +268,11 @@ struct mir_fn {
     bool         is_global;
     s32          ref_count;
 
+    // Module index specify in which LLVM module the function is supposed to be generated, think
+    // about this number as it was thread ID, because every module is generated from MIR in
+    // parallel.
+    u32 llvm_module_index;
+
     u32                  flags;
     enum builtin_id_kind builtin_id;
 

@@ -1,16 +1,15 @@
 #import "std/test"
 
-my_test :: fn () #test {
-    print("Hello from test case!\n");
+Foo :: struct {
+    data: [100]u8;
 }
 
-my_test2 :: fn () #test {
-    print("Hello from test case!\n");
+foo :: fn (d: Foo) {
 }
 
 main :: fn () s32 {
-    cases :: testcases();
-    print("cases = %\n", cases);
+    f: Foo;
+    foo(f);
     return 0;
 }
 

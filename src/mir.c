@@ -176,6 +176,8 @@ struct context {
         s32 expected_test_count;
     } testing;
 
+    u32 llvm_module_count;
+
     // Builtins
     struct BuiltinTypes *builtin_types;
 };
@@ -2743,15 +2745,17 @@ struct mir_fn *create_fn(struct context            *ctx,
                          bool                       is_global,
                          enum builtin_id_kind       builtin_id)
 {
+    bassert(prototype);
     struct mir_fn *tmp = arena_safe_alloc(&ctx->assembly->arenas.mir.fn);
     BL_MAGIC_SET(tmp);
-    tmp->linkage_name = linkage_name;
-    tmp->id           = id;
-    tmp->flags        = flags;
-    tmp->decl_node    = node;
-    tmp->prototype    = &prototype->base;
-    tmp->is_global    = is_global;
-    tmp->builtin_id   = builtin_id;
+    tmp->linkage_name      = linkage_name;
+    tmp->id                = id;
+    tmp->flags             = flags;
+    tmp->decl_node         = node;
+    tmp->prototype         = &prototype->base;
+    tmp->is_global         = is_global;
+    tmp->builtin_id        = builtin_id;
+    tmp->llvm_module_index = prototype->base.id % ctx->llvm_module_count;
     arrsetcap(tmp->variables, 8);
     return tmp;
 }
@@ -11056,6 +11060,9 @@ void mir_run(struct assembly *assembly)
     ctx.testing.cases                       = assembly->testing.cases;
     ctx.polymorph.current_scope_layer_index = SCOPE_DEFAULT_LAYER;
     ctx.ast.current_defer_stack_index       = -1;
+
+    // @Incomplete: use available CPU count here?
+    ctx.llvm_module_count = 4;
 
     arrsetcap(ctx.analyze.usage_check_arr, 256);
     arrsetcap(ctx.analyze.stack[0], 256);

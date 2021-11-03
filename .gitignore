@@ -59,7 +59,6 @@ src/config.h
 .suo
 /CMakeLists.txt.user
 /docs/examples
-/docs
 /lib/bl/api/gl
 /lib/bl/api/glfw3
 /lib/bl/api/sdl2
@@ -72,3 +71,5 @@ src/config.h
 /bin
 /out/
 /.vs/
+/msvc/
+/VS2019/

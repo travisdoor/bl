@@ -34,6 +34,7 @@ _SHUT_UP_BEGIN
 #include <llvm-c/Analysis.h>
 #include <llvm-c/BitWriter.h>
 #include <llvm-c/Core.h>
+#include <llvm-c/DebugInfo.h>
 #include <llvm-c/ExecutionEngine.h>
 #include <llvm-c/Linker.h>
 #include <llvm-c/TargetMachine.h>
@@ -42,40 +43,41 @@ _SHUT_UP_BEGIN
 #include <llvm-c/Types.h>
 _SHUT_UP_END
 
+#define BL_CODE_VIEW_VERSION 1
+#define BL_DWARF_VERSION 3
+
 #define LLVM_SRET_INDEX 0
-#define LLVM_ATTR_NOINLINE llvm_get_attribute_kind("noinline")
-#define LLVM_ATTR_ALWAYSINLINE llvm_get_attribute_kind("alwaysinline")
-#define LLVM_ATTR_BYVAL llvm_get_attribute_kind("byval")
-#define LLVM_ATTR_NOALIAS llvm_get_attribute_kind("noalias")
-#define LLVM_ATTR_STRUCTRET llvm_get_attribute_kind("sret")
-#define LLVM_ATTR_ALIGNMENT llvm_get_attribute_kind("align")
+#define LLVM_ATTR_NOINLINE LLVMGetEnumAttributeKindForName("noinline", 8)
+#define LLVM_ATTR_ALWAYSINLINE LLVMGetEnumAttributeKindForName("alwaysinline", 12)
+#define LLVM_ATTR_BYVAL LLVMGetEnumAttributeKindForName("byval", 5)
+#define LLVM_ATTR_NOALIAS LLVMGetEnumAttributeKindForName("noalias", 7)
+#define LLVM_ATTR_STRUCTRET LLVMGetEnumAttributeKindForName("sret", 4)
+#define LLVM_ATTR_ALIGNMENT LLVMGetEnumAttributeKindForName("align", 5)
 
-#ifdef __cplusplus
-extern "C" {
+#define LLVM_MEMSET_INTRINSIC_ID LLVMLookupIntrinsicID("llvm.memset", 11)
+#define LLVM_MEMCPY_INTRINSIC_ID LLVMLookupIntrinsicID("llvm.memcpy.inline", 18)
+
+typedef enum {
+    DW_ATE_adderess      = 1,
+    DW_ATE_boolean       = 2,
+    DW_ATE_complex_float = 3,
+    DW_ATE_float         = 4,
+    DW_ATE_signed        = 5,
+    DW_ATE_signed_char   = 6,
+    DW_ATE_unsigned      = 7,
+    DW_ATE_unsigned_char = 8,
+} DW_ATE_Encoding;
+
+typedef enum {
+#if LLVM_VERSION_MAJOR >= 10
+#define HANDLE_DW_TAG(ID, NAME, VERSION, VENDOR, KIND) DW_TAG_##NAME = ID,
+#else
+#define HANDLE_DW_TAG(ID, NAME, VERSION, VENDOR) DW_TAG_##NAME = ID,
 #endif
+#include "llvm/BinaryFormat/Dwarf.def"
+    DW_TAG_lo_user   = 0x4080,
+    DW_TAG_hi_user   = 0xffff,
+    DW_TAG_user_base = 0x1000 ///< Recommended base for user tags.
+} DW_TAG;
 
-// TODO: intrinsic generators
-
-// Custom C wrapper for LLVM C++ API, this is kinda needed because original C API for LLVM is
-// incomplete. All used calls to original API should be replaced by this wrapper later.
-
-typedef s32       LLVMAttributeKind;
-LLVMAttributeKind llvm_get_attribute_kind(const char *name);
-LLVMAttributeRef  llvm_create_attribute(LLVMContextRef context_ref, LLVMAttributeKind kind);
-LLVMAttributeRef
-llvm_create_attribute_int(LLVMContextRef context_ref, LLVMAttributeKind kind, s32 v);
-LLVMAttributeRef
-llvm_create_attribute_type(LLVMContextRef context_ref, LLVMAttributeKind kind, LLVMTypeRef v);
-LLVMValueRef llvm_const_string_in_context(LLVMContextRef context_ref,
-                                          LLVMTypeRef    t,
-                                          const char    *str,
-                                          bool           zero_terminate);
-u32          llvm_lookup_intrinsic_id(const char *name);
-LLVMValueRef llvm_get_intrinsic_decl(LLVMModuleRef mod_ref,
-                                     u32           id,
-                                     LLVMTypeRef  *param_types_ref,
-                                     usize         param_types_count);
-#ifdef __cplusplus
-}
-#endif
 #endif

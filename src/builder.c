@@ -70,8 +70,9 @@ void vm_tests_run(struct assembly *assembly);
 // =================================================================================================
 // Builder
 // =================================================================================================
-static int  compile_unit(struct unit *unit, struct assembly *assembly, unit_stage_fn_t *pipeline);
-static int  compile_assembly(struct assembly *assembly, assembly_stage_fn_t *pipeline);
+static int
+compile_unit(struct unit *unit, struct assembly *assembly, const unit_stage_fn_t *pipeline);
+static int  compile_assembly(struct assembly *assembly, const assembly_stage_fn_t *pipeline);
 static bool llvm_initialized = false;
 
 // =================================================================================================
@@ -92,7 +93,7 @@ struct threading_impl {
     pthread_mutex_t active_mutex;
     pthread_cond_t  active_condition;
 
-    unit_stage_fn_t *unit_pipeline;
+    const unit_stage_fn_t *unit_pipeline;
 };
 
 static void async_push(struct unit *unit)
@@ -190,7 +191,7 @@ static void start_threads()
     }
 }
 
-static void async_compile(struct assembly *assembly, unit_stage_fn_t *unit_pipeline)
+static void async_compile(struct assembly *assembly, const unit_stage_fn_t *unit_pipeline)
 {
     struct threading_impl *threading = builder.threading;
     for (usize i = 0; i < arrlenu(assembly->units); ++i) {
@@ -251,7 +252,7 @@ static void llvm_terminate(void)
     LLVMShutdown();
 }
 
-int compile_unit(struct unit *unit, struct assembly *assembly, unit_stage_fn_t *pipeline)
+int compile_unit(struct unit *unit, struct assembly *assembly, const unit_stage_fn_t *pipeline)
 {
     bassert(pipeline && "Invalid unit pipeline!");
     if (unit->loaded_from) {
@@ -260,26 +261,21 @@ int compile_unit(struct unit *unit, struct assembly *assembly, unit_stage_fn_t *
     } else {
         builder_log("Compile: %s", unit->name);
     }
-    s32             i     = 0;
-    unit_stage_fn_t stage = NULL;
-    while ((stage = pipeline[i++])) {
-        stage(assembly, unit);
+    for (usize i = 0; i < arrlenu(pipeline); ++i) {
+        pipeline[i](assembly, unit);
         if (builder.errorc) return COMPILE_FAIL;
     }
     return COMPILE_OK;
 }
 
-int compile_assembly(struct assembly *assembly, assembly_stage_fn_t *pipeline)
+int compile_assembly(struct assembly *assembly, const assembly_stage_fn_t *pipeline)
 {
     bassert(assembly);
     bassert(pipeline && "Invalid assembly pipeline!");
-    s32                 i     = 0;
-    assembly_stage_fn_t stage = NULL;
-    while ((stage = pipeline[i++])) {
-        stage(assembly);
-        if (builder.errorc) {
-            return COMPILE_FAIL;
-        }
+
+    for (usize i = 0; i < arrlenu(pipeline); ++i) {
+        pipeline[i](assembly);
+        if (builder.errorc) return COMPILE_FAIL;
     }
     return COMPILE_OK;
 }
@@ -311,60 +307,48 @@ static void detach_dbg(struct assembly *assembly)
     vmdbg_detach();
 }
 
-#define STAGE(i, fn)                                                                               \
-    {                                                                                              \
-        bassert(i < stage_count - 1 && "Stage out of bounds!");                                    \
-        stages[i++] = fn;                                                                          \
-    }                                                                                              \
-    (void)0
-
-static void setup_unit_pipeline(struct assembly *assembly, unit_stage_fn_t *stages, s32 stage_count)
+static void setup_unit_pipeline(struct assembly *assembly, unit_stage_fn_t **stages)
 {
-
+    arrsetcap(*stages, 16);
     const struct target *t = assembly->target;
-
-    s32 index = 0;
-    memset(stages, 0, stage_count * sizeof(unit_stage_fn_t));
-    STAGE(index, &file_loader_run);
-    STAGE(index, &lexer_run);
-    if (t->print_tokens) STAGE(index, &token_printer_run);
-    STAGE(index, &parser_run);
+    arrput(*stages, &file_loader_run);
+    arrput(*stages, &lexer_run);
+    if (t->print_tokens) arrput(*stages, &token_printer_run);
+    arrput(*stages, &parser_run);
 }
 
-static void
-setup_assembly_pipeline(struct assembly *assembly, assembly_stage_fn_t *stages, s32 stage_count)
+static void setup_assembly_pipeline(struct assembly *assembly, assembly_stage_fn_t **stages)
 {
     const struct target *t = assembly->target;
+    arrsetcap(*stages, 16);
 
-    s32 index = 0;
-    memset(stages, 0, stage_count * sizeof(assembly_stage_fn_t));
-    if (t->print_ast) STAGE(index, &ast_printer_run);
+    if (t->print_ast) arrput(*stages, &ast_printer_run);
     if (t->kind == ASSEMBLY_DOCS) {
-        STAGE(index, &docs_run);
+        arrput(*stages, &docs_run);
         return;
     }
     if (t->syntax_only) return;
-    STAGE(index, &linker_run);
-    STAGE(index, &mir_run);
-    if (t->vmdbg_enabled) STAGE(index, &attach_dbg);
-    if (t->run) STAGE(index, &entry_run);
-    if (t->kind == ASSEMBLY_BUILD_PIPELINE) STAGE(index, build_entry_run);
-    if (t->run_tests) STAGE(index, tests_run);
-    if (t->vmdbg_enabled) STAGE(index, &detach_dbg);
-    if (t->emit_mir) STAGE(index, &mir_writer_run);
+    arrput(*stages, &linker_run);
+    arrput(*stages, &mir_run);
+    if (t->vmdbg_enabled) arrput(*stages, &attach_dbg);
+    if (t->run) arrput(*stages, &entry_run);
+    if (t->kind == ASSEMBLY_BUILD_PIPELINE) arrput(*stages, build_entry_run);
+    if (t->run_tests) arrput(*stages, tests_run);
+    if (t->vmdbg_enabled) arrput(*stages, &detach_dbg);
+    if (t->emit_mir) arrput(*stages, &mir_writer_run);
     if (t->no_analyze) return;
     if (t->no_llvm) return;
     if (t->kind == ASSEMBLY_BUILD_PIPELINE) return;
-    STAGE(index, &ir_run);
-    STAGE(index, &ir_opt_run);
-    if (t->emit_llvm) STAGE(index, &bc_writer_run);
-    if (t->emit_asm) STAGE(index, &asm_writer_run);
-    if (t->no_bin) return;
-    STAGE(index, &obj_writer_run);
-    STAGE(index, &native_bin_run);
-}
 
-#undef STAGE
+    arrput(*stages, &ir_run);
+    arrput(*stages, &ir_opt_run);
+    if (t->emit_llvm) arrput(*stages, &bc_writer_run);
+    if (t->emit_asm) arrput(*stages, &asm_writer_run);
+    if (t->no_bin) return;
+    arrput(*stages, &obj_writer_run);
+
+    arrput(*stages, &native_bin_run);
+}
 
 static void print_stats(struct assembly *assembly)
 {
@@ -409,10 +393,10 @@ static int compile(struct assembly *assembly)
     s32 state           = COMPILE_OK;
     builder.total_lines = 0;
 
-    unit_stage_fn_t     unit_pipeline[5];
-    assembly_stage_fn_t assembly_pipeline[17];
-    setup_unit_pipeline(assembly, unit_pipeline, static_arrlenu(unit_pipeline));
-    setup_assembly_pipeline(assembly, assembly_pipeline, static_arrlenu(assembly_pipeline));
+    unit_stage_fn_t     *unit_pipeline     = NULL;
+    assembly_stage_fn_t *assembly_pipeline = NULL;
+    setup_unit_pipeline(assembly, &unit_pipeline);
+    setup_assembly_pipeline(assembly, &assembly_pipeline);
 
     if (builder.options->no_jobs) {
         blog("Running in single thread mode!");
@@ -428,6 +412,9 @@ static int compile(struct assembly *assembly)
     }
     // Compile assembly using pipeline.
     if (state == COMPILE_OK) state = compile_assembly(assembly, assembly_pipeline);
+
+    arrfree(unit_pipeline);
+    arrfree(assembly_pipeline);
 
     if (state != COMPILE_OK) {
         if (assembly->target->kind == ASSEMBLY_BUILD_PIPELINE) {
