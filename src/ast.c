@@ -27,35 +27,21 @@
 // =================================================================================================
 
 #include "ast.h"
+#include "stb_ds.h"
 #include "tokens.h"
 
 #define ARENA_CHUNK_COUNT 256
 
-static void node_dtor(struct ast *node)
-{
-    switch (node->kind) {
-    case AST_UBLOCK:
-        tarray_delete(node->data.ublock.nodes);
-        break;
-    default:
-        break;
-    }
-}
-
 struct ast *
 ast_create_node(struct arena *arena, enum ast_kind c, struct token *tok, struct scope *parent_scope)
 {
-    struct ast *node  = arena_alloc(arena);
+    struct ast *node  = arena_safe_alloc(arena);
     node->kind        = c;
     node->owner_scope = parent_scope;
     node->location    = tok ? &tok->location : NULL;
 #if BL_DEBUG
     static u64 serial = 0;
     node->_serial     = serial++;
-#if defined(TRACY_ENABLE)
-    TracyCPlot("AST", serial);
-    BL_TRACY_MESSAGE("AST_CREATE", "size: %lluB", (unsigned long long)sizeof(struct ast));
-#endif
 #endif
     return node;
 }
@@ -63,11 +49,7 @@ ast_create_node(struct arena *arena, enum ast_kind c, struct token *tok, struct 
 // public
 void ast_arena_init(struct arena *arena)
 {
-    arena_init(arena,
-               sizeof(struct ast),
-               alignment_of(struct ast),
-               ARENA_CHUNK_COUNT,
-               (arena_elem_dtor_t)node_dtor);
+    arena_init(arena, sizeof(struct ast), alignment_of(struct ast), ARENA_CHUNK_COUNT, NULL);
 }
 
 void ast_arena_terminate(struct arena *arena)
@@ -77,7 +59,7 @@ void ast_arena_terminate(struct arena *arena)
 
 const char *ast_get_name(const struct ast *n)
 {
-    BL_ASSERT(n);
+    bassert(n);
     switch (n->kind) {
     case AST_BAD:
         return "Bad";
@@ -201,7 +183,7 @@ const char *ast_get_name(const struct ast *n)
         return "ExprLitBool";
 
     default:
-        BL_ABORT("invalid ast node");
+        babort("invalid ast node");
     }
 }
 

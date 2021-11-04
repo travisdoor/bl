@@ -1,0 +1,6 @@
+build :: fn () #build_entry {
+    exe :: add_executable("bench");
+    set_output_dir(exe, "bin");
+    add_unit(exe, "src/main.bl");
+    compile(exe);
+}

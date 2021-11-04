@@ -27,36 +27,41 @@
 // =================================================================================================
 
 #include "blmemory.h"
+
+#if BL_CRTDBG_ALLOC
+#define _CRTDBG_MAP_ALLOC
+// clang-format off
+#include <stdlib.h>
+#include <crtdbg.h>
+// clang-format on
+#endif
+
 #include "TracyC.h"
+#include "common.h"
 #include <memory.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 void *_bl_realloc(void *ptr, const size_t size, const char UNUSED(*filename), s32 UNUSED(line))
 {
+    zone();
     void *mem = realloc(ptr, size);
-    if (!mem) {
-        fprintf(stderr, "Bad alloc!");
-        abort();
-    }
-    TracyCAlloc(mem, size);
+    if (!mem) abort();
     TracyCFree(ptr);
-    free(ptr);
-    return mem;
+    TracyCAlloc(mem, size);
+    return_zone(mem);
 }
 
 void *_bl_malloc(const size_t size, const char UNUSED(*filename), s32 UNUSED(line))
 {
+    zone();
     void *mem = malloc(size);
-    if (!mem) {
-        fprintf(stderr, "Bad alloc!");
-        abort();
-    }
+    if (!mem) abort();
     TracyCAlloc(mem, size);
-    return mem;
+    return_zone(mem);
 }
 
-void bl_free(void *ptr)
+void _bl_free(void *ptr, const char UNUSED(*filename), s32 UNUSED(line))
 {
     TracyCFree(ptr);
     free(ptr);

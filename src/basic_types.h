@@ -1,11 +1,11 @@
 // =================================================================================================
-// tlib-c
+// blc
 //
-// File:   common.c
+// File:   basic_types.h
 // Author: Martin Dorazil
-// Date:   29/9/2019
+// Date:   11/01/2021
 //
-// Copyright 2019 Martin Dorazil
+// Copyright 2021 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,21 +26,22 @@
 // SOFTWARE.
 // =================================================================================================
 
-#include "tlib/common.h"
-#include "tmemory.h"
+#ifndef BL_BASIC_TYPES
+#define BL_BASIC_TYPES
 
-static void *default_malloc(usize size, const char *filename, s32 line)
-{
-    (void)filename;
-    (void)line;
-    return malloc(size);
-}
+#include <stdbool.h>
+#include <stddef.h>
 
-TAllocFn _tmalloc = &default_malloc;
-TFreeFn  _tfree   = &free;
+typedef char               s8;
+typedef short              s16;
+typedef int                s32;
+typedef long long          s64;
+typedef unsigned char      u8;
+typedef unsigned short     u16;
+typedef unsigned int       u32;
+typedef unsigned long long u64;
+typedef size_t             usize;
+typedef float              f32;
+typedef double             f64;
 
-void tlib_set_allocator(TAllocFn malloc_fn, TFreeFn free_fn)
-{
-    _tmalloc = malloc_fn;
-    _tfree   = free_fn;
-}
+#endif

@@ -28,28 +28,29 @@
 
 #include "bldebug.h"
 #include "builder.h"
+#include "stb_ds.h"
 #include <string.h>
 
 void bc_writer_run(struct assembly *assembly)
 {
-    ZONE();
-    TString *            export_file = get_tmpstr();
+    zone();
+    char                *export_file = gettmpstr();
     const struct target *target      = assembly->target;
-    const char *         name        = target->name;
-    tstring_setf(export_file, "%s/%s.ll", target->out_dir.data, name);
-    char *str = LLVMPrintModuleToString(assembly->llvm.module);
-    FILE *f   = fopen(export_file->data, "w");
+    const char          *name        = target->name;
+    strprint(export_file, "%s/%s.ll", target->out_dir, name);
+    char *str = LLVMPrintModuleToString(assembly->llvm.modules[0]);
+    FILE *f   = fopen(export_file, "w");
     if (f == NULL) {
-        builder_error("Cannot open file %s", export_file->data);
-        put_tmpstr(export_file);
-        RETURN_ZONE();
+        builder_error("Cannot open file %s", export_file);
+        puttmpstr(export_file);
+        return_zone();
     }
     fprintf(f, "%s\n", str);
     fclose(f);
     LLVMDisposeMessage(str);
 
-    builder_note("Byte code written into %s", export_file->data);
+    builder_note("Byte code written into %s", export_file);
 
-    put_tmpstr(export_file);
-    RETURN_ZONE();
+    puttmpstr(export_file);
+    return_zone();
 }

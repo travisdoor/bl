@@ -27,6 +27,7 @@
 // =================================================================================================
 
 #include "builder.h"
+#include "stb_ds.h"
 
 #if !BL_PLATFORM_WIN
 #include <errno.h>
@@ -41,12 +42,11 @@ s32 lld_ld(struct assembly *assembly);
 
 static void copy_user_libs(struct assembly *assembly)
 {
-    TString *            dest_path = get_tmpstr();
+    char                *dest_path = gettmpstr();
     const struct target *target    = assembly->target;
-    const char *         out_dir   = target->out_dir.data;
-    struct native_lib *  lib;
-    for (usize i = 0; i < assembly->libs.size; ++i) {
-        lib = &tarray_at(struct native_lib, &assembly->libs, i);
+    const char          *out_dir   = target->out_dir;
+    for (usize i = 0; i < arrlenu(assembly->libs); ++i) {
+        struct native_lib *lib = &assembly->libs[i];
         if (lib->is_internal) continue;
         if (!lib->user_name) continue;
         char *lib_dest_name = lib->filename;
@@ -55,7 +55,7 @@ static void copy_user_libs(struct assembly *assembly)
         lstat(lib->filepath, &statbuf);
         if (S_ISLNK(statbuf.st_mode)) {
             char buf[PATH_MAX] = {0};
-            if (readlink(lib->filepath, buf, TARRAY_SIZE(buf)) == -1) {
+            if (readlink(lib->filepath, buf, static_arrlenu(buf)) == -1) {
                 builder_error("Cannot follow symlink '%s' with error: %d", lib->filepath, errno);
                 continue;
             }
@@ -63,14 +63,14 @@ static void copy_user_libs(struct assembly *assembly)
         }
 #endif
 
-        tstring_setf(dest_path, "%s/%s", out_dir, lib_dest_name);
-        if (file_exists(dest_path->data)) continue;
-        builder_warning("Copy '%s' to '%s'.", lib->filepath, dest_path->data);
-        if (!copy_file(lib->filepath, dest_path->data)) {
-            builder_error("Cannot copy '%s' to '%s'.", lib->filepath, dest_path->data);
+        strprint(dest_path, "%s/%s", out_dir, lib_dest_name);
+        if (file_exists(dest_path)) continue;
+        builder_warning("Copy '%s' to '%s'.", lib->filepath, dest_path);
+        if (!copy_file(lib->filepath, dest_path)) {
+            builder_error("Cannot copy '%s' to '%s'.", lib->filepath, dest_path);
         }
     }
-    put_tmpstr(dest_path);
+    puttmpstr(dest_path);
 }
 
 void native_bin_run(struct assembly *assembly)
@@ -85,8 +85,8 @@ void native_bin_run(struct assembly *assembly)
 #error "Unknown platform"
 #endif
 
-    const char *out_dir = assembly->target->out_dir.data;
-    ZONE();
+    const char *out_dir = assembly->target->out_dir;
+    zone();
     if (linker(assembly) != 0) {
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_LIB_NOT_FOUND,
@@ -101,5 +101,5 @@ void native_bin_run(struct assembly *assembly)
         copy_user_libs(assembly);
     }
 DONE:
-    RETURN_ZONE();
+    return_zone();
 }

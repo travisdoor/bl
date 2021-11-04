@@ -32,7 +32,7 @@
 
 struct context {
     struct tokens *tokens;
-    conf_data_t *  data;
+    conf_data_t   *data;
 };
 
 static bool parse_key_value_rq(struct context *ctx)
@@ -53,12 +53,14 @@ static bool parse_key_value_rq(struct context *ctx)
 
     switch (tok_value->sym) {
     case SYM_STRING:
-        tmp.kind       = CDV_STRING;
-        tmp.data.v_str = tok_value->value.str;
+        tmp.kind = CDV_STRING;
+        // Use builder level cache here, because token string value is stored in the unit, and
+        // builder can outlive the unit in this case.
+        tmp.v_str = scdup(&ctx->data->cache, tok_value->value.str, strlen(tok_value->value.str));
         break;
     case SYM_NUM:
-        tmp.kind       = CDV_INT;
-        tmp.data.v_int = (int)tok_value->value.u;
+        tmp.kind  = CDV_INT;
+        tmp.v_int = (int)tok_value->value.u;
         break;
     default:
         builder_msg(BUILDER_MSG_ERROR,
@@ -72,7 +74,7 @@ static bool parse_key_value_rq(struct context *ctx)
     }
 
     const char *key = tok_ident->value.str;
-    BL_ASSERT(key);
+    bassert(key);
     if (conf_data_has_key(ctx->data, key)) {
         builder_msg(BUILDER_MSG_ERROR,
                     ERR_DUPLICATE_SYMBOL,
@@ -95,7 +97,7 @@ static void parse_top_level(struct context *ctx)
 
 void conf_parser_run(struct unit *unit, conf_data_t *out_data)
 {
-    BL_ASSERT(out_data && "Missing output data buffer for config file parser!");
+    bassert(out_data && "Missing output data buffer for config file parser!");
     struct context ctx = {.tokens = &unit->tokens, .data = out_data};
     parse_top_level(&ctx);
 }

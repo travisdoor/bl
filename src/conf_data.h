@@ -38,25 +38,32 @@ enum conf_data_value_kind {
 };
 
 struct conf_data_value {
+    enum conf_data_value_kind kind;
     union {
         const char *v_str;
         int         v_int;
-    } data;
-
-    enum conf_data_value_kind kind;
+    };
 };
 
-typedef THashTable conf_data_t;
+typedef struct {
+    struct {
+        hash_t                 key;
+        struct conf_data_value value;
+    } * values;
+    struct string_cache *cache;
+} conf_data_t;
 
 conf_data_t *conf_data_new();
 void         conf_data_delete(conf_data_t *data);
 void         conf_data_init(conf_data_t *data);
 void         conf_data_terminate(conf_data_t *data);
-void         conf_data_clear(conf_data_t *data);
-bool         conf_data_has_key(conf_data_t *data, const char *key);
-void         conf_data_add(conf_data_t *data, const char *key, struct conf_data_value *value);
+
+bool conf_data_has_key(conf_data_t *data, const char *key);
+void conf_data_add(conf_data_t *data, const char *key, struct conf_data_value *value);
 struct conf_data_value *conf_data_get(conf_data_t *data, const char *key);
-const char *            conf_data_get_str(conf_data_t *data, const char *key);
-int                     conf_data_get_int(conf_data_t *data, const char *key);
+
+// Returned string is owned by conf_data.
+const char *conf_data_get_str(conf_data_t *data, const char *key);
+int         conf_data_get_int(conf_data_t *data, const char *key);
 
 #endif

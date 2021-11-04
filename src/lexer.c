@@ -44,12 +44,13 @@
 
 struct context {
     struct assembly *assembly;
-    struct unit *    unit;
-    struct tokens *  tokens;
-    jmp_buf          jmp_error;
-    char *           c;
-    s32              line;
-    s32              col;
+    struct unit     *unit;
+    struct tokens   *tokens;
+    sarr_t(char, 64) strtmp; // @Cleanup: Use tmp string from builder.
+    jmp_buf jmp_error;
+    char   *c;
+    s32     line;
+    s32     col;
 };
 
 static void       scan(struct context *ctx);
@@ -95,10 +96,11 @@ bool scan_comment(struct context *ctx, struct token *tok, const char *term)
 
 bool scan_docs(struct context *ctx, struct token *tok)
 {
-    BL_ASSERT(token_is(tok, SYM_DCOMMENT) || token_is(tok, SYM_DGCOMMENT));
+    bassert(token_is(tok, SYM_DCOMMENT) || token_is(tok, SYM_DGCOMMENT));
     tok->location.line = ctx->line;
     tok->location.col  = ctx->col;
 
+    sarrclear(&ctx->strtmp);
     char *begin      = ctx->c;
     s32   len_parsed = 0;
     s32   len_str    = 0;
@@ -114,9 +116,7 @@ bool scan_docs(struct context *ctx, struct token *tok)
         ctx->c++;
     }
 
-    TString *cstr = builder_create_cached_str();
-    tstring_append_n(cstr, begin, len_str);
-    tok->value.str    = cstr->data;
+    tok->value.str    = scdup(&ctx->unit->string_cache, begin, len_str);
     tok->location.len = len_parsed + 3; // + 3 = '///'
     ctx->col += len_parsed;
     return true;
@@ -141,9 +141,7 @@ bool scan_ident(struct context *ctx, struct token *tok)
     }
 
     if (len == 0) return false;
-    TString *cstr = builder_create_cached_str();
-    tstring_append_n(cstr, begin, len);
-    tok->value.str    = cstr->data;
+    tok->value.str    = scdup(&ctx->unit->string_cache, begin, len);
     tok->location.len = len;
     ctx->col += len;
     return true;
@@ -174,12 +172,13 @@ INLINE char scan_specch(char c)
 bool scan_string(struct context *ctx, struct token *tok)
 {
     if (*ctx->c != '"') return false;
+    zone();
+    sarrclear(&ctx->strtmp);
     tok->location.line = ctx->line;
     tok->location.col  = ctx->col;
     tok->sym           = SYM_STRING;
-    TString *cstr      = builder_create_cached_str();
-    char     c;
-    s32      len = 0;
+    char c;
+    s32  len = 0;
 
     // eat "
     ctx->c++;
@@ -198,10 +197,6 @@ bool scan_string(struct context *ctx, struct token *tok)
         }
         case '\\':
             // special character
-
-            // @INCOMPLETE: this can fail!!!
-            // @INCOMPLETE: this can fail!!!
-            // @INCOMPLETE: this can fail!!!
             c = scan_specch(*(ctx->c + 1));
             ctx->c += 2;
             len += 2;
@@ -211,14 +206,15 @@ bool scan_string(struct context *ctx, struct token *tok)
             len++;
             ctx->c++;
         }
-        tstring_append_n(cstr, &c, 1);
+        sarrput(&ctx->strtmp, c);
     }
 DONE:
-    tok->value.str    = cstr->data;
+    tok->value.str =
+        scdup(&ctx->unit->string_cache, sarrdata(&ctx->strtmp), sarrlenu(&ctx->strtmp));
     tok->location.len = len;
     tok->location.col += 1;
     ctx->col += len + 2;
-    return true;
+    return_zone(true);
 }
 
 bool scan_char(struct context *ctx, struct token *tok)
@@ -294,7 +290,7 @@ INLINE int c_to_number(char c, s32 base)
         }
         break;
     default:
-        BL_ABORT("invalid number base");
+        babort("invalid number base");
     }
 
     return -1;
@@ -412,7 +408,7 @@ SCAN:
     switch (*ctx->c) {
     case '\0':
         tok.sym = SYM_EOF;
-        tokens_push(ctx->tokens, &tok);
+        tokens_push(ctx->tokens, tok);
         return;
     case '\r':
         ctx->c++;
@@ -442,7 +438,7 @@ SCAN:
     const s32  end                   = is_current_char_ident ? SYM_UNREACHABLE + 1 : SYM_NONE;
     for (s32 i = start; i < end; ++i) {
         len = sym_lens[i];
-        BL_ASSERT(len > 0);
+        bassert(len > 0);
         if (ctx->c[0] == sym_strings[i][0] && strncmp(ctx->c, sym_strings[i], len) == 0) {
             ctx->c += len;
             tok.sym          = (enum sym)i;
@@ -506,7 +502,7 @@ SCAN:
                *ctx->c);
 PUSH_TOKEN:
     tok.location.unit = ctx->unit;
-    tokens_push(ctx->tokens, &tok);
+    tokens_push(ctx->tokens, tok);
 
     goto SCAN;
 }
@@ -520,14 +516,19 @@ void lexer_run(struct assembly *assembly, struct unit *unit)
         .c        = unit->src,
         .line     = 1,
         .col      = 1,
+        .strtmp   = SARR_ZERO,
     };
 
-    ZONE();
+    zone();
     s32 error = 0;
-    if ((error = setjmp(ctx.jmp_error))) return;
+    if ((error = setjmp(ctx.jmp_error))) {
+        sarrfree(&ctx.strtmp);
+        return_zone();
+    }
 
     scan(&ctx);
+    sarrfree(&ctx.strtmp);
 
     builder.total_lines += ctx.line;
-    RETURN_ZONE();
+    return_zone();
 }

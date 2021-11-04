@@ -28,6 +28,7 @@
 
 #include "assembly.h"
 #include "builder.h"
+#include "stb_ds.h"
 
 #if BL_PLATFORM_MACOS
 #define SHARED_EXT "dylib"
@@ -53,7 +54,7 @@ static const char *get_out_extension(struct assembly *assembly)
     case ASSEMBLY_SHARED_LIB:
         return SHARED_EXT;
     default:
-        BL_ABORT("Unknown output kind!");
+        babort("Unknown output kind!");
     }
 }
 
@@ -65,32 +66,29 @@ static const char *get_out_prefix(struct assembly *assembly)
     case ASSEMBLY_SHARED_LIB:
         return SHARED_PREFIX;
     default:
-        BL_ABORT("Unknown output kind!");
+        babort("Unknown output kind!");
     }
-    BL_ABORT("Unknown output kind!");
+    babort("Unknown output kind!");
 }
 
-static void append_lib_paths(struct assembly *assembly, TString *buf)
+static void append_lib_paths(struct assembly *assembly, char **buf)
 {
-    const char *dir;
-    TARRAY_FOREACH(const char *, &assembly->lib_paths, dir)
-    {
-        tstring_appendf(buf, "%s%s ", FLAG_LIBPATH, dir);
+    for (usize i = 0; i < arrlenu(assembly->lib_paths); ++i) {
+        strappend(*buf, "%s%s ", FLAG_LIBPATH, assembly->lib_paths[i]);
     }
 }
 
-static void append_libs(struct assembly *assembly, TString *buf)
+static void append_libs(struct assembly *assembly, char **buf)
 {
-    struct native_lib *lib;
-    for (usize i = 0; i < assembly->libs.size; ++i) {
-        lib = &tarray_at(struct native_lib, &assembly->libs, i);
+    for (usize i = 0; i < arrlenu(assembly->libs); ++i) {
+        struct native_lib *lib = &assembly->libs[i];
         if (lib->is_internal) continue;
         if (!lib->user_name) continue;
-        tstring_appendf(buf, "%s%s ", FLAG_LIB, lib->user_name);
+        strappend(*buf, "%s%s ", FLAG_LIB, lib->user_name);
     }
 }
 
-static void append_default_opt(struct assembly *assembly, TString *buf)
+static void append_default_opt(struct assembly *assembly, char **buf)
 {
     const char *default_opt = "";
     switch (assembly->target->kind) {
@@ -101,28 +99,28 @@ static void append_default_opt(struct assembly *assembly, TString *buf)
         default_opt = conf_data_get_str(&builder.conf, CONF_LINKER_OPT_SHARED_KEY);
         break;
     default:
-        BL_ABORT("Unknown output kind!");
+        babort("Unknown output kind!");
     }
-    tstring_appendf(buf, "%s ", default_opt);
+    strappend(*buf, "%s ", default_opt);
 }
 
-static void append_custom_opt(struct assembly *assembly, TString *buf)
+static void append_custom_opt(struct assembly *assembly, char **buf)
 {
-    const char *custom_opt = assembly->custom_linker_opt.data;
-    if (custom_opt) tstring_appendf(buf, "%s ", custom_opt);
+    const char *custom_opt = assembly->custom_linker_opt;
+    if (strlenu(custom_opt)) strappend(*buf, "%s ", custom_opt);
 }
 
-static void append_linker_exec(TString *buf)
+static void append_linker_exec(char **buf)
 {
     if (conf_data_has_key(&builder.conf, CONF_LINKER_EXECUTABLE)) {
         const char *custom_linker = conf_data_get_str(&builder.conf, CONF_LINKER_EXECUTABLE);
         if (strlen(custom_linker)) {
-            tstring_appendf(buf, "%s ", custom_linker);
+            strappend(*buf, "%s ", custom_linker);
             return;
         }
     }
     // Use LLD as default.
-    tstring_appendf(buf, "%s/%s -flavor %s ", builder.exec_dir, BL_LINKER, LLD_FLAVOR);
+    strappend(*buf, "%s/%s -flavor %s ", builder.exec_dir, BL_LINKER, LLD_FLAVOR);
 #if BL_PLATFORM_MACOS
     builder_warning("Using experimental LLD linker. (There are known issues with LLD on MacOS)");
 #endif
@@ -130,32 +128,32 @@ static void append_linker_exec(TString *buf)
 
 s32 lld_ld(struct assembly *assembly)
 {
-    RUNTIME_MEASURE_BEGIN_S(linking);
-    TString *            buf     = get_tmpstr();
+    runtime_measure_begin(linking);
+    char                *buf     = gettmpstr();
     const struct target *target  = assembly->target;
-    const char *         out_dir = target->out_dir.data;
-    const char *         name    = target->name;
+    const char          *out_dir = target->out_dir;
+    const char          *name    = target->name;
 
     // set executable
-    append_linker_exec(buf);
+    append_linker_exec(&buf);
     // set input file
-    tstring_appendf(buf, "%s/%s.%s ", out_dir, name, OBJECT_EXT);
+    strappend(buf, "%s/%s.%s ", out_dir, name, OBJECT_EXT);
     // set output file
     const char *ext    = get_out_extension(assembly);
     const char *prefix = get_out_prefix(assembly);
     if (strlen(ext)) {
-        tstring_appendf(buf, "%s %s/%s%s.%s ", FLAG_OUT, out_dir, prefix, name, ext);
+        strappend(buf, "%s %s/%s%s.%s ", FLAG_OUT, out_dir, prefix, name, ext);
     } else {
-        tstring_appendf(buf, "%s %s/%s%s ", FLAG_OUT, out_dir, prefix, name);
+        strappend(buf, "%s %s/%s%s ", FLAG_OUT, out_dir, prefix, name);
     }
-    append_lib_paths(assembly, buf);
-    append_libs(assembly, buf);
-    append_default_opt(assembly, buf);
-    append_custom_opt(assembly, buf);
+    append_lib_paths(assembly, &buf);
+    append_libs(assembly, &buf);
+    append_default_opt(assembly, &buf);
+    append_custom_opt(assembly, &buf);
 
-    builder_log("%s", buf->data);
-    s32 state = system(buf->data);
-    put_tmpstr(buf);
-    assembly->stats.linking_s = RUNTIME_MEASURE_END_S(linking);
+    builder_log("%s", buf);
+    s32 state = system(buf);
+    puttmpstr(buf);
+    assembly->stats.linking_s = runtime_measure_end(linking);
     return state;
 }

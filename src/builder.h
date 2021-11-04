@@ -54,20 +54,20 @@ struct builder_options {
 
 struct builder {
     const struct builder_options *options;
-    const struct target *         default_target;
-    char *                        exec_dir;
-    char *                        lib_dir;
-    struct arena                  str_cache;
+    const struct target          *default_target;
+    char                         *exec_dir;
+    char                         *lib_dir;
     volatile s32                  total_lines;
     s32                           errorc;
     s32                           max_error;
     s32                           test_failc;
     s32                           last_script_mode_run_status;
     conf_data_t                   conf;
-    TArray                        targets;
-    TArray                        tmp_strings;
-    struct threading_impl *       threading;
-    bool                          is_initialized;
+    struct target               **targets;
+    char                        **tmp_strs;
+    struct threading_impl        *threading;
+
+    bool is_initialized;
 };
 
 // struct builder global instance.
@@ -119,21 +119,20 @@ void builder_async_submit_unit(struct unit *unit);
 
 void builder_vmsg(enum builder_msg_type type,
                   s32                   code,
-                  struct location *     src,
+                  struct location      *src,
                   enum builder_cur_pos  pos,
-                  const char *          format,
+                  const char           *format,
                   va_list               args);
 
 void builder_msg(enum builder_msg_type type,
                  s32                   code,
-                 struct location *     src,
+                 struct location      *src,
                  enum builder_cur_pos  pos,
-                 const char *          format,
+                 const char           *format,
                  ...);
 
-TString *builder_create_cached_str(void);
-TString *get_tmpstr(void);
-void     put_tmpstr(TString *str);
-void     builder_print_location(FILE *stream, struct location *loc, s32 col, s32 len);
+char *gettmpstr(void);
+void  puttmpstr(char *str);
+void  builder_print_location(FILE *stream, struct location *loc, s32 col, s32 len);
 
 #endif

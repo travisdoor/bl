@@ -28,15 +28,20 @@
 
 #include "assembly.h"
 #include "builder.h"
+#include "stb_ds.h"
 #include <locale.h>
 #include <stdio.h>
 #include <string.h>
+
+#if BL_CRTDBG_ALLOC
+#include <crtdbg.h>
+#endif
 
 static char *get_exec_dir(void)
 {
     char tmp[PATH_MAX] = {0};
     if (!get_current_exec_dir(tmp, PATH_MAX)) {
-        BL_ABORT("Cannot locate compiler executable path.");
+        babort("Cannot locate compiler executable path.");
     }
     return strdup(tmp);
 }
@@ -44,7 +49,7 @@ static char *get_exec_dir(void)
 static bool load_conf_file(const char *exec_dir)
 {
     char path[PATH_MAX] = {0};
-    snprintf(path, TARRAY_SIZE(path), "%s/../%s", exec_dir, BL_CONF_FILE);
+    snprintf(path, static_arrlenu(path), "%s/../%s", exec_dir, BL_CONF_FILE);
     if (!file_exists(path)) {
         builder_error("Configuration file '%s' not found, run 'blc --configure' or 'bl-config' to "
                       "generate one.",
@@ -67,14 +72,14 @@ static bool load_conf_file(const char *exec_dir)
 
 static int generate_conf(void)
 {
-    TString *cmd = get_tmpstr();
+    char *cmd = gettmpstr();
 #if BL_PLATFORM_LINUX || BL_PLATFORM_MACOS
-    tstring_setf(cmd, "%s/%s -f -s", builder_get_exec_dir(), BL_CONFIGURE_SH);
+    strprint(cmd, "%s/%s -f -s", builder_get_exec_dir(), BL_CONFIGURE_SH);
 #else
-    tstring_setf(cmd, "call \"%s/%s\" -f -s", builder_get_exec_dir(), BL_CONFIGURE_SH);
+    strprint(cmd, "call \"%s/%s\" -f -s", builder_get_exec_dir(), BL_CONFIGURE_SH);
 #endif
-    const s32 state = system(cmd->data);
-    put_tmpstr(cmd);
+    const s32 state = system(cmd);
+    puttmpstr(cmd);
     return state;
 }
 
@@ -96,7 +101,7 @@ typedef struct ApplicationOptions {
 typedef struct Options {
     ApplicationOptions     app;
     struct builder_options builder;
-    struct target *        target;
+    struct target         *target;
 } Options;
 
 void print_help(FILE *stream)
@@ -106,12 +111,12 @@ void print_help(FILE *stream)
     fprintf(stream, "%s", text);
 
     char buf[256];
-    for (u32 i = 0; i < TARRAY_SIZE(ARGS); ++i) {
+    for (u32 i = 0; i < static_arrlenu(ARGS); ++i) {
         const Arg *arg = &ARGS[i];
         if (strlen(arg->s)) {
-            snprintf(buf, TARRAY_SIZE(buf), "-%s, -%s", arg->s, arg->l);
+            snprintf(buf, static_arrlenu(buf), "-%s, -%s", arg->s, arg->l);
         } else {
-            snprintf(buf, TARRAY_SIZE(buf), "-%s", arg->l);
+            snprintf(buf, static_arrlenu(buf), "-%s", arg->l);
         }
         fprintf(stream, "  %-30s = %s\n", buf, arg->help);
     }
@@ -135,7 +140,7 @@ void print_where_is_api(FILE *stream)
 
 s32 parse_arguments(Options *opt, s32 argc, char *argv[])
 {
-    BL_ASSERT(opt->target && "Target not initialized!");
+    bassert(opt->target && "Target not initialized!");
 #define ARG(kind, action)                                                                          \
     if ((strcmp(&argv[i][1], ARGS[kind].s) == 0) || (strcmp(&argv[i][1], ARGS[kind].l) == 0)) {    \
         action;                                                                                    \
@@ -226,19 +231,23 @@ s32 parse_input_files(Options *opt, s32 argc, char *argv[])
 // =================================================================================================
 int main(s32 argc, char *argv[])
 {
-    setvbuf(stdout, NULL, _IONBF, 0);
-    // =============================================================================================
+    // _crtBreakAlloc = 1782;
+
 #define EXIT(_state)                                                                               \
     state = _state;                                                                                \
     goto RELEASE;                                                                                  \
-    // =============================================================================================
 
 #ifdef BL_DEBUG
     puts("Running in DEBUG mode");
+    printf("CPU count: %d\n", cpu_thread_count());
+
+    char cwdbuf[PATH_MAX];
+    if (get_current_working_dir(cwdbuf, static_arrlenu(cwdbuf))) {
+        printf("Running in '%s'\n", cwdbuf);
+    }
 #endif
     Options opt = {0};
     setlocale(LC_ALL, "C");
-    tlib_set_allocator(&_bl_malloc, &bl_free);
 
     s32   state     = EXIT_SUCCESS;
     char *exec_dir  = NULL;
@@ -315,7 +324,10 @@ RELEASE:
     builder_terminate();
     free(exec_dir);
     free(conf_file);
-    BL_LOG("Exit with state %d.", state);
+    blog("Exit with state %d.", state);
+#if BL_CRTDBG_ALLOC
+    _CrtDumpMemoryLeaks();
+#endif
     return state;
 #undef EXIT
 }

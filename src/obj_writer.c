@@ -27,6 +27,7 @@
 // =================================================================================================
 
 #include "builder.h"
+#include "stb_ds.h"
 
 #if BL_PLATFORM_WIN
 #define OBJ_EXT "obj"
@@ -37,19 +38,19 @@
 // Emit assembly object file.
 void obj_writer_run(struct assembly *assembly)
 {
-    ZONE();
-    TString *            buf    = get_tmpstr();
+    zone();
+    char                *buf    = gettmpstr();
     const struct target *target = assembly->target;
-    const char *         name   = target->name;
-    BL_LOG("out_dir = %s", target->out_dir.data);
-    BL_LOG("name = %s", name);
-    tstring_setf(buf, "%s/%s.%s", target->out_dir.data, name, OBJ_EXT);
+    const char          *name   = target->name;
+    blog("out_dir = %s", target->out_dir);
+    blog("name = %s", name);
+    strprint(buf, "%s/%s.%s", target->out_dir, name, OBJ_EXT);
     char *error_msg = NULL;
     if (LLVMTargetMachineEmitToFile(
-            assembly->llvm.TM, assembly->llvm.module, buf->data, LLVMObjectFile, &error_msg)) {
-        builder_error("Cannot emit object file: %s with error: %s", buf->data, error_msg);
-        LLVMDisposeMessage(error_msg);
+            assembly->llvm.TM, assembly->llvm.modules[0], buf, LLVMObjectFile, &error_msg)) {
+        builder_error("Cannot emit object file: %s with error: %s", buf, error_msg);
     }
-    put_tmpstr(buf);
-    RETURN_ZONE();
+    LLVMDisposeMessage(error_msg);
+    puttmpstr(buf);
+    return_zone();
 }

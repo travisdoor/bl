@@ -596,3 +596,9 @@ fs_dir_create_all_test1 :: fn () #test {
     err :: Fs.dir_create_all(dir);
     test_ok(err);
 }
+
+fs_get_directory :: fn () #test {
+    test_eq(Fs.get_directory(""), String.empty);
+    test_eq(Fs.get_directory("bar"), String.empty);
+    test_eq(Fs.get_directory("foo/bar/file"), "foo/bar");
+}

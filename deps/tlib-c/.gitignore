@@ -1,6 +1,0 @@
-build/
-lib/
-.DS_Store
-.idea
-CMakeLists.txt.user
-/cmake-build-debug/

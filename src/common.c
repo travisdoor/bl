@@ -26,10 +26,20 @@
 // SOFTWARE.
 // =================================================================================================
 
-#include "common.h"
+// =================================================================================================
+// STB
+// =================================================================================================
+#include "blmemory.h"
+#define STB_DS_IMPLEMENTATION
+#define STBDS_REALLOC(context, ptr, size) brealloc(ptr, size)
+#define STBDS_FREE(context, ptr) bfree(ptr)
+#include "stb_ds.h"
+
 #include "assembly.h"
 #include "builder.h"
+#include "common.h"
 #include <stdarg.h>
+#include <stdio.h>
 #include <time.h>
 
 #if !BL_PLATFORM_WIN
@@ -52,42 +62,141 @@
 #endif
 
 u64 main_thread_id = 0;
+// =================================================================================================
+// PUBLIC
+// =================================================================================================
+
+// =================================================================================================
+// Small Array
+// =================================================================================================
+
+void sarradd_impl(void *ptr, usize elem_size, usize static_elem_count, usize new_elem_count)
+{
+    if (new_elem_count < 1) return;
+    sarr_any_t *arr        = (sarr_any_t *)ptr;
+    const bool  on_heap    = arr->cap;
+    const usize needed_len = arr->len + new_elem_count;
+    if (on_heap && needed_len > arr->cap) {
+        arr->cap  = (u32)(arr->cap * 2 > needed_len ? arr->cap * 2 : needed_len);
+        void *tmp = arr->_data;
+        if ((arr->_data = brealloc(arr->_data, arr->cap * elem_size)) == NULL) {
+            bfree(tmp);
+            abort();
+        }
+    } else if (!on_heap && needed_len > static_elem_count) {
+        arr->cap   = (u32)(static_elem_count * 2 > needed_len ? static_elem_count * 2 : needed_len);
+        void *data = bmalloc(arr->cap * elem_size);
+        memcpy(data, arr->_buf, elem_size * arr->len);
+        arr->_data = data;
+    }
+    arr->len += (u32)new_elem_count;
+}
+
+// =================================================================================================
+// String cache
+// =================================================================================================
+#define SC_BLOCK_BYTES 512
+
+struct string_cache {
+    u32 len;
+    u32 cap;
+
+    struct string_cache *prev;
+};
+
+static struct string_cache *new_block(usize len, struct string_cache *prev)
+{
+    const usize          cap   = len > SC_BLOCK_BYTES ? len : SC_BLOCK_BYTES;
+    struct string_cache *cache = bmalloc(sizeof(struct string_cache) + cap);
+    cache->cap                 = (u32)cap;
+    cache->prev                = prev;
+    cache->len                 = 0;
+    return cache;
+}
+
+char *scdup(struct string_cache **cache, const char *str, usize len)
+{
+    len += 1; // +zero terminator
+    if (!*cache) {
+        (*cache) = new_block(len, NULL);
+    } else if ((*cache)->len + len >= (*cache)->cap) {
+        (*cache) = new_block(len, *cache);
+    }
+    char *mem = ((char *)((*cache) + 1)) + (*cache)->len;
+    if (str) {
+        memcpy(mem, str, len - 1); // Do not copy zero terminator.
+        mem[len - 1] = '\0';       // Set zero terminator.
+    }
+    (*cache)->len += (u32)len;
+    return mem;
+}
+
+void scfree(struct string_cache **cache)
+{
+    struct string_cache *c = (*cache);
+    while (c) {
+        struct string_cache *prev = c->prev;
+        bfree(c);
+        c = prev;
+    }
+    (*cache) = NULL;
+}
+
+char *scprint(struct string_cache **cache, const char *fmt, ...)
+{
+    va_list args, args2;
+    va_start(args, fmt);
+    va_copy(args2, args);
+    const s32 len = vsnprintf(NULL, 0, fmt, args);
+    bassert(len > 0);
+    char *buf = scdup(cache, NULL, len);
+    const s32 wlen = vsprintf(buf, fmt, args2);
+    bassert(wlen == len);
+    (void)wlen;
+    va_end(args2);
+    va_end(args);
+    return buf;
+}
+
+// =================================================================================================
+// Utils
+// =================================================================================================
 
 bool search_source_file(const char *filepath,
                         const u32   flags,
                         const char *wdir,
-                        char **     out_filepath,
-                        char **     out_dirpath)
+                        char      **out_filepath,
+                        char      **out_dirpath)
 {
-    TString *tmp = get_tmpstr();
+    char *tmp = gettmpstr();
     if (!filepath) goto NOT_FOUND;
     char        tmp_result[PATH_MAX] = {0};
     const char *result               = NULL;
-    if (brealpath(filepath, tmp_result, TARRAY_SIZE(tmp_result))) {
+    if (brealpath(filepath, tmp_result, static_arrlenu(tmp_result))) {
         result = &tmp_result[0];
         goto FOUND;
     }
 
     // Lookup in working directory.
-    if (wdir && IS_FLAG(flags, SEARCH_FLAG_WDIR)) {
-        tstring_setf(tmp, "%s" PATH_SEPARATOR "%s", wdir, filepath);
-        if (brealpath(tmp->data, tmp_result, TARRAY_SIZE(tmp_result))) {
+    if (wdir && isflag(flags, SEARCH_FLAG_WDIR)) {
+        strprint(tmp, "%s" PATH_SEPARATOR "%s", wdir, filepath);
+        if (brealpath(tmp, tmp_result, static_arrlenu(tmp_result))) {
             result = &tmp_result[0];
             goto FOUND;
         }
     }
 
     // file has not been found in current working directory -> search in LIB_DIR
-    if (builder_get_lib_dir() && IS_FLAG(flags, SEARCH_FLAG_LIB_DIR)) {
-        tstring_setf(tmp, "%s" PATH_SEPARATOR "%s", builder_get_lib_dir(), filepath);
-        if (brealpath(tmp->data, tmp_result, TARRAY_SIZE(tmp_result))) {
+    if (builder_get_lib_dir() && isflag(flags, SEARCH_FLAG_LIB_DIR)) {
+        strprint(tmp, "%s" PATH_SEPARATOR "%s", builder_get_lib_dir(), filepath);
+        if (brealpath(tmp, tmp_result, static_arrlenu(tmp_result))) {
             result = &tmp_result[0];
             goto FOUND;
         }
     }
 
     // file has not been found in current working directory -> search in PATH
-    if (IS_FLAG(flags, SEARCH_FLAG_SYSTEM_PATH)) {
+    if (isflag(flags, SEARCH_FLAG_SYSTEM_PATH)) {
         char *env = strdup(getenv(ENV_PATH));
         char *s   = env;
         char *p   = NULL;
@@ -96,8 +205,8 @@ bool search_source_file(const char *filepath,
             if (p != NULL) {
                 p[0] = 0;
             }
-            tstring_setf(tmp, "%s" PATH_SEPARATOR "%s", s, filepath);
-            if (brealpath(tmp->data, tmp_result, TARRAY_SIZE(tmp_result))) result = &tmp_result[0];
+            strprint(tmp, "%s" PATH_SEPARATOR "%s", s, filepath);
+            if (brealpath(tmp, tmp_result, static_arrlenu(tmp_result))) result = &tmp_result[0];
             s = p + 1;
         } while (p && !result);
         free(env);
@@ -105,7 +214,7 @@ bool search_source_file(const char *filepath,
     }
 
 NOT_FOUND:
-    put_tmpstr(tmp);
+    puttmpstr(tmp);
     return false;
 
 FOUND:
@@ -114,11 +223,11 @@ FOUND:
     if (out_dirpath) {
         // Absolute directory path.
         char dirpath[PATH_MAX] = {0};
-        if (get_dir_from_filepath(dirpath, TARRAY_SIZE(dirpath), result)) {
+        if (get_dir_from_filepath(dirpath, static_arrlenu(dirpath), result)) {
             *out_dirpath = strdup(dirpath);
         }
     }
-    put_tmpstr(tmp);
+    puttmpstr(tmp);
     return true;
 }
 
@@ -197,8 +306,8 @@ bool dir_exists(const char *dirpath)
 
 bool brealpath(const char *file, char *out, s32 out_len)
 {
-    BL_ASSERT(out);
-    BL_ASSERT(out_len);
+    bassert(out);
+    bassert(out_len);
     if (!file) return false;
 #if BL_PLATFORM_WIN
     const DWORD len = GetFullPathNameA(file, out_len, out, NULL);
@@ -251,61 +360,61 @@ bool create_dir_tree(const char *dirpath)
 
 bool copy_dir(const char *src, const char *dest)
 {
-    TString *tmp = get_tmpstr();
+    char *tmp = gettmpstr();
 #if BL_PLATFORM_WIN
     char *_src  = strdup(src);
     char *_dest = strdup(dest);
     unix_path_to_win(_src, strlen(_src));
     unix_path_to_win(_dest, strlen(_dest));
-    tstring_setf(tmp, "xcopy /H /E /Y /I \"%s\" \"%s\" 2>nul 1>nul", _src, _dest);
+    strprint(tmp, "xcopy /H /E /Y /I \"%s\" \"%s\" 2>nul 1>nul", _src, _dest);
     free(_src);
     free(_dest);
 #else
-    tstring_setf(tmp, "mkdir -p %s && cp -rf %s/* %s", dest, src, dest);
-    BL_LOG("%s", tmp->data);
+    strprint(tmp, "mkdir -p %s && cp -rf %s/* %s", dest, src, dest);
+    blog("%s", tmp);
 #endif
-    const bool result = system(tmp->data) == 0;
-    put_tmpstr(tmp);
+    const bool result = system(tmp) == 0;
+    puttmpstr(tmp);
     return result;
 }
 
 bool copy_file(const char *src, const char *dest)
 {
-    TString *tmp = get_tmpstr();
+    char *tmp = gettmpstr();
 #if BL_PLATFORM_WIN
     char *_src  = strdup(src);
     char *_dest = strdup(dest);
     unix_path_to_win(_src, strlen(_src));
     unix_path_to_win(_dest, strlen(_dest));
-    tstring_setf(tmp, "copy /Y /B \"%s\" \"%s\" 2>nul 1>nul", _src, _dest);
+    strprint(tmp, "copy /Y /B \"%s\" \"%s\" 2>nul 1>nul", _src, _dest);
     free(_src);
     free(_dest);
 #else
-    tstring_setf(tmp, "cp -f %s %s", src, dest);
+    strprint(tmp, "cp -f %s %s", src, dest);
 #endif
-    const bool result = system(tmp->data) == 0;
-    put_tmpstr(tmp);
+    const bool result = system(tmp) == 0;
+    puttmpstr(tmp);
     return result;
 }
 
 bool remove_dir(const char *path)
 {
-    TString *tmp = get_tmpstr();
+    char *tmp = gettmpstr();
 #if BL_PLATFORM_WIN
     char *_path = strdup(path);
     unix_path_to_win(_path, strlen(_path));
-    tstring_setf(tmp, "del \"%s\" /q /s 2>nul 1>nul", _path);
+    strprint(tmp, "del \"%s\" /q /s 2>nul 1>nul", _path);
     free(_path);
 #else
-    tstring_setf(tmp, "rm -rf %s", path);
+    strprint(tmp, "rm -rf %s", path);
 #endif
-    const bool result = system(tmp->data) == 0;
-    put_tmpstr(tmp);
+    const bool result = system(tmp) == 0;
+    puttmpstr(tmp);
     return result;
 }
 void date_time(char *buf, s32 len, const char *format)
 {
-    BL_ASSERT(buf && len);
+    bassert(buf && len);
     time_t     timer;
     struct tm *tm_info;
     time(&timer);
@@ -327,7 +436,7 @@ void align_ptr_up(void **p, usize alignment, ptrdiff_t *adjustment)
     }
 
     const usize mask = alignment - 1;
-    BL_ASSERT((alignment & mask) == 0 && "wrong alignemet"); // pwr of 2
+    bassert((alignment & mask) == 0 && "wrong alignemet"); // pwr of 2
     const uintptr_t i_unaligned  = (uintptr_t)(*p);
     const uintptr_t misalignment = i_unaligned & mask;
 
@@ -371,7 +480,7 @@ bool get_dir_from_filepath(char *buf, const usize l, const char *filepath)
         return true;
     }
     usize len = ptr - filepath;
-    if (len + 1 > l) BL_ABORT("path too long!!!");
+    if (len + 1 > l) babort("path too long!!!");
     strncpy(buf, filepath, len);
     return true;
 }
@@ -387,7 +496,7 @@ bool get_filename_from_filepath(char *buf, const usize l, const char *filepath)
     }
 
     usize len = strlen(filepath) - (ptr - filepath);
-    if (len + 1 > l) BL_ABORT("path too long!!!");
+    if (len + 1 > l) babort("path too long!!!");
     strncpy(buf, ptr + 1, len);
 
     return true;
@@ -404,7 +513,7 @@ void platform_lib_name(const char *name, char *buffer, usize max_len)
 #elif BL_PLATFORM_WIN
     snprintf(buffer, max_len, "%s.dll", name);
 #else
-    BL_ABORT("Unknown dynamic library format.");
+    babort("Unknown dynamic library format.");
 #endif
 }
 
@@ -428,7 +537,7 @@ f64 get_tick_ms(void)
 
     return ((f64)t.QuadPart / (f64)f.QuadPart) * 1000.;
 #else
-    BL_ABORT("Unknown dynamic library format.");
+    babort("Unknown dynamic library format.");
 #endif
 }
 
@@ -459,26 +568,8 @@ s32 get_last_error(char *buf, s32 buf_len)
         NULL);
     return msg_len;
 #else
-    BL_ABORT("Cannot get last error!");
+    babort("Cannot get last error!");
 #endif
-}
-
-TArray *create_arr(struct assembly *assembly, usize size)
-{
-    TArray **tmp = arena_alloc(&assembly->arenas.array);
-    *tmp         = tarray_new(size);
-    return *tmp;
-}
-
-void *_create_sarr(struct assembly *assembly, usize arr_size)
-{
-    BL_ASSERT(
-        arr_size <= assembly->arenas.small_array.elem_size_in_bytes &&
-        "SmallArray is too big to be allocated inside arena, make array smaller or arena bigger.");
-
-    TSmallArrayAny *tmp = arena_alloc(&assembly->arenas.small_array);
-    tsa_init(tmp);
-    return tmp;
 }
 
 u32 next_pow_2(u32 n)
@@ -561,4 +652,15 @@ void color_print(FILE *stream, s32 color, const char *format, ...)
     fprintf(stream, "\x1b[0m");
 #endif
     va_end(args);
+}
+
+s32 cpu_thread_count(void)
+{
+#if BL_PLATFORM_WIN
+    SYSTEM_INFO sysinfo;
+    GetSystemInfo(&sysinfo);
+    return sysinfo.dwNumberOfProcessors;
+#else
+    return 8; // @Incomplete: Detect for platform.
+#endif
 }

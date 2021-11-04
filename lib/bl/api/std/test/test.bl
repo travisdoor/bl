@@ -218,9 +218,10 @@ test_run :: fn () s32 {
     sighup :: fn (_: c_int) {};
     _signal(_SIGHUP, &sighup);
 
-    cases :: testcases();
-    if cases.len == 0 { return 0; } // @Incomplete: use static if.
-        
+    cases := testcases();
+    if cases.len == 0 {
+        return 0;
+    }
     print("\n");
     prev_abort_handler :: _context.abort_fn;
     defer _context.abort_fn = prev_abort_handler;
@@ -252,7 +253,7 @@ test_run :: fn () s32 {
     loop i := 0; i < _queue.len; i += 1 {
         t :: &_queue[i];
         if t.passed { continue; }
-        
+
         fc += 1;
         print("[      | FAIL ] % (% ms)\n", t.case.name, t.runtime_ms);
     }

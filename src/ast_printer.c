@@ -28,6 +28,7 @@
 
 #include "ast.h"
 #include "builder.h"
+#include "stb_ds.h"
 #include <stdio.h>
 
 static INLINE void print_address(struct ast *node, FILE *stream)
@@ -63,10 +64,10 @@ static INLINE void _print_head(struct ast *node, s32 pad, FILE *stream)
 static INLINE void print_flags(s32 flags, FILE *stream)
 {
     if (!flags) return;
-    if (IS_FLAG(flags, FLAG_EXTERN)) fprintf(stream, " #extern");
-    if (IS_FLAG(flags, FLAG_TEST_FN)) fprintf(stream, " #test");
-    if (IS_FLAG(flags, FLAG_COMPILER)) fprintf(stream, " #compiler");
-    if (IS_FLAG(flags, FLAG_PRIVATE)) fprintf(stream, " #private");
+    if (isflag(flags, FLAG_EXTERN)) fprintf(stream, " #extern");
+    if (isflag(flags, FLAG_TEST_FN)) fprintf(stream, " #test");
+    if (isflag(flags, FLAG_COMPILER)) fprintf(stream, " #compiler");
+    if (isflag(flags, FLAG_PRIVATE)) fprintf(stream, " #private");
 }
 
 static void print_node(struct ast *node, s32 pad, FILE *stream);
@@ -126,17 +127,18 @@ void print_ublock(struct ast *ublock, s32 pad, FILE *stream)
 {
     print_head(ublock, pad, stream);
     fprintf(stream, "%s", ublock->data.ublock.unit->name);
-
-    struct ast *tmp = NULL;
-    TARRAY_FOREACH(struct ast *, ublock->data.ublock.nodes, tmp)
-    print_node(tmp, pad + 1, stream);
+    for (usize i = 0; i < arrlenu(ublock->data.ublock.nodes); ++i) {
+        print_node(ublock->data.ublock.nodes[i], pad + 1, stream);
+    }
 }
 
 void print_block(struct ast *block, s32 pad, FILE *stream)
 {
     print_head(block, pad, stream);
-    struct ast *tmp = NULL;
-    TSA_FOREACH(block->data.block.nodes, tmp) print_node(tmp, pad + 1, stream);
+    for (usize i = 0; i < sarrlenu(block->data.block.nodes); ++i) {
+        struct ast *tmp = sarrpeek(block->data.block.nodes, i);
+        print_node(tmp, pad + 1, stream);
+    }
 }
 
 void print_load(struct ast *load, s32 pad, FILE *stream)
@@ -195,10 +197,10 @@ void print_type_struct(struct ast *strct, s32 pad, FILE *stream)
 {
     print_head(strct, pad, stream);
 
-    struct ast *node;
-    TSA_FOREACH(strct->data.type_strct.members, node)
-    {
-        print_node(node, pad + 1, stream);
+    ast_nodes_t *members = strct->data.type_strct.members;
+    for (usize i = 0; i < sarrlenu(members); ++i) {
+        struct ast *member = sarrpeek(members, i);
+        print_node(member, pad + 1, stream);
     }
 }
 
@@ -223,9 +225,9 @@ void print_type_fn_group(struct ast *group, s32 pad, FILE *stream)
 {
     print_head(group, pad, stream);
 
-    struct ast *node;
-    TSA_FOREACH(group->data.type_fn_group.variants, node)
-    {
+    ast_nodes_t *variants = group->data.type_fn_group.variants;
+    for (usize i = 0; i < sarrlenu(variants); ++i) {
+        struct ast *node = sarrpeek(variants, i);
         print_node(node, pad + 1, stream);
     }
 }
@@ -233,13 +235,10 @@ void print_type_fn_group(struct ast *group, s32 pad, FILE *stream)
 void print_type_fn(struct ast *fn, s32 pad, FILE *stream)
 {
     print_head(fn, pad, stream);
-    TSmallArray_AstPtr *args = fn->data.type_fn.args;
-    if (args) {
-        struct ast *node;
-        TSA_FOREACH(args, node)
-        {
-            print_node(node, pad + 1, stream);
-        }
+    ast_nodes_t *args = fn->data.type_fn.args;
+    for (usize i = 0; i < sarrlenu(args); ++i) {
+        struct ast *node = sarrpeek(args, i);
+        print_node(node, pad + 1, stream);
     }
     print_node(fn->data.type_fn.ret_type, pad + 1, stream);
 }
@@ -247,10 +246,9 @@ void print_type_fn(struct ast *fn, s32 pad, FILE *stream)
 void print_type_enum(struct ast *enm, s32 pad, FILE *stream)
 {
     print_head(enm, pad, stream);
-
-    struct ast *node;
-    TSA_FOREACH(enm->data.type_enm.variants, node)
-    {
+    ast_nodes_t *variants = enm->data.type_enm.variants;
+    for (usize i = 0; i < sarrlenu(variants); ++i) {
+        struct ast *node = sarrpeek(variants, i);
         print_node(node, pad + 1, stream);
     }
 }
@@ -268,11 +266,9 @@ void print_stmt_switch(struct ast *stmt_switch, s32 pad, FILE *stream)
     print_head(stmt_switch, pad, stream);
     print_node(stmt_switch->data.stmt_switch.expr, pad + 1, stream);
 
-    TSmallArray_AstPtr *cases = stmt_switch->data.stmt_switch.cases;
-    struct ast *        stmt_case;
-
-    TSA_FOREACH(cases, stmt_case)
-    {
+    ast_nodes_t *cases = stmt_switch->data.stmt_switch.cases;
+    for (usize i = 0; i < sarrlenu(cases); ++i) {
+        struct ast *stmt_case = sarrpeek(cases, i);
         print_node(stmt_case, pad + 1, stream);
     }
 }
@@ -282,14 +278,10 @@ void print_stmt_case(struct ast *stmt_case, s32 pad, FILE *stream)
     print_head(stmt_case, pad, stream);
     if (stmt_case->data.stmt_case.is_default) fprintf(stream, "default");
 
-    if (stmt_case->data.stmt_case.exprs) {
-        TSmallArray_AstPtr *exprs = stmt_case->data.stmt_case.exprs;
-        struct ast *        expr;
-
-        TSA_FOREACH(exprs, expr)
-        {
-            print_node(expr, pad + 1, stream);
-        }
+    ast_nodes_t *exprs = stmt_case->data.stmt_case.exprs;
+    for (usize i = 0; i < sarrlenu(exprs); ++i) {
+        struct ast *expr = sarrpeek(exprs, i);
+        print_node(expr, pad + 1, stream);
     }
 
     if (stmt_case->data.stmt_case.block) {
@@ -319,13 +311,9 @@ void print_stmt_continue(struct ast *ctx, s32 pad, FILE *stream)
 void print_stmt_return(struct ast *ret, s32 pad, FILE *stream)
 {
     print_head(ret, pad, stream);
-    TSmallArray_AstPtr *exprs = ret->data.stmt_return.exprs;
-    if (exprs) {
-        struct ast *value;
-        TSA_FOREACH(exprs, value)
-        {
-            print_node(value, pad + 1, stream);
-        }
+    for (usize i = 0; i < sarrlenu(ret->data.stmt_return.exprs); ++i) {
+        struct ast *value = sarrpeek(ret->data.stmt_return.exprs, i);
+        print_node(value, pad + 1, stream);
     }
 }
 
@@ -514,9 +502,9 @@ void print_expr_lit_fn(struct ast *fn, s32 pad, FILE *stream)
 void print_expr_lit_fn_group(struct ast *group, s32 pad, FILE *stream)
 {
     print_head(group, pad, stream);
-    struct ast *tmp = NULL;
-    TSA_FOREACH(group->data.expr_fn_group.variants, tmp)
-    {
+    ast_nodes_t *variants = group->data.expr_fn_group.variants;
+    for (usize i = 0; i < sarrlenu(variants); ++i) {
+        struct ast *tmp = sarrpeek(variants, i);
         print_node(tmp, pad + 1, stream);
     }
 }
@@ -527,9 +515,10 @@ void print_expr_call(struct ast *call, s32 pad, FILE *stream)
 
     print_node(call->data.expr_call.ref, pad + 1, stream);
 
-    if (call->data.expr_call.args) {
-        struct ast *arg;
-        TSA_FOREACH(call->data.expr_call.args, arg) print_node(arg, pad + 1, stream);
+    ast_nodes_t *args = call->data.expr_call.args;
+    for (usize i = 0; i < sarrlenu(args); ++i) {
+        struct ast *arg = sarrpeek(args, i);
+        print_node(arg, pad + 1, stream);
     }
 }
 
@@ -537,13 +526,10 @@ void print_expr_compound(struct ast *expr_compound, s32 pad, FILE *stream)
 {
     print_head(expr_compound, pad, stream);
 
-    TSmallArray_AstPtr *exprs = expr_compound->data.expr_compound.values;
-    if (exprs) {
-        struct ast *value;
-        TSA_FOREACH(exprs, value)
-        {
-            print_node(value, pad + 1, stream);
-        }
+    ast_nodes_t *exprs = expr_compound->data.expr_compound.values;
+    for (usize i = 0; i < sarrlenu(exprs); ++i) {
+        struct ast *value = sarrpeek(exprs, i);
+        print_node(value, pad + 1, stream);
     }
 }
 
@@ -764,9 +750,8 @@ void print_node(struct ast *node, s32 pad, FILE *stream)
 
 void ast_printer_run(struct assembly *assembly)
 {
-    struct unit *unit;
-    TARRAY_FOREACH(struct unit *, &assembly->units, unit)
-    {
+    for (usize i = 0; i < arrlenu(assembly->units); ++i) {
+        struct unit *unit = assembly->units[i];
         print_node(unit->ast, 0, stdout);
     }
     fprintf(stdout, "\n\n");

@@ -27,6 +27,7 @@
 // =================================================================================================
 
 #include "tokens.h"
+#include "stb_ds.h"
 
 char *sym_strings[] = {
 #define sm(tok, str, len) str,
@@ -40,15 +41,18 @@ s32 sym_lens[] = {
 #undef sm
 };
 
+struct token *token_end = &(struct token){.sym = SYM_EOF};
+
 void tokens_init(struct tokens *tokens)
 {
-    tarray_init(&tokens->buf, sizeof(struct token));
-    tarray_reserve(&tokens->buf, 512);
+    tokens->buf  = NULL;
+    tokens->iter = 0;
+    arrsetcap(tokens->buf, 512);
 }
 
 void tokens_terminate(struct tokens *tokens)
 {
-    tarray_terminate(&tokens->buf);
+    arrfree(tokens->buf);
 }
 
 bool token_is_unary(struct token *token)

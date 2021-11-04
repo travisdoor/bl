@@ -365,7 +365,7 @@ is_directory :: fn (path: string) (bool, Error) #inline {
 DirScanFilterFn :: *fn(info: *Info) bool;
 
 /// Scan `dirpath` directory and return list of information for every file system
-/// entry found on success. Otherwise return empty list and error. Use :ref:`Fs.info_list_delete
+/// entry found on success. Otherwise return empty list and error. Use :ref:`Fs.info_list_delete`
 /// to release list when there was no error reported by this function.
 ///
 /// Optional `filter` funtion :ref:`Fs.DirScanFilterFn` can be used to filter scan results
@@ -424,14 +424,42 @@ normalize :: fn (filepath: *string) Error #inline {
 /// Remove file extension (token after first `.`) from the `filename` and
 /// return the rest. Function does not create copy of original `filepath`.
 remove_extension :: fn (filename: string) string #inline {
-    return _FsImpl.remove_extension(filename);
+    if String.is_empty(filename) { return String.empty; }
+    tmp := filename;
+    tmp.len = 0;
+    loop i := 0; i < filename.len; i += 1 {
+        c :: filename[i];
+        if c == '.' && i > 0 { break; }
+        tmp.len += 1;
+    }
+    return tmp;
 }
 
 /// Get file extension (token after first `.`) from the `filename`.
 /// Function does not create copy of original `filepath`.
 /// The `.` separator is not included into result string.
 get_extension :: fn (filename: string) string #inline {
-    return _FsImpl.get_extension(filename);
+    if String.is_empty(filename) { return String.empty; }
+    if filename[0] == '.' {
+        if filename.len == 1 { return String.empty; }
+        filename.len -= 1; filename.ptr = &filename[1]; 
+    }
+    rhs: string;
+    if String.split_by_first(filename, '.', null, &rhs) {
+        return rhs;
+    }
+    return String.empty;
+}
+
+/// Get directory path from filepath. Function supports only unix path delimiters.
+/// Returns empty string in case path was not found.
+get_directory :: fn (filepath: string) string #inline {
+    if String.is_empty(filepath) { return String.empty; }
+    lhs: string;
+    if String.split_by_last(filepath, '/', &lhs) {
+        return lhs;
+    }
+    return String.empty;
 }
 
 #private

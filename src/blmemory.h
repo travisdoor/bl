@@ -29,14 +29,22 @@
 #ifndef BL_BLMEMORY_H
 #define BL_BLMEMORY_H
 
-#include "common.h"
-#include <memory.h>
+#include "basic_types.h"
+#include "config.h"
 
-#define bl_malloc(size) _bl_malloc(size, __FILE__, __LINE__)
-#define bl_realloc(ptr, size) _bl_realloc(ptr, size, __FILE__, __LINE__)
+#if BL_PLATFORM_WIN && BL_DEBUG
+#define BL_CRTDBG_ALLOC 0
+#else
+// This is available only on windows.
+#define BL_CRTDBG_ALLOC 0
+#endif
+
+#define bmalloc(size) _bl_malloc(size, __FILE__, __LINE__)
+#define brealloc(ptr, size) _bl_realloc(ptr, size, __FILE__, __LINE__)
+#define bfree(ptr) _bl_free(ptr, __FILE__, __LINE__)
 
 void *_bl_realloc(void *ptr, const size_t size, const char *filename, s32 line);
 void *_bl_malloc(const size_t size, const char *filename, s32 line);
-void  bl_free(void *ptr);
+void  _bl_free(void *ptr, const char *filename, s32 line);
 
 #endif // BL_BLMEMORY_H

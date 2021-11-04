@@ -29,6 +29,7 @@
 #ifndef BL_TOKENS_INLINE_UTILS_H
 #define BL_TOKENS_INLINE_UTILS_H
 
+#include "stb_ds.h"
 #include "tokens.h"
 #include <stdarg.h>
 
@@ -40,104 +41,20 @@ enum tokens_lookahead_state {
 
 typedef enum tokens_lookahead_state (*token_cmp_func_t)(struct token *curr);
 
-static INLINE void tokens_push(struct tokens *tokens, struct token *t)
-{
-    tarray_push(&tokens->buf, *t);
-}
-
-static INLINE struct token *tokens_peek_last(struct tokens *tokens)
-{
-    const usize i = tokens->buf.size;
-    if (i == 0) BL_ABORT("Peeking empty tokens!");
-    return &tarray_at(struct token, &tokens->buf, i - 1);
-}
-
-static INLINE struct token *tokens_peek_nth(struct tokens *tokens, usize n)
-{
-    const usize i = tokens->iter + n - 1;
-    if (i < tokens->buf.size) return &tarray_at(struct token, &tokens->buf, i);
-    return tokens_peek_last(tokens);
-}
-
-static INLINE struct token *tokens_peek(struct tokens *tokens)
-{
-    return tokens_peek_nth(tokens, 1);
-}
-
-static INLINE enum sym tokens_peek_sym(struct tokens *tokens)
-{
-    return tarray_at(struct token, &tokens->buf, tokens->iter).sym;
-}
-
-static INLINE struct token *tokens_peek_2nd(struct tokens *tokens)
-{
-    return tokens_peek_nth(tokens, 2);
-}
-
-static INLINE struct token *tokens_peek_prev(struct tokens *tokens)
-{
-    if (tokens->iter > 0) {
-        return &tarray_at(struct token, &tokens->buf, tokens->iter - 1);
-    }
-    return NULL;
-}
-
-static INLINE struct token *tokens_consume(struct tokens *tokens)
-{
-    if (tokens->iter >= tokens->buf.size) return NULL;
-    return &tarray_at(struct token, &tokens->buf, tokens->iter++);
-}
-
-static INLINE bool tokens_current_is(struct tokens *tokens, enum sym sym)
-{
-    return tarray_at(struct token, &tokens->buf, tokens->iter).sym == sym;
-}
-
-static INLINE bool tokens_previous_is(struct tokens *tokens, enum sym sym)
-{
-    if (tokens->iter == 0) return false;
-    return tarray_at(struct token, &tokens->buf, tokens->iter - 1).sym == sym;
-}
-
-static INLINE bool tokens_next_is(struct tokens *tokens, enum sym sym)
-{
-    return tarray_at(struct token, &tokens->buf, tokens->iter + 1).sym == sym;
-}
-
-static INLINE bool tokens_current_is_not(struct tokens *tokens, enum sym sym)
-{
-    return !tokens_current_is(tokens, sym);
-}
-
-static INLINE bool tokens_next_is_not(struct tokens *tokens, enum sym sym)
-{
-    return !tokens_next_is(tokens, sym);
-}
-
-static INLINE usize tokens_get_marker(struct tokens *tokens)
-{
-    return tokens->iter;
-}
-
-static INLINE void tokens_back_to_marker(struct tokens *tokens, usize marker)
-{
-    tokens->iter = marker;
-}
-
-static INLINE void tokens_reset_iter(struct tokens *tokens)
-{
-    tokens->iter = 0;
-}
-
-static INLINE TArray *tokens_get_all(struct tokens *tokens)
-{
-    return &tokens->buf;
-}
-
-static INLINE int tokens_count(struct tokens *tokens)
-{
-    return (int)tokens->buf.size;
-}
+#define tokens_len(tokens) arrlenu((tokens)->buf)
+#define tokens_push(tokens, t) arrput((tokens)->buf, t)
+#define tokens_peek_nth(tokens, n)                                                                 \
+    ((tokens)->iter + (n) < tokens_len(tokens)                        \
+         ? &(tokens)->buf[(tokens)->iter + (n)]                                                    \
+         : token_end)
+#define tokens_peek(tokens) tokens_peek_nth(tokens, 0)
+#define tokens_peek_sym(tokens) ((tokens)->buf[(tokens)->iter].sym)
+#define tokens_peek_2nd(tokens) tokens_peek_nth(tokens, 1)
+#define tokens_peek_prev(tokens) tokens_peek_nth(tokens, -1)
+#define tokens_consume(tokens)                                                                     \
+    ((tokens)->iter < tokens_len(tokens) ? &(tokens)->buf[(tokens)->iter++] : token_end)
+#define tokens_current_is(tokens, s) (tokens_peek(tokens)->sym == (s))
+#define tokens_current_is_not(tokens, s) (tokens_peek(tokens)->sym != (s))
 
 static INLINE void tokens_consume_till(struct tokens *tokens, enum sym sym)
 {
@@ -148,7 +65,7 @@ static INLINE void tokens_consume_till(struct tokens *tokens, enum sym sym)
 
 static INLINE void tokens_consume_till2(struct tokens *tokens, usize argc, enum sym *args)
 {
-    BL_ASSERT(argc && args);
+    bassert(argc && args);
     while (tokens_current_is_not(tokens, SYM_EOF)) {
         for (usize i = 0; i < argc; ++i) {
             if (tokens_current_is(tokens, args[i])) return;
@@ -159,8 +76,8 @@ static INLINE void tokens_consume_till2(struct tokens *tokens, usize argc, enum 
 
 static INLINE struct token *tokens_consume_if(struct tokens *tokens, enum sym sym)
 {
-    if (tokens->iter >= tokens->buf.size) return NULL;
-    struct token *token = &tarray_at(struct token, &tokens->buf, tokens->iter);
+    if (tokens->iter >= arrlenu(tokens->buf)) return NULL;
+    struct token *token = &tokens->buf[tokens->iter];
     if (token->sym != sym) return NULL;
     tokens->iter++;
     return token;
@@ -169,16 +86,15 @@ static INLINE struct token *tokens_consume_if(struct tokens *tokens, enum sym sy
 static INLINE bool tokens_is_seq(struct tokens *tokens, usize argc, ...)
 {
     bool     ret = true;
-    usize    c   = tokens->buf.size;
     enum sym sym = SYM_EOF;
-    argc += (int)tokens->iter;
+    argc += tokens->iter;
 
     va_list valist;
     va_start(valist, argc);
 
-    for (usize i = tokens->iter; i < argc && i < c; ++i) {
+    for (usize i = tokens->iter; i < argc && i < arrlenu(tokens->buf); ++i) {
         sym = va_arg(valist, enum sym);
-        if ((&tarray_at(struct token, &tokens->buf, i))->sym != sym) {
+        if ((&tokens->buf[i])->sym != sym) {
             ret = false;
             break;
         }
@@ -190,26 +106,25 @@ static INLINE bool tokens_is_seq(struct tokens *tokens, usize argc, ...)
 
 static INLINE bool tokens_lookahead_till(struct tokens *tokens, enum sym lookup, enum sym terminal)
 {
-    bool  found  = false;
-    usize marker = tokens_get_marker(tokens);
+    bool      found  = false;
+    const s64 marker = tokens->iter;
     while (tokens_current_is_not(tokens, terminal) && tokens_current_is_not(tokens, SYM_EOF)) {
         if (tokens_current_is(tokens, lookup)) {
             found = true;
             break;
         }
-
         tokens_consume(tokens);
     }
-    tokens_back_to_marker(tokens, marker);
+    tokens->iter = marker;
     return found;
 }
 
 static INLINE bool tokens_lookahead(struct tokens *tokens, token_cmp_func_t cmp)
 {
-    BL_ASSERT(cmp);
+    bassert(cmp);
     bool                        found  = false;
-    usize                       marker = tokens_get_marker(tokens);
-    struct token *              curr   = NULL;
+    const s64                   marker = tokens->iter;
+    struct token               *curr   = NULL;
     enum tokens_lookahead_state state  = TOK_LOOK_TERMINAL;
     while (true) {
         curr  = tokens_peek(tokens);
@@ -222,7 +137,7 @@ static INLINE bool tokens_lookahead(struct tokens *tokens, token_cmp_func_t cmp)
         }
         tokens_consume(tokens);
     }
-    tokens_back_to_marker(tokens, marker);
+    tokens->iter = marker;
     return found;
 }
 #endif

@@ -29,16 +29,19 @@
 #ifndef BL_COMMON_H
 #define BL_COMMON_H
 
-#include "TracyC.h"
-#include "bldebug.h"
+// clang-format off
 #include "blmemory.h"
+// clang-format on
+#include "TracyC.h"
+#include "basic_types.h"
+#include "bldebug.h"
 #include "config.h"
 #include "error.h"
 #include "math.h"
 #include <limits.h>
 #include <stddef.h>
 #include <time.h>
-#include <tlib/tlib.h>
+#include <string.h>
 
 struct assembly;
 struct scope;
@@ -52,7 +55,10 @@ struct scope;
 // Clang and gcc
 // =================================================================================================
 #if BL_COMPILER_CLANG || BL_COMPILER_GNUC
-#define INLINE inline 
+#define INLINE inline
+#ifndef FORCEINLINE
+#define FORCEINLINE inline
+#endif
 #define _SHUT_UP_BEGIN
 #define _SHUT_UP_END
 #define UNUSED(x) __attribute__((unused)) x
@@ -61,17 +67,8 @@ struct scope;
 // MSVC
 // =================================================================================================
 #elif BL_COMPILER_MSVC
-//#pragma warning(disable : 4002)
-//#pragma warning(disable : 6011)
-//#pragma warning(disable : 4013)
-//#pragma warning(disable : 4244)
-//#pragma warning(disable : 6001)
-//#pragma warning(disable : 4267)
-//#pragma warning(disable : 4200)
-//#pragma warning(disable : 4204)
-//#pragma warning(disable : 4706)
-
-#define INLINE inline 
+#define INLINE __inline
+#define FORCEINLINE __forceinline
 #define _SHUT_UP_BEGIN __pragma(warning(push, 0))
 #define _SHUT_UP_END __pragma(warning(pop))
 #define UNUSED(x) __pragma(warning(suppress : 4100)) x
@@ -85,53 +82,168 @@ struct scope;
 
 #define alignment_of(T) _Alignof(T)
 
-#define IS_FLAG(_v, _flag) ((bool)(((_v) & (_flag)) == (_flag)))
-#define IS_NOT_FLAG(_v, _flag) ((bool)(((_v) & (_flag)) != (_flag)))
-#define SET_FLAG(_v, _flag) ((_v) |= (_flag))
-#define CLR_FLAG(_v, _flag) ((_v) &= ~(_flag))
-
-#define ARRAY_FOREACH(arr, it)                                                                     \
-    for (usize _keep = 1, i = 0, _size = TARRAY_SIZE((arr)); _keep && i != _size;                  \
-         _keep = !_keep, i++)                                                                      \
-        for (it = (arr)[i]; _keep; _keep = !_keep)
+#define isflag(_v, _flag) ((bool)(((_v) & (_flag)) == (_flag)))
+#define isnotflag(_v, _flag) ((bool)(((_v) & (_flag)) != (_flag)))
+#define setflag(_v, _flag) ((_v) |= (_flag))
+#define clrflag(_v, _flag) ((_v) &= ~(_flag))
 
 enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 
-#define RUNTIME_MEASURE_BEGIN_S(name) f64 __##name = get_tick_ms()
-#define RUNTIME_MEASURE_END_S(name) ((get_tick_ms() - __##name) / 1000.)
+#define runtime_measure_begin(name) f64 __##name = get_tick_ms()
+#define runtime_measure_end(name) ((get_tick_ms() - __##name) / 1000.)
 
 #define LIB_NAME_MAX 256
 
-TSMALL_ARRAY_TYPE(AstPtr, struct ast *, 16);
-TSMALL_ARRAY_TYPE(TypePtr, struct mir_type *, 16);
-TSMALL_ARRAY_TYPE(MemberPtr, struct mir_member *, 16);
-TSMALL_ARRAY_TYPE(VariantPtr, struct mir_variant *, 16);
-TSMALL_ARRAY_TYPE(ArgPtr, struct mir_arg *, 16);
-TSMALL_ARRAY_TYPE(InstrPtr, struct mir_instr *, 16);
-TSMALL_ARRAY_TYPE(ConstValuePtr, struct MirConstValue *, 16);
-TSMALL_ARRAY_TYPE(Char, char, 128);
-TSMALL_ARRAY_TYPE(CharPtr, char *, 8);
-TSMALL_ARRAY_TYPE(FnPtr, struct mir_fn *, 8);
+// Return size of of static array.
+#define static_arrlenu(A) (sizeof(A) / sizeof((A)[0]))
+
+// =================================================================================================
+// STB utils
+// =================================================================================================
+
+#define queue_t(T)                                                                                 \
+    struct {                                                                                       \
+        T  *q[2];                                                                                  \
+        s64 i;                                                                                     \
+        s32 qi;                                                                                    \
+    }
+
+#define _qcurrent(Q) ((Q)->q[(Q)->qi])
+#define _qother(Q) ((Q)->q[(Q)->qi ^ 1])
+#define qmaybeswap(Q)                                                                              \
+    ((Q)->i >= arrlen(_qcurrent(Q))                                                                \
+         ? (arrsetlen(_qcurrent(Q), 0), (Q)->qi ^= 1, (Q)->i = 0, arrlen(_qcurrent(Q)) > 0)        \
+         : (true))
+#define qfree(Q) (arrfree((Q)->q[0]), arrfree((Q)->q[1]))
+#define qpush_back(Q, V) arrput(_qother(Q), (V))
+#define qpop_front(Q) (_qcurrent(Q)[(Q)->i++])
+#define qsetcap(Q, c) (arrsetcap(_qother(Q), c))
+
+#define strprint(A, fmt, ...)                                                                      \
+    {                                                                                              \
+        const s32 l = snprintf(NULL, 0, fmt, ##__VA_ARGS__) + 1;                                   \
+        arrsetlen(A, l);                                                                           \
+        snprintf(A, l, fmt, ##__VA_ARGS__);                                                        \
+    }                                                                                              \
+    (void)0
+
+#define strinit(A, C) (strsetcap(A, C), (A)[0] = '\0')
+#define strfree(A) (arrfree(A))
+#define strlenu(A) (arrlenu(A) ? arrlenu(A) - 1 : 0)
+#define strclr(A) (arrsetlen(A, 1), (A)[0] = '\0')
+#define strsetcap(A, C) (arrsetcap(A, (C) + 1))
+#define strappend(A, fmt, ...)                                                                     \
+    {                                                                                              \
+        const usize orig_len = strlenu(A);                                                         \
+        const s32   text_len = snprintf(NULL, 0, fmt, ##__VA_ARGS__) + 1;                          \
+        arrsetlen(A, orig_len + text_len);                                                         \
+        snprintf((A) + orig_len, text_len, fmt, ##__VA_ARGS__);                                    \
+    }                                                                                              \
+    (void)0
+
+// =================================================================================================
+// Small Array
+// =================================================================================================
+#define sarr_t(T, C)                                                                               \
+    struct {                                                                                       \
+        u32 len, cap;                                                                              \
+        union {                                                                                    \
+            T *_data;                                                                              \
+            T  _buf[C];                                                                            \
+        };                                                                                         \
+    }
+
+typedef sarr_t(u8, 1) sarr_any_t;
+
+#define SARR_ZERO                                                                                  \
+    {                                                                                              \
+        .len = 0, .cap = 0                                                                         \
+    }
+
+#define sarradd(A) sarraddn(A, 1)
+#define sarraddn(A, N)                                                                             \
+    (sarradd_impl((A), sizeof((A)->_buf[0]), sizeof((A)->_buf) / sizeof((A)->_buf[0]), N),         \
+     &sarrpeek(A, sarrlenu(A) - N))
+#define sarrput(A, V) (*sarradd(A) = (V))
+#define sarrpop(A) (sarrlenu(A) > 0 ? sarrpeek(A, --(A)->len) : (abort(), (A)->_data[0]))
+#define sarrlenu(A) ((usize)((A) ? (A)->len : 0))
+#define sarrlen(A) ((s64)((A) ? (A)->len : 0))
+#define sarrdata(A) ((A)->cap ? ((A)->_data) : ((A)->_buf))
+#define sarrpeek(A, I) (sarrdata(A)[I])
+#define sarrclear(A) ((A)->len = 0)
+#define sarrfree(A) ((A)->cap ? bfree((A)->_data) : (void)0, (A)->len = 0, (A)->cap = 0)
+#define sarrsetlen(A, L)                                                                           \
+    {                                                                                              \
+        const s64 d = ((s64)(L)) - sarrlen(A);                                                     \
+        if (d) sarraddn(A, d);                                                                     \
+    }                                                                                              \
+    (void)0
+
+void sarradd_impl(void *ptr, usize elem_size, usize static_elem_count, usize new_elem_count);
+
+typedef sarr_t(struct ast *, 16) ast_nodes_t;
+typedef sarr_t(struct mir_arg *, 16) mir_args_t;
+typedef sarr_t(struct mir_fn *, 16) mir_fns_t;
+typedef sarr_t(struct mir_type *, 16) mir_types_t;
+typedef sarr_t(struct mir_member *, 16) mir_members_t;
+typedef sarr_t(struct mir_variant *, 16) mir_variants_t;
+typedef sarr_t(struct mir_instr *, 16) mir_instrs_t;
+
+// =================================================================================================
+// String cache
+// =================================================================================================
+struct string_cache;
+
+// Allocate string inside the sting cache, passed cache pointer must be initialized to NULL for the
+// first time. The malloc is called only in case there is not enough space left for the string
+// inside the preallocated block. Internally len+1 is allocated to hold zero terminator. When 'str'
+// is NULL no data copy is done. Function returns pointer to new allocated block/copy of the
+// original string.
+char *scdup(struct string_cache **cache, const char *str, usize len);
+void  scfree(struct string_cache **cache);
+char *scprint(struct string_cache **cache, const char *fmt, ...);
+
+// =================================================================================================
+// Hashing
+// =================================================================================================
+typedef u32 hash_t;
 
 struct id {
     const char *str;
-    u64         hash;
+    hash_t      hash;
 };
 
-static INLINE struct id *id_init(struct id *id, const char *str)
+static FORCEINLINE hash_t strhash(const char *str)
 {
-    BL_ASSERT(id);
-    id->hash = thash_from_str(str);
+    hash_t hash = 5381;
+    s32    c;
+    while ((c = *str++))
+        hash = ((hash << 5) + hash) + c;
+    return hash;
+}
+
+static FORCEINLINE hash_t hashcomb(hash_t first, hash_t second)
+{
+    return first ^ (second + 0x9e3779b9 + (first << 6) + (first >> 2));
+}
+
+static FORCEINLINE struct id *id_init(struct id *id, const char *str)
+{
+    bassert(id);
+    id->hash = strhash(str);
     id->str  = str;
     return id;
 }
 
-static INLINE bool is_ignored_id(const struct id *id)
+static FORCEINLINE bool is_ignored_id(const struct id *id)
 {
-    BL_ASSERT(id);
+    bassert(id);
     return strcmp(id->str, "_") == 0;
 }
 
+// =================================================================================================
+// Utils
+// =================================================================================================
 enum search_flags {
     SEARCH_FLAG_ABS         = 0,
     SEARCH_FLAG_WDIR        = 1,
@@ -145,46 +257,44 @@ enum search_flags {
 //
 // Search order:
 //     1) exec_dir (working directory if not NULL)
-//     2) LIB_DIR specified in global congig file
+//     2) LIB_DIR specified in global config file
 //     3) system PATH
 //
 // Function returns true and modify output variables if file was found otherwise returns false.
 bool search_source_file(const char *filepath,
                         const u32   flags,
                         const char *wdir,
-                        char **     out_filepath,
-                        char **     out_dirpath);
+                        char      **out_filepath,
+                        char      **out_dirpath);
 
 // Replace all backslashes in passed path with forward slash, this is used as workaround on Windows
 // platform due to inconsistency 'Unix vs Windows' path separators. This function will modify passed
 // buffer.
-void    win_path_to_unix(char *buf, usize buf_size);
-void    unix_path_to_win(char *buf, usize buf_size);
-bool    file_exists(const char *filepath);
-bool    dir_exists(const char *dirpath);
-bool    brealpath(const char *file, char *out, s32 out_len);
-bool    get_current_working_dir(char *buf, usize buf_size);
-bool    get_dir_from_filepath(char *buf, const usize l, const char *filepath);
-bool    get_filename_from_filepath(char *buf, const usize l, const char *filepath);
-bool    get_current_exec_path(char *buf, usize buf_size);
-bool    get_current_exec_dir(char *buf, usize buf_size);
-bool    create_dir(const char *dirpath);
-bool    create_dir_tree(const char *dirpath);
-bool    copy_dir(const char *src, const char *dest);
-bool    copy_file(const char *src, const char *dest);
-bool    remove_dir(const char *path);
-void    date_time(char *buf, s32 len, const char *format);
-bool    is_aligned(const void *p, usize alignment);
-void    align_ptr_up(void **p, usize alignment, ptrdiff_t *adjustment);
-void    print_bits(s32 const size, void const *const ptr);
-int     count_bits(u64 n);
-void    platform_lib_name(const char *name, char *buffer, usize max_len);
-f64     get_tick_ms(void);
-s32     get_last_error(char *buf, s32 buf_len);
-TArray *create_arr(struct assembly *assembly, usize size);
-void *  _create_sarr(struct assembly *ctx, usize arr_size);
-u32     next_pow_2(u32 n);
-void    color_print(FILE *stream, s32 color, const char *format, ...);
-#define create_sarr(T, Asm) ((T *)_create_sarr((Asm), sizeof(T)))
+void win_path_to_unix(char *buf, usize buf_size);
+void unix_path_to_win(char *buf, usize buf_size);
+bool file_exists(const char *filepath);
+bool dir_exists(const char *dirpath);
+bool brealpath(const char *file, char *out, s32 out_len);
+bool get_current_working_dir(char *buf, usize buf_size);
+bool get_dir_from_filepath(char *buf, const usize l, const char *filepath);
+bool get_filename_from_filepath(char *buf, const usize l, const char *filepath);
+bool get_current_exec_path(char *buf, usize buf_size);
+bool get_current_exec_dir(char *buf, usize buf_size);
+bool create_dir(const char *dirpath);
+bool create_dir_tree(const char *dirpath);
+bool copy_dir(const char *src, const char *dest);
+bool copy_file(const char *src, const char *dest);
+bool remove_dir(const char *path);
+void date_time(char *buf, s32 len, const char *format);
+bool is_aligned(const void *p, usize alignment);
+void align_ptr_up(void **p, usize alignment, ptrdiff_t *adjustment);
+void print_bits(s32 const size, void const *const ptr);
+int  count_bits(u64 n);
+void platform_lib_name(const char *name, char *buffer, usize max_len);
+f64  get_tick_ms(void);
+s32  get_last_error(char *buf, s32 buf_len);
+u32  next_pow_2(u32 n);
+void color_print(FILE *stream, s32 color, const char *format, ...);
+s32  cpu_thread_count(void);
 
 #endif

@@ -118,13 +118,13 @@ struct target_triple {
 };
 
 struct native_lib {
-    u64           hash;
-    DLLib *       handle;
+    hash_t        hash;
+    DLLib        *handle;
     struct token *linked_from;
-    char *        user_name;
-    char *        filename;
-    char *        filepath;
-    char *        dir;
+    char         *user_name;
+    char         *filename;
+    char         *filepath;
+    char         *dir;
     // Disable appending of this library to the linker options.
     bool is_internal;
 };
@@ -158,13 +158,14 @@ struct target {
     // usually target containing some setup acquired from command line arguments of application.
     TARGET_COPYABLE_CONTENT
 
-    char *                    name;
-    TArray                    files;
-    TArray                    default_lib_paths;
-    TArray                    default_libs;
-    TString                   default_custom_linker_opt;
-    TString                   out_dir;
-    TString                   module_dir;
+    char  *name;
+    char **files;
+    char **default_lib_paths;
+    char **default_libs;
+    char  *default_custom_linker_opt;
+    char  *out_dir;
+    char  *module_dir;
+
     enum module_import_policy module_policy;
 
     struct {
@@ -177,43 +178,44 @@ struct target {
 struct assembly {
     const struct target *target;
 
-    TString custom_linker_opt;
-    TArray  lib_paths;
-    TArray  libs;
+    char  *custom_linker_opt;
+    char **lib_paths;
+
+    struct native_lib   *libs;
+    struct string_cache *string_cache;
 
     struct {
         struct scope_arenas scope;
         struct mir_arenas   mir;
         struct arena        ast;
-        struct arena        array;       // Used for all TArrays
-        struct arena        small_array; // Used for all SmallArrays
+        struct arena        sarr;
     } arenas;
 
     struct {
-        TArray global_instrs; // All global instructions.
-
-        // Map type ids to RTTI variables.
-        THashTable RTTI_table;
-        // Instructions for exported symbols (function protorypes).
-        TArray exported_instrs;
+        struct mir_instr **global_instrs; // All global instructions.
+        struct {
+            u64             key;
+            struct mir_var *value;
+        } * rtti_table; // Map type ids to RTTI variables.
+        struct mir_instr **exported_instrs;
     } MIR;
 
     struct {
-        LLVMModuleRef        module;
+        LLVMModuleRef       *modules;
         LLVMContextRef       ctx;
         LLVMTargetDataRef    TD;
         LLVMTargetMachineRef TM;
-        char *               triple;
+        char                *triple;
     } llvm;
 
     struct {
-        TArray          cases;    // Optionally contains list of test case functions.
-        struct mir_var *meta_var; // Optional variable containing runtime test case information.
+        struct mir_fn **cases;
+        struct mir_var *meta_var;
     } testing;
 
     struct {
-        struct mir_fn * entry;                  // Main function
-        struct mir_fn * build_entry;            // Set for build assembly
+        struct mir_fn  *entry;                  // Main function
+        struct mir_fn  *build_entry;            // Set for build assembly
         struct mir_var *command_line_arguments; // Command line arguments variable.
         // Provide information whether application run in compile time or not.
         struct mir_var *is_comptime_run;
@@ -233,10 +235,10 @@ struct assembly {
     } stats;
 
     // DynCall/Lib data used for external method execution in compile time
-    DCCallVM *             dc_vm;
+    DCCallVM              *dc_vm;
     struct virtual_machine vm;
 
-    TArray        units;  // array of all units in assembly
+    struct unit **units;  // array of all units in assembly
     struct scope *gscope; // global scope of the assembly
 
     /* Builtins */
@@ -261,12 +263,12 @@ void           target_add_lib(struct target *target, const char *lib);
 void           target_append_linker_options(struct target *target, const char *option);
 void           target_set_vm_args(struct target *target, s32 argc, char **argv);
 void           target_set_output_dir(struct target *target, const char *dirpath);
-void           target_set_module_dir(struct target *           target,
-                                     const char *              dir,
+void           target_set_module_dir(struct target            *target,
+                                     const char               *dir,
                                      enum module_import_policy policy);
 bool           target_is_triple_valid(struct target_triple *triple);
 bool           target_init_default_triple(struct target_triple *triple);
-char *         target_triple_to_string(const struct target_triple *triple);
+char          *target_triple_to_string(const struct target_triple *triple);
 
 struct assembly *assembly_new(const struct target *target);
 void             assembly_delete(struct assembly *assembly);
@@ -275,28 +277,17 @@ assembly_add_unit_safe(struct assembly *assembly, const char *filepath, struct t
 void      assembly_add_lib_path(struct assembly *assembly, const char *path);
 void      assembly_append_linker_options(struct assembly *assembly, const char *opt);
 void      assembly_add_native_lib(struct assembly *assembly,
-                                  const char *     lib_name,
-                                  struct token *   link_token);
+                                  const char      *lib_name,
+                                  struct token    *link_token);
 bool      assembly_import_module(struct assembly *assembly,
-                                 const char *     modulepath,
-                                 struct token *   import_from);
+                                 const char      *modulepath,
+                                 struct token    *import_from);
 DCpointer assembly_find_extern(struct assembly *assembly, const char *symbol);
 
-static INLINE bool assembly_has_rtti(struct assembly *assembly, u64 type_id)
-{
-    return thtbl_has_key(&assembly->MIR.RTTI_table, type_id);
-}
-
-static INLINE struct mir_var *assembly_get_rtti(struct assembly *assembly, u64 type_id)
-{
-    return thtbl_at(struct mir_var *, &assembly->MIR.RTTI_table, type_id);
-}
-
-static INLINE void
-assembly_add_rtti(struct assembly *assembly, u64 type_id, struct mir_var *rtti_var)
-{
-    thtbl_insert(&assembly->MIR.RTTI_table, type_id, rtti_var);
-}
+#define assembly_has_rtti(assembly, type_id) (hmgeti((assembly)->MIR.rtti_table, type_id) != -1)
+#define assembly_get_rtti(assembly, type_id) (hmget((assembly)->MIR.rtti_table, type_id))
+#define assembly_add_rtti(assembly, type_id, rtti_var)                                             \
+    hmput((assembly)->MIR.rtti_table, type_id, rtti_var);
 
 // Convert opt level to string.
 static INLINE const char *opt_to_str(enum assembly_opt opt)
@@ -309,7 +300,7 @@ static INLINE const char *opt_to_str(enum assembly_opt opt)
     case ASSEMBLY_OPT_RELEASE_SMALL:
         return "RELEASE-SMALL";
     }
-    BL_ABORT("Invalid build mode");
+    babort("Invalid build mode");
 }
 
 // Convert opt level to LLVM.
@@ -323,7 +314,7 @@ static INLINE LLVMCodeGenOptLevel opt_to_LLVM(enum assembly_opt opt)
     case ASSEMBLY_OPT_RELEASE_SMALL:
         return LLVMCodeGenLevelDefault;
     }
-    BL_ABORT("Invalid build mode");
+    babort("Invalid build mode");
 }
 
 #endif

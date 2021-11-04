@@ -34,9 +34,9 @@
 #endif
 
 #include "builder.h"
+#include "stb_ds.h"
 #include <string.h>
 
-#define EXPECTED_GSCOPE_COUNT 4094
 #define EXPECTED_ARRAY_COUNT 256
 
 const char *arch_names[] = {
@@ -71,26 +71,20 @@ const char *env_names[] = {
 #undef GEN_ENV
 };
 
-union _SmallArrays {
-    TSmallArray_TypePtr       type;
-    TSmallArray_MemberPtr     member;
-    TSmallArray_VariantPtr    variant;
-    TSmallArray_InstrPtr      instr;
-    TSmallArray_ConstValuePtr cv;
-    TSmallArray_AstPtr        ast;
-    TSmallArray_ArgPtr        arg;
-    TSmallArray_SwitchCase    switch_case;
-    TSmallArray_FnPtr         fn;
-};
+static const usize sarr_total_size = sizeof(union {
+    ast_nodes_t        _1;
+    mir_args_t         _2;
+    mir_fns_t          _3;
+    mir_types_t        _4;
+    mir_members_t      _5;
+    mir_variants_t     _6;
+    mir_instrs_t       _7;
+    mir_switch_cases_t _8;
+});
 
-static void tarray_dtor(TArray **arr)
+static void sarr_dtor(sarr_any_t *arr)
 {
-    tarray_delete(*arr);
-}
-
-static void small_array_dtor(TSmallArrayAny *arr)
-{
-    tsa_terminate(arr);
+    sarrfree(arr);
 }
 
 typedef struct AssemblySyncImpl {
@@ -99,7 +93,7 @@ typedef struct AssemblySyncImpl {
 
 static AssemblySyncImpl *sync_new(void)
 {
-    AssemblySyncImpl *impl = bl_malloc(sizeof(AssemblySyncImpl));
+    AssemblySyncImpl *impl = bmalloc(sizeof(AssemblySyncImpl));
     pthread_mutex_init(&impl->units_lock, NULL);
     return impl;
 }
@@ -107,7 +101,7 @@ static AssemblySyncImpl *sync_new(void)
 static void sync_delete(AssemblySyncImpl *impl)
 {
     pthread_mutex_destroy(&impl->units_lock);
-    bl_free(impl);
+    bfree(impl);
 }
 
 static void dl_init(struct assembly *assembly)
@@ -124,13 +118,13 @@ static void dl_terminate(struct assembly *assembly)
 
 static void parse_triple(const char *normalized_triple, struct target_triple *out_triple)
 {
-    BL_ASSERT(out_triple);
+    bassert(out_triple);
     // arch-vendor-os-evironment
     char *arch, *vendor, *os, *env;
     arch = vendor = os = env = "";
     const char *delimiter    = "-";
-    char *      tmp          = strdup(normalized_triple);
-    char *      token        = strtok(tmp, delimiter);
+    char       *tmp          = strdup(normalized_triple);
+    char       *token        = strtok(tmp, delimiter);
     s32         state        = 0;
     while (token) {
         switch (state++) {
@@ -153,7 +147,7 @@ static void parse_triple(const char *normalized_triple, struct target_triple *ou
     }
 
     out_triple->arch = ARCH_unknown;
-    for (usize i = 0; i < TARRAY_SIZE(arch_names); ++i) {
+    for (usize i = 0; i < static_arrlenu(arch_names); ++i) {
         if (strcmp(arch, arch_names[i]) == 0) {
             out_triple->arch = i;
             break;
@@ -161,7 +155,7 @@ static void parse_triple(const char *normalized_triple, struct target_triple *ou
     }
 
     out_triple->vendor = VENDOR_unknown;
-    for (usize i = 0; i < TARRAY_SIZE(vendor_names); ++i) {
+    for (usize i = 0; i < static_arrlenu(vendor_names); ++i) {
         if (strcmp(vendor, vendor_names[i]) == 0) {
             out_triple->vendor = i;
             break;
@@ -169,7 +163,7 @@ static void parse_triple(const char *normalized_triple, struct target_triple *ou
     }
 
     out_triple->os = OS_unknown;
-    for (usize i = 0; i < TARRAY_SIZE(os_names); ++i) {
+    for (usize i = 0; i < static_arrlenu(os_names); ++i) {
         if (strncmp(os, os_names[i], strlen(os_names[i])) == 0) {
             out_triple->os = i;
             break;
@@ -177,7 +171,7 @@ static void parse_triple(const char *normalized_triple, struct target_triple *ou
     }
 
     out_triple->env = ENV_unknown;
-    for (usize i = 0; i < TARRAY_SIZE(env_names); ++i) {
+    for (usize i = 0; i < static_arrlenu(env_names); ++i) {
         if (strcmp(env, env_names[i]) == 0) {
             out_triple->env = i;
             break;
@@ -204,12 +198,10 @@ static void llvm_init(struct assembly *assembly)
             builder_error("  %s", LLVMGetTargetName(target));
             target = LLVMGetNextTarget(target);
         }
-        BL_ABORT("Cannot get target");
+        babort("Cannot get target");
     }
     LLVMContextRef llvm_context = LLVMContextCreate();
-    LLVMModuleRef  llvm_module =
-        LLVMModuleCreateWithNameInContext(assembly->target->name, llvm_context);
-    LLVMRelocMode reloc_mode = LLVMRelocDefault;
+    LLVMRelocMode  reloc_mode   = LLVMRelocDefault;
     switch (assembly->target->kind) {
     case ASSEMBLY_SHARED_LIB:
         reloc_mode = LLVMRelocPIC;
@@ -226,22 +218,22 @@ static void llvm_init(struct assembly *assembly)
                                                            LLVMCodeModelDefault);
 
     LLVMTargetDataRef llvm_td = LLVMCreateTargetDataLayout(llvm_tm);
-    LLVMSetModuleDataLayout(llvm_module, llvm_td);
-    LLVMSetTarget(llvm_module, triple);
-    assembly->llvm.ctx    = llvm_context;
-    assembly->llvm.module = llvm_module;
-    assembly->llvm.TM     = llvm_tm;
-    assembly->llvm.TD     = llvm_td;
-    assembly->llvm.triple = triple;
+    assembly->llvm.ctx        = llvm_context;
+    assembly->llvm.TM         = llvm_tm;
+    assembly->llvm.TD         = llvm_td;
+    assembly->llvm.triple     = triple;
 }
 
 static void llvm_terminate(struct assembly *assembly)
 {
-    LLVMDisposeModule(assembly->llvm.module);
+    for (usize i = 0; i < arrlenu(assembly->llvm.modules); ++i) {
+        LLVMDisposeModule(assembly->llvm.modules[i]);
+    }
+    arrfree(assembly->llvm.modules);
     LLVMDisposeTargetMachine(assembly->llvm.TM);
     LLVMDisposeTargetData(assembly->llvm.TD);
     LLVMContextDispose(assembly->llvm.ctx);
-    bl_free(assembly->llvm.triple);
+    bfree(assembly->llvm.triple);
 }
 
 static void native_lib_terminate(struct native_lib *lib)
@@ -257,38 +249,36 @@ static void native_lib_terminate(struct native_lib *lib)
 static void mir_init(struct assembly *assembly)
 {
     mir_arenas_init(&assembly->arenas.mir);
-    tarray_init(&assembly->MIR.global_instrs, sizeof(struct mir_instr *));
-    tarray_init(&assembly->MIR.exported_instrs, sizeof(struct mir_instr *));
-    thtbl_init(&assembly->MIR.RTTI_table, sizeof(struct mir_var *), 2048);
+    arrsetcap(assembly->MIR.global_instrs, 1024);
+    arrsetcap(assembly->MIR.exported_instrs, 256);
 }
 
 static INLINE void mir_terminate(struct assembly *assembly)
 {
-    thtbl_terminate(&assembly->MIR.RTTI_table);
-    tarray_terminate(&assembly->MIR.global_instrs);
-    tarray_terminate(&assembly->MIR.exported_instrs);
+    hmfree(assembly->MIR.rtti_table);
+    arrfree(assembly->MIR.global_instrs);
+    arrfree(assembly->MIR.exported_instrs);
     mir_arenas_terminate(&assembly->arenas.mir);
 }
 
-static INLINE void set_default_out_dir(TString *dir)
+static INLINE void set_default_out_dir(char **dir)
 {
     char path[PATH_MAX] = {0};
     if (!get_current_working_dir(&path[0], PATH_MAX)) {
         builder_error("Cannot get current working directory!");
         return;
     }
-    tstring_clear(dir);
-    tstring_append(dir, path);
+    strprint(*dir, "%s", path);
 }
 
 // Create directory tree and set out_path.
-static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, TString *out_path)
+static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, char **out_path)
 {
-    BL_ASSERT(_path);
-    BL_ASSERT(out_path);
+    bassert(_path);
+    bassert(out_path);
 #if BL_PLATFORM_WIN
     char *path = strdup(_path);
-    if (!path) BL_ABORT("Invalid directory copy.");
+    if (!path) babort("Invalid directory copy.");
     win_path_to_unix(path, strlen(path));
 #else
     const char *path  = _path;
@@ -305,8 +295,7 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, TString *o
     if (!brealpath(path, full_path, PATH_MAX)) {
         return false;
     }
-    tstring_clear(out_path);
-    tstring_append(out_path, full_path);
+    strprint(*out_path, "%s", full_path);
 #if BL_PLATFORM_WIN
     free(path);
 #endif
@@ -316,7 +305,7 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, TString *o
 static conf_data_t *load_module_config(const char *modulepath, struct token *import_from)
 {
     char tmp_path[PATH_MAX] = {0};
-    snprintf(tmp_path, TARRAY_SIZE(tmp_path), "%s/%s", modulepath, MODULE_CONFIG_FILE);
+    snprintf(tmp_path, static_arrlenu(tmp_path), "%s/%s", modulepath, MODULE_CONFIG_FILE);
     conf_data_t *config = conf_data_new();
     if (builder_compile_config(tmp_path, config, import_from) != COMPILE_OK) {
         conf_data_delete(config);
@@ -327,7 +316,7 @@ static conf_data_t *load_module_config(const char *modulepath, struct token *imp
 
 static INLINE s32 get_module_version(conf_data_t *config)
 {
-    BL_ASSERT(config);
+    bassert(config);
     if (conf_data_has_key(config, CONF_MODULE_VERSION)) { // optional version
         return conf_data_get_int(config, CONF_MODULE_VERSION);
     }
@@ -335,13 +324,13 @@ static INLINE s32 get_module_version(conf_data_t *config)
 }
 
 static bool import_module(struct assembly *assembly,
-                          conf_data_t *    config,
-                          const char *     modulepath,
-                          struct token *   import_from)
+                          conf_data_t     *config,
+                          const char      *modulepath,
+                          struct token    *import_from)
 {
-    ZONE();
-    BL_ASSERT(config);
-    BL_ASSERT(modulepath);
+    zone();
+    bassert(config);
+    bassert(modulepath);
     const s32 version = get_module_version(config);
     builder_log("Import module '%s' version %d.", modulepath, version);
     if (!conf_data_has_key(config, CONF_MODULE_ENTRY)) {
@@ -353,53 +342,53 @@ static bool import_module(struct assembly *assembly,
             "Module doesn't support current target platform, configuration entry ('%s') not "
             "found in module config file.",
             CONF_MODULE_ENTRY);
-        RETURN_ZONE(false);
+        return_zone(false);
     }
 
     { // entry file
         const char *entry_file = conf_data_get_str(config, CONF_MODULE_ENTRY);
-        BL_ASSERT(entry_file && strlen(entry_file) > 0);
-        TString *entry_file_path = get_tmpstr();
-        tstring_setf(entry_file_path, "%s/%s", modulepath, entry_file);
-        assembly_add_unit_safe(assembly, entry_file_path->data, NULL);
-        put_tmpstr(entry_file_path);
+        bassert(entry_file && strlen(entry_file) > 0);
+        char *entry_file_path = gettmpstr();
+        strprint(entry_file_path, "%s/%s", modulepath, entry_file);
+        assembly_add_unit_safe(assembly, entry_file_path, NULL);
+        puttmpstr(entry_file_path);
     }
 
     // Optional lib path
     if (conf_data_has_key(config, CONF_MODULE_LIB_PATH)) {
         const char *lib_path = conf_data_get_str(config, CONF_MODULE_LIB_PATH);
-        BL_ASSERT(lib_path && strlen(lib_path) > 0);
-        TString *path = get_tmpstr();
-        tstring_setf(path, "%s/%s", modulepath, lib_path);
-        if (!dir_exists(path->data)) {
+        bassert(lib_path && strlen(lib_path) > 0);
+        char *path = gettmpstr();
+        strprint(path, "%s/%s", modulepath, lib_path);
+        if (!dir_exists(path)) {
             builder_msg(BUILDER_MSG_ERROR,
                         ERR_FILE_NOT_FOUND,
                         TOKEN_OPTIONAL_LOCATION(import_from),
                         BUILDER_CUR_WORD,
                         "Cannot find module imported library path '%s' defined by '%s'.",
-                        path->data,
+                        path,
                         CONF_MODULE_LIB_PATH);
-            put_tmpstr(path);
-            RETURN_ZONE(false);
+            puttmpstr(path);
+            return_zone(false);
         }
-        assembly_add_lib_path(assembly, path->data);
-        put_tmpstr(path);
+        assembly_add_lib_path(assembly, path);
+        puttmpstr(path);
     }
 
     // Optional linker options
     if (conf_data_has_key(config, CONF_MODULE_LINKER_OPT)) {
         const char *opt = conf_data_get_str(config, CONF_MODULE_LINKER_OPT);
-        BL_ASSERT(opt && strlen(opt) > 0);
+        bassert(opt && strlen(opt) > 0);
         assembly_append_linker_options(assembly, opt);
     }
 
     // Optional libs
     if (conf_data_has_key(config, CONF_MODULE_LINK)) {
         const char *lib = conf_data_get_str(config, CONF_MODULE_LINK);
-        BL_ASSERT(lib && strlen(lib) > 0);
+        bassert(lib && strlen(lib) > 0);
         assembly_add_native_lib(assembly, lib, NULL);
     }
-    RETURN_ZONE(true);
+    return_zone(true);
 }
 
 // =================================================================================================
@@ -407,16 +396,13 @@ static bool import_module(struct assembly *assembly,
 // =================================================================================================
 struct target *target_new(const char *name)
 {
-    BL_ASSERT(name && "struct assembly name not specified!");
-    struct target *target = bl_malloc(sizeof(struct target));
+    bassert(name && "struct assembly name not specified!");
+    struct target *target = bmalloc(sizeof(struct target));
     memset(target, 0, sizeof(struct target));
     BL_MAGIC_SET(target);
-    tarray_init(&target->files, sizeof(char *));
-    tarray_init(&target->default_lib_paths, sizeof(char *));
-    tarray_init(&target->default_libs, sizeof(char *));
-    tstring_init(&target->default_custom_linker_opt);
-    tstring_init(&target->module_dir);
-    tstring_init(&target->out_dir);
+    strinit(target->default_custom_linker_opt, 128);
+    strinit(target->module_dir, 128);
+    strinit(target->out_dir, 128);
     target->name = strdup(name);
 
     set_default_out_dir(&target->out_dir);
@@ -447,7 +433,7 @@ struct target *target_dup(const char *name, const struct target *other)
     BL_MAGIC_ASSERT(other);
     struct target *target = target_new(name);
     memcpy(target, other, sizeof(struct {TARGET_COPYABLE_CONTENT}));
-    target_set_output_dir(target, other->out_dir.data);
+    target_set_output_dir(target, other->out_dir);
     target->vm = other->vm;
     BL_MAGIC_SET(target);
     return target;
@@ -455,31 +441,29 @@ struct target *target_dup(const char *name, const struct target *other)
 
 void target_delete(struct target *target)
 {
-    char *file;
-    TARRAY_FOREACH(char *, &target->files, file) free(file);
+    for (usize i = 0; i < arrlenu(target->files); ++i)
+        free(target->files[i]);
+    for (usize i = 0; i < arrlenu(target->default_lib_paths); ++i)
+        free(target->default_lib_paths[i]);
+    for (usize i = 0; i < arrlenu(target->default_libs); ++i)
+        free(target->default_libs[i]);
 
-    char *path;
-    TARRAY_FOREACH(char *, &target->default_lib_paths, path) free(path);
-
-    char *lib;
-    TARRAY_FOREACH(char *, &target->default_libs, lib) free(lib);
-
-    tarray_terminate(&target->files);
-    tarray_terminate(&target->default_lib_paths);
-    tarray_terminate(&target->default_libs);
-    tstring_terminate(&target->out_dir);
-    tstring_terminate(&target->default_custom_linker_opt);
-    tstring_terminate(&target->module_dir);
+    arrfree(target->files);
+    arrfree(target->default_lib_paths);
+    arrfree(target->default_libs);
+    strfree(target->out_dir);
+    strfree(target->default_custom_linker_opt);
+    strfree(target->module_dir);
     free(target->name);
-    bl_free(target);
+    bfree(target);
 }
 
 void target_add_file(struct target *target, const char *filepath)
 {
     BL_MAGIC_ASSERT(target);
-    BL_ASSERT(filepath && "Invalid filepath!");
+    bassert(filepath && "Invalid filepath!");
     char *dup = strdup(filepath);
-    tarray_push(&target->files, dup);
+    arrput(target->files, dup);
 }
 
 void target_set_vm_args(struct target *target, s32 argc, char **argv)
@@ -495,7 +479,7 @@ void target_add_lib_path(struct target *target, const char *path)
     if (!path) return;
     char *tmp = strdup(path);
     if (!tmp) return;
-    tarray_push(&target->default_lib_paths, tmp);
+    arrput(target->default_lib_paths, tmp);
 }
 
 void target_add_lib(struct target *target, const char *lib)
@@ -504,7 +488,7 @@ void target_add_lib(struct target *target, const char *lib)
     if (!lib) return;
     char *tmp = strdup(lib);
     if (!tmp) return;
-    tarray_push(&target->default_libs, tmp);
+    arrput(target->default_libs, tmp);
 }
 
 void target_set_output_dir(struct target *target, const char *dir)
@@ -520,8 +504,7 @@ void target_append_linker_options(struct target *target, const char *option)
 {
     BL_MAGIC_ASSERT(target);
     if (!option) return;
-    tstring_append(&target->default_custom_linker_opt, option);
-    tstring_append(&target->default_custom_linker_opt, " ");
+    strappend(target->default_custom_linker_opt, "%s ", option);
 }
 
 void target_set_module_dir(struct target *target, const char *dir, enum module_import_policy policy)
@@ -565,13 +548,13 @@ char *target_triple_to_string(const struct target_triple *triple)
     const char *vendor = "";
     const char *os     = "";
     const char *env    = "";
-    if (triple->arch < TARRAY_SIZE(arch_names)) arch = arch_names[triple->arch];
-    if (triple->vendor < TARRAY_SIZE(vendor_names)) vendor = vendor_names[triple->vendor];
-    if (triple->os < TARRAY_SIZE(os_names)) os = os_names[triple->os];
-    if (triple->env < TARRAY_SIZE(env_names)) env = env_names[triple->env];
+    if (triple->arch < static_arrlenu(arch_names)) arch = arch_names[triple->arch];
+    if (triple->vendor < static_arrlenu(vendor_names)) vendor = vendor_names[triple->vendor];
+    if (triple->os < static_arrlenu(os_names)) os = os_names[triple->os];
+    if (triple->env < static_arrlenu(env_names)) env = env_names[triple->env];
     const usize len =
         strlen(arch) + strlen(vendor) + strlen(os) + strlen(env) + 4; // 3x'-' + terminator
-    char *str = bl_malloc(len);
+    char *str = bmalloc(len);
     snprintf(str, len, "%s-%s-%s-%s", arch, vendor, os, env);
     return str;
 }
@@ -579,42 +562,33 @@ char *target_triple_to_string(const struct target_triple *triple)
 struct assembly *assembly_new(const struct target *target)
 {
     BL_MAGIC_ASSERT(target);
-    struct assembly *assembly = bl_malloc(sizeof(struct assembly));
+    struct assembly *assembly = bmalloc(sizeof(struct assembly));
     memset(assembly, 0, sizeof(struct assembly));
     assembly->target = target;
     assembly->sync   = sync_new();
 
     llvm_init(assembly);
-    tarray_init(&assembly->units, sizeof(struct unit *));
-    tstring_init(&assembly->custom_linker_opt);
-    tarray_init(&assembly->libs, sizeof(struct native_lib));
-    tarray_init(&assembly->lib_paths, sizeof(char *));
-    tarray_init(&assembly->testing.cases, sizeof(struct mir_fn *));
+    arrsetcap(assembly->units, 64);
+    strinit(assembly->custom_linker_opt, 128);
     vm_init(&assembly->vm, VM_STACK_SIZE);
 
     // set defaults
     scope_arenas_init(&assembly->arenas.scope);
     ast_arena_init(&assembly->arenas.ast);
-    arena_init(&assembly->arenas.array,
-               sizeof(TArray *),
-               alignment_of(TArray *),
+    arena_init(&assembly->arenas.sarr,
+               sarr_total_size,
+               16, // Is this correct?
                EXPECTED_ARRAY_COUNT,
-               (arena_elem_dtor_t)tarray_dtor);
-    arena_init(&assembly->arenas.small_array,
-               sizeof(union _SmallArrays),
-               alignment_of(union _SmallArrays),
-               EXPECTED_ARRAY_COUNT,
-               (arena_elem_dtor_t)small_array_dtor);
+               (arena_elem_dtor_t)sarr_dtor);
     assembly->gscope =
-        scope_create(&assembly->arenas.scope, SCOPE_GLOBAL, NULL, EXPECTED_GSCOPE_COUNT, NULL);
+        scope_create(&assembly->arenas.scope, SCOPE_GLOBAL, NULL, NULL);
 
     dl_init(assembly);
     mir_init(assembly);
 
     // Add units from target
-    for (usize i = 0; i < target->files.size; ++i) {
-        char *file = tarray_at(char *, (TArray *)&target->files, i);
-        assembly_add_unit_safe(assembly, file, NULL);
+    for (usize i = 0; i < arrlenu(target->files); ++i) {
+        assembly_add_unit_safe(assembly, target->files[i], NULL);
     }
 
     // Add default units based on assembly kind
@@ -640,60 +614,46 @@ struct assembly *assembly_new(const struct target *target)
     }
 
     // Duplicate default library paths
-    char *lib_path;
-    TARRAY_FOREACH(char *, (TArray *)&target->default_lib_paths, lib_path)
-    {
-        assembly_add_lib_path(assembly, lib_path);
-    }
+    for (usize i = 0; i < arrlenu(target->default_lib_paths); ++i)
+        assembly_add_lib_path(assembly, target->default_lib_paths[i]);
 
     // Duplicate default libs
-    char *lib;
-    TARRAY_FOREACH(char *, (TArray *)&target->default_libs, lib)
-    {
-        assembly_add_native_lib(assembly, lib, NULL);
-    }
+    for (usize i = 0; i < arrlenu(target->default_libs); ++i)
+        assembly_add_native_lib(assembly, target->default_libs[i], NULL);
 
     // Append custom linker options
-    assembly_append_linker_options(assembly, target->default_custom_linker_opt.data);
+    assembly_append_linker_options(assembly, target->default_custom_linker_opt);
 
     return assembly;
 }
 
 void assembly_delete(struct assembly *assembly)
 {
-    ZONE();
-    struct unit *unit;
-    TARRAY_FOREACH(struct unit *, &assembly->units, unit)
-    {
-        unit_delete(unit);
-    }
+    zone();
+    for (usize i = 0; i < arrlenu(assembly->units); ++i)
+        unit_delete(assembly->units[i]);
+    for (usize i = 0; i < arrlenu(assembly->libs); ++i)
+        native_lib_terminate(&assembly->libs[i]);
+    for (usize i = 0; i < arrlenu(assembly->lib_paths); ++i)
+        free(assembly->lib_paths[i]);
 
-    struct native_lib *lib;
-    for (usize i = 0; i < assembly->libs.size; ++i) {
-        lib = &tarray_at(struct native_lib, &assembly->libs, i);
-        native_lib_terminate(lib);
-    }
+    arrfree(assembly->libs);
+    arrfree(assembly->lib_paths);
+    arrfree(assembly->testing.cases);
+    arrfree(assembly->units);
 
-    char *p;
-    TARRAY_FOREACH(char *, &assembly->lib_paths, p) free(p);
-
-    tarray_terminate(&assembly->libs);
-    tarray_terminate(&assembly->lib_paths);
-    tarray_terminate(&assembly->testing.cases);
-    tarray_terminate(&assembly->units);
-
-    tstring_terminate(&assembly->custom_linker_opt);
+    strfree(assembly->custom_linker_opt);
     vm_terminate(&assembly->vm);
-    arena_terminate(&assembly->arenas.small_array);
-    arena_terminate(&assembly->arenas.array);
+    arena_terminate(&assembly->arenas.sarr);
     ast_arena_terminate(&assembly->arenas.ast);
     scope_arenas_terminate(&assembly->arenas.scope);
     llvm_terminate(assembly);
     dl_terminate(assembly);
     mir_terminate(assembly);
     sync_delete(assembly->sync);
-    bl_free(assembly);
-    RETURN_ZONE();
+    scfree(&assembly->string_cache);
+    bfree(assembly);
+    return_zone();
 }
 
 void assembly_add_lib_path(struct assembly *assembly, const char *path)
@@ -701,21 +661,19 @@ void assembly_add_lib_path(struct assembly *assembly, const char *path)
     if (!path) return;
     char *tmp = strdup(path);
     if (!tmp) return;
-    tarray_push(&assembly->lib_paths, tmp);
+    arrput(assembly->lib_paths, tmp);
 }
 
 void assembly_append_linker_options(struct assembly *assembly, const char *opt)
 {
     if (!opt) return;
-    tstring_append(&assembly->custom_linker_opt, opt);
-    tstring_append(&assembly->custom_linker_opt, " ");
+    strappend(assembly->custom_linker_opt, "%s ", opt);
 }
 
-static INLINE bool assembly_has_unit(struct assembly *assembly, const u64 hash)
+static INLINE bool assembly_has_unit(struct assembly *assembly, const hash_t hash)
 {
-    struct unit *unit;
-    TARRAY_FOREACH(struct unit *, &assembly->units, unit)
-    {
+    for (usize i = 0; i < arrlenu(assembly->units); ++i) {
+        struct unit *unit = assembly->units[i];
         if (hash == unit->hash) {
             return true;
         }
@@ -726,29 +684,28 @@ static INLINE bool assembly_has_unit(struct assembly *assembly, const u64 hash)
 struct unit *
 assembly_add_unit_safe(struct assembly *assembly, const char *filepath, struct token *load_from)
 {
-    ZONE();
-    struct unit *     unit = NULL;
-    const u64         hash = unit_hash(filepath, load_from);
+    zone();
+    struct unit      *unit = NULL;
+    const hash_t      hash = unit_hash(filepath, load_from);
     AssemblySyncImpl *sync = assembly->sync;
     pthread_mutex_lock(&sync->units_lock);
     if (assembly_has_unit(assembly, hash)) goto DONE;
     unit = unit_new(filepath, load_from);
-    tarray_push(&assembly->units, unit);
+    arrput(assembly->units, unit);
     builder_async_submit_unit(unit);
 DONE:
     pthread_mutex_unlock(&sync->units_lock);
-    RETURN_ZONE(unit);
+    return_zone(unit);
 }
 
 void assembly_add_native_lib(struct assembly *assembly,
-                             const char *     lib_name,
-                             struct token *   link_token)
+                             const char      *lib_name,
+                             struct token    *link_token)
 {
-    const u64 hash = thash_from_str(lib_name);
+    const hash_t hash = strhash(lib_name);
     { // Search for duplicity.
-        struct native_lib *lib;
-        for (usize i = 0; i < assembly->libs.size; ++i) {
-            lib = &tarray_at(struct native_lib, &assembly->libs, i);
+        for (usize i = 0; i < arrlenu(assembly->libs); ++i) {
+            struct native_lib *lib = &assembly->libs[i];
             if (lib->hash == hash) return;
         }
     }
@@ -756,23 +713,23 @@ void assembly_add_native_lib(struct assembly *assembly,
     lib.hash              = hash;
     lib.user_name         = strdup(lib_name);
     lib.linked_from       = link_token;
-    tarray_push(&assembly->libs, lib);
+    arrput(assembly->libs, lib);
 }
 
 static INLINE bool module_exist(const char *module_dir, const char *modulepath)
 {
-    TString *local_conf_path = get_tmpstr();
-    tstring_setf(local_conf_path, "%s/%s/%s", module_dir, modulepath, MODULE_CONFIG_FILE);
-    const bool found = search_source_file(local_conf_path->data, SEARCH_FLAG_ABS, NULL, NULL, NULL);
-    put_tmpstr(local_conf_path);
+    char *local_conf_path = gettmpstr();
+    strprint(local_conf_path, "%s/%s/%s", module_dir, modulepath, MODULE_CONFIG_FILE);
+    const bool found = search_source_file(local_conf_path, SEARCH_FLAG_ABS, NULL, NULL, NULL);
+    puttmpstr(local_conf_path);
     return found;
 }
 
 bool assembly_import_module(struct assembly *assembly,
-                            const char *     modulepath,
-                            struct token *   import_from)
+                            const char      *modulepath,
+                            struct token    *import_from)
 {
-    ZONE();
+    zone();
     bool state = false;
     if (!strlen(modulepath)) {
         builder_msg(BUILDER_MSG_ERROR,
@@ -783,41 +740,41 @@ bool assembly_import_module(struct assembly *assembly,
         goto DONE;
     }
 
-    TString *            local_path = get_tmpstr();
-    conf_data_t *        config     = NULL;
+    char                *local_path = gettmpstr();
+    conf_data_t         *config     = NULL;
     const struct target *target     = assembly->target;
-    const char *         module_dir = target->module_dir.len > 0 ? target->module_dir.data : NULL;
+    const char          *module_dir = strlenu(target->module_dir) > 0 ? target->module_dir : NULL;
     const enum module_import_policy policy = assembly->target->module_policy;
     const bool local_found = module_dir ? module_exist(module_dir, modulepath) : false;
     switch (policy) {
     case IMPORT_POLICY_SYSTEM: {
         if (local_found) {
-            tstring_setf(local_path, "%s/%s", module_dir, modulepath);
-            config = load_module_config(local_path->data, import_from);
+            strprint(local_path, "%s/%s", module_dir, modulepath);
+            config = load_module_config(local_path, import_from);
         } else {
-            tstring_setf(local_path, "%s/%s", builder_get_lib_dir(), modulepath);
-            config = load_module_config(local_path->data, import_from);
+            strprint(local_path, "%s/%s", builder_get_lib_dir(), modulepath);
+            config = load_module_config(local_path, import_from);
         }
         break;
     }
 
     case IMPORT_POLICY_BUNDLE_LATEST:
     case IMPORT_POLICY_BUNDLE: {
-        BL_ASSERT(module_dir);
-        TString *  system_path   = get_tmpstr();
+        bassert(module_dir);
+        char      *system_path   = gettmpstr();
         const bool check_version = policy == IMPORT_POLICY_BUNDLE_LATEST;
-        tstring_setf(local_path, "%s/%s", module_dir, modulepath);
-        tstring_setf(system_path, "%s/%s", builder_get_lib_dir(), modulepath);
+        strprint(local_path, "%s/%s", module_dir, modulepath);
+        strprint(system_path, "%s/%s", builder_get_lib_dir(), modulepath);
         const bool system_found = module_exist(builder_get_lib_dir(), modulepath);
         // Check if module is present in module directory.
         bool do_copy = !local_found;
         if (check_version && local_found && system_found) {
             s32 system_version = 0;
             s32 local_version  = 0;
-            tstring_setf(system_path, "%s/%s", builder_get_lib_dir(), modulepath);
-            config = load_module_config(system_path->data, import_from);
+            strprint(system_path, "%s/%s", builder_get_lib_dir(), modulepath);
+            config = load_module_config(system_path, import_from);
             if (config) system_version = get_module_version(config);
-            conf_data_t *local_config = load_module_config(local_path->data, import_from);
+            conf_data_t *local_config = load_module_config(local_path, import_from);
             if (local_config) local_version = get_module_version(local_config);
             conf_data_delete(local_config);
             do_copy = system_version > local_version;
@@ -825,48 +782,48 @@ bool assembly_import_module(struct assembly *assembly,
         if (do_copy) {
             // Delete old one.
             if (local_found) {
-                TString *backup_name = get_tmpstr();
-                char     date[26];
-                date_time(date, TARRAY_SIZE(date), "%d-%m-%Y_%H-%M-%S");
-                tstring_setf(backup_name, "%s_%s.bak", local_path->data, date);
-                copy_dir(local_path->data, backup_name->data);
-                remove_dir(local_path->data);
-                builder_warning("Backup module '%s'.", backup_name->data);
-                put_tmpstr(backup_name);
+                char *backup_name = gettmpstr();
+                char  date[26];
+                date_time(date, static_arrlenu(date), "%d-%m-%Y_%H-%M-%S");
+                strprint(backup_name, "%s_%s.bak", local_path, date);
+                copy_dir(local_path, backup_name);
+                remove_dir(local_path);
+                builder_warning("Backup module '%s'.", backup_name);
+                puttmpstr(backup_name);
             }
             // Copy module from system to module directory.
             builder_warning("%s module '%s' in '%s'.",
                             (check_version && local_found) ? "Update" : "Import",
                             modulepath,
                             module_dir);
-            if (!copy_dir(system_path->data, local_path->data)) {
+            if (!copy_dir(system_path, local_path)) {
                 builder_error("Cannot import module '%s'.", modulepath);
             }
         }
-        if (!config) config = load_module_config(local_path->data, import_from);
-        put_tmpstr(system_path);
+        if (!config) config = load_module_config(local_path, import_from);
+        puttmpstr(system_path);
         break;
     }
 
     default:
-        BL_ASSERT("Invalid module import policy!");
+        bassert("Invalid module import policy!");
     }
     if (config) {
-        builder_log("%s", local_path->data);
-        state = import_module(assembly, config, local_path->data, import_from);
+        builder_log("%s", local_path);
+        state = import_module(assembly, config, local_path, import_from);
     }
-    put_tmpstr(local_path);
+    puttmpstr(local_path);
     conf_data_delete(config);
 DONE:
-    RETURN_ZONE(state);
+    return_zone(state);
 }
 
 DCpointer assembly_find_extern(struct assembly *assembly, const char *symbol)
 {
-    void *             handle = NULL;
+    void              *handle = NULL;
     struct native_lib *lib;
-    for (usize i = 0; i < assembly->libs.size; ++i) {
-        lib    = &tarray_at(struct native_lib, &assembly->libs, i);
+    for (usize i = 0; i < arrlenu(assembly->libs); ++i) {
+        lib    = &assembly->libs[i];
         handle = dlFindSymbol(lib->handle, symbol);
         if (handle) break;
     }
