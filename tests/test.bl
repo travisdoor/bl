@@ -1,16 +1,5 @@
-#import "std/test"
-
-Foo :: struct {
-    data: [100]u8;
-}
-
-foo :: fn (d: Foo) {
-}
-
 main :: fn () s32 {
-    f: Foo;
-    foo(f);
-    return 0;
+    return 10;
 }
 
 // =================================================================================================
@@ -21,13 +10,11 @@ main :: fn () s32 {
 // - #using Enum + use UPPERCASE for variants.
 // - #switch ?
 // - polymorph struct types
-// - allow static if in global scope
+// - allow static #if in global scope
 // - modules should use regular load scripts written in BL executed during import
 // - lazy load/import of sources (during analyze pass)
-// - Make return tmp variable #noinit.
-// - Implement zeroset helper and measure runtime performance compared to memset. (compile time branches for
-//   posible sizes?)
-// - use union for small array
+// - implement custom call stack recording for debugging purposes (probably on LLVM IR level?)
+// - revalidate Fs module interface.
 
 // =================================================================================================
 // Module loader
