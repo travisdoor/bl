@@ -144,12 +144,16 @@ void scfree(struct string_cache **cache)
 
 char *scprint(struct string_cache **cache, const char *fmt, ...)
 {
-    va_list args;
+    va_list args, args2;
     va_start(args, fmt);
+    va_copy(args2, args);
     const s32 len = vsnprintf(NULL, 0, fmt, args);
     bassert(len > 0);
     char *buf = scdup(cache, NULL, len);
-    vsprintf(buf, fmt, args);
+    const s32 wlen = vsprintf(buf, fmt, args2);
+    bassert(wlen == len);
+    (void)wlen;
+    va_end(args2);
     va_end(args);
     return buf;
 }

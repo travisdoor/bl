@@ -7026,6 +7026,7 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
     }
 
     if (var->is_global && !var->is_struct_typedef) {
+        bassert(var->linkage_name && "Missing variable linkage name!");
         // Unexported globals have unique linkage name to solve potential conflicts
         // with extern symbols.
         var->linkage_name = create_unique_name(ctx, var->linkage_name);
