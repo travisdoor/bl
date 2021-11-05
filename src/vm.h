@@ -35,6 +35,7 @@
 // * compile time constant
 //     - allocated in data buffer
 //     - available anytime during compilation process
+//     - only constants can be evaluated in compile time
 // * runtime value
 //     - living on the stack just as temporary value
 //     - is supposed to be consumed soon by following instructions
@@ -93,6 +94,7 @@ enum mir_value_address_mode {
 
 // This should not be there but whatever.
 struct mir_const_expr_value {
+	// @Performance: _tmp and data can be packed in union
     vm_value_t                  _tmp;
     vm_stack_ptr_t              data;
     struct mir_type            *type;
