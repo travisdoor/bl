@@ -31,6 +31,15 @@
 
 #include "common.h"
 
+// Values:
+// * compile time constant
+//     - allocated in data buffer
+//     - available anytime during compilation process
+// * runtime value
+//     - living on the stack just as temporary value
+//     - is supposed to be consumed soon by following instructions
+//     - small values can live in preallocated registers (to safe stack space)
+
 // Stack data manipulation helper macros.
 #define VM_STACK_PTR_DEREF(ptr) ((vm_stack_ptr_t) * ((uintptr_t *)(ptr)))
 
@@ -98,7 +107,9 @@ void vm_terminate(struct virtual_machine *vm);
 bool vm_eval_instr(struct virtual_machine *vm, struct assembly *assembly, struct mir_instr *instr);
 
 // Execute top level call instruction, called function must be fully analyzed. Return value is set
-// into call value data pinter and is valid until other stack operations are done.
+// into call value data pointer.
+// RETURN VALUE LIVES ON THE STACK AND MUST BE DIRECTLY USED, OTHERWISE IT CAN BE OVERRIDEN BY OTHER
+// STACK OPERATIONS!!!
 bool vm_execute_comptime_call(struct virtual_machine *vm,
                               struct assembly        *assembly,
                               struct mir_instr_call  *call);

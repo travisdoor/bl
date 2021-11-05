@@ -85,14 +85,14 @@ static inline void bl_debug_break(void)
     }                                                                                              \
     (void)0
 
-#define BL_MAGIC_ASSERT(O)                                                                         \
+#define bmagic_check(O)                                                                         \
     {                                                                                              \
         bassert(O && "Invalid reference!");                                                        \
         bassert((O)->_magic == (void *)&(O)->_magic && "Invalid magic!");                          \
     }                                                                                              \
     (void)0
-#define BL_MAGIC_ADD void *_magic;
-#define BL_MAGIC_SET(O) (O)->_magic = (void *)&(O)->_magic
+#define bmagic_member void *_magic
+#define bmagic_set(O) (O)->_magic = (void *)&(O)->_magic
 
 // =================================================================================================
 #else
@@ -106,13 +106,13 @@ static inline void bl_debug_break(void)
     }                                                                                              \
     (void)0
 
-#define BL_MAGIC_ASSERT(O)                                                                         \
+#define bmagic_check(O)                                                                         \
     while (0) {                                                                                    \
     }                                                                                              \
     (void)0
 
-#define BL_MAGIC_ADD
-#define BL_MAGIC_SET(O)                                                                            \
+#define bmagic_member
+#define bmagic_set(O)                                                                            \
     while (0) {                                                                                    \
     }                                                                                              \
     (void)0

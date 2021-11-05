@@ -551,7 +551,7 @@ int builder_compile_all(void)
 
 s32 builder_compile(const struct target *target)
 {
-    BL_MAGIC_ASSERT(target);
+    bmagic_check(target);
     struct assembly *assembly = assembly_new(target);
 
     s32 state = compile(assembly);

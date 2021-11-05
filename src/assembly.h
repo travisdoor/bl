@@ -172,7 +172,8 @@ struct target {
         s32    argc;
         char **argv;
     } vm;
-    BL_MAGIC_ADD
+
+    bmagic_member;
 };
 
 struct assembly {

@@ -231,7 +231,7 @@ struct mir_fn_poly_recipe {
         struct mir_instr_fn_proto *value;
     } * entries;
 
-    BL_MAGIC_ADD
+    bmagic_member;
 };
 
 // FN
@@ -294,13 +294,14 @@ struct mir_fn {
         DCCallback               *extern_callback_handle;
         struct dyncall_cb_context context;
     } dyncall;
-    BL_MAGIC_ADD
+
+    bmagic_member;
 };
 
 struct mir_fn_group {
     struct ast *decl_node;
     mir_fns_t  *variants;
-    BL_MAGIC_ADD
+    bmagic_member;
 };
 
 // MEMBER
@@ -314,7 +315,7 @@ struct mir_member {
     s32                 tags;
     bool                is_base; // inherrited struct base
     bool                is_parent_union;
-    BL_MAGIC_ADD
+    bmagic_member;
 };
 
 // FUNCTION ARGUMENT
@@ -438,7 +439,7 @@ struct mir_type {
         struct mir_type_poly        poly;
     } data;
 
-    BL_MAGIC_ADD
+    bmagic_member;
 };
 
 // VARIANT
@@ -488,9 +489,14 @@ struct mir_instr {
     struct mir_instr           *next;
     enum mir_instr_kind         kind;
     s32                         ref_count;
-    u32                         flags;
+	u32                         flags;
+
+	bmagic_member;
 };
 
+// Contains user defined compile time message.
+// in:  -
+// out: -
 struct mir_instr_msg {
     struct mir_instr base;
 

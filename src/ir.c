@@ -1648,7 +1648,7 @@ State emit_instr_addrof(struct context *ctx, struct mir_instr_addrof *addrof)
     if (addrof->src->kind == MIR_INSTR_FN_PROTO) {
         struct mir_instr_fn_proto *fn_proto = (struct mir_instr_fn_proto *)addrof->src;
         struct mir_fn             *fn = MIR_CEV_READ_AS(struct mir_fn *, &fn_proto->base.value);
-        BL_MAGIC_ASSERT(fn);
+        bmagic_check(fn);
         addrof->base.llvm_value = emit_fn_proto(ctx, fn, true);
     } else {
         addrof->base.llvm_value = addrof->src->llvm_value;
@@ -2574,7 +2574,7 @@ State emit_instr_const(struct context *ctx, struct mir_instr_const *c)
     }
     case MIR_TYPE_FN: {
         struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &c->base.value);
-        BL_MAGIC_ASSERT(fn);
+        bmagic_check(fn);
         llvm_value = emit_fn_proto(ctx, fn, true);
         break;
     }
@@ -2806,7 +2806,7 @@ void emit_allocas(struct context *ctx, struct mir_fn *fn)
 State emit_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_proto)
 {
     struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &fn_proto->base.value);
-    BL_MAGIC_ASSERT(fn);
+    bmagic_check(fn);
     emit_fn_proto(ctx, fn, false);
 
     // External functions does not have any body block.

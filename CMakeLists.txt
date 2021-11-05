@@ -223,12 +223,6 @@ install(DIRECTORY lib/bl/api DESTINATION ${CMAKE_INSTALL_LIBDIR}/bl)
 install(DIRECTORY lib/bl/rt DESTINATION ${CMAKE_INSTALL_LIBDIR}/bl)
 
 # Copy LLD executable into output directory
-set(BL_LLD_EXE "bl-lld")
-set(BL_CONFIG_EXE "bl-config")
-set(BL_CONFIG "${BL_DEPS_DIR}/bl-config/bin/linux/${BL_CONFIG_EXE}")
-set(BL_CONFIGURE_SH ${BL_CONFIG_EXE})
-set(BL_LINKER ${BL_LLD_EXE})
-
 if(NOT EXISTS ${LLD_BIN})
     message(FATAL_ERROR "LLD not found expected location is ${LLD_BIN}" )
 endif()

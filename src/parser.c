@@ -403,6 +403,13 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
             PARSE_ERROR(ERR_INVALID_EXPR, tok_err, BUILDER_CUR_WORD, "Expected call.");
             return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
         }
+
+        builder_msg(BUILDER_MSG_WARNING,
+                    0,
+                    &tok_directive->location,
+                    BUILDER_CUR_WORD,
+                    "The #comptime directive is experimental and should not be used yet!");
+
         return_zone(call);
     }
 

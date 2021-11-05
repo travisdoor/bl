@@ -399,7 +399,7 @@ struct target *target_new(const char *name)
     bassert(name && "struct assembly name not specified!");
     struct target *target = bmalloc(sizeof(struct target));
     memset(target, 0, sizeof(struct target));
-    BL_MAGIC_SET(target);
+    bmagic_set(target);
     strinit(target->default_custom_linker_opt, 128);
     strinit(target->module_dir, 128);
     strinit(target->out_dir, 128);
@@ -430,12 +430,12 @@ struct target *target_new(const char *name)
 
 struct target *target_dup(const char *name, const struct target *other)
 {
-    BL_MAGIC_ASSERT(other);
+    bmagic_check(other);
     struct target *target = target_new(name);
     memcpy(target, other, sizeof(struct {TARGET_COPYABLE_CONTENT}));
     target_set_output_dir(target, other->out_dir);
     target->vm = other->vm;
-    BL_MAGIC_SET(target);
+    bmagic_set(target);
     return target;
 }
 
@@ -460,7 +460,7 @@ void target_delete(struct target *target)
 
 void target_add_file(struct target *target, const char *filepath)
 {
-    BL_MAGIC_ASSERT(target);
+    bmagic_check(target);
     bassert(filepath && "Invalid filepath!");
     char *dup = strdup(filepath);
     arrput(target->files, dup);
@@ -468,14 +468,14 @@ void target_add_file(struct target *target, const char *filepath)
 
 void target_set_vm_args(struct target *target, s32 argc, char **argv)
 {
-    BL_MAGIC_ASSERT(target);
+    bmagic_check(target);
     target->vm.argc = argc;
     target->vm.argv = argv;
 }
 
 void target_add_lib_path(struct target *target, const char *path)
 {
-    BL_MAGIC_ASSERT(target);
+    bmagic_check(target);
     if (!path) return;
     char *tmp = strdup(path);
     if (!tmp) return;
@@ -484,7 +484,7 @@ void target_add_lib_path(struct target *target, const char *path)
 
 void target_add_lib(struct target *target, const char *lib)
 {
-    BL_MAGIC_ASSERT(target);
+    bmagic_check(target);
     if (!lib) return;
     char *tmp = strdup(lib);
     if (!tmp) return;
@@ -493,7 +493,7 @@ void target_add_lib(struct target *target, const char *lib)
 
 void target_set_output_dir(struct target *target, const char *dir)
 {
-    BL_MAGIC_ASSERT(target);
+    bmagic_check(target);
     if (!dir) builder_error("Cannot create output directory.");
     if (!create_auxiliary_dir_tree_if_not_exist(dir, &target->out_dir)) {
         builder_error("Cannot create output directory '%s'.", dir);
@@ -502,14 +502,14 @@ void target_set_output_dir(struct target *target, const char *dir)
 
 void target_append_linker_options(struct target *target, const char *option)
 {
-    BL_MAGIC_ASSERT(target);
+    bmagic_check(target);
     if (!option) return;
     strappend(target->default_custom_linker_opt, "%s ", option);
 }
 
 void target_set_module_dir(struct target *target, const char *dir, enum module_import_policy policy)
 {
-    BL_MAGIC_ASSERT(target);
+    bmagic_check(target);
     if (!dir) {
         builder_error("Cannot create module directory.");
         return;
@@ -561,7 +561,7 @@ char *target_triple_to_string(const struct target_triple *triple)
 
 struct assembly *assembly_new(const struct target *target)
 {
-    BL_MAGIC_ASSERT(target);
+    bmagic_check(target);
     struct assembly *assembly = bmalloc(sizeof(struct assembly));
     memset(assembly, 0, sizeof(struct assembly));
     assembly->target = target;

@@ -129,6 +129,7 @@ static void eval_instr_set_initializer(struct virtual_machine           *vm,
                                        struct mir_instr_set_initializer *si);
 static void eval_instr_cast(struct virtual_machine *vm, struct mir_instr_cast *cast);
 static void eval_instr_compound(struct virtual_machine *vm, struct mir_instr_compound *cmp);
+static void eval_instr_unroll(struct virtual_machine *vm, struct mir_instr_unroll *unroll);
 
 // =================================================================================================
 // Inlines
@@ -1725,7 +1726,7 @@ void interp_instr_call(struct virtual_machine *vm, struct mir_instr_call *call)
     }
 
     struct mir_fn *fn = (struct mir_fn *)vm_read_ptr(callee_ptr_type, callee_ptr);
-    BL_MAGIC_ASSERT(fn);
+    bmagic_check(fn);
 #if VERBOSE_EXEC
     printf("\n%s:\n", fn->linkage_name);
 #endif
@@ -1890,6 +1891,10 @@ void eval_instr(struct virtual_machine *vm, struct mir_instr *instr)
         eval_instr_call_loc(vm, (struct mir_instr_call_loc *)instr);
         break;
 
+    case MIR_INSTR_UNROLL:
+        eval_instr_unroll(vm, (struct mir_instr_unroll *)instr);
+        break;
+
     case MIR_INSTR_PHI:
     case MIR_INSTR_COND_BR:
     case MIR_INSTR_CALL:
@@ -1911,7 +1916,6 @@ void eval_instr(struct virtual_machine *vm, struct mir_instr *instr)
     case MIR_INSTR_DECL_ARG:
     case MIR_INSTR_DECL_VARIANT:
     case MIR_INSTR_SIZEOF:
-    case MIR_INSTR_UNROLL:
     case MIR_INSTR_ALIGNOF:
     case MIR_INSTR_BR:
         break;
@@ -2099,6 +2103,18 @@ void eval_instr_compound(struct virtual_machine *vm, struct mir_instr_compound *
             babort("Invalid type of compound element!");
         }
     }
+}
+
+void eval_instr_unroll(struct virtual_machine *vm, struct mir_instr_unroll *unroll)
+{
+    struct mir_instr *src   = unroll->src;
+    bassert(src);
+    struct mir_type *src_type = src->value.type;
+    if (mir_is_composit_type(src_type)) {
+        babort("Not implemented yet!");
+    } else {
+		blog("Just copy value!");
+	}
 }
 
 void eval_instr_decl_var(struct virtual_machine UNUSED(*vm), struct mir_instr_decl_var *decl_var)
@@ -2298,7 +2314,7 @@ bool vm_execute_fn(struct virtual_machine *vm,
                    mir_const_values_t     *optional_args,
                    vm_stack_ptr_t         *optional_return)
 {
-    BL_MAGIC_ASSERT(fn);
+    bmagic_check(fn);
     vm->assembly       = assembly;
     vm->stack->aborted = false;
     if (optional_args) {

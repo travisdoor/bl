@@ -54,7 +54,7 @@ static void sync_delete(scope_sync_impl *impl)
 
 static void scope_dtor(struct scope *scope)
 {
-    BL_MAGIC_ASSERT(scope);
+    bmagic_check(scope);
     for (usize i = 0; i < arrlenu(scope->layers); ++i) {
         hmfree(scope->layers[i].entries);
     }
@@ -113,7 +113,7 @@ struct scope *scope_create(struct scope_arenas *arenas,
 
     // Global scopes must be thread safe!
     if (kind == SCOPE_GLOBAL) scope->sync = sync_new();
-    BL_MAGIC_SET(scope);
+    bmagic_set(scope);
     return scope;
 }
 
@@ -129,7 +129,7 @@ struct scope_entry *scope_create_entry(struct scope_arenas  *arenas,
     entry->node               = node;
     entry->is_builtin         = is_builtin;
     entry->ref_count          = 0;
-    BL_MAGIC_SET(entry);
+    bmagic_set(entry);
     return entry;
 }
 

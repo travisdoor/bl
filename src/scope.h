@@ -74,7 +74,7 @@ struct scope_entry {
     union scope_entry_data data;
     s32                    ref_count;
     u32                    lookup_count;
-    BL_MAGIC_ADD
+    bmagic_member;
 };
 
 enum scope_kind {
@@ -110,7 +110,7 @@ struct scope {
     struct scope_layer      default_layer;
     struct scope_layer     *layers;
 
-    BL_MAGIC_ADD
+    bmagic_member;
 };
 
 void scope_arenas_init(struct scope_arenas *arenas);
@@ -151,7 +151,7 @@ static INLINE bool scope_is_local(const struct scope *scope)
 
 static INLINE struct scope_entry *scope_entry_ref(struct scope_entry *entry)
 {
-    BL_MAGIC_ASSERT(entry);
+    bmagic_check(entry);
     ++entry->ref_count;
     return entry;
 }

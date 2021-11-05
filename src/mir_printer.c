@@ -29,6 +29,7 @@
 #include "mir_printer.h"
 #include "assembly.h"
 #include "ast.h"
+#include "builder.h"
 #include "mir.h"
 #include "stb_ds.h"
 
@@ -62,12 +63,12 @@ static INLINE void print_instr_head(struct context *ctx, struct mir_instr *instr
 
 #if BL_DEBUG
     if (instr->ref_count == -1) {
-        fprintf(ctx->stream, "    %%%-6llu (-)", (unsigned long long)instr->id);
+        fprintf(ctx->stream, "    %%%-8llu (-)", (unsigned long long)instr->id);
     } else {
-        fprintf(ctx->stream, "    %%%-6llu (%d)", (unsigned long long)instr->id, instr->ref_count);
+        fprintf(ctx->stream, "    %%%-8llu (%d)", (unsigned long long)instr->id, instr->ref_count);
     }
 #else
-    fprintf(ctx->stream, "    %%%-6llu", (unsigned long long)instr->id);
+    fprintf(ctx->stream, "    %%%-8llu", (unsigned long long)instr->id);
 #endif
     print_type(ctx, instr->value.type, true, true);
     fprintf(ctx->stream, " %s ", name);
@@ -197,7 +198,23 @@ _print_const_value(struct context *ctx, struct mir_type *type, vm_stack_ptr_t va
         offset                 = vm_get_struct_elem_offset(ctx->assembly, type, 1);
         vm_stack_ptr_t str_ptr = value + offset;
         str_ptr                = VM_STACK_PTR_DEREF(str_ptr);
-        fprintf(ctx->stream, "%s\"}", (char *)str_ptr);
+        if (str_ptr) {
+            char *tmp = gettmpstr();
+            char  c;
+            while ((c = *(str_ptr++))) {
+                switch (c) {
+                case '\n':
+                    strappend(tmp, "\\n");
+					break;
+                default:
+                    strappend(tmp, "%c", c);
+                }
+            }
+            fprintf(ctx->stream, "%s\"}", tmp);
+            puttmpstr(tmp);
+        } else {
+            fprintf(ctx->stream, "(null)\"}");
+        }
         break;
 
     case MIR_TYPE_DYNARR:
