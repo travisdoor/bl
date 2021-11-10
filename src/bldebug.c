@@ -66,7 +66,7 @@ void _log(BlLogMsgKind t, const char *file, s32 line, const char *msg, ...)
     va_end(args);
 }
 
-void print_trace(void)
+void _print_trace(void)
 {
 #if BL_PLATFORM_MACOS || BL_PLATFORM_LINUX
 #include <execinfo.h>

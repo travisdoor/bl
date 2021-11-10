@@ -82,14 +82,9 @@ static int generate_conf(void)
     puttmpstr(cmd);
     return state;
 }
-
 // =================================================================================================
 // Command line arguments + Options
 // =================================================================================================
-
-#define GEN_ARGS_DEFINITIONS
-#include "command_line_arguments.inc"
-#undef GEN_ARGS_DEFINITIONS
 
 typedef struct ApplicationOptions {
     bool print_help;
@@ -104,21 +99,156 @@ typedef struct Options {
     struct target         *target;
 } Options;
 
-void print_help(FILE *stream)
-{
-    const char *text = "Usage:\n  blc [options] <source-files>\n\nAlternative usage:\n  blc "
-                       "[-r|-rs|-b] <source-file> [arguments]\n\nOptions:\n";
-    fprintf(stream, "%s", text);
+enum getarg_opt_kind {
+    FLAG = 0,
+    ENUM,
+    NUMBER,
+    STRING,
+};
 
-    char buf[256];
-    for (u32 i = 0; i < static_arrlenu(ARGS); ++i) {
-        const Arg *arg = &ARGS[i];
-        if (strlen(arg->s)) {
-            snprintf(buf, static_arrlenu(buf), "-%s, -%s", arg->s, arg->l);
-        } else {
-            snprintf(buf, static_arrlenu(buf), "-%s", arg->l);
+struct getarg_opt {
+    const char          *name;
+    enum getarg_opt_kind kind;
+    union {
+        bool  *b;
+        s32   *n;
+        char **s;
+    } property;
+    const char *variants;
+    const char *help;
+    const s32   id;
+};
+
+static s32
+getarg(s32 argc, char *argv[], struct getarg_opt *opts, s32 *optindex, const char **positional)
+{
+    bassert(opts && optindex);
+    (*positional) = NULL;
+    (*optindex) += 1;
+    if (*optindex >= argc) return -1;
+    char *arg = argv[*optindex];
+    if (arg[0] == '-') {
+        // find =
+        s32   len   = 0;
+        char *value = arg;
+        while (*value) {
+            if ((*value++) == '=') break;
+            ++len;
         }
-        fprintf(stream, "  %-30s = %s\n", buf, arg->help);
+        if (*value == '\0') {
+            value = NULL;
+        } else {
+            *(arg + len) = '\0';
+        }
+
+        struct getarg_opt *opt;
+        s32                i = 0;
+        while ((opt = opts++)->name) {
+            if (strcmp(arg, opt->name) == 0) {
+                switch (opt->kind) {
+                case FLAG:
+                    if (value) {
+                        builder_error("Unexpected value for flag '%s'", opt->name);
+                        return '?';
+                    }
+                    if (opt->property.b) (*opt->property.b) = true;
+                    break;
+                case ENUM:
+                    if (value) {
+                        bool  found    = false;
+                        s32   j        = 0;
+                        char *variants = strdup(opt->variants);
+                        char *token    = strtok(variants, "|");
+                        while (token) {
+                            if (strcmp(value, token) == 0) {
+                                found = true;
+                                break;
+                            }
+                            token = strtok(NULL, " ");
+                            ++j;
+                        }
+                        free(variants);
+                        if (found) {
+                            if (opt->property.n) (*opt->property.n) = j;
+                            break;
+                        }
+                    }
+                    builder_error("Expected <%s> value for '%s'", opt->variants, opt->name);
+                    return '?';
+                case NUMBER:
+                    if (!value) {
+                        builder_error("Expected <N> value for property '%s'", opt->name);
+                        return '?';
+                    }
+                    if (opt->property.n) (*opt->property.n) = atoi(value);
+                    break;
+                case STRING:
+                    if (!value) {
+                        builder_error("Expected <STRING> value for property '%s'", opt->name);
+                        return '?';
+                    }
+                    if (opt->property.s) (*opt->property.s) = value;
+                    break;
+                }
+                return opt->id;
+            }
+            ++i;
+        }
+        builder_error("Unknown argument '%s'", arg);
+        return '?';
+    }
+    (*positional) = arg;
+    return 0;
+}
+
+int _cmpfunc(const void *a, const void *b)
+{
+    struct getarg_opt *first  = (struct getarg_opt *)a;
+    struct getarg_opt *second = (struct getarg_opt *)b;
+    // List -<name> before --<name>
+    const s32 fs = strncmp(first->name, "--", 2) == 0 ? 2 : 0;
+    const s32 ss = strncmp(second->name, "--", 2) == 0 ? 2 : 0;
+    return strcmp(first->name + fs, second->name + ss);
+}
+
+static void sort_optlist(struct getarg_opt *opts)
+{
+    s32 len = 0;
+    for (; opts[len].name; ++len)
+        ;
+    qsort(opts, len, sizeof(struct getarg_opt), &_cmpfunc);
+}
+
+void print_help(FILE *stream, struct getarg_opt *opts)
+{
+    const char *text = "Usage:\n"
+                       "  blc [options] [source-files]\n\n"
+                       "Alternative usage:\n"
+                       "  blc [options] <-build> [build-arguments]\n"
+                       "  blc [options] <-run> <source-file> [arguments] [forwarded-arguments]\n\n"
+                       "Options:\n";
+    fprintf(stream, "%s", text);
+    struct getarg_opt *opt;
+    while ((opt = opts++)->name) {
+        char arg[128];
+        switch (opt->kind) {
+        case FLAG:
+            snprintf(arg, static_arrlenu(arg), "%s", opt->name);
+            break;
+        case ENUM:
+            snprintf(arg, static_arrlenu(arg), "%s=<%s>", opt->name, opt->variants);
+            break;
+        case NUMBER:
+            snprintf(arg, static_arrlenu(arg), "%s=<N>", opt->name);
+            break;
+        case STRING:
+            snprintf(arg, static_arrlenu(arg), "%s=<STRING>", opt->name);
+            break;
+        }
+        if (strlen(arg) > 24)
+            fprintf(stream, "  %s\n                           %s\n", arg, opt->help);
+        else
+            fprintf(stream, "  %-24s %s\n", arg, opt->help);
     }
 }
 
@@ -136,96 +266,6 @@ void print_where_is_api(FILE *stream)
     fprintf(stream, "%s", builder_get_lib_dir());
 }
 
-#define INVALID_ARGS -1
-
-s32 parse_arguments(Options *opt, s32 argc, char *argv[])
-{
-    bassert(opt->target && "Target not initialized!");
-#define ARG(kind, action)                                                                          \
-    if ((strcmp(&argv[i][1], ARGS[kind].s) == 0) || (strcmp(&argv[i][1], ARGS[kind].l) == 0)) {    \
-        action;                                                                                    \
-        continue;                                                                                  \
-    }
-#define ARG_BREAK(kind, action)                                                                    \
-    if ((strcmp(&argv[i][1], ARGS[kind].s) == 0) || (strcmp(&argv[i][1], ARGS[kind].l) == 0)) {    \
-        action;                                                                                    \
-        ++i;                                                                                       \
-        break;                                                                                     \
-    }
-
-    // skip executable name
-    s32 i = 1;
-    for (; i < argc && *argv[i] == '-'; i++) {
-        ARG_BREAK(ARG_BUILD, opt->target->kind = ASSEMBLY_BUILD_PIPELINE;)
-        ARG_BREAK(ARG_RUN, opt->target->run = true;)
-        ARG_BREAK(ARG_RUN_SCRIPT, {
-            opt->builder.silent  = true;
-            opt->target->run     = true;
-            opt->target->no_llvm = true;
-        })
-
-        // Application
-        ARG(ARG_HELP, opt->app.print_help = true;)
-        ARG(ARG_ABOUT, opt->app.print_about = true;)
-        ARG(ARG_WHERE_IS_API, opt->app.where_is_api = true; opt->builder.silent = true;)
-        ARG(ARG_CONFIGURE, opt->app.configure = true;)
-
-        // Builder
-        ARG(ARG_VERBOSE, opt->builder.verbose = true;)
-        ARG(ARG_SILENT, opt->builder.silent = true;)
-        ARG(ARG_NO_COLOR, opt->builder.no_color = true;)
-        ARG(ARG_NO_JOBS, opt->builder.no_jobs = true;)
-        ARG(ARG_NO_WARNING, opt->builder.no_warning = true;)
-        ARG(ARG_FULL_PATH, opt->builder.full_path_reports = true;)
-        ARG(ARG_NO_USAGE_CHECK, opt->builder.no_usage_check = true;)
-        ARG(ARG_TIME_REPORT, opt->builder.time_report = true;)
-
-        // Target
-        ARG(ARG_LEX_DUMP, opt->target->print_tokens = true;)
-        ARG(ARG_AST_DUMP, opt->target->print_ast = true;)
-        ARG(ARG_EMIT_LLVM, opt->target->emit_llvm = true;)
-        ARG(ARG_EMIT_ASM, opt->target->emit_asm = true;)
-        ARG(ARG_EMIT_MIR, opt->target->emit_mir = true;)
-        ARG(ARG_DI_DWARF, opt->target->di = ASSEMBLY_DI_DWARF;)
-        ARG(ARG_DI_CODEVIEW, opt->target->di = ASSEMBLY_DI_CODEVIEW;)
-        ARG(ARG_RELEASE_FAST, opt->target->opt = ASSEMBLY_OPT_RELEASE_FAST;)
-        ARG(ARG_RELEASE_SMALL, opt->target->opt = ASSEMBLY_OPT_RELEASE_SMALL;)
-        ARG(ARG_ASSERT_ON, opt->target->assert_mode = ASSERT_ALWAYS_ENABLED;)
-        ARG(ARG_ASSERT_OFF, opt->target->assert_mode = ASSERT_ALWAYS_DISABLED;)
-        ARG(ARG_REG_SPLIT_ON, opt->target->reg_split = true;)
-        ARG(ARG_REG_SPLIT_OFF, opt->target->reg_split = false;)
-        ARG(ARG_VERIFY_LLVM, opt->target->verify_llvm = true;)
-        ARG(ARG_RUN_TESTS, opt->target->run_tests = true;)
-        ARG(ARG_SHARED, opt->target->kind = ASSEMBLY_SHARED_LIB;)
-        ARG(ARG_NO_API, opt->target->no_api = true;)
-        ARG(ARG_NO_BIN, opt->target->no_bin = true;)
-        ARG(ARG_NO_LLVM, opt->target->no_llvm = true;)
-        ARG(ARG_NO_ANALYZE, opt->target->no_analyze = true;)
-        ARG(ARG_DOCS, opt->target->kind = ASSEMBLY_DOCS;)
-        ARG(ARG_SYNTAX_ONLY, opt->target->syntax_only = true;)
-        ARG(ARG_VMDBG_ATTACH, opt->target->vmdbg_enabled = true;)
-
-        builder_error("Invalid argument '%s'", argv[i]);
-        return INVALID_ARGS;
-    }
-
-    return i;
-#undef ARG
-#undef ARG_BREAK
-}
-
-s32 parse_input_files(Options *opt, s32 argc, char *argv[])
-{
-    while (*argv != NULL) {
-        target_add_file(opt->target, *argv);
-        // Add ony first file rest will be consumed as command line arguments in running script.
-        if (opt->target->run) break;
-        argv++;
-        argc--;
-    }
-    return argc;
-}
-
 // =================================================================================================
 // MAIN
 // =================================================================================================
@@ -235,7 +275,7 @@ int main(s32 argc, char *argv[])
 
 #define EXIT(_state)                                                                               \
     state = _state;                                                                                \
-    goto RELEASE;                                                                                  \
+    goto RELEASE;
 
 #ifdef BL_DEBUG
     puts("Running in DEBUG mode");
@@ -255,21 +295,269 @@ int main(s32 argc, char *argv[])
 
     const f64 start_time_ms = get_tick_ms();
 
-    exec_dir = get_exec_dir();
+    exec_dir                = get_exec_dir();
+    opt.builder.error_limit = 10;
     builder_init(&opt.builder, exec_dir);
-    // Just create default empty target assembly options here and setup it later depending on user
-    // passed arguments!
-    opt.target = builder_add_default_target("out");
-    // Parse command line arguments and return count args parsed.
-    const s32 parsed_argc = parse_arguments(&opt, argc, argv);
     builder_log("Compiler version: %s, LLVM: %d", BL_VERSION, LLVM_VERSION_MAJOR);
-    if (parsed_argc == INVALID_ARGS) {
-        print_help(stdout);
-        EXIT(EXIT_FAILURE);
+    // Just create default empty target assembly options here and setup it later depending on
+    // user passed arguments!
+    opt.target = builder_add_default_target("out");
+
+    bool has_input_files = false;
+
+    struct getarg_opt optlist[] = {
+        {
+            .name = "-build",
+            .help = "Invoke project build pipeline. All following arguments are forwarded into the "
+                    "build script and ignored by compiler itself. Use as '-build [arguments]'.",
+            .id   = 'b',
+        },
+        {
+            .name = "-run",
+            .help =
+                "Execute BL program using interpreter and exit. The compiler expects <source-file> "
+                "after '-run' flag, the file name and all following command line arguments are "
+                "passed into the executed program and ignored by compiler itself. Use as '-run "
+                "<source-file> [arguments]'.",
+            .id = 'r',
+        },
+        {
+            .name = "-doc",
+            .help = "Generate documentation and exit.",
+            .id   = 'd',
+        },
+        {
+            .name = "-shared",
+            .help = "Compile shared library.",
+            .id   = 's',
+        },
+        {
+            .name       = "--help",
+            .property.b = &opt.app.print_help,
+            .help       = "Print usage information and exit.",
+        },
+        {
+            .name       = "--about",
+            .property.b = &opt.app.print_about,
+            .help       = "Print compiler info and exit",
+        },
+        {
+            .name       = "--where-is-api",
+            .property.b = &opt.app.where_is_api,
+            .help       = "Return path to API folder and exit.",
+        },
+        {
+            .name       = "--configure",
+            .property.b = &opt.app.configure,
+            .help       = "Generate configuration file and exit.",
+        },
+        {
+            .name       = "--verbose",
+            .property.b = &opt.builder.verbose,
+            .help       = "Enable verbose mode.",
+        },
+        {
+            .name       = "--silent",
+            .property.b = &opt.builder.silent,
+            .help       = "Disable compiler console logging.",
+        },
+        {
+            .name       = "--no-color",
+            .property.b = &opt.builder.no_color,
+            .help       = "Disable colored output.",
+        },
+        {
+            .name       = "--no-jobs",
+            .property.b = &opt.builder.no_jobs,
+            .help       = "Enable single-thread mode.",
+        },
+        {
+            .name       = "--no-warning",
+            .property.b = &opt.builder.no_warning,
+            .help       = "Ignore all warnings.",
+        },
+        {
+            .name       = "--full-path",
+            .property.b = &opt.builder.full_path_reports,
+            .help       = "Report full file paths.",
+        },
+        {
+            .name       = "--no-usage-check",
+            .property.b = &opt.builder.no_usage_check,
+            .help       = "Disable checking of unused symbols.",
+        },
+        {
+            .name       = "--time-report",
+            .property.b = &opt.builder.time_report,
+            .help       = "Print compilation time report.",
+        },
+        {
+            .name       = "--lex-dump",
+            .property.b = &opt.target->print_tokens,
+            .help       = "Print tokens.",
+        },
+        {
+            .name       = "--ast-dump",
+            .property.b = &opt.target->print_ast,
+            .help       = "Print AST.",
+        },
+        {
+            .name       = "--emit-llvm",
+            .property.b = &opt.target->emit_llvm,
+            .help       = "Write LLVM-IR to file.",
+        },
+        {
+            .name       = "--emit-asm",
+            .property.b = &opt.target->emit_asm,
+            .help       = "Write assembly to file.",
+        },
+        {
+            .name       = "--emit-mir",
+            .property.b = &opt.target->emit_mir,
+            .help       = "Write MIR to file.",
+        },
+        {
+            .name       = "--di",
+            .kind       = ENUM,
+            .property.n = (s32 *)&opt.target->di,
+            .variants   = "dwarf|codeview",
+            .help       = "Set debug info format.",
+        },
+        {
+            .name       = "-opt",
+            .kind       = ENUM,
+            .property.n = (s32 *)&opt.target->opt,
+            .variants   = "debug|release-fast|release-small",
+            .help       = "Specify binary optimization mode (use 'debug' by default).",
+        },
+        {
+            .name       = "--assert",
+            .kind       = ENUM,
+            .property.n = (s32 *)&opt.target->assert_mode,
+            .variants   = "default|on|off",
+            .help =
+                "Set assert mode ('default' option sets assert 'on' in debug and 'off' in release "
+                "mode).",
+        },
+        {
+            .name       = "--reg-split",
+            .kind       = ENUM,
+            .property.n = (s32 *)&opt.target->reg_split,
+            .variants   = "off|on",
+            .help = "Enable/disable splitting of structures passed into the function by value into "
+                    "registers.",
+        },
+        {
+            .name       = "--verify-llvm",
+            .property.b = &opt.target->verify_llvm,
+            .help       = "Verify LLVM IR after generation.",
+        },
+        {
+            .name       = "--run-tests",
+            .property.b = &opt.target->run_tests,
+            .help       = "Execute all unit tests in compile time.",
+        },
+        {
+            .name       = "--no-api",
+            .property.b = &opt.target->no_api,
+            .help       = "Don't load internal API.",
+        },
+        {
+            .name       = "--no-bin",
+            .property.b = &opt.target->no_bin,
+            .help       = "Don't write binary to disk.",
+        },
+        {
+            .name       = "--no-llvm",
+            .property.b = &opt.target->no_llvm,
+            .help       = "Disable LLVM back-end.",
+        },
+        {
+            .name       = "--no-analyze",
+            .property.b = &opt.target->no_analyze,
+            .help       = "Disable analyze pass, only parse and exit.",
+        },
+        {
+            .name       = "--syntax-only",
+            .property.b = &opt.target->syntax_only,
+            .help       = "Check syntax and exit.",
+        },
+        {
+            .name       = "--vmdbg-attach",
+            .property.b = &opt.target->vmdbg_enabled,
+            .help       = "Attach compile-time execution debugger.",
+        },
+        {
+            .name       = "--vmdbg-break-on",
+            .kind       = NUMBER,
+            .property.n = &opt.target->vmdbg_break_on,
+            .help       = "Attach compile-time execution debugger and sets break point to the MIR "
+                          "instruction with <N> id.",
+            .id         = 'i',
+        },
+        {
+            .name       = "--error-limit",
+            .kind       = NUMBER,
+            .property.n = &opt.builder.error_limit,
+            .help       = "Set maximum reported error count.",
+        },
+        {0},
+    };
+
+    sort_optlist(optlist);
+
+    s32 index = 0;
+    while (true) {
+        const char *positional;
+
+        s32 c = getarg(argc, argv, optlist, &index, &positional);
+        if (c == -1) break;
+
+        switch (c) {
+        case '?': // Unknown/invalid argument.
+            EXIT(EXIT_FAILURE);
+        case 'b': // Build pipeline.
+            opt.target->kind = ASSEMBLY_BUILD_PIPELINE;
+            opt.target->run  = false;
+            // Rest of arguments is forwarded into the build script.
+            goto SKIP;
+        case 'd': // Generate documentation.
+            opt.target->kind = ASSEMBLY_DOCS;
+            opt.target->run  = false;
+            break;
+        case 's': // Shared library.
+            opt.target->kind = ASSEMBLY_SHARED_LIB;
+            opt.target->run  = false;
+            break;
+        case 'r': // Run mode.
+            opt.target->kind    = ASSEMBLY_EXECUTABLE;
+            opt.target->run     = true;
+            opt.target->no_llvm = true;
+            if (index + 1 == argc || argv[index + 1][0] == '-') {
+                builder_error("Expected file name after '-run' flag.");
+                EXIT(EXIT_FAILURE);
+            }
+            break;
+        case 'i': // Break on
+            opt.target->vmdbg_enabled = true;
+            break;
+        default:
+            if (positional) {
+                target_add_file(opt.target, positional);
+                has_input_files = true;
+                if (opt.target->run) {
+                    // Rest of arguments is forwarded into the executed assembly.
+                    goto SKIP;
+                }
+                break;
+            }
+            break;
+        }
     }
+SKIP:
     // Shift pointer of argv.
-    argc -= parsed_argc;
-    argv += parsed_argc;
+    argc -= index;
+    argv += index;
 
     // Run configure if needed.
     if (opt.app.configure) {
@@ -282,7 +570,7 @@ int main(s32 argc, char *argv[])
     }
 
     if (opt.app.print_help) {
-        print_help(stdout);
+        print_help(stdout, optlist);
         EXIT(EXIT_SUCCESS);
     }
 
@@ -304,21 +592,17 @@ int main(s32 argc, char *argv[])
         EXIT(EXIT_SUCCESS);
     }
 
-    const bool use_build_pipeline = opt.target->kind == ASSEMBLY_BUILD_PIPELINE;
-    if (argc == 0 && !use_build_pipeline) {
-        builder_warning("Nothing to do, no input files, sorry :(");
-        EXIT(EXIT_SUCCESS);
+    if (opt.target->kind != ASSEMBLY_BUILD_PIPELINE && !has_input_files) {
+        builder_error("No input files.");
+        EXIT(EXIT_FAILURE);
     }
 
     // Forward reminding arguments to vm.
     target_set_vm_args(opt.target, argc, argv);
-    if (!use_build_pipeline) {
-        parse_input_files(&opt, argc, argv);
-    }
 
     state                = builder_compile(opt.target);
     const f64 runtime_ms = get_tick_ms() - start_time_ms;
-    builder_note("Finished in %.3f seconds.", runtime_ms * 0.001);
+    builder_info("Finished in %.3f seconds.", runtime_ms * 0.001);
 
 RELEASE:
     builder_terminate();

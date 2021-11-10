@@ -38,8 +38,6 @@
 #include <unistd.h>
 #endif
 
-#define MAX_ERROR_REPORTED 10
-
 struct builder builder;
 
 // =================================================================================================
@@ -355,7 +353,7 @@ static void print_stats(struct assembly *assembly)
     const f64 total_s = assembly->stats.parsing_lexing_s + assembly->stats.mir_s +
                         assembly->stats.llvm_s + assembly->stats.linking_s;
 
-    builder_note(
+    builder_info(
         "Compiled: %s\n"
         "--------------------------------------------------------------------------------\n"
         "Lexing & Parsing: %10.3f seconds    %3.0f%%\n"
@@ -597,6 +595,23 @@ void builder_print_location(FILE *stream, struct location *loc, s32 col, s32 len
     fprintf(stream, "\n\n");
 }
 
+static INLINE bool should_report(enum builder_msg_type type)
+{
+    const struct builder_options *opt = builder.options;
+    switch (type) {
+    case MSG_LOG:
+        return opt->verbose && !opt->silent;
+    case MSG_INFO:
+        return !opt->silent;
+    case MSG_WARN:
+        return !opt->no_warning && !opt->silent;
+    case MSG_ERR_NOTE:
+    case MSG_ERR:
+        return builder.errorc < opt->error_limit;
+    }
+    babort("Unknown message type!");
+}
+
 void builder_vmsg(enum builder_msg_type type,
                   s32                   code,
                   struct location      *src,
@@ -606,18 +621,14 @@ void builder_vmsg(enum builder_msg_type type,
 {
     struct threading_impl *threading = builder.threading;
     pthread_mutex_lock(&threading->log_mutex);
-    if (type == BUILDER_MSG_ERROR && builder.errorc > MAX_ERROR_REPORTED) goto DONE;
-    if (type == BUILDER_MSG_LOG && !builder.options->verbose) goto DONE;
-    if (type != BUILDER_MSG_ERROR && builder.options->silent) goto DONE;
-    if (builder.options->no_warning && type == BUILDER_MSG_WARNING) goto DONE;
+    if (!should_report(type)) goto DONE;
 
-    if (type == BUILDER_MSG_ERROR) {
+    FILE *stream = stdout;
+    if (type == MSG_ERR || type == MSG_ERR_NOTE) {
+        stream = stderr;
         builder.errorc++;
         builder.max_error = code > builder.max_error ? code : builder.max_error;
     }
-
-    FILE *stream = stdout;
-    if (type == BUILDER_MSG_ERROR) stream = stderr;
 
     if (src) {
         const char *filepath =
@@ -626,28 +637,31 @@ void builder_vmsg(enum builder_msg_type type,
         s32 col  = src->col;
         s32 len  = src->len;
         switch (pos) {
-        case BUILDER_CUR_AFTER:
+        case CARET_AFTER:
             col += len;
             len = 1;
             break;
             break;
-        case BUILDER_CUR_BEFORE:
+        case CARET_BEFORE:
             col -= col < 1 ? 0 : 1;
             len = 1;
+            break;
+        case CARET_NONE:
+            len = 0;
             break;
         default:
             break;
         }
         fprintf(stream, "%s:%d:%d: ", filepath, line, col);
         switch (type) {
-        case BUILDER_MSG_ERROR: {
+        case MSG_ERR: {
             if (code > NO_ERR)
                 color_print(stream, BL_RED, "error(%04d): ", code);
             else
                 color_print(stream, BL_RED, "error: ");
             break;
         }
-        case BUILDER_MSG_WARNING: {
+        case MSG_WARN: {
             color_print(stream, BL_YELLOW, "warning: ");
             break;
         }
@@ -659,14 +673,14 @@ void builder_vmsg(enum builder_msg_type type,
         builder_print_location(stream, src, col, len);
     } else {
         switch (type) {
-        case BUILDER_MSG_ERROR: {
+        case MSG_ERR: {
             if (code > NO_ERR)
                 color_print(stream, BL_RED, "error(%04d): ", code);
             else
                 color_print(stream, BL_RED, "error: ");
             break;
         }
-        case BUILDER_MSG_WARNING: {
+        case MSG_WARN: {
             color_print(stream, BL_YELLOW, "warning: ");
             break;
         }
@@ -680,7 +694,7 @@ DONE:
     pthread_mutex_unlock(&threading->log_mutex);
 
 #if ASSERT_ON_CMP_ERROR
-    if (type == BUILDER_MSG_ERROR) bassert(false);
+    if (type == MSG_ERR) bassert(false);
 #endif
 }
 

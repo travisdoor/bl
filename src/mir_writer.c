@@ -65,6 +65,6 @@ void mir_writer_run(struct assembly *assembly)
     print_header(name, export_file, f);
     mir_print_assembly(f, assembly);
     fclose(f);
-    builder_note("Mir code written into %s", export_file);
+    builder_info("Mir code written into %s", export_file);
     puttmpstr(export_file);
 }

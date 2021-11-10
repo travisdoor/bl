@@ -59,7 +59,13 @@ extern "C" {
 typedef enum { LOG_ASSERT, LOG_ABORT, LOG_WARNING, LOG_MSG } BlLogMsgKind;
 
 void _log(BlLogMsgKind t, const char *file, s32 line, const char *msg, ...);
-void print_trace(void);
+void _print_trace(void);
+
+#if defined(BL_DEBUG)
+#define print_trace() _print_trace()
+#else
+#define print_trace() (void)0
+#endif
 
 #if defined(BL_DEBUG) || BL_ASSERT_ENABLE
 // =================================================================================================
@@ -85,13 +91,13 @@ static inline void bl_debug_break(void)
     }                                                                                              \
     (void)0
 
-#define bmagic_check(O)                                                                         \
+#define bmagic_check(O)                                                                            \
     {                                                                                              \
         bassert(O && "Invalid reference!");                                                        \
         bassert((O)->_magic == (void *)&(O)->_magic && "Invalid magic!");                          \
     }                                                                                              \
     (void)0
-#define bmagic_member void *_magic
+#define bmagic_member void *_magic;
 #define bmagic_set(O) (O)->_magic = (void *)&(O)->_magic
 
 // =================================================================================================
@@ -106,13 +112,13 @@ static inline void bl_debug_break(void)
     }                                                                                              \
     (void)0
 
-#define bmagic_check(O)                                                                         \
+#define bmagic_check(O)                                                                            \
     while (0) {                                                                                    \
     }                                                                                              \
     (void)0
 
 #define bmagic_member
-#define bmagic_set(O)                                                                            \
+#define bmagic_set(O)                                                                              \
     while (0) {                                                                                    \
     }                                                                                              \
     (void)0

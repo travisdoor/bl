@@ -29,6 +29,7 @@
 #include "vmdbg.h"
 #include "builder.h"
 #include "mir_printer.h"
+#include "stb_ds.h"
 
 enum state {
     CONTINUE,
@@ -39,6 +40,7 @@ static enum state              state         = CONTINUE;
 static bool                    mir_mode      = false;
 static bool                    verbose_stack = false;
 static struct virtual_machine *current_vm    = NULL;
+static uintptr_t              *stackops      = NULL;
 
 static void print(struct mir_instr *instr)
 {
@@ -58,35 +60,24 @@ static void print(struct mir_instr *instr)
     }
 }
 
-static void print_backtrace(void)
-{
-    struct vm_frame *frame = current_vm->stack->ra;
-    s32              index = 1;
-    while (frame) {
-        struct mir_fn *fn =
-            frame->caller ? mir_get_callee((struct mir_instr_call *)frame->caller) : NULL;
-        if (fn) {
-            const char *name = mir_get_fn_readable_name(fn);
-            if (index == 1) {
-                color_print(stdout, BL_YELLOW, "%3d: %s\n", index, name);
-            } else {
-                printf("%3d: %s\n", index, name);
-            }
-        } else {
-            printf("%3d: (unknown)\n", index);
-        }
-        frame = frame->prev;
-        ++index;
-    }
-}
-
 static void cmd(void)
 {
 #define CMD(s, l) ((strcmp(buf, s) == 0) || (strcmp(buf, l) == 0))
-    static char buf[256];
+    static s32  i          = 0;
+    static char tmp[2][64] = {{0}, {0}};
+
 NEXT:
     printf(": ");
-    if (scanf("%s", buf) != 1) goto NEXT;
+    char *buf = tmp[i ^= 1];
+    if (!fgets(buf, static_arrlenu(tmp[0]), stdin)) goto NEXT;
+    if (buf[0] == '\n') {
+        buf = tmp[i ^= 1];
+        if (buf[0] == '\0') goto NEXT;
+    } else {
+        const usize len = strlen(buf);
+        bassert(len);
+        if (buf[len - 1] == '\n') buf[len - 1] = '\0';
+    }
     if (CMD("q", "quit")) {
         printf("exiting...\n");
         vmdbg_detach();
@@ -98,7 +89,7 @@ NEXT:
         print(current_vm->stack->pc);
         goto NEXT;
     } else if (CMD("bt", "backtrace")) {
-        print_backtrace();
+        vm_print_backtrace(current_vm);
         goto NEXT;
     } else if (CMD("vs=on", "verbose-stack=on")) {
         verbose_stack = true;
@@ -120,12 +111,13 @@ NEXT:
                "  p, print                            = Print current instruction.\n"
                "  bt, backtrace                       = Print current backtrace.\n"
                "  vs=<on|off>, verbose-stack=<on|off> = Log stack operations.\n"
-               "  mir=<on|off>, mir-mode=<on|off>     = Enable/disable mir instruction level "
+               "  mir=<on|off>, mir-mode=<on|off>     = Enable/disable MIR instruction level "
                "debugging.\n");
         goto NEXT;
     } else {
         builder_error("Invalid command.");
         builder.errorc = 0; // @Hack: reset error count.
+        buf[0]         = '\0';
         goto NEXT;
     }
 #undef CMD
@@ -134,6 +126,7 @@ NEXT:
 // =================================================================================================
 // Public
 // =================================================================================================
+
 void vmdbg_attach(struct virtual_machine *vm)
 {
     bassert(current_vm == NULL);
@@ -142,6 +135,7 @@ void vmdbg_attach(struct virtual_machine *vm)
 
 void vmdbg_detach(void)
 {
+    arrfree(stackops);
     current_vm = NULL;
     state      = CONTINUE;
 }
@@ -168,76 +162,117 @@ void vmdbg_notify_instr(struct mir_instr *instr)
     cmd();
 }
 
+static bool pop_is_valid(void *ptr)
+{
+    if (arrlenu(stackops) == 0) return false;
+    return arrpop(stackops) == (uintptr_t)ptr;
+}
+
+static bool rollback_is_valid(void *ptr)
+{
+    while (arrlenu(stackops)) {
+        if (arrpop(stackops) == (uintptr_t)ptr) return true;
+    }
+    return false;
+}
+
 void vmdbg_notify_stack_op(enum vmdbg_stack_op op, struct mir_type *type, void *ptr)
 {
     if (!current_vm) return;
-    if (!verbose_stack) return;
     struct virtual_machine *vm = current_vm;
+
+    bassert(ptr);
+    if (verbose_stack) {
+        switch (op) {
+        case VMDBG_PUSH_RA:
+            if (vm->stack->pc) {
+                color_print(stdout,
+                            BL_RED,
+                            "%6zu %20s  PUSH RA (%p)\n",
+                            (size_t)vm->stack->pc->id,
+                            mir_instr_name(vm->stack->pc),
+                            ptr);
+            } else {
+                color_print(stdout, BL_RED, "     - %20s  PUSH RA\n", "Terminal");
+            }
+            break;
+        case VMDBG_POP_RA:
+            color_print(stdout,
+                        BL_BLUE,
+                        "%6llu %20s  POP RA  (%p)\n",
+                        vm->stack->pc->id,
+                        mir_instr_name(vm->stack->pc),
+                        ptr);
+            break;
+        case VMDBG_PUSH: {
+            unsigned long long size = type->store_size_bytes;
+            char               type_name[256];
+            mir_type_to_str(type_name, 256, type, true);
+            if (vm->stack->pc) {
+                color_print(stdout,
+                            BL_RED,
+                            "%6llu %20s  PUSH    (%lluB, %p) %s\n",
+                            (unsigned long long)vm->stack->pc->id,
+                            mir_instr_name(vm->stack->pc),
+                            size,
+                            ptr,
+                            type_name);
+            } else {
+                color_print(stdout,
+                            BL_RED,
+                            "     -                       PUSH    (%lluB, %p) %s\n",
+                            size,
+                            ptr,
+                            type_name);
+            }
+            break;
+        }
+        case VMDBG_POP: {
+            unsigned long long size = type->store_size_bytes;
+            char               type_name[256];
+            mir_type_to_str(type_name, 256, type, true);
+            if (vm->stack->pc) {
+                color_print(stdout,
+                            BL_BLUE,
+                            "%6llu %20s  POP     (%lluB, %p) %s\n",
+                            vm->stack->pc->id,
+                            mir_instr_name(vm->stack->pc),
+                            size,
+                            ptr,
+                            type_name);
+            } else {
+                color_print(stdout,
+                            BL_BLUE,
+                            "     -                       POP     (%lluB, %p) %s\n",
+                            size,
+                            ptr,
+                            type_name);
+            }
+            break;
+        }
+        }
+    }
     switch (op) {
     case VMDBG_PUSH_RA:
-        if (vm->stack->pc) {
-            color_print(stdout,
-                        BL_RED,
-                        "%6zu %20s  PUSH RA\n",
-                        (size_t)vm->stack->pc->id,
-                        mir_instr_name(vm->stack->pc));
-        } else {
-            color_print(stdout, BL_RED, "     - %20s  PUSH RA\n", "Terminal");
+    case VMDBG_PUSH:
+        arrput(stackops, (uintptr_t)ptr);
+        break;
+    case VMDBG_POP:
+        if (!pop_is_valid(ptr)) {
+            builder_error("Invalid POP operation on address %p", ptr);
+            print(vm->stack->pc);
+            vm_print_backtrace(vm);
+            babort("Stack memory corrupted!");
         }
         break;
     case VMDBG_POP_RA:
-        color_print(stdout,
-                    BL_BLUE,
-                    "%6llu %20s  POP RA\n",
-                    vm->stack->pc->id,
-                    mir_instr_name(vm->stack->pc));
-        break;
-    case VMDBG_PUSH: {
-        unsigned long long size = type->store_size_bytes;
-        char               type_name[256];
-        mir_type_to_str(type_name, 256, type, true);
-        if (vm->stack->pc) {
-            color_print(stdout,
-                        BL_RED,
-                        "%6llu %20s  PUSH    (%lluB, %p) %s\n",
-                        (unsigned long long)vm->stack->pc->id,
-                        mir_instr_name(vm->stack->pc),
-                        size,
-                        ptr,
-                        type_name);
-        } else {
-            color_print(stdout,
-                        BL_RED,
-                        "     -                       PUSH    (%lluB, %p) %s\n",
-                        size,
-                        ptr,
-                        type_name);
+        if (!rollback_is_valid(ptr)) {
+            builder_error("Invalid POP RA rollback operation on address %p", ptr);
+            print(vm->stack->pc);
+            vm_print_backtrace(vm);
+            babort("Stack memory corrupted!");
         }
         break;
-    }
-    case VMDBG_POP: {
-        unsigned long long size = type->store_size_bytes;
-        char               type_name[256];
-        mir_type_to_str(type_name, 256, type, true);
-        if (vm->stack->pc) {
-            color_print(stdout,
-                        BL_BLUE,
-                        "%6llu %20s  POP     (%lluB, %p) %s\n",
-                        vm->stack->pc->id,
-                        mir_instr_name(vm->stack->pc),
-                        size,
-                        vm->stack->top_ptr - size,
-                        type_name);
-        } else {
-            color_print(stdout,
-                        BL_BLUE,
-                        "     -                       POP     (%lluB, %p) %s\n",
-                        size,
-                        vm->stack->top_ptr - size,
-                        type_name);
-        }
-        break;
-    }
     }
 }
 

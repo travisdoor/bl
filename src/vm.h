@@ -65,7 +65,6 @@ struct vm_frame {
 
 struct vm_stack {
     vm_stack_ptr_t          top_ptr;         // pointer to top of the stack
-    usize                   used_bytes;      // size of the used stack in bytes
     usize                   allocated_bytes; // total allocated size of the stack in bytes
     struct vm_frame        *ra;              // current frame beginning (return address)
     struct mir_instr       *pc;              // currently executed instruction (program counter)
@@ -94,7 +93,7 @@ enum mir_value_address_mode {
 
 // This should not be there but whatever.
 struct mir_const_expr_value {
-	// @Performance: _tmp and data can be packed in union
+    // @Performance: _tmp and data can be packed in union
     vm_value_t                  _tmp;
     vm_stack_ptr_t              data;
     struct mir_type            *type;
@@ -143,6 +142,9 @@ vm_alloc_global(struct virtual_machine *vm, struct assembly *assembly, struct mi
 /// Allocate raw memory on the stack to hold sizeof(type) value.
 vm_stack_ptr_t
 vm_alloc_raw(struct virtual_machine *vm, struct assembly *assembly, struct mir_type *type);
+
+void vm_print_backtrace(struct virtual_machine *vm);
+void vm_abort(struct virtual_machine *vm);
 
 /// Return pointer to constant or stack allocated variable.
 vm_stack_ptr_t vm_read_var(struct virtual_machine *vm, const struct mir_var *var);

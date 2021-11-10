@@ -118,7 +118,6 @@ TestKind :: enum {
 
 Args :: struct #base ArgParser.Ctx {
     diag_mode: bool;
-    no_vcvars: bool;
     stop_on_fail: bool;
     test_count: s32;
 }
@@ -158,16 +157,6 @@ parse_args :: fn () bool {
             return 1, ok();
         });
 
-    ArgParser.add(
-        parser,
-        "-nv",
-        "--no-vcvars",
-        "Disable injection of Visual Studio environment on Windows.",
-        &fn (_: ArgParser.Parser, _: []string, ctx: *ArgParser.Ctx) (s32, Error) {
-            a: *Args = auto ctx;
-            a.no_vcvars = true;
-            return 1, ok();
-        });
 
     ArgParser.add(
         parser,
@@ -239,7 +228,6 @@ blc :: fn (file: string, args := "--no-bin --no-warning") s32 {
     defer String.delete(cmd);
     _suitec += 1;
     String.concatenate(&cmd, _compiler_path, " ", args, " ");   
-    if _args.no_vcvars { String.append(&cmd, "--no-vcvars "); }
     String.append(&cmd, file);
     String.append(&cmd, " ");
     String.append(&cmd, get_verbosity());
@@ -285,7 +273,7 @@ test_file :: fn (file: string, kind := TestKind.Runtime, expected_state := TEST_
         }
 
         TestKind.CompileTime {
-            state = blc(file, "-r --no-warning");
+            state = blc(file, "--no-warning --run");
             if state == expected_state {
                 report_ok("Interpretation", file, state);
             } else {
@@ -294,7 +282,7 @@ test_file :: fn (file: string, kind := TestKind.Runtime, expected_state := TEST_
         }
         
         TestKind.Test {
-            state = blc(file, "-rt --no-bin --no-warning");
+            state = blc(file, "--run-tests --no-bin --no-warning");
             if state == expected_state {
                 report_ok("Run compile time tests", file, state);
             } else {

@@ -32,25 +32,6 @@
 #include "vmdbg.h"
 
 #define VM_MAX_ALIGNMENT 8
-#define CHCK_STACK (BL_DEBUG || BL_ASSERT_ENABLE)
-
-#if CHCK_STACK
-#define CHCK_SIZE() sizeof(void *)
-#define CHCK_WRITE(_ptr, _data_size) memcpy((_ptr) + (_data_size), &(_ptr), CHCK_SIZE())
-#define CHCK_VALIDATE(_ptr, _data_size)                                                            \
-    if ((*(intptr_t *)((_ptr) + (_data_size))) != (intptr_t)(_ptr)) {                              \
-        babort("Stack memory malformed!");                                                         \
-    }
-#else
-#define CHCK_SIZE() 0
-#define CHCK_WRITE(_ptr, _data_size)                                                               \
-    while (0) {                                                                                    \
-    }
-
-#define CHCK_VALIDATE(_ptr, _data_size)                                                            \
-    while (0) {                                                                                    \
-    }
-#endif
 
 // =================================================================================================
 // fwd decls
@@ -64,10 +45,8 @@ static void calculate_binop(struct mir_type *dest_type,
 
 static void
 calculate_unop(vm_stack_ptr_t dest, vm_stack_ptr_t v, enum unop_kind op, struct mir_type *type);
-static void reset_stack(struct vm_stack *stack);
 
 // zero max nesting = unlimited nesting
-static void print_call_stack(struct virtual_machine *vm, usize max_nesting);
 static void dyncall_cb_read_arg(struct virtual_machine      *vm,
                                 struct mir_const_expr_value *dest_value,
                                 DCArgs                      *src);
@@ -144,79 +123,56 @@ static INLINE bool needs_tmp_alloc(struct mir_const_expr_value *v)
     return v->type->store_size_bytes > sizeof(v->_tmp);
 }
 
-static INLINE void exec_abort(struct virtual_machine *vm, s32 report_stack_nesting)
-{
-    print_call_stack(vm, report_stack_nesting);
-    vm->stack->aborted = true;
-}
-
 static INLINE void eval_abort(struct virtual_machine *vm)
 {
     vm->aborted = true;
 }
 
-static INLINE usize stack_alloc_size(usize size)
-{
-    bassert(size != 0);
-    size += CHCK_SIZE();
-    return size + (VM_MAX_ALIGNMENT - (size % VM_MAX_ALIGNMENT));
-}
+#define stack_alloc_size(s) ((s) + (VM_MAX_ALIGNMENT - ((s) % VM_MAX_ALIGNMENT)))
 
-// allocate memory on frame stack, size is in bits!!!
 static INLINE vm_stack_ptr_t stack_alloc(struct virtual_machine *vm, usize size)
 {
-    bassert(size && "trying to allocate 0 bits on stack");
-#if CHCK_STACK
-    const usize orig_size = size;
-#endif
-    size = stack_alloc_size(size);
-    vm->stack->used_bytes += size;
-    if (vm->stack->used_bytes > vm->stack->allocated_bytes) {
+    bassert(size && "trying to allocate 0 bytes on stack");
+    size               = stack_alloc_size(size);
+    vm_stack_ptr_t mem = vm->stack->top_ptr;
+    vm->stack->top_ptr += size;
+    if (vm->stack->top_ptr > ((u8 *)(vm->stack)) + vm->stack->allocated_bytes) {
         builder_error("Stack overflow!!!");
-        exec_abort(vm, 10);
+        vm_abort(vm);
     }
-    vm_stack_ptr_t mem = (vm_stack_ptr_t)vm->stack->top_ptr;
-    vm->stack->top_ptr = vm->stack->top_ptr + size;
     bassert(is_aligned(mem, VM_MAX_ALIGNMENT));
-    CHCK_WRITE(mem, orig_size);
     return mem;
 }
 
 // shift stack top by the size in bytes
 static INLINE vm_stack_ptr_t stack_free(struct virtual_machine *vm, usize size)
 {
-#if CHCK_STACK
-    const usize orig_size = size;
-#endif
     size                   = stack_alloc_size(size);
     vm_stack_ptr_t new_top = vm->stack->top_ptr - size;
-    if (new_top < (u8 *)(vm->stack->ra + 1)) babort("Stack underflow!!!");
+    if (new_top < (u8 *)(vm->stack->ra + 1))
+        babort("Stack underflow!!!"); // @Incomplete: use vm_abort
     vm->stack->top_ptr = new_top;
-    vm->stack->used_bytes -= size;
-    CHCK_VALIDATE(new_top, orig_size);
     return new_top;
 }
 
 static INLINE void push_ra(struct virtual_machine *vm, struct mir_instr_call *caller)
 {
-    struct vm_frame *prev = vm->stack->ra;
-    struct vm_frame *tmp  = (struct vm_frame *)stack_alloc(vm, sizeof(struct vm_frame));
-    tmp->caller           = caller;
-    tmp->prev             = prev;
-    vm->stack->ra         = tmp;
-    vmdbg_notify_stack_op(VMDBG_PUSH_RA, NULL, NULL);
+    struct vm_frame *tmp = (struct vm_frame *)stack_alloc(vm, sizeof(struct vm_frame));
+    tmp->caller          = caller;
+    tmp->prev            = vm->stack->ra;
+    vm->stack->ra        = tmp;
+    vmdbg_notify_stack_op(VMDBG_PUSH_RA, NULL, tmp);
 }
 
 static INLINE struct mir_instr_call *pop_ra(struct virtual_machine *vm)
 {
     if (!vm->stack->ra) return NULL;
     struct mir_instr_call *caller = vm->stack->ra->caller;
-    vmdbg_notify_stack_op(VMDBG_POP_RA, NULL, NULL);
     // rollback
     vm_stack_ptr_t new_top_ptr = (vm_stack_ptr_t)vm->stack->ra;
-    vm->stack->used_bytes      = vm->stack->top_ptr - new_top_ptr;
     vm->stack->top_ptr         = new_top_ptr;
     vm->stack->ra              = vm->stack->ra->prev;
+    vmdbg_notify_stack_op(VMDBG_POP_RA, NULL, new_top_ptr);
     return caller;
 }
 
@@ -237,7 +193,6 @@ static INLINE vm_stack_ptr_t stack_push(struct virtual_machine *vm,
     bassert(value && "try to push NULL value");
     vm_stack_ptr_t tmp = stack_push_empty(vm, type);
     memcpy(tmp, value, type->store_size_bytes);
-    // pointer relative to frame top
     return tmp;
 }
 
@@ -246,21 +201,18 @@ static INLINE vm_stack_ptr_t stack_pop(struct virtual_machine *vm, struct mir_ty
     bassert(type);
     const usize size = type->store_size_bytes;
     bassert(size && "popping zero sized data from stack");
-    vmdbg_notify_stack_op(VMDBG_POP, type, NULL);
-    return stack_free(vm, size);
+    const vm_stack_ptr_t ptr = stack_free(vm, size);
+    vmdbg_notify_stack_op(VMDBG_POP, type, ptr);
+    return ptr;
 }
 
 static INLINE vm_stack_ptr_t stack_peek(struct virtual_machine *vm, struct mir_type *type)
 {
     usize size = type->store_size_bytes;
-#if CHCK_STACK
-    const usize orig_size = size;
-#endif
     bassert(size && "peeking zero sized data on stack");
     size               = stack_alloc_size(size);
     vm_stack_ptr_t top = vm->stack->top_ptr - size;
     if (top < (u8 *)(vm->stack->ra + 1)) babort("Stack underflow!!!");
-    CHCK_VALIDATE(top, orig_size);
     return top;
 }
 
@@ -608,49 +560,6 @@ void calculate_unop(vm_stack_ptr_t dest, vm_stack_ptr_t v, enum unop_kind op, st
 #undef UNOP_CASE_REAL
 }
 
-void print_call_stack(struct virtual_machine *vm, usize max_nesting)
-{
-    struct mir_instr *instr = vm->stack->pc;
-    struct vm_frame  *fr    = vm->stack->ra;
-    usize             n     = 0;
-    if (!instr) return;
-    // Print the last instruction
-    builder_msg(BUILDER_MSG_NOTE, 0, instr->node->location, BUILDER_CUR_WORD, "Last called:");
-    while (fr) {
-        instr = &fr->caller->base;
-        fr    = fr->prev;
-        if (!instr) break;
-        if (max_nesting && n == max_nesting) {
-            builder_log("continue...");
-            break;
-        }
-        struct mir_fn *fn = instr->owner_block->owner_fn;
-        if (fn && fn->debug_poly_replacement) {
-            builder_msg(BUILDER_MSG_NOTE,
-                        0,
-                        instr->node->location,
-                        BUILDER_CUR_WORD,
-                        "Called from following location with polymorph replacement: %s",
-                        fn->debug_poly_replacement);
-        } else {
-            builder_msg(
-                BUILDER_MSG_NOTE, 0, instr->node->location, BUILDER_CUR_WORD, "Called from:");
-        }
-        ++n;
-    }
-}
-
-void reset_stack(struct vm_stack *stack)
-{
-    stack->pc         = NULL;
-    stack->ra         = NULL;
-    stack->prev_block = NULL;
-    stack->aborted    = false;
-    const usize size  = stack_alloc_size(sizeof(struct vm_stack));
-    stack->used_bytes = size;
-    stack->top_ptr    = (u8 *)stack + size;
-}
-
 void dyncall_cb_read_arg(struct virtual_machine       UNUSED(*vm),
                          struct mir_const_expr_value *dest_value,
                          DCArgs                      *src)
@@ -967,7 +876,7 @@ void interp_extern_call(struct virtual_machine *vm, struct mir_fn *fn, struct mi
     // call setup and clenup
     if (!fn->dyncall.extern_entry) {
         builder_error("External function '%s' not found!", fn->linkage_name);
-        exec_abort(vm, 0);
+        vm_abort(vm);
         return;
     }
 
@@ -1090,6 +999,11 @@ void interp_instr(struct virtual_machine *vm, struct mir_instr *instr)
     if (isnotflag(instr->flags, MIR_IS_ANALYZED)) {
         babort("Instruction %s has not been analyzed!", mir_instr_name(instr));
     }
+
+    if (vm->assembly->target->vmdbg_break_on == instr->id) {
+        vmdbg_break();
+    }
+    vmdbg_notify_instr(instr);
     // Skip all comptimes.
     if (mir_is_comptime(instr)) return;
 
@@ -1173,8 +1087,6 @@ void interp_instr(struct virtual_machine *vm, struct mir_instr *instr)
     default:
         babort("missing execution for instruction: %s", mir_instr_name(instr));
     }
-
-    vmdbg_notify_instr(instr);
 }
 
 void interp_instr_toany(struct virtual_machine *vm, struct mir_instr_to_any *toany)
@@ -1287,7 +1199,7 @@ void interp_instr_elem_ptr(struct virtual_machine *vm, struct mir_instr_elem_ptr
                           "is: %lli",
                           (long long)index,
                           (long long)len);
-            exec_abort(vm, 0);
+            vm_abort(vm);
         }
 
         result_ptr = vm_get_array_elem_ptr(arr_type, arr_ptr, (u32)index);
@@ -1312,7 +1224,7 @@ void interp_instr_elem_ptr(struct virtual_machine *vm, struct mir_instr_elem_ptr
 
         if (!ptr_tmp) {
             builder_error("Dereferencing null pointer! Slice has not been set?");
-            exec_abort(vm, 0);
+            vm_abort(vm);
         }
 
         if (index >= len_tmp) {
@@ -1320,7 +1232,7 @@ void interp_instr_elem_ptr(struct virtual_machine *vm, struct mir_instr_elem_ptr
                           "array size is: %lli",
                           (long long)index,
                           (long long)len_tmp);
-            exec_abort(vm, 0);
+            vm_abort(vm);
         }
 
         result_ptr = (vm_stack_ptr_t)(ptr_tmp + index * elem_type->store_size_bytes);
@@ -1397,12 +1309,9 @@ void interp_instr_unroll(struct virtual_machine *vm, struct mir_instr_unroll *un
 void interp_instr_unreachable(struct virtual_machine *vm, struct mir_instr_unreachable *unr)
 {
     vmdbg_break();
-    builder_msg(BUILDER_MSG_ERROR,
-                ERR_COMPILE_TIME_ABORT,
-                NULL,
-                BUILDER_CUR_AFTER,
-                "Execution reached unreachable code.");
-    exec_abort(vm, 0);
+    builder_msg(
+        MSG_ERR, ERR_COMPILE_TIME_ABORT, NULL, CARET_AFTER, "Execution reached unreachable code.");
+    vm_abort(vm);
 }
 
 void interp_instr_debugbreak(struct virtual_machine     *vm,
@@ -1685,7 +1594,7 @@ void interp_instr_load(struct virtual_machine *vm, struct mir_instr_load *load)
 
     if (!src_ptr) {
         builder_error("Dereferencing null pointer!");
-        exec_abort(vm, 0);
+        vm_abort(vm);
     }
 
     stack_push(vm, src_ptr, dest_type);
@@ -1727,13 +1636,10 @@ void interp_instr_call(struct virtual_machine *vm, struct mir_instr_call *call)
 
     struct mir_fn *fn = (struct mir_fn *)vm_read_ptr(callee_ptr_type, callee_ptr);
     bmagic_check(fn);
-#if VERBOSE_EXEC
-    printf("\n%s:\n", fn->linkage_name);
-#endif
     bassert(fn->is_fully_analyzed && "Functions called in compile time must be fully analyzed!");
     if (!fn) {
         builder_error("Function pointer not set!");
-        exec_abort(vm, 0);
+        vm_abort(vm);
         return;
     }
     bassert(fn->type);
@@ -1991,20 +1897,20 @@ void eval_instr_elem_ptr(struct virtual_machine *vm, struct mir_instr_elem_ptr *
         const s64      len_tmp = vm_read_int(len_type, len_ptr);
 
         if (!ptr_tmp) {
-            builder_msg(BUILDER_MSG_ERROR,
+            builder_msg(MSG_ERR,
                         ERR_JIT_RUN_FAILED,
                         elem_ptr->base.node->location,
-                        BUILDER_CUR_WORD,
+                        CARET_WORD,
                         "Dereferencing null pointer! Slice has not been set?");
 
             eval_abort(vm);
         }
 
         if (index >= len_tmp) {
-            builder_msg(BUILDER_MSG_ERROR,
+            builder_msg(MSG_ERR,
                         ERR_JIT_RUN_FAILED,
                         elem_ptr->base.node->location,
-                        BUILDER_CUR_WORD,
+                        CARET_WORD,
                         "Array index is out of the bounds! Array index is: %lli, but "
                         "array size is: %lli",
                         (long long)index,
@@ -2107,14 +2013,14 @@ void eval_instr_compound(struct virtual_machine *vm, struct mir_instr_compound *
 
 void eval_instr_unroll(struct virtual_machine *vm, struct mir_instr_unroll *unroll)
 {
-    struct mir_instr *src   = unroll->src;
+    struct mir_instr *src = unroll->src;
     bassert(src);
     struct mir_type *src_type = src->value.type;
     if (mir_is_composit_type(src_type)) {
         babort("Not implemented yet!");
     } else {
-		blog("Just copy value!");
-	}
+        blog("Just copy value!");
+    }
 }
 
 void eval_instr_decl_var(struct virtual_machine UNUSED(*vm), struct mir_instr_decl_var *decl_var)
@@ -2142,10 +2048,10 @@ void eval_instr_load(struct virtual_machine *vm, struct mir_instr_load *load)
 {
     vm_stack_ptr_t src = MIR_CEV_READ_AS(vm_stack_ptr_t, &load->src->value);
     if (!src) {
-        builder_msg(BUILDER_MSG_ERROR,
+        builder_msg(MSG_ERR,
                     ERR_NULL_POINTER,
                     load->base.node ? load->base.node->location : NULL,
-                    BUILDER_CUR_WORD,
+                    CARET_WORD,
                     "Dereferencing null pointer!");
         eval_abort(vm);
     }
@@ -2244,14 +2150,15 @@ void eval_instr_decl_direct_ref(struct virtual_machine            UNUSED(*vm),
 void vm_init(struct virtual_machine *vm, usize stack_size)
 {
     if (stack_size == 0) babort("invalid frame stack size");
-
     struct vm_stack *stack = bmalloc(sizeof(char) * stack_size);
-    if (!stack) babort("bad alloc");
-#if BL_DEBUG
-    memset(stack, 0, stack_size);
-#endif
     stack->allocated_bytes = stack_size;
-    reset_stack(stack);
+    stack->pc              = NULL;
+    stack->ra              = NULL;
+    stack->prev_block      = NULL;
+    stack->aborted         = false;
+    const usize size       = stack_alloc_size(sizeof(struct vm_stack));
+    stack->top_ptr         = (u8 *)stack + size;
+
     vm->stack = stack;
 }
 
@@ -2259,6 +2166,47 @@ void vm_terminate(struct virtual_machine *vm)
 {
     arrfree(vm->dcsigtmp);
     bfree(vm->stack);
+}
+
+void vm_print_backtrace(struct virtual_machine *vm)
+{
+    const char *sep =
+        "================================================================================";
+    builder_note("\n%s\nObtained backtrace:\n%s", sep, sep);
+
+    struct mir_instr *instr = vm->stack->pc;
+    struct vm_frame  *fr    = vm->stack->ra;
+    usize             n     = 0;
+    if (!instr) return;
+    // Print the last instruction
+    builder_msg(MSG_ERR_NOTE, 0, instr->node->location, CARET_NONE, "Last called:");
+    while (fr) {
+        instr = &fr->caller->base;
+        fr    = fr->prev;
+        if (!instr) break;
+        if (n == 100) {
+            builder_log("continue...");
+            break;
+        }
+        struct mir_fn *fn = instr->owner_block->owner_fn;
+        if (fn && fn->debug_poly_replacement) {
+            builder_msg(MSG_ERR_NOTE,
+                        0,
+                        instr->node->location,
+                        CARET_NONE,
+                        "Called from following location with polymorph replacement: %s",
+                        fn->debug_poly_replacement);
+        } else {
+            builder_msg(MSG_ERR_NOTE, 0, instr->node->location, CARET_NONE, "Called from:");
+        }
+        ++n;
+    }
+}
+
+void vm_abort(struct virtual_machine *vm)
+{
+    vm_print_backtrace(vm);
+    vm->stack->aborted = true;
 }
 
 bool vm_eval_instr(struct virtual_machine *vm, struct assembly *assembly, struct mir_instr *instr)

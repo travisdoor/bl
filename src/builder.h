@@ -50,6 +50,7 @@ struct builder_options {
     bool full_path_reports;
     bool no_usage_check;
     bool time_report;
+    s32  error_limit;
 };
 
 struct builder {
@@ -74,17 +75,18 @@ struct builder {
 extern struct builder builder;
 
 enum builder_msg_type {
-    BUILDER_MSG_LOG = 0,
-    BUILDER_MSG_NOTE,
-    BUILDER_MSG_WARNING,
-    BUILDER_MSG_ERROR,
+    MSG_LOG = 0,
+    MSG_INFO,
+    MSG_WARN,
+    MSG_ERR_NOTE,
+    MSG_ERR,
 };
 
 enum builder_cur_pos {
-    BUILDER_CUR_WORD = 0,
-    BUILDER_CUR_BEFORE,
-    BUILDER_CUR_AFTER,
-    BUILDER_CUR_NONE
+    CARET_WORD = 0,
+    CARET_BEFORE,
+    CARET_AFTER,
+    CARET_NONE
 };
 
 struct location;
@@ -109,13 +111,15 @@ s32 builder_compile(const struct target *target);
 void builder_async_submit_unit(struct unit *unit);
 
 #define builder_log(format, ...)                                                                   \
-    builder_msg(BUILDER_MSG_LOG, -1, NULL, BUILDER_CUR_NONE, format, ##__VA_ARGS__)
+    builder_msg(MSG_LOG, -1, NULL, CARET_NONE, format, ##__VA_ARGS__)
+#define builder_info(format, ...)                                                                  \
+    builder_msg(MSG_INFO, -1, NULL, CARET_NONE, format, ##__VA_ARGS__)
 #define builder_note(format, ...)                                                                  \
-    builder_msg(BUILDER_MSG_NOTE, -1, NULL, BUILDER_CUR_NONE, format, ##__VA_ARGS__)
+    builder_msg(MSG_ERR_NOTE, -1, NULL, CARET_NONE, format, ##__VA_ARGS__)
 #define builder_warning(format, ...)                                                               \
-    builder_msg(BUILDER_MSG_WARNING, -1, NULL, BUILDER_CUR_NONE, format, ##__VA_ARGS__)
+    builder_msg(MSG_WARN, -1, NULL, CARET_NONE, format, ##__VA_ARGS__)
 #define builder_error(format, ...)                                                                 \
-    builder_msg(BUILDER_MSG_ERROR, -1, NULL, BUILDER_CUR_NONE, format, ##__VA_ARGS__)
+    builder_msg(MSG_ERR, -1, NULL, CARET_NONE, format, ##__VA_ARGS__)
 
 void builder_vmsg(enum builder_msg_type type,
                   s32                   code,

@@ -149,7 +149,7 @@ char *scprint(struct string_cache **cache, const char *fmt, ...)
     va_copy(args2, args);
     const s32 len = vsnprintf(NULL, 0, fmt, args);
     bassert(len > 0);
-    char *buf = scdup(cache, NULL, len);
+    char     *buf  = scdup(cache, NULL, len);
     const s32 wlen = vsprintf(buf, fmt, args2);
     bassert(wlen == len);
     (void)wlen;
@@ -427,6 +427,12 @@ bool is_aligned(const void *p, usize alignment)
     return (uintptr_t)p % alignment == 0;
 }
 
+void *next_aligned(void *p, usize alignment)
+{
+    align_ptr_up(&p, alignment, NULL);
+    return p;
+}
+
 void align_ptr_up(void **p, usize alignment, ptrdiff_t *adjustment)
 {
     ptrdiff_t adj;
@@ -436,7 +442,7 @@ void align_ptr_up(void **p, usize alignment, ptrdiff_t *adjustment)
     }
 
     const usize mask = alignment - 1;
-    bassert((alignment & mask) == 0 && "wrong alignemet"); // pwr of 2
+    bassert((alignment & mask) == 0 && "Wrong alignment!"); // pwr of 2
     const uintptr_t i_unaligned  = (uintptr_t)(*p);
     const uintptr_t misalignment = i_unaligned & mask;
 

@@ -48,9 +48,7 @@ void bc_writer_run(struct assembly *assembly)
     fprintf(f, "%s\n", str);
     fclose(f);
     LLVMDisposeMessage(str);
-
-    builder_note("Byte code written into %s", export_file);
-
+    builder_info("Byte code written into %s", export_file);
     puttmpstr(export_file);
     return_zone();
 }

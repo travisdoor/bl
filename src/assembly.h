@@ -40,21 +40,21 @@ struct builder;
 struct builder_options;
 
 enum assembly_kind {
-    ASSEMBLY_EXECUTABLE     = 1,
-    ASSEMBLY_SHARED_LIB     = 2,
-    ASSEMBLY_BUILD_PIPELINE = 3,
-    ASSEMBLY_DOCS           = 4,
+    ASSEMBLY_EXECUTABLE     = 0,
+    ASSEMBLY_SHARED_LIB     = 1,
+    ASSEMBLY_BUILD_PIPELINE = 2,
+    ASSEMBLY_DOCS           = 3,
 };
 
 enum assembly_opt {
-    ASSEMBLY_OPT_DEBUG         = 1, // Standard debug mode. Opt: NONE
-    ASSEMBLY_OPT_RELEASE_FAST  = 2, // Standard release mode. Opt: Aggressive
-    ASSEMBLY_OPT_RELEASE_SMALL = 3, // Standard release mode. Opt: Default
+    ASSEMBLY_OPT_DEBUG         = 0, // Standard debug mode. Opt: NONE
+    ASSEMBLY_OPT_RELEASE_FAST  = 1, // Standard release mode. Opt: Aggressive
+    ASSEMBLY_OPT_RELEASE_SMALL = 2, // Standard release mode. Opt: Default
 };
 
 enum assembly_di_kind {
-    ASSEMBLY_DI_DWARF    = 1, // Emit DWARF debug information in LLVM IR.
-    ASSEMBLY_DI_CODEVIEW = 2, // Emit MS CodeView debug info (PDB file).
+    ASSEMBLY_DI_DWARF    = 0, // Emit DWARF debug information in LLVM IR.
+    ASSEMBLY_DI_CODEVIEW = 1, // Emit MS CodeView debug info (PDB file).
 };
 
 // keep in sync with build.bl
@@ -151,6 +151,7 @@ struct native_lib {
     enum assert_mode      assert_mode;                                                             \
     bool                  syntax_only;                                                             \
     bool                  vmdbg_enabled;                                                           \
+    s32                   vmdbg_break_on;                                                          \
     struct target_triple  triple;
 
 struct target {
@@ -173,7 +174,7 @@ struct target {
         char **argv;
     } vm;
 
-    bmagic_member;
+    bmagic_member
 };
 
 struct assembly {

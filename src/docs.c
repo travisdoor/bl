@@ -145,11 +145,7 @@ void doc_decl_entity(struct context *ctx, struct ast *decl)
     const bool  is_mutable = decl->data.decl_entity.mut;
 
     if (text && strstr(text, "@INCOMPLETE")) {
-        builder_msg(BUILDER_MSG_WARNING,
-                    0,
-                    ident->location,
-                    BUILDER_CUR_WORD,
-                    "Found incomplete documentation!");
+        builder_msg(MSG_WARN, 0, ident->location, CARET_WORD, "Found incomplete documentation!");
     }
 
     // if (!text) return;
@@ -507,6 +503,6 @@ void docs_run(struct assembly *assembly)
     strfree(ctx.section_variants);
     strfree(ctx.section_members);
 
-    builder_note("Documentation written into '%s' directory.", OUT_DIR);
+    builder_info("Documentation written into '%s' directory.", OUT_DIR);
     return_zone();
 }

@@ -159,33 +159,35 @@ Target :: struct { // !!! ABI sync TargetOptions !!!
     syntax_only: bool;
     /// Enable virtual machine debugger.
     vmdbg_enabled: bool;
+    /// Specify MIR instruction ID to break on if virtual machine debugger is attached.
+    vmdbg_break_on: s32;
 }
 
 /// Specification of compiler output binary kind.
 TargetKind :: enum {
-    Executable    = 1;
-    SharedLibrary = 2;
+    Executable    = 0;
+    SharedLibrary = 1;
 }
 
 /// Specify target build mode. Every :ref:`Target` can be compiled with various configuration options.
 /// The `BuildMode` can specify which set of options compiler should use.
 BuildMode :: enum s32 {
     /// Generates debug symbols and produce binary without any optimizations.
-    Debug = 1;
+    Debug = 0;
     /// Fast release mode; no debug symbols are produced, all possible optimizations
     /// are applied to produce binary as fast as possible.
     /// The :ref:`assert` is disabled unless :ref:`Target`.assert_mode is ``AlwaysEnabled``.
-    ReleaseFast = 2;
+    ReleaseFast = 1;
     /// Small release mode; no debug symbols are produced, optimizations are applied
     /// to produce binary reasonably fast and as small as possible.
     /// The :ref:`assert` is disabled unless :ref:`Target`.assert_mode is ``AlwaysEnabled``.
-    ReleaseSmall = 3;
+    ReleaseSmall = 2;
 }
 
 /// Debug information format.
 DebugInfo :: enum s32 {
-    Dwarf = 1;
-    Codeview = 2;
+    Dwarf = 0;
+    Codeview = 1;
 }
 
 /// Specification of :ref:`assert` mode used for :ref:`Target`.

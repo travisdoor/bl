@@ -47,7 +47,7 @@ void asm_writer_run(struct assembly *assembly)
         builder_error("Cannot emit assembly file: %s with error: %s", buf, error_msg);
         LLVMDisposeMessage(error_msg);
     }
-    builder_note("Assembly code written into %s", buf);
+    builder_info("Assembly code written into %s", buf);
     puttmpstr(buf);
     return_zone();
 }

@@ -73,7 +73,7 @@ compiler_path :: fn () string {
 generate :: fn () #test {
     defer temporary_release();
     print("%\n", Fs.get_cwd());
-    state :: os_execute(tprint("% --docs %", compiler_path(), #file));
+    state :: os_execute(tprint("% -doc %", compiler_path(), #file));
     test_eq(state, 0);
 }
 

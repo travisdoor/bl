@@ -33,7 +33,7 @@
     {                                                                                              \
         if (tok)                                                                                   \
             builder_msg(                                                                           \
-                BUILDER_MSG_ERROR, (code), &(tok)->location, (pos), (format), ##__VA_ARGS__);      \
+                MSG_ERR, (code), &(tok)->location, (pos), (format), ##__VA_ARGS__);      \
         else                                                                                       \
             builder_error((format), ##__VA_ARGS__);                                                \
     }                                                                                              \
@@ -157,7 +157,7 @@ void linker_run(struct assembly *assembly)
             const s32 error_len = get_last_error(error_buffer, static_arrlenu(error_buffer));
             link_error(ERR_LIB_NOT_FOUND,
                        lib->linked_from,
-                       BUILDER_CUR_WORD,
+                       CARET_WORD,
                        "Cannot load library '%s' with error: %s",
                        lib->user_name,
                        error_len ? error_buffer : "UNKNOWN");
@@ -167,23 +167,23 @@ void linker_run(struct assembly *assembly)
 #if BL_PLATFORM_WIN
     if (!link_working_environment(&ctx, MSVC_CRT)) {
         struct token *dummy = NULL;
-        link_error(ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link " MSVC_CRT);
+        link_error(ERR_LIB_NOT_FOUND, dummy, CARET_WORD, "Cannot link " MSVC_CRT);
         return_zone();
     }
     if (!link_working_environment(&ctx, KERNEL32)) {
         struct token *dummy = NULL;
-        link_error(ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link " KERNEL32);
+        link_error(ERR_LIB_NOT_FOUND, dummy, CARET_WORD, "Cannot link " KERNEL32);
         return_zone();
     }
     if (!link_working_environment(&ctx, SHLWAPI)) {
         struct token *dummy = NULL;
-        link_error(ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link " SHLWAPI);
+        link_error(ERR_LIB_NOT_FOUND, dummy, CARET_WORD, "Cannot link " SHLWAPI);
         return_zone();
     }
 #endif
     if (!link_working_environment(&ctx, NULL)) {
         struct token *dummy = NULL;
-        link_error(ERR_LIB_NOT_FOUND, dummy, BUILDER_CUR_WORD, "Cannot link working environment.");
+        link_error(ERR_LIB_NOT_FOUND, dummy, CARET_WORD, "Cannot link working environment.");
         return_zone();
     }
     return_zone();

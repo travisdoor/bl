@@ -410,7 +410,7 @@ LLVMMetadataRef DI_type_init(struct context *ctx, struct mir_type *type)
     case MIR_TYPE_STRUCT: {
         // Struct type will be generated as forward declaration and postponed to be filled
         // later. This approach solves problems with circular references.
-        type->llvm_meta     = type->data.strct.scope->llvm_meta =
+        type->llvm_meta = type->data.strct.scope->llvm_meta =
             LLVMDIBuilderCreateReplaceableCompositeType(
                 ctx->llvm_di_builder, 0, "", 0, NULL, NULL, 0, 0, 0, 0, LLVMDIFlagZero, "", 0);
 
@@ -849,8 +849,8 @@ LLVMValueRef emit_const_string(struct context *ctx, const char *str, usize len)
     struct mir_type *type     = ctx->builtin_types->t_string;
     LLVMValueRef     llvm_str = NULL;
     if (str) {
-        const hash_t     hash              = strhash(str);
-        const s64        index             = hmgeti(ctx->gstring_cache, hash);
+        const hash_t hash  = strhash(str);
+        const s64    index = hmgeti(ctx->gstring_cache, hash);
         if (index != -1) {
             llvm_str = ctx->gstring_cache[index].value;
         } else {
@@ -3103,7 +3103,7 @@ void ir_run(struct assembly *assembly)
         if (LLVMVerifyModule(ctx.llvm_module, LLVMReturnStatusAction, &llvm_error)) {
             builder_warning("\nLLVM module not verified; error: \n%s", llvm_error);
         } else {
-            builder_note("LLVM module verified without errors.");
+            builder_info("LLVM module verified without errors.");
         }
         LLVMDisposeMessage(llvm_error);
     }

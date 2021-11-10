@@ -5,22 +5,23 @@ Add thread local global storage support.
 Add time report.
 Add support of polymorphic function.
 Add temporary allocator.
-Redesign allocator structure.
-Change array API.
+Add compilation of Tracy profiler on Windows in baker development tool.
+Add missing operators and change deref operator to @.
+Add evaluation of compile time known conditional breaks.
+Add static assert.
+Add static if.
 Fix crash on unnamed function argument RTTI generation.
 Fix crash when invlid type of default argument value is provided by user.
 Fix invalid conversion of enum variants to Any.
 Fix DI locations using Code View.
 Fix generation of unused LLVM IR code paths.
-Test cases are no longer reported as unused during compilation.
-Add compilation of Tracy profiler on Windows in baker development tool.
+Fix missing usage check for symbols in named scope.
 Fix DWARF generation for local anonymous functions.
 Fix DI Generation of global variables using CodeView.
+Test cases are no longer reported as unused during compilation.
 Update dyncall to version 1.2 (due to experimental support of M1 Macs).
-Add missing operators and change deref operator to @.
-Add evaluation of compile time known conditional breaks.
-Add static assert.
-Add static if.
+Redesign allocator structure.
+Change array API.
 
 0.9.0 - PRE-RELEASE
 ---------------------------------------------------------------------------------------

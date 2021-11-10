@@ -335,10 +335,10 @@ static bool import_module(struct assembly *assembly,
     builder_log("Import module '%s' version %d.", modulepath, version);
     if (!conf_data_has_key(config, CONF_MODULE_ENTRY)) {
         builder_msg(
-            BUILDER_MSG_ERROR,
+            MSG_ERR,
             ERR_MISSING_PLATFORM,
             TOKEN_OPTIONAL_LOCATION(import_from),
-            BUILDER_CUR_WORD,
+            CARET_WORD,
             "Module doesn't support current target platform, configuration entry ('%s') not "
             "found in module config file.",
             CONF_MODULE_ENTRY);
@@ -361,10 +361,10 @@ static bool import_module(struct assembly *assembly,
         char *path = gettmpstr();
         strprint(path, "%s/%s", modulepath, lib_path);
         if (!dir_exists(path)) {
-            builder_msg(BUILDER_MSG_ERROR,
+            builder_msg(MSG_ERR,
                         ERR_FILE_NOT_FOUND,
                         TOKEN_OPTIONAL_LOCATION(import_from),
-                        BUILDER_CUR_WORD,
+                        CARET_WORD,
                         "Cannot find module imported library path '%s' defined by '%s'.",
                         path,
                         CONF_MODULE_LIB_PATH);
@@ -580,8 +580,7 @@ struct assembly *assembly_new(const struct target *target)
                16, // Is this correct?
                EXPECTED_ARRAY_COUNT,
                (arena_elem_dtor_t)sarr_dtor);
-    assembly->gscope =
-        scope_create(&assembly->arenas.scope, SCOPE_GLOBAL, NULL, NULL);
+    assembly->gscope = scope_create(&assembly->arenas.scope, SCOPE_GLOBAL, NULL, NULL);
 
     dl_init(assembly);
     mir_init(assembly);
@@ -732,10 +731,10 @@ bool assembly_import_module(struct assembly *assembly,
     zone();
     bool state = false;
     if (!strlen(modulepath)) {
-        builder_msg(BUILDER_MSG_ERROR,
+        builder_msg(MSG_ERR,
                     ERR_FILE_NOT_FOUND,
                     TOKEN_OPTIONAL_LOCATION(import_from),
-                    BUILDER_CUR_WORD,
+                    CARET_WORD,
                     "Module name is empty.");
         goto DONE;
     }
@@ -788,14 +787,14 @@ bool assembly_import_module(struct assembly *assembly,
                 strprint(backup_name, "%s_%s.bak", local_path, date);
                 copy_dir(local_path, backup_name);
                 remove_dir(local_path);
-                builder_warning("Backup module '%s'.", backup_name);
+                builder_info("Backup module '%s'.", backup_name);
                 puttmpstr(backup_name);
             }
             // Copy module from system to module directory.
-            builder_warning("%s module '%s' in '%s'.",
-                            (check_version && local_found) ? "Update" : "Import",
-                            modulepath,
-                            module_dir);
+            builder_info("%s module '%s' in '%s'.",
+                         (check_version && local_found) ? "Update" : "Import",
+                         modulepath,
+                         module_dir);
             if (!copy_dir(system_path, local_path)) {
                 builder_error("Cannot import module '%s'.", modulepath);
             }

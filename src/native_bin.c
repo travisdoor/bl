@@ -65,7 +65,7 @@ static void copy_user_libs(struct assembly *assembly)
 
         strprint(dest_path, "%s/%s", out_dir, lib_dest_name);
         if (file_exists(dest_path)) continue;
-        builder_warning("Copy '%s' to '%s'.", lib->filepath, dest_path);
+        builder_info("Copy '%s' to '%s'.", lib->filepath, dest_path);
         if (!copy_file(lib->filepath, dest_path)) {
             builder_error("Cannot copy '%s' to '%s'.", lib->filepath, dest_path);
         }
@@ -88,11 +88,7 @@ void native_bin_run(struct assembly *assembly)
     const char *out_dir = assembly->target->out_dir;
     zone();
     if (linker(assembly) != 0) {
-        builder_msg(BUILDER_MSG_ERROR,
-                    ERR_LIB_NOT_FOUND,
-                    NULL,
-                    BUILDER_CUR_WORD,
-                    "Native link execution failed.");
+        builder_msg(MSG_ERR, ERR_LIB_NOT_FOUND, NULL, CARET_WORD, "Native link execution failed.");
         goto DONE;
     }
 

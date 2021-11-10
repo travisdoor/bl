@@ -39,10 +39,10 @@ static bool parse_key_value_rq(struct context *ctx)
 {
     struct token *tok_ident = tokens_consume(ctx->tokens);
     if (token_is_not(tok_ident, SYM_IDENT)) {
-        builder_msg(BUILDER_MSG_ERROR,
+        builder_msg(MSG_ERR,
                     ERR_UNEXPECTED_SYMBOL,
                     &tok_ident->location,
-                    BUILDER_CUR_WORD,
+                    CARET_WORD,
                     "Expected key identificator.");
         return false;
     }
@@ -63,10 +63,10 @@ static bool parse_key_value_rq(struct context *ctx)
         tmp.v_int = (int)tok_value->value.u;
         break;
     default:
-        builder_msg(BUILDER_MSG_ERROR,
+        builder_msg(MSG_ERR,
                     ERR_UNEXPECTED_SYMBOL,
                     &tok_ident->location,
-                    BUILDER_CUR_AFTER,
+                    CARET_AFTER,
                     "Expected value after key identificator.");
 
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
@@ -76,10 +76,10 @@ static bool parse_key_value_rq(struct context *ctx)
     const char *key = tok_ident->value.str;
     bassert(key);
     if (conf_data_has_key(ctx->data, key)) {
-        builder_msg(BUILDER_MSG_ERROR,
+        builder_msg(MSG_ERR,
                     ERR_DUPLICATE_SYMBOL,
                     &tok_ident->location,
-                    BUILDER_CUR_WORD,
+                    CARET_WORD,
                     "Duplicate symbol in config scope.");
     } else {
         conf_data_add(ctx->data, key, &tmp);

@@ -968,37 +968,37 @@ static INLINE struct mir_fn *instr_owner_fn(struct mir_instr *instr)
 
 #define report_error(code, node, format, ...)                                                      \
     _report(ctx->analyze.last_analyzed_instr,                                                      \
-            BUILDER_MSG_ERROR,                                                                     \
+            MSG_ERR,                                                                               \
             ERR_##code,                                                                            \
             (node),                                                                                \
-            BUILDER_CUR_WORD,                                                                      \
+            CARET_WORD,                                                                            \
             (format),                                                                              \
             ##__VA_ARGS__)
 
 #define report_error_after(code, node, format, ...)                                                \
     _report(ctx->analyze.last_analyzed_instr,                                                      \
-            BUILDER_MSG_ERROR,                                                                     \
+            MSG_ERR,                                                                               \
             ERR_##code,                                                                            \
             (node),                                                                                \
-            BUILDER_CUR_AFTER,                                                                     \
+            CARET_AFTER,                                                                           \
             (format),                                                                              \
             ##__VA_ARGS__)
 
 #define report_warning(node, format, ...)                                                          \
     _report(ctx->analyze.last_analyzed_instr,                                                      \
-            BUILDER_MSG_WARNING,                                                                   \
+            MSG_WARN,                                                                              \
             0,                                                                                     \
             (node),                                                                                \
-            BUILDER_CUR_WORD,                                                                      \
+            CARET_WORD,                                                                            \
             (format),                                                                              \
             ##__VA_ARGS__)
 
 #define report_note(node, format, ...)                                                             \
     _report(ctx->analyze.last_analyzed_instr,                                                      \
-            BUILDER_MSG_NOTE,                                                                      \
+            MSG_ERR_NOTE,                                                                          \
             0,                                                                                     \
             (node),                                                                                \
-            BUILDER_CUR_WORD,                                                                      \
+            CARET_WORD,                                                                            \
             (format),                                                                              \
             ##__VA_ARGS__)
 
@@ -1015,7 +1015,7 @@ static INLINE void _report(struct mir_instr     *current_instr,
     va_start(args, format);
     builder_vmsg(type, code, loc, cursor_position, format, args);
     va_end(args);
-    if (type == BUILDER_MSG_ERROR) report_poly(current_instr);
+    if (type == MSG_ERR) report_poly(current_instr);
 }
 
 static INLINE struct ast *get_last_instruction_node(struct mir_instr_block *block)
@@ -1026,10 +1026,10 @@ static INLINE struct ast *get_last_instruction_node(struct mir_instr_block *bloc
 
 static INLINE void usage_check_push(struct context *ctx, struct scope_entry *entry)
 {
+    if (builder.options->no_usage_check) return;
     bassert(entry);
     struct scope *scope = entry->parent_scope;
     bassert(scope);
-    if (builder.options->no_usage_check) return;
     if (!entry->id) return;
     if (!entry->node) return;
     if (entry->kind != SCOPE_ENTRY_VAR && entry->kind != SCOPE_ENTRY_FN) return;
@@ -6064,12 +6064,8 @@ struct result analyze_instr_switch(struct context *ctx, struct mir_instr_switch 
                 }
             }
             if (!hit) {
-                builder_msg(BUILDER_MSG_NOTE,
-                            0,
-                            NULL,
-                            BUILDER_CUR_NONE,
-                            "Missing case for: %s",
-                            variant->id->str);
+                builder_msg(
+                    MSG_ERR_NOTE, 0, NULL, CARET_NONE, "Missing case for: %s", variant->id->str);
             }
         }
     }
@@ -7267,8 +7263,7 @@ struct result generate_fn_poly(struct context             *ctx,
                     struct location *call_arg_loc =
                         sarrpeek(call->data.expr_call.args, i)->location;
                     if (!call_arg_loc) call_arg_loc = call->location;
-                    builder_msg(
-                        BUILDER_MSG_NOTE, 0, call_arg_loc, BUILDER_CUR_WORD, "Called from here.");
+                    builder_msg(MSG_ERR_NOTE, 0, call_arg_loc, CARET_WORD, "Called from here.");
                 } else {
                     // Missing argument on call side required for polymorph deduction.
                     report_error(INVALID_POLY_MATCH,
@@ -7713,18 +7708,18 @@ struct result analyze_instr_block(struct context *ctx, struct mir_instr_block *b
         const char *poly          = fn->debug_poly_replacement;
         if (poly) {
             builder_msg(
-                BUILDER_MSG_WARNING,
+                MSG_WARN,
                 0,
                 fn->first_unreachable_loc,
-                BUILDER_CUR_NONE,
+                CARET_NONE,
                 "Unreachable code detected in the function '%s' with polymorph replacement: %s",
                 mir_get_fn_readable_name(fn),
                 poly);
         } else {
-            builder_msg(BUILDER_MSG_WARNING,
+            builder_msg(MSG_WARN,
                         0,
                         fn->first_unreachable_loc,
-                        BUILDER_CUR_NONE,
+                        CARET_NONE,
                         "Unreachable code detected in the function '%s'.",
                         mir_get_fn_readable_name(fn));
         }
@@ -9730,23 +9725,23 @@ void report_poly(struct mir_instr *instr)
     if (!owner_fn->first_poly_call_node->location) return;
     const char *poly = owner_fn->debug_poly_replacement;
     if (poly) {
-        builder_msg(BUILDER_MSG_NOTE,
+        builder_msg(MSG_ERR_NOTE,
                     0,
                     owner_fn->decl_node->location,
-                    BUILDER_CUR_WORD,
+                    CARET_WORD,
                     "In polymorph of function with substitution: %s",
                     poly);
     } else {
-        builder_msg(BUILDER_MSG_NOTE,
+        builder_msg(MSG_ERR_NOTE,
                     0,
                     owner_fn->decl_node->location,
-                    BUILDER_CUR_WORD,
+                    CARET_WORD,
                     "In polymorph of function.");
     }
-    builder_msg(BUILDER_MSG_NOTE,
+    builder_msg(MSG_ERR_NOTE,
                 0,
                 owner_fn->first_poly_call_node->location,
-                BUILDER_CUR_WORD,
+                CARET_WORD,
                 "First called here:");
 }
 

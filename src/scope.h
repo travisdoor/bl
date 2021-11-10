@@ -74,7 +74,7 @@ struct scope_entry {
     union scope_entry_data data;
     s32                    ref_count;
     u32                    lookup_count;
-    bmagic_member;
+    bmagic_member
 };
 
 enum scope_kind {
@@ -110,7 +110,7 @@ struct scope {
     struct scope_layer      default_layer;
     struct scope_layer     *layers;
 
-    bmagic_member;
+    bmagic_member
 };
 
 void scope_arenas_init(struct scope_arenas *arenas);

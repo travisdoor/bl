@@ -106,7 +106,7 @@ void vm_entry_run(struct assembly *assembly)
     struct virtual_machine *vm     = &assembly->vm;
     struct mir_fn          *entry  = assembly->vm_run.entry;
     const struct target    *target = assembly->target;
-    builder_note("\nExecuting 'main' in compile time...");
+    builder_info("\nExecuting 'main' in compile time...");
     if (!entry) {
         builder_error("struct assembly '%s' has no entry function!", assembly->target->name);
         assembly->vm_run.last_execution_status = EXIT_FAILURE;
@@ -125,12 +125,12 @@ void vm_entry_run(struct assembly *assembly)
         if (ret_ptr) {
             struct mir_type *ret_type = fn_type->data.fn.ret_type;
             result                    = (s32)vm_read_int(ret_type, ret_ptr);
-            builder_note("Execution finished with state: %d\n", result);
+            builder_info("Execution finished with state: %d\n", result);
         } else {
-            builder_note("Execution finished without errors");
+            builder_info("Execution finished without errors");
         }
     } else {
-        builder_note("Execution finished with errors");
+        builder_warning("Execution finished with errors");
     }
     vm_override_var(vm, assembly->vm_run.is_comptime_run, false);
     assembly->vm_run.last_execution_status = result;
