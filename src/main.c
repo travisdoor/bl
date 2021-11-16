@@ -155,16 +155,17 @@ getarg(s32 argc, char *argv[], struct getarg_opt *opts, s32 *optindex, const cha
                     break;
                 case ENUM:
                     if (value) {
-                        bool  found    = false;
-                        s32   j        = 0;
-                        char *variants = strdup(opt->variants);
-                        char *token    = strtok(variants, "|");
+                        bool        found     = false;
+                        s32         j         = 0;
+                        char       *variants  = strdup(opt->variants);
+                        const char *delimiter = "|";
+                        char       *token     = strtok(variants, delimiter);
                         while (token) {
                             if (strcmp(value, token) == 0) {
                                 found = true;
                                 break;
                             }
-                            token = strtok(NULL, " ");
+                            token = strtok(NULL, delimiter);
                             ++j;
                         }
                         free(variants);
@@ -305,12 +306,19 @@ int main(s32 argc, char *argv[])
 
     bool has_input_files = false;
 
+#define ID_BUILD 1
+#define ID_RUN 2
+#define ID_DOC 3
+#define ID_SHARED 4
+#define ID_VMDBG_BREAK_ON 5
+#define ID_RELEASE 6
+
     struct getarg_opt optlist[] = {
         {
             .name = "-build",
             .help = "Invoke project build pipeline. All following arguments are forwarded into the "
                     "build script and ignored by compiler itself. Use as '-build [arguments]'.",
-            .id   = 'b',
+            .id   = ID_BUILD,
         },
         {
             .name = "-run",
@@ -319,17 +327,17 @@ int main(s32 argc, char *argv[])
                 "after '-run' flag, the file name and all following command line arguments are "
                 "passed into the executed program and ignored by compiler itself. Use as '-run "
                 "<source-file> [arguments]'.",
-            .id = 'r',
+            .id = ID_RUN,
         },
         {
             .name = "-doc",
             .help = "Generate documentation and exit.",
-            .id   = 'd',
+            .id   = ID_DOC,
         },
         {
             .name = "-shared",
             .help = "Compile shared library.",
-            .id   = 's',
+            .id   = ID_SHARED,
         },
         {
             .name       = "--help",
@@ -431,6 +439,12 @@ int main(s32 argc, char *argv[])
             .help       = "Specify binary optimization mode (use 'debug' by default).",
         },
         {
+            .name = "-release",
+            .kind = FLAG,
+            .help = "Specify binary optimization mode to release. (same as '-opt=release-fast')",
+            .id   = ID_RELEASE,
+        },
+        {
             .name       = "--assert",
             .kind       = ENUM,
             .property.n = (s32 *)&opt.target->assert_mode,
@@ -493,7 +507,7 @@ int main(s32 argc, char *argv[])
             .property.n = &opt.target->vmdbg_break_on,
             .help       = "Attach compile-time execution debugger and sets break point to the MIR "
                           "instruction with <N> id.",
-            .id         = 'i',
+            .id         = ID_VMDBG_BREAK_ON,
         },
         {
             .name       = "--error-limit",
@@ -516,20 +530,20 @@ int main(s32 argc, char *argv[])
         switch (c) {
         case '?': // Unknown/invalid argument.
             EXIT(EXIT_FAILURE);
-        case 'b': // Build pipeline.
+        case ID_BUILD: // Build pipeline.
             opt.target->kind = ASSEMBLY_BUILD_PIPELINE;
             opt.target->run  = false;
             // Rest of arguments is forwarded into the build script.
             goto SKIP;
-        case 'd': // Generate documentation.
+        case ID_DOC: // Generate documentation.
             opt.target->kind = ASSEMBLY_DOCS;
             opt.target->run  = false;
             break;
-        case 's': // Shared library.
+        case ID_SHARED: // Shared library.
             opt.target->kind = ASSEMBLY_SHARED_LIB;
             opt.target->run  = false;
             break;
-        case 'r': // Run mode.
+        case ID_RUN: // Run mode.
             opt.target->kind    = ASSEMBLY_EXECUTABLE;
             opt.target->run     = true;
             opt.target->no_llvm = true;
@@ -538,8 +552,11 @@ int main(s32 argc, char *argv[])
                 EXIT(EXIT_FAILURE);
             }
             break;
-        case 'i': // Break on
+        case ID_VMDBG_BREAK_ON: // Break on
             opt.target->vmdbg_enabled = true;
+            break;
+        case ID_RELEASE:
+            opt.target->opt = ASSEMBLY_OPT_RELEASE_FAST;
             break;
         default:
             if (positional) {
