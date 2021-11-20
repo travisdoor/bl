@@ -21,8 +21,8 @@ set(CMAKE_C_FLAGS_DEBUG "-DBL_DEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "-DBL_DEBUG")
 
 if(NOT CMAKE_BUILD_TYPE)
-    #message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}' as none was specified.")
-    #set(CMAKE_BUILD_TYPE ${DEFAULT_BUILD_TYPE})
+    message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}' as none was specified.")
+    set(CMAKE_BUILD_TYPE ${DEFAULT_BUILD_TYPE})
 endif()
 
 option(BL_ASSERT_ENABLE "Turn on assert checks" OFF)

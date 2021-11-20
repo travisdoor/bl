@@ -1,4 +1,4 @@
-#!/usr/local/bin/blc -rs
+#!/usr/local/bin/blc --silent -run
 #import "std/fs"
 #import "std/arg_parser"
 

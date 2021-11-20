@@ -28,16 +28,10 @@
 
 #import "std/array"
 
-//! =====
-//! Debug
-//! =====
+//! # Debug
 //! 
-//! ::
+//! `#load "std/debug.bl"`
 //! 
-//!     #load "std/debug.bl"
-//! 
-//! ::
-//!
 //! Set of common debugging tools.
 //! @Incomplete: documentation of `debugbreak` builtin.
 
@@ -46,62 +40,57 @@ print_log :: fn (format: string, args: ...) #inline {
     _context.print_log_fn(PrintLogKind.Message, "", 0, format, args);
 };
 
-/// Print debug warning using `_context.print_log_fn` function. See also :ref:`print`.
+/// Print debug warning using `_context.print_log_fn` function.
 print_warn :: fn (format: string, args: ...) #inline {
     _context.print_log_fn(PrintLogKind.Warning, "", 0, format, args);
 };
 
-/// Print debug error using _context.print_log_fn function. See also :ref:`print`.
+/// Print debug error using _context.print_log_fn function. 
 print_err :: fn { print_err_e; print_err_msg; }
 
-/// Interrupt execution when `cond` is false. Assert use `_context.print_log_fn`
-/// to print out error message containing assert location in source code.
+/// Interrupt execution when `cond` is false. Assert use `_context.print_log_fn` to print out error 
+/// message containing assert location in source code.
 ///
-/// .. important:: All calls to the assert function are removed from release builds
-///                by default see :ref:`BuildMode` when :ref:`Target`.assert_mode is
-///                is not ``AlwaysEnabled``.
+/// **important**: All calls to the assert function are removed from release builds by default.
 ///
-/// .. warning:: There is no argument validation in case the assert call is removed from compilation.
+/// **warning**: There is no argument validation in case the assert call is removed from compilation.
 assert :: fn (cond: bool, loc := #call_location) #compiler {
     if cond { return; }
     _context.print_log_fn(PrintLogKind.Assert, loc.file, loc.line, "Assertion failed!");
     unreachable;
 };
 
-// Compiler internal static assert handler, this is supposed to be used via #assert directive,
-// not directly.
+/// Compiler internal static assert handler, this is supposed to be used via #assert directive, not 
+/// directly.
 __static_assert :: fn (expr: bool) #compiler {
     if !expr { unreachable; }
 }
 
-/// Abort execution and eventually print panic message if there is one specified. First
-/// passed argument in 'args' will act like format string and can be eventually followed
-/// by any additional values required.
+/// Abort execution and eventually print panic message if there is one specified. First passed 
+/// argument in 'args' will act like format string and can be eventually followed by any additional 
+/// values required.
 /// 
-/// Example
-/// -------
-/// ::
+/// ### Example
 /// 
-///     panic(); // abort without any messages
-///     panic(error); // abort with :ref:`Error`.
-///     panic("oops!"); // abort with message prited out.
-///     panic("Failed with error: %", errn); // first argument passed acts like formating string
+/// ```
+/// panic(); // abort without any messages
+/// panic(error); // abort with :ref:`Error`.
+/// panic("oops!"); // abort with message prited out.
+/// panic("Failed with error: %", errn); // first argument passed acts like formating string
+/// ```
 panic :: fn { panic_empty; panic_error; panic_msg; }
 
 /// Kinds of log messages.
-/// 
-/// Variants
-/// --------
-/// * `Message` Ordinary debug log message.
-/// * `Warning` Warning log message.
-/// * `Error` Error log message.
-/// * `Assert` Assert log message.
-/// * `Panic` Panic log message.
 PrintLogKind :: enum u8 {
+    /// Ordinary debug log message.
     Message;
+    /// Warning log message.
     Warning;
+    /// Error log message.
     Error;
+    /// Assert log message.
     Assert;
+    /// Panic log message.
     Panic;
 };
 
@@ -130,13 +119,15 @@ __print_log_default :: fn (kind: PrintLogKind, file: string, line: s32, format: 
 /// Start measure elapsed milliseconds in the current scope. This function call will push the current
 /// time into the thread-local queue. Measurement must be ended by :ref:`measure_elapsed_ms_end` call.
 ///
-/// Example
-/// -------
-/// ::
-///     measure_elapsed_ms_begin();
-///     defer measure_elapsed_ms_end("Name");
+/// ### Example
 ///
-/// .. warning:: Every `measure_elapsed_ms_begin` must have corresponding :ref:`measure_elapsed_ms_end` call.
+/// ```
+/// measure_elapsed_ms_begin();
+/// defer measure_elapsed_ms_end("Name");
+/// ```
+///
+/// **warning**: Every `measure_elapsed_ms_begin` must have corresponding 
+/// [measure_elapsed_ms_end](#measure_elapsed_ms_end) call.
 measure_elapsed_ms_begin :: fn () #inline {
     array_push(&_elapsed_ms_stack, os_tick_ms());
 }

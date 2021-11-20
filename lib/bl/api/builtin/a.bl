@@ -30,55 +30,46 @@
 #load "std/debug.bl"
 #load "std/utils.bl"
 
-//! =======
-//! Builtin
-//! =======
+//! # Builtin
 //! 
 //! Compiler builtins are automatically loaded into every assembly.
 //!
-//! Current running platform
-//! ------------------------
-//!
-//! .. code-block:: bl
+//! ## Current running platform
+//! ```
+//! Platform :: enum s32 {
+//!     unknown;
+//!     windows;
+//!     darwin;
+//!     linux;
+//! }
 //! 
-//!     Platform :: enum s32 {
-//!         unknown;
-//!         windows;
-//!         darwin;
-//!         linux;
-//!     }
-//!    
-//!     PLATFORM :: <SET_BY_COMPILER>;
+//! PLATFORM :: <SET_BY_COMPILER>;
+//! ```
 //!
-//! Current running architecture
-//! ----------------------------
-//!
-//! .. code-block:: bl
+//! ## Current running architecture
+//! ```
+//! Arch :: enum s32 {
+//!     unknown;
+//!     x86_64;
+//!     aarch64;
+//!     arm64;
+//! }
 //! 
-//!     Arch :: enum s32 {
-//!         unknown;
-//!         x86_64;
-//!         aarch64;
-//!         arm64;
-//!     }
-//!    
-//!     ARCH :: <SET_BY_COMPILER>;
+//! ARCH :: <SET_BY_COMPILER>;
+//! ```
 //!
-//! Current running environment
-//! ---------------------------
-//!
-//! .. code-block:: bl
+//! ## Current running environment
+//! ```
+//! Env :: enum s32 {
+//!     unknown;
+//!     msvc;
+//!     gnu;
+//! }
 //! 
-//!     Env :: enum s32 {
-//!         unknown;
-//!         msvc;
-//!         gnu;
-//!     }
-//!    
-//!     ENV :: <SET_BY_COMPILER>;
-//!
+//! ENV :: <SET_BY_COMPILER>;
+//! ```
 
-/// TypeKind describes kind of BL type returned in TypeInfo structure. This value can be used for 
+/// TypeKind describes kind of BL type returned in `TypeInfo` structure. This value can be used for 
 /// safe casting.
 TypeKind :: enum #compiler {
     /// Base type of all types in type system.
@@ -195,23 +186,23 @@ TypeInfoEnum :: struct #base TypeInfo #compiler {
     is_flags: bool;
 };
 
-/// Placeholer for information about `void` type.
+/// Placeholder for information about `void` type.
 TypeInfoVoid :: struct #base TypeInfo #compiler {
 };
 
-/// Placeholer for information about `null` type.
+/// Placeholder for information about `null` type.
 TypeInfoNull :: struct #base TypeInfo #compiler {
 };
 
-/// Placeholer for information about `string` type.
+/// Placeholder for information about `string` type.
 TypeInfoString :: struct #base TypeInfo #compiler {
 };
 
-/// Placeholer for information about `type` type.
+/// Placeholder for information about `type` type.
 TypeInfoType :: struct #base TypeInfo  #compiler {
 };
 
-/// Placeholer for information about `bool` type.
+/// Placeholder for information about `bool` type.
 TypeInfoBool :: struct #base TypeInfo #compiler {
 };
 
@@ -229,19 +220,19 @@ TypeInfoStructMember :: struct #compiler {
     /// Basically tags behave like a flags value, merge is done by binary `or` of all defined tag values.
     /// User tags can be defined by `#tags` hash directive written after member type in following way:
     /// 
-    /// ::
-    /// 
-    ///       Foo :: struct {
-    ///           i: s32 #tags TAG1;
-    ///           j: s32 #tags TAG1, TAG2;
-    ///       };
+    /// ```
+    /// Foo :: struct {
+    ///     i: s32 #tags TAG1;
+    ///     j: s32 #tags TAG1, TAG2;
+    /// };
+    /// ```
     /// 
     /// Where tags must be `compile-time` constant of `s32` type.
     /// 
-    /// .. code-block:: text
-    /// 
-    ///       TAG1 :: 0x1;
-    ///       TAG2 :: 0x2;
+    /// ```text
+    /// TAG1 :: 0x1;
+    /// TAG2 :: 0x2;
+    /// ```
     /// 
     tags: s32;
     /// True when member is inherrited base of the parent structure type.
@@ -282,10 +273,17 @@ TestCase :: struct #compiler {
 
 /// Type of source code location used by `#call_location` directive.
 ///
-/// Example
-/// -------
-/// .. literalinclude:: /examples/docs/002.bl
-///    :language: bl
+/// ### Example
+/// ```
+/// foo :: fn (loc: *CodeLocation = #call_location) {
+///     print("%\n", @loc);
+/// }
+/// 
+/// main :: fn () s32 {
+///     foo();
+///     return 0;
+/// }
+/// ```
 CodeLocation :: struct #compiler {
     /// Full path of the source file.
     file: string;
@@ -297,8 +295,7 @@ CodeLocation :: struct #compiler {
 
 /// Type of print log function.
 /// 
-/// Arguments
-/// ---------
+/// ### Arguments
 /// * `kind` Kind of report message. 
 /// * `format` Format string. 
 /// * `args` Additional arguments. 

@@ -298,6 +298,7 @@ int main(s32 argc, char *argv[])
 
     exec_dir                = get_exec_dir();
     opt.builder.error_limit = 10;
+    opt.builder.doc_out_dir = "out";
     builder_init(&opt.builder, exec_dir);
     builder_log("Compiler version: %s, LLVM: %d", BL_VERSION, LLVM_VERSION_MAJOR);
     // Just create default empty target assembly options here and setup it later depending on
@@ -333,6 +334,13 @@ int main(s32 argc, char *argv[])
             .name = "-doc",
             .help = "Generate documentation and exit.",
             .id   = ID_DOC,
+        },
+        {
+            .kind = STRING,
+            .name = "--doc-out-dir",
+            .help = "Set documentation output directory. (Use 'out' in current working directory "
+                    "by default.)",
+            .property.s = &opt.builder.doc_out_dir,
         },
         {
             .name = "-shared",

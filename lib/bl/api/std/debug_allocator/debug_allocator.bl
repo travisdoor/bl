@@ -31,42 +31,49 @@
 
 #scope DebugAllocator
 
-//! ===============
-//! Debug Allocator
-//! ===============
+//! # Debug Allocator
 //! 
-//! ::
+//! `#import "std/debug_allocator"`
 //! 
-//!     #import "std/debug_allocator"
+//! Debug allocator can be used to analyze memory usage of program and eventually analyze possible 
+//! memory leaks. By [init](#init) call the global `context` allocator is replaced by 
+//! debug allocator, every following allocations are recorded and analyzed in runtime since then. 
+//! Call [terminate](#terminate) to swap default context allocator back to previous 
+//! one.
 //! 
-//! Debug allocator can be used to analyze memory usage of program and eventually analyze
-//! possible memory leaks. By :ref:`DebugAllocator.init` call the global `context` allocator is
-//! replaced by debug allocator, every following allocations are recorded and analyzed in
-//! runtime since then. Call :ref:`DebugAllocator.terminate` to swap default context allocator
-//! back to previous one.
+//! ### Example
 //! 
-//! Example
-//! -------
-//! .. literalinclude:: /examples/docs/003.bl
-//!    :language: bl
+//! ```
+//! #import "std/debug_allocator"
 //! 
-//! ::
+//! main :: fn () s32 {
+//!     DebugAllocator.init();
+//!     defer DebugAllocator.terminate();
 //! 
-//!     $ ./out.exe
-//!     ******************* MEMORY REPORT ******************
-//!     * Allocated 64 Bytes.
-//!     * Count of allocations 1.
-//!     ****************************************************
-//!     Dump memory leaks begin:
-//!         [1] - test.bl:10 (64 bytes)
-//!     Dump memory leaks end.
+//!     // leaking allocation
+//!     alloc(64);
+//!     return 0;
+//! }
+//! ```
 //! 
-//! .. note:: Debug allocator is thread safe. Init and terminate must be called from main thread.
+//! 
+//! ```text
+//! $ ./out.exe
+//! ******************* MEMORY REPORT ******************
+//! * Allocated 64 Bytes.
+//! * Count of allocations 1.
+//! ****************************************************
+//! Dump memory leaks begin:
+//!     [1] - test.bl:10 (64 bytes)
+//! Dump memory leaks end.
+//! ```
+//! 
+//! **note**: Debug allocator is thread safe. Init and terminate must be called from main thread.
 
 debug_allocator :: {:Allocator: &debug_allocator_handler};
 
-/// Initialize Debug Allocator. This function internally swap current global context
-/// allocator to debug one. Deinitialization must be done by :ref:`DebugAllocator.terminate` call.
+/// Initialize Debug Allocator. This function internally swap current global context allocator to 
+/// debug one. Deinitialization must be done by [terminate](#terminate) call.
 init :: fn () {
     assert(!_prev_allocator);
     _prev_allocator = _context.allocator;
@@ -75,7 +82,8 @@ init :: fn () {
     Sync.init(&_mutex);
 }
 
-/// Terminate Debug Allocator. Prints current memory report when `DebugAllocator.print_report` is `true`.
+/// Terminate Debug Allocator. Prints current memory report when 
+/// [print_report](#print_report) is `true`.
 terminate :: fn (print_report := true) {
     if print_report {
         print_memory_report(true);
@@ -87,8 +95,8 @@ terminate :: fn (print_report := true) {
     _prev_allocator = null;
 }
 
-/// Invoke :ref:`DebugAllocator.debug_break` before allocation with defined serial ID.
-/// .. note:: See also :ref:`DebugAllocator.print_memory_report`
+/// Invoke [debug_break](#debug_break) before allocation with defined serial ID.
+/// **note**: See also [print_memory_report](#print_memory_report)
 break_on :: fn (serial: u64) #inline {
     _break_on = serial;
 }
@@ -103,26 +111,26 @@ allocated_bytes :: fn () usize #inline {
 /// Print memory report. First block contains currently allocated bytes and current count
 /// of allocations. Optional memory leak dump block (enabled by `dump_leaks` argument) contains:
 /// 
-/// ::
+/// ```text
+/// [allocation serial ID] - <file>:<line> (allocation size in bytes) 
+/// ``` 
 /// 
-///     [allocation serial ID] - <file>:<line> (allocation size in bytes) 
+/// ```text
+/// $ ./out.exe
+/// ******************* MEMORY REPORT ******************
+/// * Allocated 64 Bytes.
+/// * Count of allocations 1.
+/// ****************************************************
+/// Dump memory leaks begin:
+///     [1] - test.bl:10 (64 bytes)
+/// Dump memory leaks end.
+/// ``` 
 /// 
-/// ::
+/// **note**: Printed report contains all remaining (not freed) allocations in time when function was
+/// called. Memory leaks can contain false-positives when function is called before execution end.
 /// 
-///     $ ./out.exe
-///     ******************* MEMORY REPORT ******************
-///     * Allocated 64 Bytes.
-///     * Count of allocations 1.
-///     ****************************************************
-///     Dump memory leaks begin:
-///         [1] - test.bl:10 (64 bytes)
-///     Dump memory leaks end.
-/// 
-/// .. note:: Printed report contains all remaining (not freed) allocations in time when function was
-///           called. Memory leaks can contain false-positives when function is called before execution end.
-/// 
-/// .. hint:: Allocation serail ID can be used by :ref:`DebugAllocator.break_on` to interrupt execution before
-///           memory is allocated and eventually localize allocation in debbuger.
+/// **hint**: Allocation serail ID can be used by [break_on](#break_on) to interrupt 
+/// execution before memory is allocated and eventually localize allocation in debbuger.
 print_memory_report :: fn (dump_leaks := false) {
     Sync.lock(&_mutex);
     defer Sync.unlock(&_mutex);

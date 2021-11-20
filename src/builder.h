@@ -51,6 +51,7 @@ struct builder_options {
     bool no_usage_check;
     bool time_report;
     s32  error_limit;
+    char* doc_out_dir;
 };
 
 struct builder {

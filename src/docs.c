@@ -29,45 +29,12 @@
 #include "builder.h"
 #include "stb_ds.h"
 
-#define OUT_DIR "out"
+#define H0(stream, str) fprintf(stream, "\n# %s\n", str);
+#define H1(stream, str) fprintf(stream, "\n## %s\n", str);
+#define H2(stream, str) fprintf(stream, "\n### %s\n", str);
 
-#define DECORATE_HEADER(stream, str, c)                                                            \
-    {                                                                                              \
-        char *it = (char *)str;                                                                    \
-        while (*it++) {                                                                            \
-            fprintf(stream, "%s", c);                                                              \
-        }                                                                                          \
-    }
-
-#define H1(stream, str)                                                                            \
-    {                                                                                              \
-        fprintf(stream, "%s\n", str);                                                              \
-        DECORATE_HEADER(stream, str, "=");                                                         \
-        fprintf(stream, "\n");                                                                     \
-    }
-
-#define H2(stream, str)                                                                            \
-    {                                                                                              \
-        fprintf(stream, "%s\n", str);                                                              \
-        DECORATE_HEADER(stream, str, "-");                                                         \
-        fprintf(stream, "\n");                                                                     \
-    }
-
-#define H3(stream, str)                                                                            \
-    {                                                                                              \
-        fprintf(stream, "%s\n", str);                                                              \
-        DECORATE_HEADER(stream, str, "^");                                                         \
-        fprintf(stream, "\n");                                                                     \
-    }
-
-#define REF(stream, name)                                                                          \
-    if (name[0] == '_') {                                                                          \
-        fprintf(stream, ".. _%s:\n\n", &name[1]);                                                  \
-    } else {                                                                                       \
-        fprintf(stream, ".. _%s:\n\n", name);                                                      \
-    }
-
-#define CODE_BLOCK_BEGIN(stream, lang) fprintf(stream, ".. code-block:: %s\n", lang);
+#define CODE_BLOCK_BEGIN(stream) fprintf(stream, "\n```\n");
+#define CODE_BLOCK_END(stream) fprintf(stream, "\n```\n\n");
 #define CODE_BLOCK_NEW_LINE(stream) fprintf(stream, "\n    ");
 
 #define DEFAULT_TOC(stream, filename)                                                              \
@@ -90,9 +57,9 @@ struct context {
     FILE        *stream;
     bool         is_inline;
     bool         is_multi_return;
-    char        *path_unit_dir;
     char        *section_variants;
     char        *section_members;
+    char        *output_directory;
 };
 
 static void append_section(struct context *ctx, const char *name, const char *content);
@@ -152,29 +119,11 @@ void doc_decl_entity(struct context *ctx, struct ast *decl)
     if (!decl->owner_scope) return;
     if (decl->owner_scope->kind != SCOPE_GLOBAL && decl->owner_scope->kind != SCOPE_NAMED) return;
 
-    char *full_name = gettmpstr();
-    if (decl->owner_scope->name) {
-        strprint(full_name, "%s.%s", decl->owner_scope->name, ident->data.ident.id.str);
-    } else {
-        strprint(full_name, "%s", ident->data.ident.id.str);
-    }
+    const char *full_name = ident->data.ident.id.str;
 
-    char *export_file = gettmpstr();
-    strprint(export_file, "%s/%s.rst", ctx->path_unit_dir, full_name);
-    FILE *f = fopen(export_file, "w");
-    if (f == NULL) {
-        builder_error("Cannot open file '%s'", export_file);
-        puttmpstr(full_name);
-        puttmpstr(export_file);
-        return;
-    }
-    puttmpstr(export_file);
-    ctx->stream = f;
-
-    REF(ctx->stream, full_name);
+    // REF(ctx->stream, full_name);
     H1(ctx->stream, full_name);
-    CODE_BLOCK_BEGIN(ctx->stream, "bl");
-    CODE_BLOCK_NEW_LINE(ctx->stream);
+    CODE_BLOCK_BEGIN(ctx->stream);
     fprintf(ctx->stream, "%s :", name);
     if (type) {
         fprintf(ctx->stream, " ");
@@ -186,7 +135,7 @@ void doc_decl_entity(struct context *ctx, struct ast *decl)
 
     if (decl->data.decl_entity.flags & FLAG_EXTERN) fprintf(ctx->stream, " #extern");
     if (decl->data.decl_entity.flags & FLAG_INLINE) fprintf(ctx->stream, " #inline");
-    fprintf(ctx->stream, "\n\n");
+    CODE_BLOCK_END(ctx->stream);
     if (text) fprintf(ctx->stream, "%s\n\n", text);
 
     if (strlenu(ctx->section_variants) > 0) {
@@ -199,22 +148,52 @@ void doc_decl_entity(struct context *ctx, struct ast *decl)
         strclr(ctx->section_members);
     }
 
-    fprintf(ctx->stream, "\n\n*Declared in: %s*\n", ctx->unit->filename);
+    fprintf(ctx->stream, "\n***\n");
+    // fprintf(ctx->stream, "\n\n*Declared in: %s*\n", ctx->unit->filename);
+}
 
-    ctx->stream = NULL;
-    fclose(f);
-    puttmpstr(full_name);
+// @Cleanup: put this into general doc() procedure???
+// @Cleanup: this is nothing else then parsing all expressions!
+static void doc_value(struct context *ctx, struct ast *value)
+{
+    if (!value) return;
+    switch (value->kind) {
+    case AST_EXPR_UNARY:
+        switch (value->data.expr_unary.kind) { // @Incomplete
+        case UNOP_NEG:
+            fprintf(ctx->stream, "-");
+            break;
+        default:
+            break;
+        }
+        doc_value(ctx, value->data.expr_unary.next); // @Cleanup
+        break;
+    case AST_EXPR_LIT_INT:
+        fprintf(ctx->stream, "%llu", value->data.expr_integer.val);
+        break;
+    default:
+        break;
+    }
 }
 
 void doc_decl_arg(struct context *ctx, struct ast *decl)
 {
     struct ast *ident = decl->data.decl.name;
     struct ast *type  = decl->data.decl.type;
-    if (ident) {
-        const char *name = ident->data.ident.id.str;
+    struct ast *value = decl->data.decl_arg.value;
+    const char *name  = ident ? name = ident->data.ident.id.str : "";
+    if (type && value) {
+        fprintf(ctx->stream, "%s : ", name);
+        doc(ctx, type);
+        fprintf(ctx->stream, ": ");
+        doc_value(ctx, value);
+    } else if (type && !value) {
         fprintf(ctx->stream, "%s: ", name);
+        doc(ctx, type);
+    } else if (value) {
+        fprintf(ctx->stream, "%s :: ", name);
+        doc_value(ctx, value);
     }
-    doc(ctx, type);
 }
 
 void doc_decl_variant(struct context *ctx, struct ast *decl)
@@ -280,12 +259,10 @@ void doc_type_enum(struct context *ctx, struct ast *type)
     for (usize i = 0; i < sarrlenu(variants); ++i) {
         struct ast *variant = sarrpeek(variants, i);
         CODE_BLOCK_NEW_LINE(ctx->stream);
-        fprintf(ctx->stream, "    ");
         doc(ctx, variant);
         fprintf(ctx->stream, ";");
     }
-    CODE_BLOCK_NEW_LINE(ctx->stream);
-    fprintf(ctx->stream, "}");
+    fprintf(ctx->stream, "\n}");
 }
 
 void doc_type_struct(struct context *ctx, struct ast UNUSED(*type))
@@ -303,16 +280,14 @@ void doc_type_struct(struct context *ctx, struct ast UNUSED(*type))
             if (i + 1 < sarrlenu(members)) fprintf(ctx->stream, ", ");
         } else {
             CODE_BLOCK_NEW_LINE(ctx->stream);
-            fprintf(ctx->stream, "    ");
             doc(ctx, member);
             fprintf(ctx->stream, ";");
         }
     }
     if (ctx->is_multi_return) {
-        fprintf(ctx->stream, ")");
+        fprintf(ctx->stream, "\n)");
     } else {
-        CODE_BLOCK_NEW_LINE(ctx->stream);
-        fprintf(ctx->stream, "}");
+        fprintf(ctx->stream, "\n}");
     }
 }
 
@@ -451,19 +426,10 @@ void doc_unit(struct context *ctx, struct unit *unit)
     char *unit_name = gettmpstr();
     strprint(unit_name, "%.*s", (s32)strlen(unit->filename) - 3, unit->filename); // -3 ('.bl')
     ctx->unit = unit;
-    // prepare unit output directory
-    {
-        strclr(ctx->path_unit_dir);
-        strprint(ctx->path_unit_dir, "%s/%s", OUT_DIR, unit_name);
-        const char *dirpath = ctx->path_unit_dir;
-        if (!dir_exists(dirpath)) create_dir(dirpath);
-    }
-
-    doc(ctx, unit->ast);
 
     // write unit global docs
     char *export_file = gettmpstr();
-    strprint(export_file, "%s/%s.rst", OUT_DIR, unit_name);
+    strprint(export_file, "%s/%s.md", ctx->output_directory, unit_name);
     FILE *f = fopen(export_file, "w");
     if (f == NULL) {
         builder_error("Cannot open file '%s'", export_file);
@@ -471,12 +437,16 @@ void doc_unit(struct context *ctx, struct unit *unit)
         return;
     }
     puttmpstr(export_file);
+    ctx->stream = f;
+
     if (unit->ast->docs) {
         fprintf(f, "%s", unit->ast->docs);
     } else {
-        H1(f, unit->filename);
+        H0(f, unit->filename);
     }
-    DEFAULT_TOC(f, unit_name);
+    doc(ctx, unit->ast);
+
+    // DEFAULT_TOC(f, unit_name);
     fclose(f);
     puttmpstr(unit_name);
 }
@@ -486,12 +456,12 @@ void docs_run(struct assembly *assembly)
     zone();
     struct context ctx;
     memset(&ctx, 0, sizeof(struct context));
-    strinit(ctx.path_unit_dir, 128);
     strinit(ctx.section_variants, 128);
     strinit(ctx.section_members, 128);
+    ctx.output_directory = builder.options->doc_out_dir;
 
     // prepare output directory
-    if (!dir_exists(OUT_DIR)) create_dir(OUT_DIR);
+    if (!dir_exists(ctx.output_directory)) create_dir(ctx.output_directory);
 
     for (usize i = 0; i < arrlenu(assembly->units); ++i) {
         struct unit *unit = assembly->units[i];
@@ -499,10 +469,9 @@ void docs_run(struct assembly *assembly)
     }
 
     // cleanup
-    strfree(ctx.path_unit_dir);
     strfree(ctx.section_variants);
     strfree(ctx.section_members);
 
-    builder_info("Documentation written into '%s' directory.", OUT_DIR);
+    builder_info("Documentation written into '%s' directory.", ctx.output_directory);
     return_zone();
 }

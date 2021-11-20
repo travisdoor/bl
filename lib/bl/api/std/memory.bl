@@ -26,40 +26,37 @@
 // SOFTWARE.
 // =================================================================================================
 
-//! ======
-//! Memory
-//! ======
+//! # Memory
 //! 
-//! ::
-//! 
-//!     #load "std/memory.bl"
+//! ```
+//! #load "std/memory.bl"
+//! ```
 //! 
 //! Toolset for manipulation with system memory.
 //!
 //! Memory allocator
 //! ----------------
 //! 
-//! Memory allocators are used across the entire program to manage allocated memory
-//! resources used in runtime. Since memory allocation can be an expensive operation in
-//! some cases, it's good to provide an explicit API, giving information enough to fix
-//! bugs, memory leaks and performance issues.
+//! Memory allocators are used across the entire program to manage allocated memory resources used 
+//! in runtime. Since memory allocation can be an expensive operation in some cases, it's good to 
+//! provide an explicit API, giving information enough to fix  bugs, memory leaks and performance 
+//! issues.
 //!
-//! Memory allocator in BL world is just some context :ref:`Allocator` used by an allocator 
-//! function, and allocator function itself :ref:`AllocFn`. The allocator context can hold some
-//! data needed by allocator function and the allocator function is later used to make
-//! memory allocations and deallocations.
+//! Memory allocator in BL world is just some context :ref:`Allocator` used by an allocator function, 
+//! and allocator function itself [AllocFn](#allocfn). The allocator context can hold some data needed by 
+//! allocator function and the allocator function is later used to make memory allocations and 
+//! deallocations.
 //!
-//! Functions like :ref:`alloc` and :ref:`free` internaly use allocator set in global executable
-//! context :ref:`_context` variable. Global context allocator is by default set to :ref:`default_allocator`
+//! Functions like [alloc](#alloc) and [free](#free) internally use allocator set in global executable
+//! context `_context` variable. Global context allocator is by default set to `default_allocator`
 //! and can be changed as needed. Main goal of internal use of  the allocator set in the global 
 //! context (used across all modules) is to have full control over what's going on and also give
-//! some advanced options to programmer (i.e. create his/her own allocator to have truely full 
+//! some advanced options to programmer (i.e. create his/her own allocator to have truly full 
 //! control over memory management of the program).
 
-/// Allocates `size` of bytes on heap using default allocator.
-/// Use :ref:`free` to free allocated memory when it's no longer
-/// needed. Cause panic when allocation is not possible or `size` is 
-/// zero. This function use allocator set in `_context.allocator`
+/// Allocates `size` of bytes on heap using default allocator. Use `free` to free allocated memory 
+/// when it's no longer needed. Cause panic when allocation is not possible or `size` is  zero. This 
+/// function use allocator set in `_context.allocator`
 alloc :: fn (size: usize, loc := #call_location) *u8 {
     if size == 0 { panic("Attempt to allocate 0 bytes."); }
     mem :: allocate_memory(_context.allocator, size, loc); 
@@ -74,20 +71,19 @@ calloc :: fn (num: usize, size: usize, loc := #call_location) *u8 {
     return memset(mem, 0, size * num);
 };
 
-/// Free memory alocated on heap. This function use allocator set in
-/// `_context.allocator` to free allocated data.
+/// Free memory allocated on heap. This function use allocator set in `_context.allocator` to free 
+/// allocated data.
 ///
-/// .. warning:: Memory block must be freed by same allocator as used for
-///              allocation.
+/// **warning**: Memory block must be freed by same allocator as used for allocation.
 ///
-/// .. note:: Does nothing when passed `ptr` is `null`.
+/// **note**: Does nothing when passed `ptr` is `null`.
 free :: fn (ptr: *u8, loc := #call_location) {
     if !ptr { return; }
     free_memory(_context.allocator, ptr, loc);
 };
 
-/// Copy memory of defined `size` from `src` to `dest`. Destination
-/// and source size must be at least `size` bytes.
+/// Copy memory of defined `size` from `src` to `dest`. Destination and source size must be at least 
+/// `size` bytes.
 memcpy :: fn (dest: *u8, src: *u8, size: usize) {
     m :: size / sizeof(u64);
     d :: size - m * sizeof(u64);
@@ -105,8 +101,7 @@ memcpy :: fn (dest: *u8, src: *u8, size: usize) {
     }
 };
 
-/// Set memory to desired value. Destination size must be at 
-/// least `size` bytes.
+/// Set memory to desired value. Destination size must be atleast `size` bytes.
 memset :: fn (_dest: *u8, v: u8, size: usize) *u8 {
     dest := {:[]u8: auto size, _dest};
     loop i := 0; i < dest.len; i += 1 {
@@ -134,10 +129,10 @@ is_aligned :: fn (ptr: *?T, alignment: usize) bool #inline {
     return cast(usize)ptr % alignment == 0;
 }
 
-/// Align pointer `p` to `alignment` and return adjusted pointer and number of bytes
-/// needed for adjustment.
+/// Align pointer `p` to `alignment` and return adjusted pointer and number of bytes needed for 
+/// adjustment.
 ///
-/// .. warning:: Cause panic when alignment is not power of two.
+/// **warning**: Cause panic when alignment is not power of two.
 align_ptr_up :: fn (p: *u8, alignment: usize) (p: *u8, adjustment: usize)
 {
     if is_aligned(p, alignment) { return p, 0; }
@@ -151,17 +146,30 @@ align_ptr_up :: fn (p: *u8, alignment: usize) (p: *u8, adjustment: usize)
 }
 
 
-/// Allocate heap memory for `n` elements in `_v` slice. Allocated block is set to
-/// zero default value. Allocated memory must be released by :ref:`slice_terminate` call.
+/// Allocate heap memory for `n` elements in `_v` slice. Allocated block is set to zero default value. 
+/// Allocated memory must be released by :ref:`slice_terminate` call.
 /// 
-/// This way of memory allocation cause some overhead compared to plain `alloc` due to 
-/// conversion to `Any` and more 'generic' behaviour, also setting to 0 have some 
-/// runtime cost. Consider use of :ref:`alloc` instead in performance-critical cases.
+/// This way of memory allocation cause some overhead compared to plain `alloc` due to  conversion 
+/// to `Any` and more 'generic' behaviour, also setting to 0 have some runtime cost. Consider use 
+// of `alloc` instead in performance-critical cases.
 /// 
-/// Example
-/// -------
-/// .. literalinclude:: /examples/docs/008.bl
-///    :language: bl
+/// ### Example
+/// 
+/// ```
+/// main :: fn () s32 {
+///     // Allocate slice of 10 numbers
+///     sl: []s32;
+///     slice_init(&sl, 10);
+/// 
+///     loop i := 0; i < sl.len; i += 1 {
+///         sl[i] = i;
+///     }
+/// 
+///     // release memory allocated by init
+///     slice_terminate(&sl);
+///     return 0;
+/// }
+/// ```
 slice_init :: fn (slice: *[]?T, n: s64, loc := #call_location) {
     if n < 0 { panic("Attempt to allocate 0 values by make!"); }
     if n == 0  {
@@ -176,7 +184,7 @@ slice_init :: fn (slice: *[]?T, n: s64, loc := #call_location) {
     memset(auto slice.ptr, 0, bytes); 
 }
 
-/// Release slice memory allocated by :ref:`slice_init` call. 
+/// Release slice memory allocated by [slice_init](#slice_init) call. 
 slice_terminate :: fn (slice: *[]?T, loc := #call_location) {
     if slice.ptr {
         free(auto slice.ptr, loc);
@@ -191,15 +199,14 @@ slice_terminate :: fn (slice: *[]?T, loc := #call_location) {
 /// 
 /// Indexing rules:
 ///
-/// ::
+/// ```
+/// start >= 0
+/// start < slice.len
+/// end >= 0
+/// end <= slice.len
+/// ```
 ///
-///     start >= 0
-///     start < slice.len
-///     end >= 0
-///     end <= slice.len
-///
-/// .. warning:: Function cause panic in case combination of `start` and `end` is out of
-///              `slice` range.
+/// **warning**: Function cause panic in case combination of `start` and `end` is out of `slice` range.
 slice_range :: fn (slice: []?T, start: s64, end: s64 = -1) []T #inline {
     if end < 0 { end = slice.len; }
     len :: end - start;
@@ -215,8 +222,8 @@ AllocOp :: enum {
     Allocate;
     /// Free of previously allocated memory is required. 
     Free;
-    /// Release of all allocated memory is required. This operation is optional
-    /// and is not supported by all allocators.
+    /// Release of all allocated memory is required. This operation is optional and is not supported 
+    /// by all allocators.
     Release;
 }
 
@@ -242,7 +249,7 @@ free_memory :: fn (allocator: *Allocator, ptr: *u8, loc := #call_location) #inli
 
 /// Release all memory allocated by `allocator`.
 ///
-/// .. warning:: This operation is not supported by all allocators.
+/// **warning**: This operation is not supported by all allocators.
 release_memory :: fn (allocator: *Allocator, loc := #call_location) #inline {
     assert(allocator && allocator.handler);
     allocator.handler(allocator, AllocOp.Release, 0, null, loc.file, loc.line);

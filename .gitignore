@@ -44,14 +44,10 @@
 *.idb
 *.pdb
 
-# Documentation
-/docs
-
 # Other
 build
 deps/llvm*
 deps/lld*
-*.md
 *.blm
 bl.conf
 src/config.h
@@ -59,7 +55,6 @@ src/config.h
 *.sln
 .suo
 /CMakeLists.txt.user
-/docs/examples
 /lib/bl/api/gl
 /lib/bl/api/glfw3
 /lib/bl/api/sdl2
@@ -74,3 +69,4 @@ src/config.h
 /.vs/
 /msvc/
 /VS2019/
+docs/api/

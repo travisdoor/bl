@@ -26,39 +26,56 @@
 // SOFTWARE.
 // =================================================================================================
 
-//! ===================
-//! Temporary Allocator
-//! ===================
+//! # Temporary Allocator
 //! 
-//! Temporary allocator is memory allocator supposed to be used in case just temporary memory allocation 
-//! is needed; i.e. to build up file path from individual path components. The allocated memory
-//! is valid until :ref:`temporary_reset` or :ref:`temporary_release` is called.
+//! Temporary allocator is memory allocator supposed to be used in case just temporary memory 
+//! allocation is needed; i.e. to build up file path from individual path components. The allocated 
+//! memory is valid until [temporary_reset](#temporary_reset) or [temporary_release](#temporary_release)
+//! is called.
 //!
-//! The allocator makes all allocations in bigger preallocated block; i.e. when allocation is requested 
-//! for the first time, new block is allocated with predefined size ``DEFAULT_BLOCK_SIZE``, all following 
-//! allocations use the preallocated block if there is enough space. If the block is full and new 
-//! requested allocation does not fit, another block is allocated (with size slightly bigger then previous one).
-//! When :ref:`temporary_reset` is called, allocator will release all smaller allocated blocks and keeps
-//! only the biggest one for later use.
+//! The allocator makes all allocations in bigger preallocated block; i.e. when allocation is 
+//! requested for the first time, new block is allocated with predefined size ``DEFAULT_BLOCK_SIZE``, 
+//! all following allocations use the preallocated block if there is enough space. If the block is 
+//! full and new requested allocation does not fit, another block is allocated (with size slightly 
+//! bigger then previous one). When [temporary_reset](#temporary_reset) is called, allocator will 
+//! release all smaller allocated blocks and keeps only the biggest one for later use.
 //!
-//! Example
-//! -------
-//! .. literalinclude:: /examples/docs/015.bl
-//!    :language: bl
+//! ### Example
 //!
-//! .. note:: Temporary allocator has it's internal context allocated per-thread, so the explicit release
-//!           of the allocated memory at the thread worker exit is mandatory.
-//!
-//! .. seealso:: :ref:`tprint`.
+//! ```
+//! #import "std/tmp_allocator"
+//! 
+//! main :: fn () s32 {
+//!     // Release allocated memory at the end of the scope.
+//!     defer temporary_release();
+//!     
+//!     loop i := 0; i < 1000; i += 1 {
+//!          // Reset the allocator here (all previous alocation are invalid since now).
+//!         defer temporary_reset();
+//!         
+//!         // Allocate memory using temporary allocator.
+//!         int_ptr := cast(*s32) allocate_memory(&temporary_allocator, sizeof(s32));
+//!         
+//!         // Do something here with allocated memory.
+//!         @int_ptr = i;
+//! 
+//!         // There is no need to free allocated memory here.
+//!     }
+//!     return 0;
+//! }
+//! ```
+//! 
+//! **note**: Temporary allocator has it's internal context allocated per-thread, so the explicit 
+//! release of the allocated memory at the thread worker exit is mandatory.
 
 /// Temporary allocator instance.
 temporary_allocator :: {:Allocator: &temporary_allocator_handler };
 
 /// Reduce allocated memory, but keeps biggest allocated chunk for later use.
 ///
-/// .. warning::  All resources previously allocated by this allocator became invalid after reset.
+/// **warning**:  All resources previously allocated by this allocator became invalid after reset.
 ///
-/// .. hint:: Call this method i.e. in every event loop (update) iteration.
+/// **hint**: Call this method i.e. in every event loop (update) iteration.
 temporary_reset :: fn () #inline {
     if !_root { return; }
     do_release(_root.next);
@@ -69,17 +86,17 @@ temporary_reset :: fn () #inline {
 /// Release all memory allocated by temporary allocator, this method is supposed to be called
 /// at exit of a program.
 ///
-/// .. warning::  All resources previously allocated by this allocator became invalid after release.
+/// **warning**:  All resources previously allocated by this allocator became invalid after release.
 ///
-/// .. hint:: Call this method before main returns.
+/// **hint**: Call this method before main returns.
 temporary_release :: fn () #inline {
     temporary_allocator_handler(null, AllocOp.Release, 0);
     assert(_total_capacity == 0);
     assert(_total_allocated == 0);
 }
 
-/// Return total memory used by temporary allocatory in bytes.
-/// .. note:: Reports memory usage only for current thread.
+/// Return total memory used by temporary allocator in bytes.
+/// **note**: Reports memory usage only for current thread.
 temporary_allocated_bytes :: fn () usize #inline {
     return auto _total_allocated;
 }

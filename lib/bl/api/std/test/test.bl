@@ -35,24 +35,20 @@
 
 // @CLEANUP These functions can be rewritten as polymorphs.
 
-//! ====
-//! Test
-//! ====
+//! # Test
 //! 
-//! ::
-//! 
-//!     #load "std/test.bl"
+//! `#load "std/test.bl"`
 //! 
 //! Integrated unit testing API.
 
-/// Overloads
-/// ---------
-/// ::
-/// 
-///     fn (got: string, expected: string, loc := #call_location)
-///     fn (got: f32, expected: f32, epsilon: f32 = Math.F32_EPSILON, loc := #call_location)
-///     fn (got: f64, expected: f64, epsilon: f64 = Math.F64_EPSILON, loc := #call_location)
-///     fn (got: ?T, expected: T, loc := #call_location)
+/// ### Overloads
+///
+/// ```
+/// fn (got: string, expected: string, loc := #call_location)
+/// fn (got: f32, expected: f32, epsilon: f32 = Math.F32_EPSILON, loc := #call_location)
+/// fn (got: f64, expected: f64, epsilon: f64 = Math.F64_EPSILON, loc := #call_location)
+/// fn (got: ?T, expected: T, loc := #call_location)
+/// ```
 /// 
 /// Test whether `got` value is equal to `expected` value.
 test_eq :: fn {
@@ -78,14 +74,14 @@ test_eq :: fn {
     };
 }
 
-/// Overloads
-/// ---------
-/// ::
+/// ### Overloads
 /// 
-///     fn (got: string, not_expected: string, loc := #call_location)
-///     fn (got: f32, not_expected: f32, epsilon: f32 = Math.F32_EPSILON, loc := #call_location)
-///     fn (got: f64, not_expected: f64, epsilon: f64 = Math.F64_EPSILON, loc := #call_location)
-///     fn (got: ?T, not_expected: T, loc := #call_location)
+/// ```
+/// fn (got: string, not_expected: string, loc := #call_location)
+/// fn (got: f32, not_expected: f32, epsilon: f32 = Math.F32_EPSILON, loc := #call_location)
+/// fn (got: f64, not_expected: f64, epsilon: f64 = Math.F64_EPSILON, loc := #call_location)
+/// fn (got: ?T, not_expected: T, loc := #call_location)
+/// ```
 /// 
 /// Test whether `got` value is not equal to `not_expected` value.
 test_neq :: fn {
@@ -111,7 +107,7 @@ test_neq :: fn {
     };
 }
 
-/// Test whether §`v1` is greater than `v2`
+/// Test whether `v1` is greater than `v2`
 test_gt :: fn (v1: ?T, v2: T, loc := #call_location) {
     if v1 > v2 { return; }
     print_err("Value '%' is expected to be grater than '%'.", v1, v2);
@@ -186,34 +182,33 @@ test_is_error :: fn (got_err: Error, expected_code: s32, loc := #call_location) 
     stop(loc);
 }
 
-/// Execute all registered test cases in current assembly. The `test_run` function
-/// uses compiler builtin `testcases()` function returning slice of all registered 
-/// test cases in the current assembly (all function with hash directive `#test`).
+/// Execute all registered test cases in current assembly. The `test_run` function uses compiler 
+/// builtin `testcases()` function returning slice of all registered test cases in the current 
+/// assembly (all function with hash directive `#test`).
 /// 
-/// Test case execution can be used in runtime and compile time, in both cases
-/// function remap default behaviour of `panic()` function call and try to report
-/// all failing tests without execution termination.
+/// Test case execution can be used in runtime and compile time, in both cases function remap 
+/// default behaviour of `panic()` function call and try to report all failing tests without 
+/// execution termination.
 /// 
-/// Formatted output containing information about every test run status and summary
-/// report is produced during execution of this function. In case of test failure
-/// all needed information about fail source location is reported into standard
-/// output.
+/// Formatted output containing information about every test run status and summary report is 
+/// produced during execution of this function. In case of test failure all needed information 
+/// about fail source location is reported into standard output.
 /// 
 /// Returns number of failed tests.
 /// 
-/// Example
-/// -------
-/// ::
+/// ### Example
 ///     
-///     #load "std/test.bl"
-///     
-///     my_test :: fn () #test {
-///         print("Hello from test case!!!\n");     
-///     }
+/// ```
+/// #load "std/test.bl"
 /// 
-///     main :: fn () s32 {
-///         return test_run(); 
-///     } 
+/// my_test :: fn () #test {
+///     print("Hello from test case!!!\n");     
+/// }
+/// 
+/// main :: fn () s32 {
+///     return test_run(); 
+/// } 
+/// ```
 test_run :: fn () s32 {
     sighup :: fn (_: c_int) {};
     _signal(_SIGHUP, &sighup);

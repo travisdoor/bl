@@ -26,13 +26,9 @@
 // SOFTWARE.
 // =================================================================================================
 
-//! =====
-//! Utils
-//! =====
+//! # Utils
 //! 
-//! ::
-//! 
-//!     #load "std/utils.bl"
+//! `#load "std/utils.bl"`
 //! 
 //! Set of various utility functions.
 
@@ -74,7 +70,8 @@ clr_flag :: fn (flags: *?T, flag: T) T #inline {
     return @flags;
 }
 
-/// Check whether `flag` is set in `flags`. This function is valid for numeric and enum types (checked by assert).
+/// Check whether `flag` is set in `flags`. This function is valid for numeric and enum types 
+/// (checked by assert).
 is_flag :: fn (flags: ?T, flag: T) bool #inline {
     result := false;
     #if typeinfo(T).kind == TypeKind.Enum {
@@ -101,8 +98,8 @@ make_flags :: fn (f1: ?T, other: ...T) T {
     return result;
 }
 
-/// Converts zero terminated C style string to BL string. Result
-/// string shares original memory of `cstr`.
+/// Converts zero terminated C style string to BL string. Result string shares original memory of 
+/// `cstr`.
 cstr_to_str :: fn (cstr: *u8) string #inline {
     return {:string: auto c_strlen(auto cstr), cstr};
 };
@@ -117,9 +114,8 @@ ptr_diff :: fn (a: *?T1, b: *?T2) s64 #inline {
     return (cast(s64) a) - (cast(s64) b); 
 }
 
-/// Reads environemnt variable specified by `var` name. Result is empty
-/// in case no such variable was found or has no content. It's caller
-/// responsibility to delete result string.
+/// Reads environment variable specified by `var` name. Result is empty in case no such variable was 
+/// found or has no content. It's caller responsibility to delete result string.
 env_get :: fn (var: string) string {
     out :: cast(*u8) c_getenv(auto var.ptr);
     if !out { return String.new(); }
@@ -131,16 +127,15 @@ env_set :: fn (var: string) #inline {
     c_putenv(auto var.ptr);
 }
 
-/// Sets seed for :ref:`Math.rand` or utility function :ref:`random_number` based
-/// on current system tick time.
+/// Sets seed for `Math.rand` or utility function [random_number](#random_number) based on current 
+/// system tick time.
 random_seed_time :: fn () #inline {
     Math.srand(auto os_tick_ms());
 }
 
-/// Generates random number in specified range <min, max> using standart
-/// libc rand generator.
-/// Random number generator seed is supposed to be set by :ref:`random_seed_time`
-/// or by :ref:`Math.srand` call.
+/// Generates random number in specified range <min, max> using standard libc rand generator.
+/// Random number generator seed is supposed to be set by :ref:`random_seed_time` or by `Math.srand` 
+/// call.
 random_number :: fn (min := 0, max := 1) s32 #inline {
     return Math.rand() % (max + 1 - min) + min;
 }
@@ -158,7 +153,8 @@ sort :: fn (list: []?T, cmp: *fn(a: *T, b: *T) bool) {
     }
 }
 
-/// Combine two or more hashes into one, T is expected to be an integer type.
+/// Combine two or more hashes into one, T is expected to be an integer type (checked by static
+/// assert).
 hash_combine :: fn (first: ?T, second: T, more: ...T) T #inline {
     #assert(typeinfo(T).kind == TypeKind.Int)
     result := first ^ (second + (cast(T)0x9e3779b9) + (first << 6) + (first >> 2));

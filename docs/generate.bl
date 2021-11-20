@@ -1,15 +1,49 @@
-#!/usr/local/bin/blc -rs 
+#!/usr/local/bin/blc --silent -run
 #import "std/fs"
+#import "std/arg_parser"
 
-DEST_DOCS_DIR :: "docs";
-DEST_API_DIR :: "docs/api";
-SRC_API_DIR :: "lib/bl/api";
+Args :: struct #base ArgParser.Ctx {
+    out_dir: string;
+}
+
+args: Args;
+
+SRC_API_DIR :: "../lib/bl/api";
 
 IGNORE :: {:[3]string:
            "sdl2",
            "glfw3",
            "gl",
           };
+
+parse_args :: fn () bool {
+    parser :: ArgParser.new();
+    defer ArgParser.delete(parser);
+
+    ArgParser.add(
+        parser,
+        "-o",
+        "--output-dir",
+        "<PATH> Specify the output directory.",
+        &fn (_: ArgParser.Parser, a: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+            if a.len == 1 { return 0, error("Expected output directory path!"); }
+            args.out_dir = a[1];
+            return 2, ok();
+        });
+
+    state :: ArgParser.run(parser, command_line_arguments, &args, 1);   
+    if !is_ok(state) {
+        print_err("%", state);
+        ArgParser.print_help(parser);
+        return false;
+    }
+    if args.positional.len > 0 { 
+        print_err("Unexpected argument: '%'.", args.positional[0]); 
+        return false;
+    }
+    if args.help { return false; }
+    return true;
+}
 
 cmd :: fn (fmt: string, args: ...) Error {
     buf: [2048]u8;
@@ -22,20 +56,14 @@ cmd :: fn (fmt: string, args: ...) Error {
     return ok();
 }
 
-pre_cleanup :: fn () Error {
+cleanup :: fn (out_dir: string) Error {
     print("Cleanup\n");
-    if Fs.exist(DEST_DOCS_DIR) {
-        err :: Fs.dir_remove_all(DEST_DOCS_DIR);
+    if Fs.exist(out_dir) {
+        err :: Fs.dir_remove_all(out_dir);
         if !is_ok(err) { return err; }
     }
-    { // create docs
-        err :: Fs.dir_create(DEST_DOCS_DIR);
-        if !is_ok(err) { return err; }
-    }
-    { // create api
-        err :: Fs.dir_create(DEST_API_DIR);
-        if !is_ok(err) { return err; }
-    }
+    err :: Fs.dir_create_all(out_dir);
+    if !is_ok(err) { return err; }
     return ok();
 }
 
@@ -58,6 +86,7 @@ docs_dir :: fn (dest_path: string, src_path: string) Error {
     if !is_ok(err) { return err; }
 
     file_list :: String.new(128);
+    file_count: s32;
     defer String.delete(file_list);
     loop i := 0; i < list.len; i += 1 {
         info :: &list[i];
@@ -67,6 +96,7 @@ docs_dir :: fn (dest_path: string, src_path: string) Error {
                 String.append(&file_list, "/");
                 String.append(&file_list, info.name);
                 String.append(&file_list, " ");
+                file_count += 1;
             }
             Fs.InfoKind.Directory {
                 new_dest_path :: sprint("%/%", dest_path, info.name);
@@ -74,10 +104,6 @@ docs_dir :: fn (dest_path: string, src_path: string) Error {
                 defer String.delete(new_dest_path);
                 defer String.delete(new_src_path);
                 
-                if !Fs.exist(new_dest_path) {
-                    err :: Fs.dir_create(new_dest_path);
-                    if !is_ok(err) { return err; }
-                }
                 err :: docs_dir(new_dest_path, new_src_path);
                 if !is_ok(err) { return err; }
             }
@@ -86,45 +112,28 @@ docs_dir :: fn (dest_path: string, src_path: string) Error {
     
     print("Process '%'\n", src_path);
     if String.is_empty(file_list) { return ok(); }
-    {
-        err :: cmd("blc --docs %", file_list);
-        if !is_ok(err) { return err; }
+    if file_count == 1 {
+        err_cmd :: cmd("blc -doc --doc-out-dir=\"%/..\" %", dest_path, file_list);
+        if !is_ok(err_cmd) { return err_cmd; }
+    } else {
+        if !Fs.exist(dest_path) {
+            err :: Fs.dir_create_all(dest_path);
+            if !is_ok(err) { return err; }
+        }
+        err_cmd :: cmd("blc -doc --doc-out-dir=\"%\" %", dest_path, file_list);
+        if !is_ok(err_cmd) { return err_cmd; }
     }
-    { // copy results into docs folder
-        opt: Fs.CopyOpt;
-        opt.recursive = true;
-        opt.override = true;
-        c, err :: Fs.dir_copy("out", dest_path, &opt);
-        if !is_ok(err) { return err; }
-        err2 :: Fs.dir_remove_all("out");
-        if !is_ok(err2) { return err2; }
-    }
-    
     return ok();
 }
 
 main :: fn () s32 {
+    defer ArgParser.ctx_terminate(&args);
+    if !parse_args() { return 1; }
     print("Generate BL documentation...\n");
-    { // cleanup
-        err :: pre_cleanup();
-        if !is_ok(err) { print_err("%", err); return err.code; }
-    }
-
-    { // run
-        err :: docs_dir(DEST_API_DIR, SRC_API_DIR);
-        if !is_ok(err) { print_err("%", err); return err.code; }
-    }
-
-    { // copy results into docs folder
-        opt: Fs.CopyOpt;
-        opt.recursive = true;
-        opt.override = true;
-        dest :: String.new();
-        defer String.delete(dest);
-        String.concatenate(&dest, DEST_DOCS_DIR, "/", "examples");
-        c, err :: Fs.dir_copy("examples", dest, &opt);
-        if !is_ok(err) { print_err("%", err); return err.code; }
-    }
-    print("Output written in '%' folder.\n", DEST_DOCS_DIR);
+    err1 :: cleanup(args.out_dir);
+    if !is_ok(err1) { print_err("%", err1); return err1.code; }
+    err2 :: docs_dir(args.out_dir, SRC_API_DIR);
+    if !is_ok(err2) { print_err("%", err2); return err2.code; }
+    print("Output written in '%' folder.\n", args.out_dir);
     return 0;
 }

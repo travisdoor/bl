@@ -1,22 +1,17 @@
-//! ====
-//! Sync
-//! ====
+//! # Thread synchronization
 //! 
-//! ::
-//! 
-//!    #import "std/sync"
+//! `#import "std/sync"`
 //!
 //! Multiplatform implementation of various thread synchronization tools.
 //! 
-//! .. warning:: This module is experimental and not fully supported across all platforms.
+//! **warning**: This module is experimental and not fully supported across all platforms.
 
 #scope Sync
 
 /// Mutex type.
 Mutex :: _SyncImpl.Mutex;
 
-/// Initialize mutex. Call :ref:`terminate` when mutex is no longer
-/// needed.
+/// Initialize mutex. Call :ref:`terminate` when mutex is no longer needed.
 init :: fn (mutex: *Mutex) #inline {
     _SyncImpl.init(mutex);
 }

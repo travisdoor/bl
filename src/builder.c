@@ -272,8 +272,8 @@ int compile_assembly(struct assembly *assembly, const assembly_stage_fn_t *pipel
     bassert(pipeline && "Invalid assembly pipeline!");
 
     for (usize i = 0; i < arrlenu(pipeline); ++i) {
-        pipeline[i](assembly);
         if (builder.errorc) return COMPILE_FAIL;
+        pipeline[i](assembly);
     }
     return COMPILE_OK;
 }

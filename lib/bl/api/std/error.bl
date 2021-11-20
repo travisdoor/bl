@@ -26,28 +26,45 @@
 // SOFTWARE.
 // =================================================================================================
 
-//! =====
-//! Error
-//! =====
-//! ::
+//! # Error handling
 //! 
-//!     #load "std/error.bl"
+//! `#load "std/error.bl"`
 //! 
-//! .. code-block:: bl
+//! ```
+//! _Error :: struct {
+//!     msg: string;
+//!     code: s32;
+//! }
 //! 
-//!     _Error :: struct {
-//!         msg: string;
-//!         code: s32;
-//!     }
-//! 
-//!     Error :: *_Error;
+//! Error :: *_Error;
+//! ```
 //! 
 //! Universal error state representation used across the API.
 //! 
-//! Example
-//! -------
-//! .. literalinclude:: /examples/docs/001.bl
-//!    :language: bl
+//! ### Example
+//!
+//! ```
+//! div :: fn (a: s32, b: s32) (s32, Error) {
+//!     if b == 0 {
+//!         // Return error with message.
+//!         return 0, error("Divide by zero '%/%'!", a, b);
+//!     }
+//!     // Return result and OK state.
+//!     return a / b, ok();
+//! }
+//! 
+//! main :: fn () s32 {
+//!     loop i := -5; i <= 5; i += 1 {
+//!         result, error :: div(10, i);
+//!         if is_ok(error) {
+//!             print("Result is %.\n", result);
+//!         } else {
+//!             print("Error: %.\n", error);
+//!         }
+//!     }
+//!     return 0;
+//! }
+//! ```
 
 OK :: 0;
 
@@ -58,15 +75,13 @@ _Error :: struct {
 
 Error :: *_Error;
 
-/// Check whether `err` is no-error valid state. Returns `false` when
-/// `err` is `null`.
+/// Check whether `err` is no-error valid state. Returns `false` when `err` is `null`.
 is_ok :: fn (err: Error) bool #inline {
     if !err { return false; }
     return err.code == 0;
 }
 
-/// Check whether `err` is representing error `code`. Returns `false` when
-/// `err` is `null`.
+/// Check whether `err` is representing error `code`. Returns `false` when `err` is `null`.
 is_error :: fn (err: Error, code: s32) bool #inline {
     if !err { return false; }
     return err.code == code;
@@ -77,8 +92,6 @@ ok :: fn () Error #inline {
     return error3(0, "");
 }
 
-/// error
-/// =====
 /// Overloaded function setting up error state. Error state is global variable holding :ref:`Error` 
 /// instance, `error` function sets desired values and return pointer to this global. That means
 /// the `Error` must be handled immediately after it's returned from failing function since every
@@ -86,25 +99,25 @@ ok :: fn () Error #inline {
 /// 
 /// Error creating does not require any HEAP memory alocations.
 /// 
-/// ::
-/// 
-///     fn (code: s32) Error #inline
+/// ```
+/// fn (code: s32) Error #inline
+/// ```
 /// 
 /// Sets error code.
 /// 
-/// ----
+/// ***
 /// 
-/// ::
-/// 
-///     fn (format: string, args: ...) Error #inline
+/// ```
+/// fn (format: string, args: ...) Error #inline
+/// ```
 /// 
 /// Sets error state with `ERR_UNKNOWN` code and formatted message.
 /// 
-/// ----
+/// ***
 /// 
-/// :: 
-/// 
-///     fn (code: s32, format: string, args: ...) Error
+/// ```
+/// fn (code: s32, format: string, args: ...) Error
+/// ```
 /// 
 /// Sets error state with `code` and formatted message.
 error :: fn {  error1; error2; error3; }

@@ -2333,7 +2333,7 @@ NEXT:
         PARSE_ERROR(ERR_MISSING_BRACKET,
                     tokens_peek(ctx->tokens),
                     CARET_WORD,
-                    "Expected end of member list '}' or another memeber separated by semicolon.");
+                    "Expected end of member list '}' or another member separated by semicolon.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         scope_pop(ctx);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_struct, scope_get(ctx)));

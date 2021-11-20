@@ -1,15 +1,28 @@
-//! =====
-//! Array
-//! =====
+//! # Array
 //! 
-//! ::
+//! `#import "std/array"`
 //! 
-//!     #import "std/array"
-//! 
-//! Compiler builtin dynamic array.
+//! Compiler builtin dynamic array is automatically growing memory storage allocated on heap. The
+//! array allocated memory block groves over time when we push new values to the array. It's 
+//! guaranteed that all pushed elements are stored in single continuous block of memory. When there
+//! is no space reminding in currently allocated block, new one is allocated and all already pushed
+//! data are copied from old block to the new one.
+//!
+//! ### Example
+//!
+//! ```
+//! main :: fn () s32 {
+//!     arr: [..]s32; // dynamic array
+//!     loop i := 0; i < 10; i += 1 {
+//!         array_push(&arr, i);
+//!     }
+//!     print("arr = %\n", arr);
+//!     return 0;
+//! }
+//! ```
 
-// @NOTE: Not direcly used internally, when layout of this structure is changed, internal
-// compiler representation must be modified too.
+// @NOTE: Not direcly used internally, when layout of this structure is changed, internal compiler 
+// representation must be modified too.
 _Array :: struct {
     len: s64;
     ptr: *u8;
@@ -17,8 +30,11 @@ _Array :: struct {
     allocator: *Allocator;
 }
 
-/// Sets dynamic array to default state. If array contains already allocated memory 
-/// `array_terminate` must be called first. Custom `allocator` can be specified.
+/// Sets dynamic array to default state. If array contains already allocated memory `array_terminate` 
+/// must be called first. Custom `allocator` can be specified.
+///
+/// It's usually enough to rely on default implicit initialization in case we don't need specify
+/// custom allocator.
 array_init :: fn (_arr: *[..]?T, allocator: *Allocator = null) #inline {
     arr := cast(*_Array) _arr;
     arr.ptr = null;
@@ -27,9 +43,8 @@ array_init :: fn (_arr: *[..]?T, allocator: *Allocator = null) #inline {
     arr.allocator = allocator;
 }
 
-/// Release memory allocated by dynamic array. This function is supposed to
-/// be called when dynamic array is no longer needed. Passed dynamic array is set to 
-/// default state also.
+/// Release memory allocated by dynamic array. This function is supposed to be called when dynamic 
+/// array is no longer needed. Passed dynamic array is set to default state also.
 array_terminate :: fn (_arr: *[..]?T) #inline {
     arr := cast(*_Array) _arr;
     allocator := arr.allocator;
@@ -40,9 +55,8 @@ array_terminate :: fn (_arr: *[..]?T) #inline {
     arr.allocated = 0;
 }
 
-/// Append new value at the dynamic array end. New heap allocation is done
-/// here only in cases when there is not enough memory allocated to store all 
-/// values.
+/// Append new value at the dynamic array end. New heap allocation is done here only in cases when 
+/// there is not enough memory allocated to store all values.
 array_push :: fn (arr: *[..]?T, v: T) {
     elem_size :: sizeof(T);
     arr.len += 1;
@@ -58,9 +72,9 @@ array_reserve :: fn (_arr: *[..]?T, n: s64) #inline {
     ensure_space(arr, sizeof(T), auto n, true);
 }
 
-/// Erase element on index `i`. Call to this function can cause reordering
-/// of an dynamic array. Allocated memory is kept even if we erase entire dynamic array. 
-/// Function invoke panic in case of index overflow.
+/// Erase element on index `i`. Call to this function can cause reorderingof an dynamic array. 
+/// Allocated memory is kept even if we erase entire dynamic array. Function invoke panic in case 
+/// of index overflow.
 array_erase :: fn (_arr: *[..]?T, i: s64) {
     arr := cast(*_Array) _arr;
     if i >= arr.len { panic("Index overflow!"); }

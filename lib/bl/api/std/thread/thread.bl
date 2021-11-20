@@ -1,15 +1,11 @@
-//! ======
-//! Thread
-//! ======
+//! # Thread
 //! 
-//! ::
+//! `#import "std/thread"`
 //! 
-//!    #import "std/thread"
+//! This module contains tools for managing multithreading. It's basically wrapper for Windows thread 
+//! system and pthread on posix systems.
 //! 
-//! This module contains tools for managing multithreading. It's basically wrapper for
-//! Windows thread system and pthread on posix systems.
-//! 
-//! .. warning:: This module is experimental and not fully supported across all platforms.
+//! **warning**: This module is experimental and not fully supported across all platforms.
 
 #scope Thread
 
@@ -19,14 +15,14 @@ EntryFn :: *fn (ctx: *u8) s32;
 /// Thread handle.
 Handle :: _ThreadImpl.Handle;
 
-/// Create and start new thread with specified `entry` function. Pointer to custom
-/// `ctx` can be optionally passed to the entry function here.
+/// Create and start new thread with specified `entry` function. Pointer to custom`ctx` can be 
+/// optionally passed to the entry function here.
 create :: fn (entry: EntryFn, ctx: *u8 = null) (Handle, Error) #inline {
     return _ThreadImpl.create(entry, ctx);
 }
 
-/// Blocks until `thread` exits. Return value from worker function is returned as
-/// `exit_code`. When execution is successful all thread resources are released.
+/// Blocks until `thread` exits. Return value from worker function is returned as `exit_code`. When 
+/// execution is successful all thread resources are released.
 join :: fn (thread: Handle) (exit_code: s32, err: Error) #inline {
     return _ThreadImpl.join(thread);
 }

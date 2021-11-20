@@ -1,24 +1,17 @@
-//! =====================
-//! Dynamic Library Tools
-//! =====================
+//! # Dynamic Library Tools
 //! 
-//! ::
-//! 
-//!    #import "std/dlib"
+//! `#import "std/dlib"`
 //!
-//! Dynamic library tools for runtime library loading and symbol
-//! resolving.
+//! Dynamic library tools for runtime library loading and symbol resolving.
 
 #scope Dlib
 
 /// Platform specific library handle.
 Library :: _DlibImpl.Library;
 
-/// Dynamically loads library specified by `lib_name` and return it's
-/// handle or null with error. When `lib_name` is empty, current binary
-/// will be loaded.
-/// Use :ref:`Dlib.close` call to close library when it's not needed
-/// anymore.
+/// Dynamically loads library specified by `lib_name` and return it's handle or null with error. 
+/// When `lib_name` is empty, current binary will be loaded. Use [close](#close) call to close 
+/// library when it's not needed anymore.
 open :: fn (lib_name := String.empty) (Library, Error) #inline {
     return _DlibImpl.open(lib_name);
 }
@@ -28,7 +21,7 @@ get_symbol :: fn (lib: Library, sym_name: string) (*u8, Error) #inline {
     return _DlibImpl.sym(lib, sym_name);
 }
 
-/// Close library opened by :ref:`Dlib.open` call.
+/// Close library opened by [open](#open) call.
 close :: fn (lib: Library) #inline {
     _DlibImpl.close(lib);
 }
