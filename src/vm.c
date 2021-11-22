@@ -1000,7 +1000,7 @@ void interp_instr(struct virtual_machine *vm, struct mir_instr *instr)
         babort("Instruction %s has not been analyzed!", mir_instr_name(instr));
     }
 
-    if (vm->assembly->target->vmdbg_break_on == instr->id) {
+    if (vm->assembly->target->vmdbg_break_on == (s32)instr->id) {
         vmdbg_break();
     }
     vmdbg_notify_instr(instr);
