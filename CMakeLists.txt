@@ -49,12 +49,7 @@ set(BL_CONF_FILE ${CMAKE_INSTALL_SYSCONFDIR}/bl.conf)
 
 add_subdirectory(${BL_DEPS_DIR}/dyncall-1.2)
 
-if(UNIX AND NOT APPLE)
-    # There is no LLVM v11 on Ubuntu 18.04 by default.
-    set(BL_LLVM_VER "10")
-else()
-    set(BL_LLVM_VER "11.1.0")
-endif()
+set(BL_LLVM_VER "11.1.0")
 
 if(MSVC AND NOT LLVM_DIR)
     # DOWNLOAD LLVM
