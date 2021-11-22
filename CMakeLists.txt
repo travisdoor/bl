@@ -49,7 +49,11 @@ set(BL_CONF_FILE ${CMAKE_INSTALL_SYSCONFDIR}/bl.conf)
 
 add_subdirectory(${BL_DEPS_DIR}/dyncall-1.2)
 
-set(BL_LLVM_VER "11.1.0")
+if(UNIX AND NOT APPLE)
+    set(BL_LLVM_VER "11.0.0")
+else()
+    set(BL_LLVM_VER "11.1.0")
+endif()
 
 if(MSVC AND NOT LLVM_DIR)
     # DOWNLOAD LLVM
