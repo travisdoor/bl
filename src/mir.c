@@ -10912,6 +10912,11 @@ void initialize_builtins(struct context *ctx)
     // Add IS_COMPTIME_RUN immutable into the global scope to provide information about compile
     // time run.
     ctx->assembly->vm_run.is_comptime_run = add_global_bool(ctx, BID(IS_COMPTIME_RUN), true, false);
+
+    // Compiler version.
+    add_global_int(ctx, BID(BLC_VER_MAJOR), false, bt->t_s32, BL_VERSION_MAJOR);
+    add_global_int(ctx, BID(BLC_VER_MINOR), false, bt->t_s32, BL_VERSION_MINOR);
+    add_global_int(ctx, BID(BLC_VER_PATCH), false, bt->t_s32, BL_VERSION_PATCH);
 #undef PROVIDE
 }
 

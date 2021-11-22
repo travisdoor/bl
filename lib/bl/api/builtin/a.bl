@@ -35,7 +35,7 @@
 //! Compiler builtins are automatically loaded into every assembly.
 //!
 //! ## Current running platform
-//! ```
+//! ```c
 //! Platform :: enum s32 {
 //!     unknown;
 //!     windows;
@@ -47,7 +47,7 @@
 //! ```
 //!
 //! ## Current running architecture
-//! ```
+//! ```c
 //! Arch :: enum s32 {
 //!     unknown;
 //!     x86_64;
@@ -59,7 +59,7 @@
 //! ```
 //!
 //! ## Current running environment
-//! ```
+//! ```c
 //! Env :: enum s32 {
 //!     unknown;
 //!     msvc;
@@ -67,6 +67,12 @@
 //! }
 //! 
 //! ENV :: <SET_BY_COMPILER>;
+//! ```
+//! ## Compiler version
+//! ```c
+//! BLC_VER_MAJOR : s32 : <SET_BY_COMPILER>;
+//! BLC_VER_MINOR : s32 : <SET_BY_COMPILER>;
+//! BLC_VER_PATCH : s32 : <SET_BY_COMPILER>;
 //! ```
 
 /// TypeKind describes kind of BL type returned in `TypeInfo` structure. This value can be used for 
@@ -329,8 +335,6 @@ _context := {:Context:
 
 /// Contains all arguments passed from command line. First argument is executable name.
 command_line_arguments: []string #compiler;
-
-
 
 
 

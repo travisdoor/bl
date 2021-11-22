@@ -58,6 +58,9 @@
     BUILTIN_ID_ENV,
     BUILTIN_ID_STATIC_ASSERT_FN,
     BUILTIN_ID_OS_DEBUG_BREAK_FN,
+    BUILTIN_ID_BLC_VER_MAJOR,
+    BUILTIN_ID_BLC_VER_MINOR,
+    BUILTIN_ID_BLC_VER_PATCH,
 #endif
 
 #ifdef GEN_BUILTIN_IDS
@@ -120,4 +123,7 @@
     {.str = "ENV",                   .hash = 0},
     {.str = "__static_assert",       .hash = 0},
     {.str = "__os_debug_break",      .hash = 0},
+    {.str = "BLC_VER_MAJOR",         .hash = 0},
+    {.str = "BLC_VER_MINOR",         .hash = 0},
+    {.str = "BLC_VER_PATCH",         .hash = 0},
 #endif

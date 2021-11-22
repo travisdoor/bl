@@ -1,0 +1,150 @@
+#!blc --silent -run
+#import "std/fs"
+#import "std/tmp_allocator"
+
+SRC_API_DIR :: "../../lib/bl/api";
+TMP_DIR :: "tmp";
+
+PANDOC :: 
+    "pandoc "
+    "% "
+    "--toc "
+    "--toc-depth=2 "
+    "--top-level-division=chapter "
+    "--css ../static/styles.css "
+    "--metadata=title:\"Biscuit Language (%)\" "
+    "--metadata=lang:\"en-US\" "
+    "--include-in-header=\"header.html\" "
+    "--include-before-body=\"menu.html\" "
+    "--standalone "
+    "-o \"%\"";
+
+IGNORE :: {:[3]string:
+           "sdl2",
+           "glfw3",
+           "gl",
+          };
+
+blc_ver :: fn () string #inline {
+    return tprint("%.%.%", BLC_VER_MAJOR, BLC_VER_MINOR, BLC_VER_PATCH);
+}
+
+cmd :: fn (fmt: string, args: ...) Error {
+    c :: tprint(fmt, args);
+    state :: os_execute(c);
+    if state != 0 {
+        return error(state, "Executed shell command failed '%'!", c);
+    }
+    return ok();
+}
+
+html :: fn () Error {
+    ver :: blc_ver();
+    e1 :: cmd(PANDOC, "index.md", ver, "index.html");
+    if !is_ok(e1) { return e1; }
+    e2 :: cmd(PANDOC, "compiler.md", ver, "compiler.html");
+    if !is_ok(e2) { return e2; }
+    e3 :: cmd(PANDOC, "language.md", ver, "language.html");
+    if !is_ok(e3) { return e3; }
+
+    list, e4 :: list_files(TMP_DIR, "md");
+    if !is_ok(e4) { return e4; }
+    defer String.delete(list);
+    e5 :: cmd(PANDOC, list, ver, "api.html");
+    return e5;
+}
+
+prepare :: fn () Error {
+    print("Prepare\n");
+    if Fs.exist(TMP_DIR) {
+        err :: Fs.dir_remove_all(TMP_DIR);
+        if !is_ok(err) { return err; }
+    }
+    err :: Fs.dir_create_all(TMP_DIR);
+    if !is_ok(err) { return err; }
+    return ok();
+}
+
+cleanup :: fn () Error {
+    print("Cleanup\n");
+    if Fs.exist(TMP_DIR) {
+        err :: Fs.dir_remove_all(TMP_DIR);
+        if !is_ok(err) { return err; }
+    }
+    return ok();
+}
+
+process_dir :: fn (path: string, extension: string, out: *string) Error {
+    list, err :: Fs.dir_scan(path, &fn (info: *Fs.Info) bool {
+        if String.is_empty(info.name)        { return false; }
+        if String.compare(info.name, ".")    { return false; }
+        if String.compare(info.name, "..")   { return false; }
+        if String.compare(info.name, "_", 1) { return false; }
+        if info.kind == Fs.InfoKind.Directory {
+            loop i := 0; i < IGNORE.len; i += 1 {
+                if String.compare(info.name, IGNORE[i]) { return false; }
+            }
+        }
+        return true;
+    });
+    defer Fs.info_list_delete(list);
+    if !is_ok(err) { return err; }
+
+    loop i := 0; i < list.len; i += 1 {
+        info :: &list[i];
+        switch info.kind {
+            Fs.InfoKind.File {
+                ext :: Fs.get_extension(info.name);
+                if String.compare(ext, extension) { 
+                    String.append(out, path);
+                    String.append(out, "/");
+                    String.append(out, info.name);
+                    String.append(out, " ");
+                }
+            }
+            Fs.InfoKind.Directory {
+                new_path :: tprint("%/%", path, info.name);
+                err :: process_dir(new_path, extension, out);
+                if !is_ok(err) { return err; }
+            }
+        }
+    }
+    return ok();
+}
+
+list_files :: fn (dir: string, extension := "bl") (string, Error) {
+    list :: String.new(128);
+    err :: process_dir(dir, extension, &list);
+    if !is_ok(err) { 
+        String.delete(list);
+        return "", err;
+    }
+    return list, err;
+}
+
+docs_dir :: fn () Error {
+    print("Process '%'\n", SRC_API_DIR);
+    files, err_list :: list_files(SRC_API_DIR);
+    if !is_ok(err_list) { return err_list; }
+    defer String.delete(files);
+    if String.is_empty(files) { return ok(); }
+    err_cmd :: cmd("blc -doc --doc-out-dir=\"%\" %", TMP_DIR, files);
+    if !is_ok(err_cmd) { return err_cmd; }
+    return ok();
+}
+
+main :: fn () s32 {
+    defer temporary_release();
+    print("Generate BL documentation...\n");
+    e1:: prepare();
+    if !is_ok(e1) { print_err("%", e1); return e1.code; }
+    e2 :: docs_dir();
+    if !is_ok(e2) { print_err("%", e2); return e2.code; }
+    e3 :: html();
+    if !is_ok(e3) { print_err("%", e3); return e3.code; }
+    print("DONE!\n");
+    e4 :: cleanup();
+    if !is_ok(e4) { print_err("%", e4); return e4.code; }
+    print("DONE!\n");
+    return 0;
+}

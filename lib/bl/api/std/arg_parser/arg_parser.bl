@@ -145,8 +145,12 @@ run :: fn (_parser: Parser, args: []string, ctx: *Ctx, start := 0) Error {
         arg :: &args[0];
         if arg.len > 0 && (@arg)[0] != '-' {
             array_push(&ctx.positional, @arg);
-            args.ptr = &args[1];
             args.len -= 1;
+            if args.len > 0 {
+                args.ptr = &args[1];
+            } else {
+                args.ptr = null;
+            }
             continue;
         }
         found: bool;

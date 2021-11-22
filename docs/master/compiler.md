@@ -86,3 +86,6 @@ or numeric maximum error code on fail (compilation error or compile time executi
 - When `--run-tests` flag is specified `blc` return count of failed tests on success or numeric
 maximum error code on fail.
 
+# Compile-time debugger
+
+**TODO**
