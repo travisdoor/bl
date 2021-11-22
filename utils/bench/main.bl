@@ -14,6 +14,7 @@ help ::
 
 main :: fn () s32 {
 	defer temporary_release();
+    defer ArgParser.ctx_terminate(&g_args);
     parser :: ArgParser.new(help);
     defer ArgParser.delete(parser);
 
@@ -38,14 +39,14 @@ main :: fn () s32 {
         ArgParser.print_help(parser);
         return 1;
     }
-    if g_args.other.len == 0 { 
+    if g_args.positional.len == 0 { 
         print_err("Expected executable name.");
         ArgParser.print_help(parser);
         return 2;
     }
     if g_args.help { return 0; }
 
-    cmd :: tprint("% 1>nul", g_args.other[0]);
+    cmd :: tprint("% 1>nul", g_args.positional[0]);
     ec := 0;
     runtime_min := 1000000.0;
     runtime_max := 0.001;
@@ -70,7 +71,7 @@ main :: fn () s32 {
         "Error count; %.\n"
         "Runtime min: % ms.\n"
         "Runtime max: % ms.\n"
-        "AVG:         % ms.\n", g_args.other[0], g_args.rc, ec, runtime_min, runtime_max, runtime_total / cast(f64) g_args.rc
+        "AVG:         % ms.\n", g_args.positional[0], g_args.rc, ec, runtime_min, runtime_max, runtime_total / cast(f64) g_args.rc
         );
     print("================================================================================\n");
     return 0;

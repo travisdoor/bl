@@ -1,23 +1,33 @@
+BIN_DIR :: "../bin";
+
 build :: fn () #build_entry {
     target_bl_make_project();    
     target_c2bl();
+    target_bench();
     compile_all();
 }
 
 target_bl_make_project :: fn () {
     exe := add_executable("bl-make-project");
-    add_unit(exe, "bl-make-project/src/main.bl");    
-    set_output_dir(exe, "bin");
+    add_unit(exe, "bl-make-project/main.bl");    
+    set_output_dir(exe, BIN_DIR);
 }
 
 target_c2bl :: fn () {
     #if PLATFORM != Platform.windows { warn_skip("c2bl"); return; }
     exe := add_executable("c2bl");
     add_unit(exe, "c2bl/src/main.bl");
-    set_output_dir(exe, "bin");
+    set_output_dir(exe, BIN_DIR);
     set_module_dir(exe, "c2bl/_modules", ModuleImportPolicy.System);
     exe.copy_dependencies = true;
     exe.register_split = true;
+}
+
+target_bench :: fn () {
+    exe :: add_executable("bench");
+    set_output_dir(exe, BIN_DIR);
+    add_unit(exe, "bench/main.bl");
+    compile(exe);
 }
 
 warn_skip :: fn (name: string) #inline {

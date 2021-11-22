@@ -1,6 +1,0 @@
-build :: fn () #build_entry {
-    exe :: add_executable("bl-make-project");
-    set_output_dir(exe, "bin");
-    add_unit(exe, "src/main.bl");
-    compile(exe);
-}
