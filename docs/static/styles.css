@@ -2,24 +2,14 @@ body {
   background-color: white;
   font-family: Arial, Helvetica, sans-serif;
   max-width: 800px;
-  margin-left: 26%;
+  margin: auto;
 }
 footer {
   text-align: right;
 }
-h1 {
-  background-color: #dae9ec;
-  padding: 2px;
-  margin-top: 100px;
-}
-.title {
-  background-color: #dae9ec;
-  padding: 2px;
-  margin-top: 0;
-}
 h2 {
   background-color: #f2f2f2;
-  padding: 2px;
+  padding: 4px;
 }
 table {
   border-collapse: collapse;
@@ -38,20 +28,47 @@ th {
   background-color: #3F51B5;
   color: white;
 }
+pre {
+  background-color: aliceblue;
+  border: 1px;
+  border-color: #ced4da;
+  border-style: solid;
+  padding: 2px;
+}
 code {
-    font-family: Consolas, Menlo, monospace;
+  font-family: Consolas, Menlo, monospace;
+  font-size: 13px;
 }
 #TOC {
   position: fixed;
   left: 0;
-  top: 0;
+  top: 40px;
   background-color:#eeeeee;
   overflow: scroll;
   height: 100%;
-  width: 25%;
+  width: 400px;
 }
 #TOC #full { display: none; }
 #TOC:hover #full{
   display: block;
+}
+#MENU {
+  position: fixed;
+  left: 0;
+  top: 0;
+  background-color:#ddd;
+  height: 40px;
+  width: 100%;
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+#MENU li {
+  float: left;
+}
+#MENU li a {
+  display: block;
+  padding: 10px;
 }
 

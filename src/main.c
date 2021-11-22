@@ -306,6 +306,7 @@ int main(s32 argc, char *argv[])
     opt.target = builder_add_default_target("out");
 
     bool has_input_files = false;
+    bool print_version = false;
 
 #define ID_BUILD 1
 #define ID_RUN 2
@@ -334,6 +335,11 @@ int main(s32 argc, char *argv[])
             .name = "-doc",
             .help = "Generate documentation and exit.",
             .id   = ID_DOC,
+        },
+        {
+            .name = "--version",
+            .help = "Print compiler version and exit.",
+            .property.b   = &print_version,
         },
         {
             .kind = STRING,
@@ -601,6 +607,11 @@ SKIP:
 
     if (opt.app.print_about) {
         print_about(stdout);
+        EXIT(EXIT_SUCCESS);
+    }
+    
+    if (print_version) {
+        fprintf(stdout, "%s", BL_VERSION);
         EXIT(EXIT_SUCCESS);
     }
 

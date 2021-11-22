@@ -8,7 +8,7 @@ Args :: struct #base ArgParser.Ctx {
 
 args: Args;
 
-SRC_API_DIR :: "../lib/bl/api";
+SRC_API_DIR :: "../../lib/bl/api";
 
 IGNORE :: {:[3]string:
            "sdl2",

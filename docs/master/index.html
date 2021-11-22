@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en-US" xml:lang="en-US">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Biscuit Language (1.0.0)</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="../static/styles.css" />
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+  <link rel="icon" href="../static/favicon.png">
+  <style>
+  body {
+    margin-left: 410px;
+    margin-top: 50px;
+  }
+  </style>
+</head>
+<body>
+<ul id="MENU">
+  <li><a href="../index.html">Home</a></li>
+  <li><a href="index.html">Installation</a></li>
+  <li><a href="compiler.html">Compiler Usage</a></li>
+  <li><a href="language.html">API Manual</a></li>
+</ul>
+<header id="title-block-header">
+<h1 class="title">Biscuit Language (1.0.0)</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#installation">Installation</a>
+<ul>
+<li><a href="#windows">Windows</a></li>
+<li><a href="#linux-ubuntu">Linux (Ubuntu)</a></li>
+<li><a href="#macos">macOS</a></li>
+</ul></li>
+<li><a href="#installation-from-source-code">Installation from source code</a>
+<ul>
+<li><a href="#requirements">Requirements</a></li>
+<li><a href="#windows-1">Windows</a></li>
+<li><a href="#linux-ubuntu-1">Linux (Ubuntu)</a></li>
+<li><a href="#macos-1">macOS</a></li>
+<li><a href="#build-utils">Build Utils</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="installation">Installation</h1>
+<h2 id="windows">Windows</h2>
+<ul>
+<li>Download and install latest <a href="https://visualstudio.microsoft.com/visual-cpp-build-tools">MS Build Tools</a> or Visual Studio with C/C++ support.</li>
+<li>Download and unpack <code>blc</code> release zip package.</li>
+<li>Add <code>path\to\your\blc\bin</code> to the system <code>PATH</code>.</li>
+<li>Run configuration.</li>
+</ul>
+<pre><code>blc --configure</code></pre>
+<h2 id="linux-ubuntu">Linux (Ubuntu)</h2>
+<ul>
+<li>Install Build Essential package if you don’t have it.</li>
+</ul>
+<pre><code>apt-get update &amp;&amp; apt-get install build-essential</code></pre>
+<ul>
+<li>Download and unpack <code>blc</code> release zip package.</li>
+<li>Add <code>path/to/your/blc/bin</code> to the system <code>PATH</code>.</li>
+<li>Run configuration.</li>
+</ul>
+<pre><code>blc --configure</code></pre>
+<h2 id="macos">macOS</h2>
+<ul>
+<li>Install Command Line Tools.</li>
+</ul>
+<pre><code>xcode-select --install</code></pre>
+<ul>
+<li>Download and unpack <code>blc</code> release zip package.</li>
+<li>Add <code>path/to/your/blc/bin</code> to the system <code>PATH</code>.</li>
+<li>Run configuration.</li>
+</ul>
+<pre><code>blc --configure</code></pre>
+<h1 id="installation-from-source-code">Installation from source code</h1>
+<h2 id="requirements">Requirements</h2>
+<ul>
+<li>git</li>
+<li>CMake</li>
+<li>LLVM dev packages (only on Unix)</li>
+<li>gcc/clang/msbuild</li>
+</ul>
+<h2 id="windows-1">Windows</h2>
+<ul>
+<li>Install Visual Studio 2019 with C/C++ support.</li>
+<li>Download and compile <code>blc</code>, LLVM dev package and LLD linker binary will be downloaded as part of cmake project generation.</li>
+</ul>
+<pre><code>git clone https://github.com/travisdoor/bl.git
+cd bl
+mkdir build
+cd build
+cmake .. -G &quot;Visual Studio 16 2019&quot; -Thost=x64 -DCMAKE_BUILD_TYPE=Release
+cmake --build . --config Release</code></pre>
+<ul>
+<li>Add <code>path/to/your/blc/bin</code> to the system <code>PATH</code>.</li>
+<li>Run first-use configuration with path to Visual Studio specified. (<code>bl-config.exe</code> is located in <code>bin</code> directory after build) This will generate new <code>etc\bl.conf</code> file.</li>
+</ul>
+<pre><code>bl-config.exe --build-tools-path &quot;C:\Program Files (x86)\Microsoft Visual Studio\2019\Community&quot;</code></pre>
+<h2 id="linux-ubuntu-1">Linux (Ubuntu)</h2>
+<ul>
+<li>Install Build Essential package if you don’t have it <code>apt-get update &amp;&amp; apt-get install build-essential</code>.</li>
+<li>Install LLVM dev package <code>apt install llvm-10-dev</code></li>
+<li>Download and compile <code>bl</code></li>
+</ul>
+<pre><code>git clone https://github.com/travisdoor/bl.git
+cd bl
+mkdir build
+cd build
+cmake ..
+make</code></pre>
+<ul>
+<li>Add <code>path/to/your/blc/bin</code> to the system <code>PATH</code>.</li>
+<li>Run first-use configuration.</li>
+</ul>
+<pre><code>blc --configure</code></pre>
+<h2 id="macos-1">macOS</h2>
+<ul>
+<li>Install command line tools <code>xcode-select --install</code>.</li>
+<li>Install LLVM package via your favourite package manager <code>brew install llvm</code>.</li>
+<li>Download and compile <code>bl</code></li>
+</ul>
+<pre><code>git clone https://github.com/travisdoor/bl.git
+cd bl
+mkdir build
+cd build
+cmake ..
+make</code></pre>
+<ul>
+<li>Add <code>path/to/your/blc/bin</code> to the system <code>PATH</code>.</li>
+<li>Run first-use configuration.</li>
+</ul>
+<pre><code>blc --configure</code></pre>
+<p><strong>note</strong>: <code>blc</code> use by default system linker <code>ld</code> because of some issues with <code>lld</code> on Mac. You can force use of <code>LLD</code> by <code>bl-config --use-lld</code>.</p>
+<h2 id="build-utils">Build Utils</h2>
+<p>You can compile also <code>Utils</code> target to get some useful stuff. All utilities are located in <code>utils</code> folder. Compilation output can be found in <code>utils/bin</code> directory.</p>
+<pre><code>cmake --build . --config Release --target Utils</code></pre>
+</body>
+</html>

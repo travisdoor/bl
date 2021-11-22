@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en-US" xml:lang="en-US">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Biscuit Language (1.0.0)</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="../static/styles.css" />
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+  <link rel="icon" href="../static/favicon.png">
+  <style>
+  body {
+    margin-left: 410px;
+    margin-top: 50px;
+  }
+  </style>
+</head>
+<body>
+<ul id="MENU">
+  <li><a href="../index.html">Home</a></li>
+  <li><a href="index.html">Installation</a></li>
+  <li><a href="compiler.html">Compiler Usage</a></li>
+  <li><a href="language.html">API Manual</a></li>
+</ul>
+<header id="title-block-header">
+<h1 class="title">Biscuit Language (1.0.0)</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#compiler-usage">Compiler usage</a>
+<ul>
+<li><a href="#compiler-options">Compiler options:</a></li>
+<li><a href="#configuration">Configuration</a></li>
+<li><a href="#execution-status">Execution status</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="compiler-usage">Compiler usage</h1>
+<p>Biscuit language compiler is standalone terminal application called blc. It can be compiled from source code found on GitHub repository or downloaded from home page as binary executable. All three major operating systems (Windows, macOS and Linux) are supported, but current active development is done on Windows and it usually takes some time to port latest changes to the other platforms. Compiler executable can be found in bin directory it’s usually good idea to add executable location to system PATH to be accessible from other locations.</p>
+<p>There are several options which can be passed to the compiler.</p>
+<h2 id="compiler-options">Compiler options:</h2>
+<pre class="text"><code>blc --help
+Usage:
+  blc [options] [source-files]
+
+Alternative usage:
+  blc [options] &lt;-build&gt; [build-arguments]
+  blc [options] &lt;-run&gt; &lt;source-file&gt; [arguments] [forwarded-arguments]
+
+Options:
+  -build                   Invoke project build pipeline. All following arguments are
+                           forwarded into the build script and ignored by compiler itself.
+                           Use as &#39;-build [arguments]&#39;.
+  -doc                     Generate documentation and exit.
+  -opt=&lt;debug|release-fast|release-small&gt;
+                           Specify binary optimization mode (use &#39;debug&#39; by default).
+  -release                 Specify binary optimization mode to release. (same as
+                           &#39;-opt=release-fast&#39;)
+  -run                     Execute BL program using interpreter and exit. The compiler
+                           expects &lt;source-file&gt; after &#39;-run&#39; flag, the file name and
+                           all following command line arguments are passed into the
+                           executed program and ignored by compiler itself. Use as
+                           &#39;-run &lt;source-file&gt; [arguments]&#39;.
+  -shared                  Compile shared library.
+  --about                  Print compiler info and exit
+  --assert=&lt;default|on|off&gt;
+                           Set assert mode (&#39;default&#39; option sets assert &#39;on&#39; in debug
+                           and &#39;off&#39; in release mode).
+  --ast-dump               Print AST.
+  --configure              Generate configuration file and exit.
+  --di=&lt;dwarf|codeview&gt;    Set debug info format.
+  --doc-out-dir=&lt;STRING&gt;   Set documentation output directory. (Use &#39;out&#39; in current
+                           working directory by default.)
+  --emit-asm               Write assembly to file.
+  --emit-llvm              Write LLVM-IR to file.
+  --emit-mir               Write MIR to file.
+  --error-limit=&lt;N&gt;        Set maximum reported error count.
+  --full-path              Report full file paths.
+  --help                   Print usage information and exit.
+  --lex-dump               Print tokens.
+  --no-analyze             Disable analyze pass, only parse and exit.
+  --no-api                 Don&#39;t load internal API.
+  --no-bin                 Don&#39;t write binary to disk.
+  --no-color               Disable colored output.
+  --no-jobs                Enable single-thread mode.
+  --no-llvm                Disable LLVM back-end.
+  --no-usage-check         Disable checking of unused symbols.
+  --no-warning             Ignore all warnings.
+  --reg-split=&lt;off|on&gt;     Enable/disable splitting of structures passed into the
+                           function by value into registers.
+  --run-tests              Execute all unit tests in compile time.
+  --silent                 Disable compiler console logging.
+  --syntax-only            Check syntax and exit.
+  --time-report            Print compilation time report.
+  --verbose                Enable verbose mode.
+  --verify-llvm            Verify LLVM IR after generation.
+  --vmdbg-attach           Attach compile-time execution debugger.
+  --vmdbg-break-on=&lt;N&gt;     Attach compile-time execution debugger and sets break
+                           point to the MIR instruction with &lt;N&gt; id.
+  --where-is-api           Return path to API folder and exit.</code></pre>
+<h2 id="configuration">Configuration</h2>
+<p>Use <code>bl-config</code> tool to change compiler configuration. This tool generates configuration file <code>etc/bl.conf</code> containing all required information needed by compiler during compilation.</p>
+<h2 id="execution-status">Execution status</h2>
+<ul>
+<li>After regular compilation process <code>blc</code> return 0 on success or numeric maximum error code on fail.</li>
+<li>When <code>-run</code> flag is specified <code>blc</code> return status returned by executed <code>main</code> function on success or numeric maximum error code on fail (compilation error or compile time execution error).</li>
+<li>When <code>--run-tests</code> flag is specified <code>blc</code> return count of failed tests on success or numeric maximum error code on fail.</li>
+</ul>
+</body>
+</html>
