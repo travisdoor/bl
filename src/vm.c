@@ -1588,15 +1588,8 @@ void interp_instr_load(struct virtual_machine *vm, struct mir_instr_load *load)
     struct mir_type *dest_type = load->base.value.type;
     bassert(dest_type);
     bassert(mir_is_pointer_type(load->src->value.type));
-
     vm_stack_ptr_t src_ptr = fetch_value(vm, &load->src->value);
     src_ptr                = VM_STACK_PTR_DEREF(src_ptr);
-
-    if (!src_ptr) {
-        builder_error("Dereferencing null pointer!");
-        vm_abort(vm);
-    }
-
     stack_push(vm, src_ptr, dest_type);
 }
 
@@ -1614,7 +1607,13 @@ void interp_instr_store(struct virtual_machine *vm, struct mir_instr_store *stor
     }
     struct mir_type *src_type = store->src->value.type;
     bassert(src_type);
-    dest_ptr                     = VM_STACK_PTR_DEREF(dest_ptr);
+    dest_ptr = VM_STACK_PTR_DEREF(dest_ptr);
+    if (!dest_ptr) {
+        builder_error("Dereferencing null pointer!");
+        vm_abort(vm);
+        return;
+    }
+
     vm_stack_ptr_t const src_ptr = fetch_value(vm, &store->src->value);
     bassert(dest_ptr && src_ptr);
     memcpy(dest_ptr, src_ptr, src_type->store_size_bytes);

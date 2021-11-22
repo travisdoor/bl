@@ -77,17 +77,9 @@ generate :: fn () #test {
     test_eq(state, 0);
 }
 
-global :: fn () #test {
+test_output :: fn () #test {
     defer temporary_release();
-    file :: "doc.test.rst";
-    template :: tprint("%/%/%", currdir(), TEMPLATE_DIR, file);
-    test :: tprint("%/../../.temp/%/%", currdir(), OUT_DIR, file);
-    compare_files(template, test);
-}
-
-function_1_test :: fn () #test {
-    defer temporary_release();
-    file :: "doc.test/function_1.rst";
+    file :: "doc.test.md";
     template :: tprint("%/%/%", currdir(), TEMPLATE_DIR, file);
     test :: tprint("%/../../.temp/%/%", currdir(), OUT_DIR, file);
     compare_files(template, test);

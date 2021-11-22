@@ -463,6 +463,7 @@ void target_add_file(struct target *target, const char *filepath)
     bmagic_check(target);
     bassert(filepath && "Invalid filepath!");
     char *dup = strdup(filepath);
+    win_path_to_unix(dup, strlen(dup));
     arrput(target->files, dup);
 }
 
@@ -477,18 +478,18 @@ void target_add_lib_path(struct target *target, const char *path)
 {
     bmagic_check(target);
     if (!path) return;
-    char *tmp = strdup(path);
-    if (!tmp) return;
-    arrput(target->default_lib_paths, tmp);
+    char *dup= strdup(path);
+    win_path_to_unix(dup, strlen(dup));
+    arrput(target->default_lib_paths, dup);
 }
 
 void target_add_lib(struct target *target, const char *lib)
 {
     bmagic_check(target);
     if (!lib) return;
-    char *tmp = strdup(lib);
-    if (!tmp) return;
-    arrput(target->default_libs, tmp);
+    char *dup = strdup(lib);
+	win_path_to_unix(dup, strlen(dup));
+    arrput(target->default_libs, dup);
 }
 
 void target_set_output_dir(struct target *target, const char *dir)

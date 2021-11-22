@@ -9,7 +9,6 @@ BL_EXE_PATH_UNIX :: "bin/blc";
 TMP_DIR :: ".temp";
 MAIN_TEST_SUITE_FILEPATH :: "tests/src/main.test.bl";
 EXAMPLES_DIR :: "examples";
-EXAMPLES_DOCS_DIR :: "examples/docs";
 DOC_TEST :: "tests/docs/doc.test.bl";
 EXPECT_FAIL_DIR :: "tests/src/expect_fail";
 
@@ -27,6 +26,7 @@ HARDCODED_MODULES :: {:[10]string:
                      };
 
 main :: fn () s32 {
+    defer ArgParser.ctx_terminate(&_args);
     defer temporary_release();
     
     wdir_init();
@@ -67,20 +67,9 @@ main :: fn () s32 {
             test_all_in_dir(path);
         }
 
-        // examples docs
-        {
-            path :: get_path(EXAMPLES_DOCS_DIR);
-            test_all_in_dir(path);
-        }
-
         print("Test misc:\n");    
         { // gen-docs
-            path :: get_path("gen-docs.bl");
-            test_file(path, TestKind.Analyze);
-        }
-
-        { // baker
-            path :: get_path("baker.bl");
+            path :: get_path("docs/master/make.bl");
             test_file(path, TestKind.Analyze);
         }
 

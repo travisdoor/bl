@@ -101,7 +101,7 @@ new :: fn (help_text := String.empty) Parser {
         "-h",
         "--help",
         "Print this help.",
-        &fn (parser: Parser, args: []string, ctx: *Ctx) (s32, Error) {
+        &fn (parser: Parser, _: []string, ctx: *Ctx) (s32, Error) {
             if ctx { ctx.help = true; }
             print_help(parser);
             return 1, ok();
