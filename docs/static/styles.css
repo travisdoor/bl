@@ -63,6 +63,7 @@ code {
   margin: 0;
   padding: 0;
   overflow: hidden;
+  z-index: 1;
 }
 #MENU li {
   float: left;
