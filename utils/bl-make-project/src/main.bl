@@ -147,12 +147,12 @@ main :: fn () s32 {
         return 1;
     }
     if g_args.help { return 0; }
-    if g_args.other.len == 0 {
+    if g_args.positional.len == 0 {
         print_err("Expected project name!");
         ArgParser.print_help(parser);
         return 1;
     }
-    proj_name :: g_args.other[0];
+    proj_name :: g_args.positional[0];
     print_log("Generate new project '%' in '%' (%).", proj_name, g_args.proj_dir, g_args.proj_kind);
     
     proj_root :: sprint("%/%", g_args.proj_dir, proj_name);

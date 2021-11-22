@@ -34,13 +34,14 @@
 VERSION :: "1.0.0";
 
 main :: fn () s32 {
+    defer ArgParser.ctx_terminate(&_args);
     if !handle_args() { return 1; }
     if _args.help { return 0; }
-    if _args.other.len == 0 { eprint("No input files!\n"); return 1; }
+    if _args.positional.len == 0 { eprint("No input files!\n"); return 1; }
 
     state := 0;
-    loop i := 0; i < _args.other.len; i += 1 {
-        in_filepath :: _args.other[i];
+    loop i := 0; i < _args.positional.len; i += 1 {
+        in_filepath :: _args.positional[i];
         String.replace_all(&in_filepath, '\\', '/');
         err :: process_file(in_filepath);
         if !is_ok(err) {
@@ -202,7 +203,7 @@ process_file :: fn (in_filepath: string) Error {
 visitor :: fn (c: CXCursor, _: CXCursor, client_data: CXClientData) CXChildVisitResult {
     ctx :: cast(*Ctx) client_data;
     loc := clang_getCursorLocation(c);
-    if false { // TEST
+    #if false { // TEST
         file: CXFile;
         clang_getExpansionLocation(loc, &file, null, null, null);
         spelling :: clang_getFileName(file);

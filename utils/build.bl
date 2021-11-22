@@ -11,7 +11,7 @@ target_bl_make_project :: fn () {
 }
 
 target_c2bl :: fn () {
-    if PLATFORM != Platform.windows { warn_skip("c2bl"); return; }
+    #if PLATFORM != Platform.windows { warn_skip("c2bl"); return; }
     exe := add_executable("c2bl");
     add_unit(exe, "c2bl/src/main.bl");
     set_output_dir(exe, "bin");
