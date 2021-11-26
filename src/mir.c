@@ -5728,7 +5728,8 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
             const s32   len = snprintf(NULL, 0, fmt, name_prefix, fn->id->str);
             bassert(len > 0);
             char *buf = scdup(&ctx->assembly->string_cache, NULL, len);
-            snprintf(buf, len, fmt, name_prefix, fn->id->str);
+            // +1 len does not include terminator.
+            snprintf(buf, len + 1, fmt, name_prefix, fn->id->str);
             fn->full_name = buf;
         } else {
             fn->full_name = fn->id->str;

@@ -1,11 +1,6 @@
-my_function :: fn () {
-    ptr: *s32 = null;
-    @ptr = 10; // error
-}
+#import "std/fs"
 
 main :: fn () s32 {
-    debugbreak;
-    my_function();
     return 0;
 }
 
