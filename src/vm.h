@@ -72,11 +72,18 @@ struct vm_stack {
     bool                    aborted;         // true when execution was aborted
 };
 
+struct vm_bufpage {
+    struct vm_bufpage *prev;
+    usize              len, cap;
+    vm_stack_ptr_t     top;
+};
+
 struct virtual_machine {
-    struct vm_stack *stack;
-    struct assembly *assembly;
-    char            *dcsigtmp;
-    bool             aborted;
+    struct vm_stack   *stack;
+    struct vm_bufpage *data; // Compile time values + global variables.
+    struct assembly   *assembly;
+    char              *dcsigtmp;
+    bool               aborted;
 };
 
 enum mir_value_address_mode {
@@ -129,15 +136,7 @@ void vm_do_cast(vm_stack_ptr_t   dest,
                 struct mir_type *src_type,
                 s32              op);
 
-/// Allocates global variable.
-///
-/// Allocate space on the stack for passed variable in Virtual Machine. This method works
-/// also for comptime variables, but it's used only for implicit compiler generated variables
-/// without SetInitializer instruction defined! When SetInitializer is used we can simply move
-/// memory pointer from initialization value to variable const expression value (to safe memory and
-/// time needed by copying).
-vm_stack_ptr_t
-vm_alloc_global(struct virtual_machine *vm, struct assembly *assembly, struct mir_var *var);
+void vm_alloc_global(struct virtual_machine *vm, struct assembly *assembly, struct mir_var *var);
 
 /// Allocate raw memory on the stack to hold sizeof(type) value.
 vm_stack_ptr_t

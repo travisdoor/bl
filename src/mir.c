@@ -77,12 +77,6 @@
         .state = ANALYZE_##_state, .waiting_for = (_waiting_for)                                   \
     }
 
-#define CREATE_TYPE_RESOLVER_CALL(_ast)                                                            \
-    ast_create_impl_fn_call(                                                                       \
-        ctx, (_ast), RESOLVE_TYPE_FN_NAME, ctx->builtin_types->t_resolve_type_fn, false)
-
-#define TEXT_LINE "--------------------------------------------------------------------------------"
-
 #define GEN_INSTR_SIZEOF
 #include "mir.inc"
 #undef GEN_INSTR_SIZEOF
@@ -702,12 +696,7 @@ static struct mir_instr *
 ast_create_global_initializer2(struct context *ctx, struct ast *ast_value, mir_instrs_t *decls);
 static struct mir_instr *
 ast_create_global_initializer(struct context *ctx, struct ast *node, struct mir_instr *decls);
-static struct mir_instr *ast_create_impl_fn_call(struct context  *ctx,
-                                                 struct ast      *node,
-                                                 const char      *fn_name,
-                                                 struct mir_type *fn_type,
-                                                 bool             schedule_analyze);
-
+static struct mir_instr *ast_create_type_resolver_call(struct context *ctx, struct ast *ast_type);
 static void              ast_push_defer_stack(struct context *ctx);
 static void              ast_pop_defer_stack(struct context *ctx);
 static void              ast_free_defer_stack(struct context *ctx);
@@ -964,6 +953,12 @@ static INLINE struct mir_fn *instr_owner_fn(struct mir_instr *instr)
     }
     if (!instr->owner_block) return NULL;
     return instr->owner_block->owner_fn;
+}
+
+static INLINE bool is_inside_comptime_function(struct mir_instr *instr)
+{
+    struct mir_fn *owner_fn = instr_owner_fn(instr);
+    return owner_fn ? isflag(owner_fn->flags, FLAG_COMPTIME) : false;
 }
 
 #define report_error(code, node, format, ...)                                                      \
@@ -4459,6 +4454,9 @@ struct result analyze_resolve_type(struct context   *ctx,
     }
 
     if (vm_execute_comptime_call(ctx->vm, ctx->assembly, (struct mir_instr_call *)resolver_call)) {
+        // @Hack: Data coming from compile-time execution of type resolver is not persistent! It
+        // lives on current stack and must be directly used before any other stack-related
+        // interaction.
         struct mir_type *resolved_type = MIR_CEV_READ_AS(struct mir_type *, &resolver_call->value);
         bmagic_check(resolved_type);
         *out_type = resolved_type;
@@ -4829,7 +4827,6 @@ struct result analyze_var(struct context *ctx, struct mir_var *var)
     }
     switch (var->value.type->kind) {
     case MIR_TYPE_TYPE:
-        // Disable LLVM generation of typedefs.
         if (!var->is_mutable) break;
         // Typedef must be immutable!
         report_error(INVALID_MUTABILITY, var->decl_node, "Type declaration must be immutable.");
@@ -5617,7 +5614,7 @@ struct result analyze_instr_arg(struct context UNUSED(*ctx), struct mir_instr_ar
 {
     zone();
     struct mir_fn *fn = arg->base.owner_block->owner_fn;
-    bassert(fn);
+    bmagic_check(fn);
 
     struct mir_type *type = mir_get_fn_arg_type(fn->type, arg->i);
     bassert(type);
@@ -7495,6 +7492,19 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
     bassert(result_type && "invalid type of call result");
     call->base.value.type = result_type;
 
+    { // set call to compile time call in case the called function is marked as comptime
+        struct mir_fn *fn = optional_fn_or_group.fn;
+        if (fn) {
+            bmagic_check(fn);
+            const bool call_in_compile_time = isflag(fn->flags, FLAG_COMPTIME);
+            if (call_in_compile_time) {
+                // @Cleanup: is_comptime vs call_in_compile_time
+                call->call_in_compile_time   = true;
+                call->base.value.is_comptime = true;
+            }
+        }
+    }
+
     if (call->call_in_compile_time) {
         if (!mir_is_comptime(&call->base))
             babort("Function called in compile time must be comptime.");
@@ -7631,7 +7641,8 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         }
     }
     return_zone(ANALYZE_RESULT(PASSED, 0));
-    // ERROR
+
+    // ERROR handling
 INVALID_ARGC:
     report_error(INVALID_ARG_COUNT,
                  call->base.node,
@@ -9208,7 +9219,7 @@ struct mir_instr *ast_expr_cast(struct context *ctx, struct ast *cast)
     struct mir_instr *type = NULL;
     if (!auto_cast) {
         bassert(ast_type);
-        type = CREATE_TYPE_RESOLVER_CALL(ast_type);
+        type = ast_create_type_resolver_call(ctx, ast_type);
     }
     struct mir_instr *next = ast(ctx, ast_next);
     return append_instr_cast(ctx, cast, type, next);
@@ -9396,7 +9407,7 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
         (struct mir_instr_fn_proto *)append_instr_fn_proto(ctx, lit_fn, NULL, NULL, true);
 
     // Generate type resolver for function type.
-    fn_proto->type = CREATE_TYPE_RESOLVER_CALL(ast_fn_type);
+    fn_proto->type = ast_create_type_resolver_call(ctx, ast_fn_type);
     bassert(fn_proto->type);
 
     bassert(!(ctx->polymorph.is_replacement_active && sarrlenu(&ctx->polymorph.replacement_queue)));
@@ -9785,7 +9796,8 @@ static void ast_decl_fn(struct context *ctx, struct ast *ast_fn)
     bassert(value);
 
     if (ast_type)
-        ((struct mir_instr_fn_proto *)value)->user_type = CREATE_TYPE_RESOLVER_CALL(ast_type);
+        ((struct mir_instr_fn_proto *)value)->user_type =
+            ast_create_type_resolver_call(ctx, ast_type);
 
     bassert(value);
     struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &value->value);
@@ -9822,7 +9834,7 @@ static void ast_decl_var_local(struct context *ctx, struct ast *ast_local)
     struct ast *ast_value = ast_local->data.decl_entity.value;
     // Create type resolver if there is explicitly defined type mentioned by user in
     // declaration.
-    struct mir_instr *type        = ast_type ? CREATE_TYPE_RESOLVER_CALL(ast_type) : NULL;
+    struct mir_instr *type        = ast_type ? ast_create_type_resolver_call(ctx, ast_type) : NULL;
     struct mir_instr *value       = ast(ctx, ast_value);
     const bool        is_compiler = isflag(ast_local->data.decl_entity.flags, FLAG_COMPILER);
     const bool        is_unroll   = ast_value && ast_value->kind == AST_EXPR_CALL;
@@ -9890,7 +9902,7 @@ static void ast_decl_var_global_or_struct(struct context *ctx, struct ast *ast_g
     struct ast *ast_value = ast_global->data.decl_entity.value;
     // Create type resolver if there is explicitly defined type mentioned by user in
     // declaration.
-    struct mir_instr *type           = ast_type ? CREATE_TYPE_RESOLVER_CALL(ast_type) : NULL;
+    struct mir_instr *type = ast_type ? ast_create_type_resolver_call(ctx, ast_type) : NULL;
     const bool        is_struct_decl = ast_value && ast_value->kind == AST_EXPR_TYPE &&
                                 ast_value->data.expr_type.type->kind == AST_TYPE_STRUCT;
     const bool is_mutable  = ast_global->data.decl_entity.mut;
@@ -9993,7 +10005,7 @@ struct mir_instr *ast_decl_arg(struct context *ctx, struct ast *arg)
     struct mir_instr *type = NULL;
 
     if (ast_value) {
-        type = CREATE_TYPE_RESOLVER_CALL(ast_type);
+        type = ast_create_type_resolver_call(ctx, ast_type);
         // Main idea here is create implicit global constant to hold default value, since
         // value can be more complex compound with references, we need to use same solution
         // like we already use for globals. This approach is also more effective than
@@ -10011,7 +10023,7 @@ struct mir_instr *ast_decl_arg(struct context *ctx, struct ast *arg)
     } else {
         bassert(ast_type && "Function argument must have explicit type when no default "
                             "value is specified!");
-        type = CREATE_TYPE_RESOLVER_CALL(ast_type);
+        type = ast_create_type_resolver_call(ctx, ast_type);
     }
     return append_instr_decl_arg(ctx, ast_name, type, value);
 }
@@ -10345,17 +10357,15 @@ ast_create_global_initializer(struct context *ctx, struct ast *ast_value, struct
     return ast_create_global_initializer2(ctx, ast_value, decls);
 }
 
-struct mir_instr *ast_create_impl_fn_call(struct context  *ctx,
-                                          struct ast      *node,
-                                          const char      *fn_name,
-                                          struct mir_type *fn_type,
-                                          bool             schedule_analyze)
+struct mir_instr *ast_create_type_resolver_call(struct context *ctx, struct ast *ast_type)
 {
-    if (!node) return NULL;
+    if (!ast_type) return NULL;
+    const char      *fn_name = RESOLVE_TYPE_FN_NAME;
+    struct mir_type *fn_type = ctx->builtin_types->t_resolve_type_fn;
 
     struct mir_instr_block *prev_block = ast_current_block(ctx);
-    struct mir_instr *fn_proto = append_instr_fn_proto(ctx, NULL, NULL, NULL, schedule_analyze);
-    fn_proto->value.type       = fn_type;
+    struct mir_instr       *fn_proto   = append_instr_fn_proto(ctx, NULL, NULL, NULL, false);
+    fn_proto->value.type               = fn_type;
 
     struct mir_fn *fn = create_fn(
         ctx, NULL, NULL, fn_name, 0, (struct mir_instr_fn_proto *)fn_proto, true, BUILTIN_ID_NONE);
@@ -10364,10 +10374,10 @@ struct mir_instr *ast_create_impl_fn_call(struct context  *ctx,
     struct mir_instr_block *entry = append_block(ctx, fn, "entry");
     entry->base.ref_count         = NO_REF_COUNTING;
     set_current_block(ctx, entry);
-    struct mir_instr *result = ast(ctx, node);
+    struct mir_instr *result = ast(ctx, ast_type);
     append_instr_ret(ctx, NULL, result);
     set_current_block(ctx, prev_block);
-    return create_instr_call_comptime(ctx, node, fn_proto);
+    return create_instr_call_comptime(ctx, ast_type, fn_proto);
 }
 
 struct mir_instr *ast(struct context *ctx, struct ast *node)

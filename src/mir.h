@@ -452,7 +452,7 @@ struct mir_variant {
 
 // VAR
 struct mir_var {
-    struct mir_const_expr_value value; // contains also allocated type
+    struct mir_const_expr_value value; // contains also allocated type @Cleanup?
     struct id                  *id;
     struct ast                 *decl_node;
     struct scope               *decl_scope;
@@ -489,9 +489,9 @@ struct mir_instr {
     struct mir_instr           *next;
     enum mir_instr_kind         kind;
     s32                         ref_count;
-	u32                         flags;
+    u32                         flags;
 
-	bmagic_member
+    bmagic_member
 };
 
 // Contains user defined compile time message.

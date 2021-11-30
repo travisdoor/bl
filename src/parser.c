@@ -383,33 +383,10 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     case HD_THREAD_LOCAL:
     case HD_ENTRY:
     case HD_EXPORT:
+    case HD_COMPTIME:
     case HD_COMPILER: {
         // only flags
         return_zone(NULL);
-    }
-
-    case HD_COMPTIME: {
-        BL_TRACY_MESSAGE("HD_FLAG", "#comptime");
-        struct ast *ref = parse_expr_ref(ctx);
-        if (!ref) {
-            struct token *tok_err = tokens_peek(ctx->tokens);
-            PARSE_ERROR(ERR_INVALID_EXPR, tok_err, CARET_WORD, "Expected call.");
-            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
-        }
-        struct ast *call = parse_expr_call(ctx, ref, true);
-        if (!call) {
-            struct token *tok_err = tokens_peek(ctx->tokens);
-            PARSE_ERROR(ERR_INVALID_EXPR, tok_err, CARET_WORD, "Expected call.");
-            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
-        }
-
-        builder_msg(MSG_WARN,
-                    0,
-                    &tok_directive->location,
-                    CARET_WORD,
-                    "The #comptime directive is experimental and should not be used yet!");
-
-        return_zone(call);
     }
 
     case HD_ERROR: {
@@ -1118,6 +1095,7 @@ bool hash_directive_to_flags(enum hash_directive_flags hd, u32 *out_flags)
         FLAG_CASE(HD_EXPORT, FLAG_EXPORT);
         FLAG_CASE(HD_THREAD_LOCAL, FLAG_THREAD_LOCAL);
         FLAG_CASE(HD_FLAGS, FLAG_FLAGS);
+        FLAG_CASE(HD_COMPTIME, FLAG_COMPTIME);
     default:
         break;
     }
@@ -1472,7 +1450,7 @@ struct ast *parse_expr_primary(struct context *ctx)
         expr = parse_expr_null(ctx);
         break;
     case SYM_HASH:
-        expr = parse_hash_directive(ctx, HD_FILE | HD_LINE | HD_COMPTIME, NULL);
+        expr = parse_hash_directive(ctx, HD_FILE | HD_LINE, NULL);
         break;
     case SYM_FN:
         if ((expr = parse_expr_lit_fn(ctx))) break;
@@ -1706,7 +1684,7 @@ struct ast *parse_expr_lit_fn(struct context *ctx)
     struct ast *curr_decl = decl_get(ctx);
     if (curr_decl && curr_decl->kind == AST_DECL_ENTITY) {
         u32 accepted = HD_EXTERN | HD_NO_INLINE | HD_INLINE | HD_COMPILER | HD_ENTRY |
-                       HD_BUILD_ENTRY | HD_INTRINSIC | HD_TEST_FN | HD_EXPORT;
+                       HD_BUILD_ENTRY | HD_INTRINSIC | HD_TEST_FN | HD_EXPORT | HD_COMPTIME;
         u32 flags = 0;
         while (true) {
             enum hash_directive_flags found        = HD_NONE;
@@ -2550,10 +2528,8 @@ NEXT:
         goto NEXT;
     case SYM_HASH: {
         enum hash_directive_flags satisfied;
-        tmp = parse_hash_directive(
-            ctx, HD_STATIC_IF | HD_ASSERT | HD_ERROR | HD_WARNING | HD_COMPTIME, &satisfied);
-        // This is little bit ugly but probably faster than parsing expressions first.
-        if (AST_IS_OK(tmp) && satisfied == HD_COMPTIME) parse_semicolon_rq(ctx);
+        tmp =
+            parse_hash_directive(ctx, HD_STATIC_IF | HD_ASSERT | HD_ERROR | HD_WARNING, &satisfied);
         break;
     }
     case SYM_RETURN:

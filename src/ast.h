@@ -61,6 +61,7 @@ enum ast_flag {
     FLAG_EXPORT       = 1 << 11, // symbols marked for dll export
     FLAG_THREAD_LOCAL = 1 << 12, // symbols marked as thread local
     FLAG_FLAGS        = 1 << 13, // enum flags
+    FLAG_COMPTIME     = 1 << 14, // compile-time execution
 };
 
 // map symbols to binary operation kind

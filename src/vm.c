@@ -118,6 +118,7 @@ static INLINE bool fn_does_return(struct mir_fn *fn)
     return fn->type->data.fn.ret_type->kind != MIR_TYPE_VOID;
 }
 
+// @Cleanup
 static INLINE bool needs_tmp_alloc(struct mir_const_expr_value *v)
 {
     return v->type->store_size_bytes > sizeof(v->_tmp);
@@ -128,6 +129,9 @@ static INLINE void eval_abort(struct virtual_machine *vm)
     vm->aborted = true;
 }
 
+// =================================================================================================
+// Execution stack manipulation
+// =================================================================================================
 #define stack_alloc_size(s) ((s) + (VM_MAX_ALIGNMENT - ((s) % VM_MAX_ALIGNMENT)))
 
 static INLINE vm_stack_ptr_t stack_alloc(struct virtual_machine *vm, usize size)
@@ -230,6 +234,60 @@ static INLINE vm_stack_ptr_t stack_rel_to_abs_ptr(struct virtual_machine *vm,
     return base + rel_ptr;
 }
 
+// =================================================================================================
+// Data buffer
+// =================================================================================================
+#define DATA_BUFFER_PAGE_SIZE 2048 // bytes
+
+static struct vm_bufpage *data_page_alloc(struct vm_bufpage *prev, usize size_needed)
+{
+    size_needed = size_needed > DATA_BUFFER_PAGE_SIZE ? size_needed : DATA_BUFFER_PAGE_SIZE;
+    struct vm_bufpage *page = bmalloc(size_needed + sizeof(struct vm_bufpage));
+    page->prev              = prev;
+    page->len               = 0;
+    page->cap               = size_needed;
+    page->top               = (vm_stack_ptr_t)(page + 1);
+    blog("allocate page %llu", size_needed);
+    return page;
+}
+
+static vm_stack_ptr_t data_alloc(struct virtual_machine *vm, usize size, s8 alignment)
+{
+    zone();
+    bassert(size > 0);
+    const usize size_needed = size + alignment;
+    if (!vm->data) vm->data = data_page_alloc(NULL, size_needed);
+    // lookup free space, if no suitable was found, allocate new block!
+    struct vm_bufpage *found = vm->data;
+    while (found) {
+        if (found->len + size_needed <= found->cap) {
+            break;
+        }
+        found = found->prev;
+    }
+    if (!found) {
+        vm->data = data_page_alloc(vm->data, size_needed);
+        found    = vm->data;
+    }
+    bassert(found);
+    vm_stack_ptr_t ptr = next_aligned(found->top + found->len, alignment);
+    bassert(is_aligned(ptr, alignment) && "Invalid allocation alignment!");
+    found->len += size_needed;
+    blog("allocate %llu", size_needed);
+    return_zone(ptr);
+}
+
+static void data_free(struct virtual_machine *vm)
+{
+    struct vm_bufpage *current = vm->data;
+    while (current) {
+        struct vm_bufpage *tmp = current;
+        current                = current->prev;
+        bfree(tmp);
+    }
+    vm->data = NULL;
+}
+
 // Fetch value; use internal ConstExprValue storage if value is compile time known, otherwise use
 // stack.
 static INLINE vm_stack_ptr_t fetch_value(struct virtual_machine *vm, struct mir_const_expr_value *v)
@@ -264,9 +322,9 @@ static INLINE vm_relative_stack_ptr_t stack_alloc_var(struct virtual_machine *vm
                                                       struct mir_var         *var)
 {
     bassert(var);
-    bassert(!var->value.is_comptime && "cannot allocate compile time constant");
-    // allocate memory for variable on stack
-
+    bassert(!var->value.is_comptime && "Cannot allocate compile time constant");
+    bassert(!var->is_global && "This function is not supposed to be used for allocation of global "
+                               "variables, use vm_alloc_global instead.");
     vm_stack_ptr_t tmp = stack_push_empty(vm, var->value.type);
     var->rel_stack_ptr = tmp - (vm_stack_ptr_t)vm->stack->ra;
     return var->rel_stack_ptr;
@@ -2019,6 +2077,7 @@ void eval_instr_unroll(struct virtual_machine *vm, struct mir_instr_unroll *unro
         babort("Not implemented yet!");
     } else {
         blog("Just copy value!");
+        unroll->base.value.data = unroll->src->value.data;
     }
 }
 
@@ -2163,6 +2222,7 @@ void vm_init(struct virtual_machine *vm, usize stack_size)
 
 void vm_terminate(struct virtual_machine *vm)
 {
+    data_free(vm);
     arrfree(vm->dcsigtmp);
     bfree(vm->stack);
 }
@@ -2328,29 +2388,23 @@ bool vm_execute_comptime_call(struct virtual_machine *vm,
     return_zone(false);
 }
 
-vm_stack_ptr_t
-vm_alloc_global(struct virtual_machine *vm, struct assembly *assembly, struct mir_var *var)
+void vm_alloc_global(struct virtual_machine *vm, struct assembly *assembly, struct mir_var *var)
 {
     vm->assembly = assembly;
     bassert(var);
-    bassert(var->is_global && "Allocated variable is supposed to be global variable.");
-    if (var->value.is_comptime) {
-        if (needs_tmp_alloc(&var->value)) {
-            var->value.data = stack_push_empty(vm, var->value.type);
-        } else {
-            var->value.data = (vm_stack_ptr_t)&var->value._tmp;
-        }
-        return var->value.data;
-    }
-    var->rel_stack_ptr = stack_alloc_var(vm, var);
-    // @Hack: we can ignore relative pointers for globals.
-    return (vm_stack_ptr_t)var->rel_stack_ptr;
+    bassert(var->is_global && "Allocated variable is supposed to be a global variable.");
+    struct mir_type *type = var->value.type;
+    bassert(type);
+    vm_stack_ptr_t ptr = data_alloc(vm, type->store_size_bytes, type->alignment);
+    // @Cleanup: Why we need to set this for both???
+    var->value.data    = ptr;
+    var->rel_stack_ptr = (vm_relative_stack_ptr_t)ptr;
 }
 
 vm_stack_ptr_t
 vm_alloc_raw(struct virtual_machine *vm, struct assembly UNUSED(*assembly), struct mir_type *type)
 {
-    return stack_push_empty(vm, type);
+    return data_alloc(vm, type->store_size_bytes, type->alignment);
 }
 
 // Try to fetch variable allocation pointer.
