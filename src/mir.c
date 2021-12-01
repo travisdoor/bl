@@ -8162,7 +8162,9 @@ struct result analyze_instr(struct context *ctx, struct mir_instr *instr)
     default:
         babort("Missing analyze of instruction!");
     }
-    ctx->analyze.last_analyzed_instr = NULL;
+    // @Cleanup: We probably can keep the last instruction until it's overriden or move this at the
+    // end of this scope?
+    // ctx->analyze.last_analyzed_instr = NULL;
     if (state.state == ANALYZE_PASSED) {
         instr->is_analyzed = true;
         if (instr->kind == MIR_INSTR_CAST && ((struct mir_instr_cast *)instr)->auto_cast) {
