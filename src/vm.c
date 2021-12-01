@@ -118,8 +118,9 @@ static INLINE bool fn_does_return(struct mir_fn *fn)
     return fn->type->data.fn.ret_type->kind != MIR_TYPE_VOID;
 }
 
-// @Cleanup
-static INLINE bool needs_tmp_alloc(struct mir_const_expr_value *v)
+// Checks whether constant value needs some extra space or if it fits into small memory block hold
+// by the value itself.
+static INLINE bool needs_allocation(struct mir_const_expr_value *v)
 {
     return v->type->store_size_bytes > sizeof(v->_tmp);
 }
@@ -220,14 +221,10 @@ static INLINE vm_stack_ptr_t stack_peek(struct virtual_machine *vm, struct mir_t
     return top;
 }
 
-// Global variables are allocated in static data segment, so there is no need to
-// use relative pointer. When we set ignore to true original pointer is returned
-// as absolute pointer to the stack.
+// Convert relative local address of variable into absolute address in memory.
 static INLINE vm_stack_ptr_t stack_rel_to_abs_ptr(struct virtual_machine *vm,
-                                                  vm_relative_stack_ptr_t rel_ptr,
-                                                  bool                    ignore)
+                                                  vm_relative_stack_ptr_t rel_ptr)
 {
-    if (ignore) return (vm_stack_ptr_t)rel_ptr;
     bassert(rel_ptr);
     vm_stack_ptr_t base = (vm_stack_ptr_t)vm->stack->ra;
     bassert(base);
@@ -247,7 +244,6 @@ static struct vm_bufpage *data_page_alloc(struct vm_bufpage *prev, usize size_ne
     page->len               = 0;
     page->cap               = size_needed;
     page->top               = (vm_stack_ptr_t)(page + 1);
-    blog("allocate page %llu", size_needed);
     return page;
 }
 
@@ -273,7 +269,6 @@ static vm_stack_ptr_t data_alloc(struct virtual_machine *vm, usize size, s8 alig
     vm_stack_ptr_t ptr = next_aligned(found->top + found->len, alignment);
     bassert(is_aligned(ptr, alignment) && "Invalid allocation alignment!");
     found->len += size_needed;
-    blog("allocate %llu", size_needed);
     return_zone(ptr);
 }
 
@@ -318,16 +313,14 @@ static INLINE void set_pc(struct virtual_machine *vm, struct mir_instr *instr)
     vm->stack->pc = instr;
 }
 
-static INLINE vm_relative_stack_ptr_t stack_alloc_var(struct virtual_machine *vm,
-                                                      struct mir_var         *var)
+static INLINE void stack_alloc_var(struct virtual_machine *vm, struct mir_var *var)
 {
     bassert(var);
     bassert(!var->value.is_comptime && "Cannot allocate compile time constant");
     bassert(!var->is_global && "This function is not supposed to be used for allocation of global "
                                "variables, use vm_alloc_global instead.");
     vm_stack_ptr_t tmp = stack_push_empty(vm, var->value.type);
-    var->rel_stack_ptr = tmp - (vm_stack_ptr_t)vm->stack->ra;
-    return var->rel_stack_ptr;
+    var->vm_ptr.local  = tmp - (vm_stack_ptr_t)vm->stack->ra;
 }
 
 static INLINE void stack_alloc_local_vars(struct virtual_machine *vm, struct mir_fn *fn)
@@ -1054,7 +1047,7 @@ bool execute_function(struct virtual_machine *vm, struct mir_fn *fn)
 void interp_instr(struct virtual_machine *vm, struct mir_instr *instr)
 {
     if (!instr) return;
-    if (isnotflag(instr->flags, MIR_IS_ANALYZED)) {
+    if (!instr->is_analyzed) {
         babort("Instruction %s has not been analyzed!", mir_instr_name(instr));
     }
 
@@ -1580,7 +1573,7 @@ void interp_instr_vargs(struct virtual_machine *vm, struct mir_instr_vargs *varg
     struct mir_var *vargs_tmp = vargs->vargs_tmp;
 
     bassert(vargs_tmp->value.type->kind == MIR_TYPE_VARGS);
-    bassert(vargs_tmp->rel_stack_ptr && "Unalocated vargs slice!!!");
+    bassert(vargs_tmp->vm_ptr.global && "Unalocated vargs slice!!!");
     bassert(values);
 
     vm_stack_ptr_t arr_tmp_ptr = arr_tmp ? vm_read_var(vm, arr_tmp) : NULL;
@@ -2014,7 +2007,7 @@ void eval_instr_member_ptr(struct virtual_machine       UNUSED(*vm),
 void eval_instr_compound(struct virtual_machine *vm, struct mir_instr_compound *cmp)
 {
     struct mir_const_expr_value *value = &cmp->base.value;
-    if (needs_tmp_alloc(value)) {
+    if (needs_allocation(value)) {
         // Compound data doesn't fit into default static memory register, we need to
         // allocate temporary block on the stack.
         value->data = stack_push_empty(vm, value->type);
@@ -2359,7 +2352,7 @@ bool vm_execute_comptime_call(struct virtual_machine *vm,
 {
     zone();
     vm->assembly = assembly;
-    bassert(call && isflag(call->base.flags, MIR_IS_ANALYZED));
+    bassert(call && call->base.is_analyzed);
     bassert(mir_is_comptime(&call->base) && "Top level call is expected to be comptime.");
     struct mir_fn *fn = mir_get_callee(call);
     bassert(fn && "Callee of compile time executed top level function not found!");
@@ -2395,10 +2388,15 @@ void vm_alloc_global(struct virtual_machine *vm, struct assembly *assembly, stru
     bassert(var->is_global && "Allocated variable is supposed to be a global variable.");
     struct mir_type *type = var->value.type;
     bassert(type);
-    vm_stack_ptr_t ptr = data_alloc(vm, type->store_size_bytes, type->alignment);
-    // @Cleanup: Why we need to set this for both???
-    var->value.data    = ptr;
-    var->rel_stack_ptr = (vm_relative_stack_ptr_t)ptr;
+    // @Cleanup: Consider if we can simplify this and use just one single pointer (local and global
+    // stored in union) here. Even constants can be allocated inside data buffer.
+    if (var->value.is_comptime && needs_allocation(&var->value)) {
+        var->value.data = data_alloc(vm, type->store_size_bytes, type->alignment);
+    } else if (var->value.is_comptime) {
+        var->value.data = (vm_stack_ptr_t)&var->value._tmp;
+    } else {
+        var->vm_ptr.global = data_alloc(vm, type->store_size_bytes, type->alignment);
+    }
 }
 
 vm_stack_ptr_t
@@ -2413,10 +2411,13 @@ vm_stack_ptr_t vm_read_var(struct virtual_machine *vm, const struct mir_var *var
     vm_stack_ptr_t ptr = NULL;
     if (var->value.is_comptime) {
         ptr = var->value.data;
+    } else if (var->is_global) {
+        ptr = var->vm_ptr.global;
     } else {
-        ptr = stack_rel_to_abs_ptr(vm, var->rel_stack_ptr, var->is_global);
+        // local
+        ptr = stack_rel_to_abs_ptr(vm, var->vm_ptr.local);
     }
-    bassert(ptr && "Attept to get allocation pointer of unallocated variable!");
+    bassert(ptr && "Attempt to get allocation pointer of unallocated variable!");
     return ptr;
 }
 

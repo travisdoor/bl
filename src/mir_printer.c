@@ -205,7 +205,7 @@ _print_const_value(struct context *ctx, struct mir_type *type, vm_stack_ptr_t va
                 switch (c) {
                 case '\n':
                     strappend(tmp, "\\n");
-					break;
+                    break;
                 default:
                     strappend(tmp, "%c", c);
                 }
@@ -311,7 +311,7 @@ void print_comptime_value_or_id(struct context *ctx, struct mir_instr *instr)
         return;
     }
 
-    if (!instr->value.is_comptime || isnotflag(instr->flags, MIR_IS_ANALYZED)) {
+    if (!instr->value.is_comptime || !instr->is_analyzed) {
         fprintf(ctx->stream, "%%%llu", (unsigned long long)instr->id);
         return;
     }
@@ -748,10 +748,7 @@ void print_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl)
         if (var->value.is_comptime) {
             print_const_value(ctx, &var->value);
         } else {
-            // HACK: globals use static allocation segment on the stack so relative
-            // pointer = absolute pointer.
-            vm_stack_ptr_t data_ptr = (vm_stack_ptr_t)var->rel_stack_ptr;
-            _print_const_value(ctx, var->value.type, data_ptr);
+            _print_const_value(ctx, var->value.type, var->vm_ptr.global);
         }
     } else {
         // local scope variable
@@ -935,7 +932,7 @@ void print_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_pro
     bassert(fn);
 
     fprintf(ctx->stream, "\n");
-    if (isflag(fn_proto->base.flags, MIR_IS_ANALYZED)) fprintf(ctx->stream, "/* analyzed */\n");
+    if (fn_proto->base.is_analyzed) fprintf(ctx->stream, "/* analyzed */\n");
     if (fn->linkage_name)
         fprintf(ctx->stream, "@%s ", fn->linkage_name);
     else

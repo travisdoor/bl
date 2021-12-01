@@ -804,7 +804,7 @@ LLVMValueRef emit_fn_proto(struct context *ctx, struct mir_fn *fn, bool schedule
     }
 
     // Setup attributes for sret.
-    if (isflag(fn->type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_SRET)) {
+    if (fn->type->data.fn.has_sret) {
         LLVMAddAttributeAtIndex(fn->llvm_value,
                                 LLVM_SRET_INDEX + 1,
                                 LLVMCreateEnumAttribute(ctx->llvm_cnt, LLVM_ATTR_NOALIAS, 0));
@@ -814,7 +814,7 @@ LLVMValueRef emit_fn_proto(struct context *ctx, struct mir_fn *fn, bool schedule
                                 LLVMCreateEnumAttribute(ctx->llvm_cnt, LLVM_ATTR_STRUCTRET, 0));
     }
     // Setup attributes for byval.
-    if (isflag(fn->type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_BYVAL)) {
+    if (fn->type->data.fn.has_byval) {
         mir_args_t *args = fn->type->data.fn.args;
         bassert(args);
         for (usize i = 0; i < sarrlenu(args); ++i) {
@@ -1181,7 +1181,7 @@ LLVMValueRef rtti_emit_fn(struct context *ctx, struct mir_type *type)
 
     // is_vargs
     struct mir_type *is_vargs_type = mir_get_struct_elem_type(rtti_type, 3);
-    const bool       is_vargs      = isflag(type->data.fn.flags, MIR_TYPE_FN_FLAG_IS_VARGS);
+    const bool       is_vargs      = type->data.fn.is_vargs;
     llvm_vals[3]                   = LLVMConstInt(
         get_type(ctx, is_vargs_type), (u64)is_vargs, is_vargs_type->data.integer.is_signed);
     return LLVMConstNamedStruct(get_type(ctx, rtti_type), llvm_vals, static_arrlenu(llvm_vals));
@@ -2277,7 +2277,7 @@ State emit_instr_call(struct context *ctx, struct mir_instr_call *call)
     LLVMValueRef llvm_result           = NULL;
     // SRET must come first!!!
 
-    if (isflag(callee_type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_SRET)) {
+    if (callee_type->data.fn.has_sret) {
         // PERFORMANCE: Reuse ret_tmp inside function???
         INSERT_TMP(llvm_tmp, get_type(ctx, callee_type->data.fn.ret_type));
         sarrput(&llvm_args, llvm_tmp);
@@ -2364,7 +2364,7 @@ State emit_instr_call(struct context *ctx, struct mir_instr_call *call)
         ctx->llvm_builder, llvm_called_fn, sarrdata(&llvm_args), sarrlenu(&llvm_args), "");
     DI_LOCATION_RESET();
 
-    if (isflag(callee_type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_SRET)) {
+    if (callee_type->data.fn.has_sret) {
         LLVMAddCallSiteAttribute(llvm_call,
                                  LLVM_SRET_INDEX + 1,
                                  LLVMCreateEnumAttribute(ctx->llvm_cnt, LLVM_ATTR_STRUCTRET, 0));
@@ -2462,7 +2462,7 @@ State emit_instr_ret(struct context *ctx, struct mir_instr_ret *ret)
     bassert(fn_type);
     DI_LOCATION_SET(&ret->base);
 
-    if (isflag(fn_type->data.fn.flags, MIR_TYPE_FN_FLAG_HAS_SRET)) {
+    if (fn_type->data.fn.has_sret) {
         LLVMValueRef llvm_ret_value = ret->value->llvm_value;
         LLVMValueRef llvm_sret      = LLVMGetParam(fn->llvm_value, LLVM_SRET_INDEX);
         LLVMBuildStore(ctx->llvm_builder, llvm_ret_value, llvm_sret);
@@ -2815,7 +2815,7 @@ State emit_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_pro
         // Generate all blocks in the function body.
         struct mir_instr *block = (struct mir_instr *)fn->first_block;
         while (block) {
-            if (isnotflag(block->flags, MIR_IS_UNREACHABLE)) {
+            if (!block->is_unreachable) {
                 const State s = emit_instr(ctx, block);
                 if (s != STATE_PASSED) babort("Postpone for whole block is not supported!");
             }
@@ -2829,7 +2829,7 @@ State emit_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_pro
 State emit_instr(struct context *ctx, struct mir_instr *instr)
 {
     State state = STATE_PASSED;
-    bassert(isflag(instr->flags, MIR_IS_ANALYZED) && "Attempt to emit not-analyzed instruction!");
+    bassert(instr->is_analyzed && "Attempt to emit not-analyzed instruction!");
     if (!mir_type_has_llvm_representation((instr->value.type))) return state;
     switch (instr->kind) {
     case MIR_INSTR_INVALID:
