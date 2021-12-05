@@ -740,6 +740,8 @@ struct mir_instr_type_poly {
     struct id *T_id;
 };
 
+// @Note: Call instruction with set base.value.is_comptime will be automatically executed during
+// analyze process.
 struct mir_instr_call {
     struct mir_instr base;
 
@@ -848,7 +850,11 @@ struct mir_instr_unroll {
     struct mir_instr base;
 
     struct mir_instr *src;
-    struct mir_instr *remove_src;
+    // Previous destination is optional reference to the previous variable in case we initialize
+    // multiple variables at once by function call. i.e.: a, b, c := foo(); when 'foo' returns one
+    // single value. Unroll instruction is removed is nuch case and variable using current unroll is
+    // directly set to 'prev' value: c = b = a = foo();
+    struct mir_instr *prev;
     s32               index;
     bool              remove;
 };

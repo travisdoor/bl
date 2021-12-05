@@ -1,0 +1,19 @@
+#private
+
+simple_fn :: fn () #test {
+    get :: fn () s32 #comptime {
+        return 10;
+    };
+
+    i :: get();
+    test_eq(i, 10);
+}
+
+simple_fn_args :: fn () #test {
+    get :: fn (a: s32, b: s32) s32 #comptime {
+        return a + b;
+    };
+
+    i :: get(1, 2);
+    test_eq(i, 3);
+}

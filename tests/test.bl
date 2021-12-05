@@ -1,6 +1,36 @@
-#import "std/fs"
+/*
+Value :: struct (T: type) {
+    key: s32;
+    value: T;
+}
+
+table_insert :: fn (table: *Table(?T), value: T) {
+    table.key = 0;
+    table.value = value;
+}
+
+set_value :: fn (v: *?T, key: ?TKey, value: ?TValue) {
+    v.key = key;
+    v.value = value;
+}
+
+Entry :: struct {
+    key: s32;
+    value: string;
+}
+
+TableValue :: fn () type #comptime {
+    return s32;
+}
+*/
+
+get :: fn () type #comptime {
+    return s32;
+}
 
 main :: fn () s32 {
+    //i :: get();
+    //print("i = %\n", i);
     return 0;
 }
 
@@ -8,17 +38,27 @@ main :: fn () s32 {
 // TODO
 // =================================================================================================
 
-// - first_char :: fn (str: string #readonly) u8 {}
-// - #using Enum + use UPPERCASE for variants.
-// - #switch ?
-// - polymorph struct types
-// - allow static #if in global scope
-// - modules should use regular load scripts written in BL executed during import
-// - lazy load/import of sources (during analyze pass)
-// - implement custom call stack recording for debugging purposes (probably on LLVM IR level?)
-// - revalidate Fs module interface.
-// - improve auto documentation to report default values of functions correctly
-// - BLC_VER :: #comptime get_version_string();
+// - [L] first_char :: fn (str: string #readonly) u8 {}
+// - [L] #using Enum + use UPPERCASE for variants.
+// - [L] allow static #if in global scope
+// - [L] modules should use regular load scripts written in BL executed during import
+// - [L] lazy load/import of sources (during analyze pass)
+// - [L] BLC_VER :: #comptime get_version_string();
+// - [M] test external calls returning something bigger than 64 bit integers!
+// - [L] Implement lambda capture.
+// - [L] @source/@src/@example tag parsing in documentation to automatically include files. 
+// - [L] comptime function sould not return pointers 
+
+// =================================================================================================
+// Release: 1.0.0
+// =================================================================================================
+// - [H] limited support for #comptime calls.
+// - [H] types should be also evaluated.
+// - [H] polymorph struct types
+// - [H] implement hash table using polymorph types.
+// - [L] revalidate Fs module interface.
+// - [L] improve auto documentation to report default values of functions correctly
+// - [L] #switch ?
 
 // =================================================================================================
 // Module loader

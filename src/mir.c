@@ -114,7 +114,6 @@ struct context {
 
     // Ast -> MIR generation
     struct {
-
         struct mir_instr_block *current_block;
         struct mir_instr_block *current_phi_end_block;
         struct mir_instr_phi   *current_phi;
@@ -434,8 +433,6 @@ static struct mir_instr *create_instr_vargs_impl(struct context  *ctx,
 static struct mir_instr *
 create_instr_decl_direct_ref(struct context *ctx, struct ast *node, struct mir_instr *ref);
 static struct mir_instr *
-create_instr_call_comptime(struct context *ctx, struct ast *node, struct mir_instr *fn);
-static struct mir_instr *
 create_instr_call_loc(struct context *ctx, struct ast *node, struct location *call_location);
 static struct mir_instr *create_instr_compound(struct context   *ctx,
                                                struct ast       *node,
@@ -463,6 +460,12 @@ static struct mir_instr *create_instr_member_ptr(struct context      *ctx,
                                                  enum builtin_id_kind builtin_id);
 static struct mir_instr *create_instr_phi(struct context *ctx, struct ast *node);
 
+static struct mir_instr *create_instr_call(struct context   *ctx,
+                                           struct ast       *node,
+                                           struct mir_instr *callee,
+                                           mir_instrs_t     *args,
+                                           const bool        is_comptime);
+
 static struct mir_instr *insert_instr_load(struct context *ctx, struct mir_instr *src);
 static struct mir_instr *
 insert_instr_cast(struct context *ctx, struct mir_instr *src, struct mir_type *to_type);
@@ -474,7 +477,7 @@ static struct mir_instr *append_instr_arg(struct context *ctx, struct ast *node,
 static struct mir_instr *append_instr_unroll(struct context   *ctx,
                                              struct ast       *node,
                                              struct mir_instr *src,
-                                             struct mir_instr *remove_src,
+                                             struct mir_instr *prev_dest,
                                              s32               index);
 static struct mir_instr *append_instr_set_initializer(struct context   *ctx,
                                                       struct ast       *node,
@@ -602,7 +605,7 @@ static struct mir_instr *append_instr_call(struct context   *ctx,
                                            struct ast       *node,
                                            struct mir_instr *callee,
                                            mir_instrs_t     *args,
-                                           const bool        call_in_compile_time);
+                                           const bool        is_comptime);
 
 static struct mir_instr *append_instr_decl_var(struct context      *ctx,
                                                struct ast          *node, // Optional
@@ -764,8 +767,9 @@ static struct mir_instr *ast_call_loc(struct context *ctx, struct ast *loc);
 static struct mir_instr *ast_msg(struct context *ctx, struct ast *msg);
 
 // analyze
-static bool          evaluate(struct context *ctx, struct mir_instr *instr);
-static struct result analyze_var(struct context *ctx, struct mir_var *var);
+static bool evaluate(struct context *ctx, struct mir_instr *instr);
+static struct result
+analyze_var(struct context *ctx, struct mir_var *var, const bool in_comptime_fn);
 static struct result analyze_instr(struct context *ctx, struct mir_instr *instr);
 
 #define analyze_slot(ctx, conf, input, slot_type)                                                  \
@@ -955,7 +959,7 @@ static INLINE struct mir_fn *instr_owner_fn(struct mir_instr *instr)
     return instr->owner_block->owner_fn;
 }
 
-static INLINE bool is_inside_comptime_function(struct mir_instr *instr)
+static INLINE bool is_in_comptime_fn(struct mir_instr *instr)
 {
     struct mir_fn *owner_fn = instr_owner_fn(instr);
     return owner_fn ? isflag(owner_fn->flags, FLAG_COMPTIME) : false;
@@ -1047,6 +1051,10 @@ static INLINE bool can_mutate_comptime_to_const(struct mir_instr *instr)
     case MIR_INSTR_CONST:
     case MIR_INSTR_BLOCK:
     case MIR_INSTR_FN_PROTO:
+        // Unroll instruction is kept and converted to constant later in analyze slot pass, we need
+        // to keep internal information about unroll remove which is based on usage of unroll and
+        // not clear here.
+    case MIR_INSTR_UNROLL:
         return false;
     case MIR_INSTR_CALL: {
         // This will allow us to convert function calls supposed to be executed in compile-time to
@@ -1054,6 +1062,7 @@ static INLINE bool can_mutate_comptime_to_const(struct mir_instr *instr)
         // of 'void' constants if the function does not return.
         return ((struct mir_instr_call *)instr)->call_in_compile_time;
     }
+
     default:
         break;
     }
@@ -3013,18 +3022,6 @@ void *create_instr(struct context *ctx, enum mir_instr_kind kind, struct ast *no
     return tmp;
 }
 
-struct mir_instr *
-create_instr_call_comptime(struct context *ctx, struct ast *node, struct mir_instr *fn)
-{
-    bassert(fn && fn->kind == MIR_INSTR_FN_PROTO);
-    struct mir_instr_call *tmp  = create_instr(ctx, MIR_INSTR_CALL, node);
-    tmp->base.value.addr_mode   = MIR_VAM_LVALUE_CONST;
-    tmp->base.value.is_comptime = true;
-    tmp->base.ref_count         = 2;
-    tmp->callee                 = ref_instr(fn);
-    return &tmp->base;
-}
-
 struct mir_instr *create_instr_compound(struct context   *ctx,
                                         struct ast       *node,
                                         struct mir_instr *type,
@@ -3449,14 +3446,14 @@ struct mir_instr *append_instr_arg(struct context *ctx, struct ast *node, unsign
 struct mir_instr *append_instr_unroll(struct context   *ctx,
                                       struct ast       *node,
                                       struct mir_instr *src,
-                                      struct mir_instr *remove_src,
+                                      struct mir_instr *prev,
                                       s32               index)
 {
     bassert(index >= 0);
     bassert(src);
     struct mir_instr_unroll *tmp = create_instr(ctx, MIR_INSTR_UNROLL, node);
     tmp->src                     = ref_instr(src);
-    tmp->remove_src              = ref_instr(remove_src);
+    tmp->prev                    = ref_instr(prev);
     tmp->index                   = index;
     append_current_block(ctx, &tmp->base);
     return &tmp->base;
@@ -3468,6 +3465,29 @@ struct mir_instr *create_instr_phi(struct context *ctx, struct ast *node)
     tmp->incoming_values      = arena_safe_alloc(&ctx->assembly->arenas.sarr);
     tmp->incoming_blocks      = arena_safe_alloc(&ctx->assembly->arenas.sarr);
     return &tmp->base;
+}
+
+struct mir_instr *create_instr_call(struct context   *ctx,
+                                    struct ast       *node,
+                                    struct mir_instr *callee,
+                                    mir_instrs_t     *args,
+                                    const bool        is_comptime)
+{
+    bassert(callee);
+    struct mir_instr_call *tmp  = create_instr(ctx, MIR_INSTR_CALL, node);
+    tmp->base.value.addr_mode   = MIR_VAM_RVALUE;
+    tmp->base.value.is_comptime = is_comptime;
+    tmp->args                   = args;
+    tmp->callee                 = ref_instr(callee);
+    tmp->call_in_compile_time   = is_comptime; // @Cleanup
+    // reference all arguments
+    for (usize i = 0; i < sarrlenu(args); ++i) {
+        struct mir_instr *instr = sarrpeek(args, i);
+        ref_instr(instr);
+    }
+    // Call itself is referenced here because the function call can have side-effects even it's
+    // result is not used at all. So we cannot eventually remove it.
+    return ref_instr(&tmp->base);
 }
 
 struct mir_instr *append_instr_compound(struct context   *ctx,
@@ -3803,27 +3823,11 @@ struct mir_instr *append_instr_call(struct context   *ctx,
                                     struct ast       *node,
                                     struct mir_instr *callee,
                                     mir_instrs_t     *args,
-                                    const bool        call_in_compile_time)
+                                    const bool        is_comptime)
 {
-    bassert(callee);
-    struct mir_instr_call *tmp  = create_instr(ctx, MIR_INSTR_CALL, node);
-    tmp->base.value.addr_mode   = MIR_VAM_RVALUE;
-    tmp->base.value.is_comptime = call_in_compile_time;
-    tmp->args                   = args;
-    tmp->callee                 = callee;
-    tmp->call_in_compile_time   = call_in_compile_time;
-    ref_instr(&tmp->base);
-    // Callee must be referenced even if we call no-ref counted fn_proto instructions, because
-    // sometimes callee is declaration reference pointing to variable containing pointer to some
-    // function.
-    ref_instr(callee);
-    // reference all arguments
-    for (usize i = 0; i < sarrlenu(args); ++i) {
-        struct mir_instr *instr = sarrpeek(args, i);
-        ref_instr(instr);
-    }
-    append_current_block(ctx, &tmp->base);
-    return &tmp->base;
+    struct mir_instr *tmp = create_instr_call(ctx, node, callee, args, is_comptime);
+    append_current_block(ctx, tmp);
+    return tmp;
 }
 
 struct mir_instr *append_instr_decl_var(struct context      *ctx,
@@ -4359,9 +4363,9 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
         case MIR_INSTR_CONST:
         case MIR_INSTR_DECL_DIRECT_REF:
         case MIR_INSTR_CALL_LOC:
-        case MIR_INSTR_UNROLL:
         case MIR_INSTR_TYPE_POLY:
         case MIR_INSTR_MSG:
+        case MIR_INSTR_UNROLL: 
             break;
 
         default:
@@ -4813,7 +4817,7 @@ SKIP_IMPLICIT:
     return_zone(ANALYZE_RESULT(PASSED, 0));
 }
 
-struct result analyze_var(struct context *ctx, struct mir_var *var)
+struct result analyze_var(struct context *ctx, struct mir_var *var, const bool in_comptime_fn)
 {
     zone();
     BL_TRACY_MESSAGE("ANALYZE_VAR", "%s", var->linkage_name);
@@ -4822,7 +4826,8 @@ struct result analyze_var(struct context *ctx, struct mir_var *var)
     }
     switch (var->value.type->kind) {
     case MIR_TYPE_TYPE:
-        if (!var->is_mutable) break;
+        // Type variable can be mutable in comptime function!
+        if (!var->is_mutable || in_comptime_fn) break;
         // Typedef must be immutable!
         report_error(INVALID_MUTABILITY, var->decl_node, "Type declaration must be immutable.");
         return_zone(ANALYZE_RESULT(FAILED, 0));
@@ -4934,7 +4939,7 @@ struct result analyze_instr_set_initializer(struct context                   *ct
             }
         }
 
-        struct result state = analyze_var(ctx, var);
+        struct result state = analyze_var(ctx, var, false /* var is in global scope */);
         if (state.state != ANALYZE_PASSED) return state;
 
         if (!var->value.is_comptime) {
@@ -7065,8 +7070,10 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
         ANALYZE_INSTR_RQ(default_init);
         decl->init = default_init;
     }
+    // @Cleanup: Duplicate?
     decl->base.value.is_comptime = var->value.is_comptime = is_decl_comptime;
-    struct result state                                   = analyze_var(ctx, decl->var);
+
+    struct result state = analyze_var(ctx, decl->var, is_in_comptime_fn(&decl->base));
     if (state.state != ANALYZE_PASSED) return_zone(state);
     if (decl->base.value.is_comptime && decl->init) {
         // initialize when known in compile-time
@@ -7445,8 +7452,10 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
     if (is_direct_call) {
         struct mir_fn *fn = optional_fn_or_group.fn;
         bmagic_check(fn);
-        if (call->base.value.is_comptime && !fn->is_fully_analyzed)
+        // @Note: Wait for comptime direct calls to be fully analyzed.
+        if (call->base.value.is_comptime && !fn->is_fully_analyzed) {
             return_zone(ANALYZE_RESULT(POSTPONE, 0));
+        }
         // Direct call of anonymous function.
         // NOTE: We increase ref count of called function here, but this
         // will not work for functions called by pointer in obtained in
@@ -7793,8 +7802,8 @@ ANALYZE_STAGE_FN(unroll)
     if (!unroll) return ANALYZE_STAGE_CONTINUE;
     // Erase unroll instruction in case it's marked for remove.
     if (unroll->remove) {
-        if (unroll->remove_src) {
-            struct mir_instr *ref = create_instr_decl_direct_ref(ctx, NULL, unroll->remove_src);
+        if (unroll->prev) {
+            struct mir_instr *ref = create_instr_decl_direct_ref(ctx, NULL, unroll->prev);
             insert_instr_after(*input, ref);
             ANALYZE_INSTR_RQ(ref);
             (*input) = ref;
@@ -10369,7 +10378,9 @@ struct mir_instr *ast_create_type_resolver_call(struct context *ctx, struct ast 
     struct mir_instr *result = ast(ctx, ast_type);
     append_instr_ret(ctx, NULL, result);
     set_current_block(ctx, prev_block);
-    return create_instr_call_comptime(ctx, ast_type, fn_proto);
+    struct mir_instr *call = create_instr_call(ctx, ast_type, fn_proto, NULL, true);
+    ((struct mir_instr_call *)call)->call_in_compile_time = false; // @Cleanup, @Hack
+    return call;
 }
 
 struct mir_instr *ast(struct context *ctx, struct ast *node)

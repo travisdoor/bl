@@ -247,11 +247,11 @@ static struct vm_bufpage *data_page_alloc(struct vm_bufpage *prev, usize size_ne
     return page;
 }
 
-static vm_stack_ptr_t data_alloc(struct virtual_machine *vm, usize size, s8 alignment)
+static vm_stack_ptr_t data_alloc(struct virtual_machine *vm, struct mir_type *type)
 {
     zone();
-    bassert(size > 0);
-    const usize size_needed = size + alignment;
+    bassert(type->store_size_bytes > 0);
+    const usize size_needed = type->store_size_bytes + type->alignment;
     if (!vm->data) vm->data = data_page_alloc(NULL, size_needed);
     // lookup free space, if no suitable was found, allocate new block!
     struct vm_bufpage *found = vm->data;
@@ -266,8 +266,8 @@ static vm_stack_ptr_t data_alloc(struct virtual_machine *vm, usize size, s8 alig
         found    = vm->data;
     }
     bassert(found);
-    vm_stack_ptr_t ptr = next_aligned(found->top + found->len, alignment);
-    bassert(is_aligned(ptr, alignment) && "Invalid allocation alignment!");
+    vm_stack_ptr_t ptr = next_aligned(found->top + found->len, type->alignment);
+    bassert(is_aligned(ptr, type->alignment) && "Invalid allocation alignment!");
     found->len += size_needed;
     return_zone(ptr);
 }
@@ -2355,7 +2355,7 @@ bool vm_execute_comptime_call(struct virtual_machine *vm,
     bassert(call && call->base.is_analyzed);
     bassert(mir_is_comptime(&call->base) && "Top level call is expected to be comptime.");
     struct mir_fn *fn = mir_get_callee(call);
-    bassert(fn && "Callee of compile time executed top level function not found!");
+    bmagic_check(fn);
     mir_instrs_t *args = call->args;
     bassert(sarrlenu(args) == sarrlenu(fn->type->data.fn.args));
     // Push all arguments in reverse order on the stack.
@@ -2367,7 +2367,16 @@ bool vm_execute_comptime_call(struct virtual_machine *vm,
         // Pop return value.
         if (fn_does_return(fn)) {
             struct mir_type *ret_type = fn->type->data.fn.ret_type;
-            call->base.value.data     = stack_pop(vm, ret_type);
+            bassert(ret_type->kind != MIR_TYPE_VOID);
+            vm_stack_ptr_t ptr  = stack_pop(vm, ret_type);
+            vm_stack_ptr_t dest = NULL;
+            if (needs_allocation(&call->base.value)) {
+                dest = data_alloc(vm, ret_type);
+            } else {
+                dest = (vm_stack_ptr_t)&call->base.value._tmp;
+                bassert((void *)call->base.value.data == (void *)&call->base.value._tmp);
+            }
+            memcpy(dest, ptr, ret_type->store_size_bytes);
         } else {
             call->base.value.data = NULL;
         }
@@ -2391,18 +2400,18 @@ void vm_alloc_global(struct virtual_machine *vm, struct assembly *assembly, stru
     // @Cleanup: Consider if we can simplify this and use just one single pointer (local and global
     // stored in union) here. Even constants can be allocated inside data buffer.
     if (var->value.is_comptime && needs_allocation(&var->value)) {
-        var->value.data = data_alloc(vm, type->store_size_bytes, type->alignment);
+        var->value.data = data_alloc(vm, type);
     } else if (var->value.is_comptime) {
         var->value.data = (vm_stack_ptr_t)&var->value._tmp;
     } else {
-        var->vm_ptr.global = data_alloc(vm, type->store_size_bytes, type->alignment);
+        var->vm_ptr.global = data_alloc(vm, type);
     }
 }
 
 vm_stack_ptr_t
 vm_alloc_raw(struct virtual_machine *vm, struct assembly UNUSED(*assembly), struct mir_type *type)
 {
-    return data_alloc(vm, type->store_size_bytes, type->alignment);
+    return data_alloc(vm, type);
 }
 
 // Try to fetch variable allocation pointer.
