@@ -154,7 +154,7 @@ struct context {
         // Incomplete type check stack.
         mir_types_t          complete_check_type_stack;
         struct scope_entry **usage_check_arr;
-        struct scope_entry  *void_entry;
+        struct scope_entry  *unnamed_entry;
         struct mir_instr    *last_analyzed_instr;
     } analyze;
 
@@ -1496,7 +1496,7 @@ static INLINE void commit_fn(struct context *ctx, struct mir_fn *fn)
     bassert(id);
     struct scope_entry *entry = fn->scope_entry;
     bmagic_check(entry);
-    bassert(entry->kind != SCOPE_ENTRY_VOID);
+    bassert(entry->kind != SCOPE_ENTRY_UNNAMED);
     entry->kind    = SCOPE_ENTRY_FN;
     entry->data.fn = fn;
     analyze_notify_provided(ctx, id->hash);
@@ -1507,7 +1507,7 @@ static INLINE void commit_variant(struct context UNUSED(*ctx), struct mir_varian
 {
     struct scope_entry *entry = variant->entry;
     bmagic_check(entry);
-    bassert(entry->kind != SCOPE_ENTRY_VOID);
+    bassert(entry->kind != SCOPE_ENTRY_UNNAMED);
     entry->kind         = SCOPE_ENTRY_VARIANT;
     entry->data.variant = variant;
 }
@@ -1517,7 +1517,7 @@ static INLINE void commit_member(struct context UNUSED(*ctx), struct mir_member 
     struct scope_entry *entry = member->entry;
     bmagic_check(entry);
     // Do not commit void entries
-    if (entry->kind == SCOPE_ENTRY_VOID) return;
+    if (entry->kind == SCOPE_ENTRY_UNNAMED) return;
     entry->kind        = SCOPE_ENTRY_MEMBER;
     entry->data.member = member;
 }
@@ -1529,7 +1529,7 @@ static INLINE void commit_var(struct context *ctx, struct mir_var *var)
     struct scope_entry *entry = var->entry;
     bmagic_check(entry);
     // Do not commit void entries
-    if (entry->kind == SCOPE_ENTRY_VOID) return;
+    if (entry->kind == SCOPE_ENTRY_UNNAMED) return;
     entry->kind     = SCOPE_ENTRY_VAR;
     entry->data.var = var;
     BL_TRACY_MESSAGE("COMMIT_VAR", "%s", id->str);
@@ -1543,7 +1543,7 @@ static INLINE void provide_builtin_type(struct context *ctx, struct mir_type *ty
     struct scope_entry *entry =
         register_symbol(ctx, NULL, type->user_id, ctx->assembly->gscope, true);
     if (!entry) return;
-    bassert(entry->kind != SCOPE_ENTRY_VOID);
+    bassert(entry->kind != SCOPE_ENTRY_UNNAMED);
     entry->kind      = SCOPE_ENTRY_TYPE;
     entry->data.type = type;
 }
@@ -1553,7 +1553,7 @@ provide_builtin_member(struct context *ctx, struct scope *scope, struct mir_memb
 {
     struct scope_entry *entry = register_symbol(ctx, NULL, member->id, scope, true);
     if (!entry) return;
-    bassert(entry->kind != SCOPE_ENTRY_VOID);
+    bassert(entry->kind != SCOPE_ENTRY_UNNAMED);
     entry->kind        = SCOPE_ENTRY_MEMBER;
     entry->data.member = member;
     member->entry      = entry;
@@ -1564,7 +1564,7 @@ provide_builtin_variant(struct context *ctx, struct scope *scope, struct mir_var
 {
     struct scope_entry *entry = register_symbol(ctx, NULL, variant->id, scope, true);
     if (!entry) return;
-    bassert(entry->kind != SCOPE_ENTRY_VOID);
+    bassert(entry->kind != SCOPE_ENTRY_UNNAMED);
     entry->kind         = SCOPE_ENTRY_VARIANT;
     entry->data.variant = variant;
     variant->entry      = entry;
@@ -1859,7 +1859,7 @@ struct scope_entry *register_symbol(struct context *ctx,
     // Do not register explicitly unused symbol!!!
     if (is_ignored_id(id)) {
         bassert(!is_builtin);
-        return ctx->analyze.void_entry;
+        return ctx->analyze.unnamed_entry;
     }
     const bool          is_private  = scope->kind == SCOPE_PRIVATE;
     const s32           layer_index = ctx->polymorph.current_scope_layer_index;
@@ -2812,6 +2812,7 @@ struct mir_arg *create_arg(struct context   *ctx,
     tmp->type           = type;
     tmp->decl_scope     = scope;
     tmp->value          = value;
+    tmp->is_unnamed     = id && is_ignored_id(id);
     return tmp;
 }
 
@@ -4365,7 +4366,7 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
         case MIR_INSTR_CALL_LOC:
         case MIR_INSTR_TYPE_POLY:
         case MIR_INSTR_MSG:
-        case MIR_INSTR_UNROLL: 
+        case MIR_INSTR_UNROLL:
             break;
 
         default:
@@ -4455,9 +4456,6 @@ struct result analyze_resolve_type(struct context   *ctx,
     }
 
     if (vm_execute_comptime_call(ctx->vm, ctx->assembly, (struct mir_instr_call *)resolver_call)) {
-        // @Hack: Data coming from compile-time execution of type resolver is not persistent! It
-        // lives on current stack and must be directly used before any other stack-related
-        // interaction.
         struct mir_type *resolved_type = MIR_CEV_READ_AS(struct mir_type *, &resolver_call->value);
         bmagic_check(resolved_type);
         *out_type = resolved_type;
@@ -4850,7 +4848,7 @@ struct result analyze_var(struct context *ctx, struct mir_var *var, const bool i
     }
 
     if (!var->is_implicit) {
-        if (var->is_global && var->entry->kind == SCOPE_ENTRY_VOID) {
+        if (var->is_global && var->entry->kind == SCOPE_ENTRY_UNNAMED) {
             report_error(
                 INVALID_NAME, var->decl_node, "Global variable cannot be explicitly unnamed.");
             return_zone(ANALYZE_RESULT(FAILED, 0));
@@ -5682,7 +5680,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
     bassert(value->type && "function has no valid type");
     bassert(value->data);
 
-    // @INCOMPLETE: Read struct mir_fn_poly_recipe here directly?
+    // @Incomplete: Read struct mir_fn_poly_recipe here directly?
     struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, value);
     bmagic_check(fn);
 
@@ -5697,6 +5695,18 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
     fn->type->user_id = fn->id;
 
     bassert(fn->type);
+
+    if (fn->type->data.fn.ret_type->kind == MIR_TYPE_TYPE && fn->decl_node &&
+        isnotflag(fn->flags, FLAG_COMPTIME)) {
+        // Check function return type, we use check for 'decl_node' here to exclude implicit type
+        // resolvers, probably better idea would be introduce something like 'is_implicit' flag for
+        // the 'mir_fn' but for now it's enough.
+        report_error(INVALID_TYPE,
+                     fn_proto->base.node,
+                     "Runtime-evaluated function cannot return 'type' as value, consider mark the "
+                     "function as #comptime.");
+        return_zone(ANALYZE_RESULT(FAILED, 0));
+    }
 
     // Set builtin ID to type if there is one. We must store this information in function
     // type because we need it during call analyze pass, in this case function can be called via
@@ -5856,7 +5866,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
     }
 
     if (fn->id && fn->scope_entry) {
-        if (fn->scope_entry->kind == SCOPE_ENTRY_VOID) {
+        if (fn->scope_entry->kind == SCOPE_ENTRY_UNNAMED) {
             report_error(INVALID_NAME, fn->decl_node, "Functions cannot be explicitly unnamed.");
             return_zone(ANALYZE_RESULT(FAILED, 0));
         }
@@ -6350,7 +6360,7 @@ struct result analyze_instr_decl_variant(struct context                *ctx,
         variant_instr->variant->value      = is_flags ? 1 : 0;
         variant_instr->variant->value_type = base_type;
     }
-    if (variant->entry->kind == SCOPE_ENTRY_VOID) {
+    if (variant->entry->kind == SCOPE_ENTRY_UNNAMED) {
         report_error(
             INVALID_NAME, variant_instr->base.node, "Enum variant cannot be explicitly unnamed.");
         return_zone(ANALYZE_RESULT(FAILED, 0));
@@ -7635,7 +7645,14 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
             ANALYZE_PASSED) {
             goto REPORT_OVERLOAD_LOCATION;
         }
-        if (call->call_in_compile_time && !mir_is_comptime(*call_arg)) {
+        if (call->call_in_compile_time && !mir_is_comptime(*call_arg) && !callee_arg->is_unnamed) {
+            // When function is called in compile-time, we must know all arguments in compile-time
+            // also, there is one exception for unnamed arguments (id = '_'); when argument is
+            // unnamed, we know its value cannot be used inside the function, but we can still use
+            // its type (known in compile-time). This allows things like:
+            //
+            //    get_type :: fn (_: ?T) type #comptime { return T; }
+            //
             report_error(EXPECTED_COMPTIME,
                          (*call_arg)->node,
                          "Function argument is supposed to be compile-time known since function is "
@@ -9496,13 +9513,15 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
             ast_arg_name = ast_arg->data.decl.name;
             bassert(ast_arg_name);
             bassert(ast_arg_name->kind == AST_IDENT && "Expected identificator.");
+            struct id *id = &ast_arg_name->data.ident.id;
+
+            struct mir_instr *arg = append_instr_arg(ctx, NULL, (u32)i);
 
             // create tmp declaration for arg variable
-            struct mir_instr          *arg = append_instr_arg(ctx, NULL, (u32)i);
             struct mir_instr_decl_var *decl_var =
                 (struct mir_instr_decl_var *)append_instr_decl_var(ctx,
                                                                    ast_arg_name,
-                                                                   &ast_arg_name->data.ident.id,
+                                                                   id,
                                                                    ast_arg_name->owner_scope,
                                                                    NULL,
                                                                    arg,
@@ -9510,8 +9529,8 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
                                                                    0,
                                                                    BUILTIN_ID_NONE);
 
-            decl_var->var->entry = register_symbol(
-                ctx, ast_arg_name, &ast_arg_name->data.ident.id, ast_arg_name->owner_scope, false);
+            decl_var->var->entry =
+                register_symbol(ctx, ast_arg_name, id, ast_arg_name->owner_scope, false);
         }
     }
 
@@ -11083,8 +11102,8 @@ void mir_run(struct assembly *assembly)
     arrsetcap(ctx.analyze.stack[0], 256);
     arrsetcap(ctx.analyze.stack[1], 256);
 
-    ctx.analyze.void_entry =
-        scope_create_entry(&ctx.assembly->arenas.scope, SCOPE_ENTRY_VOID, NULL, NULL, true);
+    ctx.analyze.unnamed_entry =
+        scope_create_entry(&ctx.assembly->arenas.scope, SCOPE_ENTRY_UNNAMED, NULL, NULL, true);
 
     // initialize all builtin types
     initialize_builtins(&ctx);

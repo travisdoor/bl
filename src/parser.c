@@ -2108,7 +2108,11 @@ struct ast *parse_type(struct context *ctx)
     if (!type) type = parse_type_arr(ctx);
     // Keep order!!!
 
-    if (!type) type = parse_ref(ctx);
+    if (!type) {
+        struct ast *ref = parse_ref(ctx);
+        if (ref) type = parse_expr_call(ctx, ref, false);
+        if (!type) type = ref;
+    }
 
     return type;
 }

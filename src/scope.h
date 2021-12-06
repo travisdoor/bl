@@ -53,7 +53,7 @@ enum scope_entry_kind {
     SCOPE_ENTRY_MEMBER,
     SCOPE_ENTRY_VARIANT,
     SCOPE_ENTRY_NAMED_SCOPE,
-    SCOPE_ENTRY_VOID, // Special kind used for unnamed entries.
+    SCOPE_ENTRY_UNNAMED, // Special kind used for unnamed entries.
 };
 
 union scope_entry_data {

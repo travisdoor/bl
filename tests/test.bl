@@ -24,13 +24,16 @@ TableValue :: fn () type #comptime {
 }
 */
 
-get :: fn () type #comptime {
-    return s32;
+MyType :: fn () type #comptime {
+    return struct {
+        key: s32;
+        value: string;
+    };
 }
 
 main :: fn () s32 {
-    //i :: get();
-    //print("i = %\n", i);
+    i: MyType(); 
+    print("typeinfo(i) = %\n", @typeinfo(i));
     return 0;
 }
 

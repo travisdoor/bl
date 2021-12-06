@@ -17,3 +17,21 @@ simple_fn_args :: fn () #test {
     i :: get(1, 2);
     test_eq(i, 3);
 }
+
+simple_type :: fn () #test {
+    get :: fn () type #comptime {
+        return s32;
+    };
+
+    i: get();
+    test_eq(typeinfo(s32), typeinfo(i));
+}
+
+struct_type :: fn () #test {
+    get :: fn () type #comptime {
+        return struct { i: s32; j: bool; };
+    };
+
+    i: get();
+    test_eq(typeinfo(i).kind, TypeKind.Struct);
+}

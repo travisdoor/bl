@@ -264,7 +264,7 @@ struct mir_fn {
     const char *full_name;
 
     LLVMValueRef llvm_value;
-    bool         is_fully_analyzed; // @Cleanup: Remove this!
+    bool         is_fully_analyzed;
     bool         is_global;
     s32          ref_count;
 
@@ -324,6 +324,7 @@ struct mir_arg {
     struct id       *id;
     struct ast      *decl_node;
     struct scope    *decl_scope;
+    bool             is_unnamed;
 
     // This is index of this argument in LLVM IR not in MIR, it can be different based on
     // compiler configuration (via. System V ABI)
@@ -586,8 +587,7 @@ struct mir_instr_alignof {
 
 struct mir_instr_arg {
     struct mir_instr base;
-
-    unsigned i;
+    unsigned         i;
 };
 
 struct mir_instr_const {
@@ -748,7 +748,7 @@ struct mir_instr_call {
     struct mir_instr *callee;
     mir_instrs_t     *args; // Optional
     bool              callee_analyzed;
-    bool              call_in_compile_time;
+    bool              call_in_compile_time; // @Cleanup
 
     // Optional temporary variable for unroll multi-return struct type.
     struct mir_instr *unroll_tmp_var;
