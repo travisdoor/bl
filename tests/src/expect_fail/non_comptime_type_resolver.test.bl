@@ -1,0 +1,4 @@
+// @ERR_INVALID_TYPE@
+get :: fn () type {
+    return s32;
+}
