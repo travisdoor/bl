@@ -24,16 +24,16 @@ TableValue :: fn () type #comptime {
 }
 */
 
-MyType :: fn () type #comptime {
+MyType :: fn (T: type) type #comptime {
     return struct {
         key: s32;
-        value: string;
+        value: T;
     };
 }
 
 main :: fn () s32 {
-    i: MyType(); 
-    static_assert(false);
+    i: MyType(string); 
+    static_assert(true);
     print("typeinfo(i) = %\n", @typeinfo(i));
     return 0;
 }

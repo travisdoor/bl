@@ -49,12 +49,13 @@ static void print_comptime_value_or_id(struct context *ctx, struct mir_instr *in
 static INLINE void
 print_type(struct context *ctx, struct mir_type *type, bool aligned, bool prefer_name)
 {
-    char tmp[256];
-    mir_type_to_str(tmp, static_arrlenu(tmp), type, prefer_name);
-    if (aligned)
-        fprintf(ctx->stream, "%16s", tmp);
-    else
-        fprintf(ctx->stream, "%s", tmp);
+    char *type_name = mir_type2str(type, prefer_name);
+    if (aligned) {
+        fprintf(ctx->stream, "%16s", type_name);
+    } else {
+        fprintf(ctx->stream, "%s", type_name);
+    }
+    puttmpstr(type_name);
 }
 
 static INLINE void print_instr_head(struct context *ctx, struct mir_instr *instr, const char *name)

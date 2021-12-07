@@ -959,7 +959,7 @@ static INLINE bool mir_type_has_llvm_representation(const struct mir_type *type)
 
 void           mir_arenas_init(struct mir_arenas *arenas);
 void           mir_arenas_terminate(struct mir_arenas *arenas);
-void           mir_type_to_str(char *buf, usize len, const struct mir_type *type, bool prefer_name);
+char          *mir_type2str(const struct mir_type *type, bool prefer_name);
 const char    *mir_instr_name(const struct mir_instr *instr);
 void           mir_run(struct assembly *assembly);
 struct mir_fn *mir_get_callee(const struct mir_instr_call *call);

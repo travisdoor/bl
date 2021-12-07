@@ -205,9 +205,8 @@ void vmdbg_notify_stack_op(enum vmdbg_stack_op op, struct mir_type *type, void *
                         ptr);
             break;
         case VMDBG_PUSH: {
-            unsigned long long size = type->store_size_bytes;
-            char               type_name[256];
-            mir_type_to_str(type_name, 256, type, true);
+            unsigned long long size      = type->store_size_bytes;
+            char              *type_name = mir_type2str(type, true);
             if (vm->stack->pc) {
                 color_print(stdout,
                             BL_RED,
@@ -225,12 +224,12 @@ void vmdbg_notify_stack_op(enum vmdbg_stack_op op, struct mir_type *type, void *
                             ptr,
                             type_name);
             }
+            puttmpstr(type_name);
             break;
         }
         case VMDBG_POP: {
-            unsigned long long size = type->store_size_bytes;
-            char               type_name[256];
-            mir_type_to_str(type_name, 256, type, true);
+            unsigned long long size      = type->store_size_bytes;
+            char              *type_name = mir_type2str(type, true);
             if (vm->stack->pc) {
                 color_print(stdout,
                             BL_BLUE,
@@ -248,6 +247,7 @@ void vmdbg_notify_stack_op(enum vmdbg_stack_op op, struct mir_type *type, void *
                             ptr,
                             type_name);
             }
+            puttmpstr(type_name);
             break;
         }
         }

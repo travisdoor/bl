@@ -1475,11 +1475,11 @@ static INLINE void error_types(struct context   *ctx,
 {
     bassert(from && to);
     if (!msg) msg = "No implicit cast for type '%s' and '%s'.";
-    char tmp_from[256];
-    char tmp_to[256];
-    mir_type_to_str(tmp_from, 256, from, true);
-    mir_type_to_str(tmp_to, 256, to, true);
+    char *tmp_from = mir_type2str(from, true);
+    char *tmp_to   = mir_type2str(to, true);
     report_error(INVALID_TYPE, node, msg, tmp_from, tmp_to);
+    puttmpstr(tmp_from);
+    puttmpstr(tmp_to);
     DEBUG_PRINT_MIR(instr);
 }
 
@@ -2255,9 +2255,9 @@ struct mir_type *complete_type_struct(struct context   *ctx,
 
 #if TRACY_ENABLE
     {
-        char type_name[256];
-        mir_type_to_str(type_name, 256, incomplete_type, true);
+        char *type_name = mir_type2str(incomplete_type, true);
         BL_TRACY_MESSAGE("COMPLETE_TYPE", "%s", type_name);
+        puttmpstr(type_name);
     }
 #endif
     type_init_llvm_struct(ctx, incomplete_type);
@@ -6138,12 +6138,12 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
             case MIR_TYPE_FN:
             case MIR_TYPE_FN_GROUP:
             case MIR_TYPE_NAMED_SCOPE: {
-                char type_name[256];
-                mir_type_to_str(type_name, 256, arg->type, true);
+                char *type_name = mir_type2str(arg->type, true);
                 report_error(INVALID_TYPE,
                              arg->decl_node,
                              "Invalid function argument type '%s'.",
                              type_name);
+                puttmpstr(type_name);
                 return_zone(ANALYZE_RESULT(FAILED, 0));
             }
             default:
@@ -6337,8 +6337,7 @@ struct result analyze_instr_decl_variant(struct context                *ctx,
         const bool u64overflow = value == 0;
         if (is_flags && (value > max_value || u64overflow)) {
             // @Incomplete: Detect overflow also for regular enums?
-            char base_type_name[256];
-            mir_type_to_str(base_type_name, 256, base_type, true);
+            char *base_type_name = mir_type2str(base_type, true);
             report_error(NUM_LIT_OVERFLOW,
                          variant_instr->base.node,
                          "Enum variant value overflow on variant '%s', maximum value for type "
@@ -6346,6 +6345,7 @@ struct result analyze_instr_decl_variant(struct context                *ctx,
                          variant->id->str,
                          base_type_name,
                          max_value);
+            puttmpstr(base_type_name);
             return_zone(ANALYZE_RESULT(FAILED, 0));
         }
         variant_instr->variant->value      = value;
@@ -6911,13 +6911,13 @@ struct result analyze_instr_unop(struct context *ctx, struct mir_instr_unop *uno
 
     case UNOP_BIT_NOT: {
         if (expr_type->kind != MIR_TYPE_INT) {
-            char tmp[256];
-            mir_type_to_str(tmp, 256, expr_type, true);
+            char *type_name = mir_type2str(expr_type, true);
             report_error_after(INVALID_TYPE,
                                unop->base.node,
                                "Invalid operation for type '%s'. This operation "
                                "is valid for integer types only.",
-                               tmp);
+                               type_name);
+            puttmpstr(type_name);
             return_zone(ANALYZE_RESULT(FAILED, 0));
         }
         break;
@@ -6926,13 +6926,13 @@ struct result analyze_instr_unop(struct context *ctx, struct mir_instr_unop *uno
     case UNOP_POS:
     case UNOP_NEG: {
         if (expr_type->kind != MIR_TYPE_INT && expr_type->kind != MIR_TYPE_REAL) {
-            char tmp[256];
-            mir_type_to_str(tmp, 256, expr_type, true);
+            char *type_name = mir_type2str(expr_type, true);
             report_error_after(INVALID_TYPE,
                                unop->base.node,
                                "Invalid operation for type '%s'. This operation "
                                "is valid for integer or real types only.",
-                               tmp);
+                               type_name);
+            puttmpstr(type_name);
             return_zone(ANALYZE_RESULT(FAILED, 0));
         }
         break;
@@ -7250,11 +7250,9 @@ struct result generate_fn_poly(struct context             *ctx,
             if (!matching_type) {
                 ast_nodes_t *ast_poly_args = ast_recipe->data.expr_fn.type->data.type_fn.args;
                 struct ast  *ast_poly_arg  = sarrpeek(ast_poly_args, i);
-                char         recipe_type_name[256];
-                mir_type_to_str(recipe_type_name, 256, recipe_arg_type, true);
                 if (call_arg_type) {
-                    char arg_type_name[256];
-                    mir_type_to_str(arg_type_name, 256, call_arg_type, true);
+                    char *recipe_type_name = mir_type2str(recipe_arg_type, true);
+                    char *arg_type_name    = mir_type2str(call_arg_type, true);
                     report_error(INVALID_POLY_MATCH,
                                  ast_poly_arg->data.decl.type,
                                  "Cannot deduce polymorph function argument type '%s'. Expected is "
@@ -7262,6 +7260,8 @@ struct result generate_fn_poly(struct context             *ctx,
                                  poly_type->user_id->str,
                                  recipe_type_name,
                                  arg_type_name);
+                    puttmpstr(recipe_type_name);
+                    puttmpstr(arg_type_name);
 
                     struct location *call_arg_loc =
                         sarrpeek(call->data.expr_call.args, i)->location;
@@ -7281,12 +7281,12 @@ struct result generate_fn_poly(struct context             *ctx,
             } else {
                 bassert(matching_type->kind != MIR_TYPE_POLY);
                 // Stringify replacement to get better error reports.
-                char type_name1[256];
-                char type_name2[256];
-                mir_type_to_str(type_name1, 256, poly_type, true);
-                mir_type_to_str(type_name2, 256, matching_type, true);
+                char *type_name1 = mir_type2str(poly_type, true);
+                char *type_name2 = mir_type2str(matching_type, true);
                 strappend(debug_replacement_str, "%s = %s; ", type_name1, type_name2);
                 sarrput(queue, matching_type);
+                puttmpstr(type_name1);
+                puttmpstr(type_name2);
             }
         }
     }
@@ -8463,9 +8463,9 @@ struct mir_var *_rtti_gen(struct context *ctx, struct mir_type *type)
         break;
 
     default: {
-        char type_name[256];
-        mir_type_to_str(type_name, 256, type, true);
+        char *type_name = mir_type2str(type, true);
         babort("missing RTTI generation for type '%s'", type_name);
+        // no puttmpstr here, we aborting anyway...
     }
     }
 
@@ -10649,63 +10649,56 @@ struct mir_fn *mir_get_callee(const struct mir_instr_call *call)
     return fn;
 }
 
-static void _type_to_str(char *buf, usize len, const struct mir_type *type, bool prefer_name)
+static void _type2str(char **buf, const struct mir_type *type, bool prefer_name)
 {
-#define append_buf(buf, len, str)                                                                  \
-    {                                                                                              \
-        const usize filled = strlen(buf);                                                          \
-        snprintf((buf) + filled, (len)-filled, "%s", str);                                         \
-    }
-
-    if (!buf) return;
     if (!type) {
-        append_buf(buf, len, "<unknown>");
+        strappend(*buf, "<unknown>");
         return;
     }
 
     if (type->user_id && prefer_name) {
         bassert(type->user_id->str);
-        append_buf(buf, len, type->user_id->str);
+        strappend(*buf, "%s", type->user_id->str);
         return;
     }
 
     switch (type->kind) {
     case MIR_TYPE_TYPE:
-        append_buf(buf, len, "type");
+        strappend(*buf, "type");
         break;
 
     case MIR_TYPE_SLICE: {
         const bool has_members = type->data.strct.members;
-        append_buf(buf, len, "[]");
+        strappend(*buf, "[]");
 
         if (has_members) {
             struct mir_type *tmp = mir_get_struct_elem_type(type, MIR_SLICE_PTR_INDEX);
             tmp                  = mir_deref_type(tmp);
-            _type_to_str(buf, len, tmp, true);
+            _type2str(buf, tmp, true);
         }
         break;
     }
 
     case MIR_TYPE_DYNARR: {
         const bool has_members = type->data.strct.members;
-        append_buf(buf, len, "[..]");
+        strappend(*buf, "[..]");
 
         if (has_members) {
             struct mir_type *tmp = mir_get_struct_elem_type(type, MIR_DYNARR_PTR_INDEX);
             tmp                  = mir_deref_type(tmp);
-            _type_to_str(buf, len, tmp, true);
+            _type2str(buf, tmp, true);
         }
         break;
     }
 
     case MIR_TYPE_VARGS: {
         const bool has_members = type->data.strct.members;
-        append_buf(buf, len, "...");
+        strappend(*buf, "...");
 
         if (has_members) {
             struct mir_type *tmp = mir_get_struct_elem_type(type, MIR_SLICE_PTR_INDEX);
             tmp                  = mir_deref_type(tmp);
-            _type_to_str(buf, len, tmp, true);
+            _type2str(buf, tmp, true);
         }
         break;
     }
@@ -10713,83 +10706,71 @@ static void _type_to_str(char *buf, usize len, const struct mir_type *type, bool
     case MIR_TYPE_STRUCT: {
         mir_members_t *members = type->data.strct.members;
         if (type->data.strct.is_union) {
-            append_buf(buf, len, "union{");
+            strappend(*buf, "union{");
         } else {
-            append_buf(buf, len, "struct{");
+            strappend(*buf, "struct{");
         }
         for (usize i = 0; i < sarrlenu(members); ++i) {
             struct mir_member *member = sarrpeek(members, i);
-            _type_to_str(buf, len, member->type, true);
-            if (i < sarrlenu(members) - 1) append_buf(buf, len, ", ");
+            _type2str(buf, member->type, true);
+            if (i < sarrlenu(members) - 1) strappend(*buf, ", ");
         }
-        append_buf(buf, len, "}");
+        strappend(*buf, "}");
         break;
     }
 
     case MIR_TYPE_ENUM: {
         mir_variants_t *variants = type->data.enm.variants;
-        append_buf(buf, len, "enum{");
+        strappend(*buf, "enum{");
         for (usize i = 0; i < sarrlenu(variants); ++i) {
             struct mir_variant *variant = sarrpeek(variants, i);
-            append_buf(buf, len, variant->id->str);
-            append_buf(buf, len, " :: ");
-            char value_str[35];
-            snprintf(value_str, static_arrlenu(value_str), "%lld", variant->value);
-            append_buf(buf, len, value_str);
-            if (i < sarrlenu(variants) - 1) append_buf(buf, len, ", ");
+            strappend(*buf, "%s :: %lld", variant->id->str, variant->value);
+            if (i < sarrlenu(variants) - 1) strappend(*buf, ", ");
         }
-        append_buf(buf, len, "}");
+        strappend(*buf, "}");
         break;
     }
 
     case MIR_TYPE_FN: {
-        append_buf(buf, len, "fn(");
+        strappend(*buf, "fn(");
         mir_args_t *args = type->data.fn.args;
         for (usize i = 0; i < sarrlenu(args); ++i) {
             struct mir_arg *arg = sarrpeek(args, i);
-            _type_to_str(buf, len, arg->type, true);
-            if (i < sarrlenu(args) - 1) append_buf(buf, len, ", ");
+            _type2str(buf, arg->type, true);
+            if (i < sarrlenu(args) - 1) strappend(*buf, ", ");
         }
-        append_buf(buf, len, ") ");
-        _type_to_str(buf, len, type->data.fn.ret_type, true);
+        strappend(*buf, ") ");
+        _type2str(buf, type->data.fn.ret_type, true);
         break;
     }
 
     case MIR_TYPE_FN_GROUP: {
-        append_buf(buf, len, "fn{");
+        strappend(*buf, "fn{");
         mir_types_t *variants = type->data.fn_group.variants;
         for (usize i = 0; i < sarrlenu(variants); ++i) {
             struct mir_type *it = sarrpeek(variants, i);
-            _type_to_str(buf, len, it, true);
-            if (i < sarrlenu(variants) - 1) append_buf(buf, len, "; ");
+            _type2str(buf, it, true);
+            if (i < sarrlenu(variants) - 1) strappend(*buf, "; ");
         }
-        append_buf(buf, len, "} ");
+        strappend(*buf, "} ");
         break;
     }
 
     case MIR_TYPE_PTR: {
-        append_buf(buf, len, "*");
-        _type_to_str(buf, len, mir_deref_type(type), prefer_name);
+        strappend(*buf, "*");
+        _type2str(buf, mir_deref_type(type), prefer_name);
         break;
     }
 
     case MIR_TYPE_ARRAY: {
-        char str[35];
-        sprintf(str, "[%llu]", (unsigned long long)type->data.array.len);
-        append_buf(buf, len, str);
-
-        _type_to_str(buf, len, type->data.array.elem_type, true);
+        strappend(*buf, "[%llu]", (unsigned long long)type->data.array.len);
+        _type2str(buf, type->data.array.elem_type, true);
         break;
     }
 
     default:
-        if (type->user_id) {
-            append_buf(buf, len, type->user_id->str);
-        } else {
-            append_buf(buf, len, "<invalid>");
-        }
+        strappend(*buf, "%s", type->user_id ? type->user_id->str : "<invalid>");
     }
-#undef append_buf
 }
 
 #if BL_DEBUG
@@ -10802,11 +10783,11 @@ vm_stack_ptr_t _mir_cev_read(struct mir_const_expr_value *value)
 }
 #endif
 
-void mir_type_to_str(char *buf, usize len, const struct mir_type *type, bool prefer_name)
+char *mir_type2str(const struct mir_type *type, bool prefer_name)
 {
-    if (!buf || !len) return;
-    buf[0] = '\0';
-    _type_to_str(buf, len, type, prefer_name);
+    char *str = gettmpstr();
+    _type2str(&str, type, prefer_name);
+    return str;
 }
 
 static void provide_builtin_arch(struct context *ctx)

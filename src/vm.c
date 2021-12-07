@@ -806,9 +806,9 @@ void _dyncall_generate_signature(struct virtual_machine *vm, struct mir_type *ty
     }
 
     default: {
-        char type_name[256];
-        mir_type_to_str(type_name, 256, type, true);
+        char *type_name = mir_type2str(type, true);
         babort("Unsupported DC-signature type '%s'.", type_name);
+        puttmpstr(type_name);
     }
     }
 }
@@ -1005,9 +1005,9 @@ void interp_extern_call(struct virtual_machine *vm, struct mir_fn *fn, struct mi
     }
 
     default: {
-        char type_name[256];
-        mir_type_to_str(type_name, 256, ret_type, true);
+        char *type_name = mir_type2str(ret_type, true);
         babort("Unsupported external call return type '%s'", type_name);
+        // no tmpstrput here.
     }
     }
 
