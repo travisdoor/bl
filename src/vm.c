@@ -56,7 +56,9 @@ static const char *dyncall_generate_signature(struct virtual_machine *vm, struct
 static DCCallback *dyncall_fetch_callback(struct virtual_machine *vm, struct mir_fn *fn);
 static void
 dyncall_push_arg(struct virtual_machine *vm, vm_stack_ptr_t val_ptr, struct mir_type *type);
-static bool execute_function(struct virtual_machine *vm, struct mir_fn *fn);
+static bool execute_function(struct virtual_machine *vm,
+                             struct mir_fn          *fn,
+                             struct mir_instr_call  *optional_call);
 static void interp_instr(struct virtual_machine *vm, struct mir_instr *instr);
 static void
 interp_extern_call(struct virtual_machine *vm, struct mir_fn *fn, struct mir_instr_call *call);
@@ -1015,14 +1017,21 @@ void interp_extern_call(struct virtual_machine *vm, struct mir_fn *fn, struct mi
     }
 }
 
-// Expects all arguments already on stack.
-// Return value can be eventually pushed on the stack after execution.
-bool execute_function(struct virtual_machine *vm, struct mir_fn *fn)
+// Execute top level function directly.
+// - Expects all arguments already on stack.
+// - Return value can be eventually pushed on the stack after execution.
+// - Current execution stack pointer is restored in case the execution failed; there is no valid
+//   return value on the stack even if the function is supposed to return one.
+bool execute_function(struct virtual_machine *vm,
+                      struct mir_fn          *fn,
+                      struct mir_instr_call  *optional_call)
 {
     struct mir_instr       *fn_entry_instr    = fn->first_block->entry_instr;
     const struct mir_instr *fn_terminal_instr = &fn->terminal_instr->base;
+    // Reset eventual previous failed state.
+    vm->stack->aborted = false;
     // push terminal frame on stack
-    push_ra(vm, NULL);
+    push_ra(vm, optional_call);
     // allocate local variables
     stack_alloc_local_vars(vm, fn);
     // setup entry instruction
@@ -1041,7 +1050,14 @@ bool execute_function(struct virtual_machine *vm, struct mir_fn *fn)
         // Stack head can be changed by br instructions.
         if (!get_pc(vm) || get_pc(vm) == prev) set_pc(vm, instr->next);
     }
-    return !vm->stack->aborted;
+    if (vm->stack->aborted) {
+        // rollback the stack to the initial stack pointer.
+        // @Incomplete: endless loop?
+        while (pop_ra(vm) != optional_call)
+            ;
+        return false;
+    }
+    return true;
 }
 
 void interp_instr(struct virtual_machine *vm, struct mir_instr *instr)
@@ -1725,9 +1741,14 @@ void interp_instr_ret(struct virtual_machine *vm, struct mir_instr_ret *ret)
 
     // do frame stack rollback
     struct mir_instr_call *pc = pop_ra(vm);
+    // post-processing like cleanup and continuing to the another instruction is allowed only in
+    // case the return adress call is not compile-time; i.e. type resolver or any #comptime marked
+    // top-level executed during evaluation.
+    const bool do_post_process = pc && !mir_is_comptime(&pc->base);
 
-    // clean up all arguments from the stack
-    if (pc) {
+    // clean up all arguments from the stack only for non-comptime return adress call (in case we
+    // have compile-time call here, we suppose it's top-level executed call!
+    if (do_post_process) {
         mir_instrs_t *arg_values = pc->args;
         for (usize i = 0; i < sarrlenu(arg_values); ++i) {
             struct mir_instr *arg_value = sarrpeek(arg_values, i);
@@ -1738,7 +1759,7 @@ void interp_instr_ret(struct virtual_machine *vm, struct mir_instr_ret *ret)
 
     // push return value on the stack if there is one
     if (ret_data_ptr) {
-        if (pc) {
+        if (do_post_process) {
             if (mir_is_comptime(&pc->base)) {
                 pc->base.value.data = ret->value->value.data;
             } else if (pc->base.ref_count > 0) {
@@ -1750,7 +1771,7 @@ void interp_instr_ret(struct virtual_machine *vm, struct mir_instr_ret *ret)
     }
 
     // set program counter to next instruction
-    set_pc(vm, pc ? pc->base.next : NULL);
+    set_pc(vm, do_post_process ? pc->base.next : NULL);
 }
 
 void interp_instr_binop(struct virtual_machine *vm, struct mir_instr_binop *binop)
@@ -2315,8 +2336,7 @@ bool vm_execute_fn(struct virtual_machine *vm,
                    vm_stack_ptr_t         *optional_return)
 {
     bmagic_check(fn);
-    vm->assembly       = assembly;
-    vm->stack->aborted = false;
+    vm->assembly = assembly;
     if (optional_args) {
         bassert(fn->type->data.fn.args);
         bassert(sarrlenu(fn->type->data.fn.args) == sarrlenu(optional_args) &&
@@ -2327,7 +2347,7 @@ bool vm_execute_fn(struct virtual_machine *vm,
             stack_push(vm, value->data, value->type);
         }
     }
-    if (execute_function(vm, fn)) {
+    if (execute_function(vm, fn, NULL)) {
         vm_stack_ptr_t return_ptr = NULL;
         if (fn_does_return(fn)) {
             struct mir_type *ret_type = fn->type->data.fn.ret_type;
@@ -2363,7 +2383,7 @@ bool vm_execute_comptime_call(struct virtual_machine *vm,
         struct mir_const_expr_value *value = &sarrpeek(args, i)->value;
         stack_push(vm, value->data, value->type);
     }
-    if (execute_function(vm, fn)) {
+    if (execute_function(vm, fn, call)) {
         // Pop return value.
         if (fn_does_return(fn)) {
             struct mir_type *ret_type = fn->type->data.fn.ret_type;

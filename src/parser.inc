@@ -23,8 +23,8 @@
     HD_GEN(HD_SCOPE, "scope", 1 << 21)
     HD_GEN(HD_THREAD_LOCAL, "thread_local", 1 << 22)
     HD_GEN(HD_FLAGS, "flags", 1 << 23)
-    HD_GEN(HD_ASSERT, "assert", 1 << 24)
     HD_GEN(HD_COMPTIME, "comptime", 1 << 25)
     HD_GEN(HD_ERROR, "error", 1 << 26)
     HD_GEN(HD_WARNING, "warning", 1 << 27)
+    // 24 free
 #endif

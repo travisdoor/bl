@@ -748,7 +748,6 @@ struct mir_instr_call {
     struct mir_instr *callee;
     mir_instrs_t     *args; // Optional
     bool              callee_analyzed;
-    bool              call_in_compile_time; // @Cleanup
 
     // Optional temporary variable for unroll multi-return struct type.
     struct mir_instr *unroll_tmp_var;

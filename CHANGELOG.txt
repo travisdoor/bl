@@ -2,14 +2,14 @@
 ---------------------------------------------------------------------------------------
 Add lazy IR generation to reduce LLVM generated stuff.
 Add thread local global storage support.
-Add time report.
-Add support of polymorphic function.
+Add compilation time report.
+Add polymorphic function.
 Add temporary allocator.
-Add compilation of Tracy profiler on Windows in baker development tool.
 Add missing operators and change deref operator to @.
 Add evaluation of compile time known conditional breaks.
 Add static assert.
 Add static if.
+Add experimental #comptime directive for the functions evaluated in compile time.
 Documentation format changed to markdown.
 Fix crash on unnamed function argument RTTI generation.
 Fix crash when invlid type of default argument value is provided by user.

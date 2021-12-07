@@ -829,9 +829,8 @@ static const struct slot_config analyze_slot_conf_full = {.count  = 9,
 // This function produce analyze of implicit call to the type resolver function in MIR and set
 // out_type when analyze passed without problems. When analyze does not pass postpone is returned
 // and out_type stay unchanged.
-static struct result analyze_resolve_type(struct context   *ctx,
-                                          struct mir_instr *resolver_call,
-                                          struct mir_type **out_type);
+static struct result
+analyze_resolve_type(struct context *ctx, struct mir_instr *resolver, struct mir_type **out_type);
 static struct result analyze_instr_unroll(struct context *ctx, struct mir_instr_unroll *unroll);
 static struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compound *cmp);
 static struct result analyze_instr_set_initializer(struct context                   *ctx,
@@ -1056,12 +1055,6 @@ static INLINE bool can_mutate_comptime_to_const(struct mir_instr *instr)
         // not clear here.
     case MIR_INSTR_UNROLL:
         return false;
-    case MIR_INSTR_CALL: {
-        // This will allow us to convert function calls supposed to be executed in compile-time to
-        // be replaced by constant value containing the result. Notice that this allows generation
-        // of 'void' constants if the function does not return.
-        return ((struct mir_instr_call *)instr)->call_in_compile_time;
-    }
 
     default:
         break;
@@ -3480,7 +3473,6 @@ struct mir_instr *create_instr_call(struct context   *ctx,
     tmp->base.value.is_comptime = is_comptime;
     tmp->args                   = args;
     tmp->callee                 = ref_instr(callee);
-    tmp->call_in_compile_time   = is_comptime; // @Cleanup
     // reference all arguments
     for (usize i = 0; i < sarrlenu(args); ++i) {
         struct mir_instr *instr = sarrpeek(args, i);
@@ -4391,7 +4383,6 @@ bool evaluate(struct context *ctx, struct mir_instr *instr)
         // Call instruction must be evaluated and then later converted to constant in case it's
         // supposed to be called in compile time, otherwise we leave it as it is.
         struct mir_instr_call *call = (struct mir_instr_call *)instr;
-        if (!call->call_in_compile_time) return true;
         if (!vm_execute_comptime_call(ctx->vm, ctx->assembly, call)) return false;
         break;
     }
@@ -4443,26 +4434,29 @@ bool evaluate(struct context *ctx, struct mir_instr *instr)
     return true;
 }
 
-struct result analyze_resolve_type(struct context   *ctx,
-                                   struct mir_instr *resolver_call,
-                                   struct mir_type **out_type)
+struct result
+analyze_resolve_type(struct context *ctx, struct mir_instr *resolver, struct mir_type **out_type)
 {
-    bassert(resolver_call && "Expected resolver call.");
-    bassert(resolver_call->kind == MIR_INSTR_CALL &&
-            "Type resolver is expected to be call to resolve function.");
+    bassert(resolver && "Expected resolver call.");
+    bassert(mir_is_comptime(resolver));
 
-    if (!resolver_call->is_analyzed && analyze_instr(ctx, resolver_call).state != ANALYZE_PASSED) {
-        return ANALYZE_RESULT(POSTPONE, 0);
-    }
-
-    if (vm_execute_comptime_call(ctx->vm, ctx->assembly, (struct mir_instr_call *)resolver_call)) {
-        struct mir_type *resolved_type = MIR_CEV_READ_AS(struct mir_type *, &resolver_call->value);
-        bmagic_check(resolved_type);
-        *out_type = resolved_type;
-        return ANALYZE_RESULT(PASSED, 0);
+    if (resolver->kind == MIR_INSTR_CALL) {
+        bassert(!resolver->is_analyzed &&
+                "Incase the type resolver is analyzed is's supposed to be already converted to the "
+                "constant value during evaluation!");
+        if (analyze_instr(ctx, resolver).state != ANALYZE_PASSED) {
+            return ANALYZE_RESULT(POSTPONE, 0);
+        }
     } else {
-        return ANALYZE_RESULT(FAILED, 0);
+        // Type resolver can be already evaluated, in such case it must be compile time constant.
+        bassert(resolver->kind == MIR_INSTR_CONST);
     }
+
+    // Type resolver was already executed during evaluation pass since it's comptime.
+    struct mir_type *resolved = MIR_CEV_READ_AS(struct mir_type *, &resolver->value);
+    bmagic_check(resolved);
+    *out_type = resolved;
+    return ANALYZE_RESULT(PASSED, 0);
 }
 
 struct result analyze_instr_toany(struct context *ctx, struct mir_instr_to_any *toany)
@@ -7459,21 +7453,6 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         is_group                = false;
     }
 
-    if (is_direct_call) {
-        struct mir_fn *fn = optional_fn_or_group.fn;
-        bmagic_check(fn);
-        // @Note: Wait for comptime direct calls to be fully analyzed.
-        if (call->base.value.is_comptime && !fn->is_fully_analyzed) {
-            return_zone(ANALYZE_RESULT(POSTPONE, 0));
-        }
-        // Direct call of anonymous function.
-        // NOTE: We increase ref count of called function here, but this
-        // will not work for functions called by pointer in obtained in
-        // runtime
-        if (fn->ref_count == 0) {
-            ++fn->ref_count;
-        }
-    }
     bassert(is_fn && !is_group);
     const bool is_polymorph = type->data.fn.is_polymorph;
     if (is_polymorph) {
@@ -7505,22 +7484,25 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
     bassert(result_type && "invalid type of call result");
     call->base.value.type = result_type;
 
-    { // set call to compile time call in case the called function is marked as comptime
+    if (is_direct_call) {
         struct mir_fn *fn = optional_fn_or_group.fn;
-        if (fn) {
-            bmagic_check(fn);
-            const bool call_in_compile_time = isflag(fn->flags, FLAG_COMPTIME);
-            if (call_in_compile_time) {
-                // @Cleanup: is_comptime vs call_in_compile_time
-                call->call_in_compile_time   = true;
-                call->base.value.is_comptime = true;
-            }
+        bmagic_check(fn);
+        // Direct call of anonymous function.
+        if (fn->ref_count == 0) {
+            ++fn->ref_count;
         }
     }
 
-    if (call->call_in_compile_time) {
-        if (!mir_is_comptime(&call->base))
-            babort("Function called in compile time must be comptime.");
+    if (optional_fn_or_group.fn) {
+        struct mir_fn *fn = optional_fn_or_group.fn;
+        bmagic_check(fn);
+        if (isflag(fn->flags, FLAG_COMPTIME)) {
+            // Every comptime call is evaluated automatically (type resolvers also!).
+            call->base.value.is_comptime = true;
+        }
+    }
+
+    if (mir_is_comptime(&call->base)) {
         // Postpone analyze in case the function is not fully analyzed -> it cannot be executed
         // yet.
         // @Incomplete: In case the function calls internally another function(s), those can be
@@ -7645,7 +7627,8 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
             ANALYZE_PASSED) {
             goto REPORT_OVERLOAD_LOCATION;
         }
-        if (call->call_in_compile_time && !mir_is_comptime(*call_arg) && !callee_arg->is_unnamed) {
+        if (mir_is_comptime(&call->base) && !mir_is_comptime(*call_arg) &&
+            !callee_arg->is_unnamed) {
             // When function is called in compile-time, we must know all arguments in compile-time
             // also, there is one exception for unnamed arguments (id = '_'); when argument is
             // unnamed, we know its value cannot be used inside the function, but we can still use
@@ -9388,9 +9371,8 @@ struct mir_instr *ast_expr_call(struct context *ctx, struct ast *call)
             sarrpeek(args, i) = arg;
         }
     }
-    struct mir_instr *callee               = ast(ctx, ast_callee);
-    const bool        call_in_compile_time = call->data.expr_call.call_in_compile_time;
-    return append_instr_call(ctx, call, callee, args, call_in_compile_time);
+    struct mir_instr *callee = ast(ctx, ast_callee);
+    return append_instr_call(ctx, call, callee, args, false);
 }
 
 struct mir_instr *ast_expr_elem(struct context *ctx, struct ast *elem)
@@ -10398,7 +10380,6 @@ struct mir_instr *ast_create_type_resolver_call(struct context *ctx, struct ast 
     append_instr_ret(ctx, NULL, result);
     set_current_block(ctx, prev_block);
     struct mir_instr *call = create_instr_call(ctx, ast_type, fn_proto, NULL, true);
-    ((struct mir_instr_call *)call)->call_in_compile_time = false; // @Cleanup, @Hack
     return call;
 }
 

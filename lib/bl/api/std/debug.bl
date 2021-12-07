@@ -58,12 +58,12 @@ assert :: fn (cond: bool, loc := #call_location) #compiler {
     if cond { return; }
     _context.print_log_fn(PrintLogKind.Assert, loc.file, loc.line, "Assertion failed!");
     unreachable;
-};
+}
 
-/// Compiler internal static assert handler, this is supposed to be used via #assert directive, not 
-/// directly.
-__static_assert :: fn (expr: bool) #compiler {
-    if !expr { unreachable; }
+/// Assertion check evaluated in compile time.
+static_assert :: fn (expr: bool) #comptime {
+    if expr { return; }
+    unreachable;
 }
 
 /// Abort execution and eventually print panic message if there is one specified. First passed 

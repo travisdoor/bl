@@ -33,35 +33,10 @@ MyType :: fn () type #comptime {
 
 main :: fn () s32 {
     i: MyType(); 
+    static_assert(false);
     print("typeinfo(i) = %\n", @typeinfo(i));
     return 0;
 }
-
-// =================================================================================================
-// TODO
-// =================================================================================================
-
-// - [L] first_char :: fn (str: string #readonly) u8 {}
-// - [L] #using Enum + use UPPERCASE for variants.
-// - [L] allow static #if in global scope
-// - [L] modules should use regular load scripts written in BL executed during import
-// - [L] lazy load/import of sources (during analyze pass)
-// - [L] BLC_VER :: #comptime get_version_string();
-// - [M] test external calls returning something bigger than 64 bit integers!
-// - [L] Implement lambda capture.
-// - [L] @source/@src/@example tag parsing in documentation to automatically include files. 
-// - [L] comptime function sould not return pointers 
-
-// =================================================================================================
-// Release: 1.0.0
-// =================================================================================================
-// - [H] limited support for #comptime calls.
-// - [H] types should be also evaluated.
-// - [H] polymorph struct types
-// - [H] implement hash table using polymorph types.
-// - [L] revalidate Fs module interface.
-// - [L] improve auto documentation to report default values of functions correctly
-// - [L] #switch ?
 
 // =================================================================================================
 // Module loader

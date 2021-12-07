@@ -155,7 +155,7 @@ static struct ast *parse_expr_alignof(struct context *ctx);
 static INLINE bool parse_semicolon(struct context *ctx);
 static INLINE bool parse_semicolon_rq(struct context *ctx);
 static INLINE bool hash_directive_to_flags(enum hash_directive_flags hd, u32 *out_flags);
-static struct ast *parse_expr_call(struct context *ctx, struct ast *prev, const bool is_comptime);
+static struct ast *parse_expr_call(struct context *ctx, struct ast *prev);
 static struct ast *parse_expr_elem(struct context *ctx, struct ast *prev);
 static struct ast *parse_expr_compound(struct context *ctx);
 
@@ -461,25 +461,6 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
             assembly_import_module(ctx->assembly, tok_path->value.str, tok_path);
         }
         return_zone(import);
-    }
-
-    case HD_ASSERT: {
-        BL_TRACY_MESSAGE("HD_FLAG", "#assert");
-        bassert(tok_directive->sym == SYM_IDENT);
-        struct ast *ident =
-            ast_create_node(ctx->ast_arena, AST_IDENT, tok_directive, scope_get(ctx));
-        ident->data.ident.id = *BID(STATIC_ASSERT_FN);
-        struct ast *ref = ast_create_node(ctx->ast_arena, AST_REF, tok_directive, scope_get(ctx));
-        ref->data.ref.ident = ident;
-        struct ast *call    = parse_expr_call(ctx, ref, true);
-        if (!call) {
-            PARSE_ERROR(ERR_INVALID_DIRECTIVE,
-                        tok_directive,
-                        CARET_WORD,
-                        "Static assert is supposed to be a function call '#assert(false)'.");
-            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
-        }
-        return_zone(call);
     }
 
     case HD_LINK: {
@@ -1416,7 +1397,7 @@ struct ast *_parse_expr(struct context *ctx, s32 p)
     struct ast *lhs = parse_expr_atom(ctx);
     struct ast *tmp = NULL;
     do {
-        tmp = parse_expr_call(ctx, lhs, false);
+        tmp = parse_expr_call(ctx, lhs);
         if (!tmp) tmp = parse_expr_elem(ctx, lhs);
         if (!tmp) tmp = parse_ref_nested(ctx, lhs);
         lhs = tmp ? tmp : lhs;
@@ -2110,7 +2091,7 @@ struct ast *parse_type(struct context *ctx)
 
     if (!type) {
         struct ast *ref = parse_ref(ctx);
-        if (ref) type = parse_expr_call(ctx, ref, false);
+        if (ref) type = parse_expr_call(ctx, ref);
         if (!type) type = ref;
     }
 
@@ -2410,7 +2391,7 @@ struct ast *parse_decl(struct context *ctx)
     return_zone(decl);
 }
 
-struct ast *parse_expr_call(struct context *ctx, struct ast *prev, const bool is_comptime)
+struct ast *parse_expr_call(struct context *ctx, struct ast *prev)
 {
     zone();
     if (!prev) return_zone(NULL);
@@ -2421,8 +2402,7 @@ struct ast *parse_expr_call(struct context *ctx, struct ast *prev, const bool is
     if (location_token && location_token->sym != SYM_IDENT) location_token = tok;
     struct ast *call =
         ast_create_node(ctx->ast_arena, AST_EXPR_CALL, location_token, scope_get(ctx));
-    call->data.expr_call.ref                  = prev;
-    call->data.expr_call.call_in_compile_time = is_comptime;
+    call->data.expr_call.ref = prev;
     // parse args
     bool        rq = false;
     struct ast *tmp;
@@ -2533,7 +2513,7 @@ NEXT:
     case SYM_HASH: {
         enum hash_directive_flags satisfied;
         tmp =
-            parse_hash_directive(ctx, HD_STATIC_IF | HD_ASSERT | HD_ERROR | HD_WARNING, &satisfied);
+            parse_hash_directive(ctx, HD_STATIC_IF | HD_ERROR | HD_WARNING, &satisfied);
         break;
     }
     case SYM_RETURN:
