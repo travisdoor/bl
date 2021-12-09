@@ -1,42 +1,20 @@
-/*
-Value :: struct (T: type) {
-    key: s32;
-    value: T;
-}
-
-table_insert :: fn (table: *Table(?T), value: T) {
-    table.key = 0;
-    table.value = value;
-}
-
-set_value :: fn (v: *?T, key: ?TKey, value: ?TValue) {
-    v.key = key;
-    v.value = value;
-}
-
-Entry :: struct {
-    key: s32;
-    value: string;
-}
-
-TableValue :: fn () type #comptime {
-    return s32;
-}
-*/
-
-MyType :: fn (T: type) type #comptime {
+Get :: fn () type #comptime {
     return struct {
-        key: s32;
-        value: T;
+        foo: s32;
     };
 }
 
 main :: fn () s32 {
-    i: MyType(string); 
-    static_assert(true);
-    print("typeinfo(i) = %\n", @typeinfo(i));
+    i: Get();
+    i.foo = 0;
     return 0;
 }
+
+// =================================================================================================
+// Comptime function
+// =================================================================================================
+// 1) Type expressions cannot be analyzed if they are not comptime.
+// 2) Execution can fail; i.e. array size is 0.
 
 // =================================================================================================
 // Module loader
