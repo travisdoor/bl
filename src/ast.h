@@ -381,7 +381,7 @@ struct ast_call_loc {
 struct ast {
     enum ast_kind    kind;
     struct location *location;
-    struct scope    *owner_scope; // Scope in which is AST node.
+    struct scope    *owner_scope;
     const char      *docs;        // Optional documentation string.
 
     union {

@@ -388,6 +388,7 @@ Bucket :: struct {
     last:  *Node;
 }
 
+// tool polymorph?
 next_prime :: fn (num: s32) s32 {
     num += 1;
     loop i := 2; i < num; i += 1 {

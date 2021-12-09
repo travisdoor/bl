@@ -222,14 +222,14 @@ struct slot_config {
 // Arena destructor for functions.
 static void fn_dtor(struct mir_fn *fn)
 {
-    bmagic_check(fn);
+    bmagic_assert(fn);
     if (fn->dyncall.extern_callback_handle) dcbFreeCallback(fn->dyncall.extern_callback_handle);
     arrfree(fn->variables);
 }
 
 static void fn_poly_dtor(struct mir_fn_poly_recipe *recipe)
 {
-    bmagic_check(recipe);
+    bmagic_assert(recipe);
     hmfree(recipe->entries);
 }
 
@@ -958,12 +958,6 @@ static INLINE struct mir_fn *instr_owner_fn(struct mir_instr *instr)
     return instr->owner_block->owner_fn;
 }
 
-static INLINE bool is_in_comptime_fn(struct mir_instr *instr)
-{
-    struct mir_fn *owner_fn = instr_owner_fn(instr);
-    return owner_fn ? isflag(owner_fn->flags, FLAG_COMPTIME) : false;
-}
-
 #define report_error(code, node, format, ...)                                                      \
     _report(ctx->analyze.last_analyzed_instr,                                                      \
             MSG_ERR,                                                                               \
@@ -1049,6 +1043,7 @@ static INLINE bool can_mutate_comptime_to_const(struct mir_instr *instr)
     switch (instr->kind) {
     case MIR_INSTR_CONST:
     case MIR_INSTR_BLOCK:
+    case MIR_INSTR_ARG:
     case MIR_INSTR_FN_PROTO:
         // Unroll instruction is kept and converted to constant later in analyze slot pass, we need
         // to keep internal information about unroll remove which is based on usage of unroll and
@@ -1488,7 +1483,7 @@ static INLINE void commit_fn(struct context *ctx, struct mir_fn *fn)
     struct id *id = fn->id;
     bassert(id);
     struct scope_entry *entry = fn->scope_entry;
-    bmagic_check(entry);
+    bmagic_assert(entry);
     bassert(entry->kind != SCOPE_ENTRY_UNNAMED);
     entry->kind    = SCOPE_ENTRY_FN;
     entry->data.fn = fn;
@@ -1499,7 +1494,7 @@ static INLINE void commit_fn(struct context *ctx, struct mir_fn *fn)
 static INLINE void commit_variant(struct context UNUSED(*ctx), struct mir_variant *variant)
 {
     struct scope_entry *entry = variant->entry;
-    bmagic_check(entry);
+    bmagic_assert(entry);
     bassert(entry->kind != SCOPE_ENTRY_UNNAMED);
     entry->kind         = SCOPE_ENTRY_VARIANT;
     entry->data.variant = variant;
@@ -1508,7 +1503,7 @@ static INLINE void commit_variant(struct context UNUSED(*ctx), struct mir_varian
 static INLINE void commit_member(struct context UNUSED(*ctx), struct mir_member *member)
 {
     struct scope_entry *entry = member->entry;
-    bmagic_check(entry);
+    bmagic_assert(entry);
     // Do not commit void entries
     if (entry->kind == SCOPE_ENTRY_UNNAMED) return;
     entry->kind        = SCOPE_ENTRY_MEMBER;
@@ -1520,7 +1515,7 @@ static INLINE void commit_var(struct context *ctx, struct mir_var *var)
     struct id *id = var->id;
     bassert(id);
     struct scope_entry *entry = var->entry;
-    bmagic_check(entry);
+    bmagic_assert(entry);
     // Do not commit void entries
     if (entry->kind == SCOPE_ENTRY_UNNAMED) return;
     entry->kind     = SCOPE_ENTRY_VAR;
@@ -1904,7 +1899,7 @@ struct mir_type *lookup_builtin_type(struct context *ctx, enum builtin_id_kind k
     struct mir_var *var = found->data.var;
     bassert(var && var->value.is_comptime && var->value.type->kind == MIR_TYPE_TYPE);
     struct mir_type *var_type = MIR_CEV_READ_AS(struct mir_type *, &var->value);
-    bmagic_check(var_type);
+    bmagic_assert(var_type);
 
     // Wait when internal is not complete!
     if (is_incomplete_struct_type(var_type)) {
@@ -2240,7 +2235,7 @@ struct mir_type *complete_type_struct(struct context   *ctx,
             "Forward struct declaration does not point to type definition!");
 
     struct mir_type *incomplete_type = MIR_CEV_READ_AS(struct mir_type *, &fwd_decl->value);
-    bmagic_check(incomplete_type);
+    bmagic_assert(incomplete_type);
     bassert(incomplete_type->kind == MIR_TYPE_STRUCT && "Incomplete type is not struct type!");
     bassert(incomplete_type->data.strct.is_incomplete &&
             "Incomplete struct type is not marked as incomplete!");
@@ -4454,7 +4449,7 @@ analyze_resolve_type(struct context *ctx, struct mir_instr *resolver, struct mir
 
     // Type resolver was already executed during evaluation pass since it's comptime.
     struct mir_type *resolved = MIR_CEV_READ_AS(struct mir_type *, &resolver->value);
-    bmagic_check(resolved);
+    bmagic_assert(resolved);
     *out_type = resolved;
     return ANALYZE_RESULT(PASSED, 0);
 }
@@ -4678,7 +4673,7 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
             return_zone(ANALYZE_RESULT(FAILED, 0));
         }
         type = MIR_CEV_READ_AS(struct mir_type *, &instr_type->value);
-        bmagic_check(type);
+        bmagic_assert(type);
     }
 
     bassert(type);
@@ -5076,11 +5071,11 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
     if (target_type->kind == MIR_TYPE_NAMED_SCOPE) {
         struct scope_entry *scope_entry = MIR_CEV_READ_AS(struct scope_entry *, &target_ptr->value);
         bassert(scope_entry);
-        bmagic_check(scope_entry);
+        bmagic_assert(scope_entry);
         bassert(scope_entry->kind == SCOPE_ENTRY_NAMED_SCOPE && "Expected named scope.");
         struct scope *scope = scope_entry->data.scope;
         bassert(scope);
-        bmagic_check(scope);
+        bmagic_assert(scope);
         struct id   *rid         = &ast_member_ident->data.ident.id;
         struct unit *parent_unit = ast_member_ident->location->unit;
         bassert(rid);
@@ -5217,7 +5212,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
 
         struct mir_type *sub_type =
             MIR_CEV_READ_AS(struct mir_type *, &member_ptr->target_ptr->value);
-        bmagic_check(sub_type);
+        bmagic_assert(sub_type);
 
         if (sub_type->kind != MIR_TYPE_ENUM) {
             goto INVALID;
@@ -5273,7 +5268,7 @@ struct result analyze_instr_addrof(struct context *ctx, struct mir_instr_addrof 
     bassert(src->value.type);
     if (src->value.type->kind == MIR_TYPE_FN) {
         struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &src->value);
-        bmagic_check(fn);
+        bmagic_assert(fn);
         // NOTE: Here we increase function ref count.
         ++fn->ref_count;
         type = create_type_ptr(ctx, src->value.type);
@@ -5357,7 +5352,7 @@ struct result analyze_instr_sizeof(struct context *ctx, struct mir_instr_sizeof 
 
     if (type->kind == MIR_TYPE_TYPE) {
         type = MIR_CEV_READ_AS(struct mir_type *, &szof->expr->value);
-        bmagic_check(type);
+        bmagic_assert(type);
     }
 
     // sizeof operator needs only type of input expression so we can erase whole call
@@ -5382,10 +5377,10 @@ struct result analyze_instr_type_info(struct context *ctx, struct mir_instr_type
             return_zone(ANALYZE_RESULT(FAILED, 0));
         }
         struct mir_type *type = type_info->expr->value.type;
-        bmagic_check(type);
+        bmagic_assert(type);
         if (type->kind == MIR_TYPE_TYPE) {
             type = MIR_CEV_READ_AS(struct mir_type *, &type_info->expr->value);
-            bmagic_check(type);
+            bmagic_assert(type);
         }
         type_info->rtti_type = type;
     }
@@ -5423,7 +5418,7 @@ struct result analyze_instr_alignof(struct context *ctx, struct mir_instr_aligno
 
     if (type->kind == MIR_TYPE_TYPE) {
         type = MIR_CEV_READ_AS(struct mir_type *, &alof->expr->value);
-        bmagic_check(type);
+        bmagic_assert(type);
     }
 
     MIR_CEV_WRITE_AS(s32, &alof->base.value, type->alignment);
@@ -5532,7 +5527,7 @@ struct result analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_
         // Check if we try get reference to incomplete structure type.
         if (type->kind == MIR_TYPE_TYPE) {
             struct mir_type *t = MIR_CEV_READ_AS(struct mir_type *, &var->value);
-            bmagic_check(t);
+            bmagic_assert(t);
             if (!ref->accept_incomplete_type && is_incomplete_struct_type(t)) {
                 bassert(t->user_id);
                 return_zone(ANALYZE_RESULT(WAITING, t->user_id->hash));
@@ -5585,7 +5580,7 @@ struct result analyze_instr_decl_direct_ref(struct context                   *ct
     } else if (ref->ref->kind == MIR_INSTR_FN_PROTO) {
         if (!ref->ref->is_analyzed) return_zone(ANALYZE_RESULT(POSTPONE, 0));
         struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &ref->ref->value);
-        bmagic_check(fn);
+        bmagic_assert(fn);
         bassert(fn->type && fn->type == ref->ref->value.type);
         ++fn->ref_count;
 
@@ -5604,7 +5599,7 @@ struct result analyze_instr_arg(struct context UNUSED(*ctx), struct mir_instr_ar
 {
     zone();
     struct mir_fn *fn = arg->base.owner_block->owner_fn;
-    bmagic_check(fn);
+    bmagic_assert(fn);
 
     struct mir_type *type = mir_get_fn_arg_type(fn->type, arg->i);
     bassert(type);
@@ -5676,7 +5671,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 
     // @Incomplete: Read struct mir_fn_poly_recipe here directly?
     struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, value);
-    bmagic_check(fn);
+    bmagic_assert(fn);
 
     const bool is_polymorph = fn->poly;
 
@@ -5883,8 +5878,8 @@ s32 _group_compare(const void *_first, const void *_second)
 {
     struct mir_fn *first  = *(struct mir_fn **)_first;
     struct mir_fn *second = *(struct mir_fn **)_second;
-    bmagic_check(first);
-    bmagic_check(second);
+    bmagic_assert(first);
+    bmagic_assert(second);
     bassert(first->type && second->type);
     return (s32)(first->type->data.fn.argument_hash - second->type->data.fn.argument_hash);
 }
@@ -5924,7 +5919,7 @@ struct result analyze_instr_fn_group(struct context *ctx, struct mir_instr_fn_gr
 
         bassert(mir_is_comptime(variant));
         struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &variant->value);
-        bmagic_check(fn);
+        bmagic_assert(fn);
         bassert(fn->type && "Missing function type!");
         sarrpeek(variant_fns, i)       = fn;
         sarrpeek(variant_types, i)     = fn->type;
@@ -6189,7 +6184,7 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
 
         bassert(type_fn->ret_type->value.is_comptime);
         ret_type = MIR_CEV_READ_AS(struct mir_type *, &type_fn->ret_type->value);
-        bmagic_check(ret_type);
+        bmagic_assert(ret_type);
         // Disable polymorph master as return type.
         if (ret_type->kind == MIR_TYPE_POLY && ret_type->data.poly.is_master) {
             report_error(INVALID_TYPE,
@@ -6234,7 +6229,7 @@ struct result analyze_instr_type_fn_group(struct context                 *ctx,
             return_zone(ANALYZE_RESULT(FAILED, 0));
         }
         struct mir_type *variant_type = MIR_CEV_READ_AS(struct mir_type *, &variant->value);
-        bmagic_check(variant_type);
+        bmagic_assert(variant_type);
         if (variant_type->kind != MIR_TYPE_FN) {
             report_error(INVALID_TYPE,
                          variant->node,
@@ -6305,7 +6300,7 @@ struct result analyze_instr_decl_variant(struct context                *ctx,
     } else {
         base_type = is_flags ? ctx->builtin_types->t_u32 : ctx->builtin_types->t_s32;
     }
-    bmagic_check(base_type);
+    bmagic_assert(base_type);
 
     if (variant_instr->value) {
         // User defined initialization value.
@@ -6378,7 +6373,7 @@ struct result analyze_instr_decl_arg(struct context *ctx, struct mir_instr_decl_
                 return_zone(ANALYZE_RESULT(FAILED, 0));
             }
             arg->type = MIR_CEV_READ_AS(struct mir_type *, &decl->type->value);
-            bmagic_check(arg->type);
+            bmagic_assert(arg->type);
         }
         // @NOTE: Argument default value is generated as an implicit global constant
         // variable with proper expected type defined, so there is no need to do any type
@@ -6429,7 +6424,7 @@ struct result analyze_instr_type_struct(struct context               *ctx,
 
             // solve member type
             member_type = MIR_CEV_READ_AS(struct mir_type *, &decl_member->type->value);
-            bmagic_check(member_type);
+            bmagic_assert(member_type);
             if (member_type->kind == MIR_TYPE_FN) {
                 report_error(INVALID_TYPE,
                              (*member_instr)->node,
@@ -6515,7 +6510,7 @@ struct result analyze_instr_type_slice(struct context *ctx, struct mir_instr_typ
 
     bassert(mir_is_comptime(type_slice->elem_type) && "This should be an error");
     struct mir_type *elem_type = MIR_CEV_READ_AS(struct mir_type *, &type_slice->elem_type->value);
-    bmagic_check(elem_type);
+    bmagic_assert(elem_type);
 
     if (elem_type->kind == MIR_TYPE_TYPE) {
         report_error(INVALID_TYPE,
@@ -6561,7 +6556,7 @@ struct result analyze_instr_type_dynarr(struct context                *ctx,
 
     bassert(mir_is_comptime(type_dynarr->elem_type) && "This should be an error");
     struct mir_type *elem_type = MIR_CEV_READ_AS(struct mir_type *, &type_dynarr->elem_type->value);
-    bmagic_check(elem_type);
+    bmagic_assert(elem_type);
 
     if (elem_type->kind == MIR_TYPE_TYPE) {
         report_error(INVALID_TYPE,
@@ -6595,7 +6590,7 @@ struct result analyze_instr_type_vargs(struct context *ctx, struct mir_instr_typ
 
         bassert(mir_is_comptime(type_vargs->elem_type) && "This should be an error");
         elem_type = MIR_CEV_READ_AS(struct mir_type *, &type_vargs->elem_type->value);
-        bmagic_check(elem_type);
+        bmagic_assert(elem_type);
     } else {
         // use Any
         elem_type = lookup_builtin_type(ctx, BUILTIN_ID_ANY);
@@ -6646,7 +6641,7 @@ struct result analyze_instr_type_array(struct context *ctx, struct mir_instr_typ
     bassert(mir_is_comptime(type_arr->elem_type));
 
     struct mir_type *elem_type = MIR_CEV_READ_AS(struct mir_type *, &type_arr->elem_type->value);
-    bmagic_check(elem_type);
+    bmagic_assert(elem_type);
 
     if (elem_type->kind == MIR_TYPE_TYPE) {
         report_error(INVALID_TYPE,
@@ -6681,7 +6676,7 @@ struct result analyze_instr_type_enum(struct context *ctx, struct mir_instr_type
     if (type_enum->base_type) {
         // @Incomplete: Enum should probably use type resoler as well?
         base_type = MIR_CEV_READ_AS(struct mir_type *, &type_enum->base_type->value);
-        bmagic_check(base_type);
+        bmagic_assert(base_type);
 
         // Enum type must be integer!
         if (base_type->kind != MIR_TYPE_INT) {
@@ -6734,7 +6729,7 @@ struct result analyze_instr_type_ptr(struct context *ctx, struct mir_instr_type_
     }
 
     struct mir_type *src_type_value = MIR_CEV_READ_AS(struct mir_type *, &type_ptr->type->value);
-    bmagic_check(src_type_value);
+    bmagic_assert(src_type_value);
 
     if (src_type_value->kind == MIR_TYPE_TYPE) {
         report_error(INVALID_TYPE, type_ptr->base.node, "Cannot create pointer to type.");
@@ -7077,7 +7072,7 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
     // @Cleanup: Duplicate?
     decl->base.value.is_comptime = var->value.is_comptime = is_decl_comptime;
 
-    struct result state = analyze_var(ctx, decl->var, is_in_comptime_fn(&decl->base));
+    struct result state = analyze_var(ctx, decl->var, mir_is_in_comptime_fn(&decl->base));
     if (state.state != ANALYZE_PASSED) return_zone(state);
     if (decl->base.value.is_comptime && decl->init) {
         // initialize when known in compile-time
@@ -7220,7 +7215,7 @@ struct result generate_fn_poly(struct context             *ctx,
     // type
     zone();
     struct mir_fn_poly_recipe *recipe = fn->poly;
-    bmagic_check(recipe);
+    bmagic_assert(recipe);
     bassert(out_fn_proto);
 
     struct mir_type *recipe_type = fn->type;
@@ -7316,7 +7311,7 @@ struct result generate_fn_poly(struct context             *ctx,
         bassert(instr_fn_proto && instr_fn_proto->kind == MIR_INSTR_FN_PROTO);
 
         struct mir_fn *replacement_fn = MIR_CEV_READ_AS(struct mir_fn *, &instr_fn_proto->value);
-        bmagic_check(replacement_fn);
+        bmagic_assert(replacement_fn);
         replacement_fn->first_poly_call_node = call;
 
         char *debug_replacement_str_dup = scdup(
@@ -7410,7 +7405,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         struct mir_type  *t  = it->value.type;
         if (t->kind == MIR_TYPE_PTR && mir_deref_type(t)->kind == MIR_TYPE_TYPE) {
             t = *MIR_CEV_READ_AS(struct mir_type **, &it->value);
-            bmagic_check(t);
+            bmagic_assert(t);
         }
         if (!is_complete_type(ctx, t)) {
             if (t->user_id) return_zone(ANALYZE_RESULT(WAITING, t->user_id->hash));
@@ -7424,7 +7419,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         // function is selected but it could be still invalid so we have to validate it as
         // usual.
         struct mir_fn_group *group = optional_fn_or_group.group;
-        bmagic_check(group);
+        bmagic_assert(group);
         struct mir_fn *selected_overload_fn;
         { // lookup best call candidate in group
             mir_types_t arg_types = SARR_ZERO;
@@ -7437,7 +7432,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
             selected_overload_fn = group_select_overload(ctx, group, &arg_types);
             sarrfree(&arg_types);
         }
-        bmagic_check(selected_overload_fn);
+        bmagic_assert(selected_overload_fn);
 
         // Replace callee instruction with constant containing found overload function.
         erase_instr_tree(call->callee, true, true);
@@ -7457,9 +7452,10 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
     const bool is_polymorph = type->data.fn.is_polymorph;
     if (is_polymorph) {
         struct mir_fn *fn = optional_fn_or_group.fn;
-        bmagic_check(fn);
+        bmagic_assert(fn);
         struct mir_instr_fn_proto *instr_replacement_fn_proto = NULL;
         runtime_measure_begin(poly);
+
         struct result state =
             generate_fn_poly(ctx, call->base.node, fn, call->args, &instr_replacement_fn_proto);
         if (state.state != ANALYZE_PASSED) return_zone(ANALYZE_RESULT(FAILED, 0));
@@ -7486,7 +7482,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
 
     if (is_direct_call) {
         struct mir_fn *fn = optional_fn_or_group.fn;
-        bmagic_check(fn);
+        bmagic_assert(fn);
         // Direct call of anonymous function.
         if (fn->ref_count == 0) {
             ++fn->ref_count;
@@ -7495,7 +7491,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
 
     if (optional_fn_or_group.fn) {
         struct mir_fn *fn = optional_fn_or_group.fn;
-        bmagic_check(fn);
+        bmagic_assert(fn);
         if (isflag(fn->flags, FLAG_COMPTIME)) {
             // Every comptime call is evaluated automatically (type resolvers also!).
             call->base.value.is_comptime = true;
@@ -7509,7 +7505,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         // also
         //  "not fully analyzed", we have to check it somehow before evaluation.
         struct mir_fn *fn = optional_fn_or_group.fn;
-        bmagic_check(fn);
+        bmagic_assert(fn);
         if (!fn->is_fully_analyzed) return_zone(ANALYZE_RESULT(POSTPONE, 0));
     }
 
@@ -8235,7 +8231,7 @@ void analyze(struct context *ctx)
             ip   = ctx->analyze.stack[si][i++];
             skip = false;
         }
-        bmagic_check(ip);
+        bmagic_assert(ip);
         result = analyze_instr(ctx, ip);
 
         switch (result.state) {
@@ -8892,6 +8888,7 @@ struct mir_var *rtti_gen_fn_group(struct context *ctx, struct mir_type *type)
 }
 
 // MIR builting
+// Generate instructions for all ast nodes pushed into defer_stack in reverse order.
 void ast_defer_block(struct context *ctx, struct ast *block, bool whole_tree)
 {
     bassert(ctx->ast.current_defer_stack_index >= 0);
@@ -9803,7 +9800,7 @@ static void ast_decl_fn(struct context *ctx, struct ast *ast_fn)
 
     bassert(value);
     struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &value->value);
-    bmagic_check(fn);
+    bmagic_assert(fn);
 
     // check main
     if (is_builtin(ast_name, BUILTIN_ID_MAIN)) {
@@ -10308,7 +10305,7 @@ struct mir_instr *ast_type_poly(struct context *ctx, struct ast *poly)
             // Notice that pop takes the last element from the queue, this is possible due to
             // reverse order of generated argument instructions.
             struct mir_type *replacement_type = sarrpop(queue);
-            bmagic_check(replacement_type);
+            bmagic_assert(replacement_type);
 
             scope_entry->kind      = SCOPE_ENTRY_TYPE;
             scope_entry->data.type = replacement_type;
@@ -10631,6 +10628,12 @@ struct id builtin_ids[_BUILTIN_ID_COUNT] = {
 #undef GEN_BUILTIN_IDS
 };
 
+bool mir_is_in_comptime_fn(struct mir_instr *instr)
+{
+    struct mir_fn *owner_fn = instr_owner_fn(instr);
+    return owner_fn ? isflag(owner_fn->flags, FLAG_COMPTIME) : false;
+}
+
 const char *mir_get_fn_readable_name(struct mir_fn *fn)
 {
     bassert(fn);
@@ -10645,7 +10648,7 @@ struct mir_fn *mir_get_callee(const struct mir_instr_call *call)
     struct mir_const_expr_value *val = &call->callee->value;
     bassert(val->type && val->type->kind == MIR_TYPE_FN);
     struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, val);
-    bmagic_check(fn);
+    bmagic_assert(fn);
     return fn;
 }
 
@@ -10946,7 +10949,7 @@ struct mir_fn *group_select_overload(struct context            *ctx,
                                      const struct mir_fn_group *group,
                                      const mir_types_t         *expected_args)
 {
-    bmagic_check(group);
+    bmagic_assert(group);
     bassert(expected_args);
     const mir_fns_t *variants = group->variants;
     bassert(sarrlenu(variants));
@@ -10980,7 +10983,7 @@ struct mir_fn *group_select_overload(struct context            *ctx,
             selected_priority = p;
         }
     }
-    bmagic_check(selected);
+    bmagic_assert(selected);
     return selected;
 }
 

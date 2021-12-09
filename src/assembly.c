@@ -430,7 +430,7 @@ struct target *target_new(const char *name)
 
 struct target *target_dup(const char *name, const struct target *other)
 {
-    bmagic_check(other);
+    bmagic_assert(other);
     struct target *target = target_new(name);
     memcpy(target, other, sizeof(struct {TARGET_COPYABLE_CONTENT}));
     target_set_output_dir(target, other->out_dir);
@@ -460,7 +460,7 @@ void target_delete(struct target *target)
 
 void target_add_file(struct target *target, const char *filepath)
 {
-    bmagic_check(target);
+    bmagic_assert(target);
     bassert(filepath && "Invalid filepath!");
     char *dup = strdup(filepath);
     win_path_to_unix(dup, strlen(dup));
@@ -469,14 +469,14 @@ void target_add_file(struct target *target, const char *filepath)
 
 void target_set_vm_args(struct target *target, s32 argc, char **argv)
 {
-    bmagic_check(target);
+    bmagic_assert(target);
     target->vm.argc = argc;
     target->vm.argv = argv;
 }
 
 void target_add_lib_path(struct target *target, const char *path)
 {
-    bmagic_check(target);
+    bmagic_assert(target);
     if (!path) return;
     char *dup= strdup(path);
     win_path_to_unix(dup, strlen(dup));
@@ -485,7 +485,7 @@ void target_add_lib_path(struct target *target, const char *path)
 
 void target_add_lib(struct target *target, const char *lib)
 {
-    bmagic_check(target);
+    bmagic_assert(target);
     if (!lib) return;
     char *dup = strdup(lib);
 	win_path_to_unix(dup, strlen(dup));
@@ -494,7 +494,7 @@ void target_add_lib(struct target *target, const char *lib)
 
 void target_set_output_dir(struct target *target, const char *dir)
 {
-    bmagic_check(target);
+    bmagic_assert(target);
     if (!dir) builder_error("Cannot create output directory.");
     if (!create_auxiliary_dir_tree_if_not_exist(dir, &target->out_dir)) {
         builder_error("Cannot create output directory '%s'.", dir);
@@ -503,14 +503,14 @@ void target_set_output_dir(struct target *target, const char *dir)
 
 void target_append_linker_options(struct target *target, const char *option)
 {
-    bmagic_check(target);
+    bmagic_assert(target);
     if (!option) return;
     strappend(target->default_custom_linker_opt, "%s ", option);
 }
 
 void target_set_module_dir(struct target *target, const char *dir, enum module_import_policy policy)
 {
-    bmagic_check(target);
+    bmagic_assert(target);
     if (!dir) {
         builder_error("Cannot create module directory.");
         return;
@@ -562,7 +562,7 @@ char *target_triple_to_string(const struct target_triple *triple)
 
 struct assembly *assembly_new(const struct target *target)
 {
-    bmagic_check(target);
+    bmagic_assert(target);
     struct assembly *assembly = bmalloc(sizeof(struct assembly));
     memset(assembly, 0, sizeof(struct assembly));
     assembly->target = target;

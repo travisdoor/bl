@@ -549,7 +549,7 @@ int builder_compile_all(void)
 
 s32 builder_compile(const struct target *target)
 {
-    bmagic_check(target);
+    bmagic_assert(target);
     struct assembly *assembly = assembly_new(target);
 
     s32 state = compile(assembly);

@@ -73,7 +73,6 @@ struct scope_entry {
     bool                   is_builtin;
     union scope_entry_data data;
     s32                    ref_count;
-    u32                    lookup_count;
     bmagic_member
 };
 
@@ -95,7 +94,6 @@ struct scope_layer {
         hash_t              key;
         struct scope_entry *value;
     } * entries;
-    struct scope_entry *cached;
 
     s32 index;
 };
@@ -151,7 +149,7 @@ static INLINE bool scope_is_local(const struct scope *scope)
 
 static INLINE struct scope_entry *scope_entry_ref(struct scope_entry *entry)
 {
-    bmagic_check(entry);
+    bmagic_assert(entry);
     ++entry->ref_count;
     return entry;
 }

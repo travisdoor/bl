@@ -111,6 +111,7 @@ static void eval_instr_set_initializer(struct virtual_machine           *vm,
 static void eval_instr_cast(struct virtual_machine *vm, struct mir_instr_cast *cast);
 static void eval_instr_compound(struct virtual_machine *vm, struct mir_instr_compound *cmp);
 static void eval_instr_unroll(struct virtual_machine *vm, struct mir_instr_unroll *unroll);
+static void eval_instr_arg(struct virtual_machine *vm, struct mir_instr_arg *arg);
 
 // =================================================================================================
 // Inlines
@@ -1701,7 +1702,7 @@ void interp_instr_call(struct virtual_machine *vm, struct mir_instr_call *call)
     }
 
     struct mir_fn *fn = (struct mir_fn *)vm_read_ptr(callee_ptr_type, callee_ptr);
-    bmagic_check(fn);
+    bmagic_assert(fn);
     bassert(fn->is_fully_analyzed && "Functions called in compile time must be fully analyzed!");
     if (!fn) {
         builder_error("Function pointer not set!");
@@ -1870,6 +1871,10 @@ void eval_instr(struct virtual_machine *vm, struct mir_instr *instr)
 
     case MIR_INSTR_UNROLL:
         eval_instr_unroll(vm, (struct mir_instr_unroll *)instr);
+        break;
+
+    case MIR_INSTR_ARG:
+        eval_instr_arg(vm, (struct mir_instr_arg *)instr);
         break;
 
     case MIR_INSTR_PHI:
@@ -2092,6 +2097,17 @@ void eval_instr_unroll(struct virtual_machine *vm, struct mir_instr_unroll *unro
     } else {
         blog("Just copy value!");
         unroll->base.value.data = unroll->src->value.data;
+    }
+}
+
+void eval_instr_arg(struct virtual_machine *vm, struct mir_instr_arg *arg)
+{
+    struct mir_fn *fn = arg->base.owner_block->owner_fn;
+    bmagic_assert(fn);
+    bassert(isflag(fn->flags, FLAG_COMPTIME));
+    mir_instrs_t *comptime_args = fn->comptime_call_args;
+    if (comptime_args && arg->i < sarrlenu(comptime_args)) {
+        arg->base.value.data = sarrpeek(comptime_args, arg->i)->value.data;
     }
 }
 
@@ -2335,7 +2351,7 @@ bool vm_execute_fn(struct virtual_machine *vm,
                    mir_const_values_t     *optional_args,
                    vm_stack_ptr_t         *optional_return)
 {
-    bmagic_check(fn);
+    bmagic_assert(fn);
     vm->assembly = assembly;
     if (optional_args) {
         bassert(fn->type->data.fn.args);
@@ -2375,7 +2391,7 @@ bool vm_execute_comptime_call(struct virtual_machine *vm,
     bassert(call && call->base.is_analyzed);
     bassert(mir_is_comptime(&call->base) && "Top level call is expected to be comptime.");
     struct mir_fn *fn = mir_get_callee(call);
-    bmagic_check(fn);
+    bmagic_assert(fn);
     mir_instrs_t *args = call->args;
     bassert(sarrlenu(args) == sarrlenu(fn->type->data.fn.args));
     // Push all arguments in reverse order on the stack.

@@ -246,6 +246,13 @@ struct mir_fn {
     // @CLEANUP we can use this type directly without function to save some memory.
     struct mir_fn_poly_recipe *poly;
 
+    // Optional, in case the function is marked as #comptime, we assume that all input arguments are
+    // compile-time known; also new function specification is generated for every call to allow
+    // passing types and compile-time values inside the function. These values are used directly
+    // inside the function and evaluated by arg instruction. All call-side arguments must be
+    // compile-time known!
+    mir_instrs_t *comptime_call_args;
+
     // Optional, this is set to first call location used for generation of this function from
     // polymorph recipe.
     struct ast *first_poly_call_node;
@@ -957,6 +964,7 @@ static INLINE bool mir_type_has_llvm_representation(const struct mir_type *type)
            type->kind != MIR_TYPE_NAMED_SCOPE && type->kind != MIR_TYPE_POLY;
 }
 
+bool           mir_is_in_comptime_fn(struct mir_instr *instr);
 void           mir_arenas_init(struct mir_arenas *arenas);
 void           mir_arenas_terminate(struct mir_arenas *arenas);
 char          *mir_type2str(const struct mir_type *type, bool prefer_name);

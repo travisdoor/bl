@@ -2060,7 +2060,7 @@ struct ast *parse_type_dynarr(struct context *ctx)
     slice->data.type_dynarr.elem_type = parse_type(ctx);
 
     if (!slice->data.type_dynarr.elem_type) {
-        PARSE_ERROR(ERR_INVALID_TYPE, tok_end, CARET_AFTER, "Expected dynami array element type.");
+        PARSE_ERROR(ERR_INVALID_TYPE, tok_end, CARET_AFTER, "Expected dynamic array element type.");
 
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
@@ -2512,8 +2512,7 @@ NEXT:
         goto NEXT;
     case SYM_HASH: {
         enum hash_directive_flags satisfied;
-        tmp =
-            parse_hash_directive(ctx, HD_STATIC_IF | HD_ERROR | HD_WARNING, &satisfied);
+        tmp = parse_hash_directive(ctx, HD_STATIC_IF | HD_ERROR | HD_WARNING, &satisfied);
         break;
     }
     case SYM_RETURN:

@@ -54,7 +54,7 @@ static void sync_delete(scope_sync_impl *impl)
 
 static void scope_dtor(struct scope *scope)
 {
-    bmagic_check(scope);
+    bmagic_assert(scope);
     for (usize i = 0; i < arrlenu(scope->layers); ++i) {
         hmfree(scope->layers[i].entries);
     }
@@ -165,19 +165,10 @@ struct scope_entry *scope_lookup(struct scope *scope,
         // We can implicitly switch to default layer when scope is not local.
         if (!layer && !scope_is_local(scope)) layer = get_layer(scope, SCOPE_DEFAULT_LAYER);
         if (layer) {
-            if (layer->cached && layer->cached->id->hash == id->hash) {
-                layer->cached->lookup_count += 1;
-                return_zone(layer->cached);
-            }
             const s64 i = hmgeti(layer->entries, id->hash);
             if (i != -1) { // found!!!
                 struct scope_entry *entry = layer->entries[i].value;
                 bassert(entry);
-                entry->lookup_count += 1;
-                const u32 cached_lookup_count = layer->cached ? layer->cached->lookup_count : 0;
-                if (cached_lookup_count < entry->lookup_count) {
-                    layer->cached = entry;
-                }
                 return_zone(entry);
             }
         }
