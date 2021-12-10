@@ -128,7 +128,7 @@ struct context {
 
     struct {
         mir_types_t replacement_queue;
-        s32         current_scope_layer_index;
+        hash_t      current_scope_layer_index;
         bool        is_replacement_active;
     } polymorph;
 
@@ -595,7 +595,7 @@ static struct mir_instr *append_instr_decl_ref(struct context     *ctx,
                                                struct unit        *parent_unit,
                                                struct id          *rid,
                                                struct scope       *scope,
-                                               s32                 scope_layer,
+                                               hash_t              scope_layer,
                                                struct scope_entry *scope_entry);
 
 static struct mir_instr *
@@ -1850,7 +1850,7 @@ struct scope_entry *register_symbol(struct context *ctx,
         return ctx->analyze.unnamed_entry;
     }
     const bool          is_private  = scope->kind == SCOPE_PRIVATE;
-    const s32           layer_index = ctx->polymorph.current_scope_layer_index;
+    const hash_t        layer_index = ctx->polymorph.current_scope_layer_index;
     struct scope_entry *collision   = scope_lookup(scope, layer_index, id, is_private, false, NULL);
     if (collision) {
         if (!is_private) goto COLLIDE;
@@ -3782,11 +3782,10 @@ struct mir_instr *append_instr_decl_ref(struct context     *ctx,
                                         struct unit        *parent_unit,
                                         struct id          *rid,
                                         struct scope       *scope,
-                                        s32                 scope_layer,
+                                        hash_t              scope_layer,
                                         struct scope_entry *scope_entry)
 {
     bassert(scope && rid);
-    bassert(scope_layer >= 0);
     struct mir_instr_decl_ref *tmp = create_instr(ctx, MIR_INSTR_DECL_REF, node);
     tmp->scope_entry               = scope_entry;
     tmp->scope                     = scope;
@@ -5220,9 +5219,9 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
 
         // lookup for member inside struct
         struct scope       *scope       = sub_type->data.enm.scope;
+        const hash_t        scope_layer = ctx->polymorph.current_scope_layer_index;
         struct id          *rid         = &ast_member_ident->data.ident.id;
-        const s32           layer_index = ctx->polymorph.current_scope_layer_index;
-        struct scope_entry *found       = scope_lookup(scope, layer_index, rid, false, true, NULL);
+        struct scope_entry *found       = scope_lookup(scope, scope_layer, rid, false, true, NULL);
         if (!found) {
             report_error(UNKNOWN_SYMBOL, member_ptr->member_ident, "Unknown enumerator variant.");
             return_zone(ANALYZE_RESULT(FAILED, 0));
@@ -7290,7 +7289,7 @@ struct result generate_fn_poly(struct context             *ctx,
 
     const s64 index = hmgeti(recipe->entries, replacement_hash);
     if (index == -1) {
-        const s32 prev_scope_layer_index         = ctx->polymorph.current_scope_layer_index;
+        const hash_t prev_scope_layer_index      = ctx->polymorph.current_scope_layer_index;
         ctx->polymorph.current_scope_layer_index = ++recipe->scope_layer;
         ctx->polymorph.is_replacement_active     = true;
 
@@ -10081,7 +10080,7 @@ struct mir_instr *ast_ref(struct context *ctx, struct ast *ref)
     struct ast *next  = ref->data.ref.next;
     bassert(ident);
     struct scope *scope       = ident->owner_scope;
-    const s32     layer_index = ctx->polymorph.current_scope_layer_index;
+    const hash_t  scope_layer = ctx->polymorph.current_scope_layer_index;
     struct unit  *unit        = ident->location->unit;
     bassert(unit);
     bassert(scope);
@@ -10089,7 +10088,7 @@ struct mir_instr *ast_ref(struct context *ctx, struct ast *ref)
         struct mir_instr *target = ast(ctx, next);
         return append_instr_member_ptr(ctx, ref, target, ident, NULL, BUILTIN_ID_NONE);
     }
-    return append_instr_decl_ref(ctx, ref, unit, &ident->data.ident.id, scope, layer_index, NULL);
+    return append_instr_decl_ref(ctx, ref, unit, &ident->data.ident.id, scope, scope_layer, NULL);
 }
 
 struct mir_instr *ast_type_fn(struct context *ctx, struct ast *type_fn)

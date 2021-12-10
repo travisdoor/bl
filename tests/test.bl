@@ -6,7 +6,7 @@ Get :: fn () type #comptime {
 
 main :: fn () s32 {
     i: Get();
-    i.foo = 0;
+    //i.foo = 0;
     return 0;
 }
 

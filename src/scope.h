@@ -89,15 +89,6 @@ enum scope_kind {
 
 #define SCOPE_DEFAULT_LAYER 0
 
-struct scope_layer {
-    struct {
-        hash_t              key;
-        struct scope_entry *value;
-    } * entries;
-
-    s32 index;
-};
-
 struct scope {
     enum scope_kind         kind;
     const char             *name; // optional
@@ -105,8 +96,11 @@ struct scope {
     struct scope_sync_impl *sync;
     struct location        *location;
     LLVMMetadataRef         llvm_meta;
-    struct scope_layer      default_layer;
-    struct scope_layer     *layers;
+    struct {
+        // Hash value of the scope entry as combination of layer and id.
+        u64                 key;
+        struct scope_entry *value;
+    } * entries;
 
     bmagic_member
 };
@@ -125,12 +119,12 @@ struct scope_entry *scope_create_entry(struct scope_arenas  *arenas,
                                        struct ast           *node,
                                        bool                  is_builtin);
 
-void scope_insert(struct scope *scope, s32 layer_index, struct scope_entry *entry);
+void scope_insert(struct scope *scope, hash_t layer_index, struct scope_entry *entry);
 void scope_lock(struct scope *scope);
 void scope_unlock(struct scope *scope);
 
 struct scope_entry *scope_lookup(struct scope *scope,
-                                 s32           preferred_layer_index,
+                                 hash_t        preferred_layer,
                                  struct id    *id,
                                  bool          in_tree,
                                  bool          ignore_global,

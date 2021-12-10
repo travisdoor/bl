@@ -34,6 +34,8 @@
 #include <pthread.h>
 #endif
 
+#define entry_hash(id, layer) ((((u64)layer) << 32) | (u64)id)
+
 typedef struct scope_sync_impl {
     pthread_mutex_t lock;
 } scope_sync_impl;
@@ -55,33 +57,8 @@ static void sync_delete(scope_sync_impl *impl)
 static void scope_dtor(struct scope *scope)
 {
     bmagic_assert(scope);
-    for (usize i = 0; i < arrlenu(scope->layers); ++i) {
-        hmfree(scope->layers[i].entries);
-    }
-    arrfree(scope->layers);
-    hmfree(scope->default_layer.entries);
+    hmfree(scope->entries);
     sync_delete(scope->sync);
-}
-
-static INLINE struct scope_layer *get_layer(struct scope *scope, s32 index)
-{
-    if (index == SCOPE_DEFAULT_LAYER) return &scope->default_layer;
-    for (usize i = 0; i < arrlenu(scope->layers); ++i) {
-        if (scope->layers[i].index == index) return &scope->layers[i];
-    }
-    return NULL;
-}
-
-// Only local scopes can have layers, for global ones, use only SCOPE_DEFAULT_LAYER index. Layered
-// scopes are used due to polymorph function generation. We basically reuse already existing
-// Ast tree for polymorphs of specified type; in this case we need new layer for every polymorph
-// variant of function.
-static INLINE struct scope_layer *create_layer(struct scope *scope, s32 index)
-{
-    bassert(index == SCOPE_DEFAULT_LAYER || scope_is_local(scope));
-    bassert(get_layer(scope, index) == NULL && "Attempt to create existing layer!");
-    arrput(scope->layers, ((struct scope_layer){.entries = NULL, .index = index}));
-    return &arrlast(scope->layers);
 }
 
 void scope_arenas_init(struct scope_arenas *arenas)
@@ -133,23 +110,20 @@ struct scope_entry *scope_create_entry(struct scope_arenas  *arenas,
     return entry;
 }
 
-void scope_insert(struct scope *scope, s32 layer_index, struct scope_entry *entry)
+void scope_insert(struct scope *scope, hash_t layer_index, struct scope_entry *entry)
 {
     zone();
     bassert(scope);
     bassert(entry && entry->id);
-    bassert(layer_index >= 0);
-    struct scope_layer *layer = get_layer(scope, layer_index);
-    if (!layer) layer = create_layer(scope, layer_index);
-    bassert(layer);
-    bassert(hmgeti(layer->entries, entry->id->hash) == -1 && "Duplicate scope entry key!!!");
+    const u64 hash = entry_hash(entry->id->hash, layer_index);
+    bassert(hmgeti(scope->entries, hash) == -1 && "Duplicate scope entry key!!!");
     entry->parent_scope = scope;
-    hmput(layer->entries, entry->id->hash, entry);
+    hmput(scope->entries, hash, entry);
     return_zone();
 }
 
 struct scope_entry *scope_lookup(struct scope *scope,
-                                 s32           preferred_layer_index,
+                                 hash_t        preferred_layer,
                                  struct id    *id,
                                  bool          in_tree,
                                  bool          ignore_global,
@@ -157,20 +131,18 @@ struct scope_entry *scope_lookup(struct scope *scope,
 {
     zone();
     bassert(scope && id);
-    bassert(preferred_layer_index >= 0);
+    u64 hash = entry_hash(id->hash, preferred_layer);
     while (scope) {
         if (ignore_global && scope->kind == SCOPE_GLOBAL) break;
-        // Lookup in current scope first
-        struct scope_layer *layer = get_layer(scope, preferred_layer_index);
-        // We can implicitly switch to default layer when scope is not local.
-        if (!layer && !scope_is_local(scope)) layer = get_layer(scope, SCOPE_DEFAULT_LAYER);
-        if (layer) {
-            const s64 i = hmgeti(layer->entries, id->hash);
-            if (i != -1) { // found!!!
-                struct scope_entry *entry = layer->entries[i].value;
-                bassert(entry);
-                return_zone(entry);
-            }
+        if (!scope_is_local(scope)) {
+            // Global scopes should not have layers!!!
+            hash = entry_hash(id->hash, SCOPE_DEFAULT_LAYER);
+        }
+        const s64 i = hmgeti(scope->entries, hash);
+        if (i != -1) { // found!!!
+            struct scope_entry *entry = scope->entries[i].value;
+            bassert(entry);
+            return_zone(entry);
         }
         // Lookup in parent.
         if (in_tree) {

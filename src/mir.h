@@ -224,7 +224,7 @@ struct mir_fn_poly_recipe {
     // Function literal (used for function replacement generation).
     struct ast *ast_lit_fn;
     // Scope layer solves symbol collisions in reused scopes.
-    s32 scope_layer;
+    hash_t scope_layer;
     // Cache of already generated functions (replacement hash -> struct mir_fn*).
     struct {
         hash_t                     key;
@@ -766,7 +766,7 @@ struct mir_instr_decl_ref {
     struct unit        *parent_unit;
     struct id          *rid;
     struct scope       *scope;
-    s32                 scope_layer;
+    hash_t              scope_layer;
     struct scope_entry *scope_entry;
 
     // Set only for decl_refs inside struct member type resolvers.
