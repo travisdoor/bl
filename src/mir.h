@@ -385,6 +385,7 @@ struct mir_type_ptr {
 
 struct mir_type_struct {
     struct scope  *scope; // struct body scope
+    hash_t         scope_layer;
     mir_members_t *members;
     // This is optional base type, only structures with #base hash directive has this
     // information.
@@ -692,6 +693,7 @@ struct mir_instr_type_struct {
     struct mir_instr *fwd_decl;
     struct id        *id;
     struct scope     *scope;
+    hash_t            scope_layer;
     mir_instrs_t     *members;
     bool              is_packed;
     bool              is_union;

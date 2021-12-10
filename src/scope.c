@@ -110,12 +110,12 @@ struct scope_entry *scope_create_entry(struct scope_arenas  *arenas,
     return entry;
 }
 
-void scope_insert(struct scope *scope, hash_t layer_index, struct scope_entry *entry)
+void scope_insert(struct scope *scope, hash_t layer, struct scope_entry *entry)
 {
     zone();
     bassert(scope);
     bassert(entry && entry->id);
-    const u64 hash = entry_hash(entry->id->hash, layer_index);
+    const u64 hash = entry_hash(entry->id->hash, layer);
     bassert(hmgeti(scope->entries, hash) == -1 && "Duplicate scope entry key!!!");
     entry->parent_scope = scope;
     hmput(scope->entries, hash, entry);

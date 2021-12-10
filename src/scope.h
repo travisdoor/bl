@@ -119,7 +119,7 @@ struct scope_entry *scope_create_entry(struct scope_arenas  *arenas,
                                        struct ast           *node,
                                        bool                  is_builtin);
 
-void scope_insert(struct scope *scope, hash_t layer_index, struct scope_entry *entry);
+void scope_insert(struct scope *scope, hash_t layer, struct scope_entry *entry);
 void scope_lock(struct scope *scope);
 void scope_unlock(struct scope *scope);
 

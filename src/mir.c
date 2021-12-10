@@ -128,7 +128,7 @@ struct context {
 
     struct {
         mir_types_t replacement_queue;
-        hash_t      current_scope_layer_index;
+        hash_t      current_scope_layer;
         bool        is_replacement_active;
     } polymorph;
 
@@ -312,6 +312,7 @@ static struct mir_type *create_type_struct(struct context    *ctx,
                                            enum mir_type_kind kind,
                                            struct id         *id,
                                            struct scope      *scope,
+                                           hash_t             scope_layer,
                                            mir_members_t     *members,   // struct mir_member
                                            struct mir_type   *base_type, // optional
                                            bool               is_union,
@@ -323,6 +324,7 @@ static struct mir_type *create_type_struct(struct context    *ctx,
 static struct mir_type *complete_type_struct(struct context   *ctx,
                                              struct mir_instr *fwd_decl,
                                              struct scope     *scope,
+                                             hash_t            scope_layer,
                                              mir_members_t    *members,
                                              struct mir_type  *base_type, // optional
                                              bool              is_packed,
@@ -554,6 +556,7 @@ static struct mir_instr *append_instr_type_struct(struct context   *ctx,
                                                   struct id        *id,
                                                   struct mir_instr *fwd_decl, // Optional
                                                   struct scope     *scope,
+                                                  hash_t            scope_layer,
                                                   mir_instrs_t     *members,
                                                   bool              is_packed,
                                                   bool              is_union,
@@ -1850,7 +1853,7 @@ struct scope_entry *register_symbol(struct context *ctx,
         return ctx->analyze.unnamed_entry;
     }
     const bool          is_private  = scope->kind == SCOPE_PRIVATE;
-    const hash_t        layer_index = ctx->polymorph.current_scope_layer_index;
+    const hash_t        layer_index = ctx->polymorph.current_scope_layer;
     struct scope_entry *collision   = scope_lookup(scope, layer_index, id, is_private, false, NULL);
     if (collision) {
         if (!is_private) goto COLLIDE;
@@ -2019,11 +2022,12 @@ lookup_composit_member(struct mir_type *type, struct id *rid, struct mir_type **
     bassert(type);
     bassert(mir_is_composit_type(type) && "Expected composit type!");
 
-    struct scope       *scope = type->data.strct.scope;
-    struct scope_entry *found = NULL;
+    struct scope       *scope       = type->data.strct.scope;
+    const hash_t        scope_layer = type->data.strct.scope_layer;
+    struct scope_entry *found       = NULL;
 
     while (true) {
-        found = scope_lookup(scope, SCOPE_DEFAULT_LAYER, rid, false, true, NULL);
+        found = scope_lookup(scope, scope_layer, rid, false, true, NULL);
         if (found) break;
         scope = get_base_type_scope(type);
         type  = get_base_type(type);
@@ -2202,6 +2206,7 @@ struct mir_type *create_type_struct(struct context    *ctx,
                                     enum mir_type_kind kind,
                                     struct id         *id, // optional
                                     struct scope      *scope,
+                                    hash_t             scope_layer,
                                     mir_members_t     *members,   // struct mir_member
                                     struct mir_type   *base_type, // optional
                                     bool               is_union,
@@ -2211,6 +2216,7 @@ struct mir_type *create_type_struct(struct context    *ctx,
     struct mir_type *tmp                    = create_type(ctx, kind, id);
     tmp->data.strct.members                 = members;
     tmp->data.strct.scope                   = scope;
+    tmp->data.strct.scope_layer             = scope_layer;
     tmp->data.strct.is_packed               = is_packed;
     tmp->data.strct.is_union                = is_union;
     tmp->data.strct.is_multiple_return_type = is_multiple_return_type;
@@ -2223,6 +2229,7 @@ struct mir_type *create_type_struct(struct context    *ctx,
 struct mir_type *complete_type_struct(struct context   *ctx,
                                       struct mir_instr *fwd_decl,
                                       struct scope     *scope,
+                                      hash_t            scope_layer,
                                       mir_members_t    *members,
                                       struct mir_type  *base_type,
                                       bool              is_packed,
@@ -2242,6 +2249,7 @@ struct mir_type *complete_type_struct(struct context   *ctx,
 
     incomplete_type->data.strct.members                 = members;
     incomplete_type->data.strct.scope                   = scope;
+    incomplete_type->data.strct.scope_layer             = scope_layer;
     incomplete_type->data.strct.is_incomplete           = false;
     incomplete_type->data.strct.base_type               = base_type;
     incomplete_type->data.strct.is_packed               = is_packed;
@@ -2294,7 +2302,8 @@ struct mir_type *_create_type_struct_slice(struct context    *ctx,
     sarrput(members, tmp);
     provide_builtin_member(ctx, body_scope, tmp);
 
-    return create_type_struct(ctx, kind, id, body_scope, members, NULL, false, false, false);
+    return create_type_struct(
+        ctx, kind, id, body_scope, SCOPE_DEFAULT_LAYER, members, NULL, false, false, false);
 }
 
 struct mir_type *
@@ -2338,8 +2347,16 @@ create_type_struct_dynarr(struct context *ctx, struct id *id, struct mir_type *e
         provide_builtin_member(ctx, body_scope, tmp);
     }
 
-    return create_type_struct(
-        ctx, MIR_TYPE_DYNARR, id, body_scope, members, NULL, false, false, false);
+    return create_type_struct(ctx,
+                              MIR_TYPE_DYNARR,
+                              id,
+                              body_scope,
+                              SCOPE_DEFAULT_LAYER,
+                              members,
+                              NULL,
+                              false,
+                              false,
+                              false);
 }
 
 struct mir_type *create_type_enum(struct context  *ctx,
@@ -3296,6 +3313,7 @@ struct mir_instr *append_instr_type_struct(struct context   *ctx,
                                            struct id        *id,
                                            struct mir_instr *fwd_decl,
                                            struct scope     *scope,
+                                           hash_t            scope_layer,
                                            mir_instrs_t     *members,
                                            bool              is_packed,
                                            bool              is_union,
@@ -3307,6 +3325,7 @@ struct mir_instr *append_instr_type_struct(struct context   *ctx,
     tmp->base.value.addr_mode         = MIR_VAM_RVALUE;
     tmp->members                      = members;
     tmp->scope                        = scope;
+    tmp->scope_layer                  = scope_layer;
     tmp->is_packed                    = is_packed;
     tmp->is_union                     = is_union;
     tmp->is_multiple_return_type      = is_multiple_return_type;
@@ -5083,7 +5102,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
             (struct mir_instr_decl_ref *)mutate_instr(&member_ptr->base, MIR_INSTR_DECL_REF);
         decl_ref->scope                  = scope;
         decl_ref->scope_entry            = NULL;
-        decl_ref->scope_layer            = ctx->polymorph.current_scope_layer_index;
+        decl_ref->scope_layer            = ctx->polymorph.current_scope_layer;
         decl_ref->accept_incomplete_type = false;
         decl_ref->parent_unit            = parent_unit;
         decl_ref->rid                    = rid;
@@ -5219,7 +5238,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
 
         // lookup for member inside struct
         struct scope       *scope       = sub_type->data.enm.scope;
-        const hash_t        scope_layer = ctx->polymorph.current_scope_layer_index;
+        const hash_t        scope_layer = ctx->polymorph.current_scope_layer;
         struct id          *rid         = &ast_member_ident->data.ident.id;
         struct scope_entry *found       = scope_lookup(scope, scope_layer, rid, false, true, NULL);
         if (!found) {
@@ -6463,6 +6482,7 @@ struct result analyze_instr_type_struct(struct context               *ctx,
         result_type = complete_type_struct(ctx,
                                            type_struct->fwd_decl,
                                            type_struct->scope,
+                                           type_struct->scope_layer,
                                            members,
                                            base_type,
                                            type_struct->is_packed,
@@ -6475,6 +6495,7 @@ struct result analyze_instr_type_struct(struct context               *ctx,
                                          MIR_TYPE_STRUCT,
                                          type_struct->id,
                                          type_struct->scope,
+                                         type_struct->scope_layer,
                                          members,
                                          base_type,
                                          is_union,
@@ -7285,13 +7306,19 @@ struct result generate_fn_poly(struct context             *ctx,
         }
     }
 
-    const hash_t replacement_hash = get_current_poly_replacement_hash(ctx);
+    // @Performance: Consider more precise way how to choose if we need cache or not
+    const bool use_cache = isnotflag(fn->flags, FLAG_COMPTIME);
 
-    const s64 index = hmgeti(recipe->entries, replacement_hash);
+    hash_t replacement_hash = 0;
+    s64    index            = -1;
+    if (use_cache) {
+        replacement_hash = get_current_poly_replacement_hash(ctx);
+        index            = hmgeti(recipe->entries, replacement_hash);
+    }
     if (index == -1) {
-        const hash_t prev_scope_layer_index      = ctx->polymorph.current_scope_layer_index;
-        ctx->polymorph.current_scope_layer_index = ++recipe->scope_layer;
-        ctx->polymorph.is_replacement_active     = true;
+        const hash_t prev_scope_layer        = ctx->polymorph.current_scope_layer;
+        ctx->polymorph.current_scope_layer   = ++recipe->scope_layer;
+        ctx->polymorph.is_replacement_active = true;
 
         // Create name for generated function
         const char *original_fn_name     = fn->id ? fn->id->str : IMPL_FN_NAME;
@@ -7317,12 +7344,14 @@ struct result generate_fn_poly(struct context             *ctx,
             &ctx->assembly->string_cache, debug_replacement_str, strlenu(debug_replacement_str));
         replacement_fn->debug_poly_replacement = debug_replacement_str_dup;
 
-        ctx->polymorph.is_replacement_active     = false;
-        ctx->polymorph.current_scope_layer_index = prev_scope_layer_index;
+        ctx->polymorph.is_replacement_active = false;
+        ctx->polymorph.current_scope_layer   = prev_scope_layer;
 
         // Feed the output
         (*out_fn_proto) = (struct mir_instr_fn_proto *)instr_fn_proto;
-        hmput(recipe->entries, replacement_hash, (struct mir_instr_fn_proto *)instr_fn_proto);
+        if (use_cache) {
+            hmput(recipe->entries, replacement_hash, (struct mir_instr_fn_proto *)instr_fn_proto);
+        }
         ctx->assembly->stats.polymorph_count += 1;
     } else {
         *out_fn_proto = recipe->entries[index].value;
@@ -9396,6 +9425,9 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
     struct ast *ast_fn_type = lit_fn->data.expr_fn.type;
     struct id  *id          = decl_node ? &decl_node->data.ident.id : NULL;
     bassert(ast_fn_type->kind == AST_TYPE_FN);
+    // Force comptimes to act like polymorph functions, this will allow passing also types as values
+    // and keep static analyze as it is for now.
+    ast_fn_type->data.type_fn.is_polymorph |= isflag(flags, FLAG_COMPTIME);
     const bool is_polymorph =
         ast_fn_type->data.type_fn.is_polymorph && !ctx->polymorph.is_replacement_active;
 
@@ -10080,7 +10112,7 @@ struct mir_instr *ast_ref(struct context *ctx, struct ast *ref)
     struct ast *next  = ref->data.ref.next;
     bassert(ident);
     struct scope *scope       = ident->owner_scope;
-    const hash_t  scope_layer = ctx->polymorph.current_scope_layer_index;
+    const hash_t  scope_layer = ctx->polymorph.current_scope_layer;
     struct unit  *unit        = ident->location->unit;
     bassert(unit);
     bassert(scope);
@@ -10280,8 +10312,16 @@ struct mir_instr *ast_type_struct(struct context *ctx, struct ast *type_struct)
         sarrput(members, tmp);
     }
 
-    return append_instr_type_struct(
-        ctx, type_struct, id, fwd_decl, scope, members, false, is_union, is_multiple_return_type);
+    return append_instr_type_struct(ctx,
+                                    type_struct,
+                                    id,
+                                    fwd_decl,
+                                    scope,
+                                    ctx->polymorph.current_scope_layer,
+                                    members,
+                                    false,
+                                    is_union,
+                                    is_multiple_return_type);
 }
 
 struct mir_instr *ast_type_poly(struct context *ctx, struct ast *poly)
@@ -11051,13 +11091,13 @@ void mir_run(struct assembly *assembly)
     struct context ctx;
     zone();
     memset(&ctx, 0, sizeof(struct context));
-    ctx.assembly                            = assembly;
-    ctx.debug_mode                          = assembly->target->opt == ASSEMBLY_OPT_DEBUG;
-    ctx.builtin_types                       = &assembly->builtin_types;
-    ctx.vm                                  = &assembly->vm;
-    ctx.testing.cases                       = assembly->testing.cases;
-    ctx.polymorph.current_scope_layer_index = SCOPE_DEFAULT_LAYER;
-    ctx.ast.current_defer_stack_index       = -1;
+    ctx.assembly                      = assembly;
+    ctx.debug_mode                    = assembly->target->opt == ASSEMBLY_OPT_DEBUG;
+    ctx.builtin_types                 = &assembly->builtin_types;
+    ctx.vm                            = &assembly->vm;
+    ctx.testing.cases                 = assembly->testing.cases;
+    ctx.polymorph.current_scope_layer = SCOPE_DEFAULT_LAYER;
+    ctx.ast.current_defer_stack_index = -1;
 
     // @Incomplete: use available CPU count here?
     ctx.llvm_module_count = 4;
