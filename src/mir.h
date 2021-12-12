@@ -483,6 +483,13 @@ struct mir_var {
     u32 flags;
 };
 
+enum mir_instr_state {
+    MIR_IS_PENDING  = 0,
+    MIR_IS_ANALYZED = 1,
+    MIR_IS_COMPLETE = 3,
+    MIR_IS_FAILED   = 4,
+};
+
 struct mir_instr {
     struct mir_const_expr_value value;
     u64                         id;
@@ -493,9 +500,10 @@ struct mir_instr {
     struct mir_instr           *next;
     enum mir_instr_kind         kind;
     s32                         ref_count;
-    bool                        is_analyzed;
     bool                        is_unreachable;
     bool                        is_implicit;
+
+    enum mir_instr_state state;
 
     bmagic_member
 };

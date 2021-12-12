@@ -58,6 +58,12 @@ typedef u8        vm_value_t[16];
 typedef ptrdiff_t vm_relative_stack_ptr_t;
 typedef u8       *vm_stack_ptr_t;
 
+enum vm_interp_state {
+    VM_INTERP_PASSED,
+    VM_INTERP_POSTPONE,
+    VM_INTERP_ABORT,
+};
+
 struct vm_frame {
     struct vm_frame       *prev;
     struct mir_instr_call *caller; // Optional
@@ -78,12 +84,22 @@ struct vm_bufpage {
     vm_stack_ptr_t     top;
 };
 
+struct vm_snapshot {
+    // Top level comptime call used as lookup key.
+    struct mir_instr_call *key;
+    void                  *data;
+    usize                  data_size;
+    struct mir_instr      *next_instr;
+};
+
 struct virtual_machine {
     struct vm_stack   *stack;
     struct vm_bufpage *data; // Compile time values + global variables.
     struct assembly   *assembly;
     char              *dcsigtmp;
     bool               aborted;
+
+    struct vm_snapshot *snapshot_cache;
 };
 
 enum mir_value_address_mode {
@@ -116,15 +132,15 @@ bool vm_eval_instr(struct virtual_machine *vm, struct assembly *assembly, struct
 
 // Execute top level call instruction, called function must be fully analyzed. Return value is set
 // into call value data pointer.
-bool vm_execute_comptime_call(struct virtual_machine *vm,
-                              struct assembly        *assembly,
-                              struct mir_instr_call  *call);
+enum vm_interp_state vm_execute_comptime_call(struct virtual_machine *vm,
+                                              struct assembly        *assembly,
+                                              struct mir_instr_call  *call);
 
-bool vm_execute_fn(struct virtual_machine *vm,
-                   struct assembly        *assembly,
-                   struct mir_fn          *fn,
-                   mir_const_values_t     *optional_args,
-                   vm_stack_ptr_t         *optional_return);
+enum vm_interp_state vm_execute_fn(struct virtual_machine *vm,
+                                   struct assembly        *assembly,
+                                   struct mir_fn          *fn,
+                                   mir_const_values_t     *optional_args,
+                                   vm_stack_ptr_t         *optional_return);
 
 void vm_provide_command_line_arguments(struct virtual_machine *vm, s32 argc, char *argv[]);
 void vm_override_var(struct virtual_machine *vm, struct mir_var *var, u64 value);

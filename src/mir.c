@@ -1040,7 +1040,7 @@ static INLINE void usage_check_push(struct context *ctx, struct scope_entry *ent
 
 static INLINE bool can_mutate_comptime_to_const(struct mir_instr *instr)
 {
-    bassert(instr->is_analyzed && "Non-analyzed instruction.");
+    bassert(isflag(instr->state, MIR_IS_ANALYZED) && "Non-analyzed instruction.");
     bassert(mir_is_comptime(instr));
 
     switch (instr->kind) {
@@ -4173,7 +4173,7 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
         top = sarrpop(&queue);
         if (!top) continue;
 
-        bassert(top->is_analyzed && "Trying to erase not analyzed instruction.");
+        bassert(isflag(top->state, MIR_IS_ANALYZED) && "Trying to erase not analyzed instruction.");
         if (!force) {
             if (top->ref_count == NO_REF_COUNTING) continue;
             if (top->ref_count > 0) continue;
@@ -4387,7 +4387,8 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
 bool evaluate(struct context *ctx, struct mir_instr *instr)
 {
     if (!instr) return true;
-    bassert(instr->is_analyzed && "Non-analyzed instruction cannot be evaluated!");
+    bassert(instr->state == MIR_IS_ANALYZED && "Non-analyzed instruction cannot be evaluated!");
+    bassert(instr->state != MIR_IS_COMPLETE && "Instruction already evaluated!");
     // We can evaluate compile time know instructions only.
     if (!instr->value.is_comptime) return true;
     // Special cases
@@ -4395,8 +4396,11 @@ bool evaluate(struct context *ctx, struct mir_instr *instr)
     case MIR_INSTR_CALL: {
         // Call instruction must be evaluated and then later converted to constant in case it's
         // supposed to be called in compile time, otherwise we leave it as it is.
-        struct mir_instr_call *call = (struct mir_instr_call *)instr;
-        if (!vm_execute_comptime_call(ctx->vm, ctx->assembly, call)) return false;
+        struct mir_instr_call     *call  = (struct mir_instr_call *)instr;
+        const enum vm_interp_state state = vm_execute_comptime_call(ctx->vm, ctx->assembly, call);
+        if (state != VM_INTERP_PASSED) {
+            return false;
+        }
         break;
     }
     case MIR_INSTR_PHI: {
@@ -4454,9 +4458,10 @@ analyze_resolve_type(struct context *ctx, struct mir_instr *resolver, struct mir
     bassert(mir_is_comptime(resolver));
 
     if (resolver->kind == MIR_INSTR_CALL) {
-        bassert(!resolver->is_analyzed &&
-                "Incase the type resolver is analyzed is's supposed to be already converted to the "
-                "constant value during evaluation!");
+        bassert(
+            resolver->state != MIR_IS_COMPLETE &&
+            "In case the type resolver is analyzed is's supposed to be already converted to the "
+            "constant value during evaluation!");
         if (analyze_instr(ctx, resolver).state != ANALYZE_PASSED) {
             return ANALYZE_RESULT(POSTPONE, 0);
         }
@@ -4570,11 +4575,12 @@ struct result analyze_instr_phi(struct context *ctx, struct mir_instr_phi *phi)
         struct mir_instr **value_ref = &sarrpeek(phi->incoming_values, i);
         struct mir_instr  *block     = sarrpeek(phi->incoming_blocks, i);
         bassert(block && block->kind == MIR_INSTR_BLOCK);
-        bassert((*value_ref)->is_analyzed && "Phi incoming value is not analyzed!");
+        bassert((*value_ref)->state == MIR_IS_COMPLETE && "Phi incoming value is not analyzed!");
         if ((*value_ref)->kind == MIR_INSTR_COND_BR) {
             *value_ref = ((struct mir_instr_cond_br *)(*value_ref))->cond;
             bassert(value_ref && *value_ref);
-            bassert((*value_ref)->is_analyzed && "Phi incoming value is not analyzed!");
+            bassert((*value_ref)->state == MIR_IS_COMPLETE &&
+                    "Phi incoming value is not analyzed!");
         } else if ((*value_ref)->kind == MIR_INSTR_BR) {
             const struct mir_instr_br *br = (struct mir_instr_br *)(*value_ref);
             bassert(is_comptime);
@@ -4680,7 +4686,7 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
     // Setup compound type.
     if (!type) {
         // generate load instruction if needed
-        bassert(cmp->type->is_analyzed);
+        bassert(cmp->type->state == MIR_IS_COMPLETE);
         if (analyze_slot(ctx, &analyze_slot_conf_basic, &cmp->type, NULL) != ANALYZE_PASSED)
             return_zone(ANALYZE_RESULT(FAILED, 0));
 
@@ -4880,7 +4886,7 @@ struct result analyze_instr_set_initializer(struct context                   *ct
         struct mir_instr *dest = sarrpeek(dests, i);
         // Just pre-scan to check if all destination variables are analyzed.
         bassert(dest && dest->kind == MIR_INSTR_DECL_VAR);
-        if (!dest->is_analyzed) {
+        if (dest->state != MIR_IS_COMPLETE) {
             return_zone(ANALYZE_RESULT(POSTPONE, 0)); // PERFORMANCE: use wait???
         }
     }
@@ -5151,8 +5157,8 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
 
             struct mir_instr_addrof *addrof_elem =
                 (struct mir_instr_addrof *)mutate_instr(&member_ptr->base, MIR_INSTR_ADDROF);
-            addrof_elem->base.is_analyzed = false;
-            addrof_elem->src              = elem_ptr;
+            addrof_elem->base.state = MIR_IS_PENDING;
+            addrof_elem->src        = elem_ptr;
             ANALYZE_INSTR_RQ(&addrof_elem->base);
         } else {
             report_error(INVALID_MEMBER_ACCESS, ast_member_ident, "Unknown member.");
@@ -5267,7 +5273,7 @@ struct result analyze_instr_addrof(struct context *ctx, struct mir_instr_addrof 
     zone();
     struct mir_instr *src = addrof->src;
     bassert(src);
-    if (!src->is_analyzed) return_zone(ANALYZE_RESULT(POSTPONE, 0));
+    if (src->state != MIR_IS_COMPLETE) return_zone(ANALYZE_RESULT(POSTPONE, 0));
     const enum mir_value_address_mode src_addr_mode = src->value.addr_mode;
     const bool                        is_source_polymorph =
         src->value.type->kind == MIR_TYPE_FN && src->value.type->data.fn.is_polymorph;
@@ -5585,7 +5591,7 @@ struct result analyze_instr_decl_direct_ref(struct context                   *ct
     zone();
     bassert(ref->ref && "Missing declaration reference for direct ref.");
     if (ref->ref->kind == MIR_INSTR_DECL_VAR) {
-        if (!ref->ref->is_analyzed) return_zone(ANALYZE_RESULT(POSTPONE, 0));
+        if (ref->ref->state != MIR_IS_COMPLETE) return_zone(ANALYZE_RESULT(POSTPONE, 0));
         struct mir_var *var = ((struct mir_instr_decl_var *)ref->ref)->var;
         bassert(var);
         ++var->ref_count;
@@ -5596,7 +5602,7 @@ struct result analyze_instr_decl_direct_ref(struct context                   *ct
         ref->base.value.is_comptime = var->value.is_comptime;
         ref->base.value.addr_mode   = var->is_mutable ? MIR_VAM_LVALUE : MIR_VAM_LVALUE_CONST;
     } else if (ref->ref->kind == MIR_INSTR_FN_PROTO) {
-        if (!ref->ref->is_analyzed) return_zone(ANALYZE_RESULT(POSTPONE, 0));
+        if (ref->ref->state != MIR_IS_COMPLETE) return_zone(ANALYZE_RESULT(POSTPONE, 0));
         struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &ref->ref->value);
         bmagic_assert(fn);
         bassert(fn->type && fn->type == ref->ref->value.type);
@@ -5911,7 +5917,7 @@ struct result analyze_instr_fn_group(struct context *ctx, struct mir_instr_fn_gr
     bassert(vc);
     for (usize i = 0; i < vc; ++i) {
         struct mir_instr *variant_ref = sarrpeek(variants, i);
-        if (!variant_ref->is_analyzed) {
+        if (variant_ref->state != MIR_IS_COMPLETE) {
             return_zone(ANALYZE_RESULT(POSTPONE, 0));
         }
     }
@@ -5975,7 +5981,7 @@ struct result analyze_instr_cond_br(struct context *ctx, struct mir_instr_cond_b
 {
     zone();
     bassert(br->cond && br->then_block && br->else_block);
-    bassert(br->cond->is_analyzed);
+    bassert(br->cond->state == MIR_IS_COMPLETE);
     if (analyze_slot(ctx, &analyze_slot_conf_default, &br->cond, ctx->builtin_types->t_bool) !=
         ANALYZE_PASSED) {
         return_zone(ANALYZE_RESULT(FAILED, 0));
@@ -6107,7 +6113,7 @@ struct result analyze_instr_load(struct context *ctx, struct mir_instr_load *loa
 struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_fn *type_fn)
 {
     zone();
-    bassert(type_fn->ret_type ? type_fn->ret_type->is_analyzed : true);
+    bassert(type_fn->ret_type ? (type_fn->ret_type->state == MIR_IS_COMPLETE) : true);
 
     bool       is_vargs         = false;
     bool       has_default_args = false;
@@ -6122,7 +6128,7 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
             struct mir_instr_decl_arg *decl_arg =
                 (struct mir_instr_decl_arg *)sarrpeek(type_fn->args, i);
             struct mir_arg *arg = decl_arg->arg;
-            if (arg->value && !arg->value->is_analyzed) {
+            if (arg->value && arg->value->state != MIR_IS_COMPLETE) {
                 return_zone(ANALYZE_RESULT(POSTPONE, 0));
             }
         }
@@ -6400,7 +6406,7 @@ struct result analyze_instr_decl_arg(struct context *ctx, struct mir_instr_decl_
         // There is no explicitly defined argument type, but we have default argument value
         // to infer type from.
         bassert(arg->value);
-        if (!arg->value->is_analyzed) {
+        if (arg->value->state != MIR_IS_COMPLETE) {
             // @PERFORMANCE: WAITING is preferred here, but we don't have ID to wait
             // for.
             return_zone(ANALYZE_RESULT(POSTPONE, 0));
@@ -6628,7 +6634,7 @@ struct result analyze_instr_type_array(struct context *ctx, struct mir_instr_typ
 {
     zone();
     bassert(type_arr->base.value.type);
-    bassert(type_arr->elem_type->is_analyzed);
+    bassert(type_arr->elem_type->state == MIR_IS_COMPLETE);
 
     if (analyze_slot(ctx, &analyze_slot_conf_default, &type_arr->len, ctx->builtin_types->t_s64) !=
         ANALYZE_PASSED) {
@@ -6826,8 +6832,8 @@ struct result analyze_instr_binop(struct context *ctx, struct mir_instr_binop *b
     struct mir_instr *lhs = binop->lhs;
     struct mir_instr *rhs = binop->rhs;
     bassert(lhs && rhs);
-    bassert(lhs->is_analyzed);
-    bassert(rhs->is_analyzed);
+    bassert(lhs->state == MIR_IS_COMPLETE);
+    bassert(rhs->state == MIR_IS_COMPLETE);
     const bool lhs_valid = is_type_valid_for_binop(lhs->value.type, binop->op);
     const bool rhs_valid = is_type_valid_for_binop(rhs->value.type, binop->op);
     if (!(lhs_valid && rhs_valid)) {
@@ -6913,7 +6919,7 @@ struct result analyze_instr_unop(struct context *ctx, struct mir_instr_unop *uno
         return_zone(ANALYZE_RESULT(FAILED, 0));
     }
 
-    bassert(unop->expr && unop->expr->is_analyzed);
+    bassert(unop->expr && unop->expr->state == MIR_IS_COMPLETE);
 
     struct mir_type *expr_type = unop->expr->value.type;
     bassert(expr_type);
@@ -6993,7 +6999,7 @@ struct result analyze_instr_ret(struct context *ctx, struct mir_instr_ret *ret)
 
     struct mir_instr *value = ret->value;
     if (value) {
-        bassert(value->is_analyzed);
+        bassert(value->state == MIR_IS_COMPLETE);
     }
 
     const bool expected_ret_value =
@@ -7370,7 +7376,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         if (missing_any) return_zone(ANALYZE_RESULT(WAITING, missing_any->hash));
 
         // callee has not been analyzed yet -> postpone call analyze
-        if (!call->callee->is_analyzed) {
+        if (call->callee->state != MIR_IS_COMPLETE) {
             bassert(call->callee->kind == MIR_INSTR_FN_PROTO);
             struct mir_instr_fn_proto *fn_proto = (struct mir_instr_fn_proto *)call->callee;
             if (!fn_proto->pushed_for_analyze) {
@@ -7494,8 +7500,8 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         struct mir_instr_decl_direct_ref *callee_replacement =
             (struct mir_instr_decl_direct_ref *)mutate_instr(call->callee,
                                                              MIR_INSTR_DECL_DIRECT_REF);
-        callee_replacement->ref              = ref_instr(&instr_replacement_fn_proto->base);
-        callee_replacement->base.is_analyzed = false;
+        callee_replacement->ref        = ref_instr(&instr_replacement_fn_proto->base);
+        callee_replacement->base.state = MIR_IS_PENDING;
 
         // We skip analyze of this instruction, newly created polymorph function is not analyzed
         // yet; however we've changed kind of callee instruction, so we have to roll-back in
@@ -7587,9 +7593,12 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
             insert_instr_before(&call->base, vargs);
         }
 
-        if (analyze_instr_vargs(ctx, (struct mir_instr_vargs *)vargs).state != ANALYZE_PASSED)
+        if (analyze_instr_vargs(ctx, (struct mir_instr_vargs *)vargs).state != ANALYZE_PASSED) {
+            // @Incomplete: We probably don't want evaluation here, but I don't remember why...
+            vargs->state = MIR_IS_FAILED;
             return_zone(ANALYZE_RESULT(FAILED, 0));
-        vargs->is_analyzed = true;
+        }
+        vargs->state = MIR_IS_COMPLETE;
         // Erase vargs from arguments. @NOTE: function does nothing when array size is equal
         // to callee_argc.
         sarrsetlen(call->args, callee_argc);
@@ -7693,7 +7702,7 @@ struct result analyze_instr_store(struct context *ctx, struct mir_instr_store *s
     zone();
     struct mir_instr *dest = store->dest;
     bassert(dest);
-    bassert(dest->is_analyzed);
+    bassert(dest->state == MIR_IS_COMPLETE);
 
     if (!mir_is_pointer_type(dest->value.type)) {
         report_error(
@@ -7871,9 +7880,17 @@ ANALYZE_STAGE_FN(set_auto)
     if (!cast->auto_cast) return ANALYZE_STAGE_CONTINUE;
     cast->base.value.type = slot_type;
     if (analyze_instr_cast(ctx, cast, true).state != ANALYZE_PASSED) {
+        cast->base.state = MIR_IS_FAILED;
+        return ANALYZE_STAGE_FAILED;
+    } else {
+        cast->base.state = MIR_IS_ANALYZED;
+    }
+    if (!evaluate(ctx, &cast->base)) {
+        cast->base.state = MIR_IS_FAILED;
         return ANALYZE_STAGE_FAILED;
     }
-    if (!evaluate(ctx, &cast->base)) return ANALYZE_STAGE_FAILED;
+
+    cast->base.state = MIR_IS_COMPLETE;
     return ANALYZE_STAGE_BREAK;
 }
 
@@ -8037,178 +8054,191 @@ struct result analyze_instr(struct context *ctx, struct mir_instr *instr)
 {
     zone();
     if (!instr) return_zone(ANALYZE_RESULT(PASSED, 0));
-
-    // skip already analyzed instructions
-    if (instr->is_analyzed) return_zone(ANALYZE_RESULT(PASSED, 0));
     struct result state = ANALYZE_RESULT(PASSED, 0);
 
-    BL_TRACY_MESSAGE("ANALYZE", "[%llu] %s", instr->id, mir_instr_name(instr));
+    if (instr->state == MIR_IS_COMPLETE) return_zone(state);
+
+    enum mir_instr_state *instr_state = &instr->state;
+
     ctx->analyze.last_analyzed_instr = instr;
     if (instr->owner_block) set_current_block(ctx, instr->owner_block);
 
-    switch (instr->kind) {
-    case MIR_INSTR_VARGS:
-    case MIR_INSTR_INVALID:
-        break;
+    bassert((*instr_state) != MIR_IS_FAILED && "Attempt to analyze already failed instruction?!");
 
-    case MIR_INSTR_BLOCK:
-        state = analyze_instr_block(ctx, (struct mir_instr_block *)instr);
-        break;
-    case MIR_INSTR_FN_PROTO:
-        state = analyze_instr_fn_proto(ctx, (struct mir_instr_fn_proto *)instr);
-        break;
-    case MIR_INSTR_FN_GROUP:
-        state = analyze_instr_fn_group(ctx, (struct mir_instr_fn_group *)instr);
-        break;
-    case MIR_INSTR_DECL_VAR:
-        state = analyze_instr_decl_var(ctx, (struct mir_instr_decl_var *)instr);
-        break;
-    case MIR_INSTR_DECL_MEMBER:
-        state = analyze_instr_decl_member(ctx, (struct mir_instr_decl_member *)instr);
-        break;
-    case MIR_INSTR_DECL_VARIANT:
-        state = analyze_instr_decl_variant(ctx, (struct mir_instr_decl_variant *)instr);
-        break;
-    case MIR_INSTR_DECL_ARG:
-        state = analyze_instr_decl_arg(ctx, (struct mir_instr_decl_arg *)instr);
-        break;
-    case MIR_INSTR_CALL:
-        state = analyze_instr_call(ctx, (struct mir_instr_call *)instr);
-        break;
-    case MIR_INSTR_MSG:
-        state = analyze_instr_msg(ctx, (struct mir_instr_msg *)instr);
-        break;
-    case MIR_INSTR_CONST:
-        state = analyze_instr_const(ctx, (struct mir_instr_const *)instr);
-        break;
-    case MIR_INSTR_RET:
-        state = analyze_instr_ret(ctx, (struct mir_instr_ret *)instr);
-        break;
-    case MIR_INSTR_STORE:
-        state = analyze_instr_store(ctx, (struct mir_instr_store *)instr);
-        break;
-    case MIR_INSTR_DECL_REF:
-        state = analyze_instr_decl_ref(ctx, (struct mir_instr_decl_ref *)instr);
-        break;
-    case MIR_INSTR_BINOP:
-        state = analyze_instr_binop(ctx, (struct mir_instr_binop *)instr);
-        break;
-    case MIR_INSTR_TYPE_FN:
-        state = analyze_instr_type_fn(ctx, (struct mir_instr_type_fn *)instr);
-        break;
-    case MIR_INSTR_TYPE_FN_GROUP:
-        state = analyze_instr_type_fn_group(ctx, (struct mir_instr_type_fn_group *)instr);
-        break;
-    case MIR_INSTR_TYPE_STRUCT:
-        state = analyze_instr_type_struct(ctx, (struct mir_instr_type_struct *)instr);
-        break;
-    case MIR_INSTR_TYPE_SLICE:
-        state = analyze_instr_type_slice(ctx, (struct mir_instr_type_slice *)instr);
-        break;
-    case MIR_INSTR_TYPE_DYNARR:
-        state = analyze_instr_type_dynarr(ctx, (struct mir_instr_type_dyn_arr *)instr);
-        break;
-    case MIR_INSTR_TYPE_VARGS:
-        state = analyze_instr_type_vargs(ctx, (struct mir_instr_type_vargs *)instr);
-        break;
-    case MIR_INSTR_TYPE_ARRAY:
-        state = analyze_instr_type_array(ctx, (struct mir_instr_type_array *)instr);
-        break;
-    case MIR_INSTR_TYPE_PTR:
-        state = analyze_instr_type_ptr(ctx, (struct mir_instr_type_ptr *)instr);
-        break;
-    case MIR_INSTR_TYPE_ENUM:
-        state = analyze_instr_type_enum(ctx, (struct mir_instr_type_enum *)instr);
-        break;
-    case MIR_INSTR_TYPE_POLY:
-        state = analyze_instr_type_poly(ctx, (struct mir_instr_type_poly *)instr);
-        break;
-    case MIR_INSTR_LOAD:
-        state = analyze_instr_load(ctx, (struct mir_instr_load *)instr);
-        break;
-    case MIR_INSTR_COMPOUND:
-        state = analyze_instr_compound(ctx, (struct mir_instr_compound *)instr);
-        break;
-    case MIR_INSTR_BR:
-        state = analyze_instr_br(ctx, (struct mir_instr_br *)instr);
-        break;
-    case MIR_INSTR_COND_BR:
-        state = analyze_instr_cond_br(ctx, (struct mir_instr_cond_br *)instr);
-        break;
-    case MIR_INSTR_UNOP:
-        state = analyze_instr_unop(ctx, (struct mir_instr_unop *)instr);
-        break;
-    case MIR_INSTR_UNREACHABLE:
-        state = analyze_instr_unreachable(ctx, (struct mir_instr_unreachable *)instr);
-        break;
-    case MIR_INSTR_DEBUGBREAK:
-        state = analyze_instr_debugbreak(ctx, (struct mir_instr_debugbreak *)instr);
-        break;
-    case MIR_INSTR_ARG:
-        state = analyze_instr_arg(ctx, (struct mir_instr_arg *)instr);
-        break;
-    case MIR_INSTR_ELEM_PTR:
-        state = analyze_instr_elem_ptr(ctx, (struct mir_instr_elem_ptr *)instr);
-        break;
-    case MIR_INSTR_MEMBER_PTR:
-        state = analyze_instr_member_ptr(ctx, (struct mir_instr_member_ptr *)instr);
-        break;
-    case MIR_INSTR_ADDROF:
-        state = analyze_instr_addrof(ctx, (struct mir_instr_addrof *)instr);
-        break;
-    case MIR_INSTR_CAST:
-        state = analyze_instr_cast(ctx, (struct mir_instr_cast *)instr, false);
-        break;
-    case MIR_INSTR_SIZEOF:
-        state = analyze_instr_sizeof(ctx, (struct mir_instr_sizeof *)instr);
-        break;
-    case MIR_INSTR_ALIGNOF:
-        state = analyze_instr_alignof(ctx, (struct mir_instr_alignof *)instr);
-        break;
-    case MIR_INSTR_TYPE_INFO:
-        state = analyze_instr_type_info(ctx, (struct mir_instr_type_info *)instr);
-        break;
-    case MIR_INSTR_PHI:
-        state = analyze_instr_phi(ctx, (struct mir_instr_phi *)instr);
-        break;
-    case MIR_INSTR_TOANY:
-        state = analyze_instr_toany(ctx, (struct mir_instr_to_any *)instr);
-        break;
-    case MIR_INSTR_DECL_DIRECT_REF:
-        state = analyze_instr_decl_direct_ref(ctx, (struct mir_instr_decl_direct_ref *)instr);
-        break;
-    case MIR_INSTR_SWITCH:
-        state = analyze_instr_switch(ctx, (struct mir_instr_switch *)instr);
-        break;
-    case MIR_INSTR_SET_INITIALIZER:
-        state = analyze_instr_set_initializer(ctx, (struct mir_instr_set_initializer *)instr);
-        break;
-    case MIR_INSTR_TEST_CASES:
-        state = analyze_instr_test_cases(ctx, (struct mir_instr_test_case *)instr);
-        break;
-    case MIR_INSTR_CALL_LOC:
-        state = analyze_instr_call_loc(ctx, (struct mir_instr_call_loc *)instr);
-        break;
-    case MIR_INSTR_UNROLL:
-        state = analyze_instr_unroll(ctx, (struct mir_instr_unroll *)instr);
-        break;
-    default:
-        babort("Missing analyze of instruction!");
-    }
-    // @Cleanup: We probably can keep the last instruction until it's overriden or move this at the
-    // end of this scope?
-    // ctx->analyze.last_analyzed_instr = NULL;
-    if (state.state == ANALYZE_PASSED) {
-        instr->is_analyzed = true;
+    if ((*instr_state) == MIR_IS_PENDING) {
+        BL_TRACY_MESSAGE("ANALYZE", "[%llu] %s", instr->id, mir_instr_name(instr));
+
+        switch (instr->kind) {
+        case MIR_INSTR_VARGS:
+        case MIR_INSTR_INVALID:
+            break;
+
+        case MIR_INSTR_BLOCK:
+            state = analyze_instr_block(ctx, (struct mir_instr_block *)instr);
+            break;
+        case MIR_INSTR_FN_PROTO:
+            state = analyze_instr_fn_proto(ctx, (struct mir_instr_fn_proto *)instr);
+            break;
+        case MIR_INSTR_FN_GROUP:
+            state = analyze_instr_fn_group(ctx, (struct mir_instr_fn_group *)instr);
+            break;
+        case MIR_INSTR_DECL_VAR:
+            state = analyze_instr_decl_var(ctx, (struct mir_instr_decl_var *)instr);
+            break;
+        case MIR_INSTR_DECL_MEMBER:
+            state = analyze_instr_decl_member(ctx, (struct mir_instr_decl_member *)instr);
+            break;
+        case MIR_INSTR_DECL_VARIANT:
+            state = analyze_instr_decl_variant(ctx, (struct mir_instr_decl_variant *)instr);
+            break;
+        case MIR_INSTR_DECL_ARG:
+            state = analyze_instr_decl_arg(ctx, (struct mir_instr_decl_arg *)instr);
+            break;
+        case MIR_INSTR_CALL:
+            state = analyze_instr_call(ctx, (struct mir_instr_call *)instr);
+            break;
+        case MIR_INSTR_MSG:
+            state = analyze_instr_msg(ctx, (struct mir_instr_msg *)instr);
+            break;
+        case MIR_INSTR_CONST:
+            state = analyze_instr_const(ctx, (struct mir_instr_const *)instr);
+            break;
+        case MIR_INSTR_RET:
+            state = analyze_instr_ret(ctx, (struct mir_instr_ret *)instr);
+            break;
+        case MIR_INSTR_STORE:
+            state = analyze_instr_store(ctx, (struct mir_instr_store *)instr);
+            break;
+        case MIR_INSTR_DECL_REF:
+            state = analyze_instr_decl_ref(ctx, (struct mir_instr_decl_ref *)instr);
+            break;
+        case MIR_INSTR_BINOP:
+            state = analyze_instr_binop(ctx, (struct mir_instr_binop *)instr);
+            break;
+        case MIR_INSTR_TYPE_FN:
+            state = analyze_instr_type_fn(ctx, (struct mir_instr_type_fn *)instr);
+            break;
+        case MIR_INSTR_TYPE_FN_GROUP:
+            state = analyze_instr_type_fn_group(ctx, (struct mir_instr_type_fn_group *)instr);
+            break;
+        case MIR_INSTR_TYPE_STRUCT:
+            state = analyze_instr_type_struct(ctx, (struct mir_instr_type_struct *)instr);
+            break;
+        case MIR_INSTR_TYPE_SLICE:
+            state = analyze_instr_type_slice(ctx, (struct mir_instr_type_slice *)instr);
+            break;
+        case MIR_INSTR_TYPE_DYNARR:
+            state = analyze_instr_type_dynarr(ctx, (struct mir_instr_type_dyn_arr *)instr);
+            break;
+        case MIR_INSTR_TYPE_VARGS:
+            state = analyze_instr_type_vargs(ctx, (struct mir_instr_type_vargs *)instr);
+            break;
+        case MIR_INSTR_TYPE_ARRAY:
+            state = analyze_instr_type_array(ctx, (struct mir_instr_type_array *)instr);
+            break;
+        case MIR_INSTR_TYPE_PTR:
+            state = analyze_instr_type_ptr(ctx, (struct mir_instr_type_ptr *)instr);
+            break;
+        case MIR_INSTR_TYPE_ENUM:
+            state = analyze_instr_type_enum(ctx, (struct mir_instr_type_enum *)instr);
+            break;
+        case MIR_INSTR_TYPE_POLY:
+            state = analyze_instr_type_poly(ctx, (struct mir_instr_type_poly *)instr);
+            break;
+        case MIR_INSTR_LOAD:
+            state = analyze_instr_load(ctx, (struct mir_instr_load *)instr);
+            break;
+        case MIR_INSTR_COMPOUND:
+            state = analyze_instr_compound(ctx, (struct mir_instr_compound *)instr);
+            break;
+        case MIR_INSTR_BR:
+            state = analyze_instr_br(ctx, (struct mir_instr_br *)instr);
+            break;
+        case MIR_INSTR_COND_BR:
+            state = analyze_instr_cond_br(ctx, (struct mir_instr_cond_br *)instr);
+            break;
+        case MIR_INSTR_UNOP:
+            state = analyze_instr_unop(ctx, (struct mir_instr_unop *)instr);
+            break;
+        case MIR_INSTR_UNREACHABLE:
+            state = analyze_instr_unreachable(ctx, (struct mir_instr_unreachable *)instr);
+            break;
+        case MIR_INSTR_DEBUGBREAK:
+            state = analyze_instr_debugbreak(ctx, (struct mir_instr_debugbreak *)instr);
+            break;
+        case MIR_INSTR_ARG:
+            state = analyze_instr_arg(ctx, (struct mir_instr_arg *)instr);
+            break;
+        case MIR_INSTR_ELEM_PTR:
+            state = analyze_instr_elem_ptr(ctx, (struct mir_instr_elem_ptr *)instr);
+            break;
+        case MIR_INSTR_MEMBER_PTR:
+            state = analyze_instr_member_ptr(ctx, (struct mir_instr_member_ptr *)instr);
+            break;
+        case MIR_INSTR_ADDROF:
+            state = analyze_instr_addrof(ctx, (struct mir_instr_addrof *)instr);
+            break;
+        case MIR_INSTR_CAST:
+            state = analyze_instr_cast(ctx, (struct mir_instr_cast *)instr, false);
+            break;
+        case MIR_INSTR_SIZEOF:
+            state = analyze_instr_sizeof(ctx, (struct mir_instr_sizeof *)instr);
+            break;
+        case MIR_INSTR_ALIGNOF:
+            state = analyze_instr_alignof(ctx, (struct mir_instr_alignof *)instr);
+            break;
+        case MIR_INSTR_TYPE_INFO:
+            state = analyze_instr_type_info(ctx, (struct mir_instr_type_info *)instr);
+            break;
+        case MIR_INSTR_PHI:
+            state = analyze_instr_phi(ctx, (struct mir_instr_phi *)instr);
+            break;
+        case MIR_INSTR_TOANY:
+            state = analyze_instr_toany(ctx, (struct mir_instr_to_any *)instr);
+            break;
+        case MIR_INSTR_DECL_DIRECT_REF:
+            state = analyze_instr_decl_direct_ref(ctx, (struct mir_instr_decl_direct_ref *)instr);
+            break;
+        case MIR_INSTR_SWITCH:
+            state = analyze_instr_switch(ctx, (struct mir_instr_switch *)instr);
+            break;
+        case MIR_INSTR_SET_INITIALIZER:
+            state = analyze_instr_set_initializer(ctx, (struct mir_instr_set_initializer *)instr);
+            break;
+        case MIR_INSTR_TEST_CASES:
+            state = analyze_instr_test_cases(ctx, (struct mir_instr_test_case *)instr);
+            break;
+        case MIR_INSTR_CALL_LOC:
+            state = analyze_instr_call_loc(ctx, (struct mir_instr_call_loc *)instr);
+            break;
+        case MIR_INSTR_UNROLL:
+            state = analyze_instr_unroll(ctx, (struct mir_instr_unroll *)instr);
+            break;
+        default:
+            babort("Missing analyze of instruction!");
+        }
+
+        if (state.state == ANALYZE_PASSED) {
+            (*instr_state) = MIR_IS_ANALYZED;
+        } else if (state.state == ANALYZE_FAILED) {
+            (*instr_state) = MIR_IS_FAILED;
+        }
+    } // PENDING
+
+    if ((*instr_state) == MIR_IS_ANALYZED) {
+        bassert(state.state == ANALYZE_PASSED);
         if (instr->kind == MIR_INSTR_CAST && ((struct mir_instr_cast *)instr)->auto_cast) {
             // An auto cast cannot be directly evaluated because it's destination type
             // could change based on usage.
-            return_zone(state);
+            (*instr_state) = MIR_IS_COMPLETE;
+        } else if (evaluate(ctx, instr)) {
+            (*instr_state) = MIR_IS_COMPLETE;
+        } else {
+            (*instr_state) = MIR_IS_FAILED;
+            state          = ANALYZE_RESULT(FAILED, 0);
         }
-        if (!evaluate(ctx, instr)) {
-            state = ANALYZE_RESULT(FAILED, 0);
-        }
-    }
+    } // ANALYZED
+
     return_zone(state);
 }
 
@@ -8247,7 +8277,7 @@ void analyze(struct context *ctx)
         pip = ip;
         ip  = skip ? NULL : analyze_try_get_next(ip);
         // Remove unused instructions here!
-        if (pip && pip->is_analyzed) erase_instr_tree(pip, false, false);
+        if (pip && (pip->state == MIR_IS_COMPLETE)) erase_instr_tree(pip, false, false);
         if (ip == NULL) {
             if (i >= arrlenu(ctx->analyze.stack[si])) {
                 // No other instructions in current analyzed stack, let's try the other one.

@@ -312,7 +312,7 @@ void print_comptime_value_or_id(struct context *ctx, struct mir_instr *instr)
         return;
     }
 
-    if (!instr->value.is_comptime || !instr->is_analyzed) {
+    if (!instr->value.is_comptime || instr->state != MIR_IS_COMPLETE) {
         fprintf(ctx->stream, "%%%llu", (unsigned long long)instr->id);
         return;
     }
@@ -933,7 +933,7 @@ void print_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_pro
     bassert(fn);
 
     fprintf(ctx->stream, "\n");
-    if (fn_proto->base.is_analyzed) fprintf(ctx->stream, "/* analyzed */\n");
+    if (fn_proto->base.state == MIR_IS_COMPLETE) fprintf(ctx->stream, "/* analyzed */\n");
     if (fn->linkage_name)
         fprintf(ctx->stream, "@%s ", fn->linkage_name);
     else

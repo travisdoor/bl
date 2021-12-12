@@ -2829,7 +2829,7 @@ State emit_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_pro
 State emit_instr(struct context *ctx, struct mir_instr *instr)
 {
     State state = STATE_PASSED;
-    bassert(instr->is_analyzed && "Attempt to emit not-analyzed instruction!");
+    bassert(instr->state == MIR_IS_COMPLETE && "Attempt to emit not-analyzed instruction!");
     if (!mir_type_has_llvm_representation((instr->value.type))) return state;
     switch (instr->kind) {
     case MIR_INSTR_INVALID:

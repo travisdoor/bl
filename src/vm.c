@@ -56,10 +56,10 @@ static const char *dyncall_generate_signature(struct virtual_machine *vm, struct
 static DCCallback *dyncall_fetch_callback(struct virtual_machine *vm, struct mir_fn *fn);
 static void
 dyncall_push_arg(struct virtual_machine *vm, vm_stack_ptr_t val_ptr, struct mir_type *type);
-static bool execute_function(struct virtual_machine *vm,
-                             struct mir_fn          *fn,
-                             struct mir_instr_call  *optional_call);
-static void interp_instr(struct virtual_machine *vm, struct mir_instr *instr);
+static enum vm_interp_state execute_function(struct virtual_machine *vm,
+                                             struct mir_fn          *fn,
+                                             struct mir_instr_call  *optional_call);
+static enum vm_interp_state interp_instr(struct virtual_machine *vm, struct mir_instr *instr);
 static void
 interp_extern_call(struct virtual_machine *vm, struct mir_fn *fn, struct mir_instr_call *call);
 static void interp_instr_toany(struct virtual_machine *vm, struct mir_instr_to_any *toany);
@@ -715,8 +715,9 @@ char dyncall_cb_handler(DCCallback UNUSED(*cb), DCArgs *dc_args, DCValue *result
         }
     }
 
-    vm_stack_ptr_t ret_ptr = NULL;
-    if (!vm_execute_fn(vm, vm->assembly, fn, &arg_tmp, &ret_ptr)) {
+    vm_stack_ptr_t             ret_ptr = NULL;
+    const enum vm_interp_state state   = vm_execute_fn(vm, vm->assembly, fn, &arg_tmp, &ret_ptr);
+    if (state != VM_INTERP_PASSED) {
         result->L = 0;
     } else if (fn_does_return(fn)) {
         // @Incomplete: Does this work with other types than 64bit ints???
@@ -1023,9 +1024,9 @@ void interp_extern_call(struct virtual_machine *vm, struct mir_fn *fn, struct mi
 // - Return value can be eventually pushed on the stack after execution.
 // - Current execution stack pointer is restored in case the execution failed; there is no valid
 //   return value on the stack even if the function is supposed to return one.
-bool execute_function(struct virtual_machine *vm,
-                      struct mir_fn          *fn,
-                      struct mir_instr_call  *optional_call)
+enum vm_interp_state execute_function(struct virtual_machine *vm,
+                                      struct mir_fn          *fn,
+                                      struct mir_instr_call  *optional_call)
 {
     struct mir_instr       *fn_entry_instr    = fn->first_block->entry_instr;
     const struct mir_instr *fn_terminal_instr = &fn->terminal_instr->base;
@@ -1038,12 +1039,16 @@ bool execute_function(struct virtual_machine *vm,
     // setup entry instruction
     set_pc(vm, fn_entry_instr);
     // iterate over entry block of executable
-    struct mir_instr *instr, *prev;
+    struct mir_instr    *instr, *prev;
+    enum vm_interp_state state = VM_INTERP_PASSED;
     while (true) {
         instr = get_pc(vm);
         prev  = instr;
-        if (!instr || vm->stack->aborted) break;
-        interp_instr(vm, instr);
+        if (instr && state == VM_INTERP_PASSED) {
+            state = interp_instr(vm, instr);
+        } else {
+            break;
+        }
         // When we reach terminal instruction of this function, we must stop the execution,
         // otherwise when the interpreted call lives in scope of other function, interpreter will
         // continue with execution.
@@ -1051,21 +1056,28 @@ bool execute_function(struct virtual_machine *vm,
         // Stack head can be changed by br instructions.
         if (!get_pc(vm) || get_pc(vm) == prev) set_pc(vm, instr->next);
     }
-    if (vm->stack->aborted) {
+    switch (state) {
+    case VM_INTERP_PASSED:
+        break;
+    case VM_INTERP_POSTPONE:
+        // save snapshot here!
+        babort("Not implemented!");
+        break;
+    case VM_INTERP_ABORT:
         // rollback the stack to the initial stack pointer.
         // @Incomplete: endless loop?
         while (pop_ra(vm) != optional_call)
             ;
-        return false;
+        break;
     }
-    return true;
+    return state;
 }
 
-void interp_instr(struct virtual_machine *vm, struct mir_instr *instr)
+enum vm_interp_state interp_instr(struct virtual_machine *vm, struct mir_instr *instr)
 {
-    if (!instr) return;
-    if (!instr->is_analyzed) {
-        babort("Instruction %s has not been analyzed!", mir_instr_name(instr));
+    if (!instr) return VM_INTERP_PASSED;
+    if (instr->state != MIR_IS_COMPLETE) {
+        return VM_INTERP_POSTPONE;
     }
 
     if (vm->assembly->target->vmdbg_break_on == (s32)instr->id) {
@@ -1073,7 +1085,7 @@ void interp_instr(struct virtual_machine *vm, struct mir_instr *instr)
     }
     vmdbg_notify_instr(instr);
     // Skip all comptimes.
-    if (mir_is_comptime(instr)) return;
+    if (mir_is_comptime(instr)) return VM_INTERP_PASSED;
 
     switch (instr->kind) {
     case MIR_INSTR_CAST:
@@ -1155,6 +1167,7 @@ void interp_instr(struct virtual_machine *vm, struct mir_instr *instr)
     default:
         babort("missing execution for instruction: %s", mir_instr_name(instr));
     }
+    return vm->aborted ? VM_INTERP_ABORT : VM_INTERP_PASSED;
 }
 
 void interp_instr_toany(struct virtual_machine *vm, struct mir_instr_to_any *toany)
@@ -1703,7 +1716,6 @@ void interp_instr_call(struct virtual_machine *vm, struct mir_instr_call *call)
 
     struct mir_fn *fn = (struct mir_fn *)vm_read_ptr(callee_ptr_type, callee_ptr);
     bmagic_assert(fn);
-    bassert(fn->is_fully_analyzed && "Functions called in compile time must be fully analyzed!");
     if (!fn) {
         builder_error("Function pointer not set!");
         vm_abort(vm);
@@ -2345,11 +2357,11 @@ void vm_override_var(struct virtual_machine *vm, struct mir_var *var, const u64 
     vm_write_int(type, dest_ptr, value);
 }
 
-bool vm_execute_fn(struct virtual_machine *vm,
-                   struct assembly        *assembly,
-                   struct mir_fn          *fn,
-                   mir_const_values_t     *optional_args,
-                   vm_stack_ptr_t         *optional_return)
+enum vm_interp_state vm_execute_fn(struct virtual_machine *vm,
+                                   struct assembly        *assembly,
+                                   struct mir_fn          *fn,
+                                   mir_const_values_t     *optional_args,
+                                   vm_stack_ptr_t         *optional_return)
 {
     bmagic_assert(fn);
     vm->assembly = assembly;
@@ -2363,7 +2375,8 @@ bool vm_execute_fn(struct virtual_machine *vm,
             stack_push(vm, value->data, value->type);
         }
     }
-    if (execute_function(vm, fn, NULL)) {
+    enum vm_interp_state state = execute_function(vm, fn, NULL);
+    if (state == VM_INTERP_PASSED) {
         vm_stack_ptr_t return_ptr = NULL;
         if (fn_does_return(fn)) {
             struct mir_type *ret_type = fn->type->data.fn.ret_type;
@@ -2377,18 +2390,17 @@ bool vm_execute_fn(struct virtual_machine *vm,
                 stack_pop(vm, value->type);
             }
         }
-        return true;
     }
-    return false;
+    return state;
 }
 
-bool vm_execute_comptime_call(struct virtual_machine *vm,
-                              struct assembly        *assembly,
-                              struct mir_instr_call  *call)
+enum vm_interp_state vm_execute_comptime_call(struct virtual_machine *vm,
+                                              struct assembly        *assembly,
+                                              struct mir_instr_call  *call)
 {
     zone();
     vm->assembly = assembly;
-    bassert(call && call->base.is_analyzed);
+    bassert(call && isflag(call->base.state, MIR_IS_ANALYZED));
     bassert(mir_is_comptime(&call->base) && "Top level call is expected to be comptime.");
     struct mir_fn *fn = mir_get_callee(call);
     bmagic_assert(fn);
@@ -2399,7 +2411,8 @@ bool vm_execute_comptime_call(struct virtual_machine *vm,
         struct mir_const_expr_value *value = &sarrpeek(args, i)->value;
         stack_push(vm, value->data, value->type);
     }
-    if (execute_function(vm, fn, call)) {
+    enum vm_interp_state state = execute_function(vm, fn, call);
+    if (state == VM_INTERP_PASSED) {
         // Pop return value.
         if (fn_does_return(fn)) {
             struct mir_type *ret_type = fn->type->data.fn.ret_type;
@@ -2421,9 +2434,8 @@ bool vm_execute_comptime_call(struct virtual_machine *vm,
             struct mir_const_expr_value *value = &sarrpeek(args, i)->value;
             stack_pop(vm, value->type);
         }
-        return_zone(true);
     }
-    return_zone(false);
+    return_zone(state);
 }
 
 void vm_alloc_global(struct virtual_machine *vm, struct assembly *assembly, struct mir_var *var)

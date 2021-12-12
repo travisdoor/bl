@@ -52,11 +52,13 @@ void vm_tests_run(struct assembly *assembly)
     for (s64 i = 0; i < tc; ++i) {
         struct mir_fn *test_fn = cases[i];
         bassert(isflag(test_fn->flags, FLAG_TEST_FN));
-        const f64   start      = get_tick_ms();
-        const bool  passed     = vm_execute_fn(vm, assembly, test_fn, NULL, NULL);
+        const f64 start = get_tick_ms();
+
+        const enum vm_interp_state state = vm_execute_fn(vm, assembly, test_fn, NULL, NULL);
+
         const f64   runtime_ms = get_tick_ms() - start;
         const char *name       = test_fn->id->str;
-        if (passed) {
+        if (state == VM_INTERP_PASSED) {
             printf("[ PASS |      ] %s (%f ms)\n", name, runtime_ms);
         } else {
             printf("[      | FAIL ] %s (%f ms)\n", name, runtime_ms);
@@ -121,7 +123,9 @@ void vm_entry_run(struct assembly *assembly)
     vm_override_var(vm, assembly->vm_run.is_comptime_run, true);
     vm_stack_ptr_t ret_ptr = NULL;
     s32            result  = EXIT_SUCCESS;
-    if (vm_execute_fn(vm, assembly, entry, NULL, &ret_ptr)) {
+
+    const enum vm_interp_state state = vm_execute_fn(vm, assembly, entry, NULL, &ret_ptr);
+    if (state == VM_INTERP_PASSED) {
         if (ret_ptr) {
             struct mir_type *ret_type = fn_type->data.fn.ret_type;
             result                    = (s32)vm_read_int(ret_type, ret_ptr);
