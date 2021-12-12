@@ -410,9 +410,8 @@ LLVMMetadataRef DI_type_init(struct context *ctx, struct mir_type *type)
     case MIR_TYPE_STRUCT: {
         // Struct type will be generated as forward declaration and postponed to be filled
         // later. This approach solves problems with circular references.
-        type->llvm_meta = type->data.strct.scope->llvm_meta =
-            LLVMDIBuilderCreateReplaceableCompositeType(
-                ctx->llvm_di_builder, 0, "", 0, NULL, NULL, 0, 0, 0, 0, LLVMDIFlagZero, "", 0);
+        type->llvm_meta = LLVMDIBuilderCreateReplaceableCompositeType(
+            ctx->llvm_di_builder, 0, "", 0, NULL, NULL, 0, 0, 0, 0, LLVMDIFlagZero, "", 0);
 
         arrput(ctx->di_incomplete_types, type);
         break;
@@ -494,7 +493,7 @@ LLVMMetadataRef DI_complete_type(struct context *ctx, struct mir_type *type)
     case MIR_TYPE_SLICE:
     case MIR_TYPE_DYNARR:
     case MIR_TYPE_STRUCT: {
-        bassert(type->data.strct.scope->llvm_meta && "Missing composit type fwd Di decl!!!");
+        bassert(type->llvm_meta && "Missing composit type fwd Di decl!!!");
         const bool      is_union    = type->data.strct.is_union;
         const bool      is_implicit = !type->data.strct.scope->location;
         LLVMMetadataRef llvm_file;
@@ -509,7 +508,7 @@ LLVMMetadataRef DI_complete_type(struct context *ctx, struct mir_type *type)
             struct_line               = (unsigned)location->line;
         }
 
-        const LLVMMetadataRef llvm_scope = type->data.strct.scope->llvm_meta;
+        const LLVMMetadataRef llvm_scope = type->llvm_meta;
 
         bassert(llvm_file);
         bassert(llvm_scope);
@@ -570,13 +569,7 @@ LLVMMetadataRef DI_complete_type(struct context *ctx, struct mir_type *type)
             sarrput(&llvm_elems, llvm_elem);
         }
 
-        LLVMMetadataRef llvm_parent_scope = NULL;
-        struct scope   *parent_scope      = type->data.strct.scope->parent;
-        if (is_implicit || !scope_is_local(parent_scope)) {
-            llvm_parent_scope = llvm_file;
-        } else {
-            llvm_parent_scope = DI_scope_init(ctx, parent_scope);
-        }
+        LLVMMetadataRef llvm_parent_scope = llvm_file;
 
         LLVMMetadataRef llvm_struct;
         if (is_union) {
@@ -612,8 +605,8 @@ LLVMMetadataRef DI_complete_type(struct context *ctx, struct mir_type *type)
                                                         "",
                                                         0);
         }
-        LLVMMetadataReplaceAllUsesWith(type->data.strct.scope->llvm_meta, llvm_struct);
-        type->llvm_meta = type->data.strct.scope->llvm_meta = llvm_struct;
+        LLVMMetadataReplaceAllUsesWith(type->llvm_meta, llvm_struct);
+        type->llvm_meta = llvm_struct;
 
         sarrfree(&llvm_elems);
         break;

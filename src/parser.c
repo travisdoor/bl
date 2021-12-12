@@ -594,7 +594,6 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
             ctx->scope_arenas, SCOPE_PRIVATE, scope_get(ctx), &tok_directive->location);
 
         ctx->current_private_scope = scope;
-        scope->llvm_meta           = scope->parent->llvm_meta;
         ctx->unit->private_scope   = scope;
         scope_set(ctx, scope);
 
