@@ -1,0 +1,124 @@
+#import "std/test"
+#import "std/debug_allocator"
+
+#import "std/array_table"
+
+main :: fn () s32 {
+    DebugAllocator.init();
+    defer DebugAllocator.terminate();
+    return test_run();    
+}
+
+#private
+DATA :: {:[10]string:
+         "Melisa Britt",
+         "Theodor Cooper",
+         "Laylah Simons",
+         "Romeo Walls",
+         "Carlo Daniel",
+         "Maggie Munoz",
+         "Tina Hawes",
+         "Raiden Garrison",
+         "Ikrah Alston",
+         "Adela Cornish"};
+
+test_basic_inserting_s32 :: fn () #test {
+    tbl: ArrayTable(s32, s32);
+    defer atable_terminate(&tbl);
+
+    atable_insert(&tbl, 666, 10);
+    test_true(atable_contains(&tbl, 666));
+    test_false(atable_contains(&tbl, 0));
+}
+
+test_basic_inserting_string :: fn () #test {
+    tbl: ArrayTable(s32, string);
+    defer atable_terminate(&tbl);
+
+    loop i := 0; i < DATA.len; i += 1 {
+        atable_insert(&tbl, i, DATA[i]);
+    }
+    
+    loop i := 0; i < DATA.len; i += 1 {
+        test_true(atable_contains(&tbl, i));
+        test_eq(DATA[i], atable_peek(&tbl, i));
+    }
+}
+
+test_clear :: fn () #test {
+    tbl: ArrayTable(s32, string);
+    defer atable_terminate(&tbl);
+
+    loop i := 0; i < DATA.len; i += 1 {
+        atable_insert(&tbl, i, DATA[i]);
+    }
+
+    test_eq(atable_len(&tbl), DATA.len);
+    atable_clear(&tbl);
+    test_eq(atable_len(&tbl), 0);
+}
+
+test_begin_end :: fn () #test {
+    tbl: ArrayTable(s32, string);
+    defer atable_terminate(&tbl);
+   
+    {
+        begin :: atable_begin(&tbl);
+        end :: atable_end(&tbl);
+        test_true(atable_iter_eq(&begin, &end));
+    }
+
+    loop i := 0; i < DATA.len; i += 1 {
+        atable_insert(&tbl, i, DATA[i]);
+    }
+
+    {
+        begin :: atable_begin(&tbl);
+        end :: atable_end(&tbl);
+        test_false(atable_iter_eq(&begin, &end));
+    }
+}
+
+test_iteration :: fn () #test {
+    tbl: ArrayTable(s32, string);
+    defer atable_terminate(&tbl);
+
+    { // empty
+        end :: atable_end(&tbl);
+        loop iter := atable_begin(&tbl); !atable_iter_eq(&iter, &end); atable_iter_next(&iter) {
+            test_true(false);
+        }
+    }
+    loop i := 0; i < DATA.len; i += 1 {
+        atable_insert(&tbl, i, DATA[i]);
+    }
+
+    {
+        i := 0;
+        end :: atable_end(&tbl);
+        loop iter := atable_begin(&tbl); !atable_iter_eq(&iter, &end); atable_iter_next(&iter) {
+            test_eq(@iter.key, i);
+            test_eq(@iter.value, DATA[i]);
+            i += 1;
+        }
+        test_eq(i, auto DATA.len);
+    }
+}
+
+test_erase :: fn () #test {
+    tbl: ArrayTable(s32, string);
+    defer atable_terminate(&tbl);
+
+    loop i := 0; i < DATA.len; i += 1 {
+        atable_insert(&tbl, i, DATA[i]);
+    }
+
+    test_eq(atable_len(&tbl), DATA.len);
+
+    loop i := 0; i < DATA.len; i += 1 {
+        atable_erase(&tbl, i);
+    }
+    
+    test_eq(atable_len(&tbl), 0);
+}
+

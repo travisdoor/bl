@@ -81,11 +81,12 @@ static void interp_instr_load(struct virtual_machine *vm, struct mir_instr_load 
 static void interp_instr_store(struct virtual_machine *vm, struct mir_instr_store *store);
 static void interp_instr_binop(struct virtual_machine *vm, struct mir_instr_binop *binop);
 static void interp_instr_unop(struct virtual_machine *vm, struct mir_instr_unop *unop);
-static void interp_instr_call(struct virtual_machine *vm, struct mir_instr_call *call);
-static void interp_instr_ret(struct virtual_machine *vm, struct mir_instr_ret *ret);
-static void interp_instr_compound(struct virtual_machine    *vm,
-                                  vm_stack_ptr_t             tmp_ptr,
-                                  struct mir_instr_compound *cmp);
+static enum vm_interp_state interp_instr_call(struct virtual_machine *vm,
+                                              struct mir_instr_call  *call);
+static void                 interp_instr_ret(struct virtual_machine *vm, struct mir_instr_ret *ret);
+static void                 interp_instr_compound(struct virtual_machine    *vm,
+                                                  vm_stack_ptr_t             tmp_ptr,
+                                                  struct mir_instr_compound *cmp);
 static void interp_instr_vargs(struct virtual_machine *vm, struct mir_instr_vargs *vargs);
 static void interp_instr_decl_var(struct virtual_machine *vm, struct mir_instr_decl_var *decl);
 static void interp_instr_decl_ref(struct virtual_machine *vm, struct mir_instr_decl_ref *ref);
@@ -1019,6 +1020,57 @@ void interp_extern_call(struct virtual_machine *vm, struct mir_fn *fn, struct mi
     }
 }
 
+static void save_snapshot(struct virtual_machine *vm, struct mir_instr_call *call)
+{
+    zone();
+    bwarn("Try to save stack snapshot! This is not completed yet!");
+    bassert(call);
+
+    vm_stack_ptr_t          prev_top   = vm->stack->top_ptr;
+    struct vm_frame        *prev_ra    = vm->stack->ra;
+    struct mir_instr       *prev_pc    = vm->stack->pc;
+    struct mir_instr_block *prev_block = vm->stack->prev_block;
+
+    while (pop_ra(vm) != call)
+        ;
+    vm_stack_ptr_t  curr_top       = vm->stack->top_ptr;
+    const ptrdiff_t snapshot_bytes = ((ptrdiff_t)prev_top) - ((ptrdiff_t)curr_top);
+    bassert(snapshot_bytes > 0);
+    if (snapshot_bytes == 0) return_zone();
+    blog("snapshot size = %d", snapshot_bytes);
+
+    // @Performace: Saving of whole executed stack can be expensive; but we keep it for now; an
+    // alternative solution would be freeze the execution state and continue pushing data of other
+    // functions, but this would make restoring more complicated (we can resume only the last
+    // executed 'top' function in such case).
+    vm_stack_ptr_t buf = bmalloc(sizeof(u8) * snapshot_bytes);
+    memcpy(buf, curr_top, snapshot_bytes);
+
+    bassert(hmgeti(vm->snapshot_cache, call) == -1 && "Snapshot is already stored.");
+    struct vm_snapshot snapshot;
+    snapshot.key        = call;
+    snapshot.data       = buf;
+    snapshot.data_size  = (usize)snapshot_bytes;
+    snapshot.top_ptr    = prev_top;
+    snapshot.ra         = prev_ra;
+    snapshot.pc         = prev_pc;
+    snapshot.prev_block = prev_block;
+
+    hmputs(vm->snapshot_cache, snapshot);
+    return_zone();
+}
+
+static struct mir_instr *try_load_snapshot(struct virtual_machine *vm, struct mir_instr_call *call)
+{
+    if (!call) return NULL;
+    const s64 index = hmgeti(vm->snapshot_cache, call);
+    if (index == -1) return NULL;
+    struct vm_snapshot *snapshot = &vm->snapshot_cache[index];
+    bfree(snapshot->data);
+    hmdel(vm->snapshot_cache, call);
+    return NULL; // @Incomplete
+}
+
 // Execute top level function directly.
 // - Expects all arguments already on stack.
 // - Return value can be eventually pushed on the stack after execution.
@@ -1028,6 +1080,7 @@ enum vm_interp_state execute_function(struct virtual_machine *vm,
                                       struct mir_fn          *fn,
                                       struct mir_instr_call  *optional_call)
 {
+    try_load_snapshot(vm, optional_call); // @Incomplete
     struct mir_instr       *fn_entry_instr    = fn->first_block->entry_instr;
     const struct mir_instr *fn_terminal_instr = &fn->terminal_instr->base;
     // Reset eventual previous failed state.
@@ -1060,11 +1113,9 @@ enum vm_interp_state execute_function(struct virtual_machine *vm,
     case VM_INTERP_PASSED:
         break;
     case VM_INTERP_POSTPONE:
-        // save snapshot here!
-        babort("Not implemented!");
+        save_snapshot(vm, optional_call);
         break;
     case VM_INTERP_ABORT:
-        // rollback the stack to the initial stack pointer.
         // @Incomplete: endless loop?
         while (pop_ra(vm) != optional_call)
             ;
@@ -1085,7 +1136,8 @@ enum vm_interp_state interp_instr(struct virtual_machine *vm, struct mir_instr *
     }
     vmdbg_notify_instr(instr);
     // Skip all comptimes.
-    if (mir_is_comptime(instr)) return VM_INTERP_PASSED;
+    enum vm_interp_state state = VM_INTERP_PASSED;
+    if (mir_is_comptime(instr)) return state;
 
     switch (instr->kind) {
     case MIR_INSTR_CAST:
@@ -1101,7 +1153,7 @@ enum vm_interp_state interp_instr(struct virtual_machine *vm, struct mir_instr *
         interp_instr_unop(vm, (struct mir_instr_unop *)instr);
         break;
     case MIR_INSTR_CALL:
-        interp_instr_call(vm, (struct mir_instr_call *)instr);
+        state = interp_instr_call(vm, (struct mir_instr_call *)instr);
         break;
     case MIR_INSTR_RET:
         interp_instr_ret(vm, (struct mir_instr_ret *)instr);
@@ -1167,7 +1219,7 @@ enum vm_interp_state interp_instr(struct virtual_machine *vm, struct mir_instr *
     default:
         babort("missing execution for instruction: %s", mir_instr_name(instr));
     }
-    return vm->aborted ? VM_INTERP_ABORT : VM_INTERP_PASSED;
+    return vm->aborted ? VM_INTERP_ABORT : state;
 }
 
 void interp_instr_toany(struct virtual_machine *vm, struct mir_instr_to_any *toany)
@@ -1700,7 +1752,7 @@ void interp_instr_store(struct virtual_machine *vm, struct mir_instr_store *stor
     memcpy(dest_ptr, src_ptr, src_type->store_size_bytes);
 }
 
-void interp_instr_call(struct virtual_machine *vm, struct mir_instr_call *call)
+enum vm_interp_state interp_instr_call(struct virtual_machine *vm, struct mir_instr_call *call)
 {
     // Call instruction expects all arguments already pushed on the stack in reverse order.
     bassert(call->callee && call->base.value.type);
@@ -1719,7 +1771,10 @@ void interp_instr_call(struct virtual_machine *vm, struct mir_instr_call *call)
     if (!fn) {
         builder_error("Function pointer not set!");
         vm_abort(vm);
-        return;
+        return VM_INTERP_ABORT;
+    }
+    if (!fn->is_fully_analyzed) {
+        return VM_INTERP_POSTPONE;
     }
     bassert(fn->type);
     if (isflag(fn->flags, FLAG_EXTERN) || isflag(fn->flags, FLAG_INTRINSIC)) {
@@ -1732,6 +1787,7 @@ void interp_instr_call(struct virtual_machine *vm, struct mir_instr_call *call)
         // setup entry instruction
         set_pc(vm, fn->first_block->entry_instr);
     }
+    return VM_INTERP_PASSED;
 }
 
 void interp_instr_ret(struct virtual_machine *vm, struct mir_instr_ret *ret)
@@ -2020,6 +2076,10 @@ void eval_instr_member_ptr(struct virtual_machine       UNUSED(*vm),
                            struct mir_instr_member_ptr *member_ptr)
 {
     switch (member_ptr->scope_entry->kind) {
+    case SCOPE_ENTRY_UNNAMED:
+        // @Hack: This is used as dummy scope entry for sub-type members. They are evaluated
+        // directly inside the analyze pass, but it should be here.
+        break;
     case SCOPE_ENTRY_MEMBER: {
         struct mir_member *member = member_ptr->scope_entry->data.member;
         vm_stack_ptr_t strct_ptr  = MIR_CEV_READ_AS(vm_stack_ptr_t, &member_ptr->target_ptr->value);
@@ -2146,17 +2206,32 @@ void eval_instr_addrof(struct virtual_machine UNUSED(*vm), struct mir_instr_addr
 
 void eval_instr_load(struct virtual_machine *vm, struct mir_instr_load *load)
 {
-    vm_stack_ptr_t src = MIR_CEV_READ_AS(vm_stack_ptr_t, &load->src->value);
-    if (!src) {
-        builder_msg(MSG_ERR,
-                    ERR_NULL_POINTER,
-                    load->base.node ? load->base.node->location : NULL,
-                    CARET_WORD,
-                    "Dereferencing null pointer!");
-        eval_abort(vm);
+    if (load->src->value.type->kind == MIR_TYPE_TYPE) {
+        struct mir_type *src_type = MIR_CEV_READ_AS(struct mir_type *, &load->src->value);
+        bmagic_assert(src_type);
+        if (mir_is_pointer_type(src_type)) {
+            MIR_CEV_WRITE_AS(struct mir_type *, &load->base.value, src_type->data.ptr.expr);
+        } else if (src_type->kind == MIR_TYPE_POLY) {
+            MIR_CEV_WRITE_AS(struct mir_type *, &load->base.value, src_type);
+        } else {
+            assert(false && "Invalid type!");
+        }
+    } else if (load->src->value.type->kind == MIR_TYPE_POLY) {
+        struct mir_type *src_type = MIR_CEV_READ_AS(struct mir_type *, &load->src->value);
+        bmagic_assert(src_type);
+        MIR_CEV_WRITE_AS(struct mir_type *, &load->base.value, src_type);
+    } else {
+        const vm_stack_ptr_t src = MIR_CEV_READ_AS(vm_stack_ptr_t, &load->src->value);
+        if (!src) {
+            builder_msg(MSG_ERR,
+                        ERR_NULL_POINTER,
+                        load->base.node ? load->base.node->location : NULL,
+                        CARET_WORD,
+                        "Dereferencing null pointer!");
+            eval_abort(vm);
+        }
+        load->base.value.data = src;
     }
-
-    load->base.value.data = src;
 }
 
 void eval_instr_set_initializer(struct virtual_machine *vm, struct mir_instr_set_initializer *si)
@@ -2172,9 +2247,9 @@ void eval_instr_set_initializer(struct virtual_machine *vm, struct mir_instr_set
             // comptime.
             var->value.data = si->src->value.data;
         } else {
-            struct mir_type *var_type = var->value.type;
+            const struct mir_type *var_type = var->value.type;
             // Globals always use static segment allocation!!!
-            vm_stack_ptr_t var_ptr = vm_read_var(vm, var);
+            const vm_stack_ptr_t var_ptr = vm_read_var(vm, var);
             // Runtime variable needs it's own memory location so we must create copy of
             // initializer data
             memcpy(var_ptr, si->src->value.data, var_type->store_size_bytes);
@@ -2266,6 +2341,10 @@ void vm_terminate(struct virtual_machine *vm)
 {
     data_free(vm);
     arrfree(vm->dcsigtmp);
+    for (u64 i = 0; i < hmlenu(vm->snapshot_cache); ++i) {
+        bfree(vm->snapshot_cache[i].data);
+    }
+    hmfree(vm->snapshot_cache);
     bfree(vm->stack);
 }
 

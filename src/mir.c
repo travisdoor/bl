@@ -770,7 +770,7 @@ static struct mir_instr *ast_call_loc(struct context *ctx, struct ast *loc);
 static struct mir_instr *ast_msg(struct context *ctx, struct ast *msg);
 
 // analyze
-static bool evaluate(struct context *ctx, struct mir_instr *instr);
+static enum vm_interp_state evaluate(struct context *ctx, struct mir_instr *instr);
 static struct result
 analyze_var(struct context *ctx, struct mir_var *var, const bool in_comptime_fn);
 static struct result analyze_instr(struct context *ctx, struct mir_instr *instr);
@@ -1265,6 +1265,9 @@ static INLINE bool is_current_block_terminated(struct context *ctx)
 static INLINE void *mutate_instr(struct mir_instr *instr, enum mir_instr_kind kind)
 {
     bassert(instr);
+#if BL_DEBUG
+    instr->_orig_kind = instr->kind;
+#endif
     instr->kind = kind;
     return instr;
 }
@@ -4384,22 +4387,24 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
     sarrfree(&queue);
 }
 
-bool evaluate(struct context *ctx, struct mir_instr *instr)
+enum vm_interp_state evaluate(struct context *ctx, struct mir_instr *instr)
 {
-    if (!instr) return true;
+    if (!instr) return VM_INTERP_PASSED;
     bassert(instr->state == MIR_IS_ANALYZED && "Non-analyzed instruction cannot be evaluated!");
     bassert(instr->state != MIR_IS_COMPLETE && "Instruction already evaluated!");
     // We can evaluate compile time know instructions only.
-    if (!instr->value.is_comptime) return true;
+    if (!instr->value.is_comptime) return VM_INTERP_PASSED;
     // Special cases
     switch (instr->kind) {
     case MIR_INSTR_CALL: {
         // Call instruction must be evaluated and then later converted to constant in case it's
         // supposed to be called in compile time, otherwise we leave it as it is.
-        struct mir_instr_call     *call  = (struct mir_instr_call *)instr;
+        struct mir_instr_call *call = (struct mir_instr_call *)instr;
+        struct mir_fn         *fn   = mir_get_callee(call);
+        if (!fn->is_fully_analyzed) return VM_INTERP_POSTPONE;
         const enum vm_interp_state state = vm_execute_comptime_call(ctx->vm, ctx->assembly, call);
         if (state != VM_INTERP_PASSED) {
-            return false;
+            return state;
         }
         break;
     }
@@ -4414,7 +4419,7 @@ bool evaluate(struct context *ctx, struct mir_instr *instr)
         struct mir_instr_const *placeholder = mutate_instr(instr, MIR_INSTR_CONST);
         // Duplicate constant value.
         memcpy(&placeholder->base.value, &value->value, sizeof(placeholder->base.value));
-        return true;
+        return VM_INTERP_PASSED;
     }
     case MIR_INSTR_COND_BR: {
         // Comptime conditional break can be simplified into direct break instruction in case
@@ -4433,12 +4438,12 @@ bool evaluate(struct context *ctx, struct mir_instr *instr)
         struct mir_instr_br *br    = mutate_instr(&cond_br->base, MIR_INSTR_BR);
         br->then_block             = continue_block;
         br->base.value.is_comptime = false; // ???
-        return true;
+        return VM_INTERP_PASSED;
     }
     default:
         if (!vm_eval_instr(ctx->vm, ctx->assembly, instr)) {
             // Evaluation was aborted due to error.
-            return false;
+            return VM_INTERP_ABORT;
         }
         break;
     }
@@ -4448,7 +4453,7 @@ bool evaluate(struct context *ctx, struct mir_instr *instr)
         mutate_instr(instr, MIR_INSTR_CONST);
         ((struct mir_instr_const *)instr)->volatile_type = is_volatile;
     }
-    return true;
+    return VM_INTERP_PASSED;
 }
 
 struct result
@@ -5169,6 +5174,71 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
         return_zone(ANALYZE_RESULT(PASSED, 0));
     }
 
+    // Sub type member.
+    if (target_type->kind == MIR_TYPE_TYPE) {
+        // generate load instruction if needed
+        if (analyze_slot(ctx, &analyze_slot_conf_basic, &member_ptr->target_ptr, NULL) !=
+            ANALYZE_PASSED) {
+            return_zone(ANALYZE_RESULT(FAILED, 0));
+        }
+
+        struct mir_type *sub_type =
+            MIR_CEV_READ_AS(struct mir_type *, &member_ptr->target_ptr->value);
+        bmagic_assert(sub_type);
+
+        struct id *rid = &ast_member_ident->data.ident.id;
+
+        if (sub_type->kind == MIR_TYPE_ENUM) {
+            struct scope       *scope       = sub_type->data.enm.scope;
+            const hash_t        scope_layer = SCOPE_DEFAULT_LAYER; // @Incomplete
+            struct scope_entry *found = scope_lookup(scope, scope_layer, rid, false, true, NULL);
+            if (!found) {
+                report_error(
+                    UNKNOWN_SYMBOL, member_ptr->member_ident, "Unknown enumerator variant.");
+                return_zone(ANALYZE_RESULT(FAILED, 0));
+            }
+
+            bassert(found->kind == SCOPE_ENTRY_VARIANT);
+
+            member_ptr->scope_entry            = found;
+            member_ptr->base.value.type        = sub_type;
+            member_ptr->base.value.addr_mode   = target_addr_mode;
+            member_ptr->base.value.is_comptime = true;
+            return_zone(ANALYZE_RESULT(PASSED, 0));
+        } else if (sub_type->kind == MIR_TYPE_POLY) {
+            // @Hack
+            member_ptr->scope_entry            = ctx->analyze.unnamed_entry;
+            member_ptr->base.value.type        = ctx->builtin_types->t_type;
+            member_ptr->base.value.addr_mode   = target_addr_mode;
+            member_ptr->base.value.is_comptime = true;
+
+            // @Cleanup: This should be inside evaluator
+            MIR_CEV_WRITE_AS(struct mir_type *, &member_ptr->base.value, sub_type);
+            return_zone(ANALYZE_RESULT(PASSED, 0));
+        } else if (mir_is_composit_type(sub_type)) {
+            struct scope       *scope       = sub_type->data.strct.scope;
+            const hash_t        scope_layer = sub_type->data.strct.scope_layer;
+            struct scope_entry *found = scope_lookup(scope, scope_layer, rid, false, true, NULL);
+            if (!found) {
+                report_error(UNKNOWN_SYMBOL, member_ptr->member_ident, "Unknown type member.");
+                return_zone(ANALYZE_RESULT(FAILED, 0));
+            }
+
+            bassert(found->kind == SCOPE_ENTRY_MEMBER);
+            bassert(found->data.member && found->data.member->type);
+
+            // @Hack
+            member_ptr->scope_entry            = ctx->analyze.unnamed_entry;
+            member_ptr->base.value.addr_mode   = target_addr_mode;
+            member_ptr->base.value.is_comptime = true;
+            member_ptr->base.value.type        = ctx->builtin_types->t_type;
+
+            // @Cleanup: This should be inside evaluator
+            MIR_CEV_WRITE_AS(struct mir_type *, &member_ptr->base.value, found->data.member->type);
+            return_zone(ANALYZE_RESULT(PASSED, 0));
+        }
+    }
+
     bool additional_load_needed = false;
     if (target_type->kind == MIR_TYPE_PTR) {
         // We try to access structure member via pointer so we need one more load.
@@ -5179,8 +5249,9 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
     // struct type
     if (mir_is_composit_type(target_type)) {
         // Check if structure type is complete, if not analyzer must wait for it!
-        if (is_incomplete_struct_type(target_type))
+        if (is_incomplete_struct_type(target_type)) {
             return_zone(ANALYZE_RESULT(WAITING, target_type->user_id->hash));
+        }
 
         if (additional_load_needed) {
             member_ptr->target_ptr = insert_instr_load(ctx, member_ptr->target_ptr);
@@ -5226,45 +5297,13 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
         return_zone(ANALYZE_RESULT(PASSED, 0));
     }
 
-    // Sub type member.
-    if (target_type->kind == MIR_TYPE_TYPE) {
-        // generate load instruction if needed
-        if (analyze_slot(ctx, &analyze_slot_conf_basic, &member_ptr->target_ptr, NULL) !=
-            ANALYZE_PASSED) {
-            return_zone(ANALYZE_RESULT(FAILED, 0));
-        }
-
-        struct mir_type *sub_type =
-            MIR_CEV_READ_AS(struct mir_type *, &member_ptr->target_ptr->value);
-        bmagic_assert(sub_type);
-
-        if (sub_type->kind != MIR_TYPE_ENUM) {
-            goto INVALID;
-        }
-
-        // lookup for member inside struct
-        struct scope       *scope       = sub_type->data.enm.scope;
-        const hash_t        scope_layer = ctx->polymorph.current_scope_layer;
-        struct id          *rid         = &ast_member_ident->data.ident.id;
-        struct scope_entry *found       = scope_lookup(scope, scope_layer, rid, false, true, NULL);
-        if (!found) {
-            report_error(UNKNOWN_SYMBOL, member_ptr->member_ident, "Unknown enumerator variant.");
-            return_zone(ANALYZE_RESULT(FAILED, 0));
-        }
-
-        bassert(found->kind == SCOPE_ENTRY_VARIANT);
-
-        member_ptr->scope_entry            = found;
-        member_ptr->base.value.type        = sub_type;
-        member_ptr->base.value.addr_mode   = target_addr_mode;
-        member_ptr->base.value.is_comptime = true;
-
-        return_zone(ANALYZE_RESULT(PASSED, 0));
-    }
-
     // Invalid
-INVALID:
-    report_error(INVALID_TYPE, target_ptr->node, "Expected structure or enumerator type.");
+    char *type_name = mir_type2str(target_ptr->value.type, true);
+    report_error(INVALID_TYPE,
+                 target_ptr->node,
+                 "Expected structure or enumerator type, got '%s'.",
+                 type_name);
+    puttmpstr(type_name);
     return_zone(ANALYZE_RESULT(FAILED, 0));
 }
 
@@ -5549,7 +5588,8 @@ struct result analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_
         bassert(type);
         ++var->ref_count;
         // Check if we try get reference to incomplete structure type.
-        if (type->kind == MIR_TYPE_TYPE) {
+        if (type->kind == MIR_TYPE_TYPE &&
+            !mir_is_in_comptime_fn(&ref->base)) { // @Cleanup: check this
             struct mir_type *t = MIR_CEV_READ_AS(struct mir_type *, &var->value);
             bmagic_assert(t);
             if (!ref->accept_incomplete_type && is_incomplete_struct_type(t)) {
@@ -5625,9 +5665,22 @@ struct result analyze_instr_arg(struct context UNUSED(*ctx), struct mir_instr_ar
     struct mir_fn *fn = arg->base.owner_block->owner_fn;
     bmagic_assert(fn);
 
+    const bool is_comptime_fn = isflag(fn->flags, FLAG_COMPTIME);
+
     struct mir_type *type = mir_get_fn_arg_type(fn->type, arg->i);
     bassert(type);
-    arg->base.value.type = type;
+
+    if (!is_comptime_fn && type->kind == MIR_TYPE_TYPE) {
+        report_error(INVALID_TYPE,
+                     arg->base.node,
+                     "Argument has invalid type 'type'. This is allowed only in compile-time "
+                     "functions, consider using #comptime directive for the function declaration; "
+                     "but keep in mind the comptime functions are evaluated in compile-time.");
+        return_zone(ANALYZE_RESULT(FAILED, 0));
+    }
+
+    arg->base.value.type        = type;
+    arg->base.value.is_comptime = is_comptime_fn;
 
     return_zone(ANALYZE_RESULT(PASSED, 0));
 }
@@ -5716,7 +5769,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
         // the 'mir_fn' but for now it's enough.
         report_error(INVALID_TYPE,
                      fn_proto->base.node,
-                     "Runtime-evaluated function cannot return 'type' as value, consider mark the "
+                     "Invalid function return type 'type', consider mark the "
                      "function as #comptime.");
         return_zone(ANALYZE_RESULT(FAILED, 0));
     }
@@ -6097,16 +6150,33 @@ struct result analyze_instr_load(struct context *ctx, struct mir_instr_load *loa
     zone();
     struct mir_instr *src = load->src;
     bassert(src);
-    if (!mir_is_pointer_type(src->value.type)) {
-        report_error(INVALID_TYPE, src->node, "Expected pointer.");
+    if (mir_is_pointer_type(src->value.type)) {
+        struct mir_type *type = mir_deref_type(src->value.type);
+        bassert(type);
+        load->base.value.type        = type;
+        load->base.value.is_comptime = src->value.is_comptime;
+        load->base.value.addr_mode   = src->value.addr_mode;
+    } else if (src->value.type->kind == MIR_TYPE_TYPE) {
+        bassert(mir_is_comptime(load->src));
+        struct mir_type *src_type = MIR_CEV_READ_AS(struct mir_type *, &src->value);
+        bmagic_assert(src_type);
+        if (!mir_is_pointer_type(src_type) && src_type->kind != MIR_TYPE_POLY) {
+            char *type_name = mir_type2str(src_type, true);
+            report_error(INVALID_TYPE, src->node, "Expected pointer type, got '%s'.", type_name);
+            puttmpstr(type_name);
+            return_zone(ANALYZE_RESULT(FAILED, 0));
+        }
+        load->base.value.type        = src->value.type;
+        load->base.value.is_comptime = true;
+        load->base.value.addr_mode   = src->value.addr_mode;
+    } else {
+        char *type_name = mir_type2str(src->value.type, true);
+        report_error(
+            INVALID_TYPE, src->node, "Expected value of pointer type, got '%s'.", type_name);
+        puttmpstr(type_name);
         return_zone(ANALYZE_RESULT(FAILED, 0));
     }
 
-    struct mir_type *type = mir_deref_type(src->value.type);
-    bassert(type);
-    load->base.value.type        = type;
-    load->base.value.is_comptime = src->value.is_comptime;
-    load->base.value.addr_mode   = src->value.addr_mode;
     return_zone(ANALYZE_RESULT(PASSED, 0));
 }
 
@@ -6152,7 +6222,6 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
             // Validate arg type
             switch (arg->type->kind) {
             case MIR_TYPE_INVALID:
-            case MIR_TYPE_TYPE:
             case MIR_TYPE_VOID:
             case MIR_TYPE_FN:
             case MIR_TYPE_FN_GROUP:
@@ -7034,7 +7103,8 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
     // Immutable declaration can be comptime, but only if it's initializer value is also
     // comptime! Value of this variable can be adjusted later during analyze pass when
     // we know actual initialization value.
-    bool is_decl_comptime = !var->is_mutable;
+    bool is_decl_comptime = !var->is_mutable || (decl->init && decl->init->kind == MIR_INSTR_ARG &&
+                                                 mir_is_comptime(decl->init));
 
     // Resolve declaration type if not set implicitly to the target variable by
     // compiler.
@@ -7296,7 +7366,7 @@ struct result generate_fn_poly(struct context             *ctx,
                                  poly_type->user_id->str);
                     report_note(call, "Called from here.");
                 }
-                sarrput(queue, ctx->builtin_types->t_s32);
+                sarrclear(queue);
                 puttmpstr(debug_replacement_str);
                 return_zone(ANALYZE_RESULT(FAILED, 0));
             } else {
@@ -7492,7 +7562,9 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
 
         struct result state =
             generate_fn_poly(ctx, call->base.node, fn, call->args, &instr_replacement_fn_proto);
-        if (state.state != ANALYZE_PASSED) return_zone(ANALYZE_RESULT(FAILED, 0));
+        if (state.state != ANALYZE_PASSED) {
+            return_zone(ANALYZE_RESULT(FAILED, 0));
+        }
         ctx->assembly->stats.polymorph_s += runtime_measure_end(poly);
         bassert(instr_replacement_fn_proto);
 
@@ -7530,17 +7602,6 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
             // Every comptime call is evaluated automatically (type resolvers also!).
             call->base.value.is_comptime = true;
         }
-    }
-
-    if (mir_is_comptime(&call->base)) {
-        // Postpone analyze in case the function is not fully analyzed -> it cannot be executed
-        // yet.
-        // @Incomplete: In case the function calls internally another function(s), those can be
-        // also
-        //  "not fully analyzed", we have to check it somehow before evaluation.
-        struct mir_fn *fn = optional_fn_or_group.fn;
-        bmagic_assert(fn);
-        if (!fn->is_fully_analyzed) return_zone(ANALYZE_RESULT(POSTPONE, 0));
     }
 
     // validate arguments
@@ -7628,9 +7689,8 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
 
                 struct mir_instr *call_default_arg;
                 if (arg->value->kind == MIR_INSTR_CALL_LOC) {
-                    // Original InstrCallLoc is used only as note that we must
-                    // generate real one containing information about call
-                    // instruction location.
+                    // Original InstrCallLoc is used only as note that we must generate real one
+                    // containing information about call instruction location.
                     bassert(call->base.node);
                     bassert(call->base.node->location);
                     struct ast *orig_node = arg->value->node;
@@ -7673,8 +7733,15 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
                          (*call_arg)->node,
                          "Function argument is supposed to be compile-time known since function is "
                          "called in compile-time.");
+            report_note(optional_fn_or_group.fn->decl_node, "Function is declared here:");
             goto REPORT_OVERLOAD_LOCATION;
         }
+    }
+    if (call_argc && mir_is_comptime(&call->base)) {
+        // Provide compile time arguments to the function.
+        struct mir_fn *fn = optional_fn_or_group.fn;
+        bmagic_assert(fn);
+        fn->comptime_call_args = call->args;
     }
     return_zone(ANALYZE_RESULT(PASSED, 0));
 
@@ -7746,7 +7813,7 @@ struct result analyze_instr_block(struct context *ctx, struct mir_instr_block *b
 
     block->base.is_unreachable = block->base.ref_count == 0;
     if (!fn->first_unreachable_loc && block->base.is_unreachable && block->entry_instr &&
-        block->entry_instr->node) {
+        block->entry_instr->node && isnotflag(fn->flags, FLAG_COMPTIME)) {
         // Report unreachable code if there is one only once inside function body.
         fn->first_unreachable_loc = block->entry_instr->node->location;
         const char *poly          = fn->debug_poly_replacement;
@@ -7885,7 +7952,7 @@ ANALYZE_STAGE_FN(set_auto)
     } else {
         cast->base.state = MIR_IS_ANALYZED;
     }
-    if (!evaluate(ctx, &cast->base)) {
+    if (evaluate(ctx, &cast->base) != VM_INTERP_PASSED) {
         cast->base.state = MIR_IS_FAILED;
         return ANALYZE_STAGE_FAILED;
     }
@@ -8058,14 +8125,14 @@ struct result analyze_instr(struct context *ctx, struct mir_instr *instr)
 
     if (instr->state == MIR_IS_COMPLETE) return_zone(state);
 
-    enum mir_instr_state *instr_state = &instr->state;
+    enum mir_instr_state *analyze_state = &instr->state;
 
     ctx->analyze.last_analyzed_instr = instr;
     if (instr->owner_block) set_current_block(ctx, instr->owner_block);
 
-    bassert((*instr_state) != MIR_IS_FAILED && "Attempt to analyze already failed instruction?!");
+    bassert((*analyze_state) != MIR_IS_FAILED && "Attempt to analyze already failed instruction?!");
 
-    if ((*instr_state) == MIR_IS_PENDING) {
+    if ((*analyze_state) == MIR_IS_PENDING) {
         BL_TRACY_MESSAGE("ANALYZE", "[%llu] %s", instr->id, mir_instr_name(instr));
 
         switch (instr->kind) {
@@ -8219,26 +8286,40 @@ struct result analyze_instr(struct context *ctx, struct mir_instr *instr)
         }
 
         if (state.state == ANALYZE_PASSED) {
-            (*instr_state) = MIR_IS_ANALYZED;
+            (*analyze_state) = MIR_IS_ANALYZED;
         } else if (state.state == ANALYZE_FAILED) {
-            (*instr_state) = MIR_IS_FAILED;
+            (*analyze_state) = MIR_IS_FAILED;
         }
     } // PENDING
 
-    if ((*instr_state) == MIR_IS_ANALYZED) {
+    if ((*analyze_state) == MIR_IS_ANALYZED) {
         bassert(state.state == ANALYZE_PASSED);
+
         if (instr->kind == MIR_INSTR_CAST && ((struct mir_instr_cast *)instr)->auto_cast) {
             // An auto cast cannot be directly evaluated because it's destination type
             // could change based on usage.
-            (*instr_state) = MIR_IS_COMPLETE;
-        } else if (evaluate(ctx, instr)) {
-            (*instr_state) = MIR_IS_COMPLETE;
-        } else {
-            (*instr_state) = MIR_IS_FAILED;
-            state          = ANALYZE_RESULT(FAILED, 0);
+            (*analyze_state) = MIR_IS_COMPLETE;
+            return_zone(state);
+        }
+
+        const enum vm_interp_state eval_state = evaluate(ctx, instr);
+        switch (eval_state) {
+        case VM_INTERP_POSTPONE:
+            state = ANALYZE_RESULT(POSTPONE, 0);
+            break;
+        case VM_INTERP_PASSED: {
+            (*analyze_state) = MIR_IS_COMPLETE;
+            break;
+        }
+        case VM_INTERP_ABORT: {
+            (*analyze_state) = MIR_IS_FAILED;
+            state            = ANALYZE_RESULT(FAILED, 0);
+            break;
+        }
         }
     } // ANALYZED
 
+    ctx->analyze.last_analyzed_instr = NULL;
     return_zone(state);
 }
 
@@ -9555,7 +9636,7 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
             bassert(ast_arg_name->kind == AST_IDENT && "Expected identificator.");
             struct id *id = &ast_arg_name->data.ident.id;
 
-            struct mir_instr *arg = append_instr_arg(ctx, NULL, (u32)i);
+            struct mir_instr *arg = append_instr_arg(ctx, ast_arg, (u32)i);
 
             // create tmp declaration for arg variable
             struct mir_instr_decl_var *decl_var =

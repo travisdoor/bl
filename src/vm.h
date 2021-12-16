@@ -86,10 +86,13 @@ struct vm_bufpage {
 
 struct vm_snapshot {
     // Top level comptime call used as lookup key.
-    struct mir_instr_call *key;
-    void                  *data;
-    usize                  data_size;
-    struct mir_instr      *next_instr;
+    struct mir_instr_call  *key;
+    void                   *data;
+    usize                   data_size;
+    vm_stack_ptr_t          top_ptr;
+    struct vm_frame        *ra;
+    struct mir_instr       *pc;
+    struct mir_instr_block *prev_block;
 };
 
 struct virtual_machine {

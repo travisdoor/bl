@@ -1152,6 +1152,8 @@ test_group :: fn () #test {
 
 ### Polymorphic functions
 
+[How-To](examples/polymorph.bl)
+
 Polymorphic function (aka templated function or generic function) is a well-known concept in many
 programming languages. It's a sort of meta-programming method providing good type safety and proper
 error reporting. The basic idea is the automatic generation of functions doing the same operation

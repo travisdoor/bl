@@ -1,15 +1,9 @@
-Get :: fn () type #comptime {
-    return struct {
-        foo: s32;
-    };
-}
+foo :: fn (v: ?T) @T {}
 
 main :: fn () s32 {
-    i: Get();
-    i.foo = 20;
-    j: Get();
-    j.foo = 10;
-    print("i.foo = %\nj.foo = %\n", i.foo, j.foo);
+    T :: @*s32;
+    i: *s32;
+    foo(i);
     return 0;
 }
 
@@ -35,48 +29,6 @@ module :: fn (bin: *Assembly) #module_entry {
     } else {
         #error "Module does not support current target platform"
     }
-}
-*/
-
-
-// =================================================================================================
-// Polymorph structures
-// =================================================================================================
-
-// 1) Foo :: struct {} -> generated compile time call to type resolver function in AST
-//    in this case Foo is constant compile-time known variable declaration set to result
-//    of compile time call (call to the type resolver).
-//
-// 2) Foo :: struct (T: type) {} -> generate only type resolver function in AST, in this
-//    Foo symbol is function declaration (callable only in compile-time).
-
-
-// Use type as variable for type resolver function call?
-// Lazy type generation?
-// Dont generate type directly.
-// Put T1 and T2 into struct scope.
-// Store already generated types for reuse.
-// Generate type resolvers directly in ast as implicit function calls???
-// Argument list is optional.
-
-/*
-Foo :: struct (T1: type, T2: type, Size: s32 = 10) {
-    i: T1;
-    data: [Size]T2;
-}
-*/
-
-
-// =================================================================================================
-// Comptime marked functions
-// =================================================================================================
-
-// Function can be called only in compile time.
-// All arguments must be compile time known.
-// Call is replaced by constant.
-
-/*
-get_hash :: fn () #comptime {
 }
 */
 

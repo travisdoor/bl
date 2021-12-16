@@ -403,6 +403,7 @@ struct mir_type_struct {
 // Enum variants must be baked into enum type.
 struct mir_type_enum {
     struct scope    *scope;
+    // @Incomplete: missing scope_layer!
     struct mir_type *base_type;
     mir_variants_t  *variants;
     bool             is_flags;
@@ -499,9 +500,12 @@ struct mir_instr {
     struct mir_instr           *prev;
     struct mir_instr           *next;
     enum mir_instr_kind         kind;
-    s32                         ref_count;
-    bool                        is_unreachable;
-    bool                        is_implicit;
+#if BL_DEBUG
+    enum mir_instr_kind _orig_kind;
+#endif
+    s32  ref_count;
+    bool is_unreachable;
+    bool is_implicit;
 
     enum mir_instr_state state;
 

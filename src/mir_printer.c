@@ -965,7 +965,8 @@ void print_instr(struct context *ctx, struct mir_instr *instr)
 {
 #if !PRINT_ANALYZED_COMPTIMES
     if ((instr->owner_block || instr->kind == MIR_INSTR_BLOCK) &&
-        (instr->kind != MIR_INSTR_DECL_VAR) && instr->value.is_comptime && instr->is_analyzed)
+        (instr->kind != MIR_INSTR_DECL_VAR) && instr->value.is_comptime &&
+        instr->state == MIR_IS_COMPLETE)
         return;
 #endif
 

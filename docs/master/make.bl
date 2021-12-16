@@ -46,12 +46,13 @@ html :: fn () Error {
     if !is_ok(e2) { return e2; }
     e3 :: cmd(PANDOC, "language.md", ver, "language.html");
     if !is_ok(e3) { return e3; }
-
-    list, e4 :: list_files(TMP_DIR, "md");
+    e4 :: cmd(PANDOC, "how-to.md", ver, "how-to.html");
     if !is_ok(e4) { return e4; }
+
+    list, e5 :: list_files(TMP_DIR, "md");
+    if !is_ok(e4) { return e5; }
     defer String.delete(list);
-    e5 :: cmd(PANDOC, list, ver, "api.html");
-    return e5;
+    return cmd(PANDOC, list, ver, "api.html");
 }
 
 prepare :: fn () Error {

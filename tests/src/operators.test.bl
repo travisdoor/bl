@@ -94,3 +94,26 @@ logical_operators :: fn () #test {
     test_true(false  || true);
     test_false(false  || false);
 }
+
+type_operators :: fn () #test {
+    test_eq(typeinfo(@(*s32)), typeinfo(s32));
+    test_eq(typeinfo(@([..]s32).ptr), typeinfo(s32));
+}
+
+type_members :: fn () #test {
+    Foo :: struct {
+        i: s32;
+        j: string;
+    };
+
+    Bar :: struct {
+        foo: Foo;
+        i: s32;
+        j: bool;
+    };
+    
+    test_eq(typeinfo(Bar.i), typeinfo(s32));
+    test_eq(typeinfo(Bar.j), typeinfo(bool));
+    test_eq(typeinfo(Bar.foo.i), typeinfo(s32));
+    test_eq(typeinfo(Bar.foo.j), typeinfo(string));
+}

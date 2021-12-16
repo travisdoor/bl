@@ -1,0 +1,147 @@
+//! # Array Table
+//! 
+//! `#import "std/array_table"`
+//!
+//! Dynamically allocated generic array table is auto-growing data container mapping keys to values.
+
+/// Create new array table type. 
+///
+/// ```
+/// struct {
+///     keys: [..]TKey;
+///     values: [..]TValue;
+/// }
+/// ```
+ArrayTable :: fn (TKey: type, TValue: type) type #comptime {
+    static_assert(typeinfo(TKey).kind == TypeKind.Int);
+    return struct {
+        keys: [..]TKey;
+        values: [..]TValue;
+    };
+}
+
+atable_init :: fn (tbl: *?T) {
+    assert(tbl);
+    array_init(&tbl.keys);
+    array_init(&tbl.values);
+}
+
+atable_terminate :: fn (tbl: *?T) {
+    assert(tbl);
+    array_terminate(&tbl.keys);
+    array_terminate(&tbl.values);
+}
+
+/// Insert new record into the 'tbl' array table. The 'key' value must be unique value (checked by
+/// assert).
+atable_insert :: fn (tbl: *?T, key: @T.keys.ptr, value: @T.values.ptr) {
+    assert(tbl);
+    assert(!atable_contains(tbl, key));
+    array_push(&tbl.keys, key);
+    array_push(&tbl.values, value);
+}
+
+/// Get value associated with 'key', cause panic if the 'key' is not present in the table. 
+atable_peek :: fn (tbl: *?T, key: @T.keys.ptr) @T.values.ptr {
+    assert(tbl);
+    loop i := 0; i < tbl.keys.len; i += 1 {
+        if tbl.keys[i] == key {
+            return tbl.values[i];
+        }
+    }
+    panic("Key '%' already exists in the table!", key);
+    // never reached!
+    default_value: @T.values.ptr #noinit;
+    return default_value;
+}
+
+/// Check whether 'key' exists in table.
+atable_contains :: fn (tbl: *?T, key: @T.keys.ptr) bool {
+    assert(tbl);
+    loop i := 0; i < tbl.keys.len; i += 1 {
+        if tbl.keys[i] == key {
+            return true;
+        }
+    }
+    return false;
+}
+
+/// Erase record in 'tbl' associated with 'key'. Cause panic in case there is no such 'key' in the
+/// table. Erassing the record can change ordering of the table.
+atable_erase :: fn (tbl: *?T, key: @T.keys.ptr) {
+    assert(tbl);
+    loop i := 0; i < tbl.keys.len; i += 1 {
+        if tbl.keys[i] == key {
+            array_erase(&tbl.keys, i);
+            array_erase(&tbl.values, i);
+            return;
+        }
+    }
+    panic("Key '%' not found!", key);
+}
+
+/// Clear all table records and keep allocated memory.
+atable_clear :: fn (tbl: *?T) #inline {
+    assert(tbl);
+    array_clear(&tbl.keys);
+    array_clear(&tbl.values);
+}
+
+/// Return count of records in the table.
+atable_len :: fn (tbl: *?T) s64 #inline {
+    assert(tbl);
+    return tbl.keys.len;
+}
+
+/// Return table iterator pointing to the first record.
+atable_begin :: fn (tbl: *?T) ArrayTableIter(T) #inline {
+    assert(tbl);
+    iter: ArrayTableIter(T);
+    iter.tbl = tbl;
+    if tbl.keys.len == 0 {
+        return iter;
+    }
+    iter.key = &tbl.keys[0];
+    iter.value = &tbl.values[0];
+    return iter;
+}
+
+/// Return table iterator pointing after the last record.
+atable_end :: fn (tbl: *?T) ArrayTableIter(T) #inline {
+    assert(tbl);
+    iter: ArrayTableIter(T);
+    iter.tbl = tbl;
+    iter.index = tbl.keys.len; 
+    return iter;
+}
+
+/// Return 'true' in case 'first' iterator points to the same record as the 'second'.
+atable_iter_eq :: fn (first: *?T, second: *T) bool #inline {
+    assert(first && second);
+    if first.tbl != second.tbl {
+        panic("Iterator does not belong to the same table!");
+    }
+    return first.index == second.index;
+}
+
+/// Move iterator to the next record.
+atable_iter_next :: fn (iter: *?T) #inline {
+    assert(iter);
+    assert(iter.tbl);
+    iter.index += 1; 
+    if iter.index < iter.tbl.keys.len { 
+        iter.key = &iter.tbl.keys[iter.index];
+        iter.value = &iter.tbl.values[iter.index];
+    }
+}
+
+#private
+
+ArrayTableIter :: fn (TTable: type) type #comptime {
+    return struct {
+        tbl: *TTable;
+        key: TTable.keys.ptr;
+        value: TTable.values.ptr;
+        index: s64;
+    };
+}

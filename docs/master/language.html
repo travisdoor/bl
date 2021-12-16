@@ -96,6 +96,7 @@
   <li><a href="compiler.html">Compiler Usage</a></li>
   <li><a href="language.html">Language Manual</a></li>
   <li><a href="api.html">API Manual</a></li>
+  <li><a href="how-to.html">How To</a></li>
 </ul>
 <header id="title-block-header">
 <h1 class="title">Biscuit Language (1.0.0)</h1>
@@ -1041,6 +1042,7 @@
 <p><strong>TODO:</strong> Inline defined function overloads.</p>
 <p><strong>TODO:</strong>Priority handling.</p>
 <h3 id="polymorphic-functions">Polymorphic functions</h3>
+<p><a href="examples/polymorph.bl">How-To</a></p>
 <p>Polymorphic function (aka templated function or generic function) is a well-known concept in many programming languages. It’s a sort of meta-programming method providing good type safety and proper error reporting. The basic idea is the automatic generation of functions doing the same operation using multiple types, instead of rewriting the function for every type needed, we just specify it as a “recipe” for later generations.</p>
 <p>Consider the following function doing an addition of two values, when we want to use the function with multiple different types, we must explicitly rewrite the same function for every type needed:</p>
 <div class="sourceCode" id="cb56"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb56-1"><a href="#cb56-1" aria-hidden="true" tabindex="-1"></a>add_s32 <span class="op">::</span> fn <span class="op">(</span>a<span class="op">:</span> s32<span class="op">,</span> b<span class="op">:</span> s32<span class="op">)</span> s32 <span class="op">{</span></span>

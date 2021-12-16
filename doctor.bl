@@ -8,16 +8,17 @@ BL_EXE_PATH_UNIX :: "bin/blc";
 // paths
 TMP_DIR :: ".temp";
 MAIN_TEST_SUITE_FILEPATH :: "tests/src/main.test.bl";
-EXAMPLES_DIR :: "examples";
+EXAMPLES_DIR :: "docs/master/examples";
 DOC_TEST :: "tests/docs/doc.test.bl";
 EXPECT_FAIL_DIR :: "tests/src/expect_fail";
 
-HARDCODED_MODULES :: {:[10]string:
+HARDCODED_MODULES :: {:[11]string:
                       "lib/bl/api/std/arg_parser/arg_parser.test.bl",
                       "lib/bl/api/std/array/array.test.bl",
                       "lib/bl/api/std/debug_allocator/debug_allocator.test.bl",
                       "lib/bl/api/std/dlib/dlib.test.bl",
                       "lib/bl/api/std/fs/fs.test.bl",
+                      "lib/bl/api/std/array_table/array_table.test.bl",
                       "lib/bl/api/std/print/print.test.bl",
                       "lib/bl/api/std/string/string.test.bl",
                       "lib/bl/api/std/sync/sync.test.bl",
@@ -205,7 +206,7 @@ get_expected_error :: fn (filepath: string, out_err: *s32) bool {
     
     tmp :: String.split_by(content, '@');
     defer slice_terminate(&tmp);
-    if tmp.len != 3 { return false; }
+    if tmp.len < 3 { return false; }
     err :: strtoerr(tmp[1]);
     if err == -1 { return false; }
     @out_err = err;
