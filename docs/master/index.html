@@ -68,7 +68,7 @@
 <h2 id="linux-ubuntu">Linux (Ubuntu)</h2>
 <ul>
 <li>Install Build Essential package if you don’t have it.</li>
-<li>Compiler infrastructure and BL runtime depends on <code>glibc</code> and cannot be used with <code>musl</code> for now.</li>
+<li><strong>Compiler infrastructure and BL runtime depends on <code>glibc</code> and cannot be used with <code>musl</code> for now.</strong></li>
 </ul>
 <pre><code>apt-get update &amp;&amp; apt-get install build-essential</code></pre>
 <ul>
@@ -80,7 +80,7 @@
 <h2 id="macos">macOS</h2>
 <ul>
 <li>Install Command Line Tools.</li>
-<li>M1 support is experimental.</li>
+<li><strong>M1 support is experimental.</strong></li>
 </ul>
 <pre><code>xcode-select --install</code></pre>
 <ul>
@@ -116,7 +116,8 @@ cmake --build . --config Release</code></pre>
 <h2 id="linux-ubuntu-1">Linux (Ubuntu)</h2>
 <ul>
 <li>Install Build Essential package if you don’t have it <code>apt-get update &amp;&amp; apt-get install build-essential</code>.</li>
-<li>Install LLVM dev package <code>apt install llvm-10-dev</code></li>
+<li><strong>Compiler infrastructure and BL runtime depends on <code>glibc</code> and cannot be used with <code>musl</code> for now.</strong></li>
+<li>Install LLVM dev package <code>apt install llvm-11-dev</code></li>
 <li>Download and compile <code>bl</code></li>
 </ul>
 <pre><code>git clone https://github.com/travisdoor/bl.git
@@ -134,6 +135,7 @@ make</code></pre>
 <ul>
 <li>Install command line tools <code>xcode-select --install</code>.</li>
 <li>Install LLVM package via your favourite package manager <code>brew install llvm</code>.</li>
+<li><strong>M1 support is experimental.</strong></li>
 <li>Download and compile <code>bl</code></li>
 </ul>
 <pre><code>git clone https://github.com/travisdoor/bl.git

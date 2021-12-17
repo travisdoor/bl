@@ -11,7 +11,7 @@ blc --configure
 
 ## Linux (Ubuntu)
 * Install Build Essential package if you don't have it. 
-* Compiler infrastructure and BL runtime depends on `glibc` and cannot be used with `musl` for now.
+* **Compiler infrastructure and BL runtime depends on `glibc` and cannot be used with `musl` for now.**
 
 ```
 apt-get update && apt-get install build-essential
@@ -27,7 +27,7 @@ blc --configure
   
 ## macOS
 * Install Command Line Tools.
-* M1 support is experimental.
+* **M1 support is experimental.**
 
 ```
 xcode-select --install
@@ -72,7 +72,8 @@ bl-config.exe --build-tools-path "C:\Program Files (x86)\Microsoft Visual Studio
 
 ## Linux (Ubuntu)
 * Install Build Essential package if you don't have it ``apt-get update && apt-get install build-essential``.
-* Install LLVM dev package ``apt install llvm-10-dev``
+* **Compiler infrastructure and BL runtime depends on `glibc` and cannot be used with `musl` for now.**
+* Install LLVM dev package ``apt install llvm-11-dev``
 * Download and compile ``bl``
 
 ```
@@ -94,6 +95,7 @@ blc --configure
 ## macOS
 * Install command line tools ``xcode-select --install``.
 * Install LLVM package via your favourite package manager ``brew install llvm``.
+* **M1 support is experimental.**
 * Download and compile ``bl``
 
 ```

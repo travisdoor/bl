@@ -31,7 +31,7 @@ Contact email: [biscuitlang@gmail.com](mailto:biscuitlang@gmail.com)
 * Integrated tools for automatic documentation.
 
 # Installation
-See installation guide [here](http://biscuitlang.org/versions/1.0.0/index.html).
+See installation guide [here](http://biscuitlang.org/master/index.html).
 
 # Example
 ```rust
