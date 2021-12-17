@@ -250,8 +250,3 @@ typeinfo_comparison2 :: fn () #test {
     test_true(typeinfo(T1) == typeinfo(T2));
 }
 
-typeof_test :: fn () #test {
-    i: s32;
-    j: typeof(i);
-    test_eq(typeinfo(i), typeinfo(j));
-}

@@ -240,11 +240,7 @@ static void            testing_add_test_case(struct context *ctx, struct mir_fn 
 static struct mir_var *testing_gen_meta(struct context *ctx);
 
 // Execute all registered test cases in current assembly.
-static const char    *get_intrinsic(const char *name);
-static struct mir_fn *group_select_overload(struct context            *ctx,
-                                            const struct mir_fn_group *group,
-                                            const mir_types_t         *expected_args);
-
+static const char *get_intrinsic(const char *name);
 // Register incomplete scope entry for symbol.
 static struct scope_entry *register_symbol(struct context *ctx,
                                            struct ast     *node,
@@ -3038,8 +3034,7 @@ struct mir_instr *create_instr_compound(struct context   *ctx,
                                         bool              is_multiple_return_value)
 {
     for (usize i = 0; i < sarrlenu(values); ++i) {
-        struct mir_instr *value = sarrpeek(values, i);
-        ref_instr(value);
+        ref_instr(sarrpeek(values, i));
     }
     struct mir_instr_compound *tmp = create_instr(ctx, MIR_INSTR_COMPOUND, node);
     tmp->base.value.addr_mode      = MIR_VAM_RVALUE;
@@ -3248,9 +3243,8 @@ struct mir_instr *append_instr_set_initializer(struct context   *ctx,
     tmp->dests                            = dests;
     tmp->src                              = ref_instr(src);
     for (usize i = 0; i < sarrlenu(tmp->dests); ++i) {
-        struct mir_instr *dest = sarrpeek(tmp->dests, i);
+        struct mir_instr *dest = ref_instr(sarrpeek(tmp->dests, i));
         bassert(dest && dest->kind == MIR_INSTR_DECL_VAR && "Expected variable declaration!");
-        ref_instr(dest);
         struct mir_instr_decl_var *dest_var = (struct mir_instr_decl_var *)dest;
         struct mir_var            *var      = dest_var->var;
         bassert(var && "Missing variable!");
@@ -3284,8 +3278,7 @@ struct mir_instr *append_instr_type_fn(struct context   *ctx,
     tmp->args                     = args;
     tmp->is_polymorph             = is_polymorph;
     for (usize i = 0; i < sarrlenu(args); ++i) {
-        struct mir_instr *it = sarrpeek(args, i);
-        ref_instr(it);
+        ref_instr(sarrpeek(args, i));
     }
     append_current_block(ctx, &tmp->base);
     return &tmp->base;
@@ -3304,8 +3297,7 @@ struct mir_instr *append_instr_type_fn_group(struct context *ctx,
     tmp->variants                       = variants;
     tmp->id                             = id;
     for (usize i = 0; i < sarrlenu(variants); ++i) {
-        struct mir_instr *it = sarrpeek(variants, i);
-        ref_instr(it);
+        ref_instr(sarrpeek(variants, i));
     }
     append_current_block(ctx, &tmp->base);
     return &tmp->base;
@@ -3337,8 +3329,7 @@ struct mir_instr *append_instr_type_struct(struct context   *ctx,
     tmp->fwd_decl = fwd_decl;
 
     for (usize i = 0; i < sarrlenu(members); ++i) {
-        struct mir_instr *it = sarrpeek(members, i);
-        ref_instr(it);
+        ref_instr(sarrpeek(members, i));
     }
 
     append_current_block(ctx, &tmp->base);
@@ -3364,8 +3355,7 @@ struct mir_instr *append_instr_type_enum(struct context   *ctx,
     tmp->is_flags                   = is_flags;
 
     for (usize i = 0; i < sarrlenu(variants); ++i) {
-        struct mir_instr *it = sarrpeek(variants, i);
-        ref_instr(it);
+        ref_instr(sarrpeek(variants, i));
     }
 
     append_current_block(ctx, &tmp->base);
@@ -3492,8 +3482,7 @@ struct mir_instr *create_instr_call(struct context   *ctx,
     tmp->callee                 = ref_instr(callee);
     // reference all arguments
     for (usize i = 0; i < sarrlenu(args); ++i) {
-        struct mir_instr *instr = sarrpeek(args, i);
-        ref_instr(instr);
+        ref_instr(sarrpeek(args, i));
     }
     // Call itself is referenced here because the function call can have side-effects even it's
     // result is not used at all. So we cannot eventually remove it.
@@ -4188,71 +4177,59 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
             if (compound->is_zero_initialized) break;
             for (usize i = 0; i < sarrlenu(compound->values); ++i) {
                 struct mir_instr *it = sarrpeek(compound->values, i);
-                unref_instr(it);
-                sarrput(&queue, it);
+                sarrput(&queue, unref_instr(it));
             }
             break;
         }
 
         case MIR_INSTR_BINOP: {
             struct mir_instr_binop *binop = (struct mir_instr_binop *)top;
-            unref_instr(binop->lhs);
-            unref_instr(binop->rhs);
-            sarrput(&queue, binop->rhs);
-            sarrput(&queue, binop->lhs);
+            sarrput(&queue, unref_instr(binop->rhs));
+            sarrput(&queue, unref_instr(binop->lhs));
             break;
         }
 
         case MIR_INSTR_LOAD: {
             struct mir_instr_load *load = (struct mir_instr_load *)top;
-            unref_instr(load->src);
-            sarrput(&queue, load->src);
+            sarrput(&queue, unref_instr(load->src));
             break;
         }
 
         case MIR_INSTR_ALIGNOF: {
             struct mir_instr_alignof *alof = (struct mir_instr_alignof *)top;
-            unref_instr(alof->expr);
-            sarrput(&queue, alof->expr);
+            sarrput(&queue, unref_instr(alof->expr));
             break;
         }
 
         case MIR_INSTR_SIZEOF: {
             struct mir_instr_sizeof *szof = (struct mir_instr_sizeof *)top;
-            unref_instr(szof->expr);
-            sarrput(&queue, szof->expr);
+            sarrput(&queue, unref_instr(szof->expr));
             break;
         }
 
         case MIR_INSTR_ELEM_PTR: {
             struct mir_instr_elem_ptr *ep = (struct mir_instr_elem_ptr *)top;
-            unref_instr(ep->arr_ptr);
-            unref_instr(ep->index);
-            sarrput(&queue, ep->arr_ptr);
-            sarrput(&queue, ep->index);
+            sarrput(&queue, unref_instr(ep->arr_ptr));
+            sarrput(&queue, unref_instr(ep->index));
             break;
         }
 
         case MIR_INSTR_MEMBER_PTR: {
             struct mir_instr_member_ptr *mp = (struct mir_instr_member_ptr *)top;
-            unref_instr(mp->target_ptr);
-            sarrput(&queue, mp->target_ptr);
+            sarrput(&queue, unref_instr(mp->target_ptr));
             break;
         }
 
         case MIR_INSTR_TYPE_INFO: {
             struct mir_instr_type_info *info = (struct mir_instr_type_info *)top;
-            unref_instr(info->expr);
-            sarrput(&queue, info->expr);
+            sarrput(&queue, unref_instr(info->expr));
             break;
         }
 
         case MIR_INSTR_CAST: {
             struct mir_instr_cast *cast = (struct mir_instr_cast *)top;
-            unref_instr(cast->expr);
-            unref_instr(cast->type);
-            sarrput(&queue, cast->expr);
-            sarrput(&queue, cast->type);
+            sarrput(&queue, unref_instr(cast->expr));
+            sarrput(&queue, unref_instr(cast->type));
             break;
         }
 
@@ -4260,55 +4237,47 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
             struct mir_instr_call *call = (struct mir_instr_call *)top;
             for (usize i = 0; i < sarrlenu(call->args); ++i) {
                 struct mir_instr *it = sarrpeek(call->args, i);
-                unref_instr(it);
-                sarrput(&queue, it);
+                sarrput(&queue, unref_instr(it));
             }
             break;
         }
 
         case MIR_INSTR_ADDROF: {
             struct mir_instr_addrof *addrof = (struct mir_instr_addrof *)top;
-            unref_instr(addrof->src);
-            sarrput(&queue, addrof->src);
+            sarrput(&queue, unref_instr(addrof->src));
             break;
         }
 
         case MIR_INSTR_UNOP: {
             struct mir_instr_unop *unop = (struct mir_instr_unop *)top;
-            unref_instr(unop->expr);
-            sarrput(&queue, unop->expr);
+            sarrput(&queue, unref_instr(unop->expr));
             break;
         }
 
         case MIR_INSTR_TYPE_PTR: {
             struct mir_instr_type_ptr *tp = (struct mir_instr_type_ptr *)top;
-            unref_instr(tp->type);
-            sarrput(&queue, tp->type);
+            sarrput(&queue, unref_instr(tp->type));
             break;
         }
 
         case MIR_INSTR_TYPE_ENUM: {
             struct mir_instr_type_enum *te = (struct mir_instr_type_enum *)top;
-            unref_instr(te->base_type);
-            sarrput(&queue, te->base_type);
+            sarrput(&queue, unref_instr(te->base_type));
 
             for (usize i = 0; i < sarrlenu(te->variants); ++i) {
                 struct mir_instr *it = sarrpeek(te->variants, i);
-                unref_instr(it);
-                sarrput(&queue, it);
+                sarrput(&queue, unref_instr(it));
             }
             break;
         }
 
         case MIR_INSTR_TYPE_FN: {
             struct mir_instr_type_fn *tf = (struct mir_instr_type_fn *)top;
-            unref_instr(tf->ret_type);
-            sarrput(&queue, tf->ret_type);
+            sarrput(&queue, unref_instr(tf->ret_type));
 
             for (usize i = 0; i < sarrlenu(tf->args); ++i) {
                 struct mir_instr *it = sarrpeek(tf->args, i);
-                unref_instr(it);
-                sarrput(&queue, it);
+                sarrput(&queue, unref_instr(it));
             }
             break;
         }
@@ -4318,25 +4287,21 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
             bassert(group->variants);
             for (usize i = 0; i < sarrlenu(group->variants); ++i) {
                 struct mir_instr *it = sarrpeek(group->variants, i);
-                unref_instr(it);
-                sarrput(&queue, it);
+                sarrput(&queue, unref_instr(it));
             }
             break;
         }
 
         case MIR_INSTR_TYPE_VARGS: {
             struct mir_instr_type_vargs *vargs = (struct mir_instr_type_vargs *)top;
-            unref_instr(vargs->elem_type);
-            sarrput(&queue, vargs->elem_type);
+            sarrput(&queue, unref_instr(vargs->elem_type));
             break;
         }
 
         case MIR_INSTR_TYPE_ARRAY: {
             struct mir_instr_type_array *ta = (struct mir_instr_type_array *)top;
-            unref_instr(ta->elem_type);
-            unref_instr(ta->len);
-            sarrput(&queue, ta->elem_type);
-            sarrput(&queue, ta->len);
+            sarrput(&queue, unref_instr(ta->elem_type));
+            sarrput(&queue, unref_instr(ta->len));
             break;
         }
 
@@ -4346,8 +4311,7 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
             struct mir_instr_type_struct *ts = (struct mir_instr_type_struct *)top;
             for (usize i = 0; i < sarrlenu(ts->members); ++i) {
                 struct mir_instr *it = sarrpeek(ts->members, i);
-                unref_instr(it);
-                sarrput(&queue, it);
+                sarrput(&queue, unref_instr(it));
             }
             break;
         }
@@ -4356,8 +4320,7 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
             struct mir_instr_vargs *vargs = (struct mir_instr_vargs *)top;
             for (usize i = 0; i < sarrlenu(vargs->values); ++i) {
                 struct mir_instr *it = sarrpeek(vargs->values, i);
-                unref_instr(it);
-                sarrput(&queue, it);
+                sarrput(&queue, unref_instr(it));
             }
             break;
         }
@@ -4393,7 +4356,7 @@ enum vm_interp_state evaluate(struct context *ctx, struct mir_instr *instr)
     bassert(instr->state == MIR_IS_ANALYZED && "Non-analyzed instruction cannot be evaluated!");
     bassert(instr->state != MIR_IS_COMPLETE && "Instruction already evaluated!");
     // We can evaluate compile time know instructions only.
-    if (!instr->value.is_comptime) return VM_INTERP_PASSED;
+    if (!mir_is_comptime(instr)) return VM_INTERP_PASSED;
     // Special cases
     switch (instr->kind) {
     case MIR_INSTR_CALL: {
@@ -4923,7 +4886,7 @@ struct result analyze_instr_set_initializer(struct context                   *ct
     bassert(type->kind != MIR_TYPE_VOID && "Global value cannot be void!");
     bassert(si->src && "Invalid global initializer source value.");
     // Global initializer must be compile time known.
-    if (!si->src->value.is_comptime) {
+    if (!mir_is_comptime(si->src)) {
         report_error(EXPECTED_COMPTIME,
                      si->src->node,
                      "Global variables must be initialized with compile time known value.");
@@ -6208,7 +6171,7 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
             bassert(sarrpeek(type_fn->args, i)->kind == MIR_INSTR_DECL_ARG);
             struct mir_instr_decl_arg **arg_ref =
                 (struct mir_instr_decl_arg **)&sarrpeek(type_fn->args, i);
-            bassert((*arg_ref)->base.value.is_comptime);
+            bassert(mir_is_comptime(&(*arg_ref)->base));
 
             if (analyze_slot(ctx, &analyze_slot_conf_basic, (struct mir_instr **)arg_ref, NULL) !=
                 ANALYZE_PASSED) {
@@ -6275,7 +6238,7 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
             return_zone(ANALYZE_RESULT(FAILED, 0));
         }
 
-        bassert(type_fn->ret_type->value.is_comptime);
+        bassert(mir_is_comptime(type_fn->ret_type));
         ret_type = MIR_CEV_READ_AS(struct mir_type *, &type_fn->ret_type->value);
         bmagic_assert(ret_type);
         // Disable polymorph master as return type.
@@ -7170,13 +7133,17 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
 
     struct result state = analyze_var(ctx, decl->var, mir_is_in_comptime_fn(&decl->base));
     if (state.state != ANALYZE_PASSED) return_zone(state);
-    if (decl->base.value.is_comptime && decl->init) {
+    if (mir_is_comptime(&decl->base) && decl->init) {
         // initialize when known in compile-time
         var->value.data = decl->init->value.data;
         bassert(var->value.data && "Incomplete comptime var initialization.");
     }
     return_zone(ANALYZE_RESULT(PASSED, 0));
 }
+
+// =================================================================================================
+// Function Polymorphism
+// =================================================================================================
 
 static void poly_type_match(struct mir_type  *recipe,
                             struct mir_type  *other,
@@ -7437,38 +7404,86 @@ struct result generate_fn_poly(struct context             *ctx,
     return_zone(ANALYZE_RESULT(PASSED, 0));
 }
 
+// =================================================================================================
+// Resolve type of called function inside call instruction
+// =================================================================================================
+static struct result analyze_callee(struct context *ctx, struct mir_instr *callee)
+{
+    bassert(callee);
+    struct id *missing_any = lookup_builtins_any(ctx);
+    if (missing_any) return_zone(ANALYZE_RESULT(WAITING, missing_any->hash));
+    if (callee->state != MIR_IS_COMPLETE) {
+        bassert(callee->kind == MIR_INSTR_FN_PROTO);
+        struct mir_instr_fn_proto *fn_proto = (struct mir_instr_fn_proto *)callee;
+        if (!fn_proto->pushed_for_analyze) {
+            fn_proto->pushed_for_analyze = true;
+            analyze_schedule(ctx, callee);
+        }
+        return_zone(ANALYZE_RESULT(POSTPONE, 0));
+    }
+    return_zone(ANALYZE_RESULT(PASSED, 0));
+}
+
+// =================================================================================================
+// Function overloading
+// =================================================================================================
+
+static struct mir_fn *group_select_overload(struct context            *ctx,
+                                            const struct mir_fn_group *group,
+                                            const mir_types_t         *expected_args)
+{
+    bmagic_assert(group);
+    bassert(expected_args);
+    const mir_fns_t *variants = group->variants;
+    bassert(sarrlenu(variants));
+    struct mir_fn *selected          = sarrpeek(variants, 0);
+    s32            selected_priority = 0;
+    for (usize i = 0; i < sarrlenu(variants); ++i) {
+        struct mir_fn    *it_fn = sarrpeek(variants, i);
+        s32               p     = 0;
+        const mir_args_t *args  = it_fn->type->data.fn.args;
+        const usize       argc  = sarrlenu(args);
+        const usize       eargc = sarrlenu(expected_args);
+        if (argc == eargc) p += 1;
+        for (usize j = 0; j < sarrlenu(args) && j < sarrlenu(expected_args); ++j) {
+            const struct mir_type *t  = sarrpeek(args, j)->type;
+            const struct mir_type *et = sarrpeek(expected_args, j);
+            if (type_cmp(et, t)) {
+                p += 3;
+                continue;
+            }
+            if (can_impl_cast(et, t)) {
+                p += 2;
+                continue;
+            }
+            if (type_cmp(t, ctx->builtin_types->t_Any)) {
+                p += 2;
+                continue;
+            }
+        }
+        if (p > selected_priority) {
+            selected          = it_fn;
+            selected_priority = p;
+        }
+    }
+    bmagic_assert(selected);
+    return selected;
+}
+
 struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *call)
 {
     zone();
     bassert(call->callee);
     if (!call->callee_analyzed) {
-        struct id *missing_any = lookup_builtins_any(ctx);
-        if (missing_any) return_zone(ANALYZE_RESULT(WAITING, missing_any->hash));
-
-        // callee has not been analyzed yet -> postpone call analyze
-        if (call->callee->state != MIR_IS_COMPLETE) {
-            bassert(call->callee->kind == MIR_INSTR_FN_PROTO);
-            struct mir_instr_fn_proto *fn_proto = (struct mir_instr_fn_proto *)call->callee;
-            if (!fn_proto->pushed_for_analyze) {
-                fn_proto->pushed_for_analyze = true;
-                analyze_schedule(ctx, call->callee);
-            }
-            return_zone(ANALYZE_RESULT(POSTPONE, 0));
-        }
-
+        // First resolve callee type here!
+        const struct result r = analyze_callee(ctx, call->callee);
+        if (r.state != ANALYZE_PASSED) return r;
         if (analyze_slot(ctx, &analyze_slot_conf_basic, &call->callee, NULL) != ANALYZE_PASSED) {
             return_zone(ANALYZE_RESULT(FAILED, 0));
         }
         call->callee_analyzed = true;
     }
 
-    // Direct call is call without any reference lookup, usually call to anonymous
-    // function, type resolver or variable initializer. Constant value of callee
-    // instruction must containt pointer to the struct mir_fn object.
-    const bool is_direct_call = call->callee->kind == MIR_INSTR_FN_PROTO;
-    // Functions called in compile time are supposed to be called right after successful analyze
-    // pass and should be replaced by constant in MIR. Keep in mind that such function must be
-    // fully analyzed before call.
     struct mir_type *type = call->callee->value.type;
     bassert(type && "invalid type of called object");
 
@@ -7494,7 +7509,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
 
     union fn_or_group optional_fn_or_group;
     optional_fn_or_group.any =
-        call->callee->value.is_comptime ? MIR_CEV_READ_AS(void *, &call->callee->value) : NULL;
+        mir_is_comptime(call->callee) ? MIR_CEV_READ_AS(void *, &call->callee->value) : NULL;
 
     // Pre-scan of all arguments passed to function call is needed in case we want to convert
     // some arguments to Any type, because to Any conversion requires generation of rtti
@@ -7586,6 +7601,10 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
     bassert(result_type && "invalid type of call result");
     call->base.value.type = result_type;
 
+    // Direct call is call without any reference lookup, usually call to anonymous
+    // function, type resolver or variable initializer. Constant value of callee
+    // instruction must containt pointer to the struct mir_fn object.
+    const bool is_direct_call = call->callee->kind == MIR_INSTR_FN_PROTO;
     if (is_direct_call) {
         struct mir_fn *fn = optional_fn_or_group.fn;
         bmagic_assert(fn);
@@ -7737,6 +7756,9 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
             goto REPORT_OVERLOAD_LOCATION;
         }
     }
+    // Functions called in compile time are supposed to be called right after successful analyze
+    // pass and should be replaced by constant in MIR. Keep in mind that such function must be
+    // fully analyzed before call.
     if (call_argc && mir_is_comptime(&call->base)) {
         // Provide compile time arguments to the function.
         struct mir_fn *fn = optional_fn_or_group.fn;
@@ -11093,48 +11115,6 @@ const char *get_intrinsic(const char *name)
     if (strcmp(name, "log10.f32") == 0) return "__intrinsic_log10_f32";
     if (strcmp(name, "log10.f64") == 0) return "__intrinsic_log10_f64";
     return NULL;
-}
-
-struct mir_fn *group_select_overload(struct context            *ctx,
-                                     const struct mir_fn_group *group,
-                                     const mir_types_t         *expected_args)
-{
-    bmagic_assert(group);
-    bassert(expected_args);
-    const mir_fns_t *variants = group->variants;
-    bassert(sarrlenu(variants));
-    struct mir_fn *selected          = sarrpeek(variants, 0);
-    s32            selected_priority = 0;
-    for (usize i = 0; i < sarrlenu(variants); ++i) {
-        struct mir_fn    *it_fn = sarrpeek(variants, i);
-        s32               p     = 0;
-        const mir_args_t *args  = it_fn->type->data.fn.args;
-        const usize       argc  = sarrlenu(args);
-        const usize       eargc = sarrlenu(expected_args);
-        if (argc == eargc) p += 1;
-        for (usize j = 0; j < sarrlenu(args) && j < sarrlenu(expected_args); ++j) {
-            const struct mir_type *t  = sarrpeek(args, j)->type;
-            const struct mir_type *et = sarrpeek(expected_args, j);
-            if (type_cmp(et, t)) {
-                p += 3;
-                continue;
-            }
-            if (can_impl_cast(et, t)) {
-                p += 2;
-                continue;
-            }
-            if (type_cmp(t, ctx->builtin_types->t_Any)) {
-                p += 2;
-                continue;
-            }
-        }
-        if (p > selected_priority) {
-            selected          = it_fn;
-            selected_priority = p;
-        }
-    }
-    bmagic_assert(selected);
-    return selected;
 }
 
 void mir_arenas_init(struct mir_arenas *arenas)

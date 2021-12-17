@@ -261,17 +261,6 @@ TypeInfoFnArg :: struct #compiler {
     base_type: *TypeInfo
 };
 
-/// Resolve type of the input variable in compile-time.
-///
-/// ### Example
-/// ```
-/// i: s32;
-/// j: typeof(i);
-/// ```
-typeof :: fn (_: ?T) type #comptime {
-    return T;
-}
-
 /// Any type is special builtin type used for passing value of "any" type as function argument. 
 Any :: struct #compiler {
     /// Type info associated to data type.
