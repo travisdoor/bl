@@ -127,7 +127,6 @@
 <li><a href="#typeinfostructmember">TypeInfoStructMember</a></li>
 <li><a href="#typeinfoenumvariant">TypeInfoEnumVariant</a></li>
 <li><a href="#typeinfofnarg">TypeInfoFnArg</a></li>
-<li><a href="#typeof">typeof</a></li>
 <li><a href="#any">Any</a></li>
 <li><a href="#testcase">TestCase</a></li>
 <li><a href="#codelocation">CodeLocation</a></li>
@@ -1177,13 +1176,6 @@ TAG2 :: 0x2;</code></pre>
 <p><strong>name</strong> - Member type name.</p>
 <p><strong>base_type</strong> - Argument type info.</p>
 <hr />
-<h2 id="typeof">typeof</h2>
-<pre><code>typeof :: fn (_: ?T) type</code></pre>
-<p>Resolve type of the input variable in compile-time.</p>
-<h3 id="example">Example</h3>
-<pre><code>i: s32;
-j: typeof(i);</code></pre>
-<hr />
 <h2 id="any">Any</h2>
 <pre><code>Any :: struct {
     type_info: *TypeInfo;
@@ -1211,7 +1203,7 @@ j: typeof(i);</code></pre>
     hash: u32;
 }</code></pre>
 <p>Type of source code location used by <code>#call_location</code> directive.</p>
-<h3 id="example-1">Example</h3>
+<h3 id="example">Example</h3>
 <pre><code>foo :: fn (loc: *CodeLocation = #call_location) {
     print(&quot;%\n&quot;, @loc);
 }
@@ -1263,7 +1255,7 @@ main :: fn () s32 {
 <h1 id="command-line-argument-parser">Command Line Argument Parser</h1>
 <p><code>#import "std/arg_parser"</code></p>
 <p>Generic command line argument parsing tool.</p>
-<h3 id="example-2">Example</h3>
+<h3 id="example-1">Example</h3>
 <pre><code>#import &quot;std/arg_parser&quot;
 
 // Command line arguments context.
@@ -1358,7 +1350,7 @@ main :: fn () s32 {
 <h2 id="add">add</h2>
 <pre><code>add :: fn (_parser: Parser, short: string, long: string, help: string, handler: HandlerFn) </code></pre>
 <p>Add new argument specified by <code>short</code> and <code>long</code> name to be recognised by parser. The argument description can be specified as <code>help</code>. <code>handler</code> function is called every time parser hits this argument (<code>short</code> or <code>long</code> name match). Argument name must be unique name starting with <code>-</code>. Help command (as <code>-h</code> or <code>--help</code>) is added by default.</p>
-<h3 id="example-3">Example</h3>
+<h3 id="example-2">Example</h3>
 <pre><code>ArgParser.add(parser,
     &quot;-d&quot;, // short name.
     &quot;--debug&quot;, // long name.
@@ -1376,7 +1368,7 @@ main :: fn () s32 {
 <h1 id="array">Array</h1>
 <p><code>#import "std/array"</code></p>
 <p>Compiler builtin dynamic array is automatically growing memory storage allocated on heap. The array allocated memory block groves over time when we push new values to the array. It’s guaranteed that all pushed elements are stored in single continuous block of memory. When there is no space reminding in currently allocated block, new one is allocated and all already pushed data are copied from old block to the new one.</p>
-<h3 id="example-4">Example</h3>
+<h3 id="example-3">Example</h3>
 <pre><code>main :: fn () s32 {
     arr: [..]s32; // dynamic array
     loop i := 0; i &lt; 10; i += 1 {
@@ -1448,7 +1440,7 @@ main :: fn () s32 {
 <hr />
 <h2 id="atable_erase">atable_erase</h2>
 <pre><code>atable_erase :: fn (tbl: *?T, key: ) </code></pre>
-<p>Erase record in ‘tbl’ associated with ‘key’. Cause panic in case there is no such ‘key’ in the table.</p>
+<p>Erase record in ‘tbl’ associated with ‘key’. Cause panic in case there is no such ‘key’ in the table. Erassing the record can change ordering of the table.</p>
 <hr />
 <h2 id="atable_clear">atable_clear</h2>
 <pre><code>atable_clear :: fn (tbl: *?T)  #inline</code></pre>
@@ -1594,7 +1586,7 @@ main :: fn () s32 {
 <h2 id="add_executable">add_executable</h2>
 <pre><code>add_executable :: fn (name: string) *Target</code></pre>
 <p>Add new executable target into the current compilation queue. Target with specified name is compiled into binary or it can be just executed in compile-time without any output created. Assemblies are compiled after <code>build_entry</code> function execution in order they are added.</p>
-<h3 id="example-5">Example</h3>
+<h3 id="example-4">Example</h3>
 <pre><code>build :: fn () #build_entry {
     exe :: add_executable(&quot;MyProgram&quot;);
     add_unit(exe, &quot;src/main.bl&quot;);
@@ -1643,7 +1635,7 @@ main :: fn () s32 {
 <li>On MacOS name will be extended by ‘lib’ prefix and ‘.dylib’ extension.</li>
 <li>On Windows name will be extended only by ‘.dll’ extension.</li>
 </ul>
-<h3 id="example-6">Example</h3>
+<h3 id="example-5">Example</h3>
 <pre><code>build :: fn () #build_entry {
     exe :: add_executable(&quot;MyGame&quot;);
     add_unit(exe, &quot;src/main.bl&quot;);
@@ -1726,7 +1718,7 @@ target_windows :: fn (exe: *Target) {
 <h2 id="panic">panic</h2>
 <pre><code>panic :: fn { panic_empty; panic_error; panic_msg; }</code></pre>
 <p>Abort execution and eventually print panic message if there is one specified. First passed argument in ‘args’ will act like format string and can be eventually followed by any additional values required.</p>
-<h3 id="example-7">Example</h3>
+<h3 id="example-6">Example</h3>
 <pre><code>panic(); // abort without any messages
 panic(error); // abort with :ref:`Error`.
 panic(&quot;oops!&quot;); // abort with message prited out.
@@ -1754,7 +1746,7 @@ panic(&quot;Failed with error: %&quot;, errn); // first argument passed acts lik
 <h2 id="measure_elapsed_ms_begin">measure_elapsed_ms_begin</h2>
 <pre><code>measure_elapsed_ms_begin :: fn ()  #inline</code></pre>
 <p>Start measure elapsed milliseconds in the current scope. This function call will push the current time into the thread-local queue. Measurement must be ended by :ref:<code>measure_elapsed_ms_end</code> call.</p>
-<h3 id="example-8">Example</h3>
+<h3 id="example-7">Example</h3>
 <pre><code>measure_elapsed_ms_begin();
 defer measure_elapsed_ms_end(&quot;Name&quot;);</code></pre>
 <p><strong>warning</strong>: Every <code>measure_elapsed_ms_begin</code> must have corresponding <a href="#measure_elapsed_ms_end">measure_elapsed_ms_end</a> call.</p>
@@ -1766,7 +1758,7 @@ defer measure_elapsed_ms_end(&quot;Name&quot;);</code></pre>
 <h1 id="debug-allocator">Debug Allocator</h1>
 <p><code>#import "std/debug_allocator"</code></p>
 <p>Debug allocator can be used to analyze memory usage of program and eventually analyze possible memory leaks. By <a href="#init">init</a> call the global <code>context</code> allocator is replaced by debug allocator, every following allocations are recorded and analyzed in runtime since then. Call <a href="#terminate">terminate</a> to swap default context allocator back to previous one.</p>
-<h3 id="example-9">Example</h3>
+<h3 id="example-8">Example</h3>
 <pre><code>#import &quot;std/debug_allocator&quot;
 
 main :: fn () s32 {
@@ -1911,7 +1903,7 @@ Dump memory leaks end.</code></pre>
 
 Error :: *_Error;</code></pre>
 <p>Universal error state representation used across the API.</p>
-<h3 id="example-10">Example</h3>
+<h3 id="example-9">Example</h3>
 <pre><code>div :: fn (a: s32, b: s32) (s32, Error) {
     if b == 0 {
         // Return error with message.
@@ -2056,7 +2048,7 @@ main :: fn () s32 {
 ) #inline</code></pre>
 <p>Open an file specified by <code>filepath</code>. Function return file handle and <code>OK</code> status when file was opened, otherwise return invalid handle and proper error. File must be closed by <a href="#close">close</a> call.</p>
 <p>File open <code>mode</code> is optional, any combination of <a href="#openmode">OpenMode</a> can be used. When <code>Create</code> <code>mode</code> is specified, new file is created on <code>filepath</code> only if it does not exist, otherwise already existing file is used. <code>Read</code> <code>mode</code> is used as default when neither <code>Read</code>, <code>Write</code> or <code>Append</code> is specified.</p>
-<h3 id="example-11">Example</h3>
+<h3 id="example-10">Example</h3>
 <pre><code>#import &quot;std/fs&quot;
 
 main :: fn () s32 {
@@ -2091,7 +2083,7 @@ main :: fn () s32 {
 <pre><code>dir_copy :: fn (src: string, dest: string, opt : *CopyOpt: , filter : DirScanFilterFn: ) (_0: s64, _1: Error
 )</code></pre>
 <p>Copy from <code>src</code> path to <code>dest</code> path with specified <code>opt</code> options and return count of processed files or error.</p>
-<h3 id="example-12">Example:</h3>
+<h3 id="example-11">Example:</h3>
 <pre><code>#import &quot;std/fs&quot;
 
 main :: fn () s32 {
@@ -2123,7 +2115,7 @@ main :: fn () s32 {
 <pre><code>read_string :: fn (handle: File) (_0: string, _1: Error
 )</code></pre>
 <p>Read whole file content into string. Return new string instance containing file data and <code>OK</code> status on success, otherwise return empty string and error. Returned string is expected to be released by <code>String.delete</code> call if there was no error reported by function. Result string is zero terminated even if file is empty.</p>
-<h3 id="example-13">Example</h3>
+<h3 id="example-12">Example</h3>
 <pre><code>#import &quot;std/fs&quot;
 
 main :: fn () s32 {
@@ -2944,7 +2936,7 @@ main :: fn () s32 {
 <pre><code>slice_init :: fn (slice: *[]?T, n: s64, loc :: ) </code></pre>
 <p>Allocate heap memory for <code>n</code> elements in <code>_v</code> slice. Allocated block is set to zero default value. Allocated memory must be released by :ref:<code>slice_terminate</code> call.</p>
 <p>This way of memory allocation cause some overhead compared to plain <code>alloc</code> due to conversion to <code>Any</code> and more ‘generic’ behaviour, also setting to 0 have some runtime cost. Consider use</p>
-<h3 id="example-14">Example</h3>
+<h3 id="example-13">Example</h3>
 <pre><code>main :: fn () s32 {
     // Allocate slice of 10 numbers
     sl: []s32;
@@ -3024,7 +3016,7 @@ end &lt;= slice.len</code></pre>
 <p>The <code>print</code> function accepts C-like escape sequences as <code>\n</code>, <code>\t</code>, <code>\r</code>, etc.</p>
 <p>Pointers to <code>Error</code> are dereferenced automatically; so the <code>print</code> function can print out errors directly.</p>
 <p>Count of printed bytes is returned.</p>
-<h3 id="example-15">Example</h3>
+<h3 id="example-14">Example</h3>
 <pre><code>main :: fn () s32 {
     print(&quot;Hello world!\n&quot;);
     print(&quot;My name is &#39;%&#39;.\n&quot;, &quot;Travis&quot;);
@@ -3124,7 +3116,7 @@ end &lt;= slice.len</code></pre>
 <h2 id="fmt_char">fmt_char</h2>
 <pre><code>fmt_char :: fn (v: u8) FmtChar #inline</code></pre>
 <p>Create formatter for <code>u8</code> number to be later printed as character.</p>
-<h3 id="example-16">Example</h3>
+<h3 id="example-15">Example</h3>
 <pre><code>print(&quot;% = %\n&quot;, &#39;c&#39;, fmt_char(&#39;c&#39;));</code></pre>
 <hr />
 <h2 id="print_impl">_print_impl</h2>
@@ -3339,7 +3331,7 @@ defer String.delete(my_string);</code></pre>
 <pre><code>new :: fn (size: s64) string</code></pre>
 <p>Create new string with preallocated space. This type of string initialization can reduce count of allocations made later by extending string content. String with length up to <code>size</code> require only one memory allocation.</p>
 <p>This initialization should be preferred if string length can be predicted.</p>
-<h3 id="example-17">Example</h3>
+<h3 id="example-16">Example</h3>
 <pre><code>main :: fn () s32 {
     str :: String.new();
     defer String.delete(str);
@@ -3419,7 +3411,7 @@ Fs.set_cwd(String.clear_concat(&amp;path, &quot;my-dir/project-&quot;, VERSION))
 <p>When delimiter is not present in the input string function return <code>false</code>, <code>lhs</code> and <code>rhs</code> buffers are not modified, otherwise function return <code>true</code> and sets <code>lhs</code> and <code>rhs</code> to valid values.</p>
 <p>Token destination pointers <code>lhs</code> and <code>rhs</code> are optional. The <code>di</code> output variable is set to index of the split position when it’s not <code>null</code>.</p>
 <p><strong>warning</strong>: <code>lhs</code> and <code>rhs</code> sub strings are not guaranteed to be zero terminated and they are not supposed to be freed.</p>
-<h3 id="example-18">Example</h3>
+<h3 id="example-17">Example</h3>
 <pre><code>main :: fn () s32 {
     lhs: string;
     rhs: string;
@@ -3436,7 +3428,7 @@ Fs.set_cwd(String.clear_concat(&amp;path, &quot;my-dir/project-&quot;, VERSION))
 <p>Split input string <code>str</code> at index position and return true when split was done. Result tokens only points into original memory of the <code>str</code>, they are not supposed to be freed. When index is out of <code>str</code> range function return <code>false</code>, <code>lhs</code> and <code>rhs</code> buffers are not modified.</p>
 <p>Token destination pointers <code>lhs</code> and <code>rhs</code> are optional.</p>
 <p><strong>warning</strong>: <code>lhs</code> and <code>rhs</code> sub strings are not guaranteed to be zero terminated and they are not supposed to be freed.</p>
-<h3 id="example-19">Example</h3>
+<h3 id="example-18">Example</h3>
 <pre><code>main :: fn () s32 {
     lhs: string;
     rhs: string;
@@ -3454,7 +3446,7 @@ Fs.set_cwd(String.clear_concat(&amp;path, &quot;my-dir/project-&quot;, VERSION))
 <p>When delimiter is not present in the input string function return <code>false</code>, <code>lhs</code> and <code>rhs</code> buffers are not modified, otherwise function return <code>true</code> and sets <code>lhs</code> and <code>rhs</code> to found values.</p>
 <p>Token destination pointers <code>lhs</code> and <code>rhs</code> are optional.</p>
 <p><strong>warning</strong>: <code>lhs</code> and <code>rhs</code> sub strings are not guaranteed to be zero terminated and they are not supposed to be freed.</p>
-<h3 id="example-20">Example</h3>
+<h3 id="example-19">Example</h3>
 <pre><code>main :: fn () s32 {
     lhs: string;
     rhs: string;
@@ -3622,7 +3614,7 @@ fn (got: ?T, not_expected: T, loc := #call_location)</code></pre>
 <p>Test case execution can be used in runtime and compile time, in both cases function remap default behaviour of <code>panic()</code> function call and try to report all failing tests without execution termination.</p>
 <p>Formatted output containing information about every test run status and summary report is produced during execution of this function. In case of test failure all needed information about fail source location is reported into standard output.</p>
 <p>Returns number of failed tests.</p>
-<h3 id="example-21">Example</h3>
+<h3 id="example-20">Example</h3>
 <pre><code>#load &quot;std/test.bl&quot;
 
 my_test :: fn () #test {
@@ -3669,7 +3661,7 @@ main :: fn () s32 {
 <h1 id="temporary-allocator">Temporary Allocator</h1>
 <p>Temporary allocator is memory allocator supposed to be used in case just temporary memory allocation is needed; i.e. to build up file path from individual path components. The allocated memory is valid until <a href="#temporary_reset">temporary_reset</a> or <a href="#temporary_release">temporary_release</a> is called.</p>
 <p>The allocator makes all allocations in bigger preallocated block; i.e. when allocation is requested for the first time, new block is allocated with predefined size <code>DEFAULT_BLOCK_SIZE</code>, all following allocations use the preallocated block if there is enough space. If the block is full and new requested allocation does not fit, another block is allocated (with size slightly bigger then previous one). When <a href="#temporary_reset">temporary_reset</a> is called, allocator will release all smaller allocated blocks and keeps only the biggest one for later use.</p>
-<h3 id="example-22">Example</h3>
+<h3 id="example-21">Example</h3>
 <pre><code>#import &quot;std/tmp_allocator&quot;
 
 main :: fn () s32 {

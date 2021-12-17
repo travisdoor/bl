@@ -68,6 +68,7 @@
 <h2 id="linux-ubuntu">Linux (Ubuntu)</h2>
 <ul>
 <li>Install Build Essential package if you don’t have it.</li>
+<li>Compiler infrastructure and BL runtime depends on <code>glibc</code> and cannot be used with <code>musl</code> for now.</li>
 </ul>
 <pre><code>apt-get update &amp;&amp; apt-get install build-essential</code></pre>
 <ul>
@@ -79,6 +80,7 @@
 <h2 id="macos">macOS</h2>
 <ul>
 <li>Install Command Line Tools.</li>
+<li>M1 support is experimental.</li>
 </ul>
 <pre><code>xcode-select --install</code></pre>
 <ul>

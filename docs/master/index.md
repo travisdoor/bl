@@ -11,6 +11,7 @@ blc --configure
 
 ## Linux (Ubuntu)
 * Install Build Essential package if you don't have it. 
+* Compiler infrastructure and BL runtime depends on `glibc` and cannot be used with `musl` for now.
 
 ```
 apt-get update && apt-get install build-essential
@@ -26,6 +27,7 @@ blc --configure
   
 ## macOS
 * Install Command Line Tools.
+* M1 support is experimental.
 
 ```
 xcode-select --install

@@ -34,19 +34,21 @@ Contact email: [biscuitlang@gmail.com](mailto:biscuitlang@gmail.com)
 See installation guide [here](http://biscuitlang.org/versions/1.0.0/index.html).
 
 # Example
-```c
-main :: fn () s32 {
-    return fib(10);
-}
+```rust
+HelloWorld :: struct {
+    hello: s32;
+    world: s32;
+};
 
-fib :: fn (n: s32) s32 {
-    if n == 0 || n == 1 {
-        return n;
-    } else {
-        return fib(n-1) + fib(n-2);
+main :: fn () s32 {
+    info :: cast(*TypeInfoStruct) typeinfo(HelloWorld);
+
+    loop i := 0; i < info.members.len; i += 1 {
+        print("% ", info.members[i].name);
     }
+    print("!!!\n");
     
-    return -1;
+    return 0;
 }
 ```
 
