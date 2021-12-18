@@ -1,9 +1,16 @@
-foo :: fn (v: ?T) @T {}
+HelloWorld :: struct {
+    hello: s32;
+    world: s32;
+};
 
 main :: fn () s32 {
-    T :: @*s32;
-    i: *s32;
-    foo(i);
+    info :: cast(*TypeInfoStruct) typeinfo(HelloWorld);
+
+    loop i := 0; i < info.members.len; i += 1 {
+        print("% ", info.members[i].name);
+    }
+    print("!!!\n");
+    
     return 0;
 }
 
