@@ -1,0 +1,20 @@
+# Automatically generated configuration file used by 'blc' compiler.
+# To generate new one use 'blc --configure' command.
+
+# Compiler version, this should match the executable version 'blc --version'.
+version: "1.0.0"
+
+# Main API directory containing all modules and source files. This option is mandatory.
+lib_dir: "C:/Develop/bl/bin/../lib/bl/api"
+
+# Default configuration environment. This section is mandatory.
+default:
+    # Optional path to the linker executable, 'lld' linker is used by default on some platforms.
+    linker_executable: ""
+    # Linker flags and options used to produce executable binaries.
+    linker_opt_exec: "/NOLOGO /ENTRY:__os_start /SUBSYSTEM:CONSOLE /INCREMENTAL:NO /MACHINE:x64 kernel32.lib user32.lib gdi32.lib shell32.lib ucrt.lib legacy_stdio_definitions.lib msvcrt.lib vcruntime.lib Shlwapi.lib"
+    # Linker flags and options used to produce shared libraries.
+    linker_opt_shared: "/NOLOGO /INCREMENTAL:NO /MACHINE:x64 /DLL kernel32.lib user32.lib gdi32.lib shell32.lib ucrt.lib legacy_stdio_definitions.lib msvcrt.lib vcruntime.lib Shlwapi.lib"
+    # File system location where linker should lookup for dependencies.
+    linker_lib_path: "C:/Program Files (x86)/Windows Kits/10/Lib/10.0.22000.0/ucrt/x64;C:/Program Files (x86)/Windows Kits/10/Lib/10.0.22000.0/um/x64;C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.30.30705//lib/x64"
+
