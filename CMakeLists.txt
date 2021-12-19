@@ -45,10 +45,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 set(PDB_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_SOURCE_DIR}/bin")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_SOURCE_DIR}/bin")
-set(BL_CONF_FILE ${CMAKE_INSTALL_SYSCONFDIR}/bl.conf)
-
-add_subdirectory(${BL_DEPS_DIR}/dyncall-1.2)
-add_subdirectory(${BL_DEPS_DIR}/libyaml-0.2.5)
+set(BL_CONF_FILE ${CMAKE_INSTALL_SYSCONFDIR}/bl.yaml)
+set(BL_API_DIR "../lib/bl/api") # relative to the executable
 
 if(UNIX AND NOT APPLE)
     set(BL_LLVM_VER "11.0.0")
@@ -92,8 +90,8 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     set(LLD_ZIP lld-11.0.1-win64-release.zip)
     set(LLD_ZIP_MD5 e9606991f195b22e55cfdafa1213031a)
     set(BL_LLD_EXE "bl-lld.exe")
-    set(BL_CONFIG_EXE "bl-config.exe")
-    set(BL_CONFIG "${BL_DEPS_DIR}/bl-config/bin/win32/bl-config.exe")
+    set(BL_VSWHERE_EXE "vswhere.exe")
+    set(BL_VSWHERE "${BL_DEPS_DIR}/vswhere-2.8.4/${BL_VSWHERE_EXE}")
     set(BL_LINKER ${BL_LLD_EXE})
 endif()
 
@@ -102,8 +100,6 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     set(LLD_ZIP lld-13.0.0-linux64-release.zip)
     set(LLD_ZIP_MD5 f19860ad1cb21a385d99d584f0a96638)
     set(BL_LLD_EXE "bl-lld")
-    set(BL_CONFIG_EXE "bl-config")
-    set(BL_CONFIG "${BL_DEPS_DIR}/bl-config/bin/linux/${BL_CONFIG_EXE}")
     set(BL_LINKER ${BL_LLD_EXE})
 endif()
 
@@ -112,12 +108,8 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
     set(LLD_ZIP lld-11.0.0-macos-release.zip)
     set(LLD_ZIP_MD5 b37f7524cf2d12efa4f27268713b45f3)
     set(BL_LLD_EXE "bl-lld")
-    set(BL_CONFIG_EXE "bl-config")
-    set(BL_CONFIG "${BL_DEPS_DIR}/bl-config/bin/macos/${BL_CONFIG_EXE}")
     set(BL_LINKER ${BL_LLD_EXE})
 endif()
-
-set(BL_CONFIGURE_SH ${BL_CONFIG_EXE})
 
 # DOWNLOAD LLD binary
 if(NOT EXISTS ${LLD_BIN})
@@ -159,9 +151,16 @@ llvm_map_components_to_libnames(LLVM_LIBS core support X86 AArch64 passes)
 
 add_executable(blc ${SOURCE_FILES} ${HEADER_FILES})
 
+add_subdirectory(${BL_DEPS_DIR}/dyncall-1.2)
+add_subdirectory(${BL_DEPS_DIR}/libyaml-0.2.5)
+
 if(MSVC)
     add_definitions(-DNOMINMAX)
     target_link_libraries(blc PUBLIC shlwapi DbgHelp)
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Od /MDd /Z7")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Od /MDd /Z7")
+    target_compile_options(yaml PRIVATE $<$<CONFIG:RELEASE>: /wd4996 /wd4267 /wd4244>)
+    target_compile_options(yaml PRIVATE $<$<CONFIG:DEBUG>: /wd4996 /wd4267 /wd4244 /Od /MDd /Z7>)
 else()
     set(THREADS_PREFER_PTHREAD_FLAG ON)
     find_package(Threads REQUIRED)
@@ -173,6 +172,7 @@ target_link_libraries(
     PRIVATE dynload_s
             dyncall_s
             dyncallback_s
+	    yaml
             ${CMAKE_DL_LIBS}
             ${LLVM_LIBS}
 )
@@ -184,6 +184,7 @@ target_include_directories(
             ${BL_DEPS_DIR}/dyncall-1.2/dynload
             ${BL_DEPS_DIR}/dyncall-1.2/dyncallback
             ${BL_DEPS_DIR}/tracy-${TRACY_VER}
+            ${BL_DEPS_DIR}/libyaml-0.2.5/include
             ${LLVM_INCLUDE_DIRS}
 )
 
@@ -200,12 +201,9 @@ endif()
 add_custom_command(TARGET blc POST_BUILD
 COMMAND ${CMAKE_COMMAND} -E copy ${LLD_BIN} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${BL_LLD_EXE})
 
-# Copy bl-config executable into output directory
-if(NOT EXISTS ${BL_CONFIG})
-    message(FATAL_ERROR "BL configuration tool not found, expected location is ${BL_CONFIG}" )
+if(MSVC)
+    add_custom_command(TARGET blc POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${BL_VSWHERE} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${BL_VSWHERE_EXE})
 endif()
-add_custom_command(TARGET blc POST_BUILD
-COMMAND ${CMAKE_COMMAND} -E copy ${BL_CONFIG} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${BL_CONFIG_EXE})
 
 install(
     FILES ${BL_CONFIG}
@@ -220,16 +218,3 @@ install(
 
 configure_file(${CMAKE_SOURCE_DIR}/src/config.h.in
                ${CMAKE_SOURCE_DIR}/src/config.h)
-
-configure_file(${BL_DEPS_DIR}/bl-config/src/config.bl.in
-               ${BL_DEPS_DIR}/bl-config/src/config.bl)
-  
-# Compile utils
-add_custom_target(Utils
-    COMMAND 
-    ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/bl-config -s && ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/blc --full-path -release -build
-    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/utils"
-    COMMENT "Compile bl utils."
-)
-
-add_dependencies(Utils blc)

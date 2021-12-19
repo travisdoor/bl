@@ -36,6 +36,7 @@
 #define BL_VERSION_PATCH @PROJECT_VERSION_PATCH@
 
 #define BL_CONF_FILE "@BL_CONF_FILE@"
+#define BL_API_DIR "@BL_API_DIR@"
 
 // MULTIPLATFROM: os preload depends on target build platfrom and should be chosen in runtime later!
 #ifdef _WIN32
@@ -44,6 +45,7 @@
 #define BL_PLATFORM_LINUX 0
 #define BL_EXPORT __declspec(dllexport)
 #define OS_PRELOAD_FILE "os/_windows.bl"
+#define BL_VSWHERE_EXE "@BL_VSWHERE_EXE@"
 #elif __APPLE__
 #define BL_PLATFORM_WIN 0
 #define BL_PLATFORM_MACOS 1
@@ -109,17 +111,8 @@
 
 #define VM_STACK_SIZE 2097152          // 2MB
 #define VM_COMPTIME_CACHE_SIZE 1048576 // 1MB
-#define BL_CONFIGURE_SH "@BL_CONFIGURE_SH@"
 
 #define BL_LINKER "@BL_LINKER@"
-
-// Config file entries
-#define CONF_LINKER_OPT_EXEC_KEY "LINKER_OPT_EXEC"
-#define CONF_LINKER_OPT_SHARED_KEY "LINKER_OPT_SHARED"
-#define CONF_LINKER_LIB_PATH_KEY "LINKER_LIB_PATH"
-#define CONF_LINKER_EXECUTABLE "LINKER_EXECUTABLE"
-#define CONF_LIB_DIR_KEY "LIB_DIR"
-#define CONF_VERSION "VERSION"
 
 // module related config
 #define CONF_MODULE_VERSION "VERSION"

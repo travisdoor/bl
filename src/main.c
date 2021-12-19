@@ -28,6 +28,7 @@
 
 #include "assembly.h"
 #include "builder.h"
+#include "conf.h"
 #include "stb_ds.h"
 #include <locale.h>
 #include <stdio.h>
@@ -39,49 +40,48 @@
 
 static char *get_exec_dir(void)
 {
-    char tmp[PATH_MAX] = {0};
+    char tmp[PATH_MAX] = "";
     if (!get_current_exec_dir(tmp, PATH_MAX)) {
         babort("Cannot locate compiler executable path.");
     }
     return strdup(tmp);
 }
 
-static bool load_conf_file(const char *exec_dir)
+static bool generate_conf(const char *exec_dir)
 {
-    char path[PATH_MAX] = {0};
-    snprintf(path, static_arrlenu(path), "%s/../%s", exec_dir, BL_CONF_FILE);
-    if (!file_exists(path)) {
-        builder_error("Configuration file '%s' not found, run 'blc --configure' or 'bl-config' to "
-                      "generate one.",
-                      path);
-        return false;
-    }
-    builder_load_config(path);
-    const char *expected = BL_VERSION;
-    const char *got      = conf_data_has_key(&builder.conf, CONF_VERSION)
-                               ? conf_data_get_str(&builder.conf, CONF_VERSION)
-                               : "(UNKNOWN)";
-    if (strcmp(expected, got)) {
-        builder_warning("Invalid version of configuration file expected is '%s' not '%s'. Consider "
-                        "running 'blc --configure' or 'bl-config' again.",
-                        expected,
-                        got);
-    }
-    return true;
+    char *filepath = gettmpstr();
+    strprint(filepath, "%s/../%s", exec_dir, BL_CONF_FILE);
+    const bool result = builder_generate_default_config(filepath);
+    puttmpstr(filepath);
+    return result;
 }
 
-static int generate_conf(void)
+static bool load_conf_file(const char *exec_dir)
 {
-    char *cmd = gettmpstr();
-#if BL_PLATFORM_LINUX || BL_PLATFORM_MACOS
-    strprint(cmd, "%s/%s -f -s", builder_get_exec_dir(), BL_CONFIGURE_SH);
-#else
-    strprint(cmd, "call \"%s/%s\" -f -s", builder_get_exec_dir(), BL_CONFIGURE_SH);
-#endif
-    const s32 state = system(cmd);
-    puttmpstr(cmd);
-    return state;
+    char *filepath = gettmpstr();
+    strprint(filepath, "%s/../%s", exec_dir, BL_CONF_FILE);
+    if (!file_exists(filepath)) {
+        builder_warning("Configuration file '%s' not found.", filepath);
+        if (!builder_generate_default_config(filepath)) goto FAILED;
+    }
+    if (!builder_load_config(filepath)) goto FAILED;
+    const char *got = confreads(builder.config, CONF_VERSION, "(UNKNOWN)");
+    if (strcmp(got, BL_VERSION) != 0) {
+        builder_warning("Invalid version of current configuration file '%s'. Expected is '%s', got "
+                        "'%s'. Lets try to generate new one!",
+                        filepath,
+                        BL_VERSION,
+                        got);
+        if (!builder_generate_default_config(filepath)) goto FAILED;
+    }
+
+    puttmpstr(filepath);
+    return true;
+FAILED:
+    puttmpstr(filepath);
+    return false;
 }
+
 // =================================================================================================
 // Command line arguments + Options
 // =================================================================================================
@@ -306,7 +306,7 @@ int main(s32 argc, char *argv[])
     opt.target = builder_add_default_target("out");
 
     bool has_input_files = false;
-    bool print_version = false;
+    bool print_version   = false;
 
 #define ID_BUILD 1
 #define ID_RUN 2
@@ -337,9 +337,9 @@ int main(s32 argc, char *argv[])
             .id   = ID_DOC,
         },
         {
-            .name = "--version",
-            .help = "Print compiler version and exit.",
-            .property.b   = &print_version,
+            .name       = "--version",
+            .help       = "Print compiler version and exit.",
+            .property.b = &print_version,
         },
         {
             .kind = STRING,
@@ -592,11 +592,9 @@ SKIP:
 
     // Run configure if needed.
     if (opt.app.configure) {
-        if (generate_conf() != 0) {
-            builder_error("Cannot generate config file.");
+        if (!generate_conf(exec_dir)) {
             EXIT(EXIT_FAILURE);
         }
-
         EXIT(EXIT_SUCCESS);
     }
 
@@ -609,7 +607,7 @@ SKIP:
         print_about(stdout);
         EXIT(EXIT_SUCCESS);
     }
-    
+
     if (print_version) {
         fprintf(stdout, "%s", BL_VERSION);
         EXIT(EXIT_SUCCESS);
@@ -619,9 +617,6 @@ SKIP:
     if (!load_conf_file(exec_dir)) {
         EXIT(EXIT_FAILURE);
     }
-
-    // Setup LIB_DIR
-    builder_set_lib_dir(conf_data_get_str(&builder.conf, CONF_LIB_DIR_KEY));
 
     if (opt.app.where_is_api) {
         print_where_is_api(stdout);

@@ -59,6 +59,8 @@
 
 #if BL_PLATFORM_WIN
 #include <shlwapi.h>
+#define popen _popen
+#define pclose _pclose
 #endif
 
 u64 main_thread_id = 0;
@@ -669,4 +671,20 @@ s32 cpu_thread_count(void)
 #else
     return 8; // @Incomplete: Detect for platform.
 #endif
+}
+
+char *execute(const char *cmd)
+{
+    char *tmp  = gettmpstr();
+    FILE *pipe = popen(cmd, "r");
+    if (!pipe) {
+        builder_error("Command '%s' failed!", cmd);
+        return tmp;
+    }
+    char  buffer[128];
+    while (fgets(buffer, static_arrlenu(buffer), pipe) != NULL) {
+        strappend(tmp, "%s", buffer);
+    }
+    pclose(pipe);
+    return tmp;
 }

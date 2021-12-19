@@ -297,5 +297,6 @@ s32   get_last_error(char *buf, s32 buf_len);
 u32   next_pow_2(u32 n);
 void  color_print(FILE *stream, s32 color, const char *format, ...);
 s32   cpu_thread_count(void);
+char *execute(const char *cmd);
 
 #endif

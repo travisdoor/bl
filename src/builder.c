@@ -27,6 +27,7 @@
 // =================================================================================================
 
 #include "builder.h"
+#include "conf.h"
 #include "stb_ds.h"
 #include "vmdbg.h"
 #include <stdarg.h>
@@ -446,8 +447,6 @@ void builder_init(const struct builder_options *options, const char *exec_dir)
 
     builder.exec_dir = strdup(exec_dir);
 
-    conf_data_init(&builder.conf);
-
     // initialize LLVM statics
     llvm_init();
     // Generate hashes for builtin ids.
@@ -472,24 +471,15 @@ void builder_terminate(void)
     blog("Used %llu temp-strings.", arrlenu(builder.tmp_strs));
     arrfree(builder.tmp_strs);
 
-    conf_data_terminate(&builder.conf);
+    confdelete(builder.config);
     llvm_terminate();
     threading_delete(builder.threading);
     free(builder.exec_dir);
-    free(builder.lib_dir);
-}
-
-void builder_set_lib_dir(const char *lib_dir)
-{
-    bassert(lib_dir);
-    bassert(builder.lib_dir == NULL && "Library directory already set!");
-    builder.lib_dir = strdup(lib_dir);
 }
 
 const char *builder_get_lib_dir(void)
 {
-    bassert(builder.lib_dir && "Library directory not set, call 'builder_set_lib_dir' first.");
-    return builder.lib_dir;
+    return confreads(builder.config, CONF_LIB_DIR_KEY, NULL);
 }
 
 const char *builder_get_exec_dir(void)
@@ -513,9 +503,11 @@ INTERRUPT:
     return COMPILE_FAIL;
 }
 
-int builder_load_config(const char *filepath)
+bool builder_load_config(const char *filepath)
 {
-    return builder_compile_config(filepath, &builder.conf, NULL);
+    confdelete(builder.config);
+    builder.config = confload(filepath);
+    return (bool)builder.config;
 }
 
 struct target *_builder_add_target(const char *name, bool is_default)
@@ -744,3 +736,142 @@ void builder_async_submit_unit(struct unit *unit)
     if (!threading->is_compiling) return;
     async_push(unit);
 }
+
+// =================================================================================================
+// Default compiler configuration generator
+// =================================================================================================
+
+struct context {
+    char *version;
+    char *lib_dir;
+    char *linker_opt_exec;
+    char *linker_opt_shared;
+    char *linker_lib_path;
+    char *linker_executable;
+
+    struct string_cache *cache;
+};
+
+static bool  configure(struct context *ctx);
+static char *make_content(const struct context *ctx);
+
+bool builder_generate_default_config(const char *filepath)
+{
+    builder_warning("Generationg new configuration file.");
+    struct context ctx = {0};
+    if (!configure(&ctx)) return false;
+    char *content = make_content(&ctx);
+
+    if (file_exists(filepath)) { // backup old-one
+        char *bakfilepath = gettmpstr();
+        char  date[26];
+        date_time(date, static_arrlenu(date), "%d-%m-%Y_%H-%M-%S");
+        strprint(bakfilepath, "%s.%s", filepath, date);
+        builder_warning("Creating backup of previous configuration file at '%s'.", bakfilepath);
+        copy_file(filepath, bakfilepath);
+        puttmpstr(bakfilepath);
+    }
+
+    FILE *file = fopen(filepath, "w");
+    if (!file) {
+        builder_error("Cannot open file '%s' for writing!", filepath);
+        puttmpstr(content);
+        return false;
+    }
+    fputs(content, file);
+    fclose(file);
+
+    puttmpstr(content);
+    scfree(&ctx.cache);
+    builder_warning("Configuration written into '%s'.", filepath);
+    return true;
+}
+
+char *make_content(const struct context *ctx)
+{
+#define TEMPLATE                                                                                   \
+    "# Automatically generated configuration file used by 'blc' compiler.\n"                       \
+    "# To generate new one use 'blc --configure' command.\n\n"                                     \
+    "# Compiler version, this should match the executable version 'blc --version'.\n"              \
+    "version: \"%s\"\n\n"                                                                          \
+    "# Main API directory containing all modules and source files. This option is mandatory.\n"    \
+    "lib_dir: \"%s\"\n"                                                                            \
+    "\n"                                                                                           \
+    "# Default configuration environment. This section is mandatory.\n"                            \
+    "default:\n"                                                                                   \
+    "    # Optional path to the linker executable, 'lld' linker is used by default on some "       \
+    "platforms.\n"                                                                                 \
+    "    linker_executable: \"%s\"\n"                                                              \
+    "    # Linker flags and options used to produce executable binaries.\n"                        \
+    "    linker_opt_exec: \"%s\"\n"                                                                \
+    "    # Linker flags and options used to produce shared libraries.\n"                           \
+    "    linker_opt_shared: \"%s\"\n"                                                              \
+    "    # File system location where linker should lookup for dependencies.\n"                    \
+    "    linker_lib_path: \"%s\"\n\n"
+
+    char *tmp = gettmpstr();
+    strprint(tmp,
+             TEMPLATE,
+             ctx->version,
+             ctx->lib_dir,
+             ctx->linker_executable,
+             ctx->linker_opt_exec,
+             ctx->linker_opt_shared,
+             ctx->linker_lib_path);
+    return tmp;
+
+#undef TEMPLATE
+}
+
+#if BL_PLATFORM_WIN
+#include "wbs.h"
+
+#define LINKER_OPT_EXEC                                                                            \
+    "/NOLOGO /ENTRY:__os_start /SUBSYSTEM:CONSOLE /INCREMENTAL:NO /MACHINE:x64 kernel32.lib "      \
+    "user32.lib gdi32.lib shell32.lib ucrt.lib legacy_stdio_definitions.lib msvcrt.lib "           \
+    "vcruntime.lib Shlwapi.lib"
+
+#define LINKER_OPT_SHARED                                                                          \
+    "/NOLOGO /INCREMENTAL:NO /MACHINE:x64 /DLL kernel32.lib user32.lib gdi32.lib shell32.lib "     \
+    "ucrt.lib legacy_stdio_definitions.lib msvcrt.lib vcruntime.lib Shlwapi.lib"
+
+bool configure(struct context *ctx)
+{
+    builder_warning("Lookup for compiler dependencies...!");
+    struct wbs *wbs = wbslookup();
+    if (!wbs->is_valid) {
+        builder_error("Configuration failed!");
+        wbsfree(wbs);
+        return false;
+    }
+
+    builder_warning("Using Windows SDK: '%s'", wbs->windows_sdk_path);
+    builder_warning("Using VS/Build Tools: '%s'", wbs->vs_path);
+
+    const char *exec_dir = builder.exec_dir;
+
+    ctx->version           = BL_VERSION;
+    ctx->linker_executable = "";
+    ctx->lib_dir           = scprint(&ctx->cache, "%s/%s", exec_dir, BL_API_DIR);
+    ctx->linker_opt_exec   = LINKER_OPT_EXEC;
+    ctx->linker_opt_shared = LINKER_OPT_SHARED;
+    ctx->linker_lib_path =
+        scprint(&ctx->cache, "%s;%s;%s", wbs->ucrt_path, wbs->um_path, wbs->msvc_lib_path);
+
+    wbsfree(wbs);
+    return true;
+}
+#elif BL_PLATFORM_LINUX
+
+#define LINKER_OPT_EXEC "-e _start -lc -lm"
+#define LINKER_OPT_SHARED "--shared -lc -lm"
+#define LINKER_LIB_PATH "/usr/lib:/usr/local/lib:/lib64:/usr/lib/x86_64-linux-gnu"
+#define LD_LINUX_SO "/lib64/ld-linux-x86-64.so.2"
+#define BLRT_64 "../lib/bl/rt/blrt_x86_64_linux.o"
+
+#else
+bool configure(struct context *ctx)
+{
+    return false;
+}
+#endif

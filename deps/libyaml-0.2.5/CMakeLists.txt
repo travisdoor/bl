@@ -96,14 +96,6 @@ install(
   )
 
 #
-# Add tests
-#
-include(CTest) # This module defines BUILD_TESTING option
-if(BUILD_TESTING)
-  add_subdirectory(tests)
-endif()
-
-#
 # Generate 'yamlConfig.cmake', 'yamlConfigVersion.cmake' and 'yamlTargets.cmake'
 #
 include(CMakePackageConfigHelpers)

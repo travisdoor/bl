@@ -28,6 +28,7 @@
 
 #include "assembly.h"
 #include "builder.h"
+#include "conf.h"
 #include "stb_ds.h"
 
 #if BL_PLATFORM_MACOS
@@ -93,10 +94,10 @@ static void append_default_opt(struct assembly *assembly, char **buf)
     const char *default_opt = "";
     switch (assembly->target->kind) {
     case ASSEMBLY_EXECUTABLE:
-        default_opt = conf_data_get_str(&builder.conf, CONF_LINKER_OPT_EXEC_KEY);
+        default_opt = confreads(builder.config, CONF_LINKER_OPT_EXEC_KEY, NULL);
         break;
     case ASSEMBLY_SHARED_LIB:
-        default_opt = conf_data_get_str(&builder.conf, CONF_LINKER_OPT_SHARED_KEY);
+        default_opt = confreads(builder.config, CONF_LINKER_OPT_SHARED_KEY, NULL);
         break;
     default:
         babort("Unknown output kind!");
@@ -112,12 +113,10 @@ static void append_custom_opt(struct assembly *assembly, char **buf)
 
 static void append_linker_exec(char **buf)
 {
-    if (conf_data_has_key(&builder.conf, CONF_LINKER_EXECUTABLE)) {
-        const char *custom_linker = conf_data_get_str(&builder.conf, CONF_LINKER_EXECUTABLE);
-        if (strlen(custom_linker)) {
-            strappend(*buf, "%s ", custom_linker);
-            return;
-        }
+    const char *custom_linker = confreads(builder.config, CONF_LINKER_EXECUTABLE, "");
+    if (strlen(custom_linker)) {
+        strappend(*buf, "%s ", custom_linker);
+        return;
     }
     // Use LLD as default.
     strappend(*buf, "%s/%s -flavor %s ", builder.exec_dir, BL_LINKER, LLD_FLAVOR);

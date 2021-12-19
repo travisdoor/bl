@@ -27,13 +27,13 @@
 // =================================================================================================
 
 #include "builder.h"
+#include "conf.h"
 #include "stb_ds.h"
 
 #define link_error(code, tok, pos, format, ...)                                                    \
     {                                                                                              \
         if (tok)                                                                                   \
-            builder_msg(                                                                           \
-                MSG_ERR, (code), &(tok)->location, (pos), (format), ##__VA_ARGS__);      \
+            builder_msg(MSG_ERR, (code), &(tok)->location, (pos), (format), ##__VA_ARGS__);        \
         else                                                                                       \
             builder_error((format), ##__VA_ARGS__);                                                \
     }                                                                                              \
@@ -77,7 +77,7 @@ DONE:
 static void set_lib_paths(struct context *ctx)
 {
     char        tmp[PATH_MAX] = {0};
-    const char *lib_path      = conf_data_get_str(&builder.conf, CONF_LINKER_LIB_PATH_KEY);
+    const char *lib_path      = confreads(builder.config, CONF_LINKER_LIB_PATH_KEY, "");
     if (!strlen(lib_path)) return;
 
     s64         len;

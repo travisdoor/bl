@@ -31,40 +31,39 @@
 
 #include "assembly.h"
 #include "conf_data.h"
-#include "mir.h"
 
 #define COMPILE_OK 0
 #define COMPILE_FAIL 1
 
 struct threading_impl;
+struct config;
 
 typedef void (*unit_stage_fn_t)(struct assembly *, struct unit *);
 typedef void (*assembly_stage_fn_t)(struct assembly *);
 
 struct builder_options {
-    bool verbose;
-    bool no_color;
-    bool silent;
-    bool no_jobs;
-    bool no_warning;
-    bool full_path_reports;
-    bool no_usage_check;
-    bool time_report;
-    s32  error_limit;
-    char* doc_out_dir;
+    bool  verbose;
+    bool  no_color;
+    bool  silent;
+    bool  no_jobs;
+    bool  no_warning;
+    bool  full_path_reports;
+    bool  no_usage_check;
+    bool  time_report;
+    s32   error_limit;
+    char *doc_out_dir;
 };
 
 struct builder {
     const struct builder_options *options;
     const struct target          *default_target;
     char                         *exec_dir;
-    char                         *lib_dir;
     volatile s32                  total_lines;
     s32                           errorc;
     s32                           max_error;
     s32                           test_failc;
     s32                           last_script_mode_run_status;
-    conf_data_t                   conf;
+    struct config                *config;
     struct target               **targets;
     char                        **tmp_strs;
     struct threading_impl        *threading;
@@ -83,22 +82,17 @@ enum builder_msg_type {
     MSG_ERR,
 };
 
-enum builder_cur_pos {
-    CARET_WORD = 0,
-    CARET_BEFORE,
-    CARET_AFTER,
-    CARET_NONE
-};
+enum builder_cur_pos { CARET_WORD = 0, CARET_BEFORE, CARET_AFTER, CARET_NONE };
 
 struct location;
 
 // Initialize builder global instance with executable directory specified.
 void        builder_init(const struct builder_options *options, const char *exec_dir);
 void        builder_terminate(void);
-void        builder_set_lib_dir(const char *lib_dir);
 const char *builder_get_lib_dir(void);
 const char *builder_get_exec_dir(void);
-int         builder_load_config(const char *filepath);
+bool        builder_load_config(const char *filepath);
+bool        builder_generate_default_config(const char *filepath);
 int builder_compile_config(const char *filepath, conf_data_t *out_data, struct token *import_from);
 
 #define builder_add_target(name) _builder_add_target(name, false)
@@ -111,16 +105,13 @@ s32 builder_compile(const struct target *target);
 // Submit new unit for async compilation, in case no-jobs flag is set, this function does nothing.
 void builder_async_submit_unit(struct unit *unit);
 
-#define builder_log(format, ...)                                                                   \
-    builder_msg(MSG_LOG, -1, NULL, CARET_NONE, format, ##__VA_ARGS__)
-#define builder_info(format, ...)                                                                  \
-    builder_msg(MSG_INFO, -1, NULL, CARET_NONE, format, ##__VA_ARGS__)
+#define builder_log(format, ...) builder_msg(MSG_LOG, -1, NULL, CARET_NONE, format, ##__VA_ARGS__)
+#define builder_info(format, ...) builder_msg(MSG_INFO, -1, NULL, CARET_NONE, format, ##__VA_ARGS__)
 #define builder_note(format, ...)                                                                  \
     builder_msg(MSG_ERR_NOTE, -1, NULL, CARET_NONE, format, ##__VA_ARGS__)
 #define builder_warning(format, ...)                                                               \
     builder_msg(MSG_WARN, -1, NULL, CARET_NONE, format, ##__VA_ARGS__)
-#define builder_error(format, ...)                                                                 \
-    builder_msg(MSG_ERR, -1, NULL, CARET_NONE, format, ##__VA_ARGS__)
+#define builder_error(format, ...) builder_msg(MSG_ERR, -1, NULL, CARET_NONE, format, ##__VA_ARGS__)
 
 void builder_vmsg(enum builder_msg_type type,
                   s32                   code,
