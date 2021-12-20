@@ -825,7 +825,7 @@ char *make_content(const struct context *ctx)
 
 #if BL_PLATFORM_WIN
 // =================================================================================================
-// Configuration Windows 
+// Configuration Windows
 // =================================================================================================
 #include "wbs.h"
 
@@ -859,12 +859,12 @@ bool configure(struct context *ctx)
 
     char *libdir = gettmpstr();
     strprint(libdir, "%s/%s", exec_dir, BL_API_DIR);
-    if (!dir_exists(libdir)) {
+    if (!normalize_path(&libdir)) {
         builder_error("BL API directory not found. (Expected location is '%s').", libdir);
         puttmpstr(libdir);
         goto FAILED;
     }
-    ctx->lib_dir           = scprint(&ctx->cache, "%s", libdir);
+    ctx->lib_dir = scprint(&ctx->cache, "%s", libdir);
     puttmpstr(libdir);
 
     ctx->linker_lib_path =
@@ -897,7 +897,7 @@ bool configure(struct context *ctx)
 
     char *libdir = gettmpstr();
     strprint(libdir, "%s/%s", exec_dir, BL_API_DIR);
-    if (!dir_exists(libdir)) {
+    if (!noramlize_path(libdir)) {
         builder_error("BL API directory not found. (Expected location is '%s').", libdir);
         puttmpstr(libdir);
         goto FAILED;
@@ -909,18 +909,19 @@ bool configure(struct context *ctx)
         builder_error("Cannot find 64bit version of 'ld-linux.so' on '%s'", LD_LINUX_SO);
         goto FAILED;
     }
-    
+
     char *blrt64 = gettmpstr();
     strprint(blrt64, "%s/%s", ctx->lib_dir, BLRT64);
-    if (!file_exists(libdir)) {
+    if (!normalize_path(libdir)) {
         builder_error("Cannot find BLRT 64. (Expected location is '%s').", blrt64);
         puttmpstr(blrt64);
         goto FAILED;
     }
 
-    ctx->linker_opt_exec   = scprint(&ctx->cache, "%s -dynamic-linker %s %s", blrt64, LD_LINUX_SO, LINKER_OPT_EXEC);
+    ctx->linker_opt_exec =
+        scprint(&ctx->cache, "%s -dynamic-linker %s %s", blrt64, LD_LINUX_SO, LINKER_OPT_EXEC);
     ctx->linker_opt_shared = LINKER_OPT_SHARED;
-    ctx->linker_lib_path = LINKER_LIB_PATH;
+    ctx->linker_lib_path   = LINKER_LIB_PATH;
 
     puttmpstr(blrt64);
     return true;

@@ -274,6 +274,7 @@ void  win_path_to_unix(char *buf, usize buf_size);
 void  unix_path_to_win(char *buf, usize buf_size);
 bool  file_exists(const char *filepath);
 bool  dir_exists(const char *dirpath);
+bool  normalize_path(char **path);
 bool  brealpath(const char *file, char *out, s32 out_len);
 bool  get_current_working_dir(char *buf, usize buf_size);
 bool  get_dir_from_filepath(char *buf, const usize l, const char *filepath);

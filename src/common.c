@@ -330,6 +330,16 @@ bool brealpath(const char *file, char *out, s32 out_len)
 #endif
 }
 
+bool normalize_path(char **path)
+{
+    char buf[MAX_PATH] = "";
+    if (!brealpath(*path, buf, static_arrlenu(buf))) {
+        return false;
+    }
+    strprint(*path, "%s", buf);
+    return true;
+}
+
 bool create_dir(const char *dirpath)
 {
 #if BL_PLATFORM_WIN
@@ -681,7 +691,7 @@ char *execute(const char *cmd)
         builder_error("Command '%s' failed!", cmd);
         return tmp;
     }
-    char  buffer[128];
+    char buffer[128];
     while (fgets(buffer, static_arrlenu(buffer), pipe) != NULL) {
         strappend(tmp, "%s", buffer);
     }
