@@ -824,6 +824,9 @@ char *make_content(const struct context *ctx)
 }
 
 #if BL_PLATFORM_WIN
+// =================================================================================================
+// Configuration Windows 
+// =================================================================================================
 #include "wbs.h"
 
 #define LINKER_OPT_EXEC                                                                            \
@@ -837,12 +840,16 @@ char *make_content(const struct context *ctx)
 
 bool configure(struct context *ctx)
 {
+    ctx->version           = BL_VERSION;
+    ctx->linker_executable = "";
+    ctx->linker_opt_exec   = LINKER_OPT_EXEC;
+    ctx->linker_opt_shared = LINKER_OPT_SHARED;
+
     builder_warning("Lookup for compiler dependencies...!");
     struct wbs *wbs = wbslookup();
     if (!wbs->is_valid) {
         builder_error("Configuration failed!");
-        wbsfree(wbs);
-        return false;
+        goto FAILED;
     }
 
     builder_warning("Using Windows SDK: '%s'", wbs->windows_sdk_path);
@@ -850,28 +857,82 @@ bool configure(struct context *ctx)
 
     const char *exec_dir = builder.exec_dir;
 
-    ctx->version           = BL_VERSION;
-    ctx->linker_executable = "";
-    ctx->lib_dir           = scprint(&ctx->cache, "%s/%s", exec_dir, BL_API_DIR);
-    ctx->linker_opt_exec   = LINKER_OPT_EXEC;
-    ctx->linker_opt_shared = LINKER_OPT_SHARED;
+    char *libdir = gettmpstr();
+    strprint(libdir, "%s/%s", exec_dir, BL_API_DIR);
+    if (!dir_exists(libdir)) {
+        builder_error("BL API directory not found. (Expected location is '%s').", libdir);
+        puttmpstr(libdir);
+        goto FAILED;
+    }
+    ctx->lib_dir           = scprint(&ctx->cache, "%s", libdir);
+    puttmpstr(libdir);
+
     ctx->linker_lib_path =
         scprint(&ctx->cache, "%s;%s;%s", wbs->ucrt_path, wbs->um_path, wbs->msvc_lib_path);
 
     wbsfree(wbs);
     return true;
+FAILED:
+    wbsfree(wbs);
+    return false;
 }
+
 #elif BL_PLATFORM_LINUX
+// =================================================================================================
+// Configuration Linux
+// =================================================================================================
 
 #define LINKER_OPT_EXEC "-e _start -lc -lm"
 #define LINKER_OPT_SHARED "--shared -lc -lm"
 #define LINKER_LIB_PATH "/usr/lib:/usr/local/lib:/lib64:/usr/lib/x86_64-linux-gnu"
 #define LD_LINUX_SO "/lib64/ld-linux-x86-64.so.2"
-#define BLRT_64 "../lib/bl/rt/blrt_x86_64_linux.o"
+#define BLRT64 "../rt/blrt_x86_64_linux.o"
+
+bool configure(struct context *ctx)
+{
+    ctx->version           = BL_VERSION;
+    ctx->linker_executable = "";
+
+    const char *exec_dir = builder.exec_dir;
+
+    char *libdir = gettmpstr();
+    strprint(libdir, "%s/%s", exec_dir, BL_API_DIR);
+    if (!dir_exists(libdir)) {
+        builder_error("BL API directory not found. (Expected location is '%s').", libdir);
+        puttmpstr(libdir);
+        goto FAILED;
+    }
+    ctx->lib_dir = scprint(&ctx->cache, "%s", libdir);
+    puttmpstr(libdir);
+
+    if (!file_exists(LD_LINUX_SO)) {
+        builder_error("Cannot find 64bit version of 'ld-linux.so' on '%s'", LD_LINUX_SO);
+        goto FAILED;
+    }
+    
+    char *blrt64 = gettmpstr();
+    strprint(blrt64, "%s/%s", ctx->lib_dir, BLRT64);
+    if (!file_exists(libdir)) {
+        builder_error("Cannot find BLRT 64. (Expected location is '%s').", blrt64);
+        puttmpstr(blrt64);
+        goto FAILED;
+    }
+
+    ctx->linker_opt_exec   = scprint(&ctx->cache, "%s -dynamic-linker %s %s", blrt64, LD_LINUX_SO, LINKER_OPT_EXEC);
+    ctx->linker_opt_shared = LINKER_OPT_SHARED;
+    ctx->linker_lib_path = LINKER_LIB_PATH;
+
+    puttmpstr(blrt64);
+    return true;
+FAILED:
+    return false;
+}
 
 #else
+
 bool configure(struct context *ctx)
 {
     return false;
 }
+
 #endif

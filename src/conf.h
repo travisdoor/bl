@@ -45,4 +45,4 @@ struct config *confload(const char *filepath);
 void           confdelete(struct config *conf);
 const char    *confreads(struct config *conf, const char *path, const char *default_value);
 
-#endif BL_CONF_H
+#endif
