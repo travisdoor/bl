@@ -1,0 +1,14 @@
+BLC_EXEC :: "blc";
+
+init_environments :: fn (ctx: *Ctx, auto_config: bool) bool {
+    return false;
+}
+
+is_in_PATH :: fn (path: string) bool {
+    return false;
+}
+
+append_PATH :: fn (path: string) {
+}
+
+#private
