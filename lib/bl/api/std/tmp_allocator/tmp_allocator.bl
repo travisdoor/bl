@@ -110,7 +110,7 @@ temporary_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usiz
         AllocOp.Allocate {
             return allocate(size);
         }
-        AllocOp.Free;
+        AllocOp.Free; // Does nothing!
         AllocOp.Release {
             do_release(_root);
             _root = null;
@@ -160,7 +160,15 @@ allocate :: fn (size: usize) *u8 {
 
 allocate_block :: fn (capacity: usize) *Block {
     allocation_size :: capacity+sizeof(Block);
-    block := cast(*Block) alloc(allocation_size);
+    block: *Block;
+    // @Hack: Use default allocator in case the temporary is used as global context allocator to prevent
+    // looping!
+    if _context.allocator == &temporary_allocator {
+        block = auto allocate_memory(&default_allocator, allocation_size);
+    } else {
+        block = auto allocate_memory(_context.allocator, allocation_size);
+    }
+    assert(block);
     block.capacity = capacity;
     block.size = 0;
     block.next = null;
@@ -181,7 +189,15 @@ do_release :: fn (block: *Block) {
         _total_allocated -= block.capacity+sizeof(Block);
         _total_capacity -= block.capacity;
         next_block :: block.next;
-        free(auto block);
+
+        // @Hack: Use default allocator in case the temporary is used as global context allocator to prevent
+        // looping!
+        if _context.allocator == &temporary_allocator {
+            free_memory(&default_allocator, auto block);
+        } else {
+            free_memory(_context.allocator, auto block);
+        }
+
         block = next_block;
     }
 }

@@ -92,7 +92,6 @@ void        builder_terminate(void);
 const char *builder_get_lib_dir(void);
 const char *builder_get_exec_dir(void);
 bool        builder_load_config(const char *filepath);
-bool        builder_generate_default_config(const char *filepath);
 int builder_compile_config(const char *filepath, conf_data_t *out_data, struct token *import_from);
 
 #define builder_add_target(name) _builder_add_target(name, false)

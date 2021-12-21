@@ -372,15 +372,15 @@ print_any :: fn (buf: *?T, cur: s32, any: *Any) s32 {
                 return print_string(buf, cur, err.msg);
             }
 
-            cur = print_string(buf, cur, err.msg);
-            cur = print_string(buf, cur, " (");
+            cur = print_string(buf, cur, "[");
             if err.code < 0 { 
                 cur = print_string(buf, cur, "-");
                 cur = print_u64(buf, cur, auto err.code * -1, FmtIntBase.Dec, 1);
             } else {
                 cur = print_u64(buf, cur, auto err.code, FmtIntBase.Dec, 1);
             }
-            return print_string(buf, cur, ")");
+            cur = print_string(buf, cur, "] ");
+            return print_string(buf, cur, err.msg);
         } else {
             // Pointer
             ptr := @ cast(*u64) any.data;

@@ -227,7 +227,7 @@ AllocOp :: enum {
     Release;
 }
 
-/// Default alloactor context base.
+/// Default allocator context base.
 Allocator :: struct {
     handler: AllocFn;
 }

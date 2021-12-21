@@ -462,8 +462,10 @@ remove_extension :: fn (filename: string) string #inline {
     return tmp;
 }
 
-/// Get file extension (token after first `.`) from the `filename`. Function does not create copy of 
-/// original `filepath`. The `.` separator is not included into result string.
+/// Get file extension as a new string (token after first `.`) from the `filename` or empty string in
+/// case no extension was found.
+///
+/// The `.` separator is not included into result string.
 get_extension :: fn (filename: string) string #inline {
     if String.is_empty(filename) { return String.empty; }
     if filename[0] == '.' {
@@ -472,18 +474,18 @@ get_extension :: fn (filename: string) string #inline {
     }
     rhs: string;
     if String.split_by_first(filename, '.', null, &rhs) {
-        return rhs;
+        return String.new(rhs);
     }
     return String.empty;
 }
 
-/// Get directory path from filepath. Function supports only unix path delimiters. Returns empty 
-/// string in case path was not found.
+/// Get directory path from filepath. Function supports only unix path delimiters. Returns directory
+/// path as new string or empty string in case path was not found.
 get_directory :: fn (filepath: string) string #inline {
     if String.is_empty(filepath) { return String.empty; }
     lhs: string;
     if String.split_by_last(filepath, '/', &lhs) {
-        return lhs;
+        return String.new(lhs);
     }
     return String.empty;
 }

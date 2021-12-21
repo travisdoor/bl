@@ -51,7 +51,13 @@ void _log(BlLogMsgKind t, const char *file, s32 line, const char *msg, ...)
         color_print(stderr, BL_RED, "assert [%s:%d]: %s\n", file, line, buffer);
         break;
     case LOG_ABORT:
-        color_print(stderr, BL_RED, "internal compiler error [%s:%d]: %s\n", file, line, buffer);
+        color_print(stderr,
+                    BL_RED,
+                    "internal compiler error [%s:%d]: %s (Please report the issue on "
+                    "'https://github.com/travisdoor/bl/issues')\n",
+                    file,
+                    line,
+                    buffer);
         break;
     case LOG_WARNING:
         color_print(stderr, BL_YELLOW, "warning [%s:%d]: %s\n", file, line, buffer);

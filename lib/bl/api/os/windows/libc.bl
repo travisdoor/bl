@@ -43,3 +43,7 @@ c_strlen :: fn (str: *c_char) c_size_t #extern "strlen";
 c_strcmp :: fn (first: *c_char, second: *c_char) c_int #extern "strcmp";
 c_wcslen :: fn (str: *u16) usize #extern "wcslen";
 c_strerror :: fn (errnum: c_int) *c_char #extern "strerror";
+c_fgets :: fn (buf: c_void_ptr, size: c_int, f: c_void_ptr) c_void_ptr #extern "fgets";
+c_popen :: fn (f: *c_char, m: *c_char) c_void_ptr #extern "_popen";
+c_pclose :: fn (f: c_void_ptr) #extern "_pclose";
+c_getchar :: fn () c_int #extern "getchar";

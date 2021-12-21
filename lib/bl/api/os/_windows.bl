@@ -35,6 +35,7 @@
 
 OS_NAME :: "Windows";
 
+//@Cleanup: We should use getter functions instead?
 OS_STDIN  :: C_STDIN;
 OS_STDOUT :: C_STDOUT;
 OS_STDERR :: C_STDERR;
@@ -54,6 +55,18 @@ c_size_t    :: u64;
 c_ssize_t   :: s64;
 
 OS_PATH_MAX :: Win32.MAX_PATH;
+
+os_stdin :: fn () *u8 #inline {
+    return __acrt_iob_func(C_STDIN);
+}
+
+os_stdout :: fn () *u8 #inline {
+    return __acrt_iob_func(C_STDOUT);
+}
+
+os_stderr :: fn () *u8 #inline {
+    return __acrt_iob_func(C_STDERR);
+}
 
 os_sleep_ms :: fn (ms: f64) #inline {
     Win32.Sleep(auto ms);
@@ -183,4 +196,6 @@ __os_start :: fn () #entry {
 }
 
 #private
+__acrt_iob_func :: fn (i: c_int) *u8 #extern;
+
 _last_error_msg_buffer: [256]u8 #thread_local;

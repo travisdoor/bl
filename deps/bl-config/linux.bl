@@ -1,7 +1,40 @@
 BLC_EXEC :: "blc";
 
 init_environments :: fn (ctx: *Ctx, auto_config: bool) bool {
-    return false;
+    state: Error;
+    if auto_config {
+        state = gnu(ctx);
+        if is_ok(state) { return true; }
+
+        print_err("No suitable toolset found. Exiting with error: %", state);
+        return false;
+    }
+
+    options :: {:[3]string: 
+        "GNU",
+        "Custom (Generate empty configuration template file)",
+        "Quit"
+    };
+
+    result := true;
+    loop result {
+        opt :: choose("Please select the toolset:", options);
+        switch opt {
+            0 { state = build_tools(ctx);   } 
+            1 {
+                print_log("Custom configuration file must be fixed by hand.");
+                state = ok();
+            }
+            2 {
+                result = false;
+                state = ok();
+            }
+            default { assert(false); }
+        }
+        if is_ok(state) { break; }
+    }
+    if !is_ok(state) { print_err(state); }
+    return result;
 }
 
 is_in_PATH :: fn (path: string) bool {
@@ -12,3 +45,7 @@ append_PATH :: fn (path: string) {
 }
 
 #private
+
+gnu :: fn (ctx: *Ctx) Error {
+    return ok();
+}

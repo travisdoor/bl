@@ -123,8 +123,10 @@ env_get :: fn (var: string) string {
 }
 
 /// Sets environment variable.
-env_set :: fn (var: string) #inline {
-    c_putenv(auto var.ptr);
+env_set :: fn (var: string, value: string) #inline {
+    tmp :: sprint("%=%", var, value);
+    defer String.delete(tmp);
+    c_putenv(auto tmp.ptr);
 }
 
 /// Sets seed for `Math.rand` or utility function [random_number](#random_number) based on current 

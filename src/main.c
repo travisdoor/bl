@@ -47,32 +47,36 @@ static char *get_exec_dir(void)
     return strdup(tmp);
 }
 
-static bool generate_conf(const char *exec_dir)
+static int generate_conf(const char *exec_dir)
 {
-    char *filepath = gettmpstr();
-    strprint(filepath, "%s/../%s", exec_dir, BL_CONF_FILE);
-    const bool result = builder_generate_default_config(filepath);
-    puttmpstr(filepath);
-    return result;
+    char *cmd = gettmpstr();
+#if BL_PLATFORM_LINUX || BL_PLATFORM_MACOS
+    strprint(cmd, "%s/%s", exec_dir, BL_CONFIG_EXE);
+#else
+    strprint(cmd, "call \"%s/%s\"", exec_dir, BL_CONFIG_EXE);
+#endif
+    const s32 state = system(cmd);
+    puttmpstr(cmd);
+    return state;
 }
 
 static bool load_conf_file(const char *exec_dir)
 {
     char *filepath = gettmpstr();
-    strprint(filepath, "%s/../%s", exec_dir, BL_CONF_FILE);
+    strprint(filepath, "%s/../%s", exec_dir, BL_CONFIG_FILE);
     if (!file_exists(filepath)) {
         builder_warning("Configuration file '%s' not found.", filepath);
-        if (!builder_generate_default_config(filepath)) goto FAILED;
+        if (generate_conf(exec_dir) != 0) goto FAILED;
     }
     if (!builder_load_config(filepath)) goto FAILED;
     const char *got = confreads(builder.config, CONF_VERSION, "(UNKNOWN)");
     if (strcmp(got, BL_VERSION) != 0) {
-        builder_warning("Invalid version of current configuration file '%s'. Expected is '%s', got "
-                        "'%s'. Lets try to generate new one!",
-                        filepath,
-                        BL_VERSION,
-                        got);
-        if (!builder_generate_default_config(filepath)) goto FAILED;
+        builder_warning(
+            "Invalid version of current configuration file '%s'. Expected is '%s', got "
+            "'%s'. Consider generation of new one using 'blc --configure' of 'bl-config'.",
+            filepath,
+            BL_VERSION,
+            got);
     }
 
     puttmpstr(filepath);

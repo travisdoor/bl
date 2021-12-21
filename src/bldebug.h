@@ -91,7 +91,7 @@ static inline void bl_debug_break(void)
     }                                                                                              \
     (void)0
 
-#define bmagic_assert(O)                                                                            \
+#define bmagic_assert(O)                                                                           \
     {                                                                                              \
         bassert(O && "Invalid reference!");                                                        \
         bassert((O)->_magic == (void *)&(O)->_magic && "Invalid magic!");                          \
@@ -112,7 +112,7 @@ static inline void bl_debug_break(void)
     }                                                                                              \
     (void)0
 
-#define bmagic_assert(O)                                                                            \
+#define bmagic_assert(O)                                                                           \
     while (0) {                                                                                    \
     }                                                                                              \
     (void)0

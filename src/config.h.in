@@ -35,8 +35,10 @@
 #define BL_VERSION_MINOR @PROJECT_VERSION_MINOR@
 #define BL_VERSION_PATCH @PROJECT_VERSION_PATCH@
 
-#define BL_CONF_FILE "@BL_CONF_FILE@"
+#define BL_CONFIG_FILE "@BL_CONFIG_FILE@"
 #define BL_API_DIR "@BL_API_DIR@"
+#define BL_CONFIG_EXE "@BL_CONFIG_EXE@"
+#define BL_LINKER "@BL_LINKER@"
 
 // MULTIPLATFROM: os preload depends on target build platfrom and should be chosen in runtime later!
 #ifdef _WIN32
@@ -111,8 +113,6 @@
 
 #define VM_STACK_SIZE 2097152          // 2MB
 #define VM_COMPTIME_CACHE_SIZE 1048576 // 1MB
-
-#define BL_LINKER "@BL_LINKER@"
 
 // module related config
 #define CONF_MODULE_VERSION "VERSION"
