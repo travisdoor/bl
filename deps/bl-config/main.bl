@@ -223,7 +223,7 @@ lookup_lib_dir :: fn (ctx: *Ctx) Error {
 
 write_config :: fn (ctx: *Ctx, auto_config: bool) Error {
     // Write results.
-    ctx.opt_filepath = sprint("%/../%", ctx.pwd, DEFAULT_CONFIG_FILE);
+    ctx.opt_filepath = sprint("%/../%2", ctx.pwd, DEFAULT_CONFIG_FILE);
     file_err :: Fs.normalize(&ctx.opt_filepath);
     if is_ok(file_err) && (!auto_config) {
         print_warn("Configuration file already exist at '%'.", ctx.opt_filepath);
