@@ -1,0 +1,65 @@
+#scope C
+
+char      :: s8;
+uchar     :: u8;
+short     :: s16;
+ushort    :: u16;
+int       :: s32;
+uint      :: u32;
+long      :: s32;
+ulong     :: u32;
+longlong  :: s64;
+ulonglong :: u64;
+void_ptr  :: *u8;
+size_t    :: u64;
+ssize_t   :: s64;
+
+STDIN  :: 0;
+STDOUT :: 1;
+STDERR :: 2;
+
+RAND_MAX :: 0x7fffffff;
+
+SIGHUP  :: 1;
+SIGINT  :: 2;
+SIGQUIT :: 3; 
+SIGILL  :: 4; 
+SIGTRAP :: 5;
+SIGABRT :: 6;
+
+raise :: fn (sig: int) int #extern "raise";
+signal :: fn (signum: int, handler: *fn (v: int)) *fn (v: int) #extern "signal";
+malloc :: fn (size: size_t) void_ptr #extern "malloc";
+free :: fn (ptr: void_ptr) #extern "free";
+getenv :: fn (name: *char) *char #extern "getenv";
+putenv :: fn (var: *char) int #extern "_putenv";
+realpath :: fn (path: *char, resolved_path: *char) *char #extern "realpath";
+exit :: fn (v: int) #extern "_exit";
+system :: fn (command: *char) int #extern "system";
+strlen :: fn (str: *char) size_t #extern "strlen";
+strcmp :: fn (first: *char, second: *char) int #extern "strcmp";
+wcslen :: fn (str: *u16) usize #extern "wcslen";
+strerror :: fn (errnum: int) *char #extern "strerror";
+fgets :: fn (buf: void_ptr, size: int, f: void_ptr) void_ptr #extern "fgets";
+popen :: fn (f: *char, m: *char) void_ptr #extern "_popen";
+pclose :: fn (f: void_ptr) #extern "_pclose";
+getchar :: fn () int #extern "getchar";
+write :: fn (fd: int, buf: *char, count: size_t) ssize_t #extern "_write";
+read :: fn (fd: int, buf: *char, count: size_t) ssize_t #extern "_read";
+rand  :: fn () s32 #extern "rand";
+srand :: fn (seed: u32) #extern "srand";
+qsort :: fn (base: void_ptr, nitems: size_t, size: size_t, compar: *fn (void_ptr, void_ptr) int) #extern "qsort";
+asinf :: fn (arg: f32) f32 #extern "asinf";
+asin :: fn (arg: f64) f64 #extern "asin";
+acosf :: fn (n: f32) f32 #extern "acosf";
+acos :: fn (n: f64) f64 #extern "acos";
+tanf :: fn (x: f32) f32 #extern "tanf";
+tan :: fn (x: f64) f64 #extern "tan";
+atan2f :: fn (y: f32, x: f32) f32 #extern "atan2f";
+atan2 :: fn (y: f64, x: f64) f64 #extern "atan2";
+copysignf :: fn (x: f32, y: f32) f32 #extern "copysingf";
+copysign :: fn (x: f64, y: f64) f64 #extern "copysing";
+tolower :: fn (c: int) int #extern "tolower";
+toupper :: fn (c: int) int #extern "toupper";
+
+__acrt_iob_func :: fn (i: int) void_ptr #extern "__acrt_iob_func";

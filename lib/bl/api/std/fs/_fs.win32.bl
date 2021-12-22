@@ -218,7 +218,7 @@ set_cwd :: fn (path: string) Error #inline {
 
 get_home :: fn () string #inline {
     tmp :: "USERPROFILE";
-    cdir :: cast(*u8) c_getenv(auto tmp.ptr);
+    cdir :: cast(*u8) C.getenv(auto tmp.ptr);
     if !cdir { return String.new(); }
     out :: String.new(cdir);
     String.replace_all(&out, '\\', '/');

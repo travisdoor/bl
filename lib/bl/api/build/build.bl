@@ -213,13 +213,13 @@ AssertMode :: enum s32 {
 /// ```
 add_executable :: fn (name: string) *Target {
     if name.len == 0 { panic("Invalid executable name!"); }
-    return __add_target(auto name.ptr, cast(c_int) TargetKind.Executable);
+    return __add_target(auto name.ptr, cast(s32) TargetKind.Executable);
 }
 
 /// Add new shared library target target into the current compilation queue.
 add_library :: fn (name: string) *Target {
     if name.len == 0 { panic("Invalid library name!"); }
-    return __add_target(auto name.ptr, cast(c_int) TargetKind.SharedLibrary);
+    return __add_target(auto name.ptr, cast(s32) TargetKind.SharedLibrary);
 }
 
 /// Add new source file into the `target`. Function does nothing when `filepath` is already present 
@@ -367,15 +367,15 @@ get_module_import_policy :: fn (target: *Target) ModuleImportPolicy {
 }
 
 #private
-__add_target :: fn (name: *c_char, kind: c_int) *Target #extern;
-__add_unit :: fn (target: *Target, filepath: *c_char) #extern;
-__compile :: fn (target: *Target) c_int #extern;
-__compile_all :: fn () c_int #extern;
-__add_lib_path :: fn (target: *Target, path: *c_char) #extern;
-__link_library :: fn (target: *Target, name: *c_char) #extern;
-__append_linker_options :: fn (target: *Target, option: *c_char) #extern;
-__set_output_dir :: fn (target: *Target, dir: *c_char) #extern;
-__get_output_dir :: fn (target: *Target) *c_char #extern;
-__set_module_dir :: fn (target: *Target, dir: *c_char, policy: c_int) #extern;
-__get_module_dir :: fn (target: *Target) *c_char #extern;
+__add_target :: fn (name: *u8, kind: s32) *Target #extern;
+__add_unit :: fn (target: *Target, filepath: *u8) #extern;
+__compile :: fn (target: *Target) s32 #extern;
+__compile_all :: fn () s32 #extern;
+__add_lib_path :: fn (target: *Target, path: *u8) #extern;
+__link_library :: fn (target: *Target, name: *u8) #extern;
+__append_linker_options :: fn (target: *Target, option: *u8) #extern;
+__set_output_dir :: fn (target: *Target, dir: *u8) #extern;
+__get_output_dir :: fn (target: *Target) *u8 #extern;
+__set_module_dir :: fn (target: *Target, dir: *u8, policy: s32) #extern;
+__get_module_dir :: fn (target: *Target) *u8 #extern;
 __get_module_import_policy :: fn (target: *Target) s32 #extern;

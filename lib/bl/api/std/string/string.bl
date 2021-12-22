@@ -110,7 +110,7 @@ new :: fn {
     };
 
     fn (cstr: *u8, allocator: *Allocator = null) string {
-        len :: c_strlen(auto cstr);
+        len :: C.strlen(auto cstr);
         tmp: string #noinit;
         tmp.ptr = alloc_block(len, allocator);
         tmp.len = auto len;
@@ -495,17 +495,15 @@ count_of :: fn (str: string, c: u8) s32 #inline {
 
 /// Converts input string to lower case.
 to_lower :: fn (str: string) #inline {
-    c_tolower :: fn (c: s32) s32 #extern "tolower";
     loop i := 0; i < str.len; i += 1 {
-        str[i] = auto c_tolower(auto str[i]); 
+        str[i] = auto C.tolower(auto str[i]); 
     }
 }
 
 /// Converts input string to upper case.
 to_upper :: fn (str: string) #inline {
-    c_toupper :: fn (c: s32) s32 #extern "toupper";
     loop i := 0; i < str.len; i += 1 {
-        str[i] = auto c_toupper(auto str[i]); 
+        str[i] = auto C.toupper(auto str[i]); 
     }
 }
 

@@ -262,10 +262,10 @@ default_allocator :: {:Allocator: &default_allocator_handler };
 default_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, ptr : *u8 = null, _:= String.empty, _:= 0) *u8 {
     switch operation {
         AllocOp.Allocate {
-            return c_malloc(size);
+            return C.malloc(size);
         }
         AllocOp.Free {
-            c_free(ptr);
+            C.free(ptr);
         }
         AllocOp.Release;
         default { panic(); }

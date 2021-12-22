@@ -1,5 +1,4 @@
 #load "thread.bl"
-#load "os/windows/winapi.bl"
 
 #scope _ThreadImpl
 

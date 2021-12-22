@@ -98,7 +98,7 @@ choose :: fn (question: string, options: []string) s64 {
     loop {
         print("Select option [1-%] and hit ENTER: ", options.len);
         buf: [128]u8 #noinit;
-        cstr := c_fgets(auto buf.ptr, auto buf.len, auto os_stdin());
+        cstr := C.fgets(auto buf.ptr, auto buf.len, auto os_stdin());
         str :: cstr_to_str(cstr);
         index := String.to_s64(str) - 1; 
         if index < 0 || index >= options.len {
@@ -111,13 +111,13 @@ choose :: fn (question: string, options: []string) s64 {
 
 pipe_execute :: fn (cmd: string) (string, Error) {
     mode :: "r";
-    file :: c_popen(auto cmd.ptr, auto mode.ptr); 
-    defer c_pclose(file);
+    file :: C.popen(auto cmd.ptr, auto mode.ptr); 
+    defer C.pclose(file);
     str := String.new();
     if !file { return str, error("Execution of command '%' failed!", cmd); }
     buf: [128]u8 #noinit;
-    loop c_fgets(buf.ptr, auto buf.len, file) {
-        tmp :: {:string: auto c_strlen(auto buf.ptr), buf.ptr};
+    loop C.fgets(buf.ptr, auto buf.len, file) {
+        tmp :: {:string: auto C.strlen(auto buf.ptr), buf.ptr};
         String.append(&str, tmp);
     }
     if (!String.is_empty(str)) && (str[str.len-1] == '\n') {

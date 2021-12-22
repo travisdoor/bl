@@ -37,5 +37,26 @@ module :: fn (bin: *Assembly) #module_entry {
         #error "Module does not support current target platform"
     }
 }
+
+
+module config:
+
+name: "libc"
+
+x86_64-pc-windows-msvc:
+  src:
+    - foo.bl
+    - bar.bl
+    - foobar.bl
+        
+x86_64-pc-windows-gnu:
+  src:
+    - foo.bl
+    - bar.bl
+    - foobar.bl
+
+Windows:
+    libc MSVC
+    winapi
 */
 

@@ -571,6 +571,7 @@ int main(s32 argc, char *argv[])
         case ID_BUILD: // Build pipeline.
             opt.target->kind = ASSEMBLY_BUILD_PIPELINE;
             opt.target->run  = false;
+			index += 1;
             // Rest of arguments is forwarded into the build script.
             goto SKIP;
         case ID_DOC: // Generate documentation.

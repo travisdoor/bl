@@ -101,7 +101,7 @@ make_flags :: fn (f1: ?T, other: ...T) T {
 /// Converts zero terminated C style string to BL string. Result string shares original memory of 
 /// `cstr`.
 cstr_to_str :: fn (cstr: *u8) string #inline {
-    return {:string: auto c_strlen(auto cstr), cstr};
+    return {:string: auto C.strlen(auto cstr), cstr};
 };
 
 /// Produce right-shift of input `ptr` by count of `bytes`.
@@ -117,7 +117,7 @@ ptr_diff :: fn (a: *?T1, b: *?T2) s64 #inline {
 /// Reads environment variable specified by `var` name. Result is empty in case no such variable was 
 /// found or has no content. It's caller responsibility to delete result string.
 env_get :: fn (var: string) string {
-    out :: cast(*u8) c_getenv(auto var.ptr);
+    out :: cast(*u8) C.getenv(auto var.ptr);
     if !out { return String.new(); }
     return String.new(out);
 }
@@ -126,20 +126,20 @@ env_get :: fn (var: string) string {
 env_set :: fn (var: string, value: string) #inline {
     tmp :: sprint("%=%", var, value);
     defer String.delete(tmp);
-    c_putenv(auto tmp.ptr);
+    C.putenv(auto tmp.ptr);
 }
 
 /// Sets seed for `Math.rand` or utility function [random_number](#random_number) based on current 
 /// system tick time.
 random_seed_time :: fn () #inline {
-    Math.srand(auto os_tick_ms());
+    C.srand(auto os_tick_ms());
 }
 
 /// Generates random number in specified range <min, max> using standard libc rand generator.
 /// Random number generator seed is supposed to be set by :ref:`random_seed_time` or by `Math.srand` 
 /// call.
 random_number :: fn (min := 0, max := 1) s32 #inline {
-    return Math.rand() % (max + 1 - min) + min;
+    return C.rand() % (max + 1 - min) + min;
 }
 
 /// Polymorph slice sorting utility.

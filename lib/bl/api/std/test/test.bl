@@ -31,7 +31,6 @@
 #import "std/array"
 
 #load "std/debug.bl"
-#load "os/posix/signal.bl"
 
 // @CLEANUP These functions can be rewritten as polymorphs.
 
@@ -210,8 +209,8 @@ test_is_error :: fn (got_err: Error, expected_code: s32, loc := #call_location) 
 /// } 
 /// ```
 test_run :: fn () s32 {
-    sighup :: fn (_: c_int) {};
-    _signal(_SIGHUP, &sighup);
+    sighup :: fn (_: C.int) {};
+    C.signal(C.SIGHUP, &sighup);
 
     cases := testcases();
     if cases.len == 0 {

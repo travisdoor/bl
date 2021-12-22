@@ -1,12 +1,10 @@
 #private
 qsort_arg_pass :: fn () #test {
-    qsort :: fn (base: *s32, nitems: c_size_t, size: c_size_t, compar: *fn (*c_int, *c_int) c_int) #extern "qsort";
-    
     arr          := {:[10]s32: 1, 5, 99, 3, 4, 8, 11, 23, 45, 103};
     arr_expected :: {:[10]s32: 1, 3, 4, 5, 8, 11, 23, 45, 99, 103};
     print("before: %\n", arr);
-    qsort(arr.ptr, auto arr.len, sizeof(s32), &fn (a: *c_int, b: *c_int) c_int {
-        return (@a) - (@b);
+    C.qsort(auto arr.ptr, auto arr.len, sizeof(s32), &fn (a: C.void_ptr, b: C.void_ptr) C.int {
+        return (@ cast(*s32)a) - (@ cast(*s32)b);
     });
     print("after: %\n", arr);
 

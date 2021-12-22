@@ -58,8 +58,6 @@ U64_MAX : u64 : 18446744073709551615;
 
 sin       :: fn { f32_sin; f64_sin; }
 cos       :: fn { f32_cos; f64_cos; }
-asin      :: fn { f32_asin; f64_asin; }
-acos      :: fn { f32_acos; f64_acos; }
 floor     :: fn { f32_floor; f64_floor; }
 round     :: fn { f32_round; f64_round; }
 pow       :: fn { f32_pow; f64_pow; }
@@ -68,13 +66,11 @@ log2      :: fn { f32_log2; f64_log2; }
 log10     :: fn { f32_log10; f64_log10; }
 sqrt      :: fn { f32_sqrt; f64_sqrt; }
 ceil      :: fn { f32_ceil; f64_ceil; }
-tan       :: fn { f32_tan; f64_tan; }
-atan2     :: fn { f32_atan2; f64_atan2; }
-copysign  :: fn { f32_copysign; f64_copysign; }
-
-rand  :: fn () s32 #extern;
-srand :: fn (seed: u32) #extern;
-qsort :: fn (base: *c_void_ptr, nitems: c_size_t, size: c_size_t, compar: *fn (c_void_ptr, c_void_ptr) c_int) #extern;
+atan2     :: fn { C.atan2f; C.atan2; }
+copysign  :: fn { C.copysignf; C.copysign; }
+asin      :: fn { C.asinf; C.asin; }
+acos      :: fn { C.acosf; C.acos; }
+tan       :: fn { C.tanf; C.tan; }
 
 abs :: fn { f32_abs; f64_abs; }
 compare :: fn { f32_compare; f64_compare; }
@@ -129,19 +125,6 @@ f64_sqrt  :: fn (n: f64) f64 #intrinsic "sqrt.f64";
 f32_ceil  :: fn (x: f32) f32 #intrinsic "ceil.f32";
 f64_ceil  :: fn (x: f64) f64 #intrinsic "ceil.f64";
 
-// Lib C functions
-f32_asin     :: fn (arg: f32) f32 #extern "asinf";
-f64_asin     :: fn (arg: f64) f64 #extern "asin";
-f32_acos     :: fn (n: f32) f32 #extern "acosf";
-f64_acos     :: fn (n: f64) f64 #extern "acos";
-f32_tan      :: fn (x: f32) f32 #extern "tanf";
-f64_tan      :: fn (x: f64) f64 #extern "tan";
-f32_atan2    :: fn (y: f32, x: f32) f32 #extern "atan2f";
-f64_atan2    :: fn (y: f64, x: f64) f64 #extern "atan2";
-f32_copysign :: fn (x: f32, y: f32) f32 #extern "copysingf";
-f64_copysign :: fn (x: f64, y: f64) f64 #extern "copysing";
-// Lib C functions
-
 f32_abs :: fn (v: f32) f32 #inline {
     if v < 0.f { return -v; }
     return v;
@@ -151,7 +134,6 @@ f64_abs :: fn (v: f64) f64 #inline {
     if v < 0. { return -v; }
     return v;
 }
-
 
 f32_compare :: fn (a: f32, b: f32, epsilon := F32_EPSILON) bool #inline {
     return abs(a - b) < epsilon;

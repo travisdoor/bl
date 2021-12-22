@@ -26,46 +26,31 @@
 // SOFTWARE.
 // =================================================================================================
 
+#import "libc"
+#import "os/windows"
 #import "std/string"
-#load "windows/winapi.bl"
-#load "windows/io.bl"
-#load "windows/libc.bl"
-#load "posix/signal.bl"
+
 #load "std/error.bl"
 
 OS_NAME :: "Windows";
 
 //@Cleanup: We should use getter functions instead?
-OS_STDIN  :: C_STDIN;
-OS_STDOUT :: C_STDOUT;
-OS_STDERR :: C_STDERR;
-
-c_char      :: s8;
-c_uchar     :: u8;
-c_short     :: s16;
-c_ushort    :: u16;
-c_int       :: s32;
-c_uint      :: u32;
-c_long      :: s32;
-c_ulong     :: u32;
-c_longlong  :: s64;
-c_ulonglong :: u64;
-c_void_ptr  :: *u8;
-c_size_t    :: u64;
-c_ssize_t   :: s64;
+OS_STDIN  :: C.STDIN;
+OS_STDOUT :: C.STDOUT;
+OS_STDERR :: C.STDERR;
 
 OS_PATH_MAX :: Win32.MAX_PATH;
 
 os_stdin :: fn () *u8 #inline {
-    return __acrt_iob_func(C_STDIN);
+    return C.__acrt_iob_func(C.STDIN);
 }
 
 os_stdout :: fn () *u8 #inline {
-    return __acrt_iob_func(C_STDOUT);
+    return C.__acrt_iob_func(C.STDOUT);
 }
 
 os_stderr :: fn () *u8 #inline {
-    return __acrt_iob_func(C_STDERR);
+    return C.__acrt_iob_func(C.STDERR);
 }
 
 os_sleep_ms :: fn (ms: f64) #inline {
@@ -93,7 +78,7 @@ os_get_exec_path :: fn () string {
 }
 
 os_execute :: fn (command: string) s32 {
-    return c_system(auto command.ptr);
+    return C.system(auto command.ptr);
 }
 
 os_get_last_error :: fn () (s32, string) #inline {
@@ -115,7 +100,7 @@ os_get_last_error :: fn () (s32, string) #inline {
 }
 
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s64 {
-    return _write(fd, auto buf, count);
+    return C.write(fd, auto buf, count);
 };
 
 // This is internally called from runtime when `debugbreak` is reached. Basically this when execution
@@ -139,7 +124,7 @@ __os_abort :: fn () #compiler {
 }
 
 __os_abort_default :: fn () #inline {
-    _raise(_SIGABRT);
+    C.raise(C.SIGABRT);
 }
 
 __os_start :: fn () #entry {
@@ -165,7 +150,7 @@ __os_start :: fn () #entry {
             tmp_size += auto Win32.WideCharToMultiByte(Win32.CP_UTF8, null, wargs[i], -1, null, 0, null, null); 
         }
 
-        buffer :: c_malloc(result_size + tmp_size); 
+        buffer :: C.malloc(result_size + tmp_size); 
         if buffer == null { __os_abort(); }
 
         out_args.len = wargs.len;
@@ -175,7 +160,7 @@ __os_start :: fn () #entry {
         tmp_i := 0;
         loop i := 0; i < wargs.len; i += 1 {
             len :: Win32.WideCharToMultiByte(Win32.CP_UTF8, null, wargs[i], -1, null, 0, null, null); 
-            Win32.WideCharToMultiByte(Win32.CP_UTF8, null, wargs[i], auto c_wcslen(wargs[i]), &tmp[tmp_i], len, null, null); 
+            Win32.WideCharToMultiByte(Win32.CP_UTF8, null, wargs[i], auto C.wcslen(wargs[i]), &tmp[tmp_i], len, null, null); 
 
             (@out_args)[i].len = len - 1;
             (@out_args)[i].ptr = &tmp[tmp_i];
@@ -191,11 +176,10 @@ __os_start :: fn () #entry {
     command_line_arguments.ptr = args.ptr;
 
     out :: cast(s32) main();
-    c_free(auto args.ptr); 
-    c_exit(out);
+    C.free(auto args.ptr); 
+    C.exit(out);
 }
 
 #private
-__acrt_iob_func :: fn (i: c_int) *u8 #extern;
 
 _last_error_msg_buffer: [256]u8 #thread_local;

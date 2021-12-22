@@ -84,12 +84,10 @@ WIN_SDK :: "Windows Kits/10/Lib";
 UCRT :: "ucrt/x64";
 UM :: "um/x64";
 LINKER_OPT_EXEC :: 
-    "/NOLOGO /ENTRY:__os_start /SUBSYSTEM:CONSOLE /INCREMENTAL:NO /MACHINE:x64 "
-    "kernel32.lib user32.lib gdi32.lib shell32.lib ucrt.lib legacy_stdio_definitions.lib msvcrt.lib vcruntime.lib Shlwapi.lib";
+    "/NOLOGO /ENTRY:__os_start /SUBSYSTEM:CONSOLE /INCREMENTAL:NO /MACHINE:x64 ";
 
 LINKER_OPT_SHARED :: 
-    "/NOLOGO /INCREMENTAL:NO /MACHINE:x64 /DLL "
-    "kernel32.lib user32.lib gdi32.lib shell32.lib ucrt.lib legacy_stdio_definitions.lib msvcrt.lib vcruntime.lib Shlwapi.lib";
+    "/NOLOGO /INCREMENTAL:NO /MACHINE:x64 /DLL ";
 
 build_tools :: fn (ctx: *Ctx) Error {
     build_tools_path := sprint("%/%", _program_files_path, BUILD_TOOLS);

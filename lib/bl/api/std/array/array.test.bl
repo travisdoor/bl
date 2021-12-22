@@ -122,11 +122,11 @@ test_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, pt
     switch operation {
         AllocOp.Allocate {
             alloc_count += 1;
-            return c_malloc(size);
+            return C.malloc(size);
         }
         AllocOp.Free {
             free_count += 1;
-            c_free(ptr);
+            C.free(ptr);
         }
         AllocOp.Release;
         default { panic(); }
