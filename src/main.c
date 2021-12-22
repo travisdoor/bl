@@ -65,8 +65,12 @@ static bool load_conf_file(const char *exec_dir)
     char *filepath = gettmpstr();
     strprint(filepath, "%s/../%s", exec_dir, BL_CONFIG_FILE);
     if (!file_exists(filepath)) {
-        builder_warning("Configuration file '%s' not found.", filepath);
-        if (generate_conf(exec_dir) != 0) goto FAILED;
+        builder_error(
+            "Configuration file '%s' not found. Please generate one using 'blc --configure' or "
+            "'bl-config' tool. Visit http://biscuitlang.org or report an issue on "
+            "https://github.com/travisdoor/bl/issues in case of any problems.",
+            filepath);
+        goto FAILED;
     }
     if (!builder_load_config(filepath)) goto FAILED;
     const char *got = confreads(builder.config, CONF_VERSION, "(UNKNOWN)");
@@ -93,6 +97,8 @@ FAILED:
 typedef struct ApplicationOptions {
     bool print_help;
     bool print_about;
+    bool print_version;
+    bool print_host_triple;
     bool where_is_api;
     bool configure;
 } ApplicationOptions;
@@ -271,6 +277,16 @@ void print_where_is_api(FILE *stream)
     fprintf(stream, "%s", builder_get_lib_dir());
 }
 
+void print_host_triple(FILE *stream)
+{
+    struct target_triple triple;
+    if (target_init_default_triple(&triple)) {
+        char *str = target_triple_to_string(&triple);
+        fprintf(stream, "%s", str);
+        bfree(str);
+    }
+}
+
 // =================================================================================================
 // MAIN
 // =================================================================================================
@@ -310,7 +326,6 @@ int main(s32 argc, char *argv[])
     opt.target = builder_add_default_target("out");
 
     bool has_input_files = false;
-    bool print_version   = false;
 
 #define ID_BUILD 1
 #define ID_RUN 2
@@ -343,7 +358,7 @@ int main(s32 argc, char *argv[])
         {
             .name       = "--version",
             .help       = "Print compiler version and exit.",
-            .property.b = &print_version,
+            .property.b = &opt.app.print_version,
         },
         {
             .kind = STRING,
@@ -370,7 +385,12 @@ int main(s32 argc, char *argv[])
         {
             .name       = "--where-is-api",
             .property.b = &opt.app.where_is_api,
-            .help       = "Return path to API folder and exit.",
+            .help       = "Print path to API folder and exit.",
+        },
+        {
+            .name       = "--host-triple",
+            .property.b = &opt.app.print_host_triple,
+            .help       = "Print current host target triple and exit.",
         },
         {
             .name       = "--configure",
@@ -612,8 +632,13 @@ SKIP:
         EXIT(EXIT_SUCCESS);
     }
 
-    if (print_version) {
+    if (opt.app.print_version) {
         fprintf(stdout, "%s", BL_VERSION);
+        EXIT(EXIT_SUCCESS);
+    }
+
+    if (opt.app.print_host_triple) {
+        print_host_triple(stdout);
         EXIT(EXIT_SUCCESS);
     }
 
