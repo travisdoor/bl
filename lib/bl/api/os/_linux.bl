@@ -58,6 +58,20 @@ c_void_ptr  :: *u8;
 c_size_t    :: u64;
 c_ssize_t   :: s64;
 
+os_stdin :: fn () *u8 #inline {
+    m :: "r";
+    return c_fopen(auto C_STDIN, auto m.ptr);
+}
+
+os_stdout :: fn () *u8 #inline {
+    return auto C_STDOUT;
+}
+
+os_stderr :: fn () *u8 #inline {
+    return auto C_STDERR;
+}
+
+
 os_sleep_ms :: fn (ms: f64) {
     _usleep(auto ms * 1000.0);
 };

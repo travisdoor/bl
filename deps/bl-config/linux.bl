@@ -20,7 +20,7 @@ init_environments :: fn (ctx: *Ctx, auto_config: bool) bool {
     loop result {
         opt :: choose("Please select the toolset:", options);
         switch opt {
-            0 { state = build_tools(ctx);   } 
+            0 { state = gnu(ctx);   } 
             1 {
                 print_log("Custom configuration file must be fixed by hand.");
                 state = ok();
