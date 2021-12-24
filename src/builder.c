@@ -515,9 +515,6 @@ struct target *_builder_add_target(const char *name, bool is_default)
     struct target *target = NULL;
     if (is_default) {
         target = target_new(name);
-        if (!target_init_default_triple(&target->triple)) {
-            exit(ERR_UNSUPPORTED_TARGET);
-        }
         builder.default_target = target;
     } else {
         target = target_dup(name, builder.default_target);

@@ -35,7 +35,7 @@
 
 enum sym {
 #define sm(tok, str, len) SYM_##tok,
-#include "tokens.inc"
+#include "tokens.def"
 #undef sm
 };
 

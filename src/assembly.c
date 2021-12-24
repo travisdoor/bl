@@ -42,34 +42,40 @@
 const char *arch_names[] = {
 #define GEN_ARCH
 #define entry(X) #X,
-#include "assembly.inc"
+#include "target.def"
 #undef entry
 #undef GEN_ARCH
-};
-
-const char *os_names[] = {
-#define GEN_OS
-#define entry(X) #X,
-#include "assembly.inc"
-#undef entry
-#undef GEN_OS
 };
 
 const char *vendor_names[] = {
 #define GEN_VENDOR
 #define entry(X) #X,
-#include "assembly.inc"
+#include "target.def"
 #undef entry
 #undef GEN_VENDOR
+};
+
+const char *os_names[] = {
+#define GEN_OS
+#define entry(X) #X,
+#include "target.def"
+#undef entry
+#undef GEN_OS
 };
 
 const char *env_names[] = {
 #define GEN_ENV
 #define entry(X) #X,
-#include "assembly.inc"
+#include "target.def"
 #undef entry
 #undef GEN_ENV
 };
+
+const char *supported_targets[] = {
+#define GEN_SUPPORTED
+#include "target.def"
+#undef GEN_SUPPORTED
+    NULL};
 
 static const usize sarr_total_size = sizeof(union {
     ast_nodes_t        _1;
@@ -116,16 +122,16 @@ static void dl_terminate(struct assembly *assembly)
     dcFree(assembly->dc_vm);
 }
 
-static void parse_triple(const char *normalized_triple, struct target_triple *out_triple)
+static void parse_triple(const char *llvm_triple, struct target_triple *out_triple)
 {
     bassert(out_triple);
-    // arch-vendor-os-evironment
     char *arch, *vendor, *os, *env;
     arch = vendor = os = env = "";
     const char *delimiter    = "-";
-    char       *tmp          = strdup(normalized_triple);
+    char       *tmp          = strdup(llvm_triple);
     char       *token        = strtok(tmp, delimiter);
     s32         state        = 0;
+    // arch-vendor-os-evironment
     while (token) {
         switch (state++) {
         case 0:
@@ -156,7 +162,7 @@ static void parse_triple(const char *normalized_triple, struct target_triple *ou
 
     out_triple->vendor = VENDOR_unknown;
     for (usize i = 0; i < static_arrlenu(vendor_names); ++i) {
-        if (strcmp(vendor, vendor_names[i]) == 0) {
+        if (strncmp(vendor, vendor_names[i], strlen(vendor_names[i])) == 0) {
             out_triple->vendor = i;
             break;
         }
@@ -478,7 +484,7 @@ void target_add_lib_path(struct target *target, const char *path)
 {
     bmagic_assert(target);
     if (!path) return;
-    char *dup= strdup(path);
+    char *dup = strdup(path);
     win_path_to_unix(dup, strlen(dup));
     arrput(target->default_lib_paths, dup);
 }
@@ -488,7 +494,7 @@ void target_add_lib(struct target *target, const char *lib)
     bmagic_assert(target);
     if (!lib) return;
     char *dup = strdup(lib);
-	win_path_to_unix(dup, strlen(dup));
+    win_path_to_unix(dup, strlen(dup));
     arrput(target->default_libs, dup);
 }
 
@@ -524,10 +530,16 @@ void target_set_module_dir(struct target *target, const char *dir, enum module_i
 
 bool target_is_triple_valid(struct target_triple *triple)
 {
-    if (triple->arch == ARCH_unknown) return false;
-    if (triple->os == OS_unknown) return false;
-    // @INCOMPLETE Consider validation of other fields???
-    return true;
+    char        *str      = target_triple_to_string(triple);
+    bool         is_valid = false;
+    const char **current  = supported_targets;
+    for (; *current; current++) {
+        if (strcmp(str, *current) == 0) {
+            is_valid = true;
+        }
+    }
+    free(str);
+    return is_valid;
 }
 
 bool target_init_default_triple(struct target_triple *triple)
@@ -545,19 +557,30 @@ bool target_init_default_triple(struct target_triple *triple)
 
 char *target_triple_to_string(const struct target_triple *triple)
 {
-    const char *arch   = "";
-    const char *vendor = "";
-    const char *os     = "";
-    const char *env    = "";
+    const char *arch, *vendor, *os, *env;
+    arch = vendor = os = env = "";
     if (triple->arch < static_arrlenu(arch_names)) arch = arch_names[triple->arch];
     if (triple->vendor < static_arrlenu(vendor_names)) vendor = vendor_names[triple->vendor];
     if (triple->os < static_arrlenu(os_names)) os = os_names[triple->os];
     if (triple->env < static_arrlenu(env_names)) env = env_names[triple->env];
-    const usize len =
-        strlen(arch) + strlen(vendor) + strlen(os) + strlen(env) + 4; // 3x'-' + terminator
-    char *str = bmalloc(len);
-    snprintf(str, len, "%s-%s-%s-%s", arch, vendor, os, env);
+    char *str = NULL;
+    usize len = 0;
+    if (triple->env == ENV_unknown) {
+        len = snprintf(NULL, 0, "%s-%s-%s", arch, vendor, os) + 1;
+        str = bmalloc(len);
+        snprintf(str, len, "%s-%s-%s", arch, vendor, os);
+    } else {
+        len = snprintf(NULL, 0, "%s-%s-%s-%s", arch, vendor, os, env) + 1;
+        str = bmalloc(len);
+        snprintf(str, len, "%s-%s-%s-%s", arch, vendor, os, env);
+    }
+    bassert(str);
     return str;
+}
+
+const char **target_get_supported(void)
+{
+    return supported_targets;
 }
 
 struct assembly *assembly_new(const struct target *target)

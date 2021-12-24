@@ -73,37 +73,37 @@ enum assert_mode {
 enum arch {
 #define GEN_ARCH
 #define entry(X) ARCH_##X,
-#include "assembly.inc"
+#include "target.def"
 #undef entry
 #undef GEN_ARCH
     _ARCH_COUNT
 };
 extern const char *arch_names[_ARCH_COUNT];
 
-enum operating_system {
-#define GEN_OS
-#define entry(X) OS_##X,
-#include "assembly.inc"
-#undef entry
-#undef GEN_OS
-    _OS_COUNT
-};
-extern const char *os_names[_OS_COUNT];
-
 enum vendor {
 #define GEN_VENDOR
 #define entry(X) VENDOR_##X,
-#include "assembly.inc"
+#include "target.def"
 #undef entry
 #undef GEN_VENDOR
     _VENDOR_COUNT
 };
 extern const char *vendor_names[_VENDOR_COUNT];
 
+enum operating_system {
+#define GEN_OS
+#define entry(X) OS_##X,
+#include "target.def"
+#undef entry
+#undef GEN_OS
+    _OS_COUNT
+};
+extern const char *os_names[_OS_COUNT];
+
 enum environment {
 #define GEN_ENV
 #define entry(X) ENV_##X,
-#include "assembly.inc"
+#include "target.def"
 #undef entry
 #undef GEN_ENV
     _ENV_COUNT
@@ -246,7 +246,7 @@ struct assembly {
     /* Builtins */
     struct BuiltinTypes {
 #define GEN_BUILTIN_TYPES
-#include "assembly.inc"
+#include "assembly.def"
 #undef GEN_BUILTIN_TYPES
         bool is_rtti_ready;
         bool is_any_ready;
@@ -271,6 +271,7 @@ void           target_set_module_dir(struct target            *target,
 bool           target_is_triple_valid(struct target_triple *triple);
 bool           target_init_default_triple(struct target_triple *triple);
 char          *target_triple_to_string(const struct target_triple *triple);
+const char   **target_get_supported(void);
 
 struct assembly *assembly_new(const struct target *target);
 void             assembly_delete(struct assembly *assembly);
