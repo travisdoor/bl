@@ -152,6 +152,7 @@ struct native_lib {
     bool                  syntax_only;                                                             \
     bool                  vmdbg_enabled;                                                           \
     s32                   vmdbg_break_on;                                                          \
+    bool                  enable_experimental_targets;                                             \
     struct target_triple  triple;
 
 struct target {
@@ -271,7 +272,6 @@ void           target_set_module_dir(struct target            *target,
 bool           target_is_triple_valid(struct target_triple *triple);
 bool           target_init_default_triple(struct target_triple *triple);
 char          *target_triple_to_string(const struct target_triple *triple);
-const char   **target_get_supported(void);
 
 struct assembly *assembly_new(const struct target *target);
 void             assembly_delete(struct assembly *assembly);
