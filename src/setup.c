@@ -26,7 +26,9 @@
 // SOFTWARE.
 // =================================================================================================
 
+#include "builder.h"
 #include "common.h"
+#include "stb_ds.h"
 
 #if BL_PLATFORM_WIN
 #include "wbs.h"
@@ -46,8 +48,10 @@ struct context {
     struct string_cache *cache;
 };
 
-static bool  default_config(struct context *ctx);
-static bool  x86_64_pc_windows_msvc(struct context *ctx);
+static bool default_config(struct context *ctx);
+static bool x86_64_pc_windows_msvc(struct context *ctx);
+static bool x86_64_pc_linux_gnu(struct context *ctx);
+
 static char *make_content(const struct context *ctx);
 
 bool setup(const char *exec_dir, const char *filepath, const char *triple)
@@ -80,6 +84,8 @@ bool setup(const char *exec_dir, const char *filepath, const char *triple)
 #else
         state = default_config(&ctx);
 #endif
+    } else if (strcmp(ctx.triple, "x86_64-pc-linux-gnu") == 0) {
+        state = x86_64_pc_linux_gnu(&ctx);
     } else {
         state = default_config(&ctx);
     }
@@ -162,6 +168,7 @@ bool default_config(struct context UNUSED(*ctx))
     return true;
 }
 
+#ifdef BL_WBS
 bool x86_64_pc_windows_msvc(struct context *ctx)
 {
     ctx->linker_executable = "";
@@ -182,4 +189,10 @@ bool x86_64_pc_windows_msvc(struct context *ctx)
 FAILED:
     wbsfree(wbs);
     return false;
+}
+#endif
+
+bool x86_64_pc_linux_gnu(struct context *ctx)
+{
+    return true;
 }
