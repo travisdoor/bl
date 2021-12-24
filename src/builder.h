@@ -52,6 +52,7 @@ struct builder_options {
     bool  time_report;
     s32   error_limit;
     char *doc_out_dir;
+    bool  enable_experimental_targets;
 };
 
 struct builder {
@@ -89,6 +90,8 @@ struct location;
 // Initialize builder global instance with executable directory specified.
 void        builder_init(const struct builder_options *options, const char *exec_dir);
 void        builder_terminate(void);
+// Return zero terminated list of supported target triples. Must be disposed by bfree.
+char      **builder_get_supported_targets(void);
 const char *builder_get_lib_dir(void);
 const char *builder_get_exec_dir(void);
 bool        builder_load_config(const char *filepath);

@@ -71,12 +71,6 @@ const char *env_names[] = {
 #undef GEN_ENV
 };
 
-const char *supported_targets[] = {
-#define GEN_SUPPORTED
-#include "target.def"
-#undef GEN_SUPPORTED
-    NULL};
-
 static const usize sarr_total_size = sizeof(union {
     ast_nodes_t        _1;
     mir_args_t         _2;
@@ -532,13 +526,14 @@ bool target_is_triple_valid(struct target_triple *triple)
 {
     char        *str      = target_triple_to_string(triple);
     bool         is_valid = false;
-    const char **current  = supported_targets;
-    for (; *current; current++) {
-        if (strcmp(str, *current) == 0) {
+    char **list     = builder_get_supported_targets();
+    for (; *list; list++) {
+        if (strcmp(str, *list) == 0) {
             is_valid = true;
         }
     }
     free(str);
+    bfree(list);
     return is_valid;
 }
 
@@ -576,11 +571,6 @@ char *target_triple_to_string(const struct target_triple *triple)
     }
     bassert(str);
     return str;
-}
-
-const char **target_get_supported(void)
-{
-    return supported_targets;
 }
 
 struct assembly *assembly_new(const struct target *target)

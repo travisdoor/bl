@@ -286,10 +286,11 @@ void print_host_triple(FILE *stream)
 
 void print_supported(FILE *stream)
 {
-    const char **list = target_get_supported();
+    char **list = builder_get_supported_targets();
     for (; *list; list++) {
         fprintf(stream, "%s\n", *list);
     }
+    bfree(list);
 }
 
 // =================================================================================================
@@ -401,6 +402,11 @@ int main(s32 argc, char *argv[])
             .name       = "--target-supported",
             .property.b = &opt.app.print_supported,
             .help = "Print all supported targets and exit. (Cross compilation is not allowed yet!)",
+        },
+        {
+            .name       = "--target-enable-experimental",
+            .property.b = &opt.builder.enable_experimental_targets,
+            .help       = "Enable experimental compilation targets.",
         },
         {
             .name       = "--configure",

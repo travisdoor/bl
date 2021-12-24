@@ -66,6 +66,18 @@ void vm_entry_run(struct assembly *assembly);
 void vm_build_entry_run(struct assembly *assembly);
 void vm_tests_run(struct assembly *assembly);
 
+const char *supported_targets[] = {
+#define GEN_SUPPORTED
+#include "target.def"
+#undef GEN_SUPPORTED
+};
+
+const char *supported_targets_experimental[] = {
+#define GEN_EXPERIMENTAL
+#include "target.def"
+#undef GEN_EXPERIMENTAL
+};
+
 // =================================================================================================
 // Builder
 // =================================================================================================
@@ -477,6 +489,24 @@ void builder_terminate(void)
     free(builder.exec_dir);
 }
 
+char **builder_get_supported_targets(void)
+{
+    const bool  add_experimantal = builder.options->enable_experimental_targets;
+    const usize len              = static_arrlenu(supported_targets);
+    const usize lenexperimental  = static_arrlenu(supported_targets_experimental);
+    if (add_experimantal) len += static_arrlenu(supported_targets_experimental);
+
+    char **dest = bmalloc((len + 1) * sizeof(char *)); // +1 for terminator
+    memcpy(dest, supported_targets, sizeof(supported_targets));
+    if (add_experimantal) {
+        memcpy(dest + sizeof(supported_targets),
+               supported_targets_experimental,
+               sizeof(supported_targets_experimental));
+    }
+    dest[len] = NULL;
+    return dest;
+}
+
 const char *builder_get_lib_dir(void)
 {
     return confreads(builder.config, CONF_LIB_DIR_KEY, NULL);
@@ -514,7 +544,7 @@ struct target *_builder_add_target(const char *name, bool is_default)
 {
     struct target *target = NULL;
     if (is_default) {
-        target = target_new(name);
+        target                 = target_new(name);
         builder.default_target = target;
     } else {
         target = target_dup(name, builder.default_target);
@@ -733,4 +763,3 @@ void builder_async_submit_unit(struct unit *unit)
     if (!threading->is_compiling) return;
     async_push(unit);
 }
-

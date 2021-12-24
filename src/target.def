@@ -27,9 +27,12 @@ entry(musl)
 
 #ifdef GEN_SUPPORTED
 "x86_64-pc-windows-msvc",
-// "x86_64-pc-windows-gnu",
 "x86_64-pc-linux-gnu",
-// "x86_64-pc-linux-musl",
 "x86_64-apple-darwin",
 "arm64-apple-darwin",
+#endif
+
+#ifdef GEN_EXPERIMENTAL
+"x86_64-pc-windows-gnu",
+"x86_64-pc-linux-musl",
 #endif
