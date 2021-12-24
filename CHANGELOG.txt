@@ -1,4 +1,4 @@
-1.0.0
+0.10.0
 ---------------------------------------------------------------------------------------
 Add lazy IR generation to reduce LLVM generated stuff.
 Add thread local global storage support.
@@ -23,6 +23,8 @@ Test cases are no longer reported as unused during compilation.
 Update dyncall to version 1.2 (due to experimental support of M1 Macs).
 Redesign allocator structure.
 Change array API.
+Redesign libc importing into modules.
+Redesing of bl-config + using YAML as main config format.
 
 0.9.0 - PRE-RELEASE
 ---------------------------------------------------------------------------------------

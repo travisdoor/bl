@@ -1,42 +1,42 @@
+#import "os/posix/pthread"
 #load "sync.bl"
-#load "os/posix/pthread.bl"
 
 #scope _SyncImpl
 
-Mutex :: _pthread_mutex_t;
+Mutex :: pthread_mutex_t;
 
 init :: fn (mutex: *Mutex) #inline {
-    err :: _pthread_mutex_init(mutex, null);
+    err :: pthread_mutex_init(mutex, null);
     if err != 0 {
-        estr :: cast(*u8) c_strerror(err);
+        estr :: cast(*u8) C.strerror(err);
         panic("Cannot init mutex: '%' (%).", estr, err);
     }
 }
 
 terminate :: fn (mutex: *Mutex) #inline {
-    err :: _pthread_mutex_destroy(mutex);
+    err :: pthread_mutex_destroy(mutex);
     if err != 0 {
-        estr :: cast(*u8) c_strerror(err);
+        estr :: cast(*u8) C.strerror(err);
         panic("Cannot terminate mutex: '%' (%).", estr, err);
     }
 }
 
 lock :: fn (mutex: *Mutex) #inline {
-    err :: _pthread_mutex_lock(mutex);
+    err :: pthread_mutex_lock(mutex);
     if err != 0 {
-        estr :: cast(*u8) c_strerror(err);
+        estr :: cast(*u8) C.strerror(err);
         panic("Cannot lock mutex: '%' (%).", estr, err);
     }
 }
 
 try_lock :: fn (mutex: *Mutex) bool #inline {
-    return _pthread_mutex_lock(mutex) == 0;
+    return pthread_mutex_lock(mutex) == 0;
 }
 
 unlock :: fn (mutex: *Mutex) #inline {
-    err :: _pthread_mutex_unlock(mutex);
+    err :: pthread_mutex_unlock(mutex);
     if err != 0 {
-        estr :: cast(*u8) c_strerror(err);
+        estr :: cast(*u8) C.strerror(err);
         panic("Cannot unlock mutex: '%' (%).", estr, err);
     }
 }

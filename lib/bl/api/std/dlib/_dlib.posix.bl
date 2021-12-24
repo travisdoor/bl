@@ -39,4 +39,4 @@ RTLD_LAZY   :: 0x1;
 _dlopen :: fn (path: *u8, mode: s32) *u8 #extern "dlopen";
 _dlclose :: fn (handle: *u8) s32 #extern "dlclose";
 _dlsym :: fn (handle: *u8, symbol: *u8) *u8 #extern "dlsym";
-_dlerror :: fn () *c_char #extern "dlerror";
+_dlerror :: fn () *s8 #extern "dlerror";

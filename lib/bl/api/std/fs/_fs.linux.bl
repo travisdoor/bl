@@ -1,7 +1,3 @@
-#load "os/linux/stat.bl"
-#load "os/linux/fcntl.bl"
-#load "os/linux/dirent.bl"
-#load "os/posix/unistd.bl"
 #load "fs.bl"
 
 #scope _FsImpl
@@ -11,15 +7,15 @@ FILE_INVALID : File : -1;
 
 exist :: fn (filepath: string) bool #inline {
     if filepath.len == 0 { return false; }
-    tmp: _stat_t;
-    return _stat(auto filepath.ptr, &tmp) == 0;
+    tmp: C.stat_t;
+    return C.stat(auto filepath.ptr, &tmp) == 0;
 }
 
 open :: fn (filepath: string, mode: ...Fs.OpenMode) (Fs.File, Error) {
     if String.is_empty(filepath) { return 0, error(ERR_INVALID_HANDLE, "File path is empty!"); }
     flags := modes_to_flags(mode);
-    mode_flags :: _S_IRUSR | _S_IWUSR | _S_IROTH | _S_IWOTH;
-    handle :: _open(auto filepath.ptr, flags, mode_flags);
+    mode_flags :: C.S_IRUSR | C.S_IWUSR | C.S_IROTH | C.S_IWOTH;
+    handle :: C.open(auto filepath.ptr, flags, mode_flags);
     if handle < 0 { // error
         ec, estr :: os_get_last_error();
         return 0, error(ec, "Cannot open file '%': %.", filepath, estr);
@@ -29,7 +25,7 @@ open :: fn (filepath: string, mode: ...Fs.OpenMode) (Fs.File, Error) {
 
 remove :: fn (filepath: string) Error #inline {
     if String.is_empty(filepath) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
-    if _unlink(auto filepath.ptr) != 0 {
+    if C.unlink(auto filepath.ptr) != 0 {
         ec, estr :: os_get_last_error();
         return error(ec, "Cannot remove file '%': %.", filepath, estr);
     }
@@ -50,16 +46,16 @@ copy :: fn (src: string, dest: string, override: bool) Error {
     defer close(file_dest);
     if !is_ok(err3) { return err3; }
     _, err4 :: Fs.write_slice(file_dest, tmp);
-    return ok();
+    return err4;
 }
 
 close :: fn (handle: Fs.File) #inline {
-    _close(auto handle);
+    C.close(auto handle);
 }
 
 get_uid :: fn (handle: Fs.File) (u64, Error) {
-    tmp: _stat_t;
-    if _fstat(auto handle, &tmp) != 0 {
+    tmp: C.stat_t;
+    if C.fstat(auto handle, &tmp) != 0 {
         ec, estr :: os_get_last_error();
         return 0, error(ec, "Cannot get file information.", estr);
     }
@@ -74,8 +70,8 @@ get_uid_by_name :: fn (filepath: string) (u64, Error) {
 }
 
 size :: fn (handle: Fs.File) (usize, Error) #inline {
-    tmp: _stat_t;
-    if _fstat(auto handle, &tmp) != 0 {
+    tmp: C.stat_t;
+    if C.fstat(auto handle, &tmp) != 0 {
         ec, estr :: os_get_last_error();
         return 0, error(ec, "Cannot get file size: %.", estr);
     }
@@ -84,7 +80,7 @@ size :: fn (handle: Fs.File) (usize, Error) #inline {
 
 read :: fn (handle: Fs.File, dest: *u8, size: s64) (s64, Error) {
     if !dest { return 0, error(ERR_INVALID_HANDLE, "Cannot read, destination is invalid."); }
-    read :: _read(auto handle, auto dest, auto size);
+    read :: C.read(auto handle, auto dest, auto size);
     if read < 0 { 
         ec, estr :: os_get_last_error();
         return 0, error(ec, "Cannot read file: %", estr);
@@ -94,7 +90,7 @@ read :: fn (handle: Fs.File, dest: *u8, size: s64) (s64, Error) {
 
 write :: fn (handle: Fs.File, src: *u8, size: s64) (s64, Error) {
     if !src { return 0, error(ERR_INVALID_HANDLE, "Cannot write, source is invalid."); }
-    written :: _write(auto handle, auto src, auto size);
+    written :: C.write(auto handle, auto src, auto size);
     if written < 0 { 
         ec, estr :: os_get_last_error();
         return 0, error(ec, "Cannot write to file: %.", estr);
@@ -104,7 +100,7 @@ write :: fn (handle: Fs.File, src: *u8, size: s64) (s64, Error) {
 
 dir_create :: fn (dirpath: string) Error {
     if String.is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot create directory, dirpath is empty."); }
-    if _mkdir(auto dirpath.ptr, _S_IRWXU | _S_IRWXG | _S_IROTH | _S_IXOTH) != 0 {
+    if C.mkdir(auto dirpath.ptr, C.S_IRWXU | C.S_IRWXG | C.S_IROTH | C.S_IXOTH) != 0 {
         ec, estr :: os_get_last_error();
         return error(ec, "Cannot create directory '%': %.", dirpath, estr);
     }
@@ -113,7 +109,7 @@ dir_create :: fn (dirpath: string) Error {
 
 dir_remove :: fn (dirpath: string) Error {
     if String.is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot remove directory, dirpath is empty."); }
-    if _rmdir(auto dirpath.ptr)!= 0 {
+    if C.rmdir(auto dirpath.ptr)!= 0 {
         ec, estr :: os_get_last_error();
         return error(ec, "Cannot remove directory '%': %.", dirpath, estr);
     }
@@ -122,17 +118,17 @@ dir_remove :: fn (dirpath: string) Error {
 
 dir_scan :: fn (dirpath: string, filter: Fs.DirScanFilterFn) (Fs.InfoList, Error) {
     invalid: Fs.InfoList;
-    dir := _opendir(auto dirpath.ptr);
+    dir := C.opendir(auto dirpath.ptr);
     if !dir {
         ec, estr :: os_get_last_error();
         return invalid, error(ec, "Cannot list directory '%': %.", dirpath, estr);
     }
-    defer _closedir(dir);
+    defer C.closedir(dir);
 
     fc := 0;
-    loop _readdir(dir) != null { fc += 1; }
-    _rewinddir(dir);
-    defer _rewinddir(dir);
+    loop C.readdir(dir) != null { fc += 1; }
+    C.rewinddir(dir);
+    defer C.rewinddir(dir);
 
     buf: Fs.InfoList;
     slice_init(&buf, fc);
@@ -140,11 +136,11 @@ dir_scan :: fn (dirpath: string, filter: Fs.DirScanFilterFn) (Fs.InfoList, Error
 
     buf.len = 0;
     loop {
-        stat :: _readdir(dir);
+        stat :: C.readdir(dir);
         if stat == null { break; }
         kind: Fs.InfoKind;
         name: string;
-        if stat.d_type == auto _DT_DIR {
+        if stat.d_type == auto C.DT_DIR {
             kind = Fs.InfoKind.Directory;
             name = String.new(cast(*u8) stat.d_name.ptr);
         } else {
@@ -166,12 +162,12 @@ dir_scan :: fn (dirpath: string, filter: Fs.DirScanFilterFn) (Fs.InfoList, Error
 
 is_directory :: fn (path: string) (bool, Error) #inline {
     if String.is_empty(path) { return false, error(ERR_INVALID_HANDLE, "Path is empty."); }
-    stat: _stat_t #noinit;
-    if _stat(auto path.ptr, &stat) != 0 {
+    stat: C.stat_t #noinit;
+    if C.stat(auto path.ptr, &stat) != 0 {
         ec, estr :: os_get_last_error();
         return false, error(ec, "Cannot check directory '%': %.", path, estr);
     }
-    return _S_ISDIR(stat.st_mode), ok();
+    return C.S_ISDIR(stat.st_mode), ok();
 }
 
 validate_filename :: fn (name: string) bool {
@@ -185,14 +181,14 @@ validate_filename :: fn (name: string) bool {
 
 get_cwd :: fn () string #inline {
     buf: [OS_PATH_MAX]u8;
-    if !_getcwd(auto buf.ptr, auto buf.len) { return String.new(); }
+    if !C.getcwd(auto buf.ptr, auto buf.len) { return String.new(); }
     path :: String.new(buf.ptr);
     return remove_last_separator(path);
 }
 
 set_cwd :: fn (path: string) Error #inline {
     if String.is_empty(path) { return error(ERR_INVALID_HANDLE, "Path is empty!"); }
-    if _chdir(auto path.ptr) != 0 {
+    if C.chdir(auto path.ptr) != 0 {
         ec, estr :: os_get_last_error();
         return error(ec, "Cannot set current directory to '%': %.", path, estr);
     }
@@ -201,7 +197,7 @@ set_cwd :: fn (path: string) Error #inline {
 
 get_home :: fn () string #inline {
     tmp :: "HOME";
-    cdir :: cast(*u8) c_getenv(auto tmp.ptr);
+    cdir :: cast(*u8) C.getenv(auto tmp.ptr);
     if !cdir { return String.new(); }
     path :: String.new(cdir);
     return remove_last_separator(path);
@@ -209,7 +205,7 @@ get_home :: fn () string #inline {
 
 get_tmp :: fn () string #inline {
     tmp :: "TMPDIR";
-    cdir :: cast(*u8) c_getenv(auto tmp.ptr);
+    cdir :: cast(*u8) C.getenv(auto tmp.ptr);
     if !cdir { return String.new("/tmp"); }
     path :: String.new(cdir);
     return remove_last_separator(path);
@@ -228,7 +224,7 @@ normalize :: fn (filepath: *string) Error {
     } else {
         bprint(in_buf, "%", @filepath);
     }
-    if !c_realpath(auto in_buf.ptr, auto buf.ptr) {
+    if !C.realpath(auto in_buf.ptr, auto buf.ptr) {
         ec, estr :: os_get_last_error();
         return error(ec, "Cannot normalize '%': %.", @filepath, estr);
     }
@@ -275,13 +271,13 @@ modes_to_flags :: fn (modes: []Fs.OpenMode) s32 #inline {
         }
     }
     flags: s32;
-    if ((!w) && (!r)) { flags = _O_RDONLY; }
-    else if (w && r) { flags = _O_RDWR; }
-    else if w { flags = _O_WRONLY; }
-    else if r { flags = _O_RDONLY; }
-    if create { flags = flags | _O_CREAT; }
-    if append { flags = flags | _O_APPEND; }
-    if w && !append { flags = flags | _O_TRUNC; }
+    if ((!w) && (!r)) { flags = C.O_RDONLY; }
+    else if (w && r) { flags = C.O_RDWR; }
+    else if w { flags = C.O_WRONLY; }
+    else if r { flags = C.O_RDONLY; }
+    if create { flags = flags | C.O_CREAT; }
+    if append { flags = flags | C.O_APPEND; }
+    if w && !append { flags = flags | C.O_TRUNC; }
     return flags;
 }
 

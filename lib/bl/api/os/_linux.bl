@@ -26,54 +26,42 @@
 // SOFTWARE.
 // =================================================================================================
 
+#import "libc"
 #import "std/string"
 
-#load "linux/errno.bl"
-#load "posix/signal.bl"
-#load "posix/error.bl"
-#load "posix/unistd.bl"
-#load "posix/libc.bl"
 #load "std/error.bl"
 
 OS_NAME :: "Linux";
 
-OS_STDIN  :: C_STDIN;
-OS_STDOUT :: C_STDOUT;
-OS_STDERR :: C_STDERR;
+OS_STDIN  :: C.STDIN;
+OS_STDOUT :: C.STDOUT;
+OS_STDERR :: C.STDERR;
 
 OS_PATH_MAX :: 1024;
-OSLibrary :: *u8;
 
-c_char      :: s8;
-c_uchar     :: u8;
-c_short     :: s16;
-c_ushort    :: u16;
-c_int       :: s32;
-c_uint      :: u32;
-c_long      :: s64;
-c_ulong     :: u64;
-c_longlong  :: s64;
-c_ulonglong :: u64;
-c_void_ptr  :: *u8;
-c_size_t    :: u64;
-c_ssize_t   :: s64;
+ERR_UNKNOWN        :: -1;
+ERR_NOT_FOUND      :: C.ENOENT;
+ERR_ALREADY_EXIST  :: C.EEXIST;
+ERR_ACCESS_DENIED  :: C.EACCES;
+ERR_INVALID_HANDLE :: C.EBADF;
+ERR_DIRECTORY      :: C.EISDIR;
 
+// @Cleanup: IO abstraction into separarte module!
 os_stdin :: fn () *u8 #inline {
-    m :: "r";
-    return c_fopen(auto C_STDIN, auto m.ptr);
+    return _stdin; 
 }
 
 os_stdout :: fn () *u8 #inline {
-    return auto C_STDOUT;
+    return _stdout; 
 }
 
 os_stderr :: fn () *u8 #inline {
-    return auto C_STDERR;
+    return _stderr; 
 }
 
 
 os_sleep_ms :: fn (ms: f64) {
-    _usleep(auto ms * 1000.0);
+    C.usleep(auto ms * 1000.0);
 };
 
 os_tick_ms :: fn () f64 #inline {
@@ -85,22 +73,22 @@ os_tick_ms :: fn () f64 #inline {
 }
 
 os_execute :: fn (command: string) s32 {
-    return WEXITSTATUS(c_system(auto command.ptr));
+    return WEXITSTATUS(C.system(auto command.ptr));
 }
 
 os_get_last_error :: fn () (s32, string) #inline {
-    ec :: _errno();
+    ec :: C.errno();
     str := String.empty;
-    c_str :: cast(*u8) c_strerror(ec);
-    if c_str && ec != 0 { str = cstr_to_str(c_str); }
+    cstr :: cast(*u8) C.strerror(ec);
+    if cstr && ec != 0 { str = cstr_to_str(cstr); }
     return ec, str;
 }
 
 os_get_exec_path :: fn () string {
     buf : [OS_PATH_MAX]u8;
-    buf_len := cast(c_size_t) buf.len;
+    buf_len := cast(C.size_t) buf.len;
     link :: "/proc/self/exe";
-    if _readlink(auto link.ptr, auto buf.ptr, buf_len) == -1 {
+    if C.readlink(auto link.ptr, auto buf.ptr, buf_len) == -1 {
         return String.new(); 
     }
     return String.new(buf.ptr);
@@ -112,7 +100,7 @@ __os_debug_break :: fn () #inline #compiler {
 }
 
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
-    return auto _write(auto fd, auto buf, count);
+    return auto C.write(auto fd, auto buf, count);
 };
 
 __os_abort :: fn () #compiler {
@@ -125,7 +113,7 @@ __os_abort :: fn () #compiler {
 }
 
 __os_abort_default :: fn () {
-    _raise(_SIGABRT);
+    C.raise(C.SIGABRT);
 }
 
 __MAX_ARGS_WITHOUT_ALLOC :: 8;
@@ -136,34 +124,48 @@ __os_start :: fn (argc: s64, argv: **u8, _: **u8) s32 #entry {
     is_allocated :: args.len > tmp.len;
     command_line_arguments.len = args.len;
     if is_allocated {
-        command_line_arguments.ptr = auto c_malloc(sizeof(string) * auto args.len);
+        command_line_arguments.ptr = auto C.malloc(sizeof(string) * auto args.len);
         if !command_line_arguments.ptr { __os_abort(); }
     } else {
         command_line_arguments.ptr = tmp.ptr;
     }
     loop i := 0; i < args.len; i += 1 {
-        command_line_arguments[i] = {:string: auto c_strlen(auto args[i]), args[i]};
+        command_line_arguments[i] = {:string: auto C.strlen(auto args[i]), args[i]};
     }
+    mode_r :: "r";
+    mode_w :: "w";
+    _stdin = C.fdopen(C.STDIN, auto mode_r.ptr);
+    defer C.fclose(_stdin);
+    _stdout = C.fdopen(C.STDOUT, auto mode_w.ptr);
+    defer C.fclose(_stdout);
+    _stderr = C.fdopen(C.STDERR, auto mode_w.ptr);
+    defer C.fclose(_stderr);
+
     out :: cast(s32) main();
     if is_allocated {
-        c_free(auto command_line_arguments.ptr);
+        C.free(auto command_line_arguments.ptr);
     }
     return out;
 }
 
 #private
+_stdin: *C.FILE;
+_stdout: *C.FILE;
+_stderr: *C.FILE;
+
+// @Cleanup: move to the libc???
 CLOCK_REALTIME :: 0;
 
 WEXITSTATUS :: fn (x: s32) s32 #inline {
     return (x >> 8) & 0x000000ff;
 }
 
-_posix_clockid_t :: c_int;
-_posix_time_t    :: c_long;
+_posix_clockid_t :: C.int;
+_posix_time_t    :: C.long;
 
 _posix_timespec :: struct {
     tv_sec: _posix_time_t;
-    tv_nsec: c_long;
+    tv_nsec: C.long;
 }
 
-_posix_clock_gettime :: fn (clk_id: _posix_clockid_t, tp: *_posix_timespec) c_int #extern "clock_gettime";
+_posix_clock_gettime :: fn (clk_id: _posix_clockid_t, tp: *_posix_timespec) C.int #extern "clock_gettime";

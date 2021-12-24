@@ -56,7 +56,7 @@ struct assembly;
 
 typedef u8        vm_value_t[16];
 typedef ptrdiff_t vm_relative_stack_ptr_t;
-typedef u8       *vm_stack_ptr_t;
+typedef u8 *      vm_stack_ptr_t;
 
 enum vm_interp_state {
     VM_INTERP_PASSED,
@@ -65,17 +65,16 @@ enum vm_interp_state {
 };
 
 struct vm_frame {
-    struct vm_frame       *prev;
+    struct vm_frame *      prev;
     struct mir_instr_call *caller; // Optional
 };
 
 struct vm_stack {
     vm_stack_ptr_t          top_ptr;         // pointer to top of the stack
     usize                   allocated_bytes; // total allocated size of the stack in bytes
-    struct vm_frame        *ra;              // current frame beginning (return address)
-    struct mir_instr       *pc;              // currently executed instruction (program counter)
+    struct vm_frame *       ra;              // current frame beginning (return address)
+    struct mir_instr *      pc;              // currently executed instruction (program counter)
     struct mir_instr_block *prev_block;      // used by phi instruction
-    bool                    aborted;         // true when execution was aborted
 };
 
 struct vm_bufpage {
@@ -86,20 +85,20 @@ struct vm_bufpage {
 
 struct vm_snapshot {
     // Top level comptime call used as lookup key.
-    struct mir_instr_call  *key;
-    void                   *data;
+    struct mir_instr_call * key;
+    void *                  data;
     usize                   data_size;
     vm_stack_ptr_t          top_ptr;
-    struct vm_frame        *ra;
-    struct mir_instr       *pc;
+    struct vm_frame *       ra;
+    struct mir_instr *      pc;
     struct mir_instr_block *prev_block;
 };
 
 struct virtual_machine {
-    struct vm_stack   *stack;
+    struct vm_stack *  stack;
     struct vm_bufpage *data; // Compile time values + global variables.
-    struct assembly   *assembly;
-    char              *dcsigtmp;
+    struct assembly *  assembly;
+    char *             dcsigtmp;
     bool               aborted;
 
     struct vm_snapshot *snapshot_cache;
@@ -122,7 +121,7 @@ struct mir_const_expr_value {
     // @Performance: _tmp and data can be packed in union
     vm_value_t                  _tmp;
     vm_stack_ptr_t              data;
-    struct mir_type            *type;
+    struct mir_type *           type;
     enum mir_value_address_mode addr_mode;
     bool                        is_comptime;
 };
@@ -136,14 +135,14 @@ bool vm_eval_instr(struct virtual_machine *vm, struct assembly *assembly, struct
 // Execute top level call instruction, called function must be fully analyzed. Return value is set
 // into call value data pointer.
 enum vm_interp_state vm_execute_comptime_call(struct virtual_machine *vm,
-                                              struct assembly        *assembly,
-                                              struct mir_instr_call  *call);
+                                              struct assembly *       assembly,
+                                              struct mir_instr_call * call);
 
 enum vm_interp_state vm_execute_fn(struct virtual_machine *vm,
-                                   struct assembly        *assembly,
-                                   struct mir_fn          *fn,
-                                   mir_const_values_t     *optional_args,
-                                   vm_stack_ptr_t         *optional_return);
+                                   struct assembly *       assembly,
+                                   struct mir_fn *         fn,
+                                   mir_const_values_t *    optional_args,
+                                   vm_stack_ptr_t *        optional_return);
 
 void vm_provide_command_line_arguments(struct virtual_machine *vm, s32 argc, char *argv[]);
 void vm_override_var(struct virtual_machine *vm, struct mir_var *var, u64 value);
@@ -177,18 +176,18 @@ void           vm_write_double(const struct mir_type *type, vm_stack_ptr_t dest,
 void           vm_write_float(const struct mir_type *type, vm_stack_ptr_t dest, f32 i);
 void           vm_write_ptr(const struct mir_type *type, vm_stack_ptr_t dest, vm_stack_ptr_t ptr);
 void           vm_write_string(struct virtual_machine *vm,
-                               const struct mir_type  *type,
+                               const struct mir_type * type,
                                vm_stack_ptr_t          dest,
-                               const char             *str,
+                               const char *            str,
                                s64                     len);
 void           vm_write_slice(struct virtual_machine *vm,
-                              const struct mir_type  *type,
+                              const struct mir_type * type,
                               vm_stack_ptr_t          dest,
-                              void                   *ptr,
+                              void *                  ptr,
                               s64                     len);
 ptrdiff_t vm_get_struct_elem_offset(struct assembly *assembly, const struct mir_type *type, u32 i);
 ptrdiff_t vm_get_array_elem_offset(const struct mir_type *type, u32 i);
-vm_stack_ptr_t vm_get_struct_elem_ptr(struct assembly       *assembly,
+vm_stack_ptr_t vm_get_struct_elem_ptr(struct assembly *      assembly,
                                       const struct mir_type *type,
                                       vm_stack_ptr_t         ptr,
                                       u32                    i);

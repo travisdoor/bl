@@ -314,9 +314,11 @@ write_fmt :: fn {
 /// error, otherwise return 0 and error. Optional argument `count` specify count of bytes from `v`
 /// to be written, negative value means whole content. When passed count is greater than `v.len`, 
 /// count value is set to `v.len`.
+/// Does nothing in case the `v.len == 0` (slice is empty) and return 0 and ok.
 write_slice :: fn (handle: File, v: []u8, count : s64 = -1) (s64, Error) #inline {
     if count < 0 { count = v.len; } 
     if count > v.len { count = v.len; }
+    if v.len == 0 { return 0, ok(); }
     written_bytes, err :: _FsImpl.write(handle, v.ptr, count);
     if !is_ok(err) { return 0, err; }
     return auto written_bytes, ok();
