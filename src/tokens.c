@@ -31,13 +31,13 @@
 
 char *sym_strings[] = {
 #define sm(tok, str, len) str,
-#include "tokens.inc"
+#include "tokens.def"
 #undef sm
 };
 
 s32 sym_lens[] = {
 #define sm(tok, str, len) len,
-#include "tokens.inc"
+#include "tokens.def"
 #undef sm
 };
 

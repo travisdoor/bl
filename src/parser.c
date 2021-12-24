@@ -62,7 +62,7 @@
 
 enum hash_directive_flags {
 #define HD_GEN(kind, name, flag) kind = flag,
-#include "parser.inc"
+#include "parser.def"
 #undef HD_GEN
 };
 
@@ -2636,13 +2636,13 @@ void init_hash_directives(struct context *ctx)
 {
     static const char *hash_directive_names[] = {
 #define HD_GEN(kind, name, flag) name,
-#include "parser.inc"
+#include "parser.def"
 #undef HD_GEN
     };
 
     static u32 hash_directive_flags[static_arrlenu(hash_directive_names)] = {
 #define HD_GEN(kind, name, flag) flag,
-#include "parser.inc"
+#include "parser.def"
 #undef HD_GEN
     };
 

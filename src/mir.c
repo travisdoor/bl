@@ -78,7 +78,7 @@
     }
 
 #define GEN_INSTR_SIZEOF
-#include "mir.inc"
+#include "mir.def"
 #undef GEN_INSTR_SIZEOF
 
 #define CREATE_TYPE_STRUCT_SLICE(ctx, id, elem_ptr_type)                                           \
@@ -10796,7 +10796,7 @@ const char *mir_instr_name(const struct mir_instr *instr)
 
 struct id builtin_ids[_BUILTIN_ID_COUNT] = {
 #define GEN_BUILTIN_IDS
-#include "builtin.inc"
+#include "builtin.def"
 #undef GEN_BUILTIN_IDS
 };
 

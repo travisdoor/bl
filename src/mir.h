@@ -181,7 +181,7 @@ enum llvm_extern_arg_struct_generation_mode {
 enum mir_instr_kind {
     MIR_INSTR_INVALID = 0,
 #define GEN_INSTR_KINDS
-#include "mir.inc"
+#include "mir.def"
 #undef GEN_INSTR_KINDS
 };
 
@@ -206,7 +206,7 @@ enum mir_cast_op {
 enum builtin_id_kind {
     BUILTIN_ID_NONE = -1,
 #define GEN_BUILTIN_NAMES
-#include "builtin.inc"
+#include "builtin.def"
 #undef GEN_BUILTIN_NAMES
     _BUILTIN_ID_COUNT,
 };

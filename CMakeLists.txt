@@ -91,8 +91,6 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     set(LLD_ZIP_MD5 e9606991f195b22e55cfdafa1213031a)
     set(BL_VSWHERE_EXE "vswhere.exe")
     set(BL_VSWHERE "${BL_DEPS_DIR}/vswhere-2.8.4/${BL_VSWHERE_EXE}")
-    set(BL_CONFIG_EXE "bl-config.exe")
-    set(BL_CONFIG "${BL_DEPS_DIR}/bl-config/bin/win32/${BL_CONFIG_EXE}")
     set(BL_LLD_EXE "bl-lld.exe")
     set(BL_LINKER ${BL_LLD_EXE})
 endif()
@@ -101,8 +99,6 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     set(LLD_BIN ${BL_DEPS_DIR}/lld)
     set(LLD_ZIP lld-13.0.0-linux64-release.zip)
     set(LLD_ZIP_MD5 f19860ad1cb21a385d99d584f0a96638)
-    set(BL_CONFIG_EXE "bl-config")
-    set(BL_CONFIG "${BL_DEPS_DIR}/bl-config/bin/linux/${BL_CONFIG_EXE}")
     set(BL_LLD_EXE "bl-lld")
     set(BL_LINKER ${BL_LLD_EXE})
 endif()
@@ -111,8 +107,6 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
     set(LLD_BIN ${BL_DEPS_DIR}/lld)
     set(LLD_ZIP lld-11.0.0-macos-release.zip)
     set(LLD_ZIP_MD5 b37f7524cf2d12efa4f27268713b45f3)
-    set(BL_CONFIG_EXE "bl-config")
-    set(BL_CONFIG "${BL_DEPS_DIR}/bl-config/bin/macos${BL_CONFIG_EXE}")
     set(BL_LLD_EXE "bl-lld")
     set(BL_LINKER ${BL_LLD_EXE})
 endif()
@@ -215,12 +209,6 @@ if(MSVC)
     add_custom_command(TARGET blc POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${BL_VSWHERE} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${BL_VSWHERE_EXE})
 endif()
 
-add_custom_command(TARGET blc POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${BL_CONFIG} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${BL_CONFIG_EXE})
-
-install(
-    FILES ${BL_CONFIG}
-    PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
-    DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(
     FILES ${LLD_BIN}
     PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
@@ -229,14 +217,4 @@ install(
 )
 
 configure_file(${CMAKE_SOURCE_DIR}/src/config.h.in ${CMAKE_SOURCE_DIR}/src/config.h)
-configure_file(${BL_DEPS_DIR}/bl-config/config.bl.in ${BL_DEPS_DIR}/bl-config/config.bl)
 
-# Compile utils
-add_custom_target(Utils
-    COMMAND 
-    ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/bl-config -s && ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/blc --full-path -release -build
-    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/utils"
-    COMMENT "Compile bl utils."
-)
-
-add_dependencies(Utils blc)

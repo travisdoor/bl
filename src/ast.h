@@ -42,7 +42,7 @@ struct ast;
 
 enum ast_kind {
 #define GEN_AST_KINDS
-#include "ast.inc"
+#include "ast.def"
 #undef GEN_AST_KINDS
 };
 
@@ -386,7 +386,7 @@ struct ast {
 
     union {
 #define GEN_AST_DATA
-#include "ast.inc"
+#include "ast.def"
 #undef GEN_AST_DATA
     } data;
 

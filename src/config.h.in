@@ -37,7 +37,6 @@
 
 #define BL_CONFIG_FILE "@BL_CONFIG_FILE@"
 #define BL_API_DIR "@BL_API_DIR@"
-#define BL_CONFIG_EXE "@BL_CONFIG_EXE@"
 #define BL_LINKER "@BL_LINKER@"
 
 // MULTIPLATFROM: os preload depends on target build platfrom and should be chosen in runtime later!

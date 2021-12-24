@@ -38,6 +38,8 @@
 #include <crtdbg.h>
 #endif
 
+bool setup(const char *exec_dir, const char *filepath, const char *triple);
+
 static char *get_exec_dir(void)
 {
     char tmp[PATH_MAX] = "";
@@ -47,16 +49,14 @@ static char *get_exec_dir(void)
     return strdup(tmp);
 }
 
-static int generate_conf(const char *exec_dir)
+static bool generate_conf(const char *exec_dir)
 {
-    char *cmd = gettmpstr();
-#if BL_PLATFORM_LINUX || BL_PLATFORM_MACOS
-    strprint(cmd, "%s/%s", exec_dir, BL_CONFIG_EXE);
-#else
-    strprint(cmd, "call \"%s/%s\"", exec_dir, BL_CONFIG_EXE);
-#endif
-    const s32 state = system(cmd);
-    puttmpstr(cmd);
+    char *filepath = gettmpstr();
+    strprint(filepath, "%s/../%s", exec_dir, BL_CONFIG_FILE);
+    char      *triple = LLVMGetDefaultTargetTriple();
+    const bool state  = setup(exec_dir, filepath, triple);
+    LLVMDisposeMessage(triple);
+    puttmpstr(filepath);
     return state;
 }
 
@@ -65,19 +65,18 @@ static bool load_conf_file(const char *exec_dir)
     char *filepath = gettmpstr();
     strprint(filepath, "%s/../%s", exec_dir, BL_CONFIG_FILE);
     if (!file_exists(filepath)) {
-        builder_error(
-            "Configuration file '%s' not found. Please generate one using 'blc --configure' or "
-            "'bl-config' tool. Visit http://biscuitlang.org or report an issue on "
-            "https://github.com/travisdoor/bl/issues in case of any problems.",
-            filepath);
-        goto FAILED;
+        if (!generate_conf(exec_dir)) {
+            builder_error("Failed to generate the configuration file, please report the issue on "
+                          "https://github.com/travisdoor/bl/issues");
+            goto FAILED;
+        }
     }
     if (!builder_load_config(filepath)) goto FAILED;
     const char *got = confreads(builder.config, CONF_VERSION, "(UNKNOWN)");
     if (strcmp(got, BL_VERSION) != 0) {
         builder_warning(
             "Invalid version of current configuration file '%s'. Expected is '%s', got "
-            "'%s'. Consider generation of new one using 'blc --configure' of 'bl-config'.",
+            "'%s'. Consider generation of new one using 'blc --configure'.",
             filepath,
             BL_VERSION,
             got);
@@ -99,6 +98,7 @@ typedef struct ApplicationOptions {
     bool print_about;
     bool print_version;
     bool print_host_triple;
+    bool print_supported;
     bool where_is_api;
     bool configure;
 } ApplicationOptions;
@@ -279,11 +279,16 @@ void print_where_is_api(FILE *stream)
 
 void print_host_triple(FILE *stream)
 {
-    struct target_triple triple;
-    if (target_init_default_triple(&triple)) {
-        char *str = target_triple_to_string(&triple);
-        fprintf(stream, "%s", str);
-        bfree(str);
+    char *triple = LLVMGetDefaultTargetTriple();
+    fprintf(stream, "%s", triple);
+    LLVMDisposeMessage(triple);
+}
+
+void print_supported(FILE *stream)
+{
+    const char **list = target_get_supported();
+    for (; *list; list++) {
+        fprintf(stream, "%s\n", *list);
     }
 }
 
@@ -388,9 +393,14 @@ int main(s32 argc, char *argv[])
             .help       = "Print path to API folder and exit.",
         },
         {
-            .name       = "--host-triple",
+            .name       = "--target-host",
             .property.b = &opt.app.print_host_triple,
             .help       = "Print current host target triple and exit.",
+        },
+        {
+            .name       = "--target-supported",
+            .property.b = &opt.app.print_supported,
+            .help = "Print all supported targets and exit. (Cross compilation is not allowed yet!)",
         },
         {
             .name       = "--configure",
@@ -571,7 +581,7 @@ int main(s32 argc, char *argv[])
         case ID_BUILD: // Build pipeline.
             opt.target->kind = ASSEMBLY_BUILD_PIPELINE;
             opt.target->run  = false;
-			index += 1;
+            index += 1;
             // Rest of arguments is forwarded into the build script.
             goto SKIP;
         case ID_DOC: // Generate documentation.
@@ -643,6 +653,11 @@ SKIP:
         EXIT(EXIT_SUCCESS);
     }
 
+    if (opt.app.print_supported) {
+        print_supported(stdout);
+        EXIT(EXIT_SUCCESS);
+    }
+
     // Load configuration file
     if (!load_conf_file(exec_dir)) {
         EXIT(EXIT_FAILURE);
@@ -660,6 +675,12 @@ SKIP:
 
     // Forward reminding arguments to vm.
     target_set_vm_args(opt.target, argc, argv);
+
+    // Use default triple here, this should be adjustable by users when cross-compilation will be
+    // allowed!
+    if (!target_init_default_triple(&opt.target->triple)) {
+        exit(ERR_UNSUPPORTED_TARGET);
+    }
 
     state                = builder_compile(opt.target);
     const f64 runtime_ms = get_tick_ms() - start_time_ms;

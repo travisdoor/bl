@@ -1,6 +1,6 @@
 body {
   background-color: white;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: Roboto, "Segoe UI", sans-serif;
   max-width: 800px;
   margin: auto;
 }
@@ -8,42 +8,40 @@ footer {
   text-align: right;
 }
 h2 {
-  background-color: #f2f2f2;
-  padding: 4px;
+  padding: 0px;
 }
 table {
   border-collapse: collapse;
   width: 100%;
 }
 td, th {
-  border: 1px solid #ddd;
-  padding: 8px;
+  border: 1px solid #eee;
+  padding: 4px;
 }
-tr:nth-child(even){background-color: #f2f2f2;}
-tr:hover {background-color: #ddd;}
+tr:nth-child(even){background-color: #fff9e7;}
 th {
-  padding-top: 12px;
-  padding-bottom: 12px;
+  padding-top: 8px;
+  padding-bottom: 8px;
   text-align: left;
-  background-color: #3F51B5;
-  color: white;
+  background-color: #ffd65a;
+  color: black;
 }
 pre {
-  background-color: aliceblue;
+  background-color: #fff9e7;
   border: 1px;
-  border-color: #ced4da;
+  border-color: #FFC107;
   border-style: solid;
-  padding: 2px;
+  padding: 10px;
 }
 code {
-  font-family: Consolas, Menlo, monospace;
-  font-size: 13px;
+  font-family: Fira Code, Consolas, Menlo, monospace;
+  font-size: small
 }
 #TOC {
   position: fixed;
   left: 0;
   top: 40px;
-  background-color:#eeeeee;
+  background-color:#ffffff;
   overflow: scroll;
   height: 100%;
   width: 400px;
@@ -56,7 +54,7 @@ code {
   position: fixed;
   left: 0;
   top: 0;
-  background-color:#ddd;
+  background-color:#fff59a;
   height: 40px;
   width: 100%;
   list-style-type: none;
