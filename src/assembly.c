@@ -527,9 +527,11 @@ bool target_is_triple_valid(struct target_triple *triple)
     char        *str      = target_triple_to_string(triple);
     bool         is_valid = false;
     char **list     = builder_get_supported_targets();
-    for (; *list; list++) {
-        if (strcmp(str, *list) == 0) {
+    char** it = list;
+    for (; *it; it++) {
+        if (strcmp(str, *it) == 0) {
             is_valid = true;
+            break;
         }
     }
     free(str);

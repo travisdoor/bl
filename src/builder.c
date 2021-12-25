@@ -491,19 +491,18 @@ void builder_terminate(void)
 
 char **builder_get_supported_targets(void)
 {
-    const bool  add_experimantal = builder.options->enable_experimental_targets;
-    const usize len              = static_arrlenu(supported_targets);
-    const usize lenexperimental  = static_arrlenu(supported_targets_experimental);
-    if (add_experimantal) len += static_arrlenu(supported_targets_experimental);
+    const bool ex = builder.options->enable_experimental_targets;
 
-    char **dest = bmalloc((len + 1) * sizeof(char *)); // +1 for terminator
-    memcpy(dest, supported_targets, sizeof(supported_targets));
-    if (add_experimantal) {
-        memcpy(dest + sizeof(supported_targets),
-               supported_targets_experimental,
-               sizeof(supported_targets_experimental));
+    const usize l1  = static_arrlenu(supported_targets);
+    const usize l2  = static_arrlenu(supported_targets_experimental);
+    const usize len = ex ? (l1 + l2 + 1) : l1 + 1; // +1 for terminator
+
+    char **dest = bmalloc(len * sizeof(char *));
+    memcpy(dest, supported_targets, l1 * sizeof(char *));
+    if (ex) {
+        memcpy(dest + l1, supported_targets_experimental, l2 * sizeof(char *));
     }
-    dest[len] = NULL;
+    dest[len-1] = NULL;
     return dest;
 }
 

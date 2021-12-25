@@ -54,6 +54,7 @@ static bool generate_conf(const char *exec_dir)
     char *filepath = gettmpstr();
     strprint(filepath, "%s/../%s", exec_dir, BL_CONFIG_FILE);
     char      *triple = LLVMGetDefaultTargetTriple();
+    // @Incomplete: use only supported targets!!!
     const bool state  = setup(exec_dir, filepath, triple);
     LLVMDisposeMessage(triple);
     puttmpstr(filepath);
@@ -74,12 +75,11 @@ static bool load_conf_file(const char *exec_dir)
     if (!builder_load_config(filepath)) goto FAILED;
     const char *got = confreads(builder.config, CONF_VERSION, "(UNKNOWN)");
     if (strcmp(got, BL_VERSION) != 0) {
-        builder_warning(
-            "Invalid version of current configuration file '%s'. Expected is '%s', got "
-            "'%s'. Consider generation of new one using 'blc --configure'.",
-            filepath,
-            BL_VERSION,
-            got);
+        builder_warning("Invalid version of current configuration file '%s'. Expected is '%s', got "
+                        "'%s'. Consider generation of new one using 'blc --configure'.",
+                        filepath,
+                        BL_VERSION,
+                        got);
     }
 
     puttmpstr(filepath);
@@ -287,8 +287,9 @@ void print_host_triple(FILE *stream)
 void print_supported(FILE *stream)
 {
     char **list = builder_get_supported_targets();
-    for (; *list; list++) {
-        fprintf(stream, "%s\n", *list);
+    char **it   = list;
+    for (; *it; it++) {
+        fprintf(stream, "%s\n", *it);
     }
     bfree(list);
 }
@@ -404,7 +405,7 @@ int main(s32 argc, char *argv[])
             .help = "Print all supported targets and exit. (Cross compilation is not allowed yet!)",
         },
         {
-            .name       = "--target-enable-experimental",
+            .name       = "--target-experimental",
             .property.b = &opt.builder.enable_experimental_targets,
             .help       = "Enable experimental compilation targets.",
         },
