@@ -38,7 +38,7 @@
 #include <crtdbg.h>
 #endif
 
-bool setup(const char *exec_dir, const char *filepath, const char *triple);
+bool setup(const char *filepath, const char *triple);
 
 static char *get_exec_dir(void)
 {
@@ -49,7 +49,7 @@ static char *get_exec_dir(void)
     return strdup(tmp);
 }
 
-static bool generate_conf(const char *exec_dir)
+static bool generate_conf(void)
 {
     struct target_triple triple;
     if (!target_init_default_triple(&triple)) {
@@ -58,19 +58,19 @@ static bool generate_conf(const char *exec_dir)
     char *str = target_triple_to_string(&triple);
     blog("Triple: %s", str);
     char *filepath = gettmpstr();
-    strprint(filepath, "%s/../%s", exec_dir, BL_CONFIG_FILE);
-    const bool state = setup(exec_dir, filepath, str);
+    strprint(filepath, "%s/../%s", builder_get_exec_dir(), BL_CONFIG_FILE);
+    const bool state = setup(filepath, str);
     bfree(str);
     puttmpstr(filepath);
     return state;
 }
 
-static bool load_conf_file(const char *exec_dir)
+static bool load_conf_file(void)
 {
     char *filepath = gettmpstr();
-    strprint(filepath, "%s/../%s", exec_dir, BL_CONFIG_FILE);
+    strprint(filepath, "%s/../%s", builder_get_exec_dir(), BL_CONFIG_FILE);
     if (!file_exists(filepath)) {
-        if (!generate_conf(exec_dir)) {
+        if (!generate_conf()) {
             builder_error("Failed to generate the configuration file, please report the issue on "
                           "https://github.com/travisdoor/bl/issues");
             goto FAILED;
@@ -638,7 +638,7 @@ SKIP:
 
     // Run configure if needed.
     if (opt.app.configure) {
-        if (!generate_conf(exec_dir)) {
+        if (!generate_conf()) {
             EXIT(EXIT_FAILURE);
         }
         EXIT(EXIT_SUCCESS);
@@ -670,7 +670,7 @@ SKIP:
     }
 
     // Load configuration file
-    if (!load_conf_file(exec_dir)) {
+    if (!load_conf_file()) {
         EXIT(EXIT_FAILURE);
     }
 
