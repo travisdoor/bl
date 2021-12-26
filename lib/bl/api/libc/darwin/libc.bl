@@ -1,0 +1,331 @@
+#scope C
+
+char      :: s8;
+uchar     :: u8;
+short     :: s16;
+ushort    :: u16;
+int       :: s32;
+uint      :: u32;
+long      :: s64;
+ulong     :: u64;
+longlong  :: s64;
+ulonglong :: u64;
+void_ptr  :: *u8;
+size_t    :: u64;
+ssize_t   :: s64;
+
+blkcnt_t :: s64;
+blksize_t :: s32;
+dev_t :: s32;  
+fsblkcnt_t :: uint;
+fsfilcnt_t :: uint;
+gid_t :: u32;
+id_t :: u32;
+ino64_t :: u64;
+ino_t :: ino64_t;
+mach_port_name_t :: uint;
+mach_port_t :: mach_port_name_t;
+mode_t :: u16;        
+off_t :: s64;         
+pid_t :: s32;         
+sigset_t :: u32;      
+suseconds_t :: s32;   
+uid_t :: u32;         
+useconds_t :: u32;    
+uuid_t :: [16]uchar;
+uuid_string_t :: [37]char;
+nlink_t :: u16; 
+time_t :: long;
+
+stat_t :: struct {
+    	st_dev: dev_t;
+	    st_mode: mode_t;
+	    st_nlink: nlink_t;
+	    st_ino: ino64_t;
+	    st_uid: uid_t;
+	    st_gid: gid_t;
+	    st_rdev: dev_t;
+	    st_atimespec: timespec;
+	    st_mtimespec: timespec;
+	    st_ctimespec: timespec;
+	    st_birthtimespec: timespec;
+	    st_size: off_t;
+	    st_blocks: blkcnt_t; 
+    	st_blksize: blksize_t;
+    	st_flags: u32;
+    	st_gen: u32;
+    	st_lspare: s32;
+    st_qspare: [2]s64;
+}
+
+dirent_t :: struct {
+    d_ino: u64;
+	d_seekoff: u64;
+	d_reclen: u16;
+	d_namlen: u16;
+	d_type: u8;
+	d_name: [DARWIN_MAXPATHLEN]char;
+}
+
+timespec :: struct {
+    tv_sec: time_t;
+	tv_nsec: long;
+}
+
+
+STDIN  :: 0;
+STDOUT :: 1;
+STDERR :: 2;
+
+SIGHUP  :: 1;
+SIGINT  :: 2;
+SIGQUIT :: 3; 
+SIGILL  :: 4; 
+SIGTRAP :: 5;
+SIGABRT :: 6;
+
+DARWIN_MAXPATHLEN :: 1024;
+
+DT_UNKNOWN ::  0;
+DT_FIFO    ::  1;
+DT_CHR     ::  2;
+DT_DIR     ::  4;
+DT_BLK     ::  6;
+DT_REG     ::  8;
+DT_LNK     :: 10;
+DT_SOCK    :: 12;
+DT_WHT     :: 14;
+
+O_RDONLY :: 0x0;
+O_WRONLY :: 0x1;
+O_RDWR   :: 0x2;
+O_CREAT  :: 0x0200;
+O_TRUNC  :: 0x0400;
+O_EXCL   :: 0x0800;
+O_APPEND :: 0x0008;
+
+DIR :: u8;
+FILE :: u8;
+
+EPERM :: 1;
+ENOENT :: 2;
+ESRCH :: 3;
+EINTR :: 4;
+EIO :: 5;
+ENXIO :: 6;
+E2BIG :: 7;
+ENOEXEC :: 8;
+EBADF ::  9;
+ECHILD :: 10;
+EAGAIN :: 11;
+ENOMEM :: 12;
+EACCES :: 13;
+EFAULT :: 14;
+ENOTBLK :: 15;
+EBUSY :: 16;
+EEXIST :: 17;
+EXDEV :: 18;
+ENODEV :: 19;
+ENOTDIR :: 20;
+EISDIR :: 21;
+EINVAL :: 22;
+ENFILE :: 23;
+EMFILE :: 24;
+ENOTTY :: 25;
+ETXTBSY :: 26;
+EFBIG :: 27;
+ENOSPC :: 28;
+ESPIPE :: 29;
+EROFS :: 30;
+EMLINK :: 31;
+EPIPE :: 32;
+EDOM :: 33;
+ERANGE :: 34;
+EDEADLK :: 35;
+ENAMETOOLONG :: 36;
+ENOLCK :: 37;
+ENOSYS :: 38;
+ENOTEMPTY :: 39;
+ELOOP :: 40;
+EWOULDBLOCK :: EAGAIN;
+ENOMSG :: 42;
+EIDRM :: 43;
+ECHRNG :: 44;
+EL2NSYNC :: 45;
+EL3HLT :: 46;
+EL3RST :: 47;
+ELNRNG :: 48;
+EUNATCH :: 49;
+ENOCSI :: 50;
+EL2HLT :: 51;
+EBADE :: 52;
+EBADR :: 53;
+EXFULL :: 54;
+ENOANO :: 55;
+EBADRQC :: 56;
+EBADSLT :: 57;
+EDEADLOCK :: EDEADLK;
+EBFONT :: 59;
+ENOSTR :: 60;
+ENODATA :: 61;
+ETIME :: 62;
+ENOSR :: 63;
+ENONET :: 64;
+ENOPKG :: 65;
+EREMOTE :: 66;
+ENOLINK :: 67;
+EADV :: 68;
+ESRMNT :: 69;
+ECOMM :: 70;
+EPROTO :: 71;
+EMULTIHOP :: 72;
+EDOTDOT :: 73;
+EBADMSG :: 74;
+EOVERFLOW :: 75;
+ENOTUNIQ :: 76;
+EBADFD :: 77;
+EREMCHG :: 78;
+ELIBACC :: 79;
+ELIBBAD :: 80;
+ELIBSCN :: 81;
+ELIBMAX :: 82;
+ELIBEXEC :: 83;
+EILSEQ :: 84;
+ERESTART :: 85;
+ESTRPIPE :: 86;
+EUSERS :: 87;
+ENOTSOCK :: 88;
+EDESTADDRREQ :: 89;
+EMSGSIZE :: 90;
+EPROTOTYPE :: 91;
+ENOPROTOOPT :: 92;
+EPROTONOSUPPORT :: 93;
+ESOCKTNOSUPPORT :: 94;
+EOPNOTSUPP :: 95;
+EPFNOSUPPORT :: 96;
+EAFNOSUPPORT :: 97;
+EADDRINUSE :: 98;
+EADDRNOTAVAIL :: 99;
+ENETDOWN :: 100;
+ENETUNREACH :: 101;
+ENETRESET :: 102;
+ECONNABORTED :: 103;
+ECONNRESET :: 104;
+ENOBUFS :: 105;
+EISCONN :: 106;
+ENOTCONN :: 107;
+ESHUTDOWN :: 108;
+ETOOMANYREFS :: 109;
+ETIMEDOUT :: 110;
+ECONNREFUSED :: 111;
+EHOSTDOWN :: 112;
+EHOSTUNREACH :: 113;
+EALREADY :: 114;
+EINPROGRESS :: 115;
+ESTALE :: 116;
+EUCLEAN :: 117;
+ENOTNAM :: 118;
+ENAVAIL :: 119;
+EISNAM :: 120;
+EREMOTEIO :: 121;
+EDQUOT :: 122;
+ENOMEDIUM :: 123;
+EMEDIUMTYPE :: 124;
+ECANCELED :: 125;
+ENOKEY :: 126;
+EKEYEXPIRED :: 127;
+EKEYREVOKED :: 128;
+EKEYREJECTED :: 129;
+EOWNERDEAD :: 130;
+ENOTRECOVERABLE :: 131;
+ERFKILL :: 132;
+EHWPOISON :: 133;
+
+S_IRWXU : mode_t : 0x1C0;
+S_IRUSR : mode_t : 0x100;
+S_IWUSR : mode_t : 0x80;
+S_IXUSR : mode_t : 0x40;
+S_IRWXG : mode_t : 0x38;
+S_IRGRP : mode_t : 0x20;
+S_IWGRP : mode_t : 0x10;
+S_IXGRP : mode_t : 0x8;
+S_IRWXO : mode_t : 0x7;
+S_IROTH : mode_t : 0x4;
+S_IWOTH : mode_t : 0x2;
+S_IXOTH : mode_t : 0x1;
+S_ISUID : mode_t : 0x800;
+S_ISGID : mode_t : 0x400;
+S_ISVTX : mode_t : 0x200;
+
+_S_IFMT   : u32 : 0xf000;
+_S_IFDIR  : u32 : 0x4000;
+_S_IFCHR  : u32 : 0x2000;
+_S_IFBLK  : u32 : 0x6000;	
+_S_IFREG  : u32 : 0x8000;
+_S_IFIFO  : u32 : 0x1000;
+_S_IFLNK  : u32 : 0xA000;
+_S_IFSOCK : u32 : 0xC000;
+
+_S_ISDIR :: fn (mode: u32) bool #inline {
+    return (mode & _S_IFMT) == _S_IFDIR;    
+}
+
+_S_ISREG :: fn (mode: u32) bool #inline {
+    return (mode & _S_IFMT) == _S_IFREG;    
+}
+
+opendir :: fn (name: *char) *DIR #extern "opendir$INODE64";
+fdopendir :: fn (fd: int) *DIR #extern "fdopendir$INODE64";
+readdir :: fn (dirp: *DIR) *dirent_t #extern "readdir$INODE64";
+rewinddir :: fn (dirp: *DIR) #extern "rewinddir$INODE64";
+stat :: fn (path: *char, buf: *stat_t) int #extern "stat$INODE64";
+fstat :: fn (fd: int, stat: *stat_t) int #extern "fstat$INODE64";
+
+mkdir :: fn (path: *char, mode: mode_t) int #extern "mkdir";
+fchmod :: fn (fd: int, mode: mode_t) int #extern "fchmod";
+closedir :: fn (dirp: *DIR) int #extern "closedir";
+open :: fn (path: *char, oflag: int, mode: mode_t) int #extern "open";
+exit :: fn (v: int) #extern "exit";
+realpath :: fn (path: *char, resolved_path: *char) *char #extern "realpath";
+raise :: fn (sig: int) int #extern "raise";
+signal :: fn (signum: int, handler: *fn (v: int)) *fn (v: int) #extern "signal";
+malloc :: fn (size: size_t) void_ptr #extern "malloc";
+free :: fn (ptr: void_ptr) #extern "free";
+getenv :: fn (name: *char) *char #extern "getenv";
+putenv :: fn (s: *char) int #extern "putenv";
+system :: fn (command: *char) int #extern "system";
+strlen :: fn (str: *char) size_t #extern "strlen";
+strcmp :: fn (first: *char, second: *char) int #extern "strcmp";
+wcslen :: fn (str: *u16) usize #extern "wcslen";
+strerror :: fn (errnum: int) *char #extern "strerror";
+fgets :: fn (buf: void_ptr, size: int, f: void_ptr) void_ptr #extern "fgets";
+getchar :: fn () int #extern "getchar";
+rand  :: fn () s32 #extern "rand";
+srand :: fn (seed: u32) #extern "srand";
+qsort :: fn (base: void_ptr, nitems: size_t, size: size_t, compar: *fn (void_ptr, void_ptr) int) #extern "qsort";
+asinf :: fn (arg: f32) f32 #extern "asinf";
+asin :: fn (arg: f64) f64 #extern "asin";
+acosf :: fn (n: f32) f32 #extern "acosf";
+acos :: fn (n: f64) f64 #extern "acos";
+tanf :: fn (x: f32) f32 #extern "tanf";
+tan :: fn (x: f64) f64 #extern "tan";
+atan2f :: fn (y: f32, x: f32) f32 #extern "atan2f";
+atan2 :: fn (y: f64, x: f64) f64 #extern "atan2";
+copysignf :: fn (x: f32, y: f32) f32 #extern "copysingf";
+copysign :: fn (x: f64, y: f64) f64 #extern "copysing";
+tolower :: fn (c: int) int #extern "tolower";
+toupper :: fn (c: int) int #extern "toupper";
+getcwd :: fn (buf: *char, size: size_t) *char #extern "getcwd";
+unlink :: fn (pathname: *char) int #extern "unlink";
+read :: fn (fd: int, buf: *char, count: size_t) ssize_t #extern "read";
+readlink :: fn (pathname: *char, buf: *char, bufsiz: size_t) ssize_t #extern "readlink";
+close :: fn (fd: int) int #extern "close";
+write :: fn (fd: int, buf: *char, count: size_t) ssize_t #extern "write";
+usleep :: fn (us: uint) int #extern "usleep";
+rmdir :: fn (path: *char) int #extern "rmdir";
+chdir :: fn (path: *char) int #extern "chdir";
+
+errno :: fn () s32 #inline {
+    _errno_location :: fn () *int #extern "__error";
+    return @_errno_location();
+}

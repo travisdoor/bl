@@ -1,4 +1,0 @@
-_errno :: fn () s32 #inline {
-    _errno_location :: fn () *c_int #extern "__error";
-    return @_errno_location();
-}

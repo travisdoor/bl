@@ -696,5 +696,9 @@ char *execute(const char *cmd)
         strappend(tmp, "%s", buffer);
     }
     pclose(pipe);
+    const usize len = strlenu(tmp);
+    if (len > 0 && tmp[len - 1] == '\n') {
+        tmp[len - 1] = '\0';
+    }
     return tmp;
 }

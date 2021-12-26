@@ -26,67 +26,54 @@
 // SOFTWARE.
 // =================================================================================================
 
+#import "libc"
+#import "os/macos"
 #import "std/string"
-#load "macos/macosapi.bl"
-#load "macos/errno.bl"
-#load "macos/dirent.bl"
-#load "macos/mach_time.bl"
-#load "posix/unistd.bl"
-#load "posix/signal.bl"
-#load "posix/error.bl"
-#load "posix/libc.bl"
+
 #load "std/error.bl"
 
 OS_NAME :: "MacOS";
 
-OS_STDIN  :: C_STDIN;
-OS_STDOUT :: C_STDOUT;
-OS_STDERR :: C_STDERR;
+OS_STDIN  :: C.STDIN;
+OS_STDOUT :: C.STDOUT;
+OS_STDERR :: C.STDERR;
 
-OS_PATH_MAX :: _DARWIN_MAXPATHLEN;
+OS_PATH_MAX :: C.DARWIN_MAXPATHLEN;
 
-// Platform depend C types compatible with C ABI.
-c_char      :: s8;
-c_uchar     :: u8;
-c_short     :: s16;
-c_ushort    :: u16;
-c_int       :: s32;
-c_uint      :: u32;
-c_long      :: s64;
-c_ulong     :: u64;
-c_longlong  :: s64;
-c_ulonglong :: u64;
-c_void_ptr  :: *u8;
-c_size_t    :: u64;
-c_ssize_t   :: s64;
+ERR_UNKNOWN        :: -1;
+ERR_NOT_FOUND      :: C.ENOENT;
+ERR_ALREADY_EXIST  :: C.EEXIST;
+ERR_ACCESS_DENIED  :: C.EACCES;
+ERR_INVALID_HANDLE :: C.EBADF;
+ERR_DIRECTORY      :: C.EISDIR;
 
 os_sleep_ms :: fn (ms: f64) {
-    _usleep(auto ms * 1000.0);
+    C.usleep(auto ms * 1000.0);
 }
 
 os_tick_ms :: fn () f64 #inline {
-    convfact: _MachTimebaseInfo;
-    _mach_timebase_info(&convfact);
-    tick :: _mach_absolute_time();
+    convfact: MacOS.MachTimebaseInfo;
+    MacOS.mach_timebase_info(&convfact);
+    tick :: MacOS.mach_absolute_time();
     return cast(f64)((tick * convfact.numer) / (convfact.denom * 1000000));
 }
 
 os_get_exec_path :: fn () string {
-    buf : [_DARWIN_MAXPATHLEN]u8 #noinit;
+    buf : [OS_PATH_MAX]u8 #noinit;
     buf_len := cast(u32) buf.len;
-    if _NSGetExecutablePath(auto buf.ptr, &buf_len) == -1 { return String.new(); }
+    if MacOS.NSGetExecutablePath(auto buf.ptr, &buf_len) == -1 { return String.new(); }
 
     return String.new(buf.ptr);
 }
 
 os_execute :: fn (command: string) s32 {
-    return WEXITSTATUS(c_system(auto command.ptr));
+    return WEXITSTATUS(C.system(auto command.ptr));
 }
 
 os_get_last_error :: fn () (s32, string) #inline {
-    ec :: _errno();
+    ec :: C.errno();
     str := String.empty;
-    c_str :: cast(*u8) c_strerror(ec);
+    c_str :: cast(*u8) C.strerror(ec);
     if c_str && ec != 0 { str = cstr_to_str(c_str); }
     return ec, str;
 }
@@ -97,7 +84,7 @@ __os_debug_break :: fn () #inline #compiler {
 }
 
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
-    return auto _write(auto fd, auto buf, count);
+    return auto C.write(auto fd, auto buf, count);
 }
 
 __os_abort :: fn () #compiler {
@@ -110,7 +97,7 @@ __os_abort :: fn () #compiler {
 }
 
 __os_abort_default :: fn () {
-    _raise(_SIGABRT);
+    C.raise(C.SIGABRT);
 }
 
 __MAX_ARGS_WITHOUT_ALLOC :: 8;
@@ -123,23 +110,23 @@ __os_start :: fn (argc: s64, argv: **u8, _: **u8) #entry {
     command_line_arguments.len = args.len;
 
     if is_allocated {
-        command_line_arguments.ptr = auto c_malloc(sizeof(string) * auto args.len);
+        command_line_arguments.ptr = auto C.malloc(sizeof(string) * auto args.len);
         if command_line_arguments.ptr == null { __os_abort(); }
     } else {
         command_line_arguments.ptr = tmp.ptr;
     }
 
     loop i := 0; i < args.len; i += 1 {
-        command_line_arguments[i] = {:string: auto c_strlen(auto args[i]), args[i]};
+        command_line_arguments[i] = {:string: auto C.strlen(auto args[i]), args[i]};
     }
 
     out :: cast(s32) main();
 
     if is_allocated {
-        c_free(auto command_line_arguments.ptr);
+        C.free(auto command_line_arguments.ptr);
     }
 
-    c_exit(out);
+    C.exit(out);
 }
 
 #private

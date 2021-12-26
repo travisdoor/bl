@@ -1,0 +1,11 @@
+build :: fn () #build_entry {
+    switch PLATFORM {
+        Platform.windows {
+        }
+        Platform.macos{
+        }
+        Platform.linux{
+        }
+        default;
+    }
+}

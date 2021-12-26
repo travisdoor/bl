@@ -38,6 +38,7 @@
 #define CONF_LINKER_EXECUTABLE "/default/linker_executable"
 #define CONF_LIB_DIR_KEY "/lib_dir"
 #define CONF_VERSION "/version"
+#define CONF_FILEPATH "@filepath"
 
 struct config;
 

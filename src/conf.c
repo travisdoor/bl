@@ -48,23 +48,29 @@ struct config *confload(const char *filepath)
 {
     blog("Load config from '%s'.", filepath);
 
+    FILE *input = fopen(filepath, "rb");
+    if (!input) {
+        return NULL;
+    }
+
     yaml_parser_t parser;
     yaml_parser_initialize(&parser);
-
-    FILE *input = fopen(filepath, "rb");
-    // @Incomplete: handle errors
-
     yaml_parser_set_input_file(&parser, input);
 
     struct config *conf = bmalloc(sizeof(struct config));
     conf->data          = NULL;
     conf->cache         = NULL;
 
+    // insert special entry for filename
+    struct entry entry;
+    entry.key   = strhash(CONF_FILEPATH);
+    entry.value = scdup(&conf->cache, filepath, strlen(filepath));
+    hmputs(conf->data, entry);
+
     enum state { STATE_KEY, STATE_VALUE } state = STATE_KEY;
 
     char blockpath[256] = "";
 
-    struct entry entry;
     yaml_token_t token;
     char        *key  = gettmpstr();
     char        *path = gettmpstr();

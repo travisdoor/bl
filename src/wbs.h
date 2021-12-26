@@ -119,11 +119,6 @@ static bool _lookup_vs(struct wbs *ctx)
         }
     }
     win_path_to_unix(vspath, strlenu(vspath));
-    const usize len = strlenu(vspath);
-    // WTF?
-    if (len > 0 && vspath[len - 1] == '\n') {
-        vspath[len - 1] = '\0';
-    }
     ctx->vs_path = strdup(vspath);
     puttmpstr(vspath);
     return true;

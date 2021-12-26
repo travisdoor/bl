@@ -51,12 +51,16 @@ static char *get_exec_dir(void)
 
 static bool generate_conf(const char *exec_dir)
 {
+    struct target_triple triple;
+    if (!target_init_default_triple(&triple)) {
+        return false;
+    }
+    char *str = target_triple_to_string(&triple);
+    blog("Triple: %s", str);
     char *filepath = gettmpstr();
     strprint(filepath, "%s/../%s", exec_dir, BL_CONFIG_FILE);
-    char      *triple = LLVMGetDefaultTargetTriple();
-    // @Incomplete: use only supported targets!!!
-    const bool state  = setup(exec_dir, filepath, triple);
-    LLVMDisposeMessage(triple);
+    const bool state = setup(exec_dir, filepath, str);
+    bfree(str);
     puttmpstr(filepath);
     return state;
 }

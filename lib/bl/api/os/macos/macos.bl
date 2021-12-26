@@ -1,0 +1,176 @@
+// =================================================================================================
+// bl
+//
+// File:   macos.bl 
+// Author: Martin Dorazil
+// Date:   26/2/20
+//
+// Copyright 2020 Martin Dorazil
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+// =================================================================================================
+
+#scope MacOS
+
+CFAllocatorRef :: *u8;
+CFIndex :: s64;
+CFStringRef :: *u8;
+CFArrayRef :: *u8;
+CFArrayCallBacks :: u8;
+CFTimeInterval :: f64;
+CFTypeRef :: *u8;
+CFRunLoopRef :: *u8;
+CFRunLoopMode :: CFStringRef;
+Boolean :: u8;
+
+CFStringEncoding :: enum u32 {
+    MacRoman = 0;
+    WindowsLatin1 = 0x0500;
+    ISOLatin1 = 0x0201;
+    NextStepLatin = 0x0B01;
+    ASCII = 0x0600; 
+    Unicode = 0x0100;
+    UTF8 = 0x08000100;
+    NonLossyASCII = 0x0BFF;
+
+    UTF16 = 0x0100; 
+    UTF16BE = 0x10000100;
+    UTF16LE = 0x14000100;
+
+    UTF32 = 0x0c000100;
+    UTF32BE = 0x18000100;
+    UTF32LE = 0x1c000100;
+};
+
+kFSEventStreamEventFlagNone               : u32 : 0x00000000;
+kFSEventStreamEventFlagMustScanSubDirs    : u32 : 0x00000001;
+kFSEventStreamEventFlagUserDropped        : u32 : 0x00000002;
+kFSEventStreamEventFlagKernelDropped      : u32 : 0x00000004;
+kFSEventStreamEventFlagEventIdsWrapped    : u32 : 0x00000008;
+kFSEventStreamEventFlagHistoryDone        : u32 : 0x00000010;
+kFSEventStreamEventFlagRootChanged        : u32 : 0x00000020;
+kFSEventStreamEventFlagMount              : u32 : 0x00000040;
+kFSEventStreamEventFlagUnmount            : u32 : 0x00000080;
+kFSEventStreamEventFlagItemCreated        : u32 : 0x00000100;
+kFSEventStreamEventFlagItemRemoved        : u32 : 0x00000200;
+kFSEventStreamEventFlagItemInodeMetaMod   : u32 : 0x00000400;
+kFSEventStreamEventFlagItemRenamed        : u32 : 0x00000800;
+kFSEventStreamEventFlagItemModified       : u32 : 0x00001000;
+kFSEventStreamEventFlagItemFinderInfoMod  : u32 : 0x00002000;
+kFSEventStreamEventFlagItemChangeOwner    : u32 : 0x00004000;
+kFSEventStreamEventFlagItemXattrMod       : u32 : 0x00008000;
+kFSEventStreamEventFlagItemIsFile         : u32 : 0x00010000;
+kFSEventStreamEventFlagItemIsDir          : u32 : 0x00020000;
+kFSEventStreamEventFlagItemIsSymlink      : u32 : 0x00040000;
+kFSEventStreamEventFlagOwnEvent           : u32 : 0x00080000;
+kFSEventStreamEventFlagItemIsHardlink     : u32 : 0x00100000;
+kFSEventStreamEventFlagItemIsLastHardlink : u32 : 0x00200000;
+kFSEventStreamEventFlagItemCloned         : u32 : 0x00400000;
+
+kFSEventStreamEventIdSinceNow : FSEventStreamEventId : 0xFFFFFFFFFFFFFFFF;
+
+kFSEventStreamCreateFlagNone            : FSEventStreamCreateFlags : 0x00000000;
+kFSEventStreamCreateFlagUseCFTypes      : FSEventStreamCreateFlags : 0x00000001;
+kFSEventStreamCreateFlagNoDefer         : FSEventStreamCreateFlags : 0x00000002;
+kFSEventStreamCreateFlagWatchRoot       : FSEventStreamCreateFlags : 0x00000004;
+kFSEventStreamCreateFlagIgnoreSelf      : FSEventStreamCreateFlags : 0x00000008;
+kFSEventStreamCreateFlagFileEvents      : FSEventStreamCreateFlags : 0x00000010;
+kFSEventStreamCreateFlagMarkSelf        : FSEventStreamCreateFlags : 0x00000020;
+kFSEventStreamCreateFlagUseExtendedData : FSEventStreamCreateFlags : 0x00000040;
+
+FSEventStreamRef :: *u8;
+FSEventStreamEventId :: u64;
+FSEventStreamCreateFlags :: u32;
+FSEventStreamEventFlags :: u32;
+ConstFSEventStreamRef :: *u8;
+
+CFAllocatorRetainCallBack :: * fn (info: *u8) *u8;
+CFAllocatorReleaseCallBack :: * fn (info: *u8);
+CFAllocatorCopyDescriptionCallBack :: * fn (info: *u8) CFStringRef;
+
+CFArrayCreate :: fn (
+    allocator: CFAllocatorRef,
+    values: **u8,
+    numValues: CFIndex,
+    callBacks: *CFArrayCallBacks
+) CFArrayRef #extern "CFArrayCreate";
+
+CFRunLoopGetCurrent :: fn () CFRunLoopRef #extern "CFRunLoopGetCurrent";
+CFRunLoopCopyCurrentMode :: fn (rl: CFRunLoopRef) CFRunLoopMode #extern "CFRunLoopCopyCurrentMode";
+CFRelease :: fn (cf: CFTypeRef) #extern "CFRelease";
+
+CFStringCreateWithCString :: fn (
+    alloc: CFAllocatorRef,
+    cStr: *u8,
+    encoding: CFStringEncoding
+) CFStringRef #extern "CFStringCreateWithCString";
+
+FSEventStreamContext :: struct {
+  version: CFIndex;
+  info: *u8;
+  retain: CFAllocatorRetainCallBack;
+  release: CFAllocatorReleaseCallBack;
+  copyDescription: CFAllocatorCopyDescriptionCallBack;
+};
+
+FSEventStreamCallback :: * fn (
+    streamRef: ConstFSEventStreamRef,
+    clientCallBackInfo: *u8,
+    numEvents: usize,
+    eventPaths: *u8,
+    eventFlags: *FSEventStreamEventFlags,
+    eventIds: *FSEventStreamEventId
+); 
+
+FSEventStreamCreate :: fn (
+    allocator: CFAllocatorRef,
+    callback: FSEventStreamCallback,
+    context: *FSEventStreamContext,
+    pathsToWatch: CFArrayRef,
+    sinceWhen: FSEventStreamEventId,
+    latency: CFTimeInterval,
+    flags: FSEventStreamCreateFlags   
+) FSEventStreamRef #extern "FSEventStreamCreate"; 
+
+FSEventStreamScheduleWithRunLoop :: fn (
+    streamRef: FSEventStreamRef,
+    runLoop: CFRunLoopRef,
+    runLoopMode: CFStringRef
+) #extern "FSEventStreamScheduleWithRunLoop";
+
+FSEventStreamUnscheduleFromRunLoop :: fn (
+    streamRef: FSEventStreamRef,
+    runLoop: CFRunLoopRef,
+    runLoopMode: CFStringRef
+) #extern "FSEventStreamUnscheduleFromRunLoop";
+
+FSEventStreamStart :: fn (streamRef: FSEventStreamRef) Boolean #extern "FSEventStreamStart";
+FSEventStreamFlushSync :: fn (streamRef: FSEventStreamRef) #extern "FSEventStreamFlushSync";
+FSEventStreamStop :: fn (streamRef: FSEventStreamRef) #extern "FSEventStreamStop";
+FSEventStreamInvalidate :: fn (streamRef: FSEventStreamRef) #extern "FSEventStreamInvalidate";
+FSEventStreamRelease :: fn (streamRef: FSEventStreamRef) #extern "FSEventStreamRelease";
+NSGetExecutablePath :: fn (buf: *C.char, bufsize: *C.uint) C.int #extern "_NSGetExecutablePath";
+
+MachTimebaseInfo :: struct {
+    numer: C.uint;
+    denom: C.uint;
+}
+
+mach_timebase_info :: fn (info: *MachTimebaseInfo) C.int #extern "mach_timebase_info";
+mach_absolute_time :: fn () u64 #extern "mach_absolute_time";

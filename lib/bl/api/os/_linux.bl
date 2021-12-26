@@ -59,7 +59,6 @@ os_stderr :: fn () *u8 #inline {
     return _stderr; 
 }
 
-
 os_sleep_ms :: fn (ms: f64) {
     C.usleep(auto ms * 1000.0);
 };

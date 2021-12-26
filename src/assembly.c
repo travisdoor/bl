@@ -304,13 +304,15 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, char **out
 
 static conf_data_t *load_module_config(const char *modulepath, struct token *import_from)
 {
-    char tmp_path[PATH_MAX] = {0};
-    snprintf(tmp_path, static_arrlenu(tmp_path), "%s/%s", modulepath, MODULE_CONFIG_FILE);
+    char *path = gettmpstr();
+    strprint(path, "%s/%s", modulepath, MODULE_CONFIG_FILE);
     conf_data_t *config = conf_data_new();
-    if (builder_compile_config(tmp_path, config, import_from) != COMPILE_OK) {
+    if (builder_compile_config(path, config, import_from) != COMPILE_OK) {
         conf_data_delete(config);
-        return false;
+        puttmpstr(path);
+        return NULL;
     }
+    puttmpstr(path);
     return config;
 }
 
@@ -524,10 +526,10 @@ void target_set_module_dir(struct target *target, const char *dir, enum module_i
 
 bool target_is_triple_valid(struct target_triple *triple)
 {
-    char        *str      = target_triple_to_string(triple);
-    bool         is_valid = false;
+    char  *str      = target_triple_to_string(triple);
+    bool   is_valid = false;
     char **list     = builder_get_supported_targets();
-    char** it = list;
+    char **it       = list;
     for (; *it; it++) {
         if (strcmp(str, *it) == 0) {
             is_valid = true;
@@ -544,7 +546,7 @@ bool target_init_default_triple(struct target_triple *triple)
     char *llvm_triple = LLVMGetDefaultTargetTriple();
     parse_triple(llvm_triple, triple);
     if (!target_is_triple_valid(triple)) {
-        builder_error("Default target triple '%s' is not supported by the compiler.", llvm_triple);
+        builder_error("Target triple '%s' is not supported by the compiler.", llvm_triple);
         LLVMDisposeMessage(llvm_triple);
         return false;
     }
@@ -682,6 +684,7 @@ void assembly_add_lib_path(struct assembly *assembly, const char *path)
 void assembly_append_linker_options(struct assembly *assembly, const char *opt)
 {
     if (!opt) return;
+    if (opt[0] == '\0') return;
     strappend(assembly->custom_linker_opt, "%s ", opt);
 }
 
@@ -761,15 +764,15 @@ bool assembly_import_module(struct assembly *assembly,
     const char          *module_dir = strlenu(target->module_dir) > 0 ? target->module_dir : NULL;
     const enum module_import_policy policy = assembly->target->module_policy;
     const bool local_found = module_dir ? module_exist(module_dir, modulepath) : false;
+
     switch (policy) {
     case IMPORT_POLICY_SYSTEM: {
         if (local_found) {
             strprint(local_path, "%s/%s", module_dir, modulepath);
-            config = load_module_config(local_path, import_from);
         } else {
             strprint(local_path, "%s/%s", builder_get_lib_dir(), modulepath);
-            config = load_module_config(local_path, import_from);
         }
+        config = load_module_config(local_path, import_from);
         break;
     }
 

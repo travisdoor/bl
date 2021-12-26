@@ -26,13 +26,6 @@
 // SOFTWARE.
 // =================================================================================================
 
-ERR_UNKNOWN        :: -1;
-ERR_NOT_FOUND      :: Win32.ERROR_FILE_NOT_FOUND;
-ERR_ALREADY_EXIST  :: Win32.ERROR_FILE_EXISTS;
-ERR_ACCESS_DENIED  :: Win32.ERROR_ACCESS_DENIED;
-ERR_INVALID_HANDLE :: Win32.ERROR_INVALID_HANDLE;
-ERR_DIRECTORY      :: Win32.ERROR_DIRECTORY;
-
 #scope Win32
 
 TRUE :: 1;
