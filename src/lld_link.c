@@ -80,10 +80,10 @@ static void append_default_opt(struct assembly *assembly, char **buf)
     const char *default_opt = "";
     switch (assembly->target->kind) {
     case ASSEMBLY_EXECUTABLE:
-        default_opt = confreads(builder.config, CONF_LINKER_OPT_EXEC_KEY, NULL);
+        default_opt = builder_read_config(assembly->target, "linker_opt_exec", NULL);
         break;
     case ASSEMBLY_SHARED_LIB:
-        default_opt = confreads(builder.config, CONF_LINKER_OPT_SHARED_KEY, NULL);
+        default_opt = builder_read_config(assembly->target, "linker_opt_shared", NULL);
         break;
     default:
         babort("Unknown output kind!");
@@ -97,9 +97,9 @@ static void append_custom_opt(struct assembly *assembly, char **buf)
     if (custom_opt) strappend(*buf, "%s ", custom_opt);
 }
 
-static void append_linker_exec(char **buf)
+static void append_linker_exec(struct assembly *assembly, char **buf)
 {
-    const char *custom_linker = confreads(builder.config, CONF_LINKER_EXECUTABLE, "");
+    const char *custom_linker = builder_read_config(assembly->target, "linker_executable", "");
     if (strlen(custom_linker)) {
         strappend(*buf, "\"%s\" ", custom_linker);
         return;
@@ -119,7 +119,7 @@ s32 lld_link(struct assembly *assembly)
     strappend(buf, "call ");
 
     // set executable
-    append_linker_exec(&buf);
+    append_linker_exec(assembly, &buf);
     // set input file
     strappend(buf, "\"%s/%s.%s\" ", out_dir, name, OBJECT_EXT);
     // set output file

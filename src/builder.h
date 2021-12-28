@@ -88,13 +88,15 @@ enum builder_cur_pos { CARET_WORD = 0, CARET_BEFORE, CARET_AFTER, CARET_NONE };
 struct location;
 
 // Initialize builder global instance with executable directory specified.
-void        builder_init(const struct builder_options *options, const char *exec_dir);
-void        builder_terminate(void);
+void builder_init(const struct builder_options *options, const char *exec_dir);
+void builder_terminate(void);
 // Return zero terminated list of supported target triples. Must be disposed by bfree.
 char      **builder_get_supported_targets(void);
 const char *builder_get_lib_dir(void);
 const char *builder_get_exec_dir(void);
 bool        builder_load_config(const char *filepath);
+const char     *
+builder_read_config(const struct target *target, const char *path, const char *default_value);
 int builder_compile_config(const char *filepath, conf_data_t *out_data, struct token *import_from);
 
 #define builder_add_target(name) _builder_add_target(name, false)

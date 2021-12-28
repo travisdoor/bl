@@ -502,7 +502,7 @@ char **builder_get_supported_targets(void)
     if (ex) {
         memcpy(dest + l1, supported_targets_experimental, l2 * sizeof(char *));
     }
-    dest[len-1] = NULL;
+    dest[len - 1] = NULL;
     return dest;
 }
 
@@ -537,6 +537,19 @@ bool builder_load_config(const char *filepath)
     confdelete(builder.config);
     builder.config = confload(filepath);
     return (bool)builder.config;
+}
+
+const char *
+builder_read_config(const struct target *target, const char *path, const char *default_value)
+{
+    bassert(target && path);
+    char *fullpath = gettmpstr();
+    char *triple   = target_triple_to_string(&target->triple);
+    strprint(fullpath, "/%s/%s", triple, path);
+    const char *result = confreads(builder.config, fullpath, default_value);
+    bfree(triple);
+    puttmpstr(fullpath);
+    return result;
 }
 
 struct target *_builder_add_target(const char *name, bool is_default)

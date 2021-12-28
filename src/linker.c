@@ -77,7 +77,7 @@ DONE:
 static void set_lib_paths(struct context *ctx)
 {
     char        tmp[PATH_MAX] = {0};
-    const char *lib_path      = confreads(builder.config, CONF_LINKER_LIB_PATH_KEY, "");
+    const char *lib_path      = builder_read_config(ctx->assembly->target, "linker_lib_path", "");
     if (!strlen(lib_path)) return;
 
     s64         len;

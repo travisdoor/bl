@@ -32,10 +32,6 @@
 #include "common.h"
 
 // Config file entries
-#define CONF_LINKER_OPT_EXEC_KEY "/default/linker_opt_exec"
-#define CONF_LINKER_OPT_SHARED_KEY "/default/linker_opt_shared"
-#define CONF_LINKER_LIB_PATH_KEY "/default/linker_lib_path"
-#define CONF_LINKER_EXECUTABLE "/default/linker_executable"
 #define CONF_LIB_DIR_KEY "/lib_dir"
 #define CONF_VERSION "/version"
 #define CONF_FILEPATH "@filepath"

@@ -40,6 +40,7 @@ struct context {
 
     char *version;
     char *lib_dir;
+    char *preload_file;
     char *linker_opt_exec;
     char *linker_opt_shared;
     char *linker_lib_path;
@@ -55,7 +56,7 @@ static bool xx_apple_darwin(struct context *ctx);
 
 static char *make_content(const struct context *ctx);
 
-bool setup(const char *exec_dir, const char *filepath, const char *triple)
+bool setup(const char *filepath, const char *triple)
 {
     struct context ctx    = {0};
     ctx.triple            = triple;
@@ -64,13 +65,14 @@ bool setup(const char *exec_dir, const char *filepath, const char *triple)
     ctx.linker_opt_exec   = "";
     ctx.linker_opt_shared = "";
     ctx.linker_lib_path   = "";
+    ctx.preload_file      = "";
 
     bool state = false;
 
     // common config
     ctx.version  = BL_VERSION;
     char *libdir = gettmpstr();
-    strprint(libdir, "%s/%s", exec_dir, BL_API_DIR);
+    strprint(libdir, "%s/%s", builder_get_exec_dir(), BL_API_DIR);
     if (!normalize_path(&libdir)) {
         builder_error("BL API directory not found. (Expected location is '%s').", libdir);
         puttmpstr(libdir);
@@ -135,8 +137,10 @@ char *make_content(const struct context *ctx)
     "# Main API directory containing all modules and source files. This option is mandatory.\n"    \
     "lib_dir: \"%s\"\n"                                                                            \
     "\n"                                                                                           \
-    "# Default configuration environment. This section is mandatory.\n"                            \
-    "default:\n"                                                                                   \
+    "# Current default environment configuration.\n"                                               \
+    "%s:\n"                                                                                        \
+    "    # Platform operating system preload file (relative to 'lib_dir').\n"                      \
+    "    preload_file: \"%s\"\n"                                                                   \
     "    # Optional path to the linker executable, 'lld' linker is used by default on some "       \
     "platforms.\n"                                                                                 \
     "    linker_executable: \"%s\"\n"                                                              \
@@ -152,6 +156,8 @@ char *make_content(const struct context *ctx)
              TEMPLATE,
              ctx->version,
              ctx->lib_dir,
+             ctx->triple,
+             ctx->preload_file,
              ctx->linker_executable,
              ctx->linker_opt_exec,
              ctx->linker_opt_shared,
@@ -176,6 +182,7 @@ bool default_config(struct context UNUSED(*ctx))
 #ifdef BL_WBS
 bool x86_64_pc_windows_msvc(struct context *ctx)
 {
+    ctx->preload_file      = "os/_windows.bl";
     ctx->linker_executable = "";
     ctx->linker_opt_exec =
         "/NOLOGO /ENTRY:__os_start /SUBSYSTEM:CONSOLE /INCREMENTAL:NO /MACHINE:x64";
@@ -209,6 +216,8 @@ static bool xx_apple_darwin(struct context *ctx)
     const char *LINKER_LIB_PATH    = "/usr/lib:/usr/local/lib";
     const char *LINKER_OPT_EXEC    = "-e ___os_start";
     const char *LINKER_OPT_SHARED  = "-dylib";
+
+    ctx->preload_file = "os/_macos.bl";
 
     if (!dir_exists(COMMAND_LINE_TOOLS)) {
         builder_error("Cannot find Command Line Tools on '%s', use 'xcode-select --install'.",

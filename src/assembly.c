@@ -608,21 +608,23 @@ struct assembly *assembly_new(const struct target *target)
         assembly_add_unit_safe(assembly, target->files[i], NULL);
     }
 
+    const char *preload_file = builder_read_config(assembly->target, "preload_file", "");
+
     // Add default units based on assembly kind
     switch (assembly->target->kind) {
     case ASSEMBLY_EXECUTABLE:
         if (assembly->target->no_api) break;
         assembly_add_unit_safe(assembly, BUILTIN_FILE, NULL);
-        assembly_add_unit_safe(assembly, OS_PRELOAD_FILE, NULL);
+        assembly_add_unit_safe(assembly, preload_file, NULL);
         break;
     case ASSEMBLY_SHARED_LIB:
         if (assembly->target->no_api) break;
         assembly_add_unit_safe(assembly, BUILTIN_FILE, NULL);
-        assembly_add_unit_safe(assembly, OS_PRELOAD_FILE, NULL);
+        assembly_add_unit_safe(assembly, preload_file, NULL);
         break;
     case ASSEMBLY_BUILD_PIPELINE:
         assembly_add_unit_safe(assembly, BUILTIN_FILE, NULL);
-        assembly_add_unit_safe(assembly, OS_PRELOAD_FILE, NULL);
+        assembly_add_unit_safe(assembly, preload_file, NULL);
         assembly_add_unit_safe(assembly, BUILD_API_FILE, NULL);
         assembly_add_unit_safe(assembly, BUILD_SCRIPT_FILE, NULL);
         break;
@@ -703,6 +705,7 @@ struct unit *
 assembly_add_unit_safe(struct assembly *assembly, const char *filepath, struct token *load_from)
 {
     zone();
+    if (filepath == NULL || filepath[0] == '\0') return_zone(NULL);
     struct unit      *unit = NULL;
     const hash_t      hash = unit_hash(filepath, load_from);
     AssemblySyncImpl *sync = assembly->sync;
