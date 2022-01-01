@@ -117,3 +117,12 @@ type_members :: fn () #test {
     test_eq(typeinfo(Bar.foo.i), typeinfo(s32));
     test_eq(typeinfo(Bar.foo.j), typeinfo(string));
 }
+
+type_of_operator :: fn () #test {
+    a: s32;
+    test_eq(typeinfo(typeof(a)), typeinfo(a));
+    b: *fn();
+    test_eq(typeinfo(typeof(b)), typeinfo(b));
+    c: typeof(a);
+    test_eq(typeinfo(typeof(c)), typeinfo(a));
+}
