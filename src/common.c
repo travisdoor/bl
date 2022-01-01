@@ -51,6 +51,7 @@
 #include <errno.h>
 #include <mach-o/dyld.h>
 #include <mach/mach_time.h>
+#include <sys/time.h>
 #endif
 
 #if BL_PLATFORM_LINUX
@@ -539,9 +540,16 @@ f64 get_tick_ms(void)
 {
 #if BL_PLATFORM_MACOS
     struct mach_timebase_info convfact;
-    mach_timebase_info(&convfact);
-    uint64_t tick = mach_absolute_time();
-    return (f64)((tick * convfact.numer) / (convfact.denom * 1000000));
+    if (mach_timebase_info(&convfact) != 0) {
+        uint64_t tick = mach_absolute_time();
+        return (f64)((tick * convfact.numer) / (convfact.denom * 1000000));
+    } else {
+        struct timeval tv;
+        gettimeofday(&tv, NULL);
+        const f64 s = (f64)tv.tv_sec;
+        const f64 u = (f64)tv.tv_usec;
+        return (s * 1000.0) + (u / 1000.0);
+    }
 #elif BL_PLATFORM_LINUX
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);

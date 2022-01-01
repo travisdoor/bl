@@ -503,6 +503,8 @@ static struct mir_instr *
 append_instr_sizeof(struct context *ctx, struct ast *node, struct mir_instr *expr);
 static struct mir_instr *
 append_instr_type_info(struct context *ctx, struct ast *node, struct mir_instr *expr);
+static struct mir_instr *
+append_instr_type_of(struct context *ctx, struct ast *node, struct mir_instr *expr);
 static struct mir_instr *append_instr_test_cases(struct context *ctx, struct ast *node);
 static struct mir_instr *
 append_instr_alignof(struct context *ctx, struct ast *node, struct mir_instr *expr);
@@ -738,6 +740,7 @@ static struct mir_instr *ast_expr_addrof(struct context *ctx, struct ast *addrof
 static struct mir_instr *ast_expr_cast(struct context *ctx, struct ast *cast);
 static struct mir_instr *ast_expr_sizeof(struct context *ctx, struct ast *szof);
 static struct mir_instr *ast_expr_type_info(struct context *ctx, struct ast *type_info);
+static struct mir_instr *ast_expr_type_of(struct context *ctx, struct ast *type_of);
 static struct mir_instr *ast_expr_test_cases(struct context *ctx, struct ast *tc);
 static struct mir_instr *ast_expr_alignof(struct context *ctx, struct ast *szof);
 static struct mir_instr *ast_expr_type(struct context *ctx, struct ast *type);
@@ -894,6 +897,7 @@ analyze_instr_cast(struct context *ctx, struct mir_instr_cast *cast, bool analyz
 static struct result analyze_instr_sizeof(struct context *ctx, struct mir_instr_sizeof *szof);
 static struct result analyze_instr_type_info(struct context             *ctx,
                                              struct mir_instr_type_info *type_info);
+static struct result analyze_instr_type_of(struct context *ctx, struct mir_instr_type_of *type_of);
 static struct result analyze_instr_alignof(struct context *ctx, struct mir_instr_alignof *alof);
 static struct result analyze_instr_binop(struct context *ctx, struct mir_instr_binop *binop);
 static struct result analyze_instr_call_loc(struct context *ctx, struct mir_instr_call_loc *loc);
@@ -3602,6 +3606,18 @@ append_instr_type_info(struct context *ctx, struct ast *node, struct mir_instr *
     return tmp;
 }
 
+struct mir_instr *
+append_instr_type_of(struct context *ctx, struct ast *node, struct mir_instr *expr)
+{
+    struct mir_instr_type_of *tmp = create_instr(ctx, MIR_INSTR_TYPE_OF, node);
+    tmp->expr                     = ref_instr(expr);
+    tmp->base.value.type          = ctx->builtin_types->t_type;
+    tmp->base.value.addr_mode     = MIR_VAM_RVALUE;
+    tmp->base.value.is_comptime   = true;
+    append_current_block(ctx, &tmp->base);
+    return &tmp->base;
+}
+
 struct mir_instr *append_instr_test_cases(struct context *ctx, struct ast *node)
 {
     struct mir_instr *tmp  = create_instr(ctx, MIR_INSTR_TEST_CASES, node);
@@ -4223,6 +4239,12 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
         case MIR_INSTR_TYPE_INFO: {
             struct mir_instr_type_info *info = (struct mir_instr_type_info *)top;
             sarrput(&queue, unref_instr(info->expr));
+            break;
+        }
+
+        case MIR_INSTR_TYPE_OF: {
+            struct mir_instr_type_of *type_of = (struct mir_instr_type_of *)top;
+            sarrput(&queue, unref_instr(type_of->expr));
             break;
         }
 
@@ -5387,6 +5409,26 @@ struct result analyze_instr_sizeof(struct context *ctx, struct mir_instr_sizeof 
     erase_instr_tree(szof->expr, false, false);
 
     MIR_CEV_WRITE_AS(u64, &szof->base.value, type->store_size_bytes);
+    return_zone(ANALYZE_RESULT(PASSED, 0));
+}
+
+struct result analyze_instr_type_of(struct context *ctx, struct mir_instr_type_of *type_of)
+{
+    zone();
+    bassert(type_of->expr);
+    bassert(type_of->base.value.type == ctx->builtin_types->t_type);
+    if (analyze_slot(ctx, &analyze_slot_conf_basic, &type_of->expr, NULL) != ANALYZE_PASSED) {
+        return_zone(ANALYZE_RESULT(FAILED, 0));
+    }
+    const struct mir_type *expr_type = type_of->expr->value.type;
+    bassert(expr_type);
+    switch (expr_type->kind) {
+    case MIR_TYPE_NAMED_SCOPE:
+        report_error(INVALID_TYPE, type_of->expr->node, "Invalid expression for typeof operator.");
+        return_zone(ANALYZE_RESULT(FAILED, 0));
+    default:
+        break;
+    }
     return_zone(ANALYZE_RESULT(PASSED, 0));
 }
 
@@ -8279,6 +8321,9 @@ struct result analyze_instr(struct context *ctx, struct mir_instr *instr)
         case MIR_INSTR_TYPE_INFO:
             state = analyze_instr_type_info(ctx, (struct mir_instr_type_info *)instr);
             break;
+        case MIR_INSTR_TYPE_OF:
+            state = analyze_instr_type_of(ctx, (struct mir_instr_type_of *)instr);
+            break;
         case MIR_INSTR_PHI:
             state = analyze_instr_phi(ctx, (struct mir_instr_phi *)instr);
             break;
@@ -9400,6 +9445,15 @@ struct mir_instr *ast_expr_type_info(struct context *ctx, struct ast *type_info)
 
     struct mir_instr *expr = ast(ctx, ast_node);
     return append_instr_type_info(ctx, type_info, expr);
+}
+
+struct mir_instr *ast_expr_type_of(struct context *ctx, struct ast *type_of)
+{
+    struct ast *ast_node = type_of->data.expr_type_of.node;
+    bassert(ast_node);
+
+    struct mir_instr *expr = ast(ctx, ast_node);
+    return append_instr_type_of(ctx, type_of, expr);
 }
 
 struct mir_instr *ast_expr_test_cases(struct context *ctx, struct ast *test_cases)
@@ -10661,6 +10715,8 @@ struct mir_instr *ast(struct context *ctx, struct ast *node)
         return ast_expr_compound(ctx, node);
     case AST_EXPR_TYPE_INFO:
         return ast_expr_type_info(ctx, node);
+    case AST_EXPR_TYPE_OF:
+        return ast_expr_type_of(ctx, node);
     case AST_EXPR_TEST_CASES:
         return ast_expr_test_cases(ctx, node);
     case AST_CALL_LOC:
@@ -10767,6 +10823,8 @@ const char *mir_instr_name(const struct mir_instr *instr)
         return "InstrVArgs";
     case MIR_INSTR_TYPE_INFO:
         return "InstrTypeInfo";
+    case MIR_INSTR_TYPE_OF:
+        return "InstrTypeOf";
     case MIR_INSTR_PHI:
         return "InstrPhi";
     case MIR_INSTR_TYPE_ENUM:

@@ -106,6 +106,7 @@ static void print_expr_cast(struct ast *cast, s32 pad, FILE *stream);
 static void print_expr_addrof(struct ast *addrof, s32 pad, FILE *stream);
 static void print_expr_sizeof(struct ast *szof, s32 pad, FILE *stream);
 static void print_expr_type_info(struct ast *type_info, s32 pad, FILE *stream);
+static void print_expr_type_of(struct ast *type_of, s32 pad, FILE *stream);
 static void print_expr_test_cases(struct ast *type_info, s32 pad, FILE *stream);
 static void print_expr_deref(struct ast *deref, s32 pad, FILE *stream);
 static void print_expr_binop(struct ast *binop, s32 pad, FILE *stream);
@@ -419,6 +420,12 @@ void print_expr_type_info(struct ast *type_info, s32 pad, FILE *stream)
     print_node(type_info->data.expr_type_info.node, pad + 1, stream);
 }
 
+void print_expr_type_of(struct ast *type_of, s32 pad, FILE *stream)
+{
+    print_head(type_of, pad, stream);
+    print_node(type_of->data.expr_type_of.node, pad + 1, stream);
+}
+
 void print_expr_test_cases(struct ast *type_info, s32 pad, FILE *stream)
 {
     print_head(type_info, pad, stream);
@@ -690,6 +697,10 @@ void print_node(struct ast *node, s32 pad, FILE *stream)
 
     case AST_EXPR_TYPE_INFO:
         print_expr_type_info(node, pad, stream);
+        break;
+
+    case AST_EXPR_TYPE_OF:
+        print_expr_type_of(node, pad, stream);
         break;
 
     case AST_EXPR_TEST_CASES:

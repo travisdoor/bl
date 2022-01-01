@@ -149,6 +149,8 @@ const char *ast_get_name(const struct ast *n)
         return "ExprSizeof";
     case AST_EXPR_TYPE_INFO:
         return "ExprTypeInfo";
+    case AST_EXPR_TYPE_OF:
+        return "ExprTypeOf";
     case AST_EXPR_TEST_CASES:
         return "ExprTestCases";
     case AST_EXPR_TYPE:

@@ -53,9 +53,16 @@ os_sleep_ms :: fn (ms: f64) {
 
 os_tick_ms :: fn () f64 #inline {
     convfact: MacOS.MachTimebaseInfo;
-    MacOS.mach_timebase_info(&convfact);
-    tick :: MacOS.mach_absolute_time();
-    return cast(f64)((tick * convfact.numer) / (convfact.denom * 1000000));
+    if MacOS.mach_timebase_info(&convfact) != 0 {
+        tick :: MacOS.mach_absolute_time();
+        return cast(f64)((tick * convfact.numer) / (convfact.denom * 1000000));
+    } else {
+        tv: C.timeval;
+        C.gettimeofday(&tv, null);
+        s :: cast(f64) tv.tv_sec;
+        u :: cast(f64) tv.tv_usec;
+        return (s * 1000.0) + (u / 1000.0); 
+    }
 }
 
 os_get_exec_path :: fn () string {

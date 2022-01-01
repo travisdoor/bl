@@ -40,6 +40,7 @@ union __INSTR_T {\
     struct mir_instr_compound        init;\
     struct mir_instr_vargs           vargs;\
     struct mir_instr_type_info       type_info;\
+    struct mir_instr_type_of         type_of;\
     struct mir_instr_phi             phi;\
     struct mir_instr_to_any          toany;\
     struct mir_instr_switch          sw;\
@@ -95,6 +96,7 @@ union __INSTR_T {\
     MIR_INSTR_COMPOUND,
     MIR_INSTR_VARGS,
     MIR_INSTR_TYPE_INFO,
+    MIR_INSTR_TYPE_OF,
     MIR_INSTR_PHI,
     MIR_INSTR_TOANY,
     MIR_INSTR_SWITCH,

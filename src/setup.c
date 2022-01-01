@@ -52,7 +52,8 @@ struct context {
 static bool default_config(struct context *ctx);
 static bool x86_64_pc_windows_msvc(struct context *ctx);
 static bool x86_64_pc_linux_gnu(struct context *ctx);
-static bool xx_apple_darwin(struct context *ctx);
+static bool x86_64_apple_darwin(struct context *ctx);
+static bool arm64_apple_darwin(struct context *ctx);
 
 static char *make_content(const struct context *ctx);
 
@@ -90,9 +91,9 @@ bool setup(const char *filepath, const char *triple)
     } else if (strcmp(ctx.triple, "x86_64-pc-linux-gnu") == 0) {
         state = x86_64_pc_linux_gnu(&ctx);
     } else if (strcmp(ctx.triple, "x86_64-apple-darwin") == 0) {
-        state = xx_apple_darwin(&ctx);
+        state = x86_64_apple_darwin(&ctx);
     } else if (strcmp(ctx.triple, "arm64-apple-darwin") == 0) {
-        state = xx_apple_darwin(&ctx);
+        state = arm64_apple_darwin(&ctx);
     } else {
         state = default_config(&ctx);
     }
@@ -209,13 +210,74 @@ bool x86_64_pc_linux_gnu(struct context *ctx)
     return true;
 }
 
-static bool xx_apple_darwin(struct context *ctx)
+static bool x86_64_apple_darwin(struct context *ctx)
 {
     const char *COMMAND_LINE_TOOLS = "/Library/Developer/CommandLineTools";
     const char *MACOS_SDK          = "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib";
     const char *LINKER_LIB_PATH    = "/usr/lib:/usr/local/lib";
     const char *LINKER_OPT_EXEC    = "-e ___os_start";
     const char *LINKER_OPT_SHARED  = "-dylib";
+
+    ctx->preload_file = "os/_macos.bl";
+
+    if (!dir_exists(COMMAND_LINE_TOOLS)) {
+        builder_error("Cannot find Command Line Tools on '%s', use 'xcode-select --install'.",
+                      COMMAND_LINE_TOOLS);
+        return false;
+    }
+
+    char *libpath   = gettmpstr();
+    char *optexec   = gettmpstr();
+    char *optshared = gettmpstr();
+
+    strprint(libpath, "%s", LINKER_LIB_PATH);
+    char *osver = execute("sw_vers -productVersion");
+    if (strlenu(osver) == 0) {
+        builder_error("Cannot detect macOS product version!");
+    } else {
+        s32 major, minor, patch;
+        major = minor = patch = 0;
+        if (sscanf(osver, "%d.%d.%d", &major, &minor, &patch) == 3) {
+            if (major >= 11) {
+                if (!dir_exists(MACOS_SDK)) {
+                    builder_error("Cannot find macOS SDK on '%s'.", MACOS_SDK);
+                } else {
+                    strappend(libpath, ":%s", MACOS_SDK);
+                }
+            }
+        }
+        strappend(optexec, "-macosx_version_min %s -sdk_version %s ", osver, osver);
+        strappend(optshared, "-macosx_version_min %s -sdk_version %s ", osver, osver);
+    }
+
+    strappend(optexec, "%s", LINKER_OPT_EXEC);
+    strappend(optshared, "%s", LINKER_OPT_SHARED);
+
+    ctx->linker_lib_path   = scdup(&ctx->cache, libpath, strlenu(libpath));
+    ctx->linker_opt_exec   = scdup(&ctx->cache, optexec, strlenu(optexec));
+    ctx->linker_opt_shared = scdup(&ctx->cache, optshared, strlenu(optshared));
+    puttmpstr(osver);
+    puttmpstr(optexec);
+    puttmpstr(optshared);
+    puttmpstr(libpath);
+
+    char *ldpath = execute("which ld");
+    if (strlenu(ldpath) == 0) {
+        builder_error("The 'ld' linker not found on system!");
+    }
+    ctx->linker_executable = scdup(&ctx->cache, ldpath, strlenu(ldpath));
+    puttmpstr(ldpath);
+
+    return true;
+}
+
+static bool arm64_apple_darwin(struct context *ctx)
+{
+    const char *COMMAND_LINE_TOOLS = "/Library/Developer/CommandLineTools";
+    const char *MACOS_SDK          = "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib";
+    const char *LINKER_LIB_PATH    = "/usr/lib:/usr/local/lib";
+    const char *LINKER_OPT_EXEC    = "-e ___os_start -arch arm64";
+    const char *LINKER_OPT_SHARED  = "-dylib -arch arm64";
 
     ctx->preload_file = "os/_macos.bl";
 

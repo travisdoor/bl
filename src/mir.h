@@ -115,6 +115,7 @@ struct mir_instr_alignof;
 struct mir_instr_compound;
 struct mir_instr_vargs;
 struct mir_instr_type_info;
+struct mir_instr_type_of;
 struct mir_instr_phi;
 struct mir_instr_to_any;
 struct mir_instr_switch;
@@ -852,6 +853,12 @@ struct mir_instr_type_info {
 
     struct mir_instr *expr;
     struct mir_type  *rtti_type;
+};
+
+struct mir_instr_type_of {
+    struct mir_instr base;
+
+    struct mir_instr *expr;
 };
 
 struct mir_instr_test_case {

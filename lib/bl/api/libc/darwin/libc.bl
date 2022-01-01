@@ -36,6 +36,7 @@ uuid_t :: [16]uchar;
 uuid_string_t :: [37]char;
 nlink_t :: u16; 
 time_t :: long;
+timezone :: long;
 
 stat_t :: struct {
     	st_dev: dev_t;
@@ -72,6 +73,10 @@ timespec :: struct {
 	tv_nsec: long;
 }
 
+timeval :: struct {
+    tv_sec: time_t;
+	tv_usec: suseconds_t;
+}
 
 STDIN  :: 0;
 STDOUT :: 1;
@@ -266,20 +271,21 @@ _S_IFIFO  : u32 : 0x1000;
 _S_IFLNK  : u32 : 0xA000;
 _S_IFSOCK : u32 : 0xC000;
 
-_S_ISDIR :: fn (mode: u32) bool #inline {
+S_ISDIR :: fn (mode: u32) bool #inline {
     return (mode & _S_IFMT) == _S_IFDIR;    
 }
 
-_S_ISREG :: fn (mode: u32) bool #inline {
+S_ISREG :: fn (mode: u32) bool #inline {
     return (mode & _S_IFMT) == _S_IFREG;    
 }
 
-opendir :: fn (name: *char) *DIR #extern "opendir$INODE64";
-fdopendir :: fn (fd: int) *DIR #extern "fdopendir$INODE64";
-readdir :: fn (dirp: *DIR) *dirent_t #extern "readdir$INODE64";
-rewinddir :: fn (dirp: *DIR) #extern "rewinddir$INODE64";
-stat :: fn (path: *char, buf: *stat_t) int #extern "stat$INODE64";
-fstat :: fn (fd: int, stat: *stat_t) int #extern "fstat$INODE64";
+// @Incomplete: use $INODE64 suffix on x86_64 systems.
+opendir :: fn (name: *char) *DIR #extern "opendir";
+fdopendir :: fn (fd: int) *DIR #extern "fdopendir";
+readdir :: fn (dirp: *DIR) *dirent_t #extern "readdir";
+rewinddir :: fn (dirp: *DIR) #extern "rewinddir";
+stat :: fn (path: *char, buf: *stat_t) int #extern "stat";
+fstat :: fn (fd: int, stat: *stat_t) int #extern "fstat";
 
 mkdir :: fn (path: *char, mode: mode_t) int #extern "mkdir";
 fchmod :: fn (fd: int, mode: mode_t) int #extern "fchmod";
@@ -324,6 +330,7 @@ write :: fn (fd: int, buf: *char, count: size_t) ssize_t #extern "write";
 usleep :: fn (us: uint) int #extern "usleep";
 rmdir :: fn (path: *char) int #extern "rmdir";
 chdir :: fn (path: *char) int #extern "chdir";
+gettimeofday :: fn (tv: *timeval, tz: *timezone) int #extern "gettimeofday";
 
 errno :: fn () s32 #inline {
     _errno_location :: fn () *int #extern "__error";

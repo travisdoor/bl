@@ -352,6 +352,10 @@ struct ast_expr_type_info {
     struct ast *node;
 };
 
+struct ast_expr_type_of {
+    struct ast *node;
+};
+
 struct ast_expr_alignof {
     struct ast *node;
 };

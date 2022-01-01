@@ -43,10 +43,11 @@ platform_current :: fn () #test {
     test_neq(PLATFORM, Platform.unknown);
 }
 
-expected_supported_env :: {:[3]string:
+expected_supported_env :: {:[4]string:
     "unknown",
     "msvc",
     "gnu",
+    "musl",
 };
 
 env_all :: fn () #test {

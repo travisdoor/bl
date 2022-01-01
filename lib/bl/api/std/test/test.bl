@@ -232,7 +232,7 @@ test_run :: fn () s32 {
     print("%\n", TEXT_LINE);
 
     loop i := 0; i < cases.len; i += 1 {
-        array_push(&_queue, {:TestRun: &cases[i], false, 0.});
+        array_push(&_queue, {:TestRun: cases[i].func, cases[i].name, false, 0.});
     }
 
     loop _ci < _queue.len {
@@ -249,7 +249,7 @@ test_run :: fn () s32 {
         if t.passed { continue; }
 
         fc += 1;
-        print("[      | FAIL ] % (% ms)\n", t.case.name, t.runtime_ms);
+        print("[      | FAIL ] % (% ms)\n", t.name, t.runtime_ms);
     }
 
     perc := 100;
@@ -266,7 +266,8 @@ test_run :: fn () s32 {
 
 #private
 TestRun :: struct {
-    case: *TestCase;
+    func: *fn();
+    name: string;
     passed: bool;
     runtime_ms: f64;
 }
@@ -280,7 +281,7 @@ _start_time: f64;
 abort_handler :: fn () {
     _current.runtime_ms = os_tick_ms() - _start_time;
     _current.passed = false;
-    print("[      | FAIL ] % (% ms)\n", _current.case.name, _current.runtime_ms);
+    print("[      | FAIL ] % (% ms)\n", _current.name, _current.runtime_ms);
     Thread.exit(1);
     __os_abort_default();
 }
@@ -289,14 +290,11 @@ worker :: fn (_: *u8) s32 {
     loop _ci < _queue.len {
         _current = &_queue[_ci];
         _ci += 1; 
-
-        //print("    RUN  %\n", _current.case.name);
-
         _start_time = os_tick_ms();
-        _current.case.func();
+        _current.func();
         _current.runtime_ms = os_tick_ms() - _start_time;
         _current.passed = true;
-        print("[ PASS |      ] % (% ms)\n", _current.case.name, _current.runtime_ms);
+        print("[ PASS |      ] % (% ms)\n", _current.name, _current.runtime_ms);
     }
     return 0;
 }

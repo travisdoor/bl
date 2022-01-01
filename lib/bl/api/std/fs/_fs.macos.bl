@@ -147,7 +147,7 @@ dir_scan :: fn (dirpath: string, filter: Fs.DirScanFilterFn) (Fs.InfoList, Error
         if stat == null { break; }
         kind: Fs.InfoKind;
         name: string;
-        if stat.d_type == auto _DT_DIR {
+        if stat.d_type == auto C.DT_DIR {
             kind = Fs.InfoKind.Directory;
             name = String.new(cast(*u8) stat.d_name.ptr);
         } else {
@@ -204,7 +204,7 @@ set_cwd :: fn (path: string) Error #inline {
 
 get_home :: fn () string #inline {
     tmp :: "HOME";
-    cdir :: cast(*u8) c_getenv(auto tmp.ptr);
+    cdir :: cast(*u8) C.getenv(auto tmp.ptr);
     if !cdir { return String.new(); }
     path :: String.new(cdir);
     return remove_last_separator(path);
@@ -212,7 +212,7 @@ get_home :: fn () string #inline {
 
 get_tmp :: fn () string #inline {
     tmp :: "TMPDIR";
-    cdir :: cast(*u8) c_getenv(auto tmp.ptr);
+    cdir :: cast(*u8) C.getenv(auto tmp.ptr);
     if !cdir { return String.new("/tmp"); }
     path :: String.new(cdir);
     return remove_last_separator(path);
@@ -231,7 +231,7 @@ normalize :: fn (filepath: *string) Error {
     } else {
         bprint(in_buf, "%", @filepath);
     }
-    if !c_realpath(auto in_buf.ptr, auto buf.ptr) {
+    if !C.realpath(auto in_buf.ptr, auto buf.ptr) {
         ec, estr :: os_get_last_error();
         return error(ec, "Cannot normalize '%': %.", @filepath, estr);
     }
@@ -253,13 +253,13 @@ modes_to_flags :: fn (modes: []Fs.OpenMode) s32 #inline {
         }
     }
     flags: s32;
-    if ((!w) && (!r)) { flags = _O_RDONLY; }
-    else if (w && r) { flags = _O_RDWR; }
-    else if w { flags = _O_WRONLY; }
-    else if r { flags = _O_RDONLY; }
-    if create { flags = flags | _O_CREAT; }
-    if append { flags = flags | _O_APPEND; }
-    if w && !append { flags = flags | _O_TRUNC; }
+    if ((!w) && (!r)) { flags = C.O_RDONLY; }
+    else if (w && r) { flags = C.O_RDWR; }
+    else if w { flags = C.O_WRONLY; }
+    else if r { flags = C.O_RDONLY; }
+    if create { flags = flags | C.O_CREAT; }
+    if append { flags = flags | C.O_APPEND; }
+    if w && !append { flags = flags | C.O_TRUNC; }
     return flags;
 }
 
