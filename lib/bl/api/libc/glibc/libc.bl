@@ -1,0 +1,321 @@
+#scope C
+
+STDIN  :: 0;
+STDOUT :: 1;
+STDERR :: 2;
+
+RAND_MAX :: 0x7fffffff;
+
+char      :: s8;
+uchar     :: u8;
+short     :: s16;
+ushort    :: u16;
+int       :: s32;
+uint      :: u32;
+long      :: s64;
+ulong     :: u64;
+longlong  :: s64;
+ulonglong :: u64;
+void_ptr  :: *u8;
+size_t    :: u64;
+ssize_t   :: s64;
+
+FILE :: u8;
+
+dev_t :: ulong;
+ino_t :: ulong;
+nlink_t :: ulong;
+mode_t :: u32;
+uid_t :: u32;
+gid_t :: u32;
+off_t :: long;
+blksize_t :: long;
+blkcnt_t :: long;
+time_t :: long;
+syscall_ulong_t :: ulong;
+
+SIGHUP  :: 1;
+SIGINT  :: 2;
+SIGQUIT :: 3; 
+SIGILL  :: 4; 
+SIGTRAP :: 5;
+SIGABRT :: 6;
+
+signal :: fn (signum: int, handler: *fn (v: int)) *fn (v: int) #extern "signal";
+raise :: fn (sig: int) int #extern "raise";
+getenv :: fn (name: *char) *char #extern "getenv";
+putenv :: fn (var: *char) int #extern "putenv";
+realpath :: fn (path: *char, resolved_path: *char) *char #extern "realpath";
+exit :: fn (v: int) #extern "_exit";
+system :: fn (command: *char) int #extern "system";
+malloc :: fn (size: size_t) void_ptr #extern "malloc";
+free :: fn (ptr: void_ptr) #extern "free";
+strlen :: fn (str: *char) size_t #extern "strlen";
+strcmp :: fn (first: *char, second: *char) int #extern "strcmp";
+wcslen :: fn (str: *u16) usize #extern "wcslen";
+strerror :: fn (errnum: int) *char #extern "strerror";
+popen :: fn (f: *char, m: *char) void_ptr #extern "popen";
+pclose :: fn (f: void_ptr) #extern "pclose";
+getchar :: fn () int #extern "getchar";
+asinf :: fn (arg: f32) f32 #extern "asinf";
+asin :: fn (arg: f64) f64 #extern "asin";
+acosf :: fn (n: f32) f32 #extern "acosf";
+acos :: fn (n: f64) f64 #extern "acos";
+tanf :: fn (x: f32) f32 #extern "tanf";
+tan :: fn (x: f64) f64 #extern "tan";
+atan2f :: fn (y: f32, x: f32) f32 #extern "atan2f";
+atan2 :: fn (y: f64, x: f64) f64 #extern "atan2";
+copysignf :: fn (x: f32, y: f32) f32 #extern "copysingf";
+copysign :: fn (x: f64, y: f64) f64 #extern "copysing";
+tolower :: fn (c: int) int #extern "tolower";
+toupper :: fn (c: int) int #extern "toupper";
+rand  :: fn () int #extern "rand";
+srand :: fn (seed: uint) #extern "srand";
+fopen :: fn (filename: *char, mode: *char) *FILE #extern "fopen";
+fdopen :: fn (fd: int, mode: *char) *FILE #extern "fdopen";
+fclose :: fn (stream: *FILE) int #extern "fclose";
+fgets :: fn (buf: void_ptr, size: int, f: *FILE) void_ptr #extern "fgets";
+getcwd :: fn (buf: *char, size: size_t) *char #extern "getcwd";
+unlink :: fn (pathname: *char) int #extern "unlink";
+read :: fn (fd: int, buf: *char, count: size_t) ssize_t #extern "read";
+readlink :: fn (pathname: *char, buf: *char, bufsiz: size_t) ssize_t #extern "readlink";
+close :: fn (fd: int) int #extern "close";
+write :: fn (fd: int, buf: *char, count: size_t) ssize_t #extern "write";
+usleep :: fn (us: uint) int #extern "usleep";
+rmdir :: fn (path: *char) int #extern "rmdir";
+chdir :: fn (path: *char) int #extern "chdir";
+qsort :: fn (base: void_ptr, nitems: size_t, size: size_t, compar: *fn (void_ptr, void_ptr) int) #extern "qsort";
+
+DIR :: u8;
+dirent_t :: struct {
+    d_ino: ulong; 
+    d_off: long; 
+    d_reclen: ushort;
+    d_type: uchar; 
+    d_name: [256]char;
+}
+
+DT_UNKNOWN ::  0;
+DT_FIFO    ::  1;
+DT_CHR     ::  2;
+DT_DIR     ::  4;
+DT_BLK     ::  6;
+DT_REG     ::  8;
+DT_LNK     :: 10;
+DT_SOCK    :: 12;
+DT_WHT     :: 14;
+
+opendir :: fn (name: *char) *DIR #extern "opendir";
+fdopendir :: fn (fd: int) *DIR #extern "fdopendir";
+closedir :: fn (dirp: *DIR) int #extern "closedir";
+readdir :: fn (dirp: *DIR) *dirent_t #extern "readdir";
+rewinddir :: fn (dirp: *DIR) #extern "rewinddir";
+
+O_RDONLY :: 0x0;
+O_WRONLY :: 0x1;
+O_RDWR :: 0x2;
+O_CREAT :: 0x40;
+O_EXCL :: 0x80;
+O_APPEND :: 0x400;
+O_TRUNC :: 0x200;
+
+open :: fn (path: *char, oflag: int, mode: int) int #extern "open";
+
+STAT_VER :: 1;
+
+S_IRUSR :: 0x100;
+S_IWUSR :: 0x80;
+S_IXUSR :: 0x40;
+S_IRWXU :: (S_IRUSR | S_IWUSR | S_IXUSR);
+S_IRGRP :: S_IRUSR >> 3;
+S_IWGRP :: S_IWUSR >> 3;
+S_IXGRP :: S_IXUSR >> 3;
+S_IRWXG :: S_IRWXU >> 3;
+S_IROTH :: S_IRGRP >> 3;
+S_IWOTH :: S_IWGRP >> 3;
+S_IXOTH :: S_IXGRP >> 3;
+S_IRWXO :: S_IRWXG >> 3;
+
+
+__S_IFMT   : uint : 0xf000;
+__S_IFDIR  : uint : 0x4000;
+__S_IFCHR  : uint : 0x2000;
+__S_IFBLK  : uint : 0x6000;	
+__S_IFREG  : uint : 0x8000;
+__S_IFIFO  : uint : 0x1000;
+__S_IFLNK  : uint : 0xA000;
+__S_IFSOCK : uint : 0xC000;
+
+S_ISDIR :: fn (mode: uint) bool #inline {
+    return (mode & __S_IFMT) == __S_IFDIR;    
+}
+
+S_ISREG :: fn (mode: uint) bool #inline {
+    return (mode & __S_IFMT) == __S_IFREG;    
+}
+
+
+stat_t :: struct {
+    st_dev: dev_t;
+    st_ino: ino_t;
+    st_nlink: nlink_t;
+    st_mode: mode_t;
+    st_uid: uid_t;
+    st_gid: gid_t;
+    _0: int;
+    st_rdev: dev_t;
+    st_size: off_t;
+    st_blksize: blksize_t;
+    st_blocks: blkcnt_t;
+    st_atime: time_t;
+    st_atime_nsec: syscall_ulong_t;
+    st_mtime: time_t;
+    st_mtime_nsec: syscall_ulong_t;
+    st_ctime: time_t;
+    st_ctime_nsec: syscall_ulong_t;
+    _1: [3]long;
+}
+
+mkdir :: fn (path: *char, mode: int) int #extern "mkdir";
+
+stat :: fn (path: *char, buf: *stat_t) int #inline {
+    return stat_v(STAT_VER, path, buf);
+}
+
+fstat :: fn (fd: int, buf: *stat_t) int #inline {
+    return fstat_v(STAT_VER, fd, buf);
+}
+
+errno_location :: fn () *int #extern "__errno_location";
+
+// Function instead of global variable.
+errno :: fn () int #inline {
+    return @errno_location();
+}
+
+EPERM :: 1;
+ENOENT :: 2;
+ESRCH :: 3;
+EINTR :: 4;
+EIO :: 5;
+ENXIO :: 6;
+E2BIG :: 7;
+ENOEXEC :: 8;
+EBADF ::  9;
+ECHILD :: 10;
+EAGAIN :: 11;
+ENOMEM :: 12;
+EACCES :: 13;
+EFAULT :: 14;
+ENOTBLK :: 15;
+EBUSY :: 16;
+EEXIST :: 17;
+EXDEV :: 18;
+ENODEV :: 19;
+ENOTDIR :: 20;
+EISDIR :: 21;
+EINVAL :: 22;
+ENFILE :: 23;
+EMFILE :: 24;
+ENOTTY :: 25;
+ETXTBSY :: 26;
+EFBIG :: 27;
+ENOSPC :: 28;
+ESPIPE :: 29;
+EROFS :: 30;
+EMLINK :: 31;
+EPIPE :: 32;
+EDOM :: 33;
+ERANGE :: 34;
+EDEADLK :: 35;
+ENAMETOOLONG :: 36;
+ENOLCK :: 37;
+ENOSYS :: 38;
+ENOTEMPTY :: 39;
+ELOOP :: 40;
+EWOULDBLOCK :: EAGAIN;
+ENOMSG :: 42;
+EIDRM :: 43;
+ECHRNG :: 44;
+EL2NSYNC :: 45;
+EL3HLT :: 46;
+EL3RST :: 47;
+ELNRNG :: 48;
+EUNATCH :: 49;
+ENOCSI :: 50;
+EL2HLT :: 51;
+EBADE :: 52;
+EBADR :: 53;
+EXFULL :: 54;
+ENOANO :: 55;
+EBADRQC :: 56;
+EBADSLT :: 57;
+EDEADLOCK :: EDEADLK;
+EBFONT :: 59;
+ENOSTR :: 60;
+ENODATA :: 61;
+ETIME :: 62;
+ENOSR :: 63;
+ENONET :: 64;
+ENOPKG :: 65;
+EREMOTE :: 66;
+ENOLINK :: 67;
+EADV :: 68;
+ESRMNT :: 69;
+ECOMM :: 70;
+EPROTO :: 71;
+EMULTIHOP :: 72;
+EDOTDOT :: 73;
+EBADMSG :: 74;
+EOVERFLOW :: 75;
+ENOTUNIQ :: 76;
+EBADFD :: 77;
+EREMCHG :: 78;
+ELIBACC :: 79;
+ELIBBAD :: 80;
+ELIBSCN :: 81;
+ELIBMAX :: 82;
+ELIBEXEC :: 83;
+EILSEQ :: 84;
+ERESTART :: 85;
+ESTRPIPE :: 86;
+EUSERS :: 87;
+ENOTSOCK :: 88;
+EDESTADDRREQ :: 89;
+EMSGSIZE :: 90;
+EPROTOTYPE :: 91;
+ENOPROTOOPT :: 92;
+EPROTONOSUPPORT :: 93;
+ESOCKTNOSUPPORT :: 94;
+EOPNOTSUPP :: 95;
+EPFNOSUPPORT :: 96;
+EAFNOSUPPORT :: 97;
+EADDRINUSE :: 98;
+EADDRNOTAVAIL :: 99;
+ENETDOWN :: 100;
+ENETUNREACH :: 101;
+ENETRESET :: 102;
+ECONNABORTED :: 103;
+ECONNRESET :: 104;
+ENOBUFS :: 105;
+EISCONN :: 106;
+ENOTCONN :: 107;
+ESHUTDOWN :: 108;
+ETOOMANYREFS :: 109;
+ETIMEDOUT :: 110;
+ECONNREFUSED :: 111;
+EHOSTDOWN :: 112;
+EHOSTUNREACH :: 113;
+EALREADY :: 114;
+EINPROGRESS :: 115;
+ESTALE :: 116;
+EUCLEAN :: 117;
+ENOTNAM :: 118;
+ENAVAIL :: 119;
+EISNAM :: 120;
+EREMOTEIO :: 121;
+EDQUOT :: 122;
+
+#private
+stat_v :: fn (ver: int, path: *char, buf: *stat_t) int #extern "__xstat64";
+fstat_v :: fn (ver: int, fd: int, stat: *stat_t) int #extern "__fxstat64";

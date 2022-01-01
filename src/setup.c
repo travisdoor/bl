@@ -207,6 +207,31 @@ FAILED:
 
 bool x86_64_pc_linux_gnu(struct context *ctx)
 {
+    const char *RUNTIME_PATH      = "lib/bl/rt/blrt_x86_64_linux.o";
+    const char *LINKER_LIB_PATH   = "/usr/lib:/usr/local/lib:/lib64:/usr/lib/x86_64-linux-gnu";
+    const char *LINKER_OPT_EXEC   = "-dynamic-linker /lib64/ld-linux-x86-64.so.2 -e _start";
+    const char *LINKER_OPT_SHARED = "--shared";
+
+    ctx->preload_file = "os/_linux.bl";
+
+    char *ldpath = execute("which ld");
+    if (strlenu(ldpath) == 0) {
+        builder_error("The 'ld' linker not found on system!");
+    }
+    ctx->linker_executable = scdup(&ctx->cache, ldpath, strlenu(ldpath));
+
+    char *runtime = gettmpstr();
+    strprint(runtime, "%s/../%s", builder_get_exec_dir(), RUNTIME_PATH);
+    if (!normalize_path(&runtime)) {
+        builder_error("Runtime loader not found. (Expected location is '%s').", runtime);
+        puttmpstr(runtime);
+        return false;
+    }
+    ctx->linker_opt_exec = scprint(&ctx->cache, "%s %s", runtime, LINKER_OPT_EXEC);
+    puttmpstr(runtime);
+    ctx->linker_opt_shared = scprint(&ctx->cache, "%s", LINKER_OPT_SHARED);
+    ctx->linker_lib_path   = scprint(&ctx->cache, "%s", LINKER_LIB_PATH);
+
     return true;
 }
 
