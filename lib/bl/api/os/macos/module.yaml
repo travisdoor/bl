@@ -1,0 +1,7 @@
+version: 1
+
+x86_64_apple_darwin:
+  src: "macos.bl"
+
+arm64_apple_darwin:
+  src: "macos.bl"

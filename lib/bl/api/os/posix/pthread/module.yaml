@@ -1,0 +1,6 @@
+version: 2
+src: "pthread.bl"
+
+x86_64_pc_linux_gnu:
+  linker_opt: "-lpthread"
+

@@ -1,0 +1,14 @@
+version: 6
+
+x86_64-pc-windows-msvc:
+  src: "_dlib.win32.bl"
+
+x86_64_pc_linux_gnu:
+  src: "_dlib.posix.bl"
+  linker_opt: "-ldl"
+
+x86_64_apple_darwin:
+  src: "_dlib.posix.bl"
+
+arm64_apple_darwin:
+  src: "_dlib.posix.bl"

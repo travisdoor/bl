@@ -1,0 +1,6 @@
+opendir :: fn (name: *char) *DIR #extern "opendir";
+fdopendir :: fn (fd: int) *DIR #extern "fdopendir";
+readdir :: fn (dirp: *DIR) *dirent_t #extern "readdir";
+rewinddir :: fn (dirp: *DIR) #extern "rewinddir";
+stat :: fn (path: *char, buf: *stat_t) int #extern "stat";
+fstat :: fn (fd: int, stat: *stat_t) int #extern "fstat";

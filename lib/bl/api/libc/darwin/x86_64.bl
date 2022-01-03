@@ -1,0 +1,6 @@
+opendir :: fn (name: *char) *DIR #extern "opendir$INODE64";
+fdopendir :: fn (fd: int) *DIR #extern "fdopendir$INODE64";
+readdir :: fn (dirp: *DIR) *dirent_t #extern "readdir$INODE64";
+rewinddir :: fn (dirp: *DIR) #extern "rewinddir$INODE64";
+stat :: fn (path: *char, buf: *stat_t) int #extern "stat$INODE64";
+fstat :: fn (fd: int, stat: *stat_t) int #extern "fstat$INODE64";
