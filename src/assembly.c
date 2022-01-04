@@ -362,10 +362,10 @@ static void import_link(import_elem_context_t *ctx, const char *lib)
     assembly_add_native_lib(ctx->assembly, lib, NULL);
 }
 
-static bool import_module2(struct assembly *assembly,
-                           struct config   *config,
-                           const char      *modulepath,
-                           struct token    *import_from)
+static bool import_module(struct assembly *assembly,
+                          struct config   *config,
+                          const char      *modulepath,
+                          struct token    *import_from)
 {
     zone();
     import_elem_context_t ctx = {assembly, import_from, modulepath};
@@ -842,7 +842,7 @@ bool assembly_import_module(struct assembly *assembly,
         bassert("Invalid module import policy!");
     }
     if (config) {
-        state = import_module2(assembly, config, local_path, import_from);
+        state = import_module(assembly, config, local_path, import_from);
     } else {
         builder_msg(MSG_ERR,
                     ERR_FILE_NOT_FOUND,
