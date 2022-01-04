@@ -114,6 +114,16 @@ bool setup(const char *filepath, const char *triple)
         put_tstr(bakfilepath);
     }
 
+    char dirpath[PATH_MAX]; // @Hack: use dynamic length string?
+    get_dir_from_filepath(dirpath, static_arrlenu(dirpath), ctx.filepath);
+    if (!dir_exists(dirpath)) {
+        if (!create_dir_tree(dirpath)) {
+            builder_error("Cannot create directory path '%s'!", dirpath);
+            put_tstr(content);
+            return false;
+        }
+    }
+
     FILE *file = fopen(ctx.filepath, "w");
     if (!file) {
         builder_error("Cannot open file '%s' for writing!", ctx.filepath);
