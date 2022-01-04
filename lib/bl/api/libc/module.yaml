@@ -4,14 +4,14 @@ x86_64-pc-windows-msvc:
   src: "msvc/libc.bl"
   linker_opt: "msvcrt.lib ucrt.lib vcruntime.lib"
 
-x86_64_pc_linux_gnu:
+x86_64-pc-linux-gnu:
   src: "glibc/libc.bl"
   linker_opt: "-lc -lm"
 
-x86_64_apple_darwin:
+x86_64-apple-darwin:
   src: "darwin/libc.bl:darwin/x86_64.bl"
   linker_opt: "-lc -lm"
 
-arm64_apple_darwin:
+arm64-apple-darwin:
   src: "darwin/libc.bl:darwin/arm64.bl"
   linker_opt: "-lc -lm"

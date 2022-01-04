@@ -39,7 +39,7 @@
 void obj_writer_run(struct assembly *assembly)
 {
     zone();
-    char                *buf    = gettmpstr();
+    char                *buf    = tstr();
     const struct target *target = assembly->target;
     const char          *name   = target->name;
     blog("out_dir = %s", target->out_dir);
@@ -51,6 +51,6 @@ void obj_writer_run(struct assembly *assembly)
         builder_error("Cannot emit object file: %s with error: %s", buf, error_msg);
     }
     LLVMDisposeMessage(error_msg);
-    puttmpstr(buf);
+    put_tstr(buf);
     return_zone();
 }

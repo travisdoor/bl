@@ -127,8 +127,10 @@ void builder_msg(enum builder_msg_type type,
                  const char           *format,
                  ...);
 
-char *gettmpstr(void);
-void  puttmpstr(char *str);
+char *tstr(void);
+char *tstrdup(const char* str);
+void  put_tstr(char *str);
+
 void  builder_print_location(FILE *stream, struct location *loc, s32 col, s32 len);
 
 #endif

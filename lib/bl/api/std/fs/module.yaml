@@ -3,11 +3,11 @@ version: 13
 x86_64-pc-windows-msvc:
   src: "_fs.win32.bl"
 
-x86_64_pc_linux_gnu:
+x86_64-pc-linux-gnu:
   src: "_fs.linux.bl"
 
-x86_64_apple_darwin:
+x86_64-apple-darwin:
   src: "_fs.macos.bl"
 
-arm64_apple_darwin:
+arm64-apple-darwin:
   src: "_fs.macos.bl"

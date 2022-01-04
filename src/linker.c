@@ -49,7 +49,7 @@ static bool search_library(struct context *ctx,
                            char          **out_lib_dir,
                            char          **out_lib_filepath)
 {
-    char *lib_filepath                = gettmpstr();
+    char *lib_filepath                = tstr();
     char  lib_name_full[LIB_NAME_MAX] = {0};
     bool  found                       = false;
     platform_lib_name(lib_name, lib_name_full, static_arrlenu(lib_name_full));
@@ -70,7 +70,7 @@ static bool search_library(struct context *ctx,
 
 DONE:
     if (!found) builder_log("  Not found: '%s'", lib_filepath);
-    puttmpstr(lib_filepath);
+    put_tstr(lib_filepath);
     return found;
 }
 

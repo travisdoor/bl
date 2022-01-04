@@ -1,6 +1,11 @@
-#import "foo bar"
+#import "std/array"
+#import "std/debug_allocator"
+#import "std/print"
+#import "std/fs"
+#import "os/posix/pthread"
 
 main :: fn () s32 {
+    print("Hello!\n");
     return 0;
 }
 

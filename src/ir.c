@@ -1464,7 +1464,7 @@ LLVMValueRef _rtti_emit(struct context *ctx, struct mir_type *type)
     default: {
         char *type_name = mir_type2str(type, true);
         babort("Missing LLVM RTTI generation for type '%s'", type_name);
-        // no puttmpstr here...
+        // no put_tstr here...
     }
     }
 

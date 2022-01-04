@@ -35,7 +35,7 @@
 void asm_writer_run(struct assembly *assembly)
 {
     zone();
-    char                *buf    = gettmpstr();
+    char                *buf    = tstr();
     const struct target *target = assembly->target;
     const char          *name   = target->name;
     blog("out_dir = %s", target->out_dir);
@@ -48,6 +48,6 @@ void asm_writer_run(struct assembly *assembly)
         LLVMDisposeMessage(error_msg);
     }
     builder_info("Assembly code written into %s", buf);
-    puttmpstr(buf);
+    put_tstr(buf);
     return_zone();
 }

@@ -56,6 +56,7 @@
 #endif
 
 #if BL_PLATFORM_LINUX
+#include <ctype.h>
 #include <errno.h>
 #endif
 
@@ -153,7 +154,7 @@ char *scprint(struct string_cache **cache, const char *fmt, ...)
     va_copy(args2, args);
     const s32 len = vsnprintf(NULL, 0, fmt, args);
     bassert(len > 0);
-    char     *buf  = scdup(cache, NULL, len);
+    char *    buf  = scdup(cache, NULL, len);
     const s32 wlen = vsprintf(buf, fmt, args2);
     bassert(wlen == len);
     (void)wlen;
@@ -169,10 +170,10 @@ char *scprint(struct string_cache **cache, const char *fmt, ...)
 bool search_source_file(const char *filepath,
                         const u32   flags,
                         const char *wdir,
-                        char      **out_filepath,
-                        char      **out_dirpath)
+                        char **     out_filepath,
+                        char **     out_dirpath)
 {
-    char *tmp = gettmpstr();
+    char *tmp = tstr();
     if (!filepath) goto NOT_FOUND;
     char        tmp_result[PATH_MAX] = {0};
     const char *result               = NULL;
@@ -218,7 +219,7 @@ bool search_source_file(const char *filepath,
     }
 
 NOT_FOUND:
-    puttmpstr(tmp);
+    put_tstr(tmp);
     return false;
 
 FOUND:
@@ -231,7 +232,7 @@ FOUND:
             *out_dirpath = strdup(dirpath);
         }
     }
-    puttmpstr(tmp);
+    put_tstr(tmp);
     return true;
 }
 
@@ -374,7 +375,7 @@ bool create_dir_tree(const char *dirpath)
 
 bool copy_dir(const char *src, const char *dest)
 {
-    char *tmp = gettmpstr();
+    char *tmp = tstr();
 #if BL_PLATFORM_WIN
     char *_src  = strdup(src);
     char *_dest = strdup(dest);
@@ -388,13 +389,13 @@ bool copy_dir(const char *src, const char *dest)
     blog("%s", tmp);
 #endif
     const bool result = system(tmp) == 0;
-    puttmpstr(tmp);
+    put_tstr(tmp);
     return result;
 }
 
 bool copy_file(const char *src, const char *dest)
 {
-    char *tmp = gettmpstr();
+    char *tmp = tstr();
 #if BL_PLATFORM_WIN
     char *_src  = strdup(src);
     char *_dest = strdup(dest);
@@ -407,13 +408,13 @@ bool copy_file(const char *src, const char *dest)
     strprint(tmp, "cp -f %s %s", src, dest);
 #endif
     const bool result = system(tmp) == 0;
-    puttmpstr(tmp);
+    put_tstr(tmp);
     return result;
 }
 
 bool remove_dir(const char *path)
 {
-    char *tmp = gettmpstr();
+    char *tmp = tstr();
 #if BL_PLATFORM_WIN
     char *_path = strdup(path);
     unix_path_to_win(_path, strlen(_path));
@@ -423,7 +424,7 @@ bool remove_dir(const char *path)
     strprint(tmp, "rm -rf %s", path);
 #endif
     const bool result = system(tmp) == 0;
-    puttmpstr(tmp);
+    put_tstr(tmp);
     return result;
 }
 void date_time(char *buf, s32 len, const char *format)
@@ -694,7 +695,7 @@ s32 cpu_thread_count(void)
 
 char *execute(const char *cmd)
 {
-    char *tmp  = gettmpstr();
+    char *tmp  = tstr();
     FILE *pipe = popen(cmd, "r");
     if (!pipe) {
         builder_error("Command '%s' failed!", cmd);
@@ -712,36 +713,36 @@ char *execute(const char *cmd)
     return tmp;
 }
 
-const char *read_config(struct config       *config,
+const char *read_config(struct config *      config,
                         const struct target *target,
-                        const char          *path,
-                        const char          *default_value)
+                        const char *         path,
+                        const char *         default_value)
 {
     bassert(config && target && path);
-    char *fullpath = gettmpstr();
+    char *fullpath = tstr();
     char *triple   = target_triple_to_string(&target->triple);
     strprint(fullpath, "/%s/%s", triple, path);
     const char *result = confreads(config, fullpath, default_value);
     bfree(triple);
-    puttmpstr(fullpath);
+    put_tstr(fullpath);
     return result;
 }
 
 s32 process_tokens(void *ctx, const char *input, const char *delimiter, process_tokens_fn_t fn)
 {
-    char *tmp = gettmpstr();
-    strprint(tmp, "%s", input);
-    char *token = strtok(tmp, delimiter);
+    if (!input || input[0] == '\0') return 0;
+    char *tmp = tstrdup(input);
+    char *token;
+    char *it    = tmp;
     s32   count = 0;
-    while (token) {
+    while ((token = strtok_r(it, delimiter, &it))) {
         token = strtrim(token);
         if (token[0] != '\0') {
             fn(ctx, token);
             ++count;
         }
-        token = strtok(NULL, delimiter);
     }
-    puttmpstr(tmp);
+    put_tstr(tmp);
     return count;
 }
 

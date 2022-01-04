@@ -3,11 +3,11 @@ version: 4
 x86_64-pc-windows-msvc:
   src: "_thread.win32.bl"
 
-x86_64_pc_linux_gnu:
+x86_64-pc-linux-gnu:
   src: "_thread.posix.bl"
 
-x86_64_apple_darwin:
+x86_64-apple-darwin:
   src: "_thread.posix.bl"
 
-arm64_apple_darwin:
+arm64-apple-darwin:
   src: "_thread.posix.bl"

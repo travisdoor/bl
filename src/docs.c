@@ -423,20 +423,20 @@ void doc(struct context *ctx, struct ast *node)
 void doc_unit(struct context *ctx, struct unit *unit)
 {
     if (!unit->filename) return;
-    char *unit_name = gettmpstr();
+    char *unit_name = tstr();
     strprint(unit_name, "%.*s", (s32)strlen(unit->filename) - 3, unit->filename); // -3 ('.bl')
     ctx->unit = unit;
 
     // write unit global docs
-    char *export_file = gettmpstr();
+    char *export_file = tstr();
     strprint(export_file, "%s/%s.md", ctx->output_directory, unit_name);
     FILE *f = fopen(export_file, "w");
     if (f == NULL) {
         builder_error("Cannot open file '%s'", export_file);
-        puttmpstr(export_file);
+        put_tstr(export_file);
         return;
     }
-    puttmpstr(export_file);
+    put_tstr(export_file);
     ctx->stream = f;
 
     if (unit->ast->docs) {
@@ -448,7 +448,7 @@ void doc_unit(struct context *ctx, struct unit *unit)
 
     // DEFAULT_TOC(f, unit_name);
     fclose(f);
-    puttmpstr(unit_name);
+    put_tstr(unit_name);
 }
 
 void docs_run(struct assembly *assembly)

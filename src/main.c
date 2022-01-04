@@ -57,17 +57,17 @@ static bool generate_conf(void)
     }
     char *str = target_triple_to_string(&triple);
     blog("Triple: %s", str);
-    char *filepath = gettmpstr();
+    char *filepath = tstr();
     strprint(filepath, "%s/../%s", builder_get_exec_dir(), BL_CONFIG_FILE);
     const bool state = setup(filepath, str);
     bfree(str);
-    puttmpstr(filepath);
+    put_tstr(filepath);
     return state;
 }
 
 static bool load_conf_file(void)
 {
-    char *filepath = gettmpstr();
+    char *filepath = tstr();
     strprint(filepath, "%s/../%s", builder_get_exec_dir(), BL_CONFIG_FILE);
     if (!file_exists(filepath)) {
         if (!generate_conf()) {
@@ -86,10 +86,10 @@ static bool load_conf_file(void)
                         got);
     }
 
-    puttmpstr(filepath);
+    put_tstr(filepath);
     return true;
 FAILED:
-    puttmpstr(filepath);
+    put_tstr(filepath);
     return false;
 }
 
@@ -110,7 +110,7 @@ typedef struct ApplicationOptions {
 typedef struct Options {
     ApplicationOptions     app;
     struct builder_options builder;
-    struct target         *target;
+    struct target *        target;
 } Options;
 
 enum getarg_opt_kind {
@@ -121,11 +121,11 @@ enum getarg_opt_kind {
 };
 
 struct getarg_opt {
-    const char          *name;
+    const char *         name;
     enum getarg_opt_kind kind;
     union {
-        bool  *b;
-        s32   *n;
+        bool * b;
+        s32 *  n;
         char **s;
     } property;
     const char *variants;
@@ -171,15 +171,15 @@ getarg(s32 argc, char *argv[], struct getarg_opt *opts, s32 *optindex, const cha
                     if (value) {
                         bool        found     = false;
                         s32         j         = 0;
-                        char       *variants  = strdup(opt->variants);
+                        char *      variants  = strdup(opt->variants);
                         const char *delimiter = "|";
-                        char       *token     = strtok(variants, delimiter);
-                        while (token) {
+                        char *      it        = variants;
+                        char *      token;
+                        while ((token = strtok_r(it, delimiter, &it))) {
                             if (strcmp(value, token) == 0) {
                                 found = true;
                                 break;
                             }
-                            token = strtok(NULL, delimiter);
                             ++j;
                         }
                         free(variants);
@@ -350,7 +350,7 @@ int main(s32 argc, char *argv[])
             .name = "-build",
             .help = "Invoke project build pipeline. All following arguments are forwarded into the "
                     "build script and ignored by compiler itself. Use as '-build [arguments]'.",
-            .id   = ID_BUILD,
+            .id = ID_BUILD,
         },
         {
             .name = "-run",
@@ -565,8 +565,8 @@ int main(s32 argc, char *argv[])
             .kind       = NUMBER,
             .property.n = &opt.target->vmdbg_break_on,
             .help       = "Attach compile-time execution debugger and sets break point to the MIR "
-                          "instruction with <N> id.",
-            .id         = ID_VMDBG_BREAK_ON,
+                    "instruction with <N> id.",
+            .id = ID_VMDBG_BREAK_ON,
         },
         {
             .name       = "--error-limit",

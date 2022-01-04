@@ -69,13 +69,13 @@ static void        wbsfree(struct wbs *wbs);
 // =================================================================================================
 static bool _listdir(struct wbs *ctx, const char *dirpath, char ***outdirs)
 {
-    char *search = gettmpstr();
+    char *search = tstr();
     strprint(search, "%s\\*", dirpath);
     WIN32_FIND_DATAA find_data;
     HANDLE           handle = FindFirstFileA(search, &find_data);
     if (handle == INVALID_HANDLE_VALUE) {
         builder_error("Cannot list directory '%s'.", dirpath);
-        puttmpstr(search);
+        put_tstr(search);
         return false;
     }
     while (FindNextFileA(handle, &find_data) != 0) {
@@ -84,7 +84,7 @@ static bool _listdir(struct wbs *ctx, const char *dirpath, char ***outdirs)
         arrput((*outdirs), tmp);
     }
     FindClose(handle);
-    puttmpstr(search);
+    put_tstr(search);
     return true;
 }
 
@@ -114,13 +114,13 @@ static bool _lookup_vs(struct wbs *ctx)
                           "https://visualstudio.microsoft.com/visual-cpp-build-tools. (Expected "
                           "location is '%s')",
                           vspath);
-            puttmpstr(vspath);
+            put_tstr(vspath);
             return false;
         }
     }
     win_path_to_unix(vspath, strlenu(vspath));
     ctx->vs_path = strdup(vspath);
-    puttmpstr(vspath);
+    put_tstr(vspath);
     return true;
 }
 
@@ -134,17 +134,17 @@ static void _listfile_delete(char ***list)
 
 static bool _lookup_windows_sdk(struct wbs *ctx)
 {
-    char *sdkpath = gettmpstr();
+    char *sdkpath = tstr();
     strprint(sdkpath, "%s/%s", ctx->program_files_path, WIN_SDK);
     if (!dir_exists(sdkpath)) {
         builder_error("Windows SDK not found. (Expected location is '%s')", sdkpath);
-        puttmpstr(sdkpath);
+        put_tstr(sdkpath);
         return false;
     }
     char **versions = NULL;
     if (!_listdir(ctx, sdkpath, &versions)) {
         _listfile_delete(&versions);
-        puttmpstr(sdkpath);
+        put_tstr(sdkpath);
         return false;
     }
     s32   best[4]    = {0};
@@ -175,23 +175,23 @@ static bool _lookup_windows_sdk(struct wbs *ctx)
     strappend(sdkpath, "/%s", versions[best_index]);
     _listfile_delete(&versions);
     ctx->windows_sdk_path = strdup(sdkpath);
-    puttmpstr(sdkpath);
+    put_tstr(sdkpath);
     return true;
 }
 
 static bool _lookup_msvc_libs(struct wbs *ctx)
 {
-    char *sdkpath = gettmpstr();
+    char *sdkpath = tstr();
     strprint(sdkpath, "%s/%s", ctx->vs_path, MSVC_TOOLS);
     if (!dir_exists(sdkpath)) {
         builder_error("MSVC build tools not found. (Expected location is '%s')", sdkpath);
-        puttmpstr(sdkpath);
+        put_tstr(sdkpath);
         return false;
     }
     char **versions = NULL;
     if (!_listdir(ctx, sdkpath, &versions)) {
         _listfile_delete(&versions);
-        puttmpstr(sdkpath);
+        put_tstr(sdkpath);
         return false;
     }
     s32   best[3]    = {0};
@@ -219,39 +219,39 @@ static bool _lookup_msvc_libs(struct wbs *ctx)
     _listfile_delete(&versions);
     if (!dir_exists(sdkpath)) {
         builder_error("MSVC lib directory not found. (Expected location is '%s')", sdkpath);
-        puttmpstr(sdkpath);
+        put_tstr(sdkpath);
         return false;
     }
     ctx->msvc_lib_path = strdup(sdkpath);
-    puttmpstr(sdkpath);
+    put_tstr(sdkpath);
     return true;
 }
 
 static bool _lookup_ucrt(struct wbs *ctx)
 {
-    char *tmppath = gettmpstr();
+    char *tmppath = tstr();
     strappend(tmppath, "%s/%s", ctx->windows_sdk_path, UCRT);
     if (!dir_exists(tmppath)) {
         builder_error("UCRT lib-path not found. (Expected location is '%s')", tmppath);
-        puttmpstr(tmppath);
+        put_tstr(tmppath);
         return false;
     }
     ctx->ucrt_path = strdup(tmppath);
-    puttmpstr(tmppath);
+    put_tstr(tmppath);
     return true;
 }
 
 static bool _lookup_um(struct wbs *ctx)
 {
-    char *tmppath = gettmpstr();
+    char *tmppath = tstr();
     strappend(tmppath, "%s/%s", ctx->windows_sdk_path, UM);
     if (!dir_exists(tmppath)) {
         builder_error("UM lib-path not found. (Expected location is '%s')", tmppath);
-        puttmpstr(tmppath);
+        put_tstr(tmppath);
         return false;
     }
     ctx->um_path = strdup(tmppath);
-    puttmpstr(tmppath);
+    put_tstr(tmppath);
     return true;
 }
 
