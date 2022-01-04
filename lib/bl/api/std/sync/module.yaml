@@ -2,11 +2,11 @@ version: 3
 x86_64-pc-windows-msvc:
   src: "_sync.win32.bl"
 
-x86_64_pc_linux_gnu:
+x86_64-pc-linux-gnu:
   src: "_sync.posix.bl"
 
-x86_64_apple_darwin:
+x86_64-apple-darwin:
   src: "_sync.posix.bl"
 
-arm64_apple_darwin:
+arm64-apple-darwin:
   src: "_sync.posix.bl"
