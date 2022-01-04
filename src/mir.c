@@ -1479,8 +1479,8 @@ static INLINE void error_types(struct context   *ctx,
     char *tmp_from = mir_type2str(from, true);
     char *tmp_to   = mir_type2str(to, true);
     report_error(INVALID_TYPE, node, msg, tmp_from, tmp_to);
-    puttmpstr(tmp_from);
-    puttmpstr(tmp_to);
+    put_tstr(tmp_from);
+    put_tstr(tmp_to);
     DEBUG_PRINT_MIR(instr);
 }
 
@@ -1676,7 +1676,7 @@ void type_init_id(struct context *ctx, struct mir_type *type)
     strappend(tmp, "}");
     // =============================================================================================
     bassert(type && "Invalid type pointer!");
-    char *tmp = gettmpstr();
+    char *tmp = tstr();
 
     switch (type->kind) {
     case MIR_TYPE_BOOL:
@@ -1819,7 +1819,7 @@ void type_init_id(struct context *ctx, struct mir_type *type)
     }
 
     id_init(&type->id, scdup(&ctx->assembly->string_cache, tmp, strlenu(tmp)));
-    puttmpstr(tmp);
+    put_tstr(tmp);
 #if TRACY_ENABLE
     static int tc = 0;
     TracyCPlot("Type count", ++tc);
@@ -2263,7 +2263,7 @@ struct mir_type *complete_type_struct(struct context   *ctx,
     {
         char *type_name = mir_type2str(incomplete_type, true);
         BL_TRACY_MESSAGE("COMPLETE_TYPE", "%s", type_name);
-        puttmpstr(type_name);
+        put_tstr(type_name);
     }
 #endif
     type_init_llvm_struct(ctx, incomplete_type);
@@ -5288,7 +5288,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
                  target_ptr->node,
                  "Expected structure or enumerator type, got '%s'.",
                  type_name);
-    puttmpstr(type_name);
+    put_tstr(type_name);
     return_zone(ANALYZE_RESULT(FAILED, 0));
 }
 
@@ -5789,7 +5789,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
         ((struct mir_instr_decl_var *)fn->ret_tmp)->var->value.type = value->type->data.fn.ret_type;
     }
 
-    char *name_prefix = gettmpstr();
+    char *name_prefix = tstr();
     if (fn->decl_node) {
         struct scope *owner_scope = fn->decl_node->owner_scope;
         bassert(owner_scope);
@@ -5822,7 +5822,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
         }
     } else if (!fn->linkage_name) {
         // Anonymous function use implicit unique name.
-        char *full_name = gettmpstr();
+        char *full_name = tstr();
         if (strlenu(name_prefix)) {
             strprint(full_name, "%s%s", name_prefix, IMPL_FN_NAME);
         } else {
@@ -5830,9 +5830,9 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
         }
         fn->linkage_name = create_unique_name(ctx, full_name);
         fn->full_name    = fn->linkage_name;
-        puttmpstr(full_name);
+        put_tstr(full_name);
     }
-    puttmpstr(name_prefix);
+    put_tstr(name_prefix);
     bassert(fn->linkage_name);
     if (!fn->full_name) fn->full_name = fn->linkage_name;
 
@@ -6168,7 +6168,7 @@ struct result analyze_instr_load(struct context *ctx, struct mir_instr_load *loa
         if (!mir_is_pointer_type(src_type) && src_type->kind != MIR_TYPE_POLY) {
             char *type_name = mir_type2str(src_type, true);
             report_error(INVALID_TYPE, src->node, "Expected pointer type, got '%s'.", type_name);
-            puttmpstr(type_name);
+            put_tstr(type_name);
             return_zone(ANALYZE_RESULT(FAILED, 0));
         }
         load->base.value.type        = src->value.type;
@@ -6178,7 +6178,7 @@ struct result analyze_instr_load(struct context *ctx, struct mir_instr_load *loa
         char *type_name = mir_type2str(src->value.type, true);
         report_error(
             INVALID_TYPE, src->node, "Expected value of pointer type, got '%s'.", type_name);
-        puttmpstr(type_name);
+        put_tstr(type_name);
         return_zone(ANALYZE_RESULT(FAILED, 0));
     }
 
@@ -6236,7 +6236,7 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
                              arg->decl_node,
                              "Invalid function argument type '%s'.",
                              type_name);
-                puttmpstr(type_name);
+                put_tstr(type_name);
                 return_zone(ANALYZE_RESULT(FAILED, 0));
             }
             default:
@@ -6438,7 +6438,7 @@ struct result analyze_instr_decl_variant(struct context                *ctx,
                          variant->id->str,
                          base_type_name,
                          max_value);
-            puttmpstr(base_type_name);
+            put_tstr(base_type_name);
             return_zone(ANALYZE_RESULT(FAILED, 0));
         }
         variant_instr->variant->value      = value;
@@ -6955,10 +6955,10 @@ struct result analyze_instr_call_loc(struct context *ctx, struct mir_instr_call_
     const char *filepath = loc->call_location->unit->filepath;
     bassert(filepath);
 
-    char *str_hash = gettmpstr();
+    char *str_hash = tstr();
     strprint(str_hash, "%s%d", filepath, loc->call_location->line);
     const hash_t hash = strhash(str_hash);
-    puttmpstr(str_hash);
+    put_tstr(str_hash);
 
     vm_write_string(ctx->vm, dest_file_type, dest_file, filepath, (s64)strlen(filepath));
     vm_write_int(dest_line_type, dest_line, (u64)loc->call_location->line);
@@ -7012,7 +7012,7 @@ struct result analyze_instr_unop(struct context *ctx, struct mir_instr_unop *uno
                                "Invalid operation for type '%s'. This operation "
                                "is valid for integer types only.",
                                type_name);
-            puttmpstr(type_name);
+            put_tstr(type_name);
             return_zone(ANALYZE_RESULT(FAILED, 0));
         }
         break;
@@ -7027,7 +7027,7 @@ struct result analyze_instr_unop(struct context *ctx, struct mir_instr_unop *uno
                                "Invalid operation for type '%s'. This operation "
                                "is valid for integer or real types only.",
                                type_name);
-            puttmpstr(type_name);
+            put_tstr(type_name);
             return_zone(ANALYZE_RESULT(FAILED, 0));
         }
         break;
@@ -7331,7 +7331,7 @@ struct result generate_fn_poly(struct context             *ctx,
     bassert(ast_recipe && "Missing struct ast recipe for polymorph function!");
     bassert(ast_recipe->kind == AST_EXPR_LIT_FN);
 
-    char        *debug_replacement_str = gettmpstr();
+    char        *debug_replacement_str = tstr();
     mir_types_t *queue                 = &ctx->polymorph.replacement_queue;
     const usize  argc                  = sarrlenu(recipe_args);
     for (usize i = 0; i < argc; ++i) {
@@ -7360,8 +7360,8 @@ struct result generate_fn_poly(struct context             *ctx,
                                  poly_type->user_id->str,
                                  recipe_type_name,
                                  arg_type_name);
-                    puttmpstr(recipe_type_name);
-                    puttmpstr(arg_type_name);
+                    put_tstr(recipe_type_name);
+                    put_tstr(arg_type_name);
 
                     struct location *call_arg_loc =
                         sarrpeek(call->data.expr_call.args, i)->location;
@@ -7376,7 +7376,7 @@ struct result generate_fn_poly(struct context             *ctx,
                     report_note(call, "Called from here.");
                 }
                 sarrclear(queue);
-                puttmpstr(debug_replacement_str);
+                put_tstr(debug_replacement_str);
                 return_zone(ANALYZE_RESULT(FAILED, 0));
             } else {
                 bassert(matching_type->kind != MIR_TYPE_POLY);
@@ -7385,8 +7385,8 @@ struct result generate_fn_poly(struct context             *ctx,
                 char *type_name2 = mir_type2str(matching_type, true);
                 strappend(debug_replacement_str, "%s = %s; ", type_name1, type_name2);
                 sarrput(queue, matching_type);
-                puttmpstr(type_name1);
-                puttmpstr(type_name2);
+                put_tstr(type_name1);
+                put_tstr(type_name2);
             }
         }
     }
@@ -7442,7 +7442,7 @@ struct result generate_fn_poly(struct context             *ctx,
         *out_fn_proto = recipe->entries[index].value;
     }
     sarrclear(queue);
-    puttmpstr(debug_replacement_str);
+    put_tstr(debug_replacement_str);
     return_zone(ANALYZE_RESULT(PASSED, 0));
 }
 
@@ -8667,7 +8667,7 @@ struct mir_var *_rtti_gen(struct context *ctx, struct mir_type *type)
     default: {
         char *type_name = mir_type2str(type, true);
         babort("missing RTTI generation for type '%s'", type_name);
-        // no puttmpstr here, we aborting anyway...
+        // no put_tstr here, we aborting anyway...
     }
     }
 
@@ -11018,7 +11018,7 @@ vm_stack_ptr_t _mir_cev_read(struct mir_const_expr_value *value)
 
 char *mir_type2str(const struct mir_type *type, bool prefer_name)
 {
-    char *str = gettmpstr();
+    char *str = tstr();
     _type2str(&str, type, prefer_name);
     return str;
 }

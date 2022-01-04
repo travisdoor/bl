@@ -224,7 +224,7 @@ void vmdbg_notify_stack_op(enum vmdbg_stack_op op, struct mir_type *type, void *
                             ptr,
                             type_name);
             }
-            puttmpstr(type_name);
+            put_tstr(type_name);
             break;
         }
         case VMDBG_POP: {
@@ -247,7 +247,7 @@ void vmdbg_notify_stack_op(enum vmdbg_stack_op op, struct mir_type *type, void *
                             ptr,
                             type_name);
             }
-            puttmpstr(type_name);
+            put_tstr(type_name);
             break;
         }
         }

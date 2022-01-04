@@ -55,7 +55,7 @@ print_type(struct context *ctx, struct mir_type *type, bool aligned, bool prefer
     } else {
         fprintf(ctx->stream, "%s", type_name);
     }
-    puttmpstr(type_name);
+    put_tstr(type_name);
 }
 
 static INLINE void print_instr_head(struct context *ctx, struct mir_instr *instr, const char *name)
@@ -200,7 +200,7 @@ _print_const_value(struct context *ctx, struct mir_type *type, vm_stack_ptr_t va
         vm_stack_ptr_t str_ptr = value + offset;
         str_ptr                = VM_STACK_PTR_DEREF(str_ptr);
         if (str_ptr) {
-            char *tmp = gettmpstr();
+            char *tmp = tstr();
             char  c;
             while ((c = *(str_ptr++))) {
                 switch (c) {
@@ -212,7 +212,7 @@ _print_const_value(struct context *ctx, struct mir_type *type, vm_stack_ptr_t va
                 }
             }
             fprintf(ctx->stream, "%s\"}", tmp);
-            puttmpstr(tmp);
+            put_tstr(tmp);
         } else {
             fprintf(ctx->stream, "(null)\"}");
         }

@@ -72,15 +72,15 @@ bool setup(const char *filepath, const char *triple)
 
     // common config
     ctx.version  = BL_VERSION;
-    char *libdir = gettmpstr();
+    char *libdir = tstr();
     strprint(libdir, "%s/%s", builder_get_exec_dir(), BL_API_DIR);
     if (!normalize_path(&libdir)) {
         builder_error("BL API directory not found. (Expected location is '%s').", libdir);
-        puttmpstr(libdir);
+        put_tstr(libdir);
         return false;
     }
     ctx.lib_dir = scprint(&ctx.cache, "%s", libdir);
-    puttmpstr(libdir);
+    put_tstr(libdir);
 
     if (strcmp(ctx.triple, "x86_64-pc-windows-msvc") == 0) {
 #ifdef BL_WBS
@@ -105,25 +105,25 @@ bool setup(const char *filepath, const char *triple)
     }
     char *content = make_content(&ctx);
     if (file_exists(ctx.filepath)) { // backup old-one
-        char *bakfilepath = gettmpstr();
+        char *bakfilepath = tstr();
         char  date[26];
         date_time(date, static_arrlenu(date), "%d-%m-%Y_%H-%M-%S");
         strprint(bakfilepath, "%s.%s", ctx.filepath, date);
         builder_warning("Creating backup of previous configuration file at '%s'.", bakfilepath);
         copy_file(ctx.filepath, bakfilepath);
-        puttmpstr(bakfilepath);
+        put_tstr(bakfilepath);
     }
 
     FILE *file = fopen(ctx.filepath, "w");
     if (!file) {
         builder_error("Cannot open file '%s' for writing!", ctx.filepath);
-        puttmpstr(content);
+        put_tstr(content);
         return false;
     }
     fputs(content, file);
     fclose(file);
 
-    puttmpstr(content);
+    put_tstr(content);
     scfree(&ctx.cache);
     return true;
 }
@@ -152,7 +152,7 @@ char *make_content(const struct context *ctx)
     "    # File system location where linker should lookup for dependencies.\n"                    \
     "    linker_lib_path: \"%s\"\n\n"
 
-    char *tmp = gettmpstr();
+    char *tmp = tstr();
     strprint(tmp,
              TEMPLATE,
              ctx->version,
@@ -220,15 +220,15 @@ bool x86_64_pc_linux_gnu(struct context *ctx)
     }
     ctx->linker_executable = scdup(&ctx->cache, ldpath, strlenu(ldpath));
 
-    char *runtime = gettmpstr();
+    char *runtime = tstr();
     strprint(runtime, "%s/../%s", builder_get_exec_dir(), RUNTIME_PATH);
     if (!normalize_path(&runtime)) {
         builder_error("Runtime loader not found. (Expected location is '%s').", runtime);
-        puttmpstr(runtime);
+        put_tstr(runtime);
         return false;
     }
     ctx->linker_opt_exec = scprint(&ctx->cache, "%s %s", runtime, LINKER_OPT_EXEC);
-    puttmpstr(runtime);
+    put_tstr(runtime);
     ctx->linker_opt_shared = scprint(&ctx->cache, "%s", LINKER_OPT_SHARED);
     ctx->linker_lib_path   = scprint(&ctx->cache, "%s", LINKER_LIB_PATH);
 
@@ -251,9 +251,9 @@ static bool x86_64_apple_darwin(struct context *ctx)
         return false;
     }
 
-    char *libpath   = gettmpstr();
-    char *optexec   = gettmpstr();
-    char *optshared = gettmpstr();
+    char *libpath   = tstr();
+    char *optexec   = tstr();
+    char *optshared = tstr();
 
     strprint(libpath, "%s", LINKER_LIB_PATH);
     char *osver = execute("sw_vers -productVersion");
@@ -281,17 +281,17 @@ static bool x86_64_apple_darwin(struct context *ctx)
     ctx->linker_lib_path   = scdup(&ctx->cache, libpath, strlenu(libpath));
     ctx->linker_opt_exec   = scdup(&ctx->cache, optexec, strlenu(optexec));
     ctx->linker_opt_shared = scdup(&ctx->cache, optshared, strlenu(optshared));
-    puttmpstr(osver);
-    puttmpstr(optexec);
-    puttmpstr(optshared);
-    puttmpstr(libpath);
+    put_tstr(osver);
+    put_tstr(optexec);
+    put_tstr(optshared);
+    put_tstr(libpath);
 
     char *ldpath = execute("which ld");
     if (strlenu(ldpath) == 0) {
         builder_error("The 'ld' linker not found on system!");
     }
     ctx->linker_executable = scdup(&ctx->cache, ldpath, strlenu(ldpath));
-    puttmpstr(ldpath);
+    put_tstr(ldpath);
 
     return true;
 }
@@ -312,9 +312,9 @@ static bool arm64_apple_darwin(struct context *ctx)
         return false;
     }
 
-    char *libpath   = gettmpstr();
-    char *optexec   = gettmpstr();
-    char *optshared = gettmpstr();
+    char *libpath   = tstr();
+    char *optexec   = tstr();
+    char *optshared = tstr();
 
     strprint(libpath, "%s", LINKER_LIB_PATH);
     char *osver = execute("sw_vers -productVersion");
@@ -342,17 +342,17 @@ static bool arm64_apple_darwin(struct context *ctx)
     ctx->linker_lib_path   = scdup(&ctx->cache, libpath, strlenu(libpath));
     ctx->linker_opt_exec   = scdup(&ctx->cache, optexec, strlenu(optexec));
     ctx->linker_opt_shared = scdup(&ctx->cache, optshared, strlenu(optshared));
-    puttmpstr(osver);
-    puttmpstr(optexec);
-    puttmpstr(optshared);
-    puttmpstr(libpath);
+    put_tstr(osver);
+    put_tstr(optexec);
+    put_tstr(optshared);
+    put_tstr(libpath);
 
     char *ldpath = execute("which ld");
     if (strlenu(ldpath) == 0) {
         builder_error("The 'ld' linker not found on system!");
     }
     ctx->linker_executable = scdup(&ctx->cache, ldpath, strlenu(ldpath));
-    puttmpstr(ldpath);
+    put_tstr(ldpath);
 
     return true;
 }

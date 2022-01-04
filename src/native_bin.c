@@ -42,7 +42,7 @@ s32 lld_ld(struct assembly *assembly);
 
 static void copy_user_libs(struct assembly *assembly)
 {
-    char                *dest_path = gettmpstr();
+    char                *dest_path = tstr();
     const struct target *target    = assembly->target;
     const char          *out_dir   = target->out_dir;
     for (usize i = 0; i < arrlenu(assembly->libs); ++i) {
@@ -70,7 +70,7 @@ static void copy_user_libs(struct assembly *assembly)
             builder_error("Cannot copy '%s' to '%s'.", lib->filepath, dest_path);
         }
     }
-    puttmpstr(dest_path);
+    put_tstr(dest_path);
 }
 
 void native_bin_run(struct assembly *assembly)

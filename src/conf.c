@@ -70,8 +70,8 @@ struct config *confload(const char *filepath)
     char blockpath[256] = "";
 
     yaml_token_t token;
-    char        *key  = gettmpstr();
-    char        *path = gettmpstr();
+    char        *key  = tstr();
+    char        *path = tstr();
     bool         done = false;
     while (!done) {
         if (!yaml_parser_scan(&parser, &token)) goto LOAD_ERROR;
@@ -124,16 +124,16 @@ struct config *confload(const char *filepath)
     }
     yaml_parser_delete(&parser);
     fclose(input);
-    puttmpstr(key);
-    puttmpstr(path);
+    put_tstr(key);
+    put_tstr(path);
     return conf;
 
 LOAD_ERROR:
     yaml_parser_delete(&parser);
     fclose(input);
     confdelete(conf);
-    puttmpstr(key);
-    puttmpstr(path);
+    put_tstr(key);
+    put_tstr(path);
     return NULL;
 }
 

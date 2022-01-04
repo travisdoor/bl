@@ -478,7 +478,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         struct ast *link = ast_create_node(ctx->ast_arena, AST_LINK, tok_directive, scope_get(ctx));
         link->data.link.lib = tok_path->value.str;
 
-        assembly_add_native_lib(ctx->assembly, tok_path->value.str, tok_path);
+        assembly_add_native_lib_safe(ctx->assembly, tok_path->value.str, tok_path);
 
         PARSE_WARNING(tok_directive,
                       CARET_WORD,

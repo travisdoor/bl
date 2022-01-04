@@ -53,18 +53,18 @@ static void print_header(const char *name, const char *filename, FILE *stream)
 void mir_writer_run(struct assembly *assembly)
 {
     const char          *name        = assembly->target->name;
-    char                *export_file = gettmpstr();
+    char                *export_file = tstr();
     const struct target *target      = assembly->target;
     strprint(export_file, "%s/%s.blm", target->out_dir, name);
     FILE *f = fopen(export_file, "w");
     if (f == NULL) {
         builder_error("cannot open file %s", export_file);
-        puttmpstr(export_file);
+        put_tstr(export_file);
         return;
     }
     print_header(name, export_file, f);
     mir_print_assembly(f, assembly);
     fclose(f);
     builder_info("Mir code written into %s", export_file);
-    puttmpstr(export_file);
+    put_tstr(export_file);
 }

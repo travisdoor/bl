@@ -112,7 +112,7 @@ static void append_linker_exec(struct assembly *assembly, char **buf)
 s32 lld_link(struct assembly *assembly)
 {
     runtime_measure_begin(linking);
-    char                *buf     = gettmpstr();
+    char                *buf     = tstr();
     const struct target *target  = assembly->target;
     const char          *out_dir = target->out_dir;
     const char          *name    = target->name;
@@ -132,7 +132,7 @@ s32 lld_link(struct assembly *assembly)
 
     builder_log("%s", buf);
     s32 state = system(buf);
-    puttmpstr(buf);
+    put_tstr(buf);
     assembly->stats.linking_s = runtime_measure_end(linking);
     return state;
 }
