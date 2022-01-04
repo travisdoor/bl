@@ -729,8 +729,9 @@ const char *read_config(struct config       *config,
 
 s32 process_tokens(void *ctx, const char *input, const char *delimiter, process_tokens_fn_t fn)
 {
-    char *dup   = strdup(input);
-    char *token = strtok(dup, delimiter);
+    char *tmp = gettmpstr();
+    strprint(tmp, "%s", input);
+    char *token = strtok(tmp, delimiter);
     s32   count = 0;
     while (token) {
         token = strtrim(token);
@@ -740,7 +741,7 @@ s32 process_tokens(void *ctx, const char *input, const char *delimiter, process_
         }
         token = strtok(NULL, delimiter);
     }
-    free(dup);
+    puttmpstr(tmp);
     return count;
 }
 
