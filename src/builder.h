@@ -30,7 +30,6 @@
 #define BL_BUILDER_H
 
 #include "assembly.h"
-#include "conf_data.h"
 
 #define COMPILE_OK 0
 #define COMPILE_FAIL 1
@@ -95,9 +94,6 @@ char      **builder_get_supported_targets(void);
 const char *builder_get_lib_dir(void);
 const char *builder_get_exec_dir(void);
 bool        builder_load_config(const char *filepath);
-const char     *
-builder_read_config(const struct target *target, const char *path, const char *default_value);
-int builder_compile_config(const char *filepath, conf_data_t *out_data, struct token *import_from);
 
 #define builder_add_target(name) _builder_add_target(name, false)
 #define builder_add_default_target(name) _builder_add_target(name, true)

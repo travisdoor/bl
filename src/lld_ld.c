@@ -94,10 +94,10 @@ static void append_default_opt(struct assembly *assembly, char **buf)
     const char *default_opt = "";
     switch (assembly->target->kind) {
     case ASSEMBLY_EXECUTABLE:
-        default_opt = builder_read_config(assembly->target, "linker_opt_exec", NULL);
+        default_opt = read_config(builder.config, assembly->target, "linker_opt_exec", NULL);
         break;
     case ASSEMBLY_SHARED_LIB:
-        default_opt = builder_read_config(assembly->target, "linker_opt_shared", NULL);
+        default_opt = read_config(builder.config, assembly->target, "linker_opt_shared", NULL);
         break;
     default:
         babort("Unknown output kind!");
@@ -113,7 +113,8 @@ static void append_custom_opt(struct assembly *assembly, char **buf)
 
 static void append_linker_exec(struct assembly *assembly, char **buf)
 {
-    const char *custom_linker = builder_read_config(assembly->target, "linker_executable", "");
+    const char *custom_linker =
+        read_config(builder.config, assembly->target, "linker_executable", "");
     if (strlen(custom_linker)) {
         strappend(*buf, "%s ", custom_linker);
         return;

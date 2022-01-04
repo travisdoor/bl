@@ -30,6 +30,7 @@
 // STB
 // =================================================================================================
 #include "blmemory.h"
+#include "conf.h"
 #define STB_DS_IMPLEMENTATION
 #define STBDS_REALLOC(context, ptr, size) brealloc(ptr, size)
 #define STBDS_FREE(context, ptr) bfree(ptr)
@@ -204,7 +205,7 @@ bool search_source_file(const char *filepath,
         char *s   = env;
         char *p   = NULL;
         do {
-            p = strchr(s, ENVPATH_SEPARATOR);
+            p = strchr(s, ENVPATH_SEPARATORC);
             if (p != NULL) {
                 p[0] = 0;
             }
@@ -709,4 +710,57 @@ char *execute(const char *cmd)
         tmp[len - 1] = '\0';
     }
     return tmp;
+}
+
+const char *read_config(struct config       *config,
+                        const struct target *target,
+                        const char          *path,
+                        const char          *default_value)
+{
+    bassert(config && target && path);
+    char *fullpath = gettmpstr();
+    char *triple   = target_triple_to_string(&target->triple);
+    strprint(fullpath, "/%s/%s", triple, path);
+    const char *result = confreads(config, fullpath, default_value);
+    bfree(triple);
+    puttmpstr(fullpath);
+    return result;
+}
+
+s32 process_tokens(void *ctx, const char *input, const char *delimiter, process_tokens_fn_t fn)
+{
+    char *dup   = strdup(input);
+    char *token = strtok(dup, delimiter);
+    s32   count = 0;
+    while (token) {
+        token = strtrim(token);
+        if (token[0] != '\0') {
+            fn(ctx, token);
+            ++count;
+        }
+        token = strtok(NULL, delimiter);
+    }
+    free(dup);
+    return count;
+}
+
+static char *ltrim(char *s)
+{
+    while (isspace(*s))
+        s++;
+    return s;
+}
+
+static char *rtrim(char *s)
+{
+    char *back = s + strlen(s);
+    while (isspace(*--back))
+        ;
+    *(back + 1) = '\0';
+    return s;
+}
+
+char *strtrim(char *str)
+{
+    return rtrim(ltrim(str));
 }

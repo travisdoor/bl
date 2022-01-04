@@ -27,6 +27,7 @@
 // =================================================================================================
 
 #include "assembly.h"
+#include "conf.h"
 #if BL_PLATFORM_WIN
 #include "winpthreads.h"
 #else
@@ -302,94 +303,105 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, char **out
     return true;
 }
 
-static conf_data_t *load_module_config(const char *modulepath, struct token *import_from)
+static struct config *load_module_config(const char *modulepath, struct token *import_from)
 {
     char *path = gettmpstr();
     strprint(path, "%s/%s", modulepath, MODULE_CONFIG_FILE);
-    conf_data_t *config = conf_data_new();
-    if (builder_compile_config(path, config, import_from) != COMPILE_OK) {
-        conf_data_delete(config);
-        puttmpstr(path);
-        return NULL;
+    struct config *conf = confload(path);
+    puttmpstr(path);
+    return conf;
+}
+
+static INLINE s32 get_module_version(struct config *config)
+{
+    bassert(config);
+    const char     *verstr = confreads(config, "/version", "0");
+    const uintmax_t ver    = strtoumax(verstr, NULL, 10);
+    if (ver == UINTMAX_MAX && errno == ERANGE) {
+        const char *filepath = confreads(config, "@filepath", NULL);
+        builder_warning("Cannot read module version '%s' expected integer value.", filepath);
+        return 0;
+    }
+    return (s32)ver;
+}
+
+typedef struct {
+    struct assembly *assembly;
+    struct token    *import_from;
+    const char      *modulepath;
+} import_elem_context_t;
+
+static void import_source(import_elem_context_t *ctx, const char *srcfile)
+{
+    char *entry_file_path = gettmpstr();
+    strprint(entry_file_path, "%s/%s", ctx->modulepath, srcfile);
+    // @Cleanup: should we pass the import_from token here?
+    assembly_add_unit_safe(ctx->assembly, entry_file_path, NULL);
+    puttmpstr(entry_file_path);
+}
+
+static void import_lib_path(import_elem_context_t *ctx, const char *dirpath)
+{
+    char *path = gettmpstr();
+    strprint(path, "%s/%s", ctx->modulepath, dirpath);
+    if (!dir_exists(path)) {
+        builder_msg(MSG_ERR,
+                    ERR_FILE_NOT_FOUND,
+                    TOKEN_OPTIONAL_LOCATION(ctx->import_from),
+                    CARET_WORD,
+                    "Cannot find module imported library path '%s'.",
+                    path);
+    } else {
+        assembly_add_lib_path(ctx->assembly, path);
     }
     puttmpstr(path);
-    return config;
 }
 
-static INLINE s32 get_module_version(conf_data_t *config)
+static void import_link(import_elem_context_t *ctx, const char *lib)
 {
-    bassert(config);
-    if (conf_data_has_key(config, CONF_MODULE_VERSION)) { // optional version
-        return conf_data_get_int(config, CONF_MODULE_VERSION);
-    }
-    return 0;
+    assembly_add_native_lib(ctx->assembly, lib, NULL);
 }
 
-static bool import_module(struct assembly *assembly,
-                          conf_data_t     *config,
-                          const char      *modulepath,
-                          struct token    *import_from)
+static bool import_module2(struct assembly *assembly,
+                           struct config   *config,
+                           const char      *modulepath,
+                           struct token    *import_from)
 {
     zone();
-    bassert(config);
-    bassert(modulepath);
+    import_elem_context_t ctx = {assembly, import_from, modulepath};
+
     const s32 version = get_module_version(config);
     builder_log("Import module '%s' version %d.", modulepath, version);
-    if (!conf_data_has_key(config, CONF_MODULE_ENTRY)) {
-        builder_msg(
-            MSG_ERR,
-            ERR_MISSING_PLATFORM,
-            TOKEN_OPTIONAL_LOCATION(import_from),
-            CARET_WORD,
-            "Module doesn't support current target platform, configuration entry ('%s') not "
-            "found in module config file.",
-            CONF_MODULE_ENTRY);
-        return_zone(false);
-    }
 
-    { // entry file
-        const char *entry_file = conf_data_get_str(config, CONF_MODULE_ENTRY);
-        bassert(entry_file && strlen(entry_file) > 0);
-        char *entry_file_path = gettmpstr();
-        strprint(entry_file_path, "%s/%s", modulepath, entry_file);
-        assembly_add_unit_safe(assembly, entry_file_path, NULL);
-        puttmpstr(entry_file_path);
-    }
+    // Global
+    assembly_append_linker_options(assembly, confreads(config, "/linker_opt", ""));
+    process_tokens(&ctx,
+                   confreads(config, "/src", ""),
+                   ENVPATH_SEPARATOR,
+                   (process_tokens_fn_t)&import_source);
+    process_tokens(&ctx,
+                   confreads(config, "/linker_lib_path", ""),
+                   ENVPATH_SEPARATOR,
+                   (process_tokens_fn_t)&import_lib_path);
+    process_tokens(
+        &ctx, confreads(config, "/link", ""), ENVPATH_SEPARATOR, (process_tokens_fn_t)&import_link);
 
-    // Optional lib path
-    if (conf_data_has_key(config, CONF_MODULE_LIB_PATH)) {
-        const char *lib_path = conf_data_get_str(config, CONF_MODULE_LIB_PATH);
-        bassert(lib_path && strlen(lib_path) > 0);
-        char *path = gettmpstr();
-        strprint(path, "%s/%s", modulepath, lib_path);
-        if (!dir_exists(path)) {
-            builder_msg(MSG_ERR,
-                        ERR_FILE_NOT_FOUND,
-                        TOKEN_OPTIONAL_LOCATION(import_from),
-                        CARET_WORD,
-                        "Cannot find module imported library path '%s' defined by '%s'.",
-                        path,
-                        CONF_MODULE_LIB_PATH);
-            puttmpstr(path);
-            return_zone(false);
-        }
-        assembly_add_lib_path(assembly, path);
-        puttmpstr(path);
-    }
+    // Platform specific
+    assembly_append_linker_options(assembly,
+                                   read_config(config, assembly->target, "linker_opt", ""));
+    process_tokens(&ctx,
+                   read_config(config, assembly->target, "src", ""),
+                   ENVPATH_SEPARATOR,
+                   (process_tokens_fn_t)&import_source);
+    process_tokens(&ctx,
+                   read_config(config, assembly->target, "linker_lib_path", ""),
+                   ENVPATH_SEPARATOR,
+                   (process_tokens_fn_t)&import_lib_path);
+    process_tokens(&ctx,
+                   read_config(config, assembly->target, "link", ""),
+                   ENVPATH_SEPARATOR,
+                   (process_tokens_fn_t)&import_link);
 
-    // Optional linker options
-    if (conf_data_has_key(config, CONF_MODULE_LINKER_OPT)) {
-        const char *opt = conf_data_get_str(config, CONF_MODULE_LINKER_OPT);
-        bassert(opt && strlen(opt) > 0);
-        assembly_append_linker_options(assembly, opt);
-    }
-
-    // Optional libs
-    if (conf_data_has_key(config, CONF_MODULE_LINK)) {
-        const char *lib = conf_data_get_str(config, CONF_MODULE_LINK);
-        bassert(lib && strlen(lib) > 0);
-        assembly_add_native_lib(assembly, lib, NULL);
-    }
     return_zone(true);
 }
 
@@ -608,7 +620,7 @@ struct assembly *assembly_new(const struct target *target)
         assembly_add_unit_safe(assembly, target->files[i], NULL);
     }
 
-    const char *preload_file = builder_read_config(assembly->target, "preload_file", "");
+    const char *preload_file = read_config(builder.config, assembly->target, "preload_file", "");
 
     // Add default units based on assembly kind
     switch (assembly->target->kind) {
@@ -752,7 +764,7 @@ bool assembly_import_module(struct assembly *assembly,
 {
     zone();
     bool state = false;
-    if (!strlen(modulepath)) {
+    if (!modulepath || modulepath[0] == '\0') {
         builder_msg(MSG_ERR,
                     ERR_FILE_NOT_FOUND,
                     TOKEN_OPTIONAL_LOCATION(import_from),
@@ -762,7 +774,7 @@ bool assembly_import_module(struct assembly *assembly,
     }
 
     char                *local_path = gettmpstr();
-    conf_data_t         *config     = NULL;
+    struct config       *config     = NULL;
     const struct target *target     = assembly->target;
     const char          *module_dir = strlenu(target->module_dir) > 0 ? target->module_dir : NULL;
     const enum module_import_policy policy = assembly->target->module_policy;
@@ -795,9 +807,9 @@ bool assembly_import_module(struct assembly *assembly,
             strprint(system_path, "%s/%s", builder_get_lib_dir(), modulepath);
             config = load_module_config(system_path, import_from);
             if (config) system_version = get_module_version(config);
-            conf_data_t *local_config = load_module_config(local_path, import_from);
+            struct config *local_config = load_module_config(local_path, import_from);
             if (local_config) local_version = get_module_version(local_config);
-            conf_data_delete(local_config);
+            confdelete(local_config);
             do_copy = system_version > local_version;
         }
         if (do_copy) {
@@ -830,11 +842,16 @@ bool assembly_import_module(struct assembly *assembly,
         bassert("Invalid module import policy!");
     }
     if (config) {
-        builder_log("%s", local_path);
-        state = import_module(assembly, config, local_path, import_from);
+        state = import_module2(assembly, config, local_path, import_from);
+    } else {
+        builder_msg(MSG_ERR,
+                    ERR_FILE_NOT_FOUND,
+                    TOKEN_OPTIONAL_LOCATION(import_from),
+                    CARET_WORD,
+                    "Module not found.");
     }
     puttmpstr(local_path);
-    conf_data_delete(config);
+    confdelete(config);
 DONE:
     return_zone(state);
 }

@@ -79,12 +79,14 @@
 #define ENV_PATH "PATH"
 
 #if BL_PLATFORM_WIN
-#define ENVPATH_SEPARATOR ';'
+#define ENVPATH_SEPARATORC ';'
+#define ENVPATH_SEPARATOR ";"
 #define MSVC_CRT "MSVCRT.dll"
 #define KERNEL32 "Kernel32.dll"
 #define SHLWAPI "Shlwapi.dll"
 #else
-#define ENVPATH_SEPARATOR ':'
+#define ENVPATH_SEPARATORC ':'
+#define ENVPATH_SEPARATOR ":"
 #endif
 
 #define BUILD_API_FILE "build/build.bl"
@@ -104,28 +106,7 @@
 
 #define VM_STACK_SIZE 2097152          // 2MB
 
-// module related config
-#define CONF_MODULE_VERSION "VERSION"
-#if BL_PLATFORM_WIN
-#define CONF_MODULE_ENTRY "WIN32_ENTRY"
-#define CONF_MODULE_LIB_PATH "WIN32_LIB_PATH"
-#define CONF_MODULE_LINK "WIN32_LINK"
-#define CONF_MODULE_LINKER_OPT "WIN32_LINKER_OPT"
-#elif BL_PLATFORM_LINUX
-#define CONF_MODULE_ENTRY "LINUX_ENTRY"
-#define CONF_MODULE_LIB_PATH "LINUX_LIB_PATH"
-#define CONF_MODULE_LINK "LINUX_LINK"
-#define CONF_MODULE_LINKER_OPT "LINUX_LINKER_OPT"
-#elif BL_PLATFORM_MACOS
-#define CONF_MODULE_ENTRY "MACOS_ENTRY"
-#define CONF_MODULE_LIB_PATH "MACOS_LIB_PATH"
-#define CONF_MODULE_LINK "MACOS_LINK"
-#define CONF_MODULE_LINKER_OPT "MACOS_LINKER_OPT"
-#else
-#error "Unknown platform"
-#endif
-#define MODULE_CONFIG_FILE "module.conf"
-
+#define MODULE_CONFIG_FILE "module.yaml"
 #define BUILD_SCRIPT_FILE "build.bl"
 
 #endif // BL_CONFIG_H

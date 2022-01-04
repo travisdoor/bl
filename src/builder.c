@@ -44,7 +44,6 @@ struct builder builder;
 // =================================================================================================
 // Stages
 // =================================================================================================
-void conf_parser_run(struct unit *unit, conf_data_t *out_data);
 
 void file_loader_run(struct assembly *assembly, struct unit *unit);
 void lexer_run(struct assembly *assembly, struct unit *unit);
@@ -517,39 +516,11 @@ const char *builder_get_exec_dir(void)
     return builder.exec_dir;
 }
 
-int builder_compile_config(const char *filepath, conf_data_t *out_data, struct token *import_from)
-{
-    struct unit *unit = unit_new(filepath, import_from);
-    file_loader_run(NULL, unit);
-    if (builder.errorc) goto INTERRUPT;
-    lexer_run(NULL, unit);
-    if (builder.errorc) goto INTERRUPT;
-    conf_parser_run(unit, out_data);
-    if (builder.errorc) goto INTERRUPT;
-    unit_delete(unit);
-    return COMPILE_OK;
-INTERRUPT:
-    return COMPILE_FAIL;
-}
-
 bool builder_load_config(const char *filepath)
 {
     confdelete(builder.config);
     builder.config = confload(filepath);
     return (bool)builder.config;
-}
-
-const char *
-builder_read_config(const struct target *target, const char *path, const char *default_value)
-{
-    bassert(target && path);
-    char *fullpath = gettmpstr();
-    char *triple   = target_triple_to_string(&target->triple);
-    strprint(fullpath, "/%s/%s", triple, path);
-    const char *result = confreads(builder.config, fullpath, default_value);
-    bfree(triple);
-    puttmpstr(fullpath);
-    return result;
 }
 
 struct target *_builder_add_target(const char *name, bool is_default)

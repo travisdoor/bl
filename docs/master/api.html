@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>Biscuit Language (1.0.0)</title>
+  <title>Biscuit Language (0.10.0)</title>
   <style>
     code{white-space: pre-wrap;}
     span.smallcaps{font-variant: small-caps;}
@@ -99,7 +99,7 @@
   <li><a href="how-to.html">How To</a></li>
 </ul>
 <header id="title-block-header">
-<h1 class="title">Biscuit Language (1.0.0)</h1>
+<h1 class="title">Biscuit Language (0.10.0)</h1>
 </header>
 <nav id="TOC" role="doc-toc">
 <ul>
@@ -215,35 +215,11 @@
 <li><a href="#allocated_bytes">allocated_bytes</a></li>
 <li><a href="#print_memory_report">print_memory_report</a></li>
 </ul></li>
-<li><a href="#dirent.bl">dirent.bl</a>
-<ul>
-<li><a href="#darwin_maxpathlen">_DARWIN_MAXPATHLEN</a></li>
-<li><a href="#dir">_DIR</a></li>
-<li><a href="#dirent_t">_dirent_t</a></li>
-<li><a href="#dt_unknown">_DT_UNKNOWN</a></li>
-<li><a href="#dt_fifo">_DT_FIFO</a></li>
-<li><a href="#dt_chr">_DT_CHR</a></li>
-<li><a href="#dt_dir">_DT_DIR</a></li>
-<li><a href="#dt_blk">_DT_BLK</a></li>
-<li><a href="#dt_reg">_DT_REG</a></li>
-<li><a href="#dt_lnk">_DT_LNK</a></li>
-<li><a href="#dt_sock">_DT_SOCK</a></li>
-<li><a href="#dt_wht">_DT_WHT</a></li>
-<li><a href="#opendir">_opendir</a></li>
-<li><a href="#fdopendir">_fdopendir</a></li>
-<li><a href="#closedir">_closedir</a></li>
-<li><a href="#readdir">_readdir</a></li>
-<li><a href="#rewinddir">_rewinddir</a></li>
-</ul></li>
 <li><a href="#dynamic-library-tools">Dynamic Library Tools</a>
 <ul>
 <li><a href="#open">open</a></li>
 <li><a href="#get_symbol">get_symbol</a></li>
 <li><a href="#close">close</a></li>
-</ul></li>
-<li><a href="#errno.bl">errno.bl</a>
-<ul>
-<li><a href="#errno">_errno</a></li>
 </ul></li>
 <li><a href="#error-handling">Error handling</a>
 <ul>
@@ -255,17 +231,6 @@
 <li><a href="#ok-1">ok</a></li>
 <li><a href="#error-2">error</a></li>
 </ul></li>
-<li><a href="#fcntl.bl">fcntl.bl</a>
-<ul>
-<li><a href="#o_rdonly">_O_RDONLY</a></li>
-<li><a href="#o_wronly">_O_WRONLY</a></li>
-<li><a href="#o_rdwr">_O_RDWR</a></li>
-<li><a href="#o_creat">_O_CREAT</a></li>
-<li><a href="#o_trunc">_O_TRUNC</a></li>
-<li><a href="#o_excl">_O_EXCL</a></li>
-<li><a href="#o_append">_O_APPEND</a></li>
-<li><a href="#open-1">_open</a></li>
-</ul></li>
 <li><a href="#file-system">File System</a>
 <ul>
 <li><a href="#file_invalid">FILE_INVALID</a></li>
@@ -275,7 +240,7 @@
 <li><a href="#info">Info</a></li>
 <li><a href="#infolist">InfoList</a></li>
 <li><a href="#exist">exist</a></li>
-<li><a href="#open-2">open</a></li>
+<li><a href="#open-1">open</a></li>
 <li><a href="#close-1">close</a></li>
 <li><a href="#get_uid">get_uid</a></li>
 <li><a href="#remove">remove</a></li>
@@ -370,104 +335,138 @@
 </ul></li>
 <li><a href="#libc.bl">libc.bl</a>
 <ul>
-<li><a href="#c_stdin">C_STDIN</a></li>
-<li><a href="#c_stdout">C_STDOUT</a></li>
-<li><a href="#c_stderr">C_STDERR</a></li>
-<li><a href="#c_rand_max">C_RAND_MAX</a></li>
-<li><a href="#c_getenv">c_getenv</a></li>
-<li><a href="#c_putenv">c_putenv</a></li>
-<li><a href="#c_realpath">c_realpath</a></li>
-<li><a href="#c_exit">c_exit</a></li>
-<li><a href="#c_system">c_system</a></li>
-<li><a href="#c_malloc">c_malloc</a></li>
-<li><a href="#c_free">c_free</a></li>
-<li><a href="#c_strlen">c_strlen</a></li>
-<li><a href="#c_strcmp">c_strcmp</a></li>
-<li><a href="#c_wcslen">c_wcslen</a></li>
-<li><a href="#c_strerror">c_strerror</a></li>
-<li><a href="#c_fgets">c_fgets</a></li>
-<li><a href="#c_popen">c_popen</a></li>
-<li><a href="#c_pclose">c_pclose</a></li>
-<li><a href="#c_getchar">c_getchar</a></li>
-<li><a href="#c_fopen">c_fopen</a></li>
-<li><a href="#c_fclose">c_fclose</a></li>
+<li><a href="#char">char</a></li>
+<li><a href="#uchar">uchar</a></li>
+<li><a href="#short">short</a></li>
+<li><a href="#ushort">ushort</a></li>
+<li><a href="#int">int</a></li>
+<li><a href="#uint">uint</a></li>
+<li><a href="#long">long</a></li>
+<li><a href="#ulong">ulong</a></li>
+<li><a href="#longlong">longlong</a></li>
+<li><a href="#ulonglong">ulonglong</a></li>
+<li><a href="#void_ptr">void_ptr</a></li>
+<li><a href="#size_t">size_t</a></li>
+<li><a href="#ssize_t">ssize_t</a></li>
+<li><a href="#stdin">STDIN</a></li>
+<li><a href="#stdout">STDOUT</a></li>
+<li><a href="#stderr">STDERR</a></li>
+<li><a href="#rand_max">RAND_MAX</a></li>
+<li><a href="#sighup">SIGHUP</a></li>
+<li><a href="#sigint">SIGINT</a></li>
+<li><a href="#sigquit">SIGQUIT</a></li>
+<li><a href="#sigill">SIGILL</a></li>
+<li><a href="#sigtrap">SIGTRAP</a></li>
+<li><a href="#sigabrt">SIGABRT</a></li>
+<li><a href="#putenv">putenv</a></li>
+<li><a href="#popen">popen</a></li>
+<li><a href="#pclose">pclose</a></li>
+<li><a href="#write-1">write</a></li>
+<li><a href="#read-1">read</a></li>
+<li><a href="#exit">exit</a></li>
+<li><a href="#realpath">realpath</a></li>
+<li><a href="#raise">raise</a></li>
+<li><a href="#signal">signal</a></li>
+<li><a href="#malloc">malloc</a></li>
+<li><a href="#free">free</a></li>
+<li><a href="#getenv">getenv</a></li>
+<li><a href="#system">system</a></li>
+<li><a href="#strlen">strlen</a></li>
+<li><a href="#strcmp">strcmp</a></li>
+<li><a href="#wcslen">wcslen</a></li>
+<li><a href="#strerror">strerror</a></li>
+<li><a href="#fgets">fgets</a></li>
+<li><a href="#getchar">getchar</a></li>
+<li><a href="#rand">rand</a></li>
+<li><a href="#srand">srand</a></li>
+<li><a href="#qsort">qsort</a></li>
+<li><a href="#asinf">asinf</a></li>
+<li><a href="#asin">asin</a></li>
+<li><a href="#acosf">acosf</a></li>
+<li><a href="#acos">acos</a></li>
+<li><a href="#tanf">tanf</a></li>
+<li><a href="#tan">tan</a></li>
+<li><a href="#atan2f">atan2f</a></li>
+<li><a href="#atan2">atan2</a></li>
+<li><a href="#copysignf">copysignf</a></li>
+<li><a href="#copysign">copysign</a></li>
+<li><a href="#tolower">tolower</a></li>
+<li><a href="#toupper">toupper</a></li>
+<li><a href="#acrt_iob_func">__acrt_iob_func</a></li>
 </ul></li>
-<li><a href="#mach_time.bl">mach_time.bl</a>
+<li><a href="#macos.bl">macos.bl</a>
 <ul>
-<li><a href="#machtimebaseinfo">_MachTimebaseInfo</a></li>
-<li><a href="#mach_timebase_info">_mach_timebase_info</a></li>
-<li><a href="#mach_absolute_time">_mach_absolute_time</a></li>
-</ul></li>
-<li><a href="#macosapi.bl">macosapi.bl</a>
-<ul>
-<li><a href="#cfallocatorref">_CFAllocatorRef</a></li>
-<li><a href="#cfindex">_CFIndex</a></li>
-<li><a href="#cfstringref">_CFStringRef</a></li>
-<li><a href="#cfarrayref">_CFArrayRef</a></li>
-<li><a href="#cfarraycallbacks">_CFArrayCallBacks</a></li>
-<li><a href="#cftimeinterval">_CFTimeInterval</a></li>
-<li><a href="#cftyperef">_CFTypeRef</a></li>
-<li><a href="#cfrunloopref">_CFRunLoopRef</a></li>
-<li><a href="#cfrunloopmode">_CFRunLoopMode</a></li>
-<li><a href="#boolean">_Boolean</a></li>
-<li><a href="#cfstringencoding">_CFStringEncoding</a></li>
-<li><a href="#kfseventstreameventflagnone">_kFSEventStreamEventFlagNone</a></li>
-<li><a href="#kfseventstreameventflagmustscansubdirs">_kFSEventStreamEventFlagMustScanSubDirs</a></li>
-<li><a href="#kfseventstreameventflaguserdropped">_kFSEventStreamEventFlagUserDropped</a></li>
-<li><a href="#kfseventstreameventflagkerneldropped">_kFSEventStreamEventFlagKernelDropped</a></li>
-<li><a href="#kfseventstreameventflageventidswrapped">_kFSEventStreamEventFlagEventIdsWrapped</a></li>
-<li><a href="#kfseventstreameventflaghistorydone">_kFSEventStreamEventFlagHistoryDone</a></li>
-<li><a href="#kfseventstreameventflagrootchanged">_kFSEventStreamEventFlagRootChanged</a></li>
-<li><a href="#kfseventstreameventflagmount">_kFSEventStreamEventFlagMount</a></li>
-<li><a href="#kfseventstreameventflagunmount">_kFSEventStreamEventFlagUnmount</a></li>
-<li><a href="#kfseventstreameventflagitemcreated">_kFSEventStreamEventFlagItemCreated</a></li>
-<li><a href="#kfseventstreameventflagitemremoved">_kFSEventStreamEventFlagItemRemoved</a></li>
-<li><a href="#kfseventstreameventflagiteminodemetamod">_kFSEventStreamEventFlagItemInodeMetaMod</a></li>
-<li><a href="#kfseventstreameventflagitemrenamed">_kFSEventStreamEventFlagItemRenamed</a></li>
-<li><a href="#kfseventstreameventflagitemmodified">_kFSEventStreamEventFlagItemModified</a></li>
-<li><a href="#kfseventstreameventflagitemfinderinfomod">_kFSEventStreamEventFlagItemFinderInfoMod</a></li>
-<li><a href="#kfseventstreameventflagitemchangeowner">_kFSEventStreamEventFlagItemChangeOwner</a></li>
-<li><a href="#kfseventstreameventflagitemxattrmod">_kFSEventStreamEventFlagItemXattrMod</a></li>
-<li><a href="#kfseventstreameventflagitemisfile">_kFSEventStreamEventFlagItemIsFile</a></li>
-<li><a href="#kfseventstreameventflagitemisdir">_kFSEventStreamEventFlagItemIsDir</a></li>
-<li><a href="#kfseventstreameventflagitemissymlink">_kFSEventStreamEventFlagItemIsSymlink</a></li>
-<li><a href="#kfseventstreameventflagownevent">_kFSEventStreamEventFlagOwnEvent</a></li>
-<li><a href="#kfseventstreameventflagitemishardlink">_kFSEventStreamEventFlagItemIsHardlink</a></li>
-<li><a href="#kfseventstreameventflagitemislasthardlink">_kFSEventStreamEventFlagItemIsLastHardlink</a></li>
-<li><a href="#kfseventstreameventflagitemcloned">_kFSEventStreamEventFlagItemCloned</a></li>
-<li><a href="#kfseventstreameventidsincenow">_kFSEventStreamEventIdSinceNow</a></li>
-<li><a href="#kfseventstreamcreateflagnone">_kFSEventStreamCreateFlagNone</a></li>
-<li><a href="#kfseventstreamcreateflagusecftypes">_kFSEventStreamCreateFlagUseCFTypes</a></li>
-<li><a href="#kfseventstreamcreateflagnodefer">_kFSEventStreamCreateFlagNoDefer</a></li>
-<li><a href="#kfseventstreamcreateflagwatchroot">_kFSEventStreamCreateFlagWatchRoot</a></li>
-<li><a href="#kfseventstreamcreateflagignoreself">_kFSEventStreamCreateFlagIgnoreSelf</a></li>
-<li><a href="#kfseventstreamcreateflagfileevents">_kFSEventStreamCreateFlagFileEvents</a></li>
-<li><a href="#kfseventstreamcreateflagmarkself">_kFSEventStreamCreateFlagMarkSelf</a></li>
-<li><a href="#kfseventstreamcreateflaguseextendeddata">_kFSEventStreamCreateFlagUseExtendedData</a></li>
-<li><a href="#fseventstreamref">_FSEventStreamRef</a></li>
-<li><a href="#fseventstreameventid">_FSEventStreamEventId</a></li>
-<li><a href="#fseventstreamcreateflags">_FSEventStreamCreateFlags</a></li>
-<li><a href="#fseventstreameventflags">_FSEventStreamEventFlags</a></li>
-<li><a href="#constfseventstreamref">_ConstFSEventStreamRef</a></li>
-<li><a href="#cfallocatorretaincallback">_CFAllocatorRetainCallBack</a></li>
-<li><a href="#cfallocatorreleasecallback">_CFAllocatorReleaseCallBack</a></li>
-<li><a href="#cfallocatorcopydescriptioncallback">_CFAllocatorCopyDescriptionCallBack</a></li>
-<li><a href="#cfarraycreate">_CFArrayCreate</a></li>
-<li><a href="#cfrunloopgetcurrent">_CFRunLoopGetCurrent</a></li>
-<li><a href="#cfrunloopcopycurrentmode">_CFRunLoopCopyCurrentMode</a></li>
-<li><a href="#cfrelease">_CFRelease</a></li>
-<li><a href="#cfstringcreatewithcstring">_CFStringCreateWithCString</a></li>
-<li><a href="#fseventstreamcontext">_FSEventStreamContext</a></li>
-<li><a href="#fseventstreamcallback">_FSEventStreamCallback</a></li>
-<li><a href="#fseventstreamcreate">_FSEventStreamCreate</a></li>
-<li><a href="#fseventstreamschedulewithrunloop">_FSEventStreamScheduleWithRunLoop</a></li>
-<li><a href="#fseventstreamunschedulefromrunloop">_FSEventStreamUnscheduleFromRunLoop</a></li>
-<li><a href="#fseventstreamstart">_FSEventStreamStart</a></li>
-<li><a href="#fseventstreamflushsync">_FSEventStreamFlushSync</a></li>
-<li><a href="#fseventstreamstop">_FSEventStreamStop</a></li>
-<li><a href="#fseventstreaminvalidate">_FSEventStreamInvalidate</a></li>
-<li><a href="#fseventstreamrelease">_FSEventStreamRelease</a></li>
-<li><a href="#nsgetexecutablepath">_NSGetExecutablePath</a></li>
+<li><a href="#cfallocatorref">CFAllocatorRef</a></li>
+<li><a href="#cfindex">CFIndex</a></li>
+<li><a href="#cfstringref">CFStringRef</a></li>
+<li><a href="#cfarrayref">CFArrayRef</a></li>
+<li><a href="#cfarraycallbacks">CFArrayCallBacks</a></li>
+<li><a href="#cftimeinterval">CFTimeInterval</a></li>
+<li><a href="#cftyperef">CFTypeRef</a></li>
+<li><a href="#cfrunloopref">CFRunLoopRef</a></li>
+<li><a href="#cfrunloopmode">CFRunLoopMode</a></li>
+<li><a href="#boolean">Boolean</a></li>
+<li><a href="#cfstringencoding">CFStringEncoding</a></li>
+<li><a href="#kfseventstreameventflagnone">kFSEventStreamEventFlagNone</a></li>
+<li><a href="#kfseventstreameventflagmustscansubdirs">kFSEventStreamEventFlagMustScanSubDirs</a></li>
+<li><a href="#kfseventstreameventflaguserdropped">kFSEventStreamEventFlagUserDropped</a></li>
+<li><a href="#kfseventstreameventflagkerneldropped">kFSEventStreamEventFlagKernelDropped</a></li>
+<li><a href="#kfseventstreameventflageventidswrapped">kFSEventStreamEventFlagEventIdsWrapped</a></li>
+<li><a href="#kfseventstreameventflaghistorydone">kFSEventStreamEventFlagHistoryDone</a></li>
+<li><a href="#kfseventstreameventflagrootchanged">kFSEventStreamEventFlagRootChanged</a></li>
+<li><a href="#kfseventstreameventflagmount">kFSEventStreamEventFlagMount</a></li>
+<li><a href="#kfseventstreameventflagunmount">kFSEventStreamEventFlagUnmount</a></li>
+<li><a href="#kfseventstreameventflagitemcreated">kFSEventStreamEventFlagItemCreated</a></li>
+<li><a href="#kfseventstreameventflagitemremoved">kFSEventStreamEventFlagItemRemoved</a></li>
+<li><a href="#kfseventstreameventflagiteminodemetamod">kFSEventStreamEventFlagItemInodeMetaMod</a></li>
+<li><a href="#kfseventstreameventflagitemrenamed">kFSEventStreamEventFlagItemRenamed</a></li>
+<li><a href="#kfseventstreameventflagitemmodified">kFSEventStreamEventFlagItemModified</a></li>
+<li><a href="#kfseventstreameventflagitemfinderinfomod">kFSEventStreamEventFlagItemFinderInfoMod</a></li>
+<li><a href="#kfseventstreameventflagitemchangeowner">kFSEventStreamEventFlagItemChangeOwner</a></li>
+<li><a href="#kfseventstreameventflagitemxattrmod">kFSEventStreamEventFlagItemXattrMod</a></li>
+<li><a href="#kfseventstreameventflagitemisfile">kFSEventStreamEventFlagItemIsFile</a></li>
+<li><a href="#kfseventstreameventflagitemisdir">kFSEventStreamEventFlagItemIsDir</a></li>
+<li><a href="#kfseventstreameventflagitemissymlink">kFSEventStreamEventFlagItemIsSymlink</a></li>
+<li><a href="#kfseventstreameventflagownevent">kFSEventStreamEventFlagOwnEvent</a></li>
+<li><a href="#kfseventstreameventflagitemishardlink">kFSEventStreamEventFlagItemIsHardlink</a></li>
+<li><a href="#kfseventstreameventflagitemislasthardlink">kFSEventStreamEventFlagItemIsLastHardlink</a></li>
+<li><a href="#kfseventstreameventflagitemcloned">kFSEventStreamEventFlagItemCloned</a></li>
+<li><a href="#kfseventstreameventidsincenow">kFSEventStreamEventIdSinceNow</a></li>
+<li><a href="#kfseventstreamcreateflagnone">kFSEventStreamCreateFlagNone</a></li>
+<li><a href="#kfseventstreamcreateflagusecftypes">kFSEventStreamCreateFlagUseCFTypes</a></li>
+<li><a href="#kfseventstreamcreateflagnodefer">kFSEventStreamCreateFlagNoDefer</a></li>
+<li><a href="#kfseventstreamcreateflagwatchroot">kFSEventStreamCreateFlagWatchRoot</a></li>
+<li><a href="#kfseventstreamcreateflagignoreself">kFSEventStreamCreateFlagIgnoreSelf</a></li>
+<li><a href="#kfseventstreamcreateflagfileevents">kFSEventStreamCreateFlagFileEvents</a></li>
+<li><a href="#kfseventstreamcreateflagmarkself">kFSEventStreamCreateFlagMarkSelf</a></li>
+<li><a href="#kfseventstreamcreateflaguseextendeddata">kFSEventStreamCreateFlagUseExtendedData</a></li>
+<li><a href="#fseventstreamref">FSEventStreamRef</a></li>
+<li><a href="#fseventstreameventid">FSEventStreamEventId</a></li>
+<li><a href="#fseventstreamcreateflags">FSEventStreamCreateFlags</a></li>
+<li><a href="#fseventstreameventflags">FSEventStreamEventFlags</a></li>
+<li><a href="#constfseventstreamref">ConstFSEventStreamRef</a></li>
+<li><a href="#cfallocatorretaincallback">CFAllocatorRetainCallBack</a></li>
+<li><a href="#cfallocatorreleasecallback">CFAllocatorReleaseCallBack</a></li>
+<li><a href="#cfallocatorcopydescriptioncallback">CFAllocatorCopyDescriptionCallBack</a></li>
+<li><a href="#cfarraycreate">CFArrayCreate</a></li>
+<li><a href="#cfrunloopgetcurrent">CFRunLoopGetCurrent</a></li>
+<li><a href="#cfrunloopcopycurrentmode">CFRunLoopCopyCurrentMode</a></li>
+<li><a href="#cfrelease">CFRelease</a></li>
+<li><a href="#cfstringcreatewithcstring">CFStringCreateWithCString</a></li>
+<li><a href="#fseventstreamcontext">FSEventStreamContext</a></li>
+<li><a href="#fseventstreamcallback">FSEventStreamCallback</a></li>
+<li><a href="#fseventstreamcreate">FSEventStreamCreate</a></li>
+<li><a href="#fseventstreamschedulewithrunloop">FSEventStreamScheduleWithRunLoop</a></li>
+<li><a href="#fseventstreamunschedulefromrunloop">FSEventStreamUnscheduleFromRunLoop</a></li>
+<li><a href="#fseventstreamstart">FSEventStreamStart</a></li>
+<li><a href="#fseventstreamflushsync">FSEventStreamFlushSync</a></li>
+<li><a href="#fseventstreamstop">FSEventStreamStop</a></li>
+<li><a href="#fseventstreaminvalidate">FSEventStreamInvalidate</a></li>
+<li><a href="#fseventstreamrelease">FSEventStreamRelease</a></li>
+<li><a href="#nsgetexecutablepath">NSGetExecutablePath</a></li>
+<li><a href="#machtimebaseinfo">MachTimebaseInfo</a></li>
+<li><a href="#mach_timebase_info">mach_timebase_info</a></li>
+<li><a href="#mach_absolute_time">mach_absolute_time</a></li>
 </ul></li>
 <li><a href="#math">Math</a>
 <ul>
@@ -501,11 +500,11 @@
 <li><a href="#log10">log10</a></li>
 <li><a href="#sqrt">sqrt</a></li>
 <li><a href="#ceil">ceil</a></li>
-<li><a href="#atan2">atan2</a></li>
-<li><a href="#copysign">copysign</a></li>
-<li><a href="#asin">asin</a></li>
-<li><a href="#acos">acos</a></li>
-<li><a href="#tan">tan</a></li>
+<li><a href="#atan2-1">atan2</a></li>
+<li><a href="#copysign-1">copysign</a></li>
+<li><a href="#asin-1">asin</a></li>
+<li><a href="#acos-1">acos</a></li>
+<li><a href="#tan-1">tan</a></li>
 <li><a href="#abs">abs</a></li>
 <li><a href="#compare">compare</a></li>
 <li><a href="#degtorad">degtorad</a></li>
@@ -519,7 +518,7 @@
 <ul>
 <li><a href="#memory-allocator">Memory allocator</a></li>
 <li><a href="#calloc">calloc</a></li>
-<li><a href="#free">free</a></li>
+<li><a href="#free-1">free</a></li>
 <li><a href="#memcpy">memcpy</a></li>
 <li><a href="#memset">memset</a></li>
 <li><a href="#init_default">init_default</a></li>
@@ -555,52 +554,19 @@
 </ul></li>
 <li><a href="#pthread.bl">pthread.bl</a>
 <ul>
-<li><a href="#pthread_mutex_t">_pthread_mutex_t</a></li>
-<li><a href="#pthread_t">_pthread_t</a></li>
-<li><a href="#pthread_attr_t">_pthread_attr_t</a></li>
-<li><a href="#pthread_start_routine_t">_pthread_start_routine_t</a></li>
-<li><a href="#pthread_create">_pthread_create</a></li>
-<li><a href="#pthread_join">_pthread_join</a></li>
-<li><a href="#pthread_exit">_pthread_exit</a></li>
-<li><a href="#pthread_self">_pthread_self</a></li>
-<li><a href="#pthread_mutex_lock">_pthread_mutex_lock</a></li>
-<li><a href="#pthread_mutex_trylock">_pthread_mutex_trylock</a></li>
-<li><a href="#pthread_mutex_unlock">_pthread_mutex_unlock</a></li>
-<li><a href="#pthread_mutex_init">_pthread_mutex_init</a></li>
-<li><a href="#pthread_mutex_destroy">_pthread_mutex_destroy</a></li>
-</ul></li>
-<li><a href="#stat.bl">stat.bl</a>
-<ul>
-<li><a href="#s_irwxu">_S_IRWXU</a></li>
-<li><a href="#s_irusr">_S_IRUSR</a></li>
-<li><a href="#s_iwusr">_S_IWUSR</a></li>
-<li><a href="#s_ixusr">_S_IXUSR</a></li>
-<li><a href="#s_irwxg">_S_IRWXG</a></li>
-<li><a href="#s_irgrp">_S_IRGRP</a></li>
-<li><a href="#s_iwgrp">_S_IWGRP</a></li>
-<li><a href="#s_ixgrp">_S_IXGRP</a></li>
-<li><a href="#s_irwxo">_S_IRWXO</a></li>
-<li><a href="#s_iroth">_S_IROTH</a></li>
-<li><a href="#s_iwoth">_S_IWOTH</a></li>
-<li><a href="#s_ixoth">_S_IXOTH</a></li>
-<li><a href="#s_isuid">_S_ISUID</a></li>
-<li><a href="#s_isgid">_S_ISGID</a></li>
-<li><a href="#s_isvtx">_S_ISVTX</a></li>
-<li><a href="#s_ifmt">__S_IFMT</a></li>
-<li><a href="#s_ifdir">__S_IFDIR</a></li>
-<li><a href="#s_ifchr">__S_IFCHR</a></li>
-<li><a href="#s_ifblk">__S_IFBLK</a></li>
-<li><a href="#s_ifreg">__S_IFREG</a></li>
-<li><a href="#s_ififo">__S_IFIFO</a></li>
-<li><a href="#s_iflnk">__S_IFLNK</a></li>
-<li><a href="#s_ifsock">__S_IFSOCK</a></li>
-<li><a href="#s_isdir">_S_ISDIR</a></li>
-<li><a href="#s_isreg">_S_ISREG</a></li>
-<li><a href="#stat_t">_stat_t</a></li>
-<li><a href="#stat">_stat</a></li>
-<li><a href="#fstat">_fstat</a></li>
-<li><a href="#mkdir">_mkdir</a></li>
-<li><a href="#fchmod">_fchmod</a></li>
+<li><a href="#pthread_mutex_t">pthread_mutex_t</a></li>
+<li><a href="#pthread_t">pthread_t</a></li>
+<li><a href="#pthread_attr_t">pthread_attr_t</a></li>
+<li><a href="#pthread_start_routine_t">pthread_start_routine_t</a></li>
+<li><a href="#pthread_create">pthread_create</a></li>
+<li><a href="#pthread_join">pthread_join</a></li>
+<li><a href="#pthread_exit">pthread_exit</a></li>
+<li><a href="#pthread_self">pthread_self</a></li>
+<li><a href="#pthread_mutex_lock">pthread_mutex_lock</a></li>
+<li><a href="#pthread_mutex_trylock">pthread_mutex_trylock</a></li>
+<li><a href="#pthread_mutex_unlock">pthread_mutex_unlock</a></li>
+<li><a href="#pthread_mutex_init">pthread_mutex_init</a></li>
+<li><a href="#pthread_mutex_destroy">pthread_mutex_destroy</a></li>
 </ul></li>
 <li><a href="#string">String</a>
 <ul>
@@ -663,7 +629,7 @@
 <li><a href="#create">create</a></li>
 <li><a href="#join">join</a></li>
 <li><a href="#join_all">join_all</a></li>
-<li><a href="#exit">exit</a></li>
+<li><a href="#exit-1">exit</a></li>
 <li><a href="#current">current</a></li>
 </ul></li>
 <li><a href="#temporary-allocator">Temporary Allocator</a>
@@ -671,32 +637,6 @@
 <li><a href="#temporary_reset">temporary_reset</a></li>
 <li><a href="#temporary_release">temporary_release</a></li>
 <li><a href="#temporary_allocated_bytes">temporary_allocated_bytes</a></li>
-</ul></li>
-<li><a href="#types.bl">types.bl</a>
-<ul>
-<li><a href="#dev_t">_dev_t</a></li>
-<li><a href="#ino_t">_ino_t</a></li>
-<li><a href="#nlink_t">_nlink_t</a></li>
-<li><a href="#mode_t">_mode_t</a></li>
-<li><a href="#uid_t">_uid_t</a></li>
-<li><a href="#gid_t">_gid_t</a></li>
-<li><a href="#off_t">_off_t</a></li>
-<li><a href="#blksize_t">_blksize_t</a></li>
-<li><a href="#blkcnt_t">_blkcnt_t</a></li>
-<li><a href="#time_t">_time_t</a></li>
-<li><a href="#syscall_ulong_t">_syscall_ulong_t</a></li>
-</ul></li>
-<li><a href="#unistd.bl">unistd.bl</a>
-<ul>
-<li><a href="#getcwd">_getcwd</a></li>
-<li><a href="#unlink">_unlink</a></li>
-<li><a href="#read-1">_read</a></li>
-<li><a href="#readlink">_readlink</a></li>
-<li><a href="#close-2">_close</a></li>
-<li><a href="#write-1">_write</a></li>
-<li><a href="#usleep">_usleep</a></li>
-<li><a href="#rmdir">_rmdir</a></li>
-<li><a href="#chdir">_chdir</a></li>
 </ul></li>
 <li><a href="#utils">Utils</a>
 <ul>
@@ -715,12 +655,6 @@
 </ul></li>
 <li><a href="#winapi.bl">winapi.bl</a>
 <ul>
-<li><a href="#err_unknown">ERR_UNKNOWN</a></li>
-<li><a href="#err_not_found">ERR_NOT_FOUND</a></li>
-<li><a href="#err_already_exist">ERR_ALREADY_EXIST</a></li>
-<li><a href="#err_access_denied">ERR_ACCESS_DENIED</a></li>
-<li><a href="#err_invalid_handle">ERR_INVALID_HANDLE</a></li>
-<li><a href="#err_directory">ERR_DIRECTORY</a></li>
 <li><a href="#true">TRUE</a></li>
 <li><a href="#false">FALSE</a></li>
 <li><a href="#max_path">MAX_PATH</a></li>
@@ -739,7 +673,7 @@
 <li><a href="#lpstr">LPSTR</a></li>
 <li><a href="#lpctstr">LPCTSTR</a></li>
 <li><a href="#hlocal">HLOCAL</a></li>
-<li><a href="#uint">UINT</a></li>
+<li><a href="#uint-1">UINT</a></li>
 <li><a href="#dword">DWORD</a></li>
 <li><a href="#lpcch">LPCCH</a></li>
 <li><a href="#lpcwch">LPCWCH</a></li>
@@ -753,15 +687,15 @@
 <li><a href="#lpdword">LPDWORD</a></li>
 <li><a href="#handle-1">HANDLE</a></li>
 <li><a href="#ulong_ptr">ULONG_PTR</a></li>
-<li><a href="#size_t">SIZE_T</a></li>
+<li><a href="#size_t-1">SIZE_T</a></li>
 <li><a href="#pvoid">PVOID</a></li>
-<li><a href="#char">CHAR</a></li>
+<li><a href="#char-1">CHAR</a></li>
 <li><a href="#long_ptr">LONG_PTR</a></li>
 <li><a href="#large_integer">LARGE_INTEGER</a></li>
 <li><a href="#plarge_integer">PLARGE_INTEGER</a></li>
 <li><a href="#hglobal">HGLOBAL</a></li>
 <li><a href="#hwnd">HWND</a></li>
-<li><a href="#long">LONG</a></li>
+<li><a href="#long-1">LONG</a></li>
 <li><a href="#plong">PLONG</a></li>
 <li><a href="#word">WORD</a></li>
 <li><a href="#generic_read">GENERIC_READ</a></li>
@@ -1797,65 +1731,6 @@ Dump memory leaks end.</code></pre>
 <p><strong>note</strong>: Printed report contains all remaining (not freed) allocations in time when function was called. Memory leaks can contain false-positives when function is called before execution end.</p>
 <p><strong>hint</strong>: Allocation serail ID can be used by <a href="#break_on">break_on</a> to interrupt execution before memory is allocated and eventually localize allocation in debbuger.</p>
 <hr />
-<h1 id="dirent.bl">dirent.bl</h1>
-<h2 id="darwin_maxpathlen">_DARWIN_MAXPATHLEN</h2>
-<pre><code>_DARWIN_MAXPATHLEN :: 1024</code></pre>
-<hr />
-<h2 id="dir">_DIR</h2>
-<pre><code>_DIR :: u8</code></pre>
-<hr />
-<h2 id="dirent_t">_dirent_t</h2>
-<pre><code>_dirent_t :: struct {
-    d_ino: u64;
-    d_seekoff: u64;
-    d_reclen: u16;
-    d_namlen: u16;
-    d_type: u8;
-    d_name: ;
-}</code></pre>
-<hr />
-<h2 id="dt_unknown">_DT_UNKNOWN</h2>
-<pre><code>_DT_UNKNOWN :: 0</code></pre>
-<hr />
-<h2 id="dt_fifo">_DT_FIFO</h2>
-<pre><code>_DT_FIFO :: 1</code></pre>
-<hr />
-<h2 id="dt_chr">_DT_CHR</h2>
-<pre><code>_DT_CHR :: 2</code></pre>
-<hr />
-<h2 id="dt_dir">_DT_DIR</h2>
-<pre><code>_DT_DIR :: 4</code></pre>
-<hr />
-<h2 id="dt_blk">_DT_BLK</h2>
-<pre><code>_DT_BLK :: 6</code></pre>
-<hr />
-<h2 id="dt_reg">_DT_REG</h2>
-<pre><code>_DT_REG :: 8</code></pre>
-<hr />
-<h2 id="dt_lnk">_DT_LNK</h2>
-<pre><code>_DT_LNK :: 10</code></pre>
-<hr />
-<h2 id="dt_sock">_DT_SOCK</h2>
-<pre><code>_DT_SOCK :: 12</code></pre>
-<hr />
-<h2 id="dt_wht">_DT_WHT</h2>
-<pre><code>_DT_WHT :: 14</code></pre>
-<hr />
-<h2 id="opendir">_opendir</h2>
-<pre><code>_opendir :: fn (name: *c_char) *_DIR #extern</code></pre>
-<hr />
-<h2 id="fdopendir">_fdopendir</h2>
-<pre><code>_fdopendir :: fn (fd: c_int) *_DIR #extern</code></pre>
-<hr />
-<h2 id="closedir">_closedir</h2>
-<pre><code>_closedir :: fn (dirp: *_DIR) c_int #extern</code></pre>
-<hr />
-<h2 id="readdir">_readdir</h2>
-<pre><code>_readdir :: fn (dirp: *_DIR) *_dirent_t #extern</code></pre>
-<hr />
-<h2 id="rewinddir">_rewinddir</h2>
-<pre><code>_rewinddir :: fn (dirp: *_DIR)  #extern</code></pre>
-<hr />
 <h1 id="dynamic-library-tools">Dynamic Library Tools</h1>
 <p><code>#import "std/dlib"</code></p>
 <p>Dynamic library tools for runtime library loading and symbol resolving. ## Library</p>
@@ -1875,10 +1750,6 @@ Dump memory leaks end.</code></pre>
 <h2 id="close">close</h2>
 <pre><code>close :: fn (lib: Library)  #inline</code></pre>
 <p>Close library opened by <a href="#open">open</a> call.</p>
-<hr />
-<h1 id="errno.bl">errno.bl</h1>
-<h2 id="errno">_errno</h2>
-<pre><code>_errno :: fn () s32 #inline</code></pre>
 <hr />
 <h1 id="error-handling">Error handling</h1>
 <p><code>#load "std/error.bl"</code></p>
@@ -1947,31 +1818,6 @@ main :: fn () s32 {
 <pre><code>fn (code: s32, format: string, args: ...) Error</code></pre>
 <p>Sets error state with <code>code</code> and formatted message.</p>
 <hr />
-<h1 id="fcntl.bl">fcntl.bl</h1>
-<h2 id="o_rdonly">_O_RDONLY</h2>
-<pre><code>_O_RDONLY :: 0</code></pre>
-<hr />
-<h2 id="o_wronly">_O_WRONLY</h2>
-<pre><code>_O_WRONLY :: 1</code></pre>
-<hr />
-<h2 id="o_rdwr">_O_RDWR</h2>
-<pre><code>_O_RDWR :: 2</code></pre>
-<hr />
-<h2 id="o_creat">_O_CREAT</h2>
-<pre><code>_O_CREAT :: 512</code></pre>
-<hr />
-<h2 id="o_trunc">_O_TRUNC</h2>
-<pre><code>_O_TRUNC :: 1024</code></pre>
-<hr />
-<h2 id="o_excl">_O_EXCL</h2>
-<pre><code>_O_EXCL :: 2048</code></pre>
-<hr />
-<h2 id="o_append">_O_APPEND</h2>
-<pre><code>_O_APPEND :: 8</code></pre>
-<hr />
-<h2 id="open-1">_open</h2>
-<pre><code>_open :: fn (path: *c_char, oflag: c_int, mode: _mode_t) c_int #extern</code></pre>
-<hr />
 <h1 id="file-system">File System</h1>
 <p><code>#import "std/fs"</code></p>
 <p>File system module for manipulation with files and directories. This module provides an abstraction over operating system APIs such as creating files and directories, reading and writing, and scanning the filesystem. ## File</p>
@@ -2029,7 +1875,7 @@ main :: fn () s32 {
 <pre><code>exist :: fn (filepath: string) bool #inline</code></pre>
 <p>Check whether file or directory exists.</p>
 <hr />
-<h2 id="open-2">open</h2>
+<h2 id="open-1">open</h2>
 <pre><code>open :: fn (filepath: string, mode: ...OpenMode) (_0: File, _1: Error
 ) #inline</code></pre>
 <p>Open an file specified by <code>filepath</code>. Function return file handle and <code>OK</code> status when file was opened, otherwise return invalid handle and proper error. File must be closed by <a href="#close">close</a> call.</p>
@@ -2158,7 +2004,7 @@ main :: fn () s32 {
 <h2 id="write_slice">write_slice</h2>
 <pre><code>write_slice :: fn (handle: File, v: []u8, count : s64: -1) (_0: s64, _1: Error
 ) #inline</code></pre>
-<p>Write content of <code>v</code> slice into the file, return count of written bytes and <code>OK</code> if there is no error, otherwise return 0 and error. Optional argument <code>count</code> specify count of bytes from <code>v</code> to be written, negative value means whole content. When passed count is greater than <code>v.len</code>, count value is set to <code>v.len</code>.</p>
+<p>Write content of <code>v</code> slice into the file, return count of written bytes and <code>OK</code> if there is no error, otherwise return 0 and error. Optional argument <code>count</code> specify count of bytes from <code>v</code> to be written, negative value means whole content. When passed count is greater than <code>v.len</code>, count value is set to <code>v.len</code>. Does nothing in case the <code>v.len == 0</code> (slice is empty) and return 0 and ok.</p>
 <hr />
 <h2 id="dir_create">dir_create</h2>
 <pre><code>dir_create :: fn (dirpath: string) Error #inline</code></pre>
@@ -2441,115 +2287,213 @@ main :: fn () s32 {
 <pre><code>quat_forward :: fn (q: quat) v3</code></pre>
 <hr />
 <h1 id="libc.bl">libc.bl</h1>
-<h2 id="c_stdin">C_STDIN</h2>
-<pre><code>C_STDIN :: 0</code></pre>
+<h2 id="char">char</h2>
+<pre><code>char :: s8</code></pre>
 <hr />
-<h2 id="c_stdout">C_STDOUT</h2>
-<pre><code>C_STDOUT :: 1</code></pre>
+<h2 id="uchar">uchar</h2>
+<pre><code>uchar :: u8</code></pre>
 <hr />
-<h2 id="c_stderr">C_STDERR</h2>
-<pre><code>C_STDERR :: 2</code></pre>
+<h2 id="short">short</h2>
+<pre><code>short :: s16</code></pre>
 <hr />
-<h2 id="c_rand_max">C_RAND_MAX</h2>
-<pre><code>C_RAND_MAX :: 2147483647</code></pre>
+<h2 id="ushort">ushort</h2>
+<pre><code>ushort :: u16</code></pre>
 <hr />
-<h2 id="c_getenv">c_getenv</h2>
-<pre><code>c_getenv :: fn (name: *c_char) *c_char #extern</code></pre>
+<h2 id="int">int</h2>
+<pre><code>int :: s32</code></pre>
 <hr />
-<h2 id="c_putenv">c_putenv</h2>
-<pre><code>c_putenv :: fn (var: *c_char) c_int #extern</code></pre>
+<h2 id="uint">uint</h2>
+<pre><code>uint :: u32</code></pre>
 <hr />
-<h2 id="c_realpath">c_realpath</h2>
-<pre><code>c_realpath :: fn (path: *c_char, resolved_path: *c_char) *c_char #extern</code></pre>
+<h2 id="long">long</h2>
+<pre><code>long :: s32</code></pre>
 <hr />
-<h2 id="c_exit">c_exit</h2>
-<pre><code>c_exit :: fn (v: c_int)  #extern</code></pre>
+<h2 id="ulong">ulong</h2>
+<pre><code>ulong :: u32</code></pre>
 <hr />
-<h2 id="c_system">c_system</h2>
-<pre><code>c_system :: fn (command: *c_char) c_int #extern</code></pre>
+<h2 id="longlong">longlong</h2>
+<pre><code>longlong :: s64</code></pre>
 <hr />
-<h2 id="c_malloc">c_malloc</h2>
-<pre><code>c_malloc :: fn (size: c_size_t) c_void_ptr #extern</code></pre>
+<h2 id="ulonglong">ulonglong</h2>
+<pre><code>ulonglong :: u64</code></pre>
 <hr />
-<h2 id="c_free">c_free</h2>
-<pre><code>c_free :: fn (ptr: c_void_ptr)  #extern</code></pre>
+<h2 id="void_ptr">void_ptr</h2>
+<pre><code>void_ptr :: *u8</code></pre>
 <hr />
-<h2 id="c_strlen">c_strlen</h2>
-<pre><code>c_strlen :: fn (str: *c_char) c_size_t #extern</code></pre>
+<h2 id="size_t">size_t</h2>
+<pre><code>size_t :: u64</code></pre>
 <hr />
-<h2 id="c_strcmp">c_strcmp</h2>
-<pre><code>c_strcmp :: fn (first: *c_char, second: *c_char) c_int #extern</code></pre>
+<h2 id="ssize_t">ssize_t</h2>
+<pre><code>ssize_t :: s64</code></pre>
 <hr />
-<h2 id="c_wcslen">c_wcslen</h2>
-<pre><code>c_wcslen :: fn (str: *u16) usize #extern</code></pre>
+<h2 id="stdin">STDIN</h2>
+<pre><code>STDIN :: 0</code></pre>
 <hr />
-<h2 id="c_strerror">c_strerror</h2>
-<pre><code>c_strerror :: fn (errnum: c_int) *c_char #extern</code></pre>
+<h2 id="stdout">STDOUT</h2>
+<pre><code>STDOUT :: 1</code></pre>
 <hr />
-<h2 id="c_fgets">c_fgets</h2>
-<pre><code>c_fgets :: fn (buf: c_void_ptr, size: c_int, f: c_void_ptr) c_void_ptr #extern</code></pre>
+<h2 id="stderr">STDERR</h2>
+<pre><code>STDERR :: 2</code></pre>
 <hr />
-<h2 id="c_popen">c_popen</h2>
-<pre><code>c_popen :: fn (f: *c_char, m: *c_char) c_void_ptr #extern</code></pre>
+<h2 id="rand_max">RAND_MAX</h2>
+<pre><code>RAND_MAX :: 2147483647</code></pre>
 <hr />
-<h2 id="c_pclose">c_pclose</h2>
-<pre><code>c_pclose :: fn (f: c_void_ptr)  #extern</code></pre>
+<h2 id="sighup">SIGHUP</h2>
+<pre><code>SIGHUP :: 1</code></pre>
 <hr />
-<h2 id="c_getchar">c_getchar</h2>
-<pre><code>c_getchar :: fn () c_int #extern</code></pre>
+<h2 id="sigint">SIGINT</h2>
+<pre><code>SIGINT :: 2</code></pre>
 <hr />
-<h2 id="c_fopen">c_fopen</h2>
-<pre><code>c_fopen :: fn (filename: *c_char, mode: *c_char) c_void_ptr #extern</code></pre>
+<h2 id="sigquit">SIGQUIT</h2>
+<pre><code>SIGQUIT :: 3</code></pre>
 <hr />
-<h2 id="c_fclose">c_fclose</h2>
-<pre><code>c_fclose :: fn (stream: *c_void_ptr) c_int #extern</code></pre>
+<h2 id="sigill">SIGILL</h2>
+<pre><code>SIGILL :: 4</code></pre>
 <hr />
-<h1 id="mach_time.bl">mach_time.bl</h1>
-<h2 id="machtimebaseinfo">_MachTimebaseInfo</h2>
-<pre><code>_MachTimebaseInfo :: struct {
-    numer: c_uint;
-    denom: c_uint;
-}</code></pre>
+<h2 id="sigtrap">SIGTRAP</h2>
+<pre><code>SIGTRAP :: 5</code></pre>
 <hr />
-<h2 id="mach_timebase_info">_mach_timebase_info</h2>
-<pre><code>_mach_timebase_info :: fn (info: *_MachTimebaseInfo) c_int #extern</code></pre>
+<h2 id="sigabrt">SIGABRT</h2>
+<pre><code>SIGABRT :: 6</code></pre>
 <hr />
-<h2 id="mach_absolute_time">_mach_absolute_time</h2>
-<pre><code>_mach_absolute_time :: fn () u64 #extern</code></pre>
+<h2 id="putenv">putenv</h2>
+<pre><code>putenv :: fn (var: *char) int #extern</code></pre>
 <hr />
-<h1 id="macosapi.bl">macosapi.bl</h1>
-<h2 id="cfallocatorref">_CFAllocatorRef</h2>
-<pre><code>_CFAllocatorRef :: *u8</code></pre>
+<h2 id="popen">popen</h2>
+<pre><code>popen :: fn (f: *char, m: *char) void_ptr #extern</code></pre>
 <hr />
-<h2 id="cfindex">_CFIndex</h2>
-<pre><code>_CFIndex :: s64</code></pre>
+<h2 id="pclose">pclose</h2>
+<pre><code>pclose :: fn (f: void_ptr)  #extern</code></pre>
 <hr />
-<h2 id="cfstringref">_CFStringRef</h2>
-<pre><code>_CFStringRef :: *u8</code></pre>
+<h2 id="write-1">write</h2>
+<pre><code>write :: fn (fd: int, buf: *char, count: size_t) ssize_t #extern</code></pre>
 <hr />
-<h2 id="cfarrayref">_CFArrayRef</h2>
-<pre><code>_CFArrayRef :: *u8</code></pre>
+<h2 id="read-1">read</h2>
+<pre><code>read :: fn (fd: int, buf: *char, count: size_t) ssize_t #extern</code></pre>
 <hr />
-<h2 id="cfarraycallbacks">_CFArrayCallBacks</h2>
-<pre><code>_CFArrayCallBacks :: u8</code></pre>
+<h2 id="exit">exit</h2>
+<pre><code>exit :: fn (v: int)  #extern</code></pre>
 <hr />
-<h2 id="cftimeinterval">_CFTimeInterval</h2>
-<pre><code>_CFTimeInterval :: f64</code></pre>
+<h2 id="realpath">realpath</h2>
+<pre><code>realpath :: fn (path: *char, resolved_path: *char) *char #extern</code></pre>
 <hr />
-<h2 id="cftyperef">_CFTypeRef</h2>
-<pre><code>_CFTypeRef :: *u8</code></pre>
+<h2 id="raise">raise</h2>
+<pre><code>raise :: fn (sig: int) int #extern</code></pre>
 <hr />
-<h2 id="cfrunloopref">_CFRunLoopRef</h2>
-<pre><code>_CFRunLoopRef :: *u8</code></pre>
+<h2 id="signal">signal</h2>
+<pre><code>signal :: fn (signum: int, handler: *fn (v: int) ) *fn (v: int)  #extern</code></pre>
 <hr />
-<h2 id="cfrunloopmode">_CFRunLoopMode</h2>
-<pre><code>_CFRunLoopMode :: _CFStringRef</code></pre>
+<h2 id="malloc">malloc</h2>
+<pre><code>malloc :: fn (size: size_t) void_ptr #extern</code></pre>
 <hr />
-<h2 id="boolean">_Boolean</h2>
-<pre><code>_Boolean :: u8</code></pre>
+<h2 id="free">free</h2>
+<pre><code>free :: fn (ptr: void_ptr)  #extern</code></pre>
 <hr />
-<h2 id="cfstringencoding">_CFStringEncoding</h2>
-<pre><code>_CFStringEncoding :: enum u32 {
+<h2 id="getenv">getenv</h2>
+<pre><code>getenv :: fn (name: *char) *char #extern</code></pre>
+<hr />
+<h2 id="system">system</h2>
+<pre><code>system :: fn (command: *char) int #extern</code></pre>
+<hr />
+<h2 id="strlen">strlen</h2>
+<pre><code>strlen :: fn (str: *char) size_t #extern</code></pre>
+<hr />
+<h2 id="strcmp">strcmp</h2>
+<pre><code>strcmp :: fn (first: *char, second: *char) int #extern</code></pre>
+<hr />
+<h2 id="wcslen">wcslen</h2>
+<pre><code>wcslen :: fn (str: *u16) usize #extern</code></pre>
+<hr />
+<h2 id="strerror">strerror</h2>
+<pre><code>strerror :: fn (errnum: int) *char #extern</code></pre>
+<hr />
+<h2 id="fgets">fgets</h2>
+<pre><code>fgets :: fn (buf: void_ptr, size: int, f: void_ptr) void_ptr #extern</code></pre>
+<hr />
+<h2 id="getchar">getchar</h2>
+<pre><code>getchar :: fn () int #extern</code></pre>
+<hr />
+<h2 id="rand">rand</h2>
+<pre><code>rand :: fn () s32 #extern</code></pre>
+<hr />
+<h2 id="srand">srand</h2>
+<pre><code>srand :: fn (seed: u32)  #extern</code></pre>
+<hr />
+<h2 id="qsort">qsort</h2>
+<pre><code>qsort :: fn (base: void_ptr, nitems: size_t, size: size_t, compar: *fn (: void_ptr, : void_ptr) int)  #extern</code></pre>
+<hr />
+<h2 id="asinf">asinf</h2>
+<pre><code>asinf :: fn (arg: f32) f32 #extern</code></pre>
+<hr />
+<h2 id="asin">asin</h2>
+<pre><code>asin :: fn (arg: f64) f64 #extern</code></pre>
+<hr />
+<h2 id="acosf">acosf</h2>
+<pre><code>acosf :: fn (n: f32) f32 #extern</code></pre>
+<hr />
+<h2 id="acos">acos</h2>
+<pre><code>acos :: fn (n: f64) f64 #extern</code></pre>
+<hr />
+<h2 id="tanf">tanf</h2>
+<pre><code>tanf :: fn (x: f32) f32 #extern</code></pre>
+<hr />
+<h2 id="tan">tan</h2>
+<pre><code>tan :: fn (x: f64) f64 #extern</code></pre>
+<hr />
+<h2 id="atan2f">atan2f</h2>
+<pre><code>atan2f :: fn (y: f32, x: f32) f32 #extern</code></pre>
+<hr />
+<h2 id="atan2">atan2</h2>
+<pre><code>atan2 :: fn (y: f64, x: f64) f64 #extern</code></pre>
+<hr />
+<h2 id="copysignf">copysignf</h2>
+<pre><code>copysignf :: fn (x: f32, y: f32) f32 #extern</code></pre>
+<hr />
+<h2 id="copysign">copysign</h2>
+<pre><code>copysign :: fn (x: f64, y: f64) f64 #extern</code></pre>
+<hr />
+<h2 id="tolower">tolower</h2>
+<pre><code>tolower :: fn (c: int) int #extern</code></pre>
+<hr />
+<h2 id="toupper">toupper</h2>
+<pre><code>toupper :: fn (c: int) int #extern</code></pre>
+<hr />
+<h2 id="acrt_iob_func">__acrt_iob_func</h2>
+<pre><code>__acrt_iob_func :: fn (i: int) void_ptr #extern</code></pre>
+<hr />
+<h1 id="macos.bl">macos.bl</h1>
+<h2 id="cfallocatorref">CFAllocatorRef</h2>
+<pre><code>CFAllocatorRef :: *u8</code></pre>
+<hr />
+<h2 id="cfindex">CFIndex</h2>
+<pre><code>CFIndex :: s64</code></pre>
+<hr />
+<h2 id="cfstringref">CFStringRef</h2>
+<pre><code>CFStringRef :: *u8</code></pre>
+<hr />
+<h2 id="cfarrayref">CFArrayRef</h2>
+<pre><code>CFArrayRef :: *u8</code></pre>
+<hr />
+<h2 id="cfarraycallbacks">CFArrayCallBacks</h2>
+<pre><code>CFArrayCallBacks :: u8</code></pre>
+<hr />
+<h2 id="cftimeinterval">CFTimeInterval</h2>
+<pre><code>CFTimeInterval :: f64</code></pre>
+<hr />
+<h2 id="cftyperef">CFTypeRef</h2>
+<pre><code>CFTypeRef :: *u8</code></pre>
+<hr />
+<h2 id="cfrunloopref">CFRunLoopRef</h2>
+<pre><code>CFRunLoopRef :: *u8</code></pre>
+<hr />
+<h2 id="cfrunloopmode">CFRunLoopMode</h2>
+<pre><code>CFRunLoopMode :: CFStringRef</code></pre>
+<hr />
+<h2 id="boolean">Boolean</h2>
+<pre><code>Boolean :: u8</code></pre>
+<hr />
+<h2 id="cfstringencoding">CFStringEncoding</h2>
+<pre><code>CFStringEncoding :: enum u32 {
     MacRoman :: 0;
     WindowsLatin1 :: 1280;
     ISOLatin1 :: 513;
@@ -2566,182 +2510,194 @@ main :: fn () s32 {
     UTF32LE :: 469762304;
 }</code></pre>
 <hr />
-<h2 id="kfseventstreameventflagnone">_kFSEventStreamEventFlagNone</h2>
-<pre><code>_kFSEventStreamEventFlagNone : u32 : 0</code></pre>
+<h2 id="kfseventstreameventflagnone">kFSEventStreamEventFlagNone</h2>
+<pre><code>kFSEventStreamEventFlagNone : u32 : 0</code></pre>
 <hr />
-<h2 id="kfseventstreameventflagmustscansubdirs">_kFSEventStreamEventFlagMustScanSubDirs</h2>
-<pre><code>_kFSEventStreamEventFlagMustScanSubDirs : u32 : 1</code></pre>
+<h2 id="kfseventstreameventflagmustscansubdirs">kFSEventStreamEventFlagMustScanSubDirs</h2>
+<pre><code>kFSEventStreamEventFlagMustScanSubDirs : u32 : 1</code></pre>
 <hr />
-<h2 id="kfseventstreameventflaguserdropped">_kFSEventStreamEventFlagUserDropped</h2>
-<pre><code>_kFSEventStreamEventFlagUserDropped : u32 : 2</code></pre>
+<h2 id="kfseventstreameventflaguserdropped">kFSEventStreamEventFlagUserDropped</h2>
+<pre><code>kFSEventStreamEventFlagUserDropped : u32 : 2</code></pre>
 <hr />
-<h2 id="kfseventstreameventflagkerneldropped">_kFSEventStreamEventFlagKernelDropped</h2>
-<pre><code>_kFSEventStreamEventFlagKernelDropped : u32 : 4</code></pre>
+<h2 id="kfseventstreameventflagkerneldropped">kFSEventStreamEventFlagKernelDropped</h2>
+<pre><code>kFSEventStreamEventFlagKernelDropped : u32 : 4</code></pre>
 <hr />
-<h2 id="kfseventstreameventflageventidswrapped">_kFSEventStreamEventFlagEventIdsWrapped</h2>
-<pre><code>_kFSEventStreamEventFlagEventIdsWrapped : u32 : 8</code></pre>
+<h2 id="kfseventstreameventflageventidswrapped">kFSEventStreamEventFlagEventIdsWrapped</h2>
+<pre><code>kFSEventStreamEventFlagEventIdsWrapped : u32 : 8</code></pre>
 <hr />
-<h2 id="kfseventstreameventflaghistorydone">_kFSEventStreamEventFlagHistoryDone</h2>
-<pre><code>_kFSEventStreamEventFlagHistoryDone : u32 : 16</code></pre>
+<h2 id="kfseventstreameventflaghistorydone">kFSEventStreamEventFlagHistoryDone</h2>
+<pre><code>kFSEventStreamEventFlagHistoryDone : u32 : 16</code></pre>
 <hr />
-<h2 id="kfseventstreameventflagrootchanged">_kFSEventStreamEventFlagRootChanged</h2>
-<pre><code>_kFSEventStreamEventFlagRootChanged : u32 : 32</code></pre>
+<h2 id="kfseventstreameventflagrootchanged">kFSEventStreamEventFlagRootChanged</h2>
+<pre><code>kFSEventStreamEventFlagRootChanged : u32 : 32</code></pre>
 <hr />
-<h2 id="kfseventstreameventflagmount">_kFSEventStreamEventFlagMount</h2>
-<pre><code>_kFSEventStreamEventFlagMount : u32 : 64</code></pre>
+<h2 id="kfseventstreameventflagmount">kFSEventStreamEventFlagMount</h2>
+<pre><code>kFSEventStreamEventFlagMount : u32 : 64</code></pre>
 <hr />
-<h2 id="kfseventstreameventflagunmount">_kFSEventStreamEventFlagUnmount</h2>
-<pre><code>_kFSEventStreamEventFlagUnmount : u32 : 128</code></pre>
+<h2 id="kfseventstreameventflagunmount">kFSEventStreamEventFlagUnmount</h2>
+<pre><code>kFSEventStreamEventFlagUnmount : u32 : 128</code></pre>
 <hr />
-<h2 id="kfseventstreameventflagitemcreated">_kFSEventStreamEventFlagItemCreated</h2>
-<pre><code>_kFSEventStreamEventFlagItemCreated : u32 : 256</code></pre>
+<h2 id="kfseventstreameventflagitemcreated">kFSEventStreamEventFlagItemCreated</h2>
+<pre><code>kFSEventStreamEventFlagItemCreated : u32 : 256</code></pre>
 <hr />
-<h2 id="kfseventstreameventflagitemremoved">_kFSEventStreamEventFlagItemRemoved</h2>
-<pre><code>_kFSEventStreamEventFlagItemRemoved : u32 : 512</code></pre>
+<h2 id="kfseventstreameventflagitemremoved">kFSEventStreamEventFlagItemRemoved</h2>
+<pre><code>kFSEventStreamEventFlagItemRemoved : u32 : 512</code></pre>
 <hr />
-<h2 id="kfseventstreameventflagiteminodemetamod">_kFSEventStreamEventFlagItemInodeMetaMod</h2>
-<pre><code>_kFSEventStreamEventFlagItemInodeMetaMod : u32 : 1024</code></pre>
+<h2 id="kfseventstreameventflagiteminodemetamod">kFSEventStreamEventFlagItemInodeMetaMod</h2>
+<pre><code>kFSEventStreamEventFlagItemInodeMetaMod : u32 : 1024</code></pre>
 <hr />
-<h2 id="kfseventstreameventflagitemrenamed">_kFSEventStreamEventFlagItemRenamed</h2>
-<pre><code>_kFSEventStreamEventFlagItemRenamed : u32 : 2048</code></pre>
+<h2 id="kfseventstreameventflagitemrenamed">kFSEventStreamEventFlagItemRenamed</h2>
+<pre><code>kFSEventStreamEventFlagItemRenamed : u32 : 2048</code></pre>
 <hr />
-<h2 id="kfseventstreameventflagitemmodified">_kFSEventStreamEventFlagItemModified</h2>
-<pre><code>_kFSEventStreamEventFlagItemModified : u32 : 4096</code></pre>
+<h2 id="kfseventstreameventflagitemmodified">kFSEventStreamEventFlagItemModified</h2>
+<pre><code>kFSEventStreamEventFlagItemModified : u32 : 4096</code></pre>
 <hr />
-<h2 id="kfseventstreameventflagitemfinderinfomod">_kFSEventStreamEventFlagItemFinderInfoMod</h2>
-<pre><code>_kFSEventStreamEventFlagItemFinderInfoMod : u32 : 8192</code></pre>
+<h2 id="kfseventstreameventflagitemfinderinfomod">kFSEventStreamEventFlagItemFinderInfoMod</h2>
+<pre><code>kFSEventStreamEventFlagItemFinderInfoMod : u32 : 8192</code></pre>
 <hr />
-<h2 id="kfseventstreameventflagitemchangeowner">_kFSEventStreamEventFlagItemChangeOwner</h2>
-<pre><code>_kFSEventStreamEventFlagItemChangeOwner : u32 : 16384</code></pre>
+<h2 id="kfseventstreameventflagitemchangeowner">kFSEventStreamEventFlagItemChangeOwner</h2>
+<pre><code>kFSEventStreamEventFlagItemChangeOwner : u32 : 16384</code></pre>
 <hr />
-<h2 id="kfseventstreameventflagitemxattrmod">_kFSEventStreamEventFlagItemXattrMod</h2>
-<pre><code>_kFSEventStreamEventFlagItemXattrMod : u32 : 32768</code></pre>
+<h2 id="kfseventstreameventflagitemxattrmod">kFSEventStreamEventFlagItemXattrMod</h2>
+<pre><code>kFSEventStreamEventFlagItemXattrMod : u32 : 32768</code></pre>
 <hr />
-<h2 id="kfseventstreameventflagitemisfile">_kFSEventStreamEventFlagItemIsFile</h2>
-<pre><code>_kFSEventStreamEventFlagItemIsFile : u32 : 65536</code></pre>
+<h2 id="kfseventstreameventflagitemisfile">kFSEventStreamEventFlagItemIsFile</h2>
+<pre><code>kFSEventStreamEventFlagItemIsFile : u32 : 65536</code></pre>
 <hr />
-<h2 id="kfseventstreameventflagitemisdir">_kFSEventStreamEventFlagItemIsDir</h2>
-<pre><code>_kFSEventStreamEventFlagItemIsDir : u32 : 131072</code></pre>
+<h2 id="kfseventstreameventflagitemisdir">kFSEventStreamEventFlagItemIsDir</h2>
+<pre><code>kFSEventStreamEventFlagItemIsDir : u32 : 131072</code></pre>
 <hr />
-<h2 id="kfseventstreameventflagitemissymlink">_kFSEventStreamEventFlagItemIsSymlink</h2>
-<pre><code>_kFSEventStreamEventFlagItemIsSymlink : u32 : 262144</code></pre>
+<h2 id="kfseventstreameventflagitemissymlink">kFSEventStreamEventFlagItemIsSymlink</h2>
+<pre><code>kFSEventStreamEventFlagItemIsSymlink : u32 : 262144</code></pre>
 <hr />
-<h2 id="kfseventstreameventflagownevent">_kFSEventStreamEventFlagOwnEvent</h2>
-<pre><code>_kFSEventStreamEventFlagOwnEvent : u32 : 524288</code></pre>
+<h2 id="kfseventstreameventflagownevent">kFSEventStreamEventFlagOwnEvent</h2>
+<pre><code>kFSEventStreamEventFlagOwnEvent : u32 : 524288</code></pre>
 <hr />
-<h2 id="kfseventstreameventflagitemishardlink">_kFSEventStreamEventFlagItemIsHardlink</h2>
-<pre><code>_kFSEventStreamEventFlagItemIsHardlink : u32 : 1048576</code></pre>
+<h2 id="kfseventstreameventflagitemishardlink">kFSEventStreamEventFlagItemIsHardlink</h2>
+<pre><code>kFSEventStreamEventFlagItemIsHardlink : u32 : 1048576</code></pre>
 <hr />
-<h2 id="kfseventstreameventflagitemislasthardlink">_kFSEventStreamEventFlagItemIsLastHardlink</h2>
-<pre><code>_kFSEventStreamEventFlagItemIsLastHardlink : u32 : 2097152</code></pre>
+<h2 id="kfseventstreameventflagitemislasthardlink">kFSEventStreamEventFlagItemIsLastHardlink</h2>
+<pre><code>kFSEventStreamEventFlagItemIsLastHardlink : u32 : 2097152</code></pre>
 <hr />
-<h2 id="kfseventstreameventflagitemcloned">_kFSEventStreamEventFlagItemCloned</h2>
-<pre><code>_kFSEventStreamEventFlagItemCloned : u32 : 4194304</code></pre>
+<h2 id="kfseventstreameventflagitemcloned">kFSEventStreamEventFlagItemCloned</h2>
+<pre><code>kFSEventStreamEventFlagItemCloned : u32 : 4194304</code></pre>
 <hr />
-<h2 id="kfseventstreameventidsincenow">_kFSEventStreamEventIdSinceNow</h2>
-<pre><code>_kFSEventStreamEventIdSinceNow : _FSEventStreamEventId : 18446744073709551615</code></pre>
+<h2 id="kfseventstreameventidsincenow">kFSEventStreamEventIdSinceNow</h2>
+<pre><code>kFSEventStreamEventIdSinceNow : FSEventStreamEventId : 18446744073709551615</code></pre>
 <hr />
-<h2 id="kfseventstreamcreateflagnone">_kFSEventStreamCreateFlagNone</h2>
-<pre><code>_kFSEventStreamCreateFlagNone : _FSEventStreamCreateFlags : 0</code></pre>
+<h2 id="kfseventstreamcreateflagnone">kFSEventStreamCreateFlagNone</h2>
+<pre><code>kFSEventStreamCreateFlagNone : FSEventStreamCreateFlags : 0</code></pre>
 <hr />
-<h2 id="kfseventstreamcreateflagusecftypes">_kFSEventStreamCreateFlagUseCFTypes</h2>
-<pre><code>_kFSEventStreamCreateFlagUseCFTypes : _FSEventStreamCreateFlags : 1</code></pre>
+<h2 id="kfseventstreamcreateflagusecftypes">kFSEventStreamCreateFlagUseCFTypes</h2>
+<pre><code>kFSEventStreamCreateFlagUseCFTypes : FSEventStreamCreateFlags : 1</code></pre>
 <hr />
-<h2 id="kfseventstreamcreateflagnodefer">_kFSEventStreamCreateFlagNoDefer</h2>
-<pre><code>_kFSEventStreamCreateFlagNoDefer : _FSEventStreamCreateFlags : 2</code></pre>
+<h2 id="kfseventstreamcreateflagnodefer">kFSEventStreamCreateFlagNoDefer</h2>
+<pre><code>kFSEventStreamCreateFlagNoDefer : FSEventStreamCreateFlags : 2</code></pre>
 <hr />
-<h2 id="kfseventstreamcreateflagwatchroot">_kFSEventStreamCreateFlagWatchRoot</h2>
-<pre><code>_kFSEventStreamCreateFlagWatchRoot : _FSEventStreamCreateFlags : 4</code></pre>
+<h2 id="kfseventstreamcreateflagwatchroot">kFSEventStreamCreateFlagWatchRoot</h2>
+<pre><code>kFSEventStreamCreateFlagWatchRoot : FSEventStreamCreateFlags : 4</code></pre>
 <hr />
-<h2 id="kfseventstreamcreateflagignoreself">_kFSEventStreamCreateFlagIgnoreSelf</h2>
-<pre><code>_kFSEventStreamCreateFlagIgnoreSelf : _FSEventStreamCreateFlags : 8</code></pre>
+<h2 id="kfseventstreamcreateflagignoreself">kFSEventStreamCreateFlagIgnoreSelf</h2>
+<pre><code>kFSEventStreamCreateFlagIgnoreSelf : FSEventStreamCreateFlags : 8</code></pre>
 <hr />
-<h2 id="kfseventstreamcreateflagfileevents">_kFSEventStreamCreateFlagFileEvents</h2>
-<pre><code>_kFSEventStreamCreateFlagFileEvents : _FSEventStreamCreateFlags : 16</code></pre>
+<h2 id="kfseventstreamcreateflagfileevents">kFSEventStreamCreateFlagFileEvents</h2>
+<pre><code>kFSEventStreamCreateFlagFileEvents : FSEventStreamCreateFlags : 16</code></pre>
 <hr />
-<h2 id="kfseventstreamcreateflagmarkself">_kFSEventStreamCreateFlagMarkSelf</h2>
-<pre><code>_kFSEventStreamCreateFlagMarkSelf : _FSEventStreamCreateFlags : 32</code></pre>
+<h2 id="kfseventstreamcreateflagmarkself">kFSEventStreamCreateFlagMarkSelf</h2>
+<pre><code>kFSEventStreamCreateFlagMarkSelf : FSEventStreamCreateFlags : 32</code></pre>
 <hr />
-<h2 id="kfseventstreamcreateflaguseextendeddata">_kFSEventStreamCreateFlagUseExtendedData</h2>
-<pre><code>_kFSEventStreamCreateFlagUseExtendedData : _FSEventStreamCreateFlags : 64</code></pre>
+<h2 id="kfseventstreamcreateflaguseextendeddata">kFSEventStreamCreateFlagUseExtendedData</h2>
+<pre><code>kFSEventStreamCreateFlagUseExtendedData : FSEventStreamCreateFlags : 64</code></pre>
 <hr />
-<h2 id="fseventstreamref">_FSEventStreamRef</h2>
-<pre><code>_FSEventStreamRef :: *u8</code></pre>
+<h2 id="fseventstreamref">FSEventStreamRef</h2>
+<pre><code>FSEventStreamRef :: *u8</code></pre>
 <hr />
-<h2 id="fseventstreameventid">_FSEventStreamEventId</h2>
-<pre><code>_FSEventStreamEventId :: u64</code></pre>
+<h2 id="fseventstreameventid">FSEventStreamEventId</h2>
+<pre><code>FSEventStreamEventId :: u64</code></pre>
 <hr />
-<h2 id="fseventstreamcreateflags">_FSEventStreamCreateFlags</h2>
-<pre><code>_FSEventStreamCreateFlags :: u32</code></pre>
+<h2 id="fseventstreamcreateflags">FSEventStreamCreateFlags</h2>
+<pre><code>FSEventStreamCreateFlags :: u32</code></pre>
 <hr />
-<h2 id="fseventstreameventflags">_FSEventStreamEventFlags</h2>
-<pre><code>_FSEventStreamEventFlags :: u32</code></pre>
+<h2 id="fseventstreameventflags">FSEventStreamEventFlags</h2>
+<pre><code>FSEventStreamEventFlags :: u32</code></pre>
 <hr />
-<h2 id="constfseventstreamref">_ConstFSEventStreamRef</h2>
-<pre><code>_ConstFSEventStreamRef :: *u8</code></pre>
+<h2 id="constfseventstreamref">ConstFSEventStreamRef</h2>
+<pre><code>ConstFSEventStreamRef :: *u8</code></pre>
 <hr />
-<h2 id="cfallocatorretaincallback">_CFAllocatorRetainCallBack</h2>
-<pre><code>_CFAllocatorRetainCallBack :: *fn (info: *u8) *u8</code></pre>
+<h2 id="cfallocatorretaincallback">CFAllocatorRetainCallBack</h2>
+<pre><code>CFAllocatorRetainCallBack :: *fn (info: *u8) *u8</code></pre>
 <hr />
-<h2 id="cfallocatorreleasecallback">_CFAllocatorReleaseCallBack</h2>
-<pre><code>_CFAllocatorReleaseCallBack :: *fn (info: *u8) </code></pre>
+<h2 id="cfallocatorreleasecallback">CFAllocatorReleaseCallBack</h2>
+<pre><code>CFAllocatorReleaseCallBack :: *fn (info: *u8) </code></pre>
 <hr />
-<h2 id="cfallocatorcopydescriptioncallback">_CFAllocatorCopyDescriptionCallBack</h2>
-<pre><code>_CFAllocatorCopyDescriptionCallBack :: *fn (info: *u8) _CFStringRef</code></pre>
+<h2 id="cfallocatorcopydescriptioncallback">CFAllocatorCopyDescriptionCallBack</h2>
+<pre><code>CFAllocatorCopyDescriptionCallBack :: *fn (info: *u8) CFStringRef</code></pre>
 <hr />
-<h2 id="cfarraycreate">_CFArrayCreate</h2>
-<pre><code>_CFArrayCreate :: fn (allocator: _CFAllocatorRef, values: **u8, numValues: _CFIndex, callBacks: *_CFArrayCallBacks) _CFArrayRef #extern</code></pre>
+<h2 id="cfarraycreate">CFArrayCreate</h2>
+<pre><code>CFArrayCreate :: fn (allocator: CFAllocatorRef, values: **u8, numValues: CFIndex, callBacks: *CFArrayCallBacks) CFArrayRef #extern</code></pre>
 <hr />
-<h2 id="cfrunloopgetcurrent">_CFRunLoopGetCurrent</h2>
-<pre><code>_CFRunLoopGetCurrent :: fn () _CFRunLoopRef #extern</code></pre>
+<h2 id="cfrunloopgetcurrent">CFRunLoopGetCurrent</h2>
+<pre><code>CFRunLoopGetCurrent :: fn () CFRunLoopRef #extern</code></pre>
 <hr />
-<h2 id="cfrunloopcopycurrentmode">_CFRunLoopCopyCurrentMode</h2>
-<pre><code>_CFRunLoopCopyCurrentMode :: fn (rl: _CFRunLoopRef) _CFRunLoopMode #extern</code></pre>
+<h2 id="cfrunloopcopycurrentmode">CFRunLoopCopyCurrentMode</h2>
+<pre><code>CFRunLoopCopyCurrentMode :: fn (rl: CFRunLoopRef) CFRunLoopMode #extern</code></pre>
 <hr />
-<h2 id="cfrelease">_CFRelease</h2>
-<pre><code>_CFRelease :: fn (cf: _CFTypeRef)  #extern</code></pre>
+<h2 id="cfrelease">CFRelease</h2>
+<pre><code>CFRelease :: fn (cf: CFTypeRef)  #extern</code></pre>
 <hr />
-<h2 id="cfstringcreatewithcstring">_CFStringCreateWithCString</h2>
-<pre><code>_CFStringCreateWithCString :: fn (alloc: _CFAllocatorRef, cStr: *u8, encoding: _CFStringEncoding) _CFStringRef #extern</code></pre>
+<h2 id="cfstringcreatewithcstring">CFStringCreateWithCString</h2>
+<pre><code>CFStringCreateWithCString :: fn (alloc: CFAllocatorRef, cStr: *u8, encoding: CFStringEncoding) CFStringRef #extern</code></pre>
 <hr />
-<h2 id="fseventstreamcontext">_FSEventStreamContext</h2>
-<pre><code>_FSEventStreamContext :: struct {
-    version: _CFIndex;
+<h2 id="fseventstreamcontext">FSEventStreamContext</h2>
+<pre><code>FSEventStreamContext :: struct {
+    version: CFIndex;
     info: *u8;
-    retain: _CFAllocatorRetainCallBack;
-    release: _CFAllocatorReleaseCallBack;
-    copyDescription: _CFAllocatorCopyDescriptionCallBack;
+    retain: CFAllocatorRetainCallBack;
+    release: CFAllocatorReleaseCallBack;
+    copyDescription: CFAllocatorCopyDescriptionCallBack;
 }</code></pre>
 <hr />
-<h2 id="fseventstreamcallback">_FSEventStreamCallback</h2>
-<pre><code>_FSEventStreamCallback :: *fn (streamRef: _ConstFSEventStreamRef, clientCallBackInfo: *u8, numEvents: usize, eventPaths: *u8, eventFlags: *_FSEventStreamEventFlags, eventIds: *_FSEventStreamEventId) </code></pre>
+<h2 id="fseventstreamcallback">FSEventStreamCallback</h2>
+<pre><code>FSEventStreamCallback :: *fn (streamRef: ConstFSEventStreamRef, clientCallBackInfo: *u8, numEvents: usize, eventPaths: *u8, eventFlags: *FSEventStreamEventFlags, eventIds: *FSEventStreamEventId) </code></pre>
 <hr />
-<h2 id="fseventstreamcreate">_FSEventStreamCreate</h2>
-<pre><code>_FSEventStreamCreate :: fn (allocator: _CFAllocatorRef, callback: _FSEventStreamCallback, context: *_FSEventStreamContext, pathsToWatch: _CFArrayRef, sinceWhen: _FSEventStreamEventId, latency: _CFTimeInterval, flags: _FSEventStreamCreateFlags) _FSEventStreamRef #extern</code></pre>
+<h2 id="fseventstreamcreate">FSEventStreamCreate</h2>
+<pre><code>FSEventStreamCreate :: fn (allocator: CFAllocatorRef, callback: FSEventStreamCallback, context: *FSEventStreamContext, pathsToWatch: CFArrayRef, sinceWhen: FSEventStreamEventId, latency: CFTimeInterval, flags: FSEventStreamCreateFlags) FSEventStreamRef #extern</code></pre>
 <hr />
-<h2 id="fseventstreamschedulewithrunloop">_FSEventStreamScheduleWithRunLoop</h2>
-<pre><code>_FSEventStreamScheduleWithRunLoop :: fn (streamRef: _FSEventStreamRef, runLoop: _CFRunLoopRef, runLoopMode: _CFStringRef)  #extern</code></pre>
+<h2 id="fseventstreamschedulewithrunloop">FSEventStreamScheduleWithRunLoop</h2>
+<pre><code>FSEventStreamScheduleWithRunLoop :: fn (streamRef: FSEventStreamRef, runLoop: CFRunLoopRef, runLoopMode: CFStringRef)  #extern</code></pre>
 <hr />
-<h2 id="fseventstreamunschedulefromrunloop">_FSEventStreamUnscheduleFromRunLoop</h2>
-<pre><code>_FSEventStreamUnscheduleFromRunLoop :: fn (streamRef: _FSEventStreamRef, runLoop: _CFRunLoopRef, runLoopMode: _CFStringRef)  #extern</code></pre>
+<h2 id="fseventstreamunschedulefromrunloop">FSEventStreamUnscheduleFromRunLoop</h2>
+<pre><code>FSEventStreamUnscheduleFromRunLoop :: fn (streamRef: FSEventStreamRef, runLoop: CFRunLoopRef, runLoopMode: CFStringRef)  #extern</code></pre>
 <hr />
-<h2 id="fseventstreamstart">_FSEventStreamStart</h2>
-<pre><code>_FSEventStreamStart :: fn (streamRef: _FSEventStreamRef) _Boolean #extern</code></pre>
+<h2 id="fseventstreamstart">FSEventStreamStart</h2>
+<pre><code>FSEventStreamStart :: fn (streamRef: FSEventStreamRef) Boolean #extern</code></pre>
 <hr />
-<h2 id="fseventstreamflushsync">_FSEventStreamFlushSync</h2>
-<pre><code>_FSEventStreamFlushSync :: fn (streamRef: _FSEventStreamRef)  #extern</code></pre>
+<h2 id="fseventstreamflushsync">FSEventStreamFlushSync</h2>
+<pre><code>FSEventStreamFlushSync :: fn (streamRef: FSEventStreamRef)  #extern</code></pre>
 <hr />
-<h2 id="fseventstreamstop">_FSEventStreamStop</h2>
-<pre><code>_FSEventStreamStop :: fn (streamRef: _FSEventStreamRef)  #extern</code></pre>
+<h2 id="fseventstreamstop">FSEventStreamStop</h2>
+<pre><code>FSEventStreamStop :: fn (streamRef: FSEventStreamRef)  #extern</code></pre>
 <hr />
-<h2 id="fseventstreaminvalidate">_FSEventStreamInvalidate</h2>
-<pre><code>_FSEventStreamInvalidate :: fn (streamRef: _FSEventStreamRef)  #extern</code></pre>
+<h2 id="fseventstreaminvalidate">FSEventStreamInvalidate</h2>
+<pre><code>FSEventStreamInvalidate :: fn (streamRef: FSEventStreamRef)  #extern</code></pre>
 <hr />
-<h2 id="fseventstreamrelease">_FSEventStreamRelease</h2>
-<pre><code>_FSEventStreamRelease :: fn (streamRef: _FSEventStreamRef)  #extern</code></pre>
+<h2 id="fseventstreamrelease">FSEventStreamRelease</h2>
+<pre><code>FSEventStreamRelease :: fn (streamRef: FSEventStreamRef)  #extern</code></pre>
 <hr />
-<h2 id="nsgetexecutablepath">_NSGetExecutablePath</h2>
-<pre><code>_NSGetExecutablePath :: fn (buf: *c_char, bufsize: *c_uint) c_int #extern</code></pre>
+<h2 id="nsgetexecutablepath">NSGetExecutablePath</h2>
+<pre><code>NSGetExecutablePath :: fn (buf: *C.char, bufsize: *C.uint) C.int #extern</code></pre>
+<hr />
+<h2 id="machtimebaseinfo">MachTimebaseInfo</h2>
+<pre><code>MachTimebaseInfo :: struct {
+    numer: C.uint;
+    denom: C.uint;
+}</code></pre>
+<hr />
+<h2 id="mach_timebase_info">mach_timebase_info</h2>
+<pre><code>mach_timebase_info :: fn (info: *MachTimebaseInfo) C.int #extern</code></pre>
+<hr />
+<h2 id="mach_absolute_time">mach_absolute_time</h2>
+<pre><code>mach_absolute_time :: fn () u64 #extern</code></pre>
 <hr />
 <h1 id="math">Math</h1>
 <p><code>#load "std/math.bl"</code> ## PI</p>
@@ -2837,19 +2793,19 @@ main :: fn () s32 {
 <h2 id="ceil">ceil</h2>
 <pre><code>ceil :: fn { f32_ceil; f64_ceil; }</code></pre>
 <hr />
-<h2 id="atan2">atan2</h2>
+<h2 id="atan2-1">atan2</h2>
 <pre><code>atan2 :: fn { C.atan2f; C.atan2; }</code></pre>
 <hr />
-<h2 id="copysign">copysign</h2>
+<h2 id="copysign-1">copysign</h2>
 <pre><code>copysign :: fn { C.copysignf; C.copysign; }</code></pre>
 <hr />
-<h2 id="asin">asin</h2>
+<h2 id="asin-1">asin</h2>
 <pre><code>asin :: fn { C.asinf; C.asin; }</code></pre>
 <hr />
-<h2 id="acos">acos</h2>
+<h2 id="acos-1">acos</h2>
 <pre><code>acos :: fn { C.acosf; C.acos; }</code></pre>
 <hr />
-<h2 id="tan">tan</h2>
+<h2 id="tan-1">tan</h2>
 <pre><code>tan :: fn { C.tanf; C.tan; }</code></pre>
 <hr />
 <h2 id="abs">abs</h2>
@@ -2890,7 +2846,7 @@ main :: fn () s32 {
 <pre><code>calloc :: fn (num: usize, size: usize, loc :: ) *u8</code></pre>
 <p><span class="citation" data-cites="INCOMPLETE">@INCOMPLETE</span></p>
 <hr />
-<h2 id="free">free</h2>
+<h2 id="free-1">free</h2>
 <pre><code>free :: fn (ptr: *u8, loc :: ) </code></pre>
 <p>Free memory allocated on heap. This function use allocator set in <code>_context.allocator</code> to free allocated data.</p>
 <p><strong>warning</strong>: Memory block must be freed by same allocator as used for allocation.</p>
@@ -3112,157 +3068,47 @@ end &lt;= slice.len</code></pre>
 <pre><code>_print_impl :: fn { fn (buf: []u8, format: string, args: []Any, cur :: 0) s32; fn (buf: *string, format: string, args: []Any, cur :: 0) s32; }</code></pre>
 <hr />
 <h1 id="pthread.bl">pthread.bl</h1>
-<h2 id="pthread_mutex_t">_pthread_mutex_t</h2>
-<pre><code>_pthread_mutex_t :: struct {
-    __sig: c_long;
+<h2 id="pthread_mutex_t">pthread_mutex_t</h2>
+<pre><code>pthread_mutex_t :: struct {
+    __sig: C.long;
     __opaque: ;
 }</code></pre>
 <hr />
-<h2 id="pthread_t">_pthread_t</h2>
-<pre><code>_pthread_t :: *u8</code></pre>
+<h2 id="pthread_t">pthread_t</h2>
+<pre><code>pthread_t :: *u8</code></pre>
 <hr />
-<h2 id="pthread_attr_t">_pthread_attr_t</h2>
-<pre><code>_pthread_attr_t :: *u8</code></pre>
+<h2 id="pthread_attr_t">pthread_attr_t</h2>
+<pre><code>pthread_attr_t :: *u8</code></pre>
 <hr />
-<h2 id="pthread_start_routine_t">_pthread_start_routine_t</h2>
-<pre><code>_pthread_start_routine_t :: *fn (args: c_void_ptr) c_void_ptr</code></pre>
+<h2 id="pthread_start_routine_t">pthread_start_routine_t</h2>
+<pre><code>pthread_start_routine_t :: *fn (args: C.void_ptr) C.void_ptr</code></pre>
 <hr />
-<h2 id="pthread_create">_pthread_create</h2>
-<pre><code>_pthread_create :: fn (thread: *_pthread_t, attr: _pthread_attr_t, start_routine: _pthread_start_routine_t, args: c_void_ptr) c_int #extern</code></pre>
+<h2 id="pthread_create">pthread_create</h2>
+<pre><code>pthread_create :: fn (thread: *pthread_t, attr: pthread_attr_t, start_routine: pthread_start_routine_t, args: C.void_ptr) C.int #extern</code></pre>
 <hr />
-<h2 id="pthread_join">_pthread_join</h2>
-<pre><code>_pthread_join :: fn (thread: _pthread_t, retval: *c_void_ptr) c_int #extern</code></pre>
+<h2 id="pthread_join">pthread_join</h2>
+<pre><code>pthread_join :: fn (thread: pthread_t, retval: *C.void_ptr) C.int #extern</code></pre>
 <hr />
-<h2 id="pthread_exit">_pthread_exit</h2>
-<pre><code>_pthread_exit :: fn (retval: c_void_ptr)  #extern</code></pre>
+<h2 id="pthread_exit">pthread_exit</h2>
+<pre><code>pthread_exit :: fn (retval: C.void_ptr)  #extern</code></pre>
 <hr />
-<h2 id="pthread_self">_pthread_self</h2>
-<pre><code>_pthread_self :: fn () _pthread_t #extern</code></pre>
+<h2 id="pthread_self">pthread_self</h2>
+<pre><code>pthread_self :: fn () pthread_t #extern</code></pre>
 <hr />
-<h2 id="pthread_mutex_lock">_pthread_mutex_lock</h2>
-<pre><code>_pthread_mutex_lock :: fn (mutex: *_pthread_mutex_t) c_int #extern</code></pre>
+<h2 id="pthread_mutex_lock">pthread_mutex_lock</h2>
+<pre><code>pthread_mutex_lock :: fn (mutex: *pthread_mutex_t) C.int #extern</code></pre>
 <hr />
-<h2 id="pthread_mutex_trylock">_pthread_mutex_trylock</h2>
-<pre><code>_pthread_mutex_trylock :: fn (mutex: *_pthread_mutex_t) c_int #extern</code></pre>
+<h2 id="pthread_mutex_trylock">pthread_mutex_trylock</h2>
+<pre><code>pthread_mutex_trylock :: fn (mutex: *pthread_mutex_t) C.int #extern</code></pre>
 <hr />
-<h2 id="pthread_mutex_unlock">_pthread_mutex_unlock</h2>
-<pre><code>_pthread_mutex_unlock :: fn (mutex: *_pthread_mutex_t) c_int #extern</code></pre>
+<h2 id="pthread_mutex_unlock">pthread_mutex_unlock</h2>
+<pre><code>pthread_mutex_unlock :: fn (mutex: *pthread_mutex_t) C.int #extern</code></pre>
 <hr />
-<h2 id="pthread_mutex_init">_pthread_mutex_init</h2>
-<pre><code>_pthread_mutex_init :: fn (mutex: *_pthread_mutex_t, attr: c_void_ptr) c_int #extern</code></pre>
+<h2 id="pthread_mutex_init">pthread_mutex_init</h2>
+<pre><code>pthread_mutex_init :: fn (mutex: *pthread_mutex_t, attr: C.void_ptr) C.int #extern</code></pre>
 <hr />
-<h2 id="pthread_mutex_destroy">_pthread_mutex_destroy</h2>
-<pre><code>_pthread_mutex_destroy :: fn (mutex: *_pthread_mutex_t) c_int #extern</code></pre>
-<hr />
-<h1 id="stat.bl">stat.bl</h1>
-<h2 id="s_irwxu">_S_IRWXU</h2>
-<pre><code>_S_IRWXU : _mode_t : 448</code></pre>
-<hr />
-<h2 id="s_irusr">_S_IRUSR</h2>
-<pre><code>_S_IRUSR : _mode_t : 256</code></pre>
-<hr />
-<h2 id="s_iwusr">_S_IWUSR</h2>
-<pre><code>_S_IWUSR : _mode_t : 128</code></pre>
-<hr />
-<h2 id="s_ixusr">_S_IXUSR</h2>
-<pre><code>_S_IXUSR : _mode_t : 64</code></pre>
-<hr />
-<h2 id="s_irwxg">_S_IRWXG</h2>
-<pre><code>_S_IRWXG : _mode_t : 56</code></pre>
-<hr />
-<h2 id="s_irgrp">_S_IRGRP</h2>
-<pre><code>_S_IRGRP : _mode_t : 32</code></pre>
-<hr />
-<h2 id="s_iwgrp">_S_IWGRP</h2>
-<pre><code>_S_IWGRP : _mode_t : 16</code></pre>
-<hr />
-<h2 id="s_ixgrp">_S_IXGRP</h2>
-<pre><code>_S_IXGRP : _mode_t : 8</code></pre>
-<hr />
-<h2 id="s_irwxo">_S_IRWXO</h2>
-<pre><code>_S_IRWXO : _mode_t : 7</code></pre>
-<hr />
-<h2 id="s_iroth">_S_IROTH</h2>
-<pre><code>_S_IROTH : _mode_t : 4</code></pre>
-<hr />
-<h2 id="s_iwoth">_S_IWOTH</h2>
-<pre><code>_S_IWOTH : _mode_t : 2</code></pre>
-<hr />
-<h2 id="s_ixoth">_S_IXOTH</h2>
-<pre><code>_S_IXOTH : _mode_t : 1</code></pre>
-<hr />
-<h2 id="s_isuid">_S_ISUID</h2>
-<pre><code>_S_ISUID : _mode_t : 2048</code></pre>
-<hr />
-<h2 id="s_isgid">_S_ISGID</h2>
-<pre><code>_S_ISGID : _mode_t : 1024</code></pre>
-<hr />
-<h2 id="s_isvtx">_S_ISVTX</h2>
-<pre><code>_S_ISVTX : _mode_t : 512</code></pre>
-<hr />
-<h2 id="s_ifmt">__S_IFMT</h2>
-<pre><code>__S_IFMT : u32 : 61440</code></pre>
-<hr />
-<h2 id="s_ifdir">__S_IFDIR</h2>
-<pre><code>__S_IFDIR : u32 : 16384</code></pre>
-<hr />
-<h2 id="s_ifchr">__S_IFCHR</h2>
-<pre><code>__S_IFCHR : u32 : 8192</code></pre>
-<hr />
-<h2 id="s_ifblk">__S_IFBLK</h2>
-<pre><code>__S_IFBLK : u32 : 24576</code></pre>
-<hr />
-<h2 id="s_ifreg">__S_IFREG</h2>
-<pre><code>__S_IFREG : u32 : 32768</code></pre>
-<hr />
-<h2 id="s_ififo">__S_IFIFO</h2>
-<pre><code>__S_IFIFO : u32 : 4096</code></pre>
-<hr />
-<h2 id="s_iflnk">__S_IFLNK</h2>
-<pre><code>__S_IFLNK : u32 : 40960</code></pre>
-<hr />
-<h2 id="s_ifsock">__S_IFSOCK</h2>
-<pre><code>__S_IFSOCK : u32 : 49152</code></pre>
-<hr />
-<h2 id="s_isdir">_S_ISDIR</h2>
-<pre><code>_S_ISDIR :: fn (mode: u32) bool #inline</code></pre>
-<hr />
-<h2 id="s_isreg">_S_ISREG</h2>
-<pre><code>_S_ISREG :: fn (mode: u32) bool #inline</code></pre>
-<hr />
-<h2 id="stat_t">_stat_t</h2>
-<pre><code>_stat_t :: struct {
-    st_dev: _dev_t;
-    st_mode: _mode_t;
-    st_nlink: _nlink_t;
-    st_ino: _ino64_t;
-    st_uid: _uid_t;
-    st_gid: _gid_t;
-    st_rdev: _dev_t;
-    st_atimespec: _timespec;
-    st_mtimespec: _timespec;
-    st_ctimespec: _timespec;
-    st_birthtimespec: _timespec;
-    st_size: _off_t;
-    st_blocks: _blkcnt_t;
-    st_blksize: _blksize_t;
-    st_flags: u32;
-    st_gen: u32;
-    st_lspare: s32;
-    st_qspare: ;
-}</code></pre>
-<hr />
-<h2 id="stat">_stat</h2>
-<pre><code>_stat :: fn (path: *c_char, buf: *_stat_t) c_int #extern</code></pre>
-<hr />
-<h2 id="fstat">_fstat</h2>
-<pre><code>_fstat :: fn (fd: c_int, stat: *_stat_t) c_int #extern</code></pre>
-<hr />
-<h2 id="mkdir">_mkdir</h2>
-<pre><code>_mkdir :: fn (path: *c_char, mode: _mode_t) c_int #extern</code></pre>
-<hr />
-<h2 id="fchmod">_fchmod</h2>
-<pre><code>_fchmod :: fn (fd: c_int, mode: _mode_t) c_int #extern</code></pre>
+<h2 id="pthread_mutex_destroy">pthread_mutex_destroy</h2>
+<pre><code>pthread_mutex_destroy :: fn (mutex: *pthread_mutex_t) C.int #extern</code></pre>
 <hr />
 <h1 id="string">String</h1>
 <p><code>#import "std/string"</code></p>
@@ -3611,7 +3457,7 @@ main :: fn () s32 {
 <pre><code>join_all :: fn (threads: []Handle) Error #inline</code></pre>
 <p>Blocks until all <code>threads</code> exits.</p>
 <hr />
-<h2 id="exit">exit</h2>
+<h2 id="exit-1">exit</h2>
 <pre><code>exit :: fn (exit_code : s32: 0) Error #inline</code></pre>
 <p>Exit current thread with optional <code>exit_code</code> return value.</p>
 <hr />
@@ -3662,68 +3508,6 @@ main :: fn () s32 {
 <h2 id="temporary_allocated_bytes">temporary_allocated_bytes</h2>
 <pre><code>temporary_allocated_bytes :: fn () usize #inline</code></pre>
 <p>Return total memory used by temporary allocator in bytes. <strong>note</strong>: Reports memory usage only for current thread.</p>
-<hr />
-<h1 id="types.bl">types.bl</h1>
-<h2 id="dev_t">_dev_t</h2>
-<pre><code>_dev_t :: c_ulong</code></pre>
-<hr />
-<h2 id="ino_t">_ino_t</h2>
-<pre><code>_ino_t :: c_ulong</code></pre>
-<hr />
-<h2 id="nlink_t">_nlink_t</h2>
-<pre><code>_nlink_t :: c_ulong</code></pre>
-<hr />
-<h2 id="mode_t">_mode_t</h2>
-<pre><code>_mode_t :: u32</code></pre>
-<hr />
-<h2 id="uid_t">_uid_t</h2>
-<pre><code>_uid_t :: u32</code></pre>
-<hr />
-<h2 id="gid_t">_gid_t</h2>
-<pre><code>_gid_t :: u32</code></pre>
-<hr />
-<h2 id="off_t">_off_t</h2>
-<pre><code>_off_t :: c_long</code></pre>
-<hr />
-<h2 id="blksize_t">_blksize_t</h2>
-<pre><code>_blksize_t :: c_long</code></pre>
-<hr />
-<h2 id="blkcnt_t">_blkcnt_t</h2>
-<pre><code>_blkcnt_t :: c_long</code></pre>
-<hr />
-<h2 id="time_t">_time_t</h2>
-<pre><code>_time_t :: c_long</code></pre>
-<hr />
-<h2 id="syscall_ulong_t">_syscall_ulong_t</h2>
-<pre><code>_syscall_ulong_t :: c_ulong</code></pre>
-<hr />
-<h1 id="unistd.bl">unistd.bl</h1>
-<h2 id="getcwd">_getcwd</h2>
-<pre><code>_getcwd :: fn (buf: *c_char, size: c_size_t) *c_char #extern</code></pre>
-<hr />
-<h2 id="unlink">_unlink</h2>
-<pre><code>_unlink :: fn (pathname: *c_char) c_int #extern</code></pre>
-<hr />
-<h2 id="read-1">_read</h2>
-<pre><code>_read :: fn (fd: c_int, buf: *c_char, count: c_size_t) c_ssize_t #extern</code></pre>
-<hr />
-<h2 id="readlink">_readlink</h2>
-<pre><code>_readlink :: fn (pathname: *c_char, buf: *c_char, bufsiz: c_size_t) c_ssize_t #extern</code></pre>
-<hr />
-<h2 id="close-2">_close</h2>
-<pre><code>_close :: fn (fd: c_int) c_int #extern</code></pre>
-<hr />
-<h2 id="write-1">_write</h2>
-<pre><code>_write :: fn (fd: c_int, buf: *c_char, count: c_size_t) c_ssize_t #extern</code></pre>
-<hr />
-<h2 id="usleep">_usleep</h2>
-<pre><code>_usleep :: fn (us: c_uint) c_int #extern</code></pre>
-<hr />
-<h2 id="rmdir">_rmdir</h2>
-<pre><code>_rmdir :: fn (path: *c_char) c_int #extern</code></pre>
-<hr />
-<h2 id="chdir">_chdir</h2>
-<pre><code>_chdir :: fn (path: *c_char) c_int #extern</code></pre>
 <hr />
 <h1 id="utils">Utils</h1>
 <p><code>#load "std/utils.bl"</code></p>
@@ -3779,24 +3563,6 @@ main :: fn () s32 {
 <p>Combine two or more hashes into one, T is expected to be an integer type (checked by static assert).</p>
 <hr />
 <h1 id="winapi.bl">winapi.bl</h1>
-<h2 id="err_unknown">ERR_UNKNOWN</h2>
-<pre><code>ERR_UNKNOWN :: </code></pre>
-<hr />
-<h2 id="err_not_found">ERR_NOT_FOUND</h2>
-<pre><code>ERR_NOT_FOUND :: Win32.ERROR_FILE_NOT_FOUND</code></pre>
-<hr />
-<h2 id="err_already_exist">ERR_ALREADY_EXIST</h2>
-<pre><code>ERR_ALREADY_EXIST :: Win32.ERROR_FILE_EXISTS</code></pre>
-<hr />
-<h2 id="err_access_denied">ERR_ACCESS_DENIED</h2>
-<pre><code>ERR_ACCESS_DENIED :: Win32.ERROR_ACCESS_DENIED</code></pre>
-<hr />
-<h2 id="err_invalid_handle">ERR_INVALID_HANDLE</h2>
-<pre><code>ERR_INVALID_HANDLE :: Win32.ERROR_INVALID_HANDLE</code></pre>
-<hr />
-<h2 id="err_directory">ERR_DIRECTORY</h2>
-<pre><code>ERR_DIRECTORY :: Win32.ERROR_DIRECTORY</code></pre>
-<hr />
 <h2 id="true">TRUE</h2>
 <pre><code>TRUE :: 1</code></pre>
 <hr />
@@ -3851,7 +3617,7 @@ main :: fn () s32 {
 <h2 id="hlocal">HLOCAL</h2>
 <pre><code>HLOCAL :: *C.uchar</code></pre>
 <hr />
-<h2 id="uint">UINT</h2>
+<h2 id="uint-1">UINT</h2>
 <pre><code>UINT :: C.uint</code></pre>
 <hr />
 <h2 id="dword">DWORD</h2>
@@ -3893,13 +3659,13 @@ main :: fn () s32 {
 <h2 id="ulong_ptr">ULONG_PTR</h2>
 <pre><code>ULONG_PTR :: *C.ulong</code></pre>
 <hr />
-<h2 id="size_t">SIZE_T</h2>
+<h2 id="size_t-1">SIZE_T</h2>
 <pre><code>SIZE_T :: C.ulong</code></pre>
 <hr />
 <h2 id="pvoid">PVOID</h2>
 <pre><code>PVOID :: *C.uchar</code></pre>
 <hr />
-<h2 id="char">CHAR</h2>
+<h2 id="char-1">CHAR</h2>
 <pre><code>CHAR :: C.uchar</code></pre>
 <hr />
 <h2 id="long_ptr">LONG_PTR</h2>
@@ -3917,7 +3683,7 @@ main :: fn () s32 {
 <h2 id="hwnd">HWND</h2>
 <pre><code>HWND :: C.void_ptr</code></pre>
 <hr />
-<h2 id="long">LONG</h2>
+<h2 id="long-1">LONG</h2>
 <pre><code>LONG :: C.long</code></pre>
 <hr />
 <h2 id="plong">PLONG</h2>

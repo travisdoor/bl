@@ -77,7 +77,8 @@ DONE:
 static void set_lib_paths(struct context *ctx)
 {
     char        tmp[PATH_MAX] = {0};
-    const char *lib_path      = builder_read_config(ctx->assembly->target, "linker_lib_path", "");
+    const char *lib_path =
+        read_config(builder.config, ctx->assembly->target, "linker_lib_path", "");
     if (!strlen(lib_path)) return;
 
     s64         len;
@@ -87,7 +88,7 @@ static void set_lib_paths(struct context *ctx)
 
     while (!done) {
         done = *(c++) == '\0';
-        if (done || *c == ENVPATH_SEPARATOR) {
+        if (done || *c == ENVPATH_SEPARATORC) {
             len = c - begin;
             if (len - 1 > 0) {
                 strncpy(tmp, begin, len);

@@ -279,14 +279,6 @@ S_ISREG :: fn (mode: u32) bool #inline {
     return (mode & _S_IFMT) == _S_IFREG;    
 }
 
-// @Incomplete: use $INODE64 suffix on x86_64 systems.
-opendir :: fn (name: *char) *DIR #extern "opendir";
-fdopendir :: fn (fd: int) *DIR #extern "fdopendir";
-readdir :: fn (dirp: *DIR) *dirent_t #extern "readdir";
-rewinddir :: fn (dirp: *DIR) #extern "rewinddir";
-stat :: fn (path: *char, buf: *stat_t) int #extern "stat";
-fstat :: fn (fd: int, stat: *stat_t) int #extern "fstat";
-
 mkdir :: fn (path: *char, mode: mode_t) int #extern "mkdir";
 fchmod :: fn (fd: int, mode: mode_t) int #extern "fchmod";
 closedir :: fn (dirp: *DIR) int #extern "closedir";

@@ -46,8 +46,6 @@ struct config {
 
 struct config *confload(const char *filepath)
 {
-    blog("Load config from '%s'.", filepath);
-
     FILE *input = fopen(filepath, "rb");
     if (!input) {
         return NULL;
