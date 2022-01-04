@@ -51,6 +51,9 @@ struct config;
 #if BL_PLATFORM_WIN
 #include <shlwapi.h>
 #define PATH_MAX MAX_PATH
+#ifndef strtok_r
+#define strtok_r strtok_s
+#endif
 #endif
 
 // =================================================================================================
