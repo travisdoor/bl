@@ -124,7 +124,7 @@ static bool _lookup_vs(struct wbs *ctx)
     return true;
 }
 
-static _listfile_delete(char ***list)
+static void _listfile_delete(char ***list)
 {
     for (usize i = 0; i < arrlenu(*list); ++i) {
         free((*list)[i]);

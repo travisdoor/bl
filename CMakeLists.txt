@@ -78,7 +78,7 @@ if(MSVC AND NOT LLVM_DIR)
             WORKING_DIRECTORY ${BL_DEPS_DIR}
         )
     endif()
-    if(CMAKE_CONFIGURATION_TYPES STREQUAL "Debug")
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         set(LLVM_DIR "${BL_LLVM_DIR}/debug/lib/cmake/llvm")
     else()
         set(LLVM_DIR "${BL_LLVM_DIR}/release/lib/cmake/llvm")
