@@ -35,7 +35,8 @@ pre {
 }
 code {
   font-family: Fira Code, Consolas, Menlo, monospace;
-  font-size: small
+  font-size: small;
+  background-color: #fff9e7;
 }
 #TOC {
   position: fixed;

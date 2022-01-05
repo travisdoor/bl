@@ -1563,38 +1563,46 @@ main :: fn () s32 {
 
 The module system can be used to split source into chunks (modules) which can be later imported into
 assembly by `#import` directive. Modules can distinguish between platforms and load different
-sources on them during the compilation process. Entry files for every platform must be explicitly
-defined in the `module.conf` file located in the module root directory. Name of the root directory
-is used as a module name during import.
+sources on them during the compilation process.
+
+A module is basically directory containing `module.yaml` configuration file, the name of the directory
+is used as module name during import process.
 
 See `ModuleImportPolicy` for more information about module import policy.
 
 **note:** Module root directory usually contains all source files, libraries and unit tests related
 to the module.
 
-**warning:** The configuration file must be located in the module root folder and named
-`module.conf`.
-
-Example of the module structure:
+**Example of the module file structure:**
 
 ```text
 thread/
-  module.conf       - module config
+  module.yaml       - module config
   _thread.win32.bl  - windows implementation
   _thread.posix.bl  - posix implementation
   thread.bl         - interface
   thread.test.bl    - unit tests
 ```
 
-Example of the module config:
+**Example of the module config:**
 
-```text
-WIN32_ENTRY "_thread.win32.bl"
-LINUX_ENTRY "_thread.posix.bl"
-MACOS_ENTRY "_thread.posix.bl"
+```yaml
+version: 4
+
+x86_64-pc-windows-msvc:
+  src: "_thread.win32.bl"
+
+x86_64-pc-linux-gnu:
+  src: "_thread.posix.bl"
+
+x86_64-apple-darwin:
+  src: "_thread.posix.bl"
+
+arm64-apple-darwin:
+  src: "_thread.posix.bl"
 ```
 
-To import out `thread` module use:
+To import the `thread` module use:
 
 ```c
 #import "path/to/module/thread"
@@ -1602,15 +1610,36 @@ To import out `thread` module use:
 
 ### List of module config entries
 
-- `VERSION "<N>` - Module version number used during import to distinguish various versions of same
+**Global options:**
+- `version: <N>` - Module version number used during import to distinguish various versions of same
 module, see also `ModuleImportPolicy` for more information.
 
-Following entries are platform specific, replace `<platform>` with `WIN32`, `LINUX` or `MACOS`.
+**Global or platform specific options:**
 
-- `<platform>_ENTRY "<file path>"` - Interface file path. (mandatory, relative to module root)
-- `<platform>_LIB_PATH "<lib path>"` - Library search path.
-- `<platform>_LINK "<lib name>"` - Library name to link.
-- `<platform>_LINKER_OPT "<opt>"` - Additional linker options.
+- `src: "<FILE1[;FILE2;...]>"` - List of source file paths relative to the module *root* directory
+separated by **platform specific** separator (`:` on Windows and `;` on Unix).
+- `linker_opt: "<OPTIONS>"` - Additional linker options.
+- `linker_lib_path: "<DIR1;[DIR2;...]>"` - Additional linker lookup directories relative to the module
+*root* directory.
+- `link: "<LIB1[;LIB2;...]>` - Libraries to link.
+
+**Global vs local options**
+
+Module platform specific options can be set in sub-groups starting with platform target triple name
+(use `blc --target-host` to get your current default target and `blc --target-supported` to get list
+of all supported targets).
+
+```yaml
+version: 1
+src: "my_file_imported_everytime.bl"
+
+x86_64-pc-windows-msvc:
+  src: "my_file_only_for_windows.bl"
+
+x86_64-pc-linux-gnu:
+  src: "my_file_only_for_linux.bl"
+  linker_opt: "-lc -lm" # link these only on linux
+```
 
 ## Unit testing
 

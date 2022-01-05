@@ -148,6 +148,15 @@
 <li><a href="#add">add</a></li>
 <li><a href="#print_help">print_help</a></li>
 </ul></li>
+<li><a href="#arm64.bl">arm64.bl</a>
+<ul>
+<li><a href="#opendir">opendir</a></li>
+<li><a href="#fdopendir">fdopendir</a></li>
+<li><a href="#readdir">readdir</a></li>
+<li><a href="#rewinddir">rewinddir</a></li>
+<li><a href="#stat">stat</a></li>
+<li><a href="#fstat">fstat</a></li>
+</ul></li>
 <li><a href="#array">Array</a>
 <ul>
 <li><a href="#array-1">_Array</a></li>
@@ -862,6 +871,15 @@
 <li><a href="#resetevent">ResetEvent</a></li>
 <li><a href="#formatmessagea">FormatMessageA</a></li>
 </ul></li>
+<li><a href="#x86_64.bl">x86_64.bl</a>
+<ul>
+<li><a href="#opendir-1">opendir</a></li>
+<li><a href="#fdopendir-1">fdopendir</a></li>
+<li><a href="#readdir-1">readdir</a></li>
+<li><a href="#rewinddir-1">rewinddir</a></li>
+<li><a href="#stat-1">stat</a></li>
+<li><a href="#fstat-1">fstat</a></li>
+</ul></li>
 </ul>
 </nav>
 <h1 id="builtin">Builtin</h1>
@@ -1284,6 +1302,25 @@ main :: fn () s32 {
 <h2 id="print_help">print_help</h2>
 <pre><code>print_help :: fn (_parser: Parser) </code></pre>
 <p>Print help for all registered commands.</p>
+<hr />
+<h1 id="arm64.bl">arm64.bl</h1>
+<h2 id="opendir">opendir</h2>
+<pre><code>opendir :: fn (name: *char) *DIR #extern</code></pre>
+<hr />
+<h2 id="fdopendir">fdopendir</h2>
+<pre><code>fdopendir :: fn (fd: int) *DIR #extern</code></pre>
+<hr />
+<h2 id="readdir">readdir</h2>
+<pre><code>readdir :: fn (dirp: *DIR) *dirent_t #extern</code></pre>
+<hr />
+<h2 id="rewinddir">rewinddir</h2>
+<pre><code>rewinddir :: fn (dirp: *DIR)  #extern</code></pre>
+<hr />
+<h2 id="stat">stat</h2>
+<pre><code>stat :: fn (path: *char, buf: *stat_t) int #extern</code></pre>
+<hr />
+<h2 id="fstat">fstat</h2>
+<pre><code>fstat :: fn (fd: int, stat: *stat_t) int #extern</code></pre>
 <hr />
 <h1 id="array">Array</h1>
 <p><code>#import "std/array"</code></p>
@@ -4239,6 +4276,25 @@ main :: fn () s32 {
 <hr />
 <h2 id="formatmessagea">FormatMessageA</h2>
 <pre><code>FormatMessageA :: fn (dwFlags: DWORD, lpSource: LPVOID, dwMessageId: DWORD, dwLanguageId: DWORD, lpBuffer: LPSTR, nSize: DWORD, Arguments: *u8) DWORD #extern</code></pre>
+<hr />
+<h1 id="x86_64.bl">x86_64.bl</h1>
+<h2 id="opendir-1">opendir</h2>
+<pre><code>opendir :: fn (name: *char) *DIR #extern</code></pre>
+<hr />
+<h2 id="fdopendir-1">fdopendir</h2>
+<pre><code>fdopendir :: fn (fd: int) *DIR #extern</code></pre>
+<hr />
+<h2 id="readdir-1">readdir</h2>
+<pre><code>readdir :: fn (dirp: *DIR) *dirent_t #extern</code></pre>
+<hr />
+<h2 id="rewinddir-1">rewinddir</h2>
+<pre><code>rewinddir :: fn (dirp: *DIR)  #extern</code></pre>
+<hr />
+<h2 id="stat-1">stat</h2>
+<pre><code>stat :: fn (path: *char, buf: *stat_t) int #extern</code></pre>
+<hr />
+<h2 id="fstat-1">fstat</h2>
+<pre><code>fstat :: fn (fd: int, stat: *stat_t) int #extern</code></pre>
 <hr />
 </body>
 </html>

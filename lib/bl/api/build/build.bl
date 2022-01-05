@@ -52,7 +52,7 @@
 //! 
 //! Start build pipeline using our build.bl file:
 //! ``` 
-//! $ blc --build
+//! $ blc -build
 //! ``` 
 //!
 //! Compiler will automatically use build.bl file as build script and execute build function in compile time.
