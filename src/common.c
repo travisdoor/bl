@@ -155,7 +155,7 @@ char *scprint(struct string_cache **cache, const char *fmt, ...)
     va_copy(args2, args);
     const s32 len = vsnprintf(NULL, 0, fmt, args);
     bassert(len > 0);
-    char *    buf  = scdup(cache, NULL, len);
+    char     *buf  = scdup(cache, NULL, len);
     const s32 wlen = vsprintf(buf, fmt, args2);
     bassert(wlen == len);
     (void)wlen;
@@ -171,8 +171,8 @@ char *scprint(struct string_cache **cache, const char *fmt, ...)
 bool search_source_file(const char *filepath,
                         const u32   flags,
                         const char *wdir,
-                        char **     out_filepath,
-                        char **     out_dirpath)
+                        char      **out_filepath,
+                        char      **out_dirpath)
 {
     char *tmp = tstr();
     if (!filepath) goto NOT_FOUND;
@@ -501,9 +501,10 @@ bool get_dir_from_filepath(char *buf, const usize l, const char *filepath)
         strncpy(buf, filepath, l);
         return true;
     }
-    usize len = ptr - filepath;
-    if (len + 1 > l) babort("path too long!!!");
+    const ptrdiff_t len = ptr - filepath;
+    if (len >= l) babort("path too long!!!");
     strncpy(buf, filepath, len);
+    buf[len] = '\0';
     return true;
 }
 
@@ -714,10 +715,10 @@ char *execute(const char *cmd)
     return tmp;
 }
 
-const char *read_config(struct config *      config,
+const char *read_config(struct config       *config,
                         const struct target *target,
-                        const char *         path,
-                        const char *         default_value)
+                        const char          *path,
+                        const char          *default_value)
 {
     bassert(config && target && path);
     char *fullpath = tstr();
