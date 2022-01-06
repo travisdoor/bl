@@ -64,6 +64,7 @@
 //!     unknown;
 //!     msvc;
 //!     gnu;
+//!     musl;
 //! }
 //! 
 //! ENV :: <SET_BY_COMPILER>;
@@ -336,5 +337,12 @@ _context := {:Context:
 /// Contains all arguments passed from command line. First argument is executable name.
 command_line_arguments: []string #compiler;
 
+/// Compile-time helper function resolving count of enumerator variants, passed type 'T' must be an
+/// enumerator type (checked by assert).
+enum_count :: fn (T: type) s64 #comptime {
+    info :: typeinfo(T);
+    static_assert(info.kind == TypeKind.Enum);
+    return (cast(*TypeInfoEnum)info).variants.len;
+}
 
 

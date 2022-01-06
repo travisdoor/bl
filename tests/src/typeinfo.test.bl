@@ -250,3 +250,16 @@ typeinfo_comparison2 :: fn () #test {
     test_true(typeinfo(T1) == typeinfo(T2));
 }
 
+helpers_enum_count :: fn () #test {
+    Enum :: enum {
+        A; B; C;
+    };
+
+    c :: enum_count(Enum);
+    test_eq(c, 3);
+
+    // Should be comptime!
+    arr: [enum_count(Enum)]s32;
+    test_eq(arr.len, 3);
+}
+

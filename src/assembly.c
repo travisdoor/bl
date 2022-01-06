@@ -734,7 +734,7 @@ struct unit *
 assembly_add_unit_safe(struct assembly *assembly, const char *filepath, struct token *load_from)
 {
     zone();
-    if (filepath == NULL || filepath[0] == '\0') return_zone(NULL);
+    if (!is_str_valid_nonempty(filepath)) return_zone(NULL);
     struct unit *     unit = NULL;
     const hash_t      hash = unit_hash(filepath, load_from);
     AssemblySyncImpl *sync = assembly->sync;
@@ -785,7 +785,7 @@ bool assembly_import_module(struct assembly *assembly,
 {
     zone();
     bool state = false;
-    if (!modulepath || modulepath[0] == '\0') {
+    if (!is_str_valid_nonempty(modulepath)) {
         builder_msg(MSG_ERR,
                     ERR_FILE_NOT_FOUND,
                     TOKEN_OPTIONAL_LOCATION(import_from),

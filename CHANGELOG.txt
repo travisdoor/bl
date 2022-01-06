@@ -11,6 +11,7 @@ Add static assert.
 Add static if.
 Add experimental #comptime directive for the functions evaluated in compile time.
 Add typeof builtin.
+Add enumcount helper function.
 Documentation format changed to markdown.
 Fix crash on unnamed function argument RTTI generation.
 Fix crash when invlid type of default argument value is provided by user.

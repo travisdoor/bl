@@ -1990,7 +1990,7 @@ void eval_instr_type_info(struct virtual_machine *vm, struct mir_instr_type_info
 
 void eval_instr_type_of(struct virtual_machine *vm, struct mir_instr_type_of *type_of)
 {
-    MIR_CEV_WRITE_AS(struct mir_type*, &type_of->base.value, type_of->expr->value.type);
+    MIR_CEV_WRITE_AS(struct mir_type *, &type_of->base.value, type_of->expr->value.type);
 }
 
 void eval_instr_call_loc(struct virtual_machine UNUSED(*vm), struct mir_instr_call_loc *loc)
@@ -2378,7 +2378,7 @@ void vm_print_backtrace(struct virtual_machine *vm)
             break;
         }
         struct mir_fn *fn = instr->owner_block->owner_fn;
-        if (fn && fn->debug_poly_replacement) {
+        if (fn && is_str_valid_nonempty(fn->debug_poly_replacement)) {
             builder_msg(MSG_ERR_NOTE,
                         0,
                         instr->node->location,

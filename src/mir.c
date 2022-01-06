@@ -4261,6 +4261,7 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
                 struct mir_instr *it = sarrpeek(call->args, i);
                 sarrput(&queue, unref_instr(it));
             }
+            sarrput(&queue, unref_instr(call->callee));
             break;
         }
 
@@ -4360,6 +4361,8 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
         case MIR_INSTR_TYPE_POLY:
         case MIR_INSTR_MSG:
         case MIR_INSTR_UNROLL:
+        case MIR_INSTR_FN_PROTO:
+        case MIR_INSTR_FN_GROUP:
             break;
 
         default:
@@ -7881,7 +7884,7 @@ struct result analyze_instr_block(struct context *ctx, struct mir_instr_block *b
         // Report unreachable code if there is one only once inside function body.
         fn->first_unreachable_loc = block->entry_instr->node->location;
         const char *poly          = fn->debug_poly_replacement;
-        if (poly) {
+        if (is_str_valid_nonempty(poly)) {
             builder_msg(
                 MSG_WARN,
                 0,

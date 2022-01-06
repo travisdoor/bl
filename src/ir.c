@@ -476,7 +476,9 @@ LLVMMetadataRef DI_type_init(struct context *ctx, struct mir_type *type)
     }
 
     default: {
-        babort("Missing generation DI for type %d", type->kind);
+        char *type_name = mir_type2str(type, true);
+        babort("Missing generation DI for type '%s'.", type_name);
+        // Leak type_name we're aborting...
     }
     }
     bassert(type->llvm_meta);

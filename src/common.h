@@ -101,6 +101,7 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 
 // Return size of of static array.
 #define static_arrlenu(A) (sizeof(A) / sizeof((A)[0]))
+#define is_str_valid_nonempty(S) ((S) && (S)[0] != '\0')
 
 // =================================================================================================
 // STB utils

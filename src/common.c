@@ -732,7 +732,7 @@ const char *read_config(struct config       *config,
 
 s32 process_tokens(void *ctx, const char *input, const char *delimiter, process_tokens_fn_t fn)
 {
-    if (!input || input[0] == '\0') return 0;
+    if (!is_str_valid_nonempty(input)) return 0;
     char *tmp = tstrdup(input);
     char *token;
     char *it    = tmp;
