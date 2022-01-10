@@ -200,9 +200,9 @@ typedef sarr_t(struct mir_instr *, 16) mir_instrs_t;
 // =================================================================================================
 struct string_cache;
 
-// Allocate string inside the sting cache, passed cache pointer must be initialized to NULL for the
+// Allocate string inside the sting cache, a passed cache pointer must be initialized to NULL for the
 // first time. The malloc is called only in case there is not enough space left for the string
-// inside the preallocated block. Internally len+1 is allocated to hold zero terminator. When 'str'
+// inside the preallocated block. Internally, len+1 is allocated to hold zero terminators. When 'str'
 // is NULL no data copy is done. Function returns pointer to new allocated block/copy of the
 // original string.
 char *scdup(struct string_cache **cache, const char *str, usize len);

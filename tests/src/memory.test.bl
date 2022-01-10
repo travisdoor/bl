@@ -72,3 +72,49 @@ range_test_5 :: fn () #test {
     test_eq(r[3], 4);
     test_eq(r[4], 5);
 }
+
+zeromem_test_1 :: fn () #test {
+    i: s32 = 10;
+    zeromem(auto &i, sizeof(i));
+    test_eq(i, 0);
+}
+
+
+zeromem_test_2 :: fn () #test {
+    arr: [100]s32 #noinit;
+    arr[0] = 10;
+    arr[99] = 20;
+    zeromem(auto &arr, sizeof(arr));
+    loop i := 0; i < arr.len; i += 1 {
+        test_eq(arr[i], 0);
+    }
+}
+
+zeromem_test_3 :: fn () #test {
+    arr: [100]u8 #noinit;
+    arr[0] = 10;
+    arr[99] = 20;
+    zeromem(auto &arr, sizeof(arr));
+    loop i := 0; i < arr.len; i += 1 {
+        test_eq(arr[i], 0);
+    }
+}
+
+zeromem_test_4 :: fn () #test {
+    Data :: struct {
+        arr1: [100]u32;
+        i: u8;
+        arr2: [100]u16;
+    };
+
+    data: Data #noinit;
+    data.arr1[0] = 10;
+    data.arr2[0] = 20;
+    data.i = 100;
+    zeromem(auto &data, sizeof(data));
+    loop i := 0; i < data.arr1.len; i += 1 {
+        test_eq(data.arr1[i], 0);
+        test_eq(data.arr2[i], 0);
+    }
+    test_eq(data.i, 0);
+}

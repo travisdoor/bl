@@ -384,6 +384,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     case HD_THREAD_LOCAL:
     case HD_ENTRY:
     case HD_EXPORT:
+    case HD_MAYBE_UNUSED:
     case HD_COMPTIME:
     case HD_COMPILER: {
         // only flags
@@ -1110,6 +1111,7 @@ bool hash_directive_to_flags(enum hash_directive_flags hd, u32 *out_flags)
         FLAG_CASE(HD_THREAD_LOCAL, FLAG_THREAD_LOCAL);
         FLAG_CASE(HD_FLAGS, FLAG_FLAGS);
         FLAG_CASE(HD_COMPTIME, FLAG_COMPTIME);
+        FLAG_CASE(HD_MAYBE_UNUSED, FLAG_MAYBE_UNUSED);
     default:
         break;
     }
@@ -1701,7 +1703,8 @@ struct ast *parse_expr_lit_fn(struct context *ctx)
     struct ast *curr_decl = decl_get(ctx);
     if (curr_decl && curr_decl->kind == AST_DECL_ENTITY) {
         u32 accepted = HD_EXTERN | HD_NO_INLINE | HD_INLINE | HD_COMPILER | HD_ENTRY |
-                       HD_BUILD_ENTRY | HD_INTRINSIC | HD_TEST_FN | HD_EXPORT | HD_COMPTIME;
+                       HD_BUILD_ENTRY | HD_INTRINSIC | HD_TEST_FN | HD_EXPORT | HD_COMPTIME |
+                       HD_MAYBE_UNUSED;
         u32 flags = 0;
         while (true) {
             enum hash_directive_flags found        = HD_NONE;
@@ -2380,7 +2383,7 @@ struct ast *parse_decl(struct context *ctx)
     if (!tok_assign) tok_assign = tokens_consume_if(ctx->tokens, SYM_COLON);
 
     // Parse hash directives.
-    s32 hd_accepted = HD_COMPILER | HD_THREAD_LOCAL;
+    s32 hd_accepted = HD_COMPILER | HD_THREAD_LOCAL | HD_MAYBE_UNUSED;
 
     if (tok_assign) {
         decl->data.decl_entity.mut = token_is(tok_assign, SYM_ASSIGN);

@@ -1,0 +1,250 @@
+#import "std/test"
+#import "std/debug_allocator"
+#import "std/table"
+
+main :: fn () s32 {
+    //DebugAllocator.init();
+    //defer DebugAllocator.terminate();
+    return test_run();
+}
+
+#private
+TEST_COUNT :: 1000000;
+
+DATA :: {:[10]string:
+         "Melisa Britt",
+         "Theodor Cooper",
+         "Laylah Simons",
+         "Romeo Walls",
+         "Carlo Daniel",
+         "Maggie Munoz",
+         "Tina Hawes",
+         "Raiden Garrison",
+         "Ikrah Alston",
+         "Adela Cornish"};
+
+// =================================================================================================
+// Global
+// =================================================================================================
+g_tbl: Table(s32, s32);
+
+test_insert :: fn () #test {
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        table_insert(&g_tbl, i, i);
+    }
+}
+
+test_lookup :: fn () #test {
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        it :: table_lookup(&g_tbl, i);
+        test_eq(it.key, i);
+        test_eq(it.value, i);
+    }
+}
+
+test_contains :: fn () #test {
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        test_true(table_contains(&g_tbl, i));
+    }
+    test_false(table_contains(&g_tbl, -1));
+    test_false(table_contains(&g_tbl, -2));
+}
+
+test_terminate :: fn () #test {
+    table_terminate(&g_tbl);
+}
+// =================================================================================================
+// Single Tests
+// =================================================================================================
+
+test_uninitialized :: fn () #test {
+    tbl: Table(s32, s32);
+    defer table_terminate(&tbl);
+
+    test_eq(tbl.len, 0);
+    test_eq(table_begin(&tbl), table_end(&tbl));
+
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        it :: table_lookup(&tbl, i);
+        test_eq(it, table_end(&tbl));
+    }
+
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        test_false(table_contains(&tbl, i));
+    }
+
+    c := 0;
+    loop it := table_end(&tbl); it != table_begin(&tbl); table_iter_prev(&it) {
+        c += 1;
+    }
+    test_eq(c, 0);
+    loop it := table_begin(&tbl); it != table_end(&tbl); table_iter_next(&it) {
+        c += 1;
+    }
+    test_eq(c, 0);
+
+    table_clear(&tbl);
+    test_eq(tbl.len, 0);
+    test_eq(table_begin(&tbl), table_end(&tbl));
+}
+
+test_simple_begin_end :: fn () #test {
+    tbl: Table(s32, s32);
+    defer table_terminate(&tbl);
+
+    table_insert(&tbl, 10, 20);
+
+    test_eq(tbl.len, 1);
+    test_neq(table_begin(&tbl), table_end(&tbl));
+}
+
+test_clear :: fn () #test {
+    tbl: Table(s32, s32);
+    defer table_terminate(&tbl);
+
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        table_insert(&tbl, i, i);
+    }
+    test_eq(tbl.len, TEST_COUNT);
+
+    table_clear(&tbl);
+    test_eq(tbl.len, 0);
+    test_eq(table_begin(&tbl), table_end(&tbl));
+
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        table_insert(&tbl, i, i);
+    }
+    test_eq(tbl.len, TEST_COUNT);
+}
+
+test_erase :: fn () #test {
+    tbl: Table(s32, s32);
+    defer table_terminate(&tbl);
+
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        table_insert(&tbl, i, i);
+    }
+    test_eq(tbl.len, TEST_COUNT);
+
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        test_true(table_erase(&tbl, i));
+    }
+    test_eq(tbl.len, 0);
+}
+
+test_erase2 :: fn () #test {
+    tbl: Table(u64, s32);
+    defer table_terminate(&tbl);
+
+    loop i : u64 = 0; i < auto TEST_COUNT; i += 1 {
+        table_insert(&tbl, Math.U64_MAX - i, auto i);
+    }
+    test_eq(tbl.len, TEST_COUNT);
+
+    loop i : u64 = 0; i < auto TEST_COUNT; i += 1 {
+        test_true(table_erase(&tbl, Math.U64_MAX - i));
+    }
+    test_eq(tbl.len, 0);
+}
+
+test_use_after_erase :: fn () #test {
+    tbl: Table(s32, s32);
+    defer table_terminate(&tbl);
+
+    loop j := 0; j < 10; j += 1 {
+        loop i := 0; i < TEST_COUNT / 2; i += 1 {
+            table_insert(&tbl, i, i);
+        }
+        test_eq(tbl.len, TEST_COUNT / 2);
+
+        loop i := 0; i < TEST_COUNT / 2; i += 1 {
+            test_true(table_erase(&tbl, i));
+        }
+        test_eq(tbl.len, 0);
+    }
+}
+
+test_struct :: fn () #test {
+    Elem :: struct {
+        a: s32;
+        b: string;
+        c: bool;
+        d: s32;
+    };
+
+    tbl: Table(s32, Elem);
+    defer table_terminate(&tbl);
+
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        table_insert(&tbl, i, {:Elem: i, "hello", true, i});
+    }
+    test_eq(tbl.len, TEST_COUNT);
+    c := 0;
+    loop it := table_begin(&tbl); it != table_end(&tbl); table_iter_next(&it) {
+        test_eq(it.value.a, it.value.d);
+        c += 1;
+    }
+    test_eq(c, TEST_COUNT);
+
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        test_true(table_erase(&tbl, i));
+    }
+    test_eq(tbl.len, 0);
+}
+
+test_iteration :: fn () #test {
+    tbl: Table(s32, s32);
+    defer table_terminate(&tbl);
+
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        table_insert(&tbl, i, i);
+    }
+
+    c := 0;
+    loop it := table_begin(&tbl); it != table_end(&tbl); table_iter_next(&it) {
+        c += 1;
+    }
+    test_eq(c, TEST_COUNT);
+}
+
+test_iteration_reverse :: fn () #test {
+    tbl: Table(s32, s32);
+    defer table_terminate(&tbl);
+
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        table_insert(&tbl, i, i);
+    }
+
+    c := 0;
+    loop it := table_end(&tbl); it != table_begin(&tbl); table_iter_prev(&it) {
+        c += 1;
+    }
+    test_eq(c, TEST_COUNT);
+}
+
+test_string_keys_1 :: fn () #test {
+    tbl: Table(string, s32);
+    defer table_terminate(&tbl);
+
+    table_insert(&tbl, "Martin", 10);
+
+    it :: table_lookup(&tbl, "Martin");
+    test_eq(it.key, "Martin");
+    test_eq(it.value, 10);
+}
+
+test_string_keys_2 :: fn () #test {
+    tbl: Table(string, s32);
+    defer table_terminate(&tbl);
+
+    loop i := 0; i < DATA.len; i += 1 {
+        table_insert(&tbl, DATA[i], i);
+    }
+
+    loop i := 0; i < DATA.len; i += 1 {
+        it :: table_lookup(&tbl, DATA[i]);
+        test_neq(it, table_end(&tbl));
+        test_eq(it.key, DATA[i]);
+        test_eq(it.value, i);
+    }
+}

@@ -127,7 +127,7 @@
 </ul>
 </nav>
 <h1 id="language-reference">Language Reference</h1>
-<p>Basically every construct in bl follows the same rules of declaration syntax. We define name of the entity, type and optionally some initial value. Name can be usually used to reference the entity later in code and type describes layout of data represented by the entity. It could be a number, text or more complex types.</p>
+<p>Basically, every construct in bl follows the same rules of declaration syntax. We define the name of the entity, type and optionally some initial value. Name can usually be used to reference the entity later in code and type describes the layout of data represented by the entity. It could be a number, text or more complex types.</p>
 <p>Possible declarations:</p>
 <pre class="text"><code>&lt;name&gt;: &lt;type&gt;;              // mutable declaration
 &lt;name&gt;: [type] = &lt;value&gt;;    // mutable declaration
@@ -135,7 +135,7 @@
 <div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>foo<span class="op">:</span> s32<span class="op">;</span>                <span class="co">// integer variable without initial value</span></span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>name<span class="op">:</span> string <span class="op">=</span> <span class="st">&quot;Martin&quot;</span><span class="op">;</span> <span class="co">// string variable</span></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>name<span class="op">:</span> string <span class="op">:</span> <span class="st">&quot;Martin&quot;</span><span class="op">;</span> <span class="co">// string constant</span></span></code></pre></div>
-<p>When we decide to explicitly specify initial value, data type can be inferred from this value. In such case the type is optional.</p>
+<p>When we decide to explicitly specify initial value, data type can be inferred from this value. In such case, the type is optional.</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>name <span class="op">:=</span> <span class="st">&quot;Martin&quot;</span><span class="op">;</span> <span class="co">// string variable</span></span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>name <span class="op">::</span> <span class="st">&quot;Martin&quot;</span><span class="op">;</span> <span class="co">// string constant</span></span></code></pre></div>
 <p>Comment lines will be ignored by compiler.</p>
@@ -224,7 +224,7 @@
 <span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    test_true<span class="op">(</span>j <span class="op">==</span> i<span class="op">);</span></span>
 <span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
 <h3 id="array">Array</h3>
-<p>Array is aggregate type of multiple values of the same type. Size value must be known in compile time. Arrays can be inline initialized with compound block, type is required. Zero initializer can be used for zero initialization of whole array storage, otherwise we must specify value for every element in an array.</p>
+<p>The array is an aggregate type of multiple values of the same type. Size value must be known in compile time. Arrays can be inline initialized with compound block; type is required. Zero initializers can be used for zero initializations of whole array storage, otherwise we must specify value for every element in an array.</p>
 <p><strong>Example:</strong></p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>array_type <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    arr1 <span class="op">:</span> <span class="op">[</span><span class="dv">10</span><span class="op">]</span> s32<span class="op">;</span> <span class="co">// declare zero initialized array variable</span></span>
@@ -243,7 +243,7 @@
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    slice <span class="op">:</span> <span class="op">[]</span>s32 <span class="op">=</span> arr<span class="op">;</span></span>
 <span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
 <h3 id="string">String</h3>
-<p>String type in Biscuit is slice containing pointer to string data and string length. String literals are always zero terminated.</p>
+<p>String type in Biscuit is a slice containing a pointer to string data and string length. String literals are always zero terminated.</p>
 <p><strong>Example:</strong></p>
 <div class="sourceCode" id="cb8"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>string_type <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    msg <span class="op">:</span> string <span class="op">=</span> <span class="st">&quot;Hello world</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">;</span></span>
@@ -251,7 +251,7 @@
 <span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    msg<span class="op">.</span>ptr<span class="op">;</span> <span class="co">// pointer to the string content</span></span>
 <span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
 <h3 id="slice">Slice</h3>
-<p>Array slice is consist of pointer to the first array element and array length.</p>
+<p>The array slice consists of a pointer to the first array element and array length.</p>
 <p>Slice layout:</p>
 <div class="sourceCode" id="cb9"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>Slice <span class="op">::</span> <span class="kw">struct</span> <span class="op">{</span></span>
 <span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    len<span class="op">:</span> s64<span class="op">;</span></span>
@@ -267,14 +267,14 @@
 <span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
 <p><strong>hint:</strong> <code>slice_init</code> can be used to allocate slice on the heap using context allocator.</p>
 <h3 id="structure">Structure</h3>
-<p>Structure is a composite type representing group of data as a single type. Structure is as an array another way to define user data type, but types of structure members could be different. It can be used in situations when it’s better to group data into one unit instead of interact with separate units.</p>
+<p>The structure is a composite type representing a group of data as a single type. The structure is as an array another way to define user data type, but types of structure members could be different. It can be used in situations when it’s better to group data into one unit instead of interacting with separate units.</p>
 <p>Structure can be declared with use of struct keyword.</p>
 <div class="sourceCode" id="cb11"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>Person <span class="op">::</span> <span class="kw">struct</span> <span class="op">{</span></span>
 <span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    id<span class="op">:</span> s32<span class="op">;</span></span>
 <span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>    name<span class="op">:</span> string<span class="op">;</span></span>
 <span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>    age<span class="op">:</span> s32<span class="op">;</span></span>
 <span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
-<p>Structure Person in example is consist of id, name and age. Now we can create variable of this type and fill it with data. To access person’s member fields use <code>.</code> operator.</p>
+<p>Structure Person in example consists of id, name and age. Now we can create variable of this type and fill it with data. To access person’s member fields use <code>.</code> operator.</p>
 <div class="sourceCode" id="cb12"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>main <span class="op">::</span> fn <span class="op">()</span> s32 <span class="op">{</span></span>
 <span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>    my_person<span class="op">:</span> Person<span class="op">;</span> <span class="co">// Create instance of type Person</span></span>
 <span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    my_person<span class="op">.</span>id <span class="op">=</span> <span class="dv">1</span><span class="op">;</span></span>
@@ -298,11 +298,11 @@
 <span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="dv">0</span><span class="op">;</span></span>
 <span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <div class="sourceCode" id="cb15"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>Person <span class="op">{</span>id <span class="op">=</span> <span class="dv">1</span><span class="op">,</span> name <span class="op">=</span> Martin<span class="op">,</span> age <span class="op">=</span> <span class="dv">20</span><span class="op">}</span></span></code></pre></div>
-<p>Due to lack of OOP support we cannot declare member functions in structures and there is no class or object concept in the language. Common way to manipulate with data is passing them into the function as an argument.</p>
+<p>Due to lack of OOP support, we cannot declare member functions in structures and there is no class or object concept in the language. Common way to manipulate with data is passing them into the function as an argument.</p>
 <div class="sourceCode" id="cb16"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>person_add_age <span class="op">::</span> fn <span class="op">(</span>person<span class="op">:</span> <span class="op">*</span>Person<span class="op">,</span> add<span class="op">:</span> s32<span class="op">)</span> <span class="op">{</span></span>
 <span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>    person<span class="op">.</span>age <span class="op">+=</span> add<span class="op">;</span></span>
 <span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
-<p>Structure can extend any type with use of <code>#base &lt;T&gt;</code>. This is kind of inheritance similar to C style where inheritance can be simulated by composition. The <code>#base &lt;T&gt;</code> basically insert <code>base: T</code>; as the first member into the structure. The compiler can use this information later to provide more inheritance related features like merging of scopes to enable direct access to base-type members via <code>.</code> operator or implicit cast from child to parent type.</p>
+<p>Structure can extend any type with use of <code>#base &lt;T&gt;</code>. This is kind of inheritance similar to the C style where inheritance can be simulated by composition. The <code>#base &lt;T&gt;</code> basically insert <code>base: T</code>; as the first member into the structure. The compiler can use this information later to provide more inheritance related features like merging of scopes to enable direct access to base-type members via <code>.</code> operator or implicit cast from child to parent type.</p>
 <p>Example of struct extension:</p>
 <div class="sourceCode" id="cb17"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>Entity <span class="op">::</span> <span class="kw">struct</span> <span class="op">{</span></span>
 <span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>    id<span class="op">:</span> s32</span>
@@ -355,7 +355,7 @@
 <span id="cb17-49"><a href="#cb17-49" aria-hidden="true" tabindex="-1"></a>    print<span class="op">(</span><span class="st">&quot;id = %</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">,</span> e<span class="op">.</span>id<span class="op">);</span></span>
 <span id="cb17-50"><a href="#cb17-50" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <h3 id="union">Union</h3>
-<p>Union is special composite type representing value of multiple types. Union size is always equal to size of the biggest member type and memory offset of all members is same. Union is usually associated with some enum providing information about stored type.</p>
+<p>The union is a special composite type representing value of multiple types. Union size is always equal to size of the biggest member type and memory offset of all members is the same. Union is usually associated with some enum providing information about stored type.</p>
 <p><strong>Example:</strong></p>
 <div class="sourceCode" id="cb18"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>Token <span class="op">::</span> <span class="kw">union</span> <span class="op">{</span></span>
 <span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>    as_string<span class="op">:</span> string<span class="op">;</span></span>
@@ -389,20 +389,20 @@
 <span id="cb18-30"><a href="#cb18-30" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
 <span id="cb18-31"><a href="#cb18-31" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <h3 id="any">Any</h3>
-<p>The Any type is special builtin structure containing pointer to TypeInfo and pointer to data. Any value can be implicitly casted to this type on function call.</p>
+<p>Any type is a special builtin structure containing a pointer to TypeInfo and pointer to data. Any value can be implicitly cast to this type on function call.</p>
 <p>Any type layout:</p>
 <div class="sourceCode" id="cb19"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>Any <span class="op">::</span> <span class="kw">struct</span> #compiler <span class="op">{</span></span>
 <span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>    type_info<span class="op">:</span> <span class="op">*</span>TypeInfo<span class="op">;</span></span>
 <span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>    data<span class="op">:</span> <span class="op">*</span>u8</span>
 <span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
-<p>Remember that the Any instance does not contains copy of the value but only pointer to already stack or heap allocated data. The Any instance never owns pointed data and should not be responsible for memory free.</p>
-<p>Since Any contains pointer to data, we need to generate temporary storage on stack for constant literals converted to Any.</p>
+<p>Remember that Any instance does not contain a copy of the value but only pointer to already stack or heap allocated data. Any instance never owns pointed data and should not be responsible for memory free.</p>
+<p>Since Any contains a pointer to data, we need to generate temporary storage on stack for constant literals converted to Any.</p>
 <div class="sourceCode" id="cb20"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
 <span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>foo<span class="op">(</span><span class="dv">10</span><span class="op">);</span> <span class="co">// temp for &#39;10&#39; is created here</span></span>
 <span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
 <span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>foo <span class="op">::</span> fn <span class="op">(</span>v<span class="op">:</span> Any<span class="op">)</span> <span class="op">{}</span></span></code></pre></div>
-<p>For types converted to the Any compiler implicitly sets <code>type_info</code> field to pointer to the TypeType type-info and data field to the pointer to actual type-info of the converted type.</p>
+<p>For types converted to the Any compiler implicitly sets <code>type_info</code> field to a pointer to the TypeType type-info and data field to the pointer to actual type-info of the converted type.</p>
 <div class="sourceCode" id="cb21"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
 <span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>foo<span class="op">(</span>s32<span class="op">);</span> <span class="co">// Type passed</span></span>
 <span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
@@ -413,12 +413,12 @@
 <span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>    data_info <span class="op">:=</span> cast<span class="op">(*</span>TypeInfo<span class="op">)</span> v<span class="op">.</span>data<span class="op">;</span></span>
 <span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>    assert<span class="op">(</span>data_info<span class="op">.</span>kind <span class="op">==</span> TypeKind<span class="op">.</span>Int<span class="op">);</span></span>
 <span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
-<p>Any can be combined with vargs, good example of this use case is print function where args argument type is vargs of Any (... is same as ...Any). The print function can take values of any type passed in args.</p>
+<p>Any can be combined with vargs; good example of this use case is print function where args argument type is vargs of Any (... is the same as ...Any). The print function can take values of any type passed in args.</p>
 <div class="sourceCode" id="cb22"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>print <span class="op">::</span> fn <span class="op">(</span>format<span class="op">:</span> string<span class="op">,</span> args<span class="op">:</span> <span class="op">...)</span> <span class="op">{</span></span>
 <span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">...</span></span>
 <span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
 <h3 id="enum">Enum</h3>
-<p>The enum allows the creation of type representing one of listed variants. Biscuit enums can represent variants of any integer type (<code>s32</code> by default). All variants are grouped into enum’s namespace.</p>
+<p>The enum allows the creation of type representing one of the listed variants. Biscuit enums can represent variants of any integer type (<code>s32</code> by default). All variants are grouped into enum’s namespace.</p>
 <p><strong>Example:</strong></p>
 <div class="sourceCode" id="cb23"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Enum declaration (base type is by default s32)</span></span>
 <span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>Color <span class="op">:</span> type <span class="op">:</span> <span class="kw">enum</span> <span class="op">{</span></span>
@@ -461,7 +461,7 @@
 <span id="cb23-39"><a href="#cb23-39" aria-hidden="true" tabindex="-1"></a>    assert<span class="op">(</span><span class="kw">sizeof</span><span class="op">(</span>Day<span class="op">)</span> <span class="op">==</span> <span class="dv">1</span><span class="op">);</span></span>
 <span id="cb23-40"><a href="#cb23-40" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
 <h3 id="enum-flags">Enum flags</h3>
-<p>An enumerator can be used as a definition of bit flags by adding #flags directive to the type definition. This directive slightly changes the way how the enumerator values are generated. By default, the enumerator starts with zero variant (if it’s not explicitly changed by the programmer) and every following enumerator variant has a value set to the previous one plus one. The flags enumerator starts with the first variant set to 1 and the following variants are set to the left-bit-shifted value of the previous one.</p>
+<p>An enumerator can be used as a definition of bit flags by adding #flags directive to the type definition. This directive slightly changes the way how the enumerator values are generated. By default, the enumerator starts with zero variant (if it’s not explicitly changed by the programmer) and every following enumerator variant has a value set to the previous one plus one. The flags enumerator start with the first variant set to 1 and the following variants are set to the left-bit-shifted value of the previous one.</p>
 <p>Enumerators marked as flags are also serialized as a combination of atomic flags instead of just one value.</p>
 <p><strong>note:</strong> Flags enumerators must use unsigned number type as a base type <code>u32</code> by default).</p>
 <p><strong>Example:</strong></p>
@@ -866,6 +866,9 @@
 <h3 id="intrinsic">#intrinsic</h3>
 <p>Mark external function as compiler specific intrinsic function.</p>
 <p><strong>warning:</strong> This directive is compiler internal.</p>
+<h3 id="maybe_unused">#maybe_unused</h3>
+<p>Suppress usage checking for declaration. This can be helpful i.e.: in case the polymorphic function is using some private global variables and the function is not used (the body is never generated). Such variable should not be reported as unused.</p>
+<p>This is workaround to get rid of unwanted warning for now.</p>
 <h2 id="variable">Variable</h2>
 <p>Variable associate name with value of some type. Variables in BL can be declared as mutable or immutable, value of immutable variable cannot be changed and can be set only by variable initializer. Type of variable is optional when value is specified. Variables can be declared in local or global scope, local variable lives only in particular function during function execution, global variables lives during whole execution.</p>
 <p>Variables without explicit initialization value are <code>zero initialized</code> (set to default value). We can suppress this behaviour by <code>#noinit</code> directive. Global variables must be initialized every time (explicitly or zero initialized) so <code>#noinit</code> cannot be used.</p>

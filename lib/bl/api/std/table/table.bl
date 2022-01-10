@@ -1,0 +1,343 @@
+//! # Table
+//!
+//! `#import "std/table"`
+//!
+//! Tables are generic data containers aka hash tables or hash maps that store data elements
+//! as pairs of Keys and Values. Table provides fast lookup on large amount of data.
+//!
+//! Internally, the table is implemented as double-linked list with metadata stored as buckets.
+//! A bucket represents begin of sub-list of data associated with hash value calculated from the
+//! key value. Table entries are wrapped into Nodes containing key-value data and some metadata
+//! required by the table.
+//!
+//! Every table insertion cause memory allocation, this can be a performance bottle-neck in some
+//! cases, however, already inserted data never change its address (does not move in memory).
+//! Consider using a simple dynamic array in cases data set is not too-big (simple iteration over
+//! an array can be faster and more memory efficient than using a table.
+//!
+//! No memory is allocated until the first call of insert method. After the first insertion, table
+//! operates on pre-allocated chunk of memory used to store buckets (`DEFAULT_BUCKET_COUNT`). The
+//! bucket storage is reallocated to double size in case the maximum load factor
+//! (table.len / table.buckets.len) is exceeded (maximum load factor is defined as `MAX_LF`) and
+//! whole table is reorganized to achieve optimal performance (rehashing). This operation can be
+//! very expensive on large data sets.
+//!
+//! Current table implementation is not heavily optimized, this should be improved later, consider
+//! using a custom implementation in performance-critical cases.
+//!
+//! **warning:** Table elements are not sorted in any particular way so the iteration over the
+//! table does not correspond to the order in which elements were inserted.
+//!
+//! **warning:** The key types are limited to numbers and strings (this may change in the future).
+//!
+//! ### Example
+//! ```c
+//! #import "std/table"
+//!
+//! main :: fn () s32 {
+//!     table: Table(string, s32);
+//!     defer table_terminate(&table);
+//!
+//!     // Insert some data into the table.
+//!     table_insert(&table, "Martin", 32);
+//!     table_insert(&table, "Lisa", 29);
+//!     table_insert(&table, "John", 40);
+//!
+//!     // Lookup data by key.
+//!     found :: table_lookup(&table, "Martin");
+//!     if found != table_end(&table) {
+//!         print("[%] %\n", found.key, found.value);
+//!     }
+//!
+//!     // Iterate over the table
+//!     loop it := table_begin(&table); it != table_end(&table); table_iter_next(&it) {
+//!         print("[%] %\n", it.key, it.value);
+//!     }
+//!
+//!     return 0;
+//! }
+//! ```
+//!
+
+
+/// Create a new **Table** type. The `TKey` must be a number or string type.
+Table :: fn (TKey: type, TValue: type) type #comptime {
+    static_assert(TKey == string || is_number(TKey));
+    TNode :: Node(TKey, TValue);
+    return struct {
+        buckets: []*TNode;
+        head: *TNode;
+        len: s64;
+
+        allocator: *Allocator;
+    };
+}
+
+/// Create iterator type from **Table** type.
+TableIter :: fn (TTable: type) type #comptime {
+    return *typeof_node(TTable);
+}
+
+/// Initialize the `tbl` table. It's not necessary to call this method in case the table is
+/// already zero-initialized. The `elem_count` can be specified as hint telling the table how many
+/// elements we're going to store. Memory to hold an internal meta-data is allocated here. The custom
+/// `allocator` can be set.
+table_init :: fn (tbl: *?T, elem_count := DEFAULT_BUCKET_COUNT, allocator : *Allocator = null) #inline {
+    assert(tbl);
+    assert(elem_count > 0);
+    tbl.allocator = allocator;
+    bucket_alloc(tbl, elem_count);
+}
+
+/// Release all memory resources used by the table and set the `tbl` instance to the default state.
+table_terminate :: fn (tbl: *?T) {
+    assert(tbl);
+    loop it := table_begin(tbl); it != table_end(tbl); {
+        node := it;
+        table_iter_next(&it);
+        free_memory(tbl.allocator, auto node);
+    }
+    slice_terminate(&tbl.buckets, tbl.allocator);
+    free_memory(tbl.allocator, auto tbl.head);
+    zeromem(auto tbl, sizeof(T));
+}
+
+/// Insert new `value` into the table associated with unique (checked by assert) `key`. A new memory
+/// slot is allocated every time and rehashing of the table can be eventually done in case the
+/// "load factor" goes too high.
+table_insert :: fn (tbl: *?T, key: typeof_key(T), value: typeof_value(T)) {
+    assert(tbl);
+    if !is_initialized(tbl) { bucket_alloc(tbl, DEFAULT_BUCKET_COUNT); }
+
+    hash :: calculate_hash(key);
+    assert(!table_contains(tbl, key));
+
+    TNode :: typeof_node(T);
+    node := cast(*TNode) allocate_memory(tbl.allocator, sizeof(TNode));
+    node.key = key;
+    node.value = value;
+
+    insert(tbl, node, hash);
+}
+
+/// Erase entry associated with `key` and return `true` in case the entry was found and successfully
+/// deleted, otherwise return `false`.
+table_erase :: fn (tbl: *?T, key: typeof_key(T)) bool #inline {
+    assert(tbl);
+    if !is_initialized(tbl) { return false; }
+    hash :: calculate_hash(key);
+    it :: lookup_node(tbl, key, hash);
+    if it == table_end(tbl) { return false; }
+    erase(tbl, it, hash);
+    return true;
+}
+
+/// Lookup element associated with the `key` value in the table and return an iterator pointing to
+/// the key-value pair. In case there is no such element in the table, the function returns an iterator
+/// pointing to the `table_end()`.
+table_lookup :: fn (tbl: *?T, key: typeof_key(T)) TableIter(T) #inline {
+    assert(tbl);
+    if !is_initialized(tbl) { return table_end(tbl); }
+    return lookup_node(tbl, key, calculate_hash(key));
+}
+
+/// Checks whether the table `tbl` contains the `key`.
+table_contains :: fn (tbl: *?T, key: typeof_key(T)) bool #inline {
+    assert(tbl);
+    if !is_initialized(tbl) { return false; }
+    return lookup_node(tbl, key, calculate_hash(key)) != table_end(tbl);
+}
+
+/// Clears the table and deletes all inserted entries.
+table_clear :: fn (tbl: *?T) #inline {
+    assert(tbl);
+    if !is_initialized(tbl) { return; }
+    loop it := table_begin(tbl); it != table_end(tbl); {
+        node := it;
+        table_iter_next(&it);
+        free_memory(tbl.allocator, auto node);
+    }
+    zeromem(auto tbl.buckets.ptr, cast(usize)tbl.buckets.len * sizeof(tbl.buckets.ptr));
+    assert(tbl.head);
+    tbl.head.next = auto tbl.head;
+    tbl.head.prev = auto tbl.head;
+    tbl.len = 0;
+}
+
+/// Return an iterator pointing to the table beginning.
+table_begin :: fn (tbl: *?T) TableIter(T) #inline {
+    assert(tbl);
+    if !is_initialized(tbl) { return null; }
+    return auto tbl.head.next;
+}
+
+/// Return an iterator pointing to the table ending (one element past the last in the table).
+table_end :: fn (tbl: *?T) TableIter(T) #inline {
+    assert(tbl);
+    return tbl.head;
+}
+
+/// Move the iterator `it` to the next element.
+table_iter_next :: fn (it: *?T) #inline {
+    assert(it && @it);
+    @it = auto (@it).next;
+}
+
+/// Move the iterator `it` to the previous element.
+table_iter_prev :: fn (it: *?T) #inline {
+    assert(it && @it);
+    @it = auto (@it).prev;
+}
+
+// =================================================================================================
+#private
+// =================================================================================================
+DEFAULT_BUCKET_COUNT :: 64;
+MAX_LF :: 1.0 #maybe_unused;
+SIG_HASH_MASK : Sig : -2 #maybe_unused;
+SIG_HASH_FLAG : Sig : 1 #maybe_unused;
+
+Hash :: u32;
+Sig :: u32;
+
+Node :: fn (TKey: type, TValue: type) type #comptime {
+    return struct {
+        next: *u8;
+        prev: *u8;
+        sig: Sig;
+        key: TKey;
+        value: TValue;
+    };
+}
+
+typeof_key :: fn (T: type) type #comptime {
+    return (@T.head).key;
+}
+
+typeof_value :: fn (T: type) type #comptime {
+    return (@T.head).value;
+}
+
+typeof_node :: fn (T: type) type #comptime {
+    return @T.head;
+}
+
+is_initialized :: fn (tbl: *?T) bool #inline {
+    return tbl.buckets.ptr;
+}
+
+bucket_alloc :: fn (tbl: *?T, bucket_count: s64) {
+    TNode :: typeof_node(T);
+    if !is_initialized(tbl) {
+        slice_init(&tbl.buckets, bucket_count, tbl.allocator);
+        assert(!tbl.head);
+        head := cast(*TNode) allocate_memory(tbl.allocator, sizeof(TNode));
+        head.next = auto head;
+        head.prev = auto head;
+        tbl.head = head;
+        return;
+    }
+
+    t2: T;
+    table_init(&t2, auto bucket_count);
+    loop it := table_begin(tbl); it != table_end(tbl); {
+        node := it;
+        table_iter_next(&it);
+        hash :: calculate_hash(node.key);
+        insert(&t2, node, hash);
+    }
+    slice_terminate(&tbl.buckets, tbl.allocator);
+    free_memory(tbl.allocator, auto tbl.head);
+    memcpy(auto tbl, auto &t2, sizeof(T));
+}
+
+calculate_hash :: fn (key: ?T) Hash #inline {
+    #if T == string {
+        return auto String.hash(key);
+    } else {
+        return auto key;
+    }
+}
+
+keycmp :: fn (first: ?T, second: T) bool #inline {
+    #if T == string {
+        return String.compare(first, second);
+    } else {
+        return first == second;
+    }
+}
+
+insert :: fn (tbl: *?T, node: *typeof_node(T), hash: Hash) {
+    index : s64 : auto hash % auto tbl.buckets.len;
+    node.sig = cast(Sig)hash & SIG_HASH_MASK;
+    assert((node.sig & SIG_HASH_FLAG) == 0);
+
+    head := tbl.buckets[index];
+    if !head {
+        head = tbl.head;
+        node.sig |= 1;
+        tbl.buckets[index] = node;
+    }
+    assert(head);
+
+    TNodePtr :: typeof(node);
+    node.prev = auto head;
+    node.next = head.next;
+    next := cast(TNodePtr)head.next;
+    next.prev = auto node;
+    head.next = auto node;
+
+    tbl.len += 1;
+    lf :: cast(f64) tbl.len / cast(f64) tbl.buckets.len;
+    if lf > MAX_LF {
+        bucket_alloc(tbl, tbl.buckets.len * 2);
+    }
+}
+
+erase :: fn (tbl: *?T, node: *typeof_node(T), hash: Hash) {
+    assert(node && node.prev && node.next);
+    assert(node != tbl.head);
+
+    index : s64 : auto hash % auto tbl.buckets.len;
+
+    TNodePtr :: typeof(node);
+    next := cast(TNodePtr)node.next;
+
+    if (node.sig & SIG_HASH_FLAG) == 1 {
+        assert(tbl.buckets[index] == node);
+        if (next.sig & SIG_HASH_FLAG) == 1 {
+            tbl.buckets[index] = null;
+        } else {
+            tbl.buckets[index] = next;
+        }
+    }
+
+    next.prev = auto node.prev;
+    prev := cast(TNodePtr)node.prev;
+    prev.next = auto node.next;
+
+    free_memory(tbl.allocator, auto node);
+    tbl.len -= 1;
+    assert(tbl.len >= 0);
+
+    #if IS_DEBUG {
+        if tbl.len == 0 {
+            assert(tbl.head.next == auto tbl.head);
+            assert(tbl.head.prev == auto tbl.head);
+        }
+    }
+}
+
+lookup_node :: fn (tbl: *?TTable, key: ?TKey, hash: Hash) *typeof_node(TTable) {
+    assert(tbl.buckets.ptr);
+    index : s64 : auto hash % auto tbl.buckets.len;
+    loop node := tbl.buckets[index]; node && (node != tbl.head); {
+        if (node.sig & SIG_HASH_MASK) == (cast(Sig)hash & SIG_HASH_MASK) && keycmp(node.key, key) {
+            return node;
+        }
+        node = auto node.next;
+        if (node.sig & SIG_HASH_FLAG) == 1 { break; }
+    }
+    return table_end(tbl);
+}
+

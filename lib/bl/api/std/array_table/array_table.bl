@@ -67,7 +67,7 @@ atable_contains :: fn (tbl: *?T, key: @T.keys.ptr) bool {
 }
 
 /// Erase record in 'tbl' associated with 'key'. Cause panic in case there is no such 'key' in the
-/// table. Erassing the record can change ordering of the table.
+/// table. Erasing the record can change ordering of the table.
 atable_erase :: fn (tbl: *?T, key: @T.keys.ptr) {
     assert(tbl);
     loop i := 0; i < tbl.keys.len; i += 1 {

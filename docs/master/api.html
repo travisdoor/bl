@@ -135,6 +135,8 @@
 <li><a href="#context">Context</a></li>
 <li><a href="#context-1">_context</a></li>
 <li><a href="#command_line_arguments">command_line_arguments</a></li>
+<li><a href="#enum_count">enum_count</a></li>
+<li><a href="#is_number">is_number</a></li>
 </ul></li>
 <li><a href="#command-line-argument-parser">Command Line Argument Parser</a>
 <ul>
@@ -163,6 +165,7 @@
 <li><a href="#array_init">array_init</a></li>
 <li><a href="#array_terminate">array_terminate</a></li>
 <li><a href="#array_push">array_push</a></li>
+<li><a href="#array_push_empty">array_push_empty</a></li>
 <li><a href="#array_reserve">array_reserve</a></li>
 <li><a href="#array_erase">array_erase</a></li>
 <li><a href="#array_clear">array_clear</a></li>
@@ -530,6 +533,7 @@
 <li><a href="#free-1">free</a></li>
 <li><a href="#memcpy">memcpy</a></li>
 <li><a href="#memset">memset</a></li>
+<li><a href="#zeromem">zeromem</a></li>
 <li><a href="#init_default">init_default</a></li>
 <li><a href="#swap">swap</a></li>
 <li><a href="#is_aligned">is_aligned</a></li>
@@ -617,6 +621,22 @@
 <li><a href="#lock">lock</a></li>
 <li><a href="#try_lock">try_lock</a></li>
 <li><a href="#unlock">unlock</a></li>
+</ul></li>
+<li><a href="#table">Table</a>
+<ul>
+<li><a href="#table-1">Table</a></li>
+<li><a href="#tableiter">TableIter</a></li>
+<li><a href="#table_init">table_init</a></li>
+<li><a href="#table_terminate">table_terminate</a></li>
+<li><a href="#table_insert">table_insert</a></li>
+<li><a href="#table_erase">table_erase</a></li>
+<li><a href="#table_lookup">table_lookup</a></li>
+<li><a href="#table_contains">table_contains</a></li>
+<li><a href="#table_clear">table_clear</a></li>
+<li><a href="#table_begin">table_begin</a></li>
+<li><a href="#table_end">table_end</a></li>
+<li><a href="#table_iter_next">table_iter_next</a></li>
+<li><a href="#table_iter_prev">table_iter_prev</a></li>
 </ul></li>
 <li><a href="#test">Test</a>
 <ul>
@@ -907,9 +927,10 @@
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    unknown<span class="op">;</span></span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    msvc<span class="op">;</span></span>
 <span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    gnu<span class="op">;</span></span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>ENV <span class="op">::</span> <span class="op">&lt;</span>SET_BY_COMPILER<span class="op">&gt;;</span></span></code></pre></div>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    musl<span class="op">;</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>ENV <span class="op">::</span> <span class="op">&lt;</span>SET_BY_COMPILER<span class="op">&gt;;</span></span></code></pre></div>
 <h2 id="compiler-version">Compiler version</h2>
 <div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>BLC_VER_MAJOR <span class="op">:</span> s32 <span class="op">:</span> <span class="op">&lt;</span>SET_BY_COMPILER<span class="op">&gt;;</span></span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>BLC_VER_MINOR <span class="op">:</span> s32 <span class="op">:</span> <span class="op">&lt;</span>SET_BY_COMPILER<span class="op">&gt;;</span></span>
@@ -1190,6 +1211,14 @@ main :: fn () s32 {
 <pre><code>command_line_arguments : []string = </code></pre>
 <p>Contains all arguments passed from command line. First argument is executable name.</p>
 <hr />
+<h2 id="enum_count">enum_count</h2>
+<pre><code>enum_count :: fn (T: type) s64</code></pre>
+<p>Compile-time helper function resolving count of enumerator variants, passed type ‘T’ must be an enumerator type (checked by assert).</p>
+<hr />
+<h2 id="is_number">is_number</h2>
+<pre><code>is_number :: fn (T: type) bool</code></pre>
+<p>Return true if the <code>T</code> type is a number type.</p>
+<hr />
 <h1 id="command-line-argument-parser">Command Line Argument Parser</h1>
 <p><code>#import "std/arg_parser"</code></p>
 <p>Generic command line argument parsing tool.</p>
@@ -1352,8 +1381,12 @@ main :: fn () s32 {
 <p>Release memory allocated by dynamic array. This function is supposed to be called when dynamic array is no longer needed. Passed dynamic array is set to default state also.</p>
 <hr />
 <h2 id="array_push">array_push</h2>
-<pre><code>array_push :: fn (arr: *[..]?T, v: T) </code></pre>
+<pre><code>array_push :: fn (arr: *[..]?T, v: T)  #inline</code></pre>
 <p>Append new value at the dynamic array end. New heap allocation is done here only in cases when there is not enough memory allocated to store all values.</p>
+<hr />
+<h2 id="array_push_empty">array_push_empty</h2>
+<pre><code>array_push_empty :: fn (arr: *[..]?T) *T</code></pre>
+<p>Append new empty element at the end of the array and return pointer to its memory location.</p>
 <hr />
 <h2 id="array_reserve">array_reserve</h2>
 <pre><code>array_reserve :: fn (_arr: *[..]?T, n: s64)  #inline</code></pre>
@@ -1397,7 +1430,7 @@ main :: fn () s32 {
 <hr />
 <h2 id="atable_erase">atable_erase</h2>
 <pre><code>atable_erase :: fn (tbl: *?T, key: ) </code></pre>
-<p>Erase record in ‘tbl’ associated with ‘key’. Cause panic in case there is no such ‘key’ in the table. Erassing the record can change ordering of the table.</p>
+<p>Erase record in ‘tbl’ associated with ‘key’. Cause panic in case there is no such ‘key’ in the table. Erasing the record can change ordering of the table.</p>
 <hr />
 <h2 id="atable_clear">atable_clear</h2>
 <pre><code>atable_clear :: fn (tbl: *?T)  #inline</code></pre>
@@ -1438,7 +1471,7 @@ main :: fn () s32 {
     compile(exe);
 }</code></pre>
 <p>Start build pipeline using our build.bl file:</p>
-<pre><code>$ blc --build</code></pre>
+<pre><code>$ blc -build</code></pre>
 <p>Compiler will automatically use build.bl file as build script and execute build function in compile time. SDK file build/build.bl containing compiler API for build pipeline manipulation is loaded implicitly.</p>
 <p><strong>warning</strong>: Build API is available only in compile-time.</p>
 <h2 id="basics">Basics</h2>
@@ -2895,7 +2928,11 @@ main :: fn () s32 {
 <hr />
 <h2 id="memset">memset</h2>
 <pre><code>memset :: fn (_dest: *u8, v: u8, size: usize) *u8</code></pre>
-<p>Set memory to desired value. Destination size must be atleast <code>size</code> bytes.</p>
+<p>Set memory to desired value. Destination size must be at least <code>size</code> bytes.</p>
+<hr />
+<h2 id="zeromem">zeromem</h2>
+<pre><code>zeromem :: fn (dest: *u8, size: usize) </code></pre>
+<p>Zero out ‘dest’ memory of ‘size’.</p>
 <hr />
 <h2 id="init_default">init_default</h2>
 <pre><code>init_default :: fn (dest: *?T) *T #inline</code></pre>
@@ -2915,9 +2952,9 @@ main :: fn () s32 {
 <p><strong>warning</strong>: Cause panic when alignment is not power of two.</p>
 <hr />
 <h2 id="slice_init">slice_init</h2>
-<pre><code>slice_init :: fn (slice: *[]?T, n: s64, loc :: ) </code></pre>
+<pre><code>slice_init :: fn (slice: *[]?T, n: s64, allocator : *Allocator: , loc :: ) </code></pre>
 <p>Allocate heap memory for <code>n</code> elements in <code>_v</code> slice. Allocated block is set to zero default value. Allocated memory must be released by :ref:<code>slice_terminate</code> call.</p>
-<p>This way of memory allocation cause some overhead compared to plain <code>alloc</code> due to conversion to <code>Any</code> and more ‘generic’ behaviour, also setting to 0 have some runtime cost. Consider use</p>
+<p>Zero initialization of allocated memory block can be expensive in case of large allocation.</p>
 <h3 id="example-13">Example</h3>
 <pre><code>main :: fn () s32 {
     // Allocate slice of 10 numbers
@@ -2934,7 +2971,7 @@ main :: fn () s32 {
 }</code></pre>
 <hr />
 <h2 id="slice_terminate">slice_terminate</h2>
-<pre><code>slice_terminate :: fn (slice: *[]?T, loc :: ) </code></pre>
+<pre><code>slice_terminate :: fn (slice: *[]?T, allocator : *Allocator: , loc :: ) </code></pre>
 <p>Release slice memory allocated by <a href="#slice_init">slice_init</a> call.</p>
 <hr />
 <h2 id="slice_range">slice_range</h2>
@@ -2971,11 +3008,11 @@ end &lt;= slice.len</code></pre>
 <hr />
 <h2 id="allocate_memory">allocate_memory</h2>
 <pre><code>allocate_memory :: fn (allocator: *Allocator, size: usize, loc :: ) *u8 #inline</code></pre>
-<p>Allocate memory directly using specified <code>allocator</code>.</p>
+<p>Allocate memory directly using specified <code>allocator</code>. In case the <code>allocator</code> is null, global application context allocator is used.</p>
 <hr />
 <h2 id="free_memory">free_memory</h2>
 <pre><code>free_memory :: fn (allocator: *Allocator, ptr: *u8, loc :: )  #inline</code></pre>
-<p>Free memory previously allocated by specific <code>allocator</code>.</p>
+<p>Free memory previously allocated by specific <code>allocator</code>. In case the <code>allocator</code> is null, global application context allocator is used.</p>
 <hr />
 <h2 id="release_memory">release_memory</h2>
 <pre><code>release_memory :: fn (allocator: *Allocator, loc :: )  #inline</code></pre>
@@ -3396,6 +3433,92 @@ Fs.set_cwd(String.clear_concat(&amp;path, &quot;my-dir/project-&quot;, VERSION))
 <pre><code>unlock :: fn (mutex: *Mutex)  #inline</code></pre>
 <p>Unlock previously locked mutex and leave critical section.</p>
 <hr />
+<h1 id="table">Table</h1>
+<p><code>#import "std/table"</code></p>
+<p>Tables are generic data containers aka hash tables or hash maps that store data elements as pairs of Keys and Values. Table provides fast lookup on large amount of data.</p>
+<p>Internally, the table is implemented as double-linked list with metadata stored as buckets. A bucket represents begin of sub-list of data associated with hash value calculated from the key value. Table entries are wrapped into Nodes containing key-value data and some metadata required by the table.</p>
+<p>Every table insertion cause memory allocation, this can be a performance bottle-neck in some cases, however, already inserted data never change its address (does not move in memory). Consider using a simple dynamic array in cases data set is not too-big (simple iteration over an array can be faster and more memory efficient than using a table.</p>
+<p>No memory is allocated until the first call of insert method. After the first insertion, table operates on pre-allocated chunk of memory used to store buckets (<code>DEFAULT_BUCKET_COUNT</code>). The bucket storage is reallocated to double size in case the maximum load factor (table.len / table.buckets.len) is exceeded (maximum load factor is defined as <code>MAX_LF</code>) and whole table is reorganized to achieve optimal performance (rehashing). This operation can be very expensive on large data sets.</p>
+<p>Current table implementation is not heavily optimized, this should be improved later, consider using a custom implementation in performance-critical cases.</p>
+<p><strong>warning:</strong> Table elements are not sorted in any particular way so the iteration over the table does not correspond to the order in which elements were inserted.</p>
+<p><strong>warning:</strong> The key types are limited to numbers and strings (this may change in the future).</p>
+<h3 id="example-20">Example</h3>
+<div class="sourceCode" id="cb520"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb520-1"><a href="#cb520-1" aria-hidden="true" tabindex="-1"></a><span class="er">#import &quot;std/table&quot;</span></span>
+<span id="cb520-2"><a href="#cb520-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb520-3"><a href="#cb520-3" aria-hidden="true" tabindex="-1"></a>main <span class="op">::</span> fn <span class="op">()</span> s32 <span class="op">{</span></span>
+<span id="cb520-4"><a href="#cb520-4" aria-hidden="true" tabindex="-1"></a>    table<span class="op">:</span> Table<span class="op">(</span>string<span class="op">,</span> s32<span class="op">);</span></span>
+<span id="cb520-5"><a href="#cb520-5" aria-hidden="true" tabindex="-1"></a>    defer table_terminate<span class="op">(&amp;</span>table<span class="op">);</span></span>
+<span id="cb520-6"><a href="#cb520-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb520-7"><a href="#cb520-7" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Insert some data into the table.</span></span>
+<span id="cb520-8"><a href="#cb520-8" aria-hidden="true" tabindex="-1"></a>    table_insert<span class="op">(&amp;</span>table<span class="op">,</span> <span class="st">&quot;Martin&quot;</span><span class="op">,</span> <span class="dv">32</span><span class="op">);</span></span>
+<span id="cb520-9"><a href="#cb520-9" aria-hidden="true" tabindex="-1"></a>    table_insert<span class="op">(&amp;</span>table<span class="op">,</span> <span class="st">&quot;Lisa&quot;</span><span class="op">,</span> <span class="dv">29</span><span class="op">);</span></span>
+<span id="cb520-10"><a href="#cb520-10" aria-hidden="true" tabindex="-1"></a>    table_insert<span class="op">(&amp;</span>table<span class="op">,</span> <span class="st">&quot;John&quot;</span><span class="op">,</span> <span class="dv">40</span><span class="op">);</span></span>
+<span id="cb520-11"><a href="#cb520-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb520-12"><a href="#cb520-12" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Lookup data by key.</span></span>
+<span id="cb520-13"><a href="#cb520-13" aria-hidden="true" tabindex="-1"></a>    found <span class="op">::</span> table_lookup<span class="op">(&amp;</span>table<span class="op">,</span> <span class="st">&quot;Martin&quot;</span><span class="op">);</span></span>
+<span id="cb520-14"><a href="#cb520-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> found <span class="op">!=</span> table_end<span class="op">(&amp;</span>table<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb520-15"><a href="#cb520-15" aria-hidden="true" tabindex="-1"></a>        print<span class="op">(</span><span class="st">&quot;[%] %</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">,</span> found<span class="op">.</span>key<span class="op">,</span> found<span class="op">.</span>value<span class="op">);</span></span>
+<span id="cb520-16"><a href="#cb520-16" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb520-17"><a href="#cb520-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb520-18"><a href="#cb520-18" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Iterate over the table</span></span>
+<span id="cb520-19"><a href="#cb520-19" aria-hidden="true" tabindex="-1"></a>    loop it <span class="op">:=</span> table_begin<span class="op">(&amp;</span>table<span class="op">);</span> it <span class="op">!=</span> table_end<span class="op">(&amp;</span>table<span class="op">);</span> table_iter_next<span class="op">(&amp;</span>it<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb520-20"><a href="#cb520-20" aria-hidden="true" tabindex="-1"></a>        print<span class="op">(</span><span class="st">&quot;[%] %</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">,</span> it<span class="op">.</span>key<span class="op">,</span> it<span class="op">.</span>value<span class="op">);</span></span>
+<span id="cb520-21"><a href="#cb520-21" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb520-22"><a href="#cb520-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb520-23"><a href="#cb520-23" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb520-24"><a href="#cb520-24" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h2 id="table-1">Table</h2>
+<pre><code>Table :: fn (TKey: type, TValue: type) type</code></pre>
+<p>Create a new <strong>Table</strong> type. The <code>TKey</code> must be a number or string type.</p>
+<hr />
+<h2 id="tableiter">TableIter</h2>
+<pre><code>TableIter :: fn (TTable: type) type</code></pre>
+<p>Create iterator type from <strong>Table</strong> type.</p>
+<hr />
+<h2 id="table_init">table_init</h2>
+<pre><code>table_init :: fn (tbl: *?T, elem_count :: , allocator : *Allocator: )  #inline</code></pre>
+<p>Initialize the <code>tbl</code> table. It’s not necessary to call this method in case the table is already zero-initialized. The <code>elem_count</code> can be specified as hint telling the table how many elements we’re going to store. Memory to hold an internal meta-data is allocated here. The custom <code>allocator</code> can be set.</p>
+<hr />
+<h2 id="table_terminate">table_terminate</h2>
+<pre><code>table_terminate :: fn (tbl: *?T) </code></pre>
+<p>Release all memory resources used by the table and set the <code>tbl</code> instance to the default state.</p>
+<hr />
+<h2 id="table_insert">table_insert</h2>
+<pre><code>table_insert :: fn (tbl: *?T, key: , value: ) </code></pre>
+<p>Insert new <code>value</code> into the table associated with unique (checked by assert) <code>key</code>. A new memory slot is allocated every time and rehashing of the table can be eventually done in case the “load factor” goes too high.</p>
+<hr />
+<h2 id="table_erase">table_erase</h2>
+<pre><code>table_erase :: fn (tbl: *?T, key: ) bool #inline</code></pre>
+<p>Erase entry associated with <code>key</code> and return <code>true</code> in case the entry was found and successfully deleted, otherwise return <code>false</code>.</p>
+<hr />
+<h2 id="table_lookup">table_lookup</h2>
+<pre><code>table_lookup :: fn (tbl: *?T, key: )  #inline</code></pre>
+<p>Lookup element associated with the <code>key</code> value in the table and return an iterator pointing to the key-value pair. In case there is no such element in the table, the function returns an iterator pointing to the <code>table_end()</code>.</p>
+<hr />
+<h2 id="table_contains">table_contains</h2>
+<pre><code>table_contains :: fn (tbl: *?T, key: ) bool #inline</code></pre>
+<p>Checks whether the table <code>tbl</code> contains the <code>key</code>.</p>
+<hr />
+<h2 id="table_clear">table_clear</h2>
+<pre><code>table_clear :: fn (tbl: *?T)  #inline</code></pre>
+<p>Clears the table and deletes all inserted entries.</p>
+<hr />
+<h2 id="table_begin">table_begin</h2>
+<pre><code>table_begin :: fn (tbl: *?T)  #inline</code></pre>
+<p>Return an iterator pointing to the table beginning.</p>
+<hr />
+<h2 id="table_end">table_end</h2>
+<pre><code>table_end :: fn (tbl: *?T)  #inline</code></pre>
+<p>Return an iterator pointing to the table ending (one element past the last in the table).</p>
+<hr />
+<h2 id="table_iter_next">table_iter_next</h2>
+<pre><code>table_iter_next :: fn (it: *?T)  #inline</code></pre>
+<p>Move the iterator <code>it</code> to the next element.</p>
+<hr />
+<h2 id="table_iter_prev">table_iter_prev</h2>
+<pre><code>table_iter_prev :: fn (it: *?T)  #inline</code></pre>
+<p>Move the iterator <code>it</code> to the previous element.</p>
+<hr />
 <h1 id="test">Test</h1>
 <p><code>#load "std/test.bl"</code></p>
 <p>Integrated unit testing API. ## test_eq</p>
@@ -3458,7 +3581,7 @@ fn (got: ?T, not_expected: T, loc := #call_location)</code></pre>
 <p>Test case execution can be used in runtime and compile time, in both cases function remap default behaviour of <code>panic()</code> function call and try to report all failing tests without execution termination.</p>
 <p>Formatted output containing information about every test run status and summary report is produced during execution of this function. In case of test failure all needed information about fail source location is reported into standard output.</p>
 <p>Returns number of failed tests.</p>
-<h3 id="example-20">Example</h3>
+<h3 id="example-21">Example</h3>
 <pre><code>#load &quot;std/test.bl&quot;
 
 my_test :: fn () #test {
@@ -3505,7 +3628,7 @@ main :: fn () s32 {
 <h1 id="temporary-allocator">Temporary Allocator</h1>
 <p>Temporary allocator is memory allocator supposed to be used in case just temporary memory allocation is needed; i.e. to build up file path from individual path components. The allocated memory is valid until <a href="#temporary_reset">temporary_reset</a> or <a href="#temporary_release">temporary_release</a> is called.</p>
 <p>The allocator makes all allocations in bigger preallocated block; i.e. when allocation is requested for the first time, new block is allocated with predefined size <code>DEFAULT_BLOCK_SIZE</code>, all following allocations use the preallocated block if there is enough space. If the block is full and new requested allocation does not fit, another block is allocated (with size slightly bigger then previous one). When <a href="#temporary_reset">temporary_reset</a> is called, allocator will release all smaller allocated blocks and keeps only the biggest one for later use.</p>
-<h3 id="example-21">Example</h3>
+<h3 id="example-22">Example</h3>
 <pre><code>#import &quot;std/tmp_allocator&quot;
 
 main :: fn () s32 {

@@ -16,7 +16,6 @@
 #load "fn.test.bl"
 #load "fundamental_types.test.bl"
 #load "globals.test.bl"
-#load "hash_table.test.bl"
 #load "ifs.test.bl"
 #load "local_variables.test.bl"
 #load "loops.test.bl"

@@ -1,8 +1,8 @@
 # Language Reference
 
-Basically every construct in bl follows the same rules of declaration syntax. We define name of the
-entity, type and optionally some initial value. Name can be usually used to reference the entity
-later in code and type describes layout of data represented by the entity. It could be a number, 
+Basically, every construct in bl follows the same rules of declaration syntax. We define the name of the
+entity, type and optionally some initial value. Name can usually be used to reference the entity
+later in code and type describes the layout of data represented by the entity. It could be a number, 
 text or more complex types.
 
 Possible declarations:
@@ -20,7 +20,7 @@ name: string : "Martin"; // string constant
 ```
 
 When we decide to explicitly specify initial value, data type can be inferred from this value. In
-such case the type is optional.
+such case, the type is optional.
 
 ```c
 name := "Martin"; // string variable
@@ -81,9 +81,9 @@ pointers :: fn () #test {
 
 ### Array
 
-Array is aggregate type of multiple values of the same type. Size value must be known in compile
-time. Arrays can be inline initialized with compound block, type is required. Zero initializer can
-be used for zero initialization of whole array storage, otherwise we must specify value for every
+The array is an aggregate type of multiple values of the same type. Size value must be known in compile
+time. Arrays can be inline initialized with compound block; type is required. Zero initializers can
+be used for zero initializations of whole array storage, otherwise we must specify value for every
 element in an array.
 
 **Example:**
@@ -113,7 +113,7 @@ array_to_slice :: fn () #test {
 
 ### String
 
-String type in Biscuit is slice containing pointer to string data and string length. String literals
+String type in Biscuit is a slice containing a pointer to string data and string length. String literals
 are always zero terminated.
 
 **Example:**
@@ -128,7 +128,7 @@ string_type :: fn () #test {
 
 ### Slice
 
-Array slice is consist of pointer to the first array element and array length.
+The array slice consists of a pointer to the first array element and array length.
 
 Slice layout:
 
@@ -155,9 +155,9 @@ array_slice :: fn () #test {
 
 ### Structure
 
-Structure is a composite type representing group of data as a single type. Structure is as an array
+The structure is a composite type representing a group of data as a single type. The structure is as an array
 another way to define user data type, but types of structure members could be different. It can be
-used in situations when it's better to group data into one unit instead of interact with separate
+used in situations when it's better to group data into one unit instead of interacting with separate
 units.
 
 Structure can be declared with use of struct keyword.
@@ -170,7 +170,7 @@ Person :: struct {
 }
 ```
 
-Structure Person in example is consist of id, name and age. Now we can create variable of this type
+Structure Person in example consists of id, name and age. Now we can create variable of this type
 and fill it with data. To access person's member fields use `.` operator.
 
 ```c
@@ -210,8 +210,8 @@ main :: fn () s32 {
 Person {id = 1, name = Martin, age = 20}
 ```
 
-Due to lack of OOP support we cannot declare member functions in structures and there is no class or
-object concept in the language.  Common way to manipulate with data is passing them into the
+Due to lack of OOP support, we cannot declare member functions in structures and there is no class or
+object concept in the language. Common way to manipulate with data is passing them into the
 function as an argument.
 
 ```c
@@ -220,7 +220,7 @@ person_add_age :: fn (person: *Person, add: s32) {
 }
 ```
 
-Structure can extend any type with use of `#base <T>`. This is kind of inheritance similar to C
+Structure can extend any type with use of `#base <T>`. This is kind of inheritance similar to the C
 style where inheritance can be simulated by composition. The `#base <T>` basically insert `base: T`;
 as the first member into the structure. The compiler can use this information later to provide more
 inheritance related features like merging of scopes to enable direct access to base-type members via
@@ -283,8 +283,8 @@ update :: fn (e: *Entity) {
 
 ### Union
 
-Union is special composite type representing value of multiple types.  Union size is always equal to
-size of the biggest member type and memory offset of all members is same. Union is usually
+The union is a special composite type representing value of multiple types. Union size is always equal to
+size of the biggest member type and memory offset of all members is the same. Union is usually
 associated with some enum providing information about stored type.
 
 **Example:**
@@ -325,8 +325,8 @@ consumer :: fn (token: *Token, kind: TokenKind) {
 
 ### Any
 
-The Any type is special builtin structure containing pointer to TypeInfo and pointer to data. Any
-    value can be implicitly casted to this type on function call.
+Any type is a special builtin structure containing a pointer to TypeInfo and pointer to data. Any
+value can be implicitly cast to this type on function call.
 
 Any type layout:
 
@@ -337,11 +337,11 @@ Any :: struct #compiler {
 };
 ```
 
-Remember that the Any instance does not contains copy of the value but only pointer to already stack
-or heap allocated data. The Any instance never owns pointed data and should not be responsible for
+Remember that Any instance does not contain a copy of the value but only pointer to already stack
+or heap allocated data. Any instance never owns pointed data and should not be responsible for
 memory free.
 
-Since Any contains pointer to data, we need to generate temporary storage on stack for constant
+Since Any contains a pointer to data, we need to generate temporary storage on stack for constant
 literals converted to Any.
 
 ```c
@@ -352,7 +352,7 @@ foo(10); // temp for '10' is created here
 foo :: fn (v: Any) {}
 ```
 
-For types converted to the Any compiler implicitly sets `type_info` field to pointer to the TypeType
+For types converted to the Any compiler implicitly sets `type_info` field to a pointer to the TypeType
 type-info and data field to the pointer to actual type-info of the converted type.
 
 ```c
@@ -368,8 +368,8 @@ foo :: fn (v: Any) {
 }
 ```
 
-Any can be combined with vargs, good example of this use case is print function where args argument
-type is vargs of Any (\... is same as \...Any). The print function can take values of any type
+Any can be combined with vargs; good example of this use case is print function where args argument
+type is vargs of Any (\... is the same as \...Any). The print function can take values of any type
 passed in args.
 
 ```c
@@ -380,7 +380,7 @@ print :: fn (format: string, args: ...) {
 
 ### Enum
 
-The enum allows the creation of type representing one of listed variants. Biscuit enums can
+The enum allows the creation of type representing one of the listed variants. Biscuit enums can
 represent variants of any integer type (`s32` by default). All variants are grouped into enum's
 namespace.
 
@@ -435,7 +435,7 @@ An enumerator can be used as a definition of bit flags by adding #flags directiv
 definition. This directive slightly changes the way how the enumerator values are generated. By
 default, the enumerator starts with zero variant (if it's not explicitly changed by the programmer)
 and every following enumerator variant has a value set to the previous one plus one. The flags
-enumerator starts with the first variant set to 1 and the following variants are set to the
+enumerator start with the first variant set to 1 and the following variants are set to the
 left-bit-shifted value of the previous one.
 
 Enumerators marked as flags are also serialized as a combination of atomic flags instead of just one
@@ -893,6 +893,14 @@ Type :: struct {
 Mark external function as compiler specific intrinsic function.
 
 **warning:** This directive is compiler internal.
+
+### #maybe_unused
+
+Suppress usage checking for declaration. This can be helpful i.e.: in case the polymorphic function is 
+using some private global variables and the function is not used (the body is never generated). Such
+variable should not be reported as unused.
+
+This is workaround to get rid of unwanted warning for now.
 
 ## Variable
 

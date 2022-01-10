@@ -1027,8 +1027,17 @@ static INLINE void usage_check_push(struct context *ctx, struct scope_entry *ent
     bassert(scope);
     if (!entry->id) return;
     if (!entry->node) return;
-    if (entry->kind != SCOPE_ENTRY_VAR && entry->kind != SCOPE_ENTRY_FN) return;
-    if (entry->kind == SCOPE_ENTRY_FN && isflag(entry->data.fn->flags, FLAG_TEST_FN)) return;
+    if (entry->kind != SCOPE_ENTRY_VAR) {
+        if (entry->kind != SCOPE_ENTRY_FN) return;
+    } else if (isflag(entry->data.var->flags, FLAG_MAYBE_UNUSED)) {
+        return;
+    }
+
+    if (entry->kind == SCOPE_ENTRY_FN) {
+        if (isflag(entry->data.fn->flags, FLAG_TEST_FN)) return;
+        if (isflag(entry->data.fn->flags, FLAG_MAYBE_UNUSED)) return;
+        if (entry->data.fn->poly) return;
+    }
     // No usage checking in general is done only for symbols in function local scope and symbols
     // in global private scope.
     if (!scope_is_subtree_of_kind(scope, SCOPE_FN) &&
@@ -7142,7 +7151,7 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
     // Continue only with local variables and struct typedefs.
     bool has_initializer = decl->init;
     if (has_initializer) {
-        // Resolve variable intializer. Here we use analyze_slot_initializer call to
+        // Resolve variable initializer. Here we use analyze_slot_initializer call to
         // fulfill possible array to slice cast.
         if (var->value.type) {
             if (analyze_slot_initializer(

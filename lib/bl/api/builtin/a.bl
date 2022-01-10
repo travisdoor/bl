@@ -345,4 +345,8 @@ enum_count :: fn (T: type) s64 #comptime {
     return (cast(*TypeInfoEnum)info).variants.len;
 }
 
+/// Return true if the `T` type is a number type.
+is_number :: fn (T: type) bool #comptime {
+    return typeinfo(T).kind == TypeKind.Int;
+}
 

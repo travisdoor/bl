@@ -62,6 +62,7 @@ enum ast_flag {
     FLAG_THREAD_LOCAL = 1 << 12, // symbols marked as thread local
     FLAG_FLAGS        = 1 << 13, // enum flags
     FLAG_COMPTIME     = 1 << 14, // compile-time execution
+    FLAG_MAYBE_UNUSED = 1 << 15, // to markup unused declarations
 };
 
 // map symbols to binary operation kind
@@ -386,7 +387,7 @@ struct ast {
     enum ast_kind    kind;
     struct location *location;
     struct scope    *owner_scope;
-    const char      *docs;        // Optional documentation string.
+    const char      *docs; // Optional documentation string.
 
     union {
 #define GEN_AST_DATA
