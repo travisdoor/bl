@@ -350,3 +350,13 @@ is_number :: fn (T: type) bool #comptime {
     return typeinfo(T).kind == TypeKind.Int;
 }
 
+/// Return true if the `T` type is a signed number type.
+is_signed_number :: fn (T: type) bool #comptime {
+    info :: cast(*TypeInfoInt)typeinfo(T);
+    return info.kind == TypeKind.Int && info.is_signed;
+}
+
+/// Return true if the `T` type is a pointer type.
+is_pointer :: fn (T: type) bool #comptime {
+    return typeinfo(T).kind == TypeKind.Ptr;
+}

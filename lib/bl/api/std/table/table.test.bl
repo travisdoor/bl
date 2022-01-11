@@ -3,13 +3,13 @@
 #import "std/table"
 
 main :: fn () s32 {
-    //DebugAllocator.init();
-    //defer DebugAllocator.terminate();
+    DebugAllocator.init();
+    defer DebugAllocator.terminate();
     return test_run();
 }
 
 #private
-TEST_COUNT :: 1000000;
+TEST_COUNT :: 100000;
 
 DATA :: {:[10]string:
          "Melisa Britt",
@@ -117,6 +117,25 @@ test_clear :: fn () #test {
     test_eq(tbl.len, TEST_COUNT);
 }
 
+test_hashing :: fn () #test {
+    index :: fn (i: u64) u64 {
+        if i % 2 == 0 { return i * -1; }
+        return i;
+    };
+
+    tbl: Table(u64, s32);
+    defer table_terminate(&tbl);
+
+    loop i : u64 = 0; i < auto TEST_COUNT; i += 1 {
+        table_insert(&tbl, index(i), auto i);
+    }
+    test_eq(tbl.len, TEST_COUNT);
+
+    loop i : u64 = 0; i < auto TEST_COUNT; i += 1 {
+        test_true(table_contains(&tbl, index(i)));
+    }
+}
+
 test_erase :: fn () #test {
     tbl: Table(s32, s32);
     defer table_terminate(&tbl);
@@ -130,6 +149,7 @@ test_erase :: fn () #test {
         test_true(table_erase(&tbl, i));
     }
     test_eq(tbl.len, 0);
+    test_eq(table_begin(&tbl), table_end(&tbl));
 }
 
 test_erase2 :: fn () #test {
@@ -145,6 +165,7 @@ test_erase2 :: fn () #test {
         test_true(table_erase(&tbl, Math.U64_MAX - i));
     }
     test_eq(tbl.len, 0);
+    test_eq(table_begin(&tbl), table_end(&tbl));
 }
 
 test_use_after_erase :: fn () #test {
@@ -161,6 +182,7 @@ test_use_after_erase :: fn () #test {
             test_true(table_erase(&tbl, i));
         }
         test_eq(tbl.len, 0);
+        test_eq(table_begin(&tbl), table_end(&tbl));
     }
 }
 

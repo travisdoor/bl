@@ -65,7 +65,7 @@ Table :: fn (TKey: type, TValue: type) type #comptime {
     static_assert(TKey == string || is_number(TKey));
     TNode :: Node(TKey, TValue);
     return struct {
-        buckets: []*TNode;
+        buckets: [] struct { n: *TNode; c: u32; };
         head: *TNode;
         len: s64;
 
@@ -110,14 +110,17 @@ table_insert :: fn (tbl: *?T, key: typeof_key(T), value: typeof_value(T)) {
     if !is_initialized(tbl) { bucket_alloc(tbl, DEFAULT_BUCKET_COUNT); }
 
     hash :: calculate_hash(key);
-    assert(!table_contains(tbl, key));
+    #if IS_DEBUG {
+        if table_contains(tbl, key) { panic("Duplicate key entry '%' in table!", key); }
+    }
 
     TNode :: typeof_node(T);
     node := cast(*TNode) allocate_memory(tbl.allocator, sizeof(TNode));
     node.key = key;
     node.value = value;
+    node.hash = hash;
 
-    insert(tbl, node, hash);
+    insert(tbl, node);
 }
 
 /// Erase entry associated with `key` and return `true` in case the entry was found and successfully
@@ -125,10 +128,9 @@ table_insert :: fn (tbl: *?T, key: typeof_key(T), value: typeof_value(T)) {
 table_erase :: fn (tbl: *?T, key: typeof_key(T)) bool #inline {
     assert(tbl);
     if !is_initialized(tbl) { return false; }
-    hash :: calculate_hash(key);
-    it :: lookup_node(tbl, key, hash);
+    it :: lookup_node(tbl, calculate_hash(key));
     if it == table_end(tbl) { return false; }
-    erase(tbl, it, hash);
+    erase(tbl, it);
     return true;
 }
 
@@ -138,14 +140,14 @@ table_erase :: fn (tbl: *?T, key: typeof_key(T)) bool #inline {
 table_lookup :: fn (tbl: *?T, key: typeof_key(T)) TableIter(T) #inline {
     assert(tbl);
     if !is_initialized(tbl) { return table_end(tbl); }
-    return lookup_node(tbl, key, calculate_hash(key));
+    return lookup_node(tbl, calculate_hash(key));
 }
 
 /// Checks whether the table `tbl` contains the `key`.
 table_contains :: fn (tbl: *?T, key: typeof_key(T)) bool #inline {
     assert(tbl);
     if !is_initialized(tbl) { return false; }
-    return lookup_node(tbl, key, calculate_hash(key)) != table_end(tbl);
+    return lookup_node(tbl, calculate_hash(key)) != table_end(tbl);
 }
 
 /// Clears the table and deletes all inserted entries.
@@ -157,7 +159,8 @@ table_clear :: fn (tbl: *?T) #inline {
         table_iter_next(&it);
         free_memory(tbl.allocator, auto node);
     }
-    zeromem(auto tbl.buckets.ptr, cast(usize)tbl.buckets.len * sizeof(tbl.buckets.ptr));
+    buckets_size :: cast(usize)tbl.buckets.len * sizeof(@tbl.buckets.ptr);
+    zeromem(auto tbl.buckets.ptr, buckets_size);
     assert(tbl.head);
     tbl.head.next = auto tbl.head;
     tbl.head.prev = auto tbl.head;
@@ -194,17 +197,13 @@ table_iter_prev :: fn (it: *?T) #inline {
 // =================================================================================================
 DEFAULT_BUCKET_COUNT :: 64;
 MAX_LF :: 1.0 #maybe_unused;
-SIG_HASH_MASK : Sig : -2 #maybe_unused;
-SIG_HASH_FLAG : Sig : 1 #maybe_unused;
-
-Hash :: u32;
-Sig :: u32;
+Hash :: u64;
 
 Node :: fn (TKey: type, TValue: type) type #comptime {
     return struct {
         next: *u8;
         prev: *u8;
-        sig: Sig;
+        hash: Hash;
         key: TKey;
         value: TValue;
     };
@@ -243,8 +242,7 @@ bucket_alloc :: fn (tbl: *?T, bucket_count: s64) {
     loop it := table_begin(tbl); it != table_end(tbl); {
         node := it;
         table_iter_next(&it);
-        hash :: calculate_hash(node.key);
-        insert(&t2, node, hash);
+        insert(&t2, node);
     }
     slice_terminate(&tbl.buckets, tbl.allocator);
     free_memory(tbl.allocator, auto tbl.head);
@@ -259,24 +257,16 @@ calculate_hash :: fn (key: ?T) Hash #inline {
     }
 }
 
-keycmp :: fn (first: ?T, second: T) bool #inline {
-    #if T == string {
-        return String.compare(first, second);
-    } else {
-        return first == second;
-    }
-}
-
-insert :: fn (tbl: *?T, node: *typeof_node(T), hash: Hash) {
-    index : s64 : auto hash % auto tbl.buckets.len;
-    node.sig = cast(Sig)hash & SIG_HASH_MASK;
-    assert((node.sig & SIG_HASH_FLAG) == 0);
-
-    head := tbl.buckets[index];
+insert :: fn (tbl: *?T, node: *typeof_node(T)) {
+    assert(node && node != tbl.head);
+    bucket := &tbl.buckets[auto node.hash % auto tbl.buckets.len];
+    assert(bucket.c + 1 > bucket.c); // check overflow!
+    bucket.c += 1;
+    head := bucket.n;
     if !head {
+        assert(bucket.c == 1);
+        bucket.n = node;
         head = tbl.head;
-        node.sig |= 1;
-        tbl.buckets[index] = node;
     }
     assert(head);
 
@@ -294,49 +284,45 @@ insert :: fn (tbl: *?T, node: *typeof_node(T), hash: Hash) {
     }
 }
 
-erase :: fn (tbl: *?T, node: *typeof_node(T), hash: Hash) {
+erase :: fn (tbl: *?T, node: *typeof_node(T)) {
     assert(node && node.prev && node.next);
     assert(node != tbl.head);
 
-    index : s64 : auto hash % auto tbl.buckets.len;
+    bucket := &tbl.buckets[auto node.hash % auto tbl.buckets.len];
+    assert(bucket.c - 1 < bucket.c); // check underflow!
+    bucket.c -= 1;
+
+    if bucket.c == 0 {
+        // the last one!
+        assert(bucket.n == node);
+        bucket.n = null;
+    } else if bucket.n == node {
+        bucket.n = auto bucket.n.next;
+        assert(bucket.n);
+        assert(bucket.n != tbl.head);
+    }
 
     TNodePtr :: typeof(node);
     next := cast(TNodePtr)node.next;
-
-    if (node.sig & SIG_HASH_FLAG) == 1 {
-        assert(tbl.buckets[index] == node);
-        if (next.sig & SIG_HASH_FLAG) == 1 {
-            tbl.buckets[index] = null;
-        } else {
-            tbl.buckets[index] = next;
-        }
-    }
-
     next.prev = auto node.prev;
     prev := cast(TNodePtr)node.prev;
-    prev.next = auto node.next;
+    prev.next = auto next;
 
     free_memory(tbl.allocator, auto node);
+    assert(tbl.len > 0);
     tbl.len -= 1;
-    assert(tbl.len >= 0);
-
-    #if IS_DEBUG {
-        if tbl.len == 0 {
-            assert(tbl.head.next == auto tbl.head);
-            assert(tbl.head.prev == auto tbl.head);
-        }
-    }
 }
 
-lookup_node :: fn (tbl: *?TTable, key: ?TKey, hash: Hash) *typeof_node(TTable) {
+lookup_node :: fn (tbl: *?T, hash: Hash) *typeof_node(T) {
     assert(tbl.buckets.ptr);
-    index : s64 : auto hash % auto tbl.buckets.len;
-    loop node := tbl.buckets[index]; node && (node != tbl.head); {
-        if (node.sig & SIG_HASH_MASK) == (cast(Sig)hash & SIG_HASH_MASK) && keycmp(node.key, key) {
-            return node;
-        }
+    bucket :: &tbl.buckets[auto hash % auto tbl.buckets.len];
+    node := bucket.n;
+    c := bucket.c;
+    loop i : u32 = 0; i < c; i += 1 {
+        assert(node);
+        assert(node != tbl.head);
+        if node.hash == hash { return node; }
         node = auto node.next;
-        if (node.sig & SIG_HASH_FLAG) == 1 { break; }
     }
     return table_end(tbl);
 }
