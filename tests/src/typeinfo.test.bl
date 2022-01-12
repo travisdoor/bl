@@ -263,3 +263,13 @@ helpers_enum_count :: fn () #test {
     test_eq(arr.len, 3);
 }
 
+number_type_1 :: fn () #test {
+    test_eq(typeinfo(number_type(1, true)), typeinfo(s8));
+    test_eq(typeinfo(number_type(2, true)), typeinfo(s16));
+    test_eq(typeinfo(number_type(4, true)), typeinfo(s32));
+    test_eq(typeinfo(number_type(8, true)), typeinfo(s64));
+    test_eq(typeinfo(number_type(1, false)), typeinfo(u8));
+    test_eq(typeinfo(number_type(2, false)), typeinfo(u16));
+    test_eq(typeinfo(number_type(4, false)), typeinfo(u32));
+    test_eq(typeinfo(number_type(8, false)), typeinfo(u64));
+}

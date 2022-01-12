@@ -197,13 +197,21 @@ table_iter_prev :: fn (it: *?T) #inline {
 // =================================================================================================
 DEFAULT_BUCKET_COUNT :: 64;
 MAX_LF :: 1.0 #maybe_unused;
-Hash :: u64;
+Hash :: fn (TKey: type) type #comptime {
+    #if TKey == string {
+        return u32;
+    } else {
+        return number_type(sizeof(TKey), false);
+    }
+    unreachable;
+    return u8;
+}
 
 Node :: fn (TKey: type, TValue: type) type #comptime {
     return struct {
         next: *u8;
         prev: *u8;
-        hash: Hash;
+        hash: Hash(TKey);
         key: TKey;
         value: TValue;
     };
@@ -219,6 +227,10 @@ typeof_value :: fn (T: type) type #comptime {
 
 typeof_node :: fn (T: type) type #comptime {
     return @T.head;
+}
+
+typeof_hash :: fn (T: type) type #comptime {
+    return (@T.head).hash;
 }
 
 is_initialized :: fn (tbl: *?T) bool #inline {
@@ -249,7 +261,7 @@ bucket_alloc :: fn (tbl: *?T, bucket_count: s64) {
     memcpy(auto tbl, auto &t2, sizeof(T));
 }
 
-calculate_hash :: fn (key: ?T) Hash #inline {
+calculate_hash :: fn (key: ?T) Hash(T) #inline {
     #if T == string {
         return auto String.hash(key);
     } else {
@@ -313,7 +325,7 @@ erase :: fn (tbl: *?T, node: *typeof_node(T)) {
     tbl.len -= 1;
 }
 
-lookup_node :: fn (tbl: *?T, hash: Hash) *typeof_node(T) {
+lookup_node :: fn (tbl: *?T, hash: typeof_hash(T)) *typeof_node(T) {
     assert(tbl.buckets.ptr);
     bucket :: &tbl.buckets[auto hash % auto tbl.buckets.len];
     node := bucket.n;

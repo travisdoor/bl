@@ -360,3 +360,18 @@ is_signed_number :: fn (T: type) bool #comptime {
 is_pointer :: fn (T: type) bool #comptime {
     return typeinfo(T).kind == TypeKind.Ptr;
 }
+
+/// Return signed or unsigned builtin number type of the requested size.
+/// The `size_bytes` must be 1, 2, 4 or 8 Bytes.
+number_type :: fn (size_bytes: usize, is_signed: bool) type #comptime {
+    switch size_bytes {
+        1 { if is_signed { return s8;  } return u8;  }
+        2 { if is_signed { return s16; } return u16; }
+        4 { if is_signed { return s32; } return u32; }
+        8 { if is_signed { return s64; } return u64; }
+        default;
+    }
+    // Unsupported number type!
+    unreachable;
+    return s32;
+}
