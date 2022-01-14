@@ -9,10 +9,9 @@ BL_EXE_PATH_UNIX :: "bin/blc";
 TMP_DIR :: ".temp";
 MAIN_TEST_SUITE_FILEPATH :: "tests/src/main.test.bl";
 EXAMPLES_DIR :: "docs/master/examples";
-DOC_TEST :: "tests/docs/doc.test.bl";
 EXPECT_FAIL_DIR :: "tests/src/expect_fail";
 
-HARDCODED_MODULES :: {:[12]string:
+HARDCODED_MODULES :: {:[13]string:
                       "lib/bl/api/std/arg_parser/arg_parser.test.bl",
                       "lib/bl/api/std/array/array.test.bl",
                       "lib/bl/api/std/array_table/array_table.test.bl",
@@ -25,6 +24,7 @@ HARDCODED_MODULES :: {:[12]string:
                       "lib/bl/api/std/table/table.test.bl",
                       "lib/bl/api/std/thread/thread.test.bl",
                       "lib/bl/api/std/tmp_allocator/tmp_allocator.test.bl",
+                      "lib/bl/api/std/buffer_allocator/buffer_allocator.test.bl",
                      };
 
 main :: fn () s32 {
@@ -79,11 +79,6 @@ main :: fn () s32 {
         {
             path :: get_path(EXPECT_FAIL_DIR);
             test_all_in_dir(path, true);
-        }
-
-        { // docs
-            path :: get_path(DOC_TEST);
-            test_file(path, TestKind.Test);
         }
 
         duration_ms :: os_tick_ms() - start_time_ms;

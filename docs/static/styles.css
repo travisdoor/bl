@@ -7,8 +7,24 @@ body {
 footer {
   text-align: right;
 }
-h2 {
+h1 {
+  background-color: #fff59a;
+  padding: 8px;
+  text-align: center;
+  font-size: larger;
+}
+h1.title {
+  background-color: #ffffff;
   padding: 0px;
+  text-align: right;
+  font-size: small;
+}
+h2 {
+  padding: 4px;
+  border-color: #000000;
+  background-color: #909090;
+  color: white;
+  font-size: large;
 }
 table {
   border-collapse: collapse;
@@ -26,17 +42,26 @@ th {
   background-color: #ffd65a;
   color: black;
 }
-pre {
-  background-color: #fff9e7;
-  border: 1px;
-  border-color: #FFC107;
-  border-style: solid;
-  padding: 10px;
-}
 code {
   font-family: Fira Code, Consolas, Menlo, monospace;
   font-size: small;
   background-color: #fff9e7;
+  border: 1px;
+  border-color: #FFC107;
+  border-style: solid;
+  padding: 2px;
+}
+pre {
+  background-color: #fff9e7;
+  border: 2px;
+  border-color: #FFC107;
+  border-style: dotted;
+  padding: 10px;
+}
+pre code {
+  background-color: #fff9e7;
+  border: 0px;
+  padding: 0px;
 }
 #TOC {
   position: fixed;

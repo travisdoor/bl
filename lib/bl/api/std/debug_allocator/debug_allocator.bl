@@ -69,7 +69,7 @@
 //! 
 //! **note**: Debug allocator is thread safe. Init and terminate must be called from main thread.
 
-debug_allocator :: {:Allocator: &debug_allocator_handler};
+debug_allocator :: {:Allocator: &handler};
 
 /// Initialize Debug Allocator. This function internally swap current global context allocator to 
 /// debug one. Deinitialization must be done by [terminate](#terminate) call.
@@ -174,7 +174,7 @@ Meta :: struct {
     line: s32;
 }
 
-debug_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, ptr : *u8 = null, file := String.empty, line := 0) *u8 {
+handler :: fn (_: *Allocator, operation: AllocOp, size: usize, ptr : *u8 = null, file := String.empty, line := 0) *u8 {
     switch operation {
         AllocOp.Allocate {
             return debug_malloc(size, file, line);
@@ -228,6 +228,10 @@ debug_free :: fn (ptr: *u8) {
     free_memory(&default_allocator, auto meta);
 }
 
+// =================================================================================================
+// Old hash table implementation
+// =================================================================================================
+// @Cleanup: This should be simplified and eventually replaced by standard table.
 
 Iterator :: struct {
     opaque: *u8;

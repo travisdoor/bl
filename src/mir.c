@@ -9626,7 +9626,9 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
     bassert(ast_fn_type->kind == AST_TYPE_FN);
     // Force comptimes to act like polymorph functions, this will allow passing also types as values
     // and keep static analyze as it is for now.
-    ast_fn_type->data.type_fn.is_polymorph |= isflag(flags, FLAG_COMPTIME);
+    if (!ast_fn_type->data.type_fn.is_polymorph) {
+        ast_fn_type->data.type_fn.is_polymorph = isflag(flags, FLAG_COMPTIME) && isnotflag(flags, FLAG_EXTERN);
+    }
     const bool is_polymorph =
         ast_fn_type->data.type_fn.is_polymorph && !ctx->polymorph.is_replacement_active;
 

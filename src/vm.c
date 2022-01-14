@@ -2492,6 +2492,9 @@ enum vm_interp_state vm_execute_comptime_call(struct virtual_machine *vm,
     bassert(mir_is_comptime(&call->base) && "Top level call is expected to be comptime.");
     struct mir_fn *fn = mir_get_callee(call);
     bmagic_assert(fn);
+    if (isflag(fn->flags, FLAG_EXTERN)) {
+        babort("External function cannot be #comptime for now!");
+    }
     mir_instrs_t *args = call->args;
     bassert(sarrlenu(args) == sarrlenu(fn->type->data.fn.args));
     // Push all arguments in reverse order on the stack.

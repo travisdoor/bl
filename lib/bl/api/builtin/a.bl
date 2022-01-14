@@ -361,6 +361,11 @@ is_pointer :: fn (T: type) bool #comptime {
     return typeinfo(T).kind == TypeKind.Ptr;
 }
 
+/// Return true if the `T` type is a function type.
+is_function :: fn (T: type) bool #comptime {
+    return typeinfo(T).kind == TypeKind.Fn;
+}
+
 /// Return signed or unsigned builtin number type of the requested size.
 /// The `size_bytes` must be 1, 2, 4 or 8 Bytes.
 number_type :: fn (size_bytes: usize, is_signed: bool) type #comptime {

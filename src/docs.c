@@ -33,7 +33,7 @@
 #define H1(stream, str) fprintf(stream, "\n## %s\n", str);
 #define H2(stream, str) fprintf(stream, "\n### %s\n", str);
 
-#define CODE_BLOCK_BEGIN(stream) fprintf(stream, "\n```\n");
+#define CODE_BLOCK_BEGIN(stream) fprintf(stream, "\n```c\n");
 #define CODE_BLOCK_END(stream) fprintf(stream, "\n```\n\n");
 #define CODE_BLOCK_NEW_LINE(stream) fprintf(stream, "\n    ");
 
@@ -148,8 +148,8 @@ void doc_decl_entity(struct context *ctx, struct ast *decl)
         strclr(ctx->section_members);
     }
 
-    fprintf(ctx->stream, "\n***\n");
-    // fprintf(ctx->stream, "\n\n*Declared in: %s*\n", ctx->unit->filename);
+    //fprintf(ctx->stream, "\n***\n");
+    fprintf(ctx->stream, "\n\n*Declared in: %s*\n", ctx->unit->filename);
 }
 
 // @Cleanup: put this into general doc() procedure???
@@ -440,7 +440,7 @@ void doc_unit(struct context *ctx, struct unit *unit)
     ctx->stream = f;
 
     if (unit->ast->docs) {
-        fprintf(f, "%s", unit->ast->docs);
+        fprintf(f, "%s\n", unit->ast->docs);
     } else {
         H0(f, unit->filename);
     }

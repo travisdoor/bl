@@ -21,15 +21,6 @@
 //! }
 //! ```
 
-// @NOTE: Not direcly used internally, when layout of this structure is changed, internal compiler
-// representation must be modified too.
-_Array :: struct {
-    len: s64;
-    ptr: *u8;
-    allocated: usize;
-    allocator: *Allocator;
-}
-
 /// Sets dynamic array to default state. If array contains already allocated memory `array_terminate`
 /// must be called first. Custom `allocator` can be specified.
 ///
@@ -103,6 +94,15 @@ array_clear :: fn (_arr: *[..]?T) #inline {
 
 #private
 ALLOC_BLOCK_SIZE : usize : 32;
+
+// @NOTE: Not direcly used internally, when layout of this structure is changed, internal compiler
+// representation must be modified too.
+_Array :: struct {
+    len: s64;
+    ptr: *u8;
+    allocated: usize;
+    allocator: *Allocator;
+}
 
 get_elem_ptr :: fn (arr: *_Array, elem_size: usize, i: s64) *u8 #inline {
     if i >= arr.len {

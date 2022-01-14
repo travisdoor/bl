@@ -67,6 +67,7 @@
 //! 
 //! **note**: Temporary allocator has it's internal context allocated per-thread, so the explicit 
 //! release of the allocated memory at the thread worker exit is mandatory.
+//!
 
 /// Temporary allocator instance.
 temporary_allocator :: {:Allocator: &temporary_allocator_handler };

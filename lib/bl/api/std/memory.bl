@@ -64,7 +64,7 @@ alloc :: fn (size: usize, loc := #call_location) *u8 {
     return mem;
 };
 
-/// @INCOMPLETE
+/// Same as `alloc` but allocated memory block is set to zero.
 calloc :: fn (num: usize, size: usize, loc := #call_location) *u8 {
     if size == 0 { panic("Attempt to allocate 0 bytes."); }
     mem :: allocate_memory(_context.allocator, size * num, loc); 
@@ -110,7 +110,7 @@ memset :: fn (_dest: *u8, v: u8, size: usize) *u8 {
     return _dest;
 }
 
-/// Zero out 'dest' memory of 'size' and return the `dest` pointer.
+/// Zero out `dest` memory of `size` and return the `dest` pointer.
 zeromem :: fn (dest: *u8, size: usize) *u8 {
     m :: size / sizeof(u64);
     d :: size - m * sizeof(u64);
@@ -236,7 +236,7 @@ AllocOp :: enum {
     Allocate;
     /// Free of previously allocated memory is required. 
     Free;
-    /// Release of all allocated memory is required. This operation is optional and is not supported 
+    /// Release of all allocated memory if required. This operation is optional and is not supported 
     /// by all allocators.
     Release;
 }

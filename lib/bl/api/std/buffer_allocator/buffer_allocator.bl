@@ -1,0 +1,148 @@
+// =================================================================================================
+// bl
+//
+// File:   buffer_allocator.bl
+// Author: Martin Dorazil
+// Date:   13/1/22
+//
+// Copyright 2022 Martin Dorazil
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+// =================================================================================================
+
+//! # Buffer Allocator
+//! 
+//! `#import "std/buffer_allocator"`
+//!
+//! The buffer allocator can be used to allocate memory in preallocated blocks on the stack or heap 
+//! in case we know the size need. It is perfectly fit for temporary allocation in case we need better
+//! control over the memory resource.
+//!
+//! The preallocated memory block can have an arbitrary size greater than zero.
+//! 
+//! The block is not supposed to grow and the allocator does not own it. Used buffer is basically 
+//! appended on every allocation and free takes no effect in this case. In case there is no more space 
+//! left in the block, the default context allocator is used as a fallback. The buffer can be used 
+//! multiple times but it should be managed only by one buffer allocator at a time.
+//!
+//! Use the standard `allocate_memory` and `free_memory` to use the allocator.
+//!
+//! ### Example
+//! 
+//! ```c
+//! #import "std/buffer_allocator"
+//! 
+//! buffer: [64]u8;
+//! 
+//! main :: fn () s32 {
+//!     allocator: std.BufferAllocator;
+//!     std.buffer_allocator_init(&allocator, buffer);
+//! 
+//!     arr: [..]u8;
+//!     // Initialize the array with our custom allocator.
+//!     array_init(&arr, &allocator);
+//! 
+//!     loop i := 0; i < 10; i += 1 {
+//!         // We're appending the array using our allocator.
+//!         array_push(&arr, auto i);
+//!     }
+//!    
+//!     // Print out the array content;
+//!     print("arr = %\n", arr);
+//! 
+//!     // All allocations are done on stack inside the 'buffer'. To test it, we can
+//!     // print out the buffer content. Keep in mind that the array preallocates
+//!     // slightly more memory than needed on the first 'array_push` call (for i.e.
+//!     // 32 elements).
+//!     print("buf = %\n", buffer);
+//! 
+//!     // Also the address of the first element in the array should point to the first
+//!     // element of the buffer.
+//!     print("%\n", buffer.ptr == arr.ptr);
+//! 
+//!     return 0;
+//! }
+//! ```
+//! 
+
+#scope std
+
+BufferAllocator :: struct #base Allocator {
+    /// Memory buffer slice.
+    mem: []u8;
+    /// Used byte count in the `mem` slice. (This count does not contain allocations done in case
+    /// the `mem` is full and allocator produce fallback allocation using the context allocator.)
+    used_bytes: usize;
+}
+
+/// Use this function to initialize the `allocator` with an external preallocated `buffer`. The 
+/// allocator **does not own** the buffer resource so there is no need to terminate the `allocator` 
+/// instance when it's no longer needed.
+buffer_allocator_init :: fn (allocator: *BufferAllocator, buffer: []u8) {
+    assert(buffer.len > 0 && buffer.ptr);
+    allocator.handler = auto &handler;
+    allocator.mem = buffer;
+    allocator.used_bytes = 0;
+}
+
+// =================================================================================================
+#private
+// =================================================================================================
+handler :: fn (ctx: *BufferAllocator, operation: AllocOp, size: usize, ptr: *u8, _ := String.empty, _ := 0) *u8 {
+    assert(ctx.mem.ptr);
+    switch operation {
+        AllocOp.Allocate {
+            if size == 0 { panic("Attempt to allocate zero bytes."); }
+            mem: *u8 #noinit;
+            if ctx.used_bytes + size > auto ctx.mem.len { 
+                // No more space left in the buffer -> we should use context allocator or default
+                // allocator as fallback.
+                if _context.allocator == ctx {
+                    mem = allocate_memory(&default_allocator, size);
+                } else {
+                    mem = allocate_memory(_context.allocator, size);
+                }
+            } else {
+                mem = &ctx.mem[auto ctx.used_bytes];
+                ctx.used_bytes += size;
+            }
+            return mem;
+        }
+        AllocOp.Free {
+            if ptr {
+                addr :: cast(usize) ptr;
+                begin :: cast(usize) ctx.mem.ptr;
+                end :: begin + cast(usize)ctx.mem.len - 1;
+                if addr < begin || addr > end {
+                    // Memory allocated by default allocator.
+                    if _context.allocator == ctx {
+                        free_memory(&default_allocator, ptr);
+                    } else {
+                        free_memory(_context.allocator, ptr);
+                    }
+                }
+            }
+        }
+        AllocOp.Release {
+            ctx.used_bytes = 0;
+        }
+        default { panic(); }
+    }
+    return null;
+}
