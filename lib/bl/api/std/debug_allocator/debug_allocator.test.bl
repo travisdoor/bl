@@ -2,8 +2,6 @@
 #import "std/debug_allocator"
 
 main :: fn () s32 {
-    DebugAllocator.init();
-    defer DebugAllocator.terminate();
     return test_run();    
 }
 

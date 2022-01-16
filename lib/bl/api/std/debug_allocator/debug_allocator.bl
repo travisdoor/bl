@@ -27,8 +27,9 @@
 // =================================================================================================
 
 #import "std/sync"
+#import "std/table"
 
-#scope DebugAllocator
+#scope std 
 
 //! # Debug Allocator
 //! 
@@ -46,8 +47,8 @@
 //! #import "std/debug_allocator"
 //! 
 //! main :: fn () s32 {
-//!     DebugAllocator.init();
-//!     defer DebugAllocator.terminate();
+//!     std.debug_allocator_init();
+//!     defer std.debug_allocator_terminate();
 //! 
 //!     // leaking allocation
 //!     alloc(64);
@@ -72,36 +73,37 @@
 debug_allocator :: {:Allocator: &handler};
 
 /// Initialize Debug Allocator. This function internally swap current global context allocator to 
-/// debug one. Deinitialization must be done by [terminate](#terminate) call.
-init :: fn () {
+/// debug one. Deinitialization must be done by [debug_allocator_terminate](#debug_allocator_terminate) call.
+debug_allocator_init :: fn () {
     assert(!_prev_allocator);
     _prev_allocator = _context.allocator;
     _context.allocator = &debug_allocator;
-    _alloc_table = htbl_new(*Meta, 2048, &default_allocator);
+    std.tbl_init(&_alloc_table, 2048, &default_allocator);
     Sync.init(&_mutex);
 }
 
 /// Terminate Debug Allocator. Prints current memory report when 
 /// [print_report](#print_report) is `true`.
-terminate :: fn (print_report := true) {
+debug_allocator_terminate :: fn (print_report := true) {
+    if !_prev_allocator { return; }
     if print_report {
         print_memory_report(true);
     }
     assert(_prev_allocator);
     _context.allocator = _prev_allocator;
-    htbl_delete(_alloc_table);
+    std.tbl_terminate(&_alloc_table);
     Sync.terminate(&_mutex);
     _prev_allocator = null;
 }
 
 /// Invoke [debug_break](#debug_break) before allocation with defined serial ID.
 /// **note**: See also [print_memory_report](#print_memory_report)
-break_on :: fn (serial: u64) #inline {
+debug_allocator_break :: fn (serial: u64) #inline {
     _break_on = serial;
 }
 
 /// Return currently allocated memory in bytes.
-allocated_bytes :: fn () usize #inline {
+debug_allocator_allocated :: fn () usize #inline {
     Sync.lock(&_mutex);
     defer Sync.unlock(&_mutex);
     return auto _total_allocated;
@@ -128,7 +130,7 @@ allocated_bytes :: fn () usize #inline {
 /// **note**: Printed report contains all remaining (not freed) allocations in time when function was
 /// called. Memory leaks can contain false-positives when function is called before execution end.
 /// 
-/// **hint**: Allocation serail ID can be used by [break_on](#break_on) to interrupt 
+/// **hint**: Allocation serail ID can be used by [debug_allocator_break](#debug_allocator_break) to interrupt 
 /// execution before memory is allocated and eventually localize allocation in debbuger.
 print_memory_report :: fn (dump_leaks := false) {
     Sync.lock(&_mutex);
@@ -141,16 +143,13 @@ print_memory_report :: fn (dump_leaks := false) {
     
     print("******************* MEMORY REPORT ******************\n");
     print("* Allocated % %.\n", total, unit);
-    print("* Count of allocations %.\n", _allocation_count);
+    print("* Count of allocations %.\n", _alloc_table.len);
     print("****************************************************\n");
 
-    if dump_leaks && _allocation_count > 0 {
+    if dump_leaks && _alloc_table.len > 0 {
         print("Dump memory leaks begin:\n");
-        iter := htbl_begin(_alloc_table);
-        end  :: htbl_end(_alloc_table);
-        loop !iter_equal(iter, end) {
-            meta :: @cast(**Meta)htbl_iter_peek_value(iter);
-            htbl_iter_next(&iter);
+        loop it := std.tbl_begin(&_alloc_table); it != std.tbl_end(&_alloc_table); std.tbl_iter_next(&it) {
+            meta :: &it.value;
             print("    [%] - %:% (% bytes)\n", meta.serial, meta.file, meta.line, meta.allocated_size);
         }
         print("Dump memory leaks end.\n");
@@ -159,17 +158,15 @@ print_memory_report :: fn (dump_leaks := false) {
 
 #private
 _mutex: Sync.Mutex;
-_allocation_count: s64;
 _total_allocated: s64;
 _prev_allocator: *Allocator;
-_alloc_table: *HashTable;
+_alloc_table: std.Table(*u8, Meta);
 _serial: u64;
 _break_on: u64;
 
 Meta :: struct {
     serial: u64;
     allocated_size: usize;
-    used: usize;
     file: string;
     line: s32;
 }
@@ -190,323 +187,36 @@ handler :: fn (_: *Allocator, operation: AllocOp, size: usize, ptr : *u8 = null,
 
 debug_malloc :: fn (size: usize, file: string, line: s32) *u8 {
     if size == 0 { panic("Zero allocation!"); }
+    mem :: allocate_memory(&default_allocator, size);
+
     Sync.lock(&_mutex);
     defer Sync.unlock(&_mutex);
-    _serial += 1;
-    if _break_on == _serial {
-        debugbreak;
-    }
-    total_size :: sizeof(Meta) + size;
-    mem := cast(*Meta) allocate_memory(&default_allocator, total_size);
-    mem.allocated_size = size; 
-    mem.used = auto mem;
-    mem.file = file;
-    mem.line = line;
-    mem.serial = _serial;
 
-    if htbl_has_key(_alloc_table, cast(u64) mem) { panic("Invalid allocation!"); }
-    htbl_insert(_alloc_table, cast(u64) mem, mem);
+    _serial += 1;
+    if _break_on == _serial { debugbreak; }
+
+    it := std.tbl_insert(&_alloc_table, mem);
+    it.value.allocated_size = size;
+    it.value.file = file;
+    it.value.line = line;
+    it.value.serial = _serial;
 
     _total_allocated += auto size;
-    _allocation_count += 1;
-    return ptr_shift_bytes(auto mem, auto sizeof(Meta));
+    return mem;
 }
 
 debug_free :: fn (ptr: *u8) {
     if ptr == null { return; }
-    meta := cast(*Meta) ptr_shift_bytes(ptr, - (cast(s64) sizeof(Meta)));
-    if meta.used == 0         { panic("Attempt to free unused memory!"); }
-    if meta.used != auto meta { panic("Memory malformed!"); }
-    meta.used = 0;
+    it :: std.tbl_lookup(&_alloc_table, ptr);
+    if it == std.tbl_end(&_alloc_table) { 
+        panic("Attempt to free already freed or unallocated memory on address %!", ptr); 
+    }
+    meta :: &it.value;
     { // CRITICAL
         Sync.lock(&_mutex);
         defer Sync.unlock(&_mutex);    
         _total_allocated -= auto meta.allocated_size;
-        _allocation_count -= 1;
-        htbl_erase(_alloc_table, cast(u64) meta);
+        std.tbl_erase_it(&_alloc_table, it);
     }
-    free_memory(&default_allocator, auto meta);
+    free_memory(&default_allocator, ptr);
 }
-
-// =================================================================================================
-// Old hash table implementation
-// =================================================================================================
-// @Cleanup: This should be simplified and eventually replaced by standard table.
-
-Iterator :: struct {
-    opaque: *u8;
-}
-
-iter_equal :: fn (first: Iterator, second: Iterator) bool #inline {
-    return cast(u64)first.opaque == cast(u64)second.opaque;
-}
-
-HashTable :: struct {
-    T: *TypeInfo;
-    len: usize;
-    end: Node;
-    begin: *Node;
-    buckets: []Bucket;
-    allocator: *Allocator;
-}
-
-htbl_new :: fn (v: Any, expected_size: usize, allocator: *Allocator = null) *HashTable
-{
-    if v.type_info.kind != TypeKind.Type {
-        panic("Hash table expects type passed as T not '%'", v.type_info.kind);
-    }
-    T := cast(*TypeInfo) v.data;
-    tbl := cast(*HashTable) allocate_memory(allocator, sizeof(HashTable));
-    if tbl == null { panic("Bad alloc!!"); }
-    table_init(tbl, T, expected_size, allocator);
-    return tbl;
-}
-
-htbl_delete :: fn (tbl: *HashTable) {
-    if tbl == null { return; }
-    table_terminate(tbl);
-    free_memory(tbl.allocator, auto tbl);
-}
-
-htbl_begin :: fn (tbl: *HashTable) Iterator #inline {
-    return {:Iterator: auto tbl.begin};
-}
-
-htbl_end :: fn (tbl: *HashTable) Iterator #inline {
-    return {:Iterator: auto &tbl.end};
-}
-
-htbl_clear :: fn (tbl: *HashTable) {
-    iter := htbl_begin(tbl);
-    iter_end := htbl_end(tbl);
-    node : *Node = null;
-
-    loop !iter_equal(iter, iter_end) {
-        node = auto iter.opaque;
-
-        htbl_iter_next(&iter);
-        free_memory(tbl.allocator, auto node);
-    }
-
-    memset(auto tbl.buckets.ptr, 0, (cast(usize) tbl.buckets.len) * sizeof(Bucket));
-
-    tbl.end   = {:Node: 0};
-    tbl.begin = &tbl.end;
-    tbl.len   = 0;
-}
-
-htbl_iter_next :: fn (iter: *Iterator) #inline {
-    iter.opaque = auto (cast(*Node)iter.opaque).next;
-}
-
-htbl_insert :: fn (tbl: *HashTable, key: u64, v: Any) *u8 {
-    if (v.type_info != tbl.T) {
-        panic("Invalid value type '%', expected is '%'.",
-              @v.type_info,
-              @tbl.T);
-    }
-
-    if v.data == null {
-        panic("Invalid value (null).");
-    }
-
-    return insert(tbl, key, v.data);
-}
-
-htbl_has_key :: fn (tbl: *HashTable, key: u64) bool {
-    iter :: htbl_find(tbl, key);
-    end  :: htbl_end(tbl);
-    return !iter_equal(iter, end);
-}
-
-htbl_find :: fn (tbl: *HashTable, key: u64) Iterator {
-    hash :: hash_index(tbl, key);
-    bucket := &tbl.buckets[auto hash];
-
-    node := bucket.first;
-    loop node != null {
-        if node.key == key { return {:Iterator: auto node}; }
-        if node == bucket.last { break; }
-        node = node.next;
-    }
-
-    return {:Iterator: auto &tbl.end};
-}
-
-htbl_iter_peek_value :: fn (iter: Iterator) *u8 {
-    node :: cast(*Node) iter.opaque;
-    return get_data_ptr(node);
-}
-
-htbl_erase :: fn { erase_iter; erase_key; }
-
-DEFAULT_EXPECTED_SIZE : usize : 64;
-MAX_LOAD_FACTOR       :: 1;
-
-Node :: struct {
-    next: *Node;
-    prev: *Node;
-    key:   u64;
-}
-
-Bucket :: struct {
-    first: *Node;
-    last:  *Node;
-}
-
-// tool polymorph?
-next_prime :: fn (num: s32) s32 {
-    num += 1;
-    loop i := 2; i < num; i += 1 {
-        if num % i == 0 {
-            num += 1;
-            i = 2;
-        } else {
-            continue;
-        }
-    }
-
-    return num;
-}
-
-get_node_size :: fn (tbl: *HashTable) usize #inline {
-    return sizeof(Node) + tbl.T.size_bytes;
-}
-
-hash_index :: fn (tbl: *HashTable, key: u64) u64 #inline {
-    return key % auto tbl.buckets.len;
-}
-
-get_data_ptr :: fn (node: *Node) *u8 #inline {
-    return ptr_shift_bytes(auto node, auto sizeof(Node));
-}
-
-table_init :: fn (tbl: *HashTable, T: *TypeInfo, expected_size: usize, allocator: *Allocator) {
-    tbl.T = T;
-    tbl.end = {:Node: 0};
-    tbl.begin = &tbl.end;
-    assert(allocator);
-
-    // init buckets
-    if expected_size == 0 { expected_size = DEFAULT_EXPECTED_SIZE; }
-    tbl.allocator   = allocator;
-    tbl.buckets.len = auto next_prime(cast(s32)Math.ceil(cast(f64)expected_size / cast(f64)MAX_LOAD_FACTOR));
-    size : usize : cast(usize) tbl.buckets.len * sizeof(Bucket);
-    tbl.buckets.ptr = auto allocate_memory(tbl.allocator, size);
-    tbl.len         = 0;
-    memset(auto tbl.buckets.ptr, 0, size);
-}
-
-table_terminate :: fn (tbl: *HashTable) {
-    htbl_clear(tbl);
-    free_memory(tbl.allocator, auto tbl.buckets.ptr);
-    tbl.buckets.len = 0;
-    tbl.len         = 0;
-    tbl.begin       = &tbl.end;
-}
-
-create_node :: fn (tbl: *HashTable) *Node {
-    node_size :: get_node_size(tbl);
-    new_node := cast(*Node) allocate_memory(tbl.allocator, node_size);
-    if new_node == null { panic("Bad alloc!"); }
-    memset(auto new_node, 0, node_size);
-
-    return new_node;
-}
-
-insert_node :: fn (prev: *Node, next: *Node, new: *Node) #inline {
-    if prev != null { prev.next = new; }
-    new.prev = prev;
-    if next != null { next.prev = new; }
-    new.next = next;
-}
-
-erase_node :: fn (tbl: *HashTable, node: *Node, bucket: *Bucket) Iterator {
-    if bucket.first == bucket.last {
-        bucket.first = null;
-        bucket.last = null;
-    } else if node == bucket.first {
-        bucket.first = node.next;
-    } else if node == bucket.last {
-        bucket.last = node.prev;
-    }
-
-    if node.prev != null {
-        node.prev.next = node.next;
-        node.next.prev = node.prev;
-    } else {
-        tbl.begin      = node.next;
-        node.next.prev = null;
-    }
-
-    iter_next := {:Iterator: auto node.next};
-    free_memory(tbl.allocator, auto node);
-    tbl.len -= 1;
-    return iter_next;
-}
-
-insert :: fn (tbl: *HashTable, key: u64, data: *u8) *u8 {
-    hash :: hash_index(tbl, key);
-
-    bucket   := &tbl.buckets[auto hash];
-    new_node := create_node(tbl);
-    new_node.key = key;
-
-    if bucket.first == null {
-        // new empty bucket
-        bucket.first = new_node;
-        bucket.last  = new_node;
-        insert_node(null, tbl.begin, new_node);
-        tbl.begin = new_node;
-    } else {
-        // find conflicts
-        node := bucket.first;
-        loop node != null {
-            if node.key == key { panic("Duplicate key: %", key); }
-            if node == bucket.last { break; }
-            node = node.next;
-        }
-
-        if tbl.begin == bucket.first { tbl.begin = new_node; }
-        insert_node(bucket.first.prev, bucket.first, new_node);
-        bucket.first = new_node;
-    }
-
-    // copy user data
-    if data != null {
-        memcpy(get_data_ptr(new_node), data, tbl.T.size_bytes);
-    }
-
-    tbl.len += 1;
-    return get_data_ptr(new_node);
-}
-
-erase_iter :: fn (tbl: *HashTable, iter: Iterator) Iterator {
-    if iter.opaque == auto &tbl.end {
-        return {:Iterator: auto &tbl.end};
-    }
-
-    node :: cast(*Node) iter.opaque;
-    hash :: hash_index(tbl, node.key);
-    bucket :: &tbl.buckets[auto hash];
-    return erase_node(tbl, node, bucket);
-}
-
-erase_key :: fn (tbl: *HashTable, key: u64) Iterator {
-    hash :: hash_index(tbl, key);
-    bucket :: &tbl.buckets[auto hash];
-
-    node := bucket.first;
-    loop node != null {
-        if node.key == key {
-            return erase_node(tbl, node, bucket);
-        }
-
-        if node == bucket.last { break; }
-        node = node.next;
-    }
-
-    panic("No such key % in hash table.", key);
-    return {:Iterator: 0};
-}
-

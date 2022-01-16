@@ -30,13 +30,9 @@
 
 #scope Glm
 
-//! ===
-//! GLM
-//! ===
+//! # GLM
 //! 
-//! ::
-//! 
-//!     #import "std/glm"
+//! `#import "std/glm"`
 //!
 //! 3D math tools.
 

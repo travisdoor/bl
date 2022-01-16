@@ -1,20 +1,12 @@
-#import "std/buffer_allocator"
+#import "std/table"
 
 main :: fn () s32 {
-    std.my_abort();
-    std.arr_push()
-    std.arr_clear()
+    tbl: std.Table(s32, s32);
+    std.tbl_erase(&tbl, 1); 
+
+    it :: std.tbl_end(&tbl);
+    std.tbl_erase(&tbl, it);
     return 0;
-}
-
-#scope std
-my_abort :: fn { _my_abort; }
-arr_push :: fn () {}
-arr_clear :: fn () {}
-
-#private
-_my_abort :: fn () {
-    print("hello!\n");
 }
 
 // =================================================================================================

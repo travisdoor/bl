@@ -112,6 +112,7 @@ memset :: fn (_dest: *u8, v: u8, size: usize) *u8 {
 
 /// Zero out `dest` memory of `size` and return the `dest` pointer.
 zeromem :: fn (dest: *u8, size: usize) *u8 {
+    ptr :: dest;
     m :: size / sizeof(u64);
     d :: size - m * sizeof(u64);
     loop i : usize = 0; i < m; i += 1 {
@@ -123,7 +124,7 @@ zeromem :: fn (dest: *u8, size: usize) *u8 {
         @dest = 0;
         dest = auto (cast(u64) dest + 1);
     }
-    return dest;
+    return ptr;
 }
 
 init_default :: fn (dest: *?T) *T #inline {
@@ -185,7 +186,7 @@ align_ptr_up :: fn (p: *u8, alignment: usize) (p: *u8, adjustment: usize)
 /// }
 /// ```
 slice_init :: fn (slice: *[]?T, n: s64, allocator: *Allocator = null, loc := #call_location) {
-    if n < 0 { panic("Attempt to allocate 0 sized slice!"); }
+    if n < 0 { panic("Attempt to allocate % elements in slice!", n); }
     if n == 0  {
         slice.ptr = null;
         slice.len = 0;

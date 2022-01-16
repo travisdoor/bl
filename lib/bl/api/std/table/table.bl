@@ -63,22 +63,22 @@
 //! #import "std/table"
 //!
 //! main :: fn () s32 {
-//!     table: Table(string, s32);
-//!     defer tbl_terminate(&table);
+//!     table: std.Table(string, s32);
+//!     defer std.tbl_terminate(&table);
 //!
 //!     // Insert some data into the table.
-//!     tbl_insert(&table, "Martin", 32);
-//!     tbl_insert(&table, "Lisa", 29);
-//!     tbl_insert(&table, "John", 40);
+//!     std.tbl_insert(&table, "Martin", 32);
+//!     std.tbl_insert(&table, "Lisa", 29);
+//!     std.tbl_insert(&table, "John", 40);
 //!
 //!     // Lookup data by key.
-//!     found :: tbl_lookup(&table, "Martin");
-//!     if found != tbl_end(&table) {
+//!     found :: std.tbl_lookup(&table, "Martin");
+//!     if found != std.tbl_end(&table) {
 //!         print("[%] %\n", found.key, found.value);
 //!     }
 //!
 //!     // Iterate over the table
-//!     loop it := tbl_begin(&table); it != tbl_end(&table); tbl_iter_next(&it) {
+//!     loop it := std.tbl_begin(&table); it != std.tbl_end(&table); std.tbl_iter_next(&it) {
 //!         print("[%] %\n", it.key, it.value);
 //!     }
 //!
@@ -91,7 +91,7 @@
 
 /// Create a new **Table** type. The `TKey` must be a number or string type.
 Table :: fn (TKey: type, TValue: type) type #comptime {
-    static_assert(TKey == string || is_number(TKey));
+    static_assert(TKey == string || is_number(TKey) || is_pointer(TKey));
     TNode :: Node(TKey, TValue);
     return struct {
         buckets: [] struct { n: *TNode; c: u32; };
@@ -131,37 +131,47 @@ tbl_terminate :: fn (tbl: *?T) {
     zeromem(auto tbl, sizeof(T));
 }
 
-/// Insert new `value` into the table associated with unique (checked by assert) `key`. A new memory
-/// slot is allocated every time and rehashing of the table can be eventually done in case the
-/// "load factor" goes too high.
-tbl_insert :: fn (tbl: *?T, key: typeof_key(T), value: typeof_value(T)) {
+/// Overloaded table insert function adding new element into the table associated with the `key`.
+/// The `key` value must be unique (not already existing in the table), this is checked in debug
+/// mode and panic is invoked in case of collision.
+///
+/// **Overloads:**
+/// ```c
+/// fn (tbl: *?T, key: typeof_key(T), value: typeof_value(T)) TableIter(T) #inline
+/// fn (tbl: *?T, key: typeof_key(T)) TableIter(T) #inline
+/// ```
+/// 
+/// Function returns iterator pointing to the new element. Every new element is allocated using
+/// table allocator (can be specified using `tbl_init` function). Rehashing of the table can be
+/// eventually done in case the table's load factor goes over `MAX_LF`.
+tbl_insert :: fn { impl_insert_empty; impl_insert; } 
+
+// @Incomplete: tbl_erase and tbl_erase_it should be later moved into overload group, currently it's
+// not possible due to issue: #157.
+
+/// Erase table entry associated with `key`. In case there is no such `key` found function does nothing.
+///
+/// Returns iterator pointing to the next element or to the `tbl_end`.
+tbl_erase :: fn (tbl: *?T, key: typeof_key(T)) TableIter(T) #inline {
     assert(tbl);
-    if !is_initialized(tbl) { bucket_alloc(tbl, DEFAULT_BUCKET_COUNT); }
-
-    hash :: calculate_hash(key);
-    #if IS_DEBUG {
-        if tbl_contains(tbl, key) { panic("Duplicate key entry '%' in table!", key); }
-    }
-
-    TNode :: typeof_node(T);
-    node := cast(*TNode) allocate_memory(tbl.allocator, sizeof(TNode));
-    node.key = key;
-    node.value = value;
-    node.hash = hash;
-
-    insert(tbl, node);
+    if !is_initialized(tbl) { return tbl_end(tbl); }
+    return tbl_erase_it(tbl, lookup_node(tbl, calculate_hash(key)));
 }
 
-/// Erase entry associated with `key` and return `true` in case the entry was found and successfully
-/// deleted, otherwise return `false`.
-tbl_erase :: fn (tbl: *?T, key: typeof_key(T)) bool #inline {
+/// Erase table entry associated with `it` iterator. In case the `it` points to the table end, the
+/// function does nothing. 
+///
+/// Returns iterator pointing to the next element or to the `tbl_end`.
+tbl_erase_it :: fn (tbl: *?T, it: TableIter(T)) TableIter(T) #inline {
     assert(tbl);
-    if !is_initialized(tbl) { return false; }
-    it :: lookup_node(tbl, calculate_hash(key));
-    if it == tbl_end(tbl) { return false; }
+    if !is_initialized(tbl) { return tbl_end(tbl); }
+    if it == tbl_end(tbl) { return it; }
+    next := it;
+    tbl_iter_next(&next);
     erase(tbl, it);
-    return true;
+    return next;
 }
+
 
 /// Lookup element associated with the `key` value in the table and return an iterator pointing to
 /// the key-value pair. In case there is no such element in the table, the function returns an iterator
@@ -279,7 +289,7 @@ bucket_alloc :: fn (tbl: *?T, bucket_count: s64) {
     }
 
     t2: T;
-    tbl_init(&t2, auto bucket_count);
+    tbl_init(&t2, auto bucket_count, tbl.allocator);
     loop it := tbl_begin(tbl); it != tbl_end(tbl); {
         node := it;
         tbl_iter_next(&it);
@@ -296,6 +306,31 @@ calculate_hash :: fn (key: ?T) Hash(T) #inline {
     } else {
         return auto key;
     }
+}
+
+impl_insert :: fn (tbl: *?T, key: typeof_key(T), value: typeof_value(T)) TableIter(T) #inline {
+    assert(tbl);
+    it := impl_insert_empty(tbl, key);
+    it.value = value;
+    return it;
+}
+
+impl_insert_empty :: fn (tbl: *?T, key: typeof_key(T)) TableIter(T) {
+    assert(tbl);
+    if !is_initialized(tbl) { bucket_alloc(tbl, DEFAULT_BUCKET_COUNT); }
+
+    hash :: calculate_hash(key);
+    #if IS_DEBUG {
+        if tbl_contains(tbl, key) { panic("Duplicate key entry '%' in table!", key); }
+    }
+
+    TNode :: typeof_node(T);
+    node := cast(*TNode) allocate_memory(tbl.allocator, sizeof(TNode));
+    node.key = key;
+    node.hash = hash;
+
+    insert(tbl, node);
+    return node;
 }
 
 insert :: fn (tbl: *?T, node: *typeof_node(T)) {

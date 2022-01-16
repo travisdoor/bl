@@ -1,10 +1,7 @@
 #import "std/test"
-#import "std/debug_allocator"
 #import "std/table"
 
 main :: fn () s32 {
-    DebugAllocator.init();
-    defer DebugAllocator.terminate();
     return test_run();
 }
 
@@ -30,7 +27,8 @@ g_tbl: std.Table(s32, s32);
 
 test_insert :: fn () #test {
     loop i := 0; i < TEST_COUNT; i += 1 {
-        std.tbl_insert(&g_tbl, i, i);
+        it :: std.tbl_insert(&g_tbl, i, i);
+        test_eq(it.value, i);
     }
 }
 
@@ -146,7 +144,7 @@ test_erase :: fn () #test {
     test_eq(tbl.len, TEST_COUNT);
 
     loop i := 0; i < TEST_COUNT; i += 1 {
-        test_true(std.tbl_erase(&tbl, i));
+        std.tbl_erase(&tbl, i);
     }
     test_eq(tbl.len, 0);
     test_eq(std.tbl_begin(&tbl), std.tbl_end(&tbl));
@@ -162,8 +160,24 @@ test_erase2 :: fn () #test {
     test_eq(tbl.len, TEST_COUNT);
 
     loop i : u64 = 0; i < auto TEST_COUNT; i += 1 {
-        test_true(std.tbl_erase(&tbl, Math.U64_MAX - i));
+        std.tbl_erase(&tbl, Math.U64_MAX - i);
     }
+    test_eq(tbl.len, 0);
+    test_eq(std.tbl_begin(&tbl), std.tbl_end(&tbl));
+}
+
+test_erase_iter :: fn () #test {
+    tbl: std.Table(s32, s32);
+    defer std.tbl_terminate(&tbl);
+
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        std.tbl_insert(&tbl, i, i);
+    }
+    test_eq(tbl.len, TEST_COUNT);
+
+    loop it := std.tbl_begin(&tbl); it != std.tbl_end(&tbl); it = std.tbl_erase_it(&tbl, it) {
+    }
+
     test_eq(tbl.len, 0);
     test_eq(std.tbl_begin(&tbl), std.tbl_end(&tbl));
 }
@@ -179,7 +193,7 @@ test_use_after_erase :: fn () #test {
         test_eq(tbl.len, TEST_COUNT / 2);
 
         loop i := 0; i < TEST_COUNT / 2; i += 1 {
-            test_true(std.tbl_erase(&tbl, i));
+            test_not_null(std.tbl_erase(&tbl, i));
         }
         test_eq(tbl.len, 0);
         test_eq(std.tbl_begin(&tbl), std.tbl_end(&tbl));
@@ -209,7 +223,7 @@ test_struct :: fn () #test {
     test_eq(c, TEST_COUNT);
 
     loop i := 0; i < TEST_COUNT; i += 1 {
-        test_true(std.tbl_erase(&tbl, i));
+        test_not_null(std.tbl_erase(&tbl, i));
     }
     test_eq(tbl.len, 0);
 }
@@ -269,4 +283,21 @@ test_string_keys_2 :: fn () #test {
         test_eq(it.key, DATA[i]);
         test_eq(it.value, i);
     }
+}
+
+test_insert_empty :: fn () #test {
+    tbl: std.Table(s32, s32);
+    defer std.tbl_terminate(&tbl);
+
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        it := std.tbl_insert(&tbl, i);
+        it.value = i;
+    }
+
+    c := 0;
+    loop it := std.tbl_begin(&tbl); it != std.tbl_end(&tbl); std.tbl_iter_next(&it) {
+        c += 1;
+        test_eq(it.key, it.value);
+    }
+    test_eq(c, TEST_COUNT);
 }

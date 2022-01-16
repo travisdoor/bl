@@ -7515,6 +7515,7 @@ static struct mir_fn *group_select_overload(struct context            *ctx,
                 continue;
             }
         }
+        // @Incomplete: report ambiguous functions?
         if (p > selected_priority) {
             selected          = it_fn;
             selected_priority = p;

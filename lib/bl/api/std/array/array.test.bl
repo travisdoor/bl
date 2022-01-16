@@ -1,11 +1,7 @@
 #import "std/test"
-#import "std/debug_allocator"
-
 #import "std/array"
 
 main :: fn () s32 {
-    DebugAllocator.init();
-    defer DebugAllocator.terminate();
     return test_run();    
 }
 

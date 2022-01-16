@@ -1,6 +1,7 @@
 body {
   background-color: white;
   font-family: Roboto, "Segoe UI", sans-serif;
+  font-size: 14;
   max-width: 800px;
   margin: auto;
 }
@@ -10,21 +11,29 @@ footer {
 h1 {
   background-color: #fff59a;
   padding: 8px;
-  text-align: center;
   font-size: larger;
+  font-weight: bold;
+  display: inline-block;
+  border-bottom: 3px solid #ffcf3f;
 }
 h1.title {
   background-color: #ffffff;
   padding: 0px;
   text-align: right;
   font-size: small;
+  display: inherit;
+  border-bottom: 0px;
 }
 h2 {
-  padding: 4px;
-  border-color: #000000;
-  background-color: #909090;
-  color: white;
+  color: black;
   font-size: large;
+  display: inline-block;
+  border-bottom: 3px solid #ffcf3f;
+  padding-top: 20px;
+}
+h3 {
+  color: black;
+  font-size: medium;
 }
 table {
   border-collapse: collapse;

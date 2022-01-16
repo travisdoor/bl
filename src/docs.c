@@ -111,20 +111,29 @@ void doc_decl_entity(struct context *ctx, struct ast *decl)
     const char *name       = ident->data.ident.id.str;
     const bool  is_mutable = decl->data.decl_entity.mut;
 
+    if (name[0] == '_') return;
+
     if (text && strstr(text, "@INCOMPLETE")) {
         builder_msg(MSG_WARN, 0, ident->location, CARET_WORD, "Found incomplete documentation!");
     }
 
-    // if (!text) return;
     if (!decl->owner_scope) return;
     if (decl->owner_scope->kind != SCOPE_GLOBAL && decl->owner_scope->kind != SCOPE_NAMED) return;
 
-    const char *full_name = ident->data.ident.id.str;
+    const char *scope_name =
+        decl->owner_scope->kind == SCOPE_NAMED ? decl->owner_scope->name : NULL;
 
-    // REF(ctx->stream, full_name);
+    char *full_name = tstr();
+    if (scope_name) {
+        strprint(full_name, "%s.%s", scope_name, name);
+    } else {
+        strprint(full_name, "%s", name);
+    }
+
     H1(ctx->stream, full_name);
+    put_tstr(full_name);
     CODE_BLOCK_BEGIN(ctx->stream);
-    fprintf(ctx->stream, "%s :", name);
+        fprintf(ctx->stream, "%s :", name);
     if (type) {
         fprintf(ctx->stream, " ");
         doc(ctx, type);
@@ -148,8 +157,7 @@ void doc_decl_entity(struct context *ctx, struct ast *decl)
         strclr(ctx->section_members);
     }
 
-    //fprintf(ctx->stream, "\n***\n");
-    fprintf(ctx->stream, "\n\n*Declared in: %s*\n", ctx->unit->filename);
+    fprintf(ctx->stream, "\n\n*File: %s*\n\n", ctx->unit->filename);
 }
 
 // @Cleanup: put this into general doc() procedure???
@@ -204,7 +212,7 @@ void doc_decl_variant(struct context *ctx, struct ast *decl)
         const char *name = ident->data.ident.id.str;
         fprintf(ctx->stream, "%s", name);
         if (decl->docs) {
-            strappend(ctx->section_variants, "**%s** - %s\n\n", name, decl->docs);
+            strappend(ctx->section_variants, "* `%s` - %s\n", name, decl->docs);
         }
     }
     if (value && value->kind == AST_EXPR_LIT_INT) {
@@ -222,7 +230,7 @@ void doc_decl_member(struct context *ctx, struct ast *decl)
         fprintf(ctx->stream, "%s: ", name);
 
         if (decl->docs) {
-            strappend(ctx->section_members, "**%s** - %s\n\n", name, decl->docs);
+            strappend(ctx->section_members, "* `%s` - %s\n", name, decl->docs);
         }
     }
     doc(ctx, type);

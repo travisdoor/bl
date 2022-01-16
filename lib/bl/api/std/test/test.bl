@@ -29,6 +29,7 @@
 #import "std/thread"
 #import "std/string"
 #import "std/array"
+#import "std/debug_allocator"
 
 #load "std/debug.bl"
 
@@ -183,11 +184,11 @@ test_is_error :: fn (got_err: Error, expected_code: s32, loc := #call_location) 
 
 /// Execute all registered test cases in current assembly. The `test_run` function uses compiler 
 /// builtin `testcases()` function returning slice of all registered test cases in the current 
-/// assembly (all function with hash directive `#test`).
+/// assembly (all functions with hash directive `#test`).
 /// 
 /// Test case execution can be used in runtime and compile time, in both cases function remap 
 /// default behaviour of `panic()` function call and try to report all failing tests without 
-/// execution termination.
+/// termination.
 /// 
 /// Formatted output containing information about every test run status and summary report is 
 /// produced during execution of this function. In case of test failure all needed information 
@@ -208,9 +209,12 @@ test_is_error :: fn (got_err: Error, expected_code: s32, loc := #call_location) 
 ///     return test_run(); 
 /// } 
 /// ```
-test_run :: fn () s32 {
+test_run :: fn (report_memory_leaks := true) s32 {
     sighup :: fn (_: C.int) {};
     C.signal(C.SIGHUP, &sighup);
+
+    if report_memory_leaks { std.debug_allocator_init(); }
+    defer std.debug_allocator_terminate();
 
     cases := testcases();
     if cases.len == 0 {

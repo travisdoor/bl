@@ -51,16 +51,16 @@ main :: fn () s32 {
         print("Test general suite:\n");    
         {
             path :: get_path(MAIN_TEST_SUITE_FILEPATH);
-            test_file(path, TestKind.Runtime);
-            test_file(path, TestKind.Test);
+            test_file(path, TestKind.RUNTIME);
+            test_file(path, TestKind.TEST);
         }
 
         // modules
         print("Test modules:\n");    
         loop i := 0; i < HARDCODED_MODULES.len; i += 1 {
             path :: get_path(HARDCODED_MODULES[i]);
-            test_file(path, TestKind.Runtime);
-            //test_file(file, TestKind.Test);
+            test_file(path, TestKind.RUNTIME);
+            //test_file(file, TestKind.TEST);
         }
 
         { // examples
@@ -72,7 +72,7 @@ main :: fn () s32 {
         print("Test misc:\n");    
         { // gen-docs
             path :: get_path("docs/master/make.bl");
-            test_file(path, TestKind.Analyze);
+            test_file(path, TestKind.ANALYZE);
         }
 
         // expect fail to compile
@@ -96,10 +96,10 @@ main :: fn () s32 {
 
 #private
 TestKind :: enum {
-    Runtime;
-    CompileTime;
-    Test;
-    Analyze;
+    RUNTIME;
+    COMPILE_TIME;
+    TEST;
+    ANALYZE;
 }
 
 Args :: struct #base ArgParser.Ctx {
@@ -230,10 +230,10 @@ report_failed :: fn (msg: string, file: string, state: s32) #inline {
     _errc += 1;
 }
 
-test_file :: fn (file: string, kind := TestKind.Runtime, expected_state := TEST_RUN_OK) {
+test_file :: fn (file: string, kind := TestKind.RUNTIME, expected_state := TEST_RUN_OK) {
     state: s32;
     switch kind {
-        TestKind.Runtime {
+        TestKind.RUNTIME {
             state = blc(file, "--no-warning");
             if state == expected_state {
                 report_ok("Compilation", file, state);
@@ -258,7 +258,7 @@ test_file :: fn (file: string, kind := TestKind.Runtime, expected_state := TEST_
             } 
         }
 
-        TestKind.CompileTime {
+        TestKind.COMPILE_TIME {
             state = blc(file, "--no-warning --run");
             if state == expected_state {
                 report_ok("Interpretation", file, state);
@@ -267,7 +267,7 @@ test_file :: fn (file: string, kind := TestKind.Runtime, expected_state := TEST_
             }
         }
         
-        TestKind.Test {
+        TestKind.TEST {
             state = blc(file, "--run-tests --no-bin --no-warning");
             if state == expected_state {
                 report_ok("Run compile time tests", file, state);
@@ -276,7 +276,7 @@ test_file :: fn (file: string, kind := TestKind.Runtime, expected_state := TEST_
             }
         }
 
-        TestKind.Analyze {
+        TestKind.ANALYZE {
             state = blc(file, "--no-warning --no-bin");
             if state == expected_state {
                 report_ok("Analyze", file, state);
@@ -307,7 +307,7 @@ test_all_in_dir :: fn (dir: string, expect_fail := false) {
             if expect_fail {
                 error_code: s32 #noinit;
                 if get_expected_error(file, &error_code) {
-                    test_file(file, TestKind.Analyze, error_code);
+                    test_file(file, TestKind.ANALYZE, error_code);
                 } else {
                     print_err("Cannot get expected error code for file '%'", file);
                 }
