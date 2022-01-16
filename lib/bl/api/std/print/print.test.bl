@@ -124,28 +124,28 @@ test_fmt_f32 :: fn () #test {
 
 test_fmt_s32_base10 :: fn () #test {
     {
-        str :: sprint("%", fmt_int(0, FmtIntBase.Dec));     
+        str :: sprint("%", fmt_int(0, FmtIntBase.DEC));     
         defer String.delete(str);
 
         test_eq(str, "0");
     }
 
     {
-        str :: sprint("%", fmt_int(10, FmtIntBase.Dec));     
+        str :: sprint("%", fmt_int(10, FmtIntBase.DEC));     
         defer String.delete(str);
 
         test_eq(str, "10");
     }
 
     {
-        str :: sprint("%", fmt_int(-10, FmtIntBase.Dec));     
+        str :: sprint("%", fmt_int(-10, FmtIntBase.DEC));     
         defer String.delete(str);
 
         test_eq(str, "-10");
     }
 
     {
-        str :: sprint("%", fmt_int(123456789, FmtIntBase.Dec));     
+        str :: sprint("%", fmt_int(123456789, FmtIntBase.DEC));     
         defer String.delete(str);
 
         test_eq(str, "123456789");
@@ -154,14 +154,14 @@ test_fmt_s32_base10 :: fn () #test {
 
 test_fmt_s32_base2 :: fn () #test {
     {
-        str :: sprint("%", fmt_int(0, FmtIntBase.Bin));     
+        str :: sprint("%", fmt_int(0, FmtIntBase.BIN));     
         defer String.delete(str);
 
         test_eq(str, "0b0");
     }
 
     {
-        str :: sprint("%", fmt_int(0b1011, FmtIntBase.Bin));     
+        str :: sprint("%", fmt_int(0b1011, FmtIntBase.BIN));     
         defer String.delete(str);
 
         test_eq(str, "0b1011");
@@ -170,14 +170,14 @@ test_fmt_s32_base2 :: fn () #test {
 
 test_fmt_s32_base16 :: fn () #test {
     {
-        str :: sprint("%", fmt_int(0, FmtIntBase.Hex));     
+        str :: sprint("%", fmt_int(0, FmtIntBase.HEX));     
         defer String.delete(str);
 
         test_eq(str, "0x0");
     }
 
     {
-        str :: sprint("%", fmt_int(0xfa12, FmtIntBase.Hex));     
+        str :: sprint("%", fmt_int(0xfa12, FmtIntBase.HEX));     
         defer String.delete(str);
 
         test_eq(str, "0xfa12");

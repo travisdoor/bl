@@ -205,7 +205,7 @@ main :: fn () s32 {
 }
 
 make_file :: fn (filepath: string, content: string, args: ...) Error {
-    file, err :: Fs.open(filepath, Fs.OpenMode.Write, Fs.OpenMode.Create);
+    file, err :: Fs.open(filepath, Fs.OpenMode.WRITE, Fs.OpenMode.CREATE);
     defer Fs.close(file);
     if !is_ok(err) { return err; }
     Fs.write_fmt(file, content, args);
@@ -215,8 +215,8 @@ make_file :: fn (filepath: string, content: string, args: ...) Error {
 #private
 custom_logger :: fn (kind: PrintLogKind, _: string, _: s32, format: string, args: ...) {
     switch kind {
-        PrintLogKind.Message { print("  "); }
-        PrintLogKind.Warning { print("  [W] "); }
+        PrintLogKind.MESSAGE { print("  "); }
+        PrintLogKind.WARNING { print("  [W] "); }
         default { print("  [E] "); }                        
     }    
     print(format, args);

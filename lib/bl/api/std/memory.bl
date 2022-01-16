@@ -234,12 +234,12 @@ slice_range :: fn (slice: []?T, start: s64, end: s64 = -1) []T #inline {
 /// Specify allocator opratation.
 AllocOp :: enum {
     /// Allocation of new memory block is required. 
-    Allocate;
+    ALLOCATE;
     /// Free of previously allocated memory is required. 
-    Free;
+    FREE;
     /// Release of all allocated memory if required. This operation is optional and is not supported 
     /// by all allocators.
-    Release;
+    RELEASE;
 }
 
 /// Default allocator context base.
@@ -255,7 +255,7 @@ AllocFn :: *fn (ctx: *Allocator, operation: AllocOp, size: usize, ptr : *u8 = nu
 allocate_memory :: fn (allocator: *Allocator, size: usize, loc := #call_location) *u8 #inline {
     if !allocator { allocator = _context.allocator; }
     assert(allocator && allocator.handler);
-    return allocator.handler(allocator, AllocOp.Allocate, size, null, loc.file, loc.line);
+    return allocator.handler(allocator, AllocOp.ALLOCATE, size, null, loc.file, loc.line);
 }
 
 /// Free memory previously allocated by specific `allocator`. In case the `allocator` is null, global application
@@ -263,7 +263,7 @@ allocate_memory :: fn (allocator: *Allocator, size: usize, loc := #call_location
 free_memory :: fn (allocator: *Allocator, ptr: *u8, loc := #call_location) #inline {
     if !allocator { allocator = _context.allocator; }
     assert(allocator && allocator.handler);
-    allocator.handler(allocator, AllocOp.Free, 0, ptr, loc.file, loc.line);
+    allocator.handler(allocator, AllocOp.FREE, 0, ptr, loc.file, loc.line);
 }
 
 /// Release all memory allocated by `allocator`.
@@ -271,7 +271,7 @@ free_memory :: fn (allocator: *Allocator, ptr: *u8, loc := #call_location) #inli
 /// **warning**: This operation is not supported by all allocators.
 release_memory :: fn (allocator: *Allocator, loc := #call_location) #inline {
     assert(allocator && allocator.handler);
-    allocator.handler(allocator, AllocOp.Release, 0, null, loc.file, loc.line);
+    allocator.handler(allocator, AllocOp.RELEASE, 0, null, loc.file, loc.line);
 }
 
 /// Default memory allocator using libc malloc internally.
@@ -280,13 +280,13 @@ default_allocator :: {:Allocator: &default_allocator_handler };
 #private
 default_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, ptr : *u8 = null, _:= String.empty, _:= 0) *u8 {
     switch operation {
-        AllocOp.Allocate {
+        AllocOp.ALLOCATE {
             return C.malloc(size);
         }
-        AllocOp.Free {
+        AllocOp.FREE {
             C.free(ptr);
         }
-        AllocOp.Release;
+        AllocOp.RELEASE;
         default { panic(); }
     }
     return null;

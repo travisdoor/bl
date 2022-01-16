@@ -94,7 +94,7 @@ HashTable :: struct {
  */
 htbl_new :: fn (v: Any, expected_size: usize, allocator: *Allocator = null) *HashTable
 {
-    if v.type_info.kind != TypeKind.Type {
+    if v.type_info.kind != TypeKind.TYPE {
         panic("Hash table expects type passed as T not '%'", v.type_info.kind);
     }
     T := cast(*TypeInfo) v.data;

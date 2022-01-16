@@ -17,13 +17,13 @@ FILE_INVALID :: _FsImpl.FILE_INVALID;
 /// Specify operation with opened file.
 OpenMode :: enum #flags {
     /// Open file for reading.
-    Read;
+    READ;
     /// Open file for writing and truncate its content.
-    Write;
+    WRITE;
     /// Open file for appending (keeps current content).
-    Append;
+    APPEND;
     /// Create file if it does not exist.
-    Create;
+    CREATE;
 }
 
 /// Specify behavior of [dir_copy](#dircopy).
@@ -38,8 +38,8 @@ CopyOpt :: struct {
 
 /// Specify kind of file system entry.
 InfoKind :: enum {
-    File;
-    Directory;
+    FILE;
+    DIRECTORY;
 }
 
 /// Helper container to hold information about file system entry.
@@ -171,12 +171,12 @@ dir_copy :: fn (src: string, dest: string, opt: *CopyOpt = &COPY_OPT_DEFAULT, fi
         String.clear_concat(&dest_path, dest, "/", list[i].name);
         if opt.skip_existing && exist(dest_path) { continue; }
         switch list[i].kind {
-            InfoKind.File {
+            InfoKind.FILE {
                 copy_err = _FsImpl.copy(src_path, dest_path, opt.override);
                 _cc = 1;
             }
 
-            InfoKind.Directory {
+            InfoKind.DIRECTORY {
                 c, err :: dir_copy(src_path, dest_path, opt);
                 copy_err = err;
                 _cc = c;
@@ -206,7 +206,7 @@ size :: fn (handle: File) (usize, Error) #inline {
 /// 
 /// main :: fn () s32 {
 ///     // Open this file.
-///     file, open_err :: Fs.open(#file, Fs.OpenMode.Read);
+///     file, open_err :: Fs.open(#file, Fs.OpenMode.READ);
 /// 
 ///     // Always check for errors.
 ///     if !is_ok(open_err) {
@@ -371,11 +371,11 @@ dir_remove_all :: fn (dirpath: string, remove_root := true, filter: DirScanFilte
         node :: &list[i];
         String.concatenate(&tmp, dirpath, "/", node.name);
         switch node.kind {
-            InfoKind.Directory {
+            InfoKind.DIRECTORY {
                 err :: dir_remove_all(tmp);
                 if !is_ok(err) { return err; }
             }            
-            InfoKind.File {
+            InfoKind.FILE {
                 err :: _FsImpl.remove(tmp);
                 if !is_ok(err) { return err; }
             }

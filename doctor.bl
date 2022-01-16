@@ -36,7 +36,7 @@ main :: fn () s32 {
     Fs.set_cwd(get_path(TMP_DIR));
     _args.test_count = 1;
     if !parse_args() { return 1; }
-    #if PLATFORM == Platform.windows {
+    #if PLATFORM == Platform.WINDOWS {
         _compiler_path = get_path(BL_EXE_PATH_WIN);
     } else {
         _compiler_path = get_path(BL_EXE_PATH_UNIX);
@@ -185,7 +185,7 @@ parse_args :: fn () bool {
 
 get_verbosity :: fn () string #inline {
     if _args.diag_mode { return ""; } // print all
-    #if PLATFORM == Platform.windows {
+    #if PLATFORM == Platform.WINDOWS {
         return "2>nul 1>nul";
     } else {
         return "1>/dev/null 2>/dev/null";
@@ -193,7 +193,7 @@ get_verbosity :: fn () string #inline {
 }
 
 get_expected_error :: fn (filepath: string, out_err: *s32) bool {
-    file, err1 :: Fs.open(filepath, Fs.OpenMode.Read);
+    file, err1 :: Fs.open(filepath, Fs.OpenMode.READ);
     defer Fs.close(file);
     if !is_ok(err1) { print_err("%", err1); return false; }
     content, err2 :: Fs.read_string(file);
@@ -244,7 +244,7 @@ test_file :: fn (file: string, kind := TestKind.RUNTIME, expected_state := TEST_
 
             tmp := String.new();
             defer String.delete(tmp);
-            #if PLATFORM == Platform.windows {
+            #if PLATFORM == Platform.WINDOWS {
                 String.append(&tmp, "out.exe ");
             } else {
                 String.append(&tmp, "./out ");
@@ -301,7 +301,7 @@ test_all_in_dir :: fn (dir: string, expect_fail := false) {
 
     loop i := 0; i < list.len; i += 1 {
         info :: &list[i];
-        if info.kind != Fs.InfoKind.Directory {
+        if info.kind != Fs.InfoKind.DIRECTORY {
             String.clear(&file);
             String.concatenate(&file, dir, "/", info.name);
             if expect_fail {

@@ -81,7 +81,7 @@ process_dir :: fn (path: string, extension: string, out: *string) Error {
         if String.compare(info.name, ".")    { return false; }
         if String.compare(info.name, "..")   { return false; }
         if String.compare(info.name, "_", 1) { return false; }
-        if info.kind == Fs.InfoKind.Directory {
+        if info.kind == Fs.InfoKind.DIRECTORY {
             loop i := 0; i < IGNORE.len; i += 1 {
                 if String.compare(info.name, IGNORE[i]) { return false; }
             }
@@ -94,7 +94,7 @@ process_dir :: fn (path: string, extension: string, out: *string) Error {
     loop i := 0; i < list.len; i += 1 {
         info :: &list[i];
         switch info.kind {
-            Fs.InfoKind.File {
+            Fs.InfoKind.FILE {
                 ext :: Fs.get_extension(info.name);
                 if String.compare(ext, extension) { 
                     String.append(out, path);
@@ -103,7 +103,7 @@ process_dir :: fn (path: string, extension: string, out: *string) Error {
                     String.append(out, " ");
                 }
             }
-            Fs.InfoKind.Directory {
+            Fs.InfoKind.DIRECTORY {
                 new_path :: tprint("%/%", path, info.name);
                 err :: process_dir(new_path, extension, out);
                 if !is_ok(err) { return err; }

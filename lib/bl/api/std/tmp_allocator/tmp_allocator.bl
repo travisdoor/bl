@@ -91,7 +91,7 @@ temporary_reset :: fn () #inline {
 ///
 /// **hint**: Call this method before main returns.
 temporary_release :: fn () #inline {
-    temporary_allocator_handler(null, AllocOp.Release, 0);
+    temporary_allocator_handler(null, AllocOp.RELEASE, 0);
     assert(_total_capacity == 0);
     assert(_total_allocated == 0);
 }
@@ -108,11 +108,11 @@ DEFAULT_ALIGNMENT : usize : 16; // @INCOMPLETE This is platform depend.
 
 temporary_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, _ : *u8 = null, _ := String.empty, _ := 0) *u8 {
     switch operation {
-        AllocOp.Allocate {
+        AllocOp.ALLOCATE {
             return allocate(size);
         }
-        AllocOp.Free; // Does nothing!
-        AllocOp.Release {
+        AllocOp.FREE; // Does nothing!
+        AllocOp.RELEASE {
             do_release(_root);
             _root = null;
         }

@@ -361,10 +361,10 @@ foo(s32); // Type passed
 ...
 
 foo :: fn (v: Any) {
-    assert(v.type_info.kind == TypeKind.Type);
+    assert(v.type_info.kind == TypeKind.TYPE);
 
     data_info := cast(*TypeInfo) v.data;
-    assert(data_info.kind == TypeKind.Int);
+    assert(data_info.kind == TypeKind.INT);
 }
 ```
 
@@ -671,7 +671,7 @@ RTTI :: fn () #test {
     // yields pointer to TypeInfo constant structure
     info := typeinfo(s32);
 
-    if info.kind == TypeKind.Int {
+    if info.kind == TypeKind.INT {
         // safe cast to *TypeInfoInt
         info_int := cast(*TypeInfoInt) info;
 

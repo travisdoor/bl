@@ -169,10 +169,10 @@ dir_scan :: fn (dirpath: string, filter: Fs.DirScanFilterFn) (Fs.InfoList, Error
         kind: Fs.InfoKind #noinit;
         name: string;
         if is_flag(ffd.dwFileAttributes, auto Win32.FILE_ATTRIBUTE_DIRECTORY) {
-            kind = Fs.InfoKind.Directory;
+            kind = Fs.InfoKind.DIRECTORY;
             name = String.new(ffd.cFileName.ptr);
         } else {
-            kind = Fs.InfoKind.File;
+            kind = Fs.InfoKind.FILE;
             name = String.new(ffd.cFileName.ptr);
         }
         push := true;
@@ -259,10 +259,10 @@ modes_to_flags :: fn (modes: []Fs.OpenMode) (access: u32, create: u32, append: b
     append: bool;
     loop i := 0; i < modes.len; i += 1 {
         switch modes[i] {
-            Fs.OpenMode.Read    { access = access | Win32.GENERIC_READ;  }            
-            Fs.OpenMode.Write   { access = access | Win32.GENERIC_WRITE; }
-            Fs.OpenMode.Append  { access = access | Win32.GENERIC_WRITE; append = true; }
-            Fs.OpenMode.Create  { create = Win32.OPEN_ALWAYS; }
+            Fs.OpenMode.READ    { access = access | Win32.GENERIC_READ;  }            
+            Fs.OpenMode.WRITE   { access = access | Win32.GENERIC_WRITE; }
+            Fs.OpenMode.APPEND  { access = access | Win32.GENERIC_WRITE; append = true; }
+            Fs.OpenMode.CREATE  { create = Win32.OPEN_ALWAYS; }
             default { panic(); }
         }
     }

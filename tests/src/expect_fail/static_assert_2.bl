@@ -1,6 +1,6 @@
 // @ERR_COMPILE_TIME_ABORT@
 foo :: fn (v: ?T) {
-    static_assert(typeinfo(v).kind == TypeKind.Int);
+    static_assert(typeinfo(v).kind == TypeKind.INT);
 }
 
 main :: fn () s32 { 

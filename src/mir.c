@@ -9628,7 +9628,8 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
     // Force comptimes to act like polymorph functions, this will allow passing also types as values
     // and keep static analyze as it is for now.
     if (!ast_fn_type->data.type_fn.is_polymorph) {
-        ast_fn_type->data.type_fn.is_polymorph = isflag(flags, FLAG_COMPTIME) && isnotflag(flags, FLAG_EXTERN);
+        ast_fn_type->data.type_fn.is_polymorph =
+            isflag(flags, FLAG_COMPTIME) && isnotflag(flags, FLAG_EXTERN);
     }
     const bool is_polymorph =
         ast_fn_type->data.type_fn.is_polymorph && !ctx->polymorph.is_replacement_active;
@@ -11046,8 +11047,9 @@ static void provide_builtin_arch(struct context *ctx)
     mir_variants_t  *variants = arena_safe_alloc(&ctx->assembly->arenas.sarr);
     static struct id ids[static_arrlenu(arch_names)];
     for (usize i = 0; i < static_arrlenu(arch_names); ++i) {
+        char *name = scdup(&ctx->assembly->string_cache, arch_names[i], strlen(arch_names[i]));
         struct mir_variant *variant =
-            create_variant(ctx, id_init(&ids[i], arch_names[i]), bt->t_s32, i);
+            create_variant(ctx, id_init(&ids[i], strtoupper(name)), bt->t_s32, i);
         sarrput(variants, variant);
         provide_builtin_variant(ctx, scope, variant);
     }
@@ -11065,8 +11067,9 @@ static void provide_builtin_os(struct context *ctx)
     mir_variants_t  *variants = arena_safe_alloc(&ctx->assembly->arenas.sarr);
     static struct id ids[static_arrlenu(os_names)];
     for (usize i = 0; i < static_arrlenu(os_names); ++i) {
+        char *name = scdup(&ctx->assembly->string_cache, os_names[i], strlen(os_names[i]));
         struct mir_variant *variant =
-            create_variant(ctx, id_init(&ids[i], os_names[i]), bt->t_s32, i);
+            create_variant(ctx, id_init(&ids[i], strtoupper(name)), bt->t_s32, i);
         sarrput(variants, variant);
         provide_builtin_variant(ctx, scope, variant);
     }
@@ -11084,8 +11087,9 @@ static void provide_builtin_env(struct context *ctx)
     mir_variants_t  *variants = arena_safe_alloc(&ctx->assembly->arenas.sarr);
     static struct id ids[static_arrlenu(env_names)];
     for (usize i = 0; i < static_arrlenu(env_names); ++i) {
+        char *name = scdup(&ctx->assembly->string_cache, env_names[i], strlen(env_names[i]));
         struct mir_variant *variant =
-            create_variant(ctx, id_init(&ids[i], env_names[i]), bt->t_s32, i);
+            create_variant(ctx, id_init(&ids[i], strtoupper(name)), bt->t_s32, i);
         sarrput(variants, variant);
         provide_builtin_variant(ctx, scope, variant);
     }

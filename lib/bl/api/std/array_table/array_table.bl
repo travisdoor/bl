@@ -13,7 +13,7 @@
 /// }
 /// ```
 ArrayTable :: fn (TKey: type, TValue: type) type #comptime {
-    static_assert(typeinfo(TKey).kind == TypeKind.Int);
+    static_assert(typeinfo(TKey).kind == TypeKind.INT);
     return struct {
         keys: [..]TKey;
         values: [..]TValue;

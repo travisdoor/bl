@@ -116,15 +116,15 @@ test_allocator :: {:Allocator: &test_allocator_handler };
 
 test_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, ptr : *u8 = null, file := String.empty, line := 0) *u8 {
     switch operation {
-        AllocOp.Allocate {
+        AllocOp.ALLOCATE {
             alloc_count += 1;
             return C.malloc(size);
         }
-        AllocOp.Free {
+        AllocOp.FREE {
             free_count += 1;
             C.free(ptr);
         }
-        AllocOp.Release;
+        AllocOp.RELEASE;
         default { panic(); }
     }
     return null;

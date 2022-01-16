@@ -147,6 +147,8 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
     }                                                                                              \
     (void)0
 
+char *strtoupper(char *str);
+
 // =================================================================================================
 // Small Array
 // =================================================================================================
@@ -200,10 +202,10 @@ typedef sarr_t(struct mir_instr *, 16) mir_instrs_t;
 // =================================================================================================
 struct string_cache;
 
-// Allocate string inside the sting cache, a passed cache pointer must be initialized to NULL for the
-// first time. The malloc is called only in case there is not enough space left for the string
-// inside the preallocated block. Internally, len+1 is allocated to hold zero terminators. When 'str'
-// is NULL no data copy is done. Function returns pointer to new allocated block/copy of the
+// Allocate string inside the sting cache, a passed cache pointer must be initialized to NULL for
+// the first time. The malloc is called only in case there is not enough space left for the string
+// inside the preallocated block. Internally, len+1 is allocated to hold zero terminators. When
+// 'str' is NULL no data copy is done. Function returns pointer to new allocated block/copy of the
 // original string.
 char *scdup(struct string_cache **cache, const char *str, usize len);
 void  scfree(struct string_cache **cache);

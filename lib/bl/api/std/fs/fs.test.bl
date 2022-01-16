@@ -77,7 +77,7 @@ fs_open_test3 :: fn () #test {
 }
 
 fs_file_create_test1 :: fn () #test {
-    file, err :: Fs.open("", Fs.OpenMode.Create);
+    file, err :: Fs.open("", Fs.OpenMode.CREATE);
     defer Fs.close(file);
     test_is_error(err, ERR_INVALID_HANDLE);    
 }
@@ -88,7 +88,7 @@ fs_file_create_test2 :: fn () #test {
     Fs.remove(filepath);
 
     {
-        file, err :: Fs.open(filepath, Fs.OpenMode.Create);
+        file, err :: Fs.open(filepath, Fs.OpenMode.CREATE);
         defer Fs.close(file);
         test_ok(err);
 
@@ -99,7 +99,7 @@ fs_file_create_test2 :: fn () #test {
     }    
 
     {
-        file, err :: Fs.open(filepath, Fs.OpenMode.Create, Fs.OpenMode.Write);
+        file, err :: Fs.open(filepath, Fs.OpenMode.CREATE, Fs.OpenMode.WRITE);
         defer Fs.close(file);
         test_ok(err);
 
@@ -109,7 +109,7 @@ fs_file_create_test2 :: fn () #test {
     }    
 
     { // This should reuse already created file!
-        file, err :: Fs.open(filepath, Fs.OpenMode.Create);
+        file, err :: Fs.open(filepath, Fs.OpenMode.CREATE);
         defer Fs.close(file);
         test_ok(err);
         str :: Fs.read_string(file);
@@ -124,13 +124,13 @@ fs_create_append :: fn () #test {
     defer String.delete(filepath);
     Fs.remove(filepath);
     { // initial create
-        file, err :: Fs.open(filepath, Fs.OpenMode.Create, Fs.OpenMode.Write);
+        file, err :: Fs.open(filepath, Fs.OpenMode.CREATE, Fs.OpenMode.WRITE);
         defer Fs.close(file);
         test_ok(err);
         Fs.write_string(file, "Hello!");
     }
     { // append
-        file, err :: Fs.open(filepath, Fs.OpenMode.Append);
+        file, err :: Fs.open(filepath, Fs.OpenMode.APPEND);
         defer Fs.close(file);
         test_ok(err);
         Fs.write_string(file, "Hello!");
@@ -151,7 +151,7 @@ fs_get_uid_test :: fn () #test {
     filepath :: get_dummy_filepath();
     defer String.delete(filepath);
     Fs.remove(filepath);
-    file, err :: Fs.open(filepath, Fs.OpenMode.Create);
+    file, err :: Fs.open(filepath, Fs.OpenMode.CREATE);
     defer Fs.close(file);
     test_ok(err);
     uid, err2 :: Fs.get_uid(file);
@@ -163,7 +163,7 @@ fs_get_uid_test2 :: fn () #test {
     filepath :: get_dummy_filepath();
     defer String.delete(filepath);
     Fs.remove(filepath);
-    file, err :: Fs.open(filepath, Fs.OpenMode.Create);
+    file, err :: Fs.open(filepath, Fs.OpenMode.CREATE);
     Fs.close(file);
     test_ok(err);
     uid, err2 :: Fs.get_uid(filepath);
@@ -172,7 +172,7 @@ fs_get_uid_test2 :: fn () #test {
 }
 
 fs_read_string_test :: fn () #test {
-    file, err1 :: Fs.open(#file, Fs.OpenMode.Read);
+    file, err1 :: Fs.open(#file, Fs.OpenMode.READ);
     defer Fs.close(file);
     test_ok(err1);
     data, err2 := Fs.read_string(file);
@@ -189,7 +189,7 @@ fs_read_string_test2 :: fn () #test {
 }
 
 fs_read_slice_test :: fn () #test {
-    file, err1 :: Fs.open(#file, Fs.OpenMode.Read);
+    file, err1 :: Fs.open(#file, Fs.OpenMode.READ);
     test_ok(err1);
     defer Fs.close(file);
     data, err2 := Fs.read_slice(file);
@@ -200,7 +200,7 @@ fs_read_slice_test :: fn () #test {
 }
 
 fs_validate_filename_test :: fn () #test {
-    if PLATFORM == Platform.windows {
+    if PLATFORM == Platform.WINDOWS {
         test_false(Fs.validate_filename("<"));
         test_false(Fs.validate_filename(">"));
         test_false(Fs.validate_filename(":")); 
@@ -318,7 +318,7 @@ fs_normalize_test2 :: fn () #test {
 }    
 
 fs_normalize_test3 :: fn () #test {
-    file :: Fs.open("foo", Fs.OpenMode.Create);
+    file :: Fs.open("foo", Fs.OpenMode.CREATE);
     Fs.close(file);
     defer Fs.remove("foo");
     cwd :: Fs.get_cwd();
@@ -336,7 +336,7 @@ fs_remove_test :: fn () #test {
     defer String.delete(filepath);
     
     Fs.remove(filepath);
-    file, err :: Fs.open(filepath, Fs.OpenMode.Create);
+    file, err :: Fs.open(filepath, Fs.OpenMode.CREATE);
     test_ok(err);
     Fs.close(file);
     err2 :: Fs.remove(filepath);
@@ -391,7 +391,7 @@ fs_write_test :: fn () #test {
     content :: "Hello I'm cool file content!";    
     
     { // write
-        file :: Fs.open(filepath, Fs.OpenMode.Create, Fs.OpenMode.Write);
+        file :: Fs.open(filepath, Fs.OpenMode.CREATE, Fs.OpenMode.WRITE);
         written, err :: Fs.write(file, content.ptr, content.len);
         test_ok(err);
         test_eq(written, content.len);
@@ -415,7 +415,7 @@ fs_write_string_test :: fn () #test {
     content :: "Hello I'm cool file content!";    
     
     { // write
-        file :: Fs.open(filepath, Fs.OpenMode.Create, Fs.OpenMode.Write);
+        file :: Fs.open(filepath, Fs.OpenMode.CREATE, Fs.OpenMode.WRITE);
         written, err :: Fs.write_string(file, content);
         test_ok(err);
         test_eq(written, content.len);
@@ -439,7 +439,7 @@ fs_write_slice_test :: fn () #test {
     content :: {:[5]u8: 'H', 'e', 'l', 'o', 'o' };
     
     { // write
-        file :: Fs.open(filepath, Fs.OpenMode.Create, Fs.OpenMode.Write);
+        file :: Fs.open(filepath, Fs.OpenMode.CREATE, Fs.OpenMode.WRITE);
         written, err :: Fs.write_slice(file, content);
         test_ok(err);
         test_eq(written, content.len);
@@ -465,7 +465,7 @@ fs_copy_test :: fn () #test {
     Fs.remove(filepath2);
     
     { // new file
-        file :: Fs.open(filepath1, Fs.OpenMode.Create);
+        file :: Fs.open(filepath1, Fs.OpenMode.CREATE);
         Fs.close(file);
     }
     { // copy
@@ -501,14 +501,14 @@ fs_list_dir_test2 :: fn () #test {
     dir :: Fs.get_cwd();
     defer String.delete(dir);
     list, err :: Fs.dir_scan(dir, &fn (info: *Fs.Info) bool {
-        return info.kind == Fs.InfoKind.Directory;
+        return info.kind == Fs.InfoKind.DIRECTORY;
     });
     defer Fs.info_list_delete(list);
     test_ok(err);
     test_true(list.len > 0);
     loop i := 0; i < list.len; i += 1 {
         test_neq(list[i].name, String.empty);
-        test_true(list[i].kind == Fs.InfoKind.Directory);
+        test_true(list[i].kind == Fs.InfoKind.DIRECTORY);
     }
 }
 
@@ -516,14 +516,14 @@ fs_list_dir_test3 :: fn () #test {
     dir :: Fs.get_cwd();
     defer String.delete(dir);
     list, err :: Fs.dir_scan(dir, &fn (info: *Fs.Info) bool {
-        return info.kind == Fs.InfoKind.File;
+        return info.kind == Fs.InfoKind.FILE;
     });
     defer Fs.info_list_delete(list);
     test_ok(err);
     test_true(list.len > 0);
     loop i := 0; i < list.len; i += 1 {
         test_neq(list[i].name, String.empty);
-        test_true(list[i].kind == Fs.InfoKind.File);
+        test_true(list[i].kind == Fs.InfoKind.FILE);
     }
 }
 
@@ -572,7 +572,7 @@ fs_dir_remove_all_test1 :: fn () #test {
         file :: String.new(dir);
         defer String.delete(file);
         String.append(&file, "/file.txt");
-        f, e :: Fs.open(file, Fs.OpenMode.Create);
+        f, e :: Fs.open(file, Fs.OpenMode.CREATE);
         test_ok(e);
         Fs.close(f);
     }

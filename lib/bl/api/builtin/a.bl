@@ -37,10 +37,10 @@
 //! ## Current running platform
 //! ```c
 //! Platform :: enum s32 {
-//!     unknown;
-//!     windows;
-//!     darwin;
-//!     linux;
+//!     UNKNOWN;
+//!     WINDOWS;
+//!     DARWIN;
+//!     LINUX;
 //! }
 //! 
 //! PLATFORM :: <SET_BY_COMPILER>;
@@ -49,10 +49,10 @@
 //! ## Current running architecture
 //! ```c
 //! Arch :: enum s32 {
-//!     unknown;
-//!     x86_64;
-//!     aarch64;
-//!     arm64;
+//!     UNKNOWN;
+//!     X86_64;
+//!     AARCH64;
+//!     ARM64;
 //! }
 //! 
 //! ARCH :: <SET_BY_COMPILER>;
@@ -61,10 +61,10 @@
 //! ## Current running environment
 //! ```c
 //! Env :: enum s32 {
-//!     unknown;
-//!     msvc;
-//!     gnu;
-//!     musl;
+//!     UNKNOWN;
+//!     MSVC;
+//!     GNU;
+//!     MUSL;
 //! }
 //! 
 //! ENV :: <SET_BY_COMPILER>;
@@ -80,31 +80,31 @@
 /// safe casting.
 TypeKind :: enum #compiler {
     /// Base type of all types in type system.
-    Type    = 1;
+    TYPE    = 1;
     /// Void type. (Implicitly used for functions without return value)
-    Void    = 2;
+    VOID    = 2;
     /// Any integer type: `s8`, `s16`, `s32`, `s64`, `u8`, `u16`, `u32`, `u64`, `usize`.
-    Int     = 3;
+    INT     = 3;
     /// Any real type: `f32`, `f64`.
-    Real    = 4;
+    REAL    = 4;
     /// Function type. 
-    Fn      = 5;
+    FN      = 5;
     /// Pointer type. 
-    Ptr     = 6;
+    PTR     = 6;
     /// Boolean type. 
-    Bool    = 7;
+    BOOL    = 7;
     /// Array type. 
-    Array   = 8;
+    ARRAY   = 8;
     /// Structure type. 
-    Struct  = 9;
+    STRUCT  = 9;
     /// Enumerator type. 
-    Enum    = 10;
+    ENUM    = 10;
     /// Null-value type. 
-    Null    = 11;
+    NULL    = 11;
     /// String type. 
-    String  = 12;
+    STRING  = 12;
     /// Function group type. 
-    FnGroup = 16;
+    FN_GROUP = 16;
 };
 
 /// Base `TypeInfo` structure returned by `typeinfo` operator. This structure pointer can be casted to 
@@ -341,29 +341,29 @@ command_line_arguments: []string #compiler;
 /// enumerator type (checked by assert).
 enum_count :: fn (T: type) s64 #comptime {
     info :: typeinfo(T);
-    static_assert(info.kind == TypeKind.Enum);
+    static_assert(info.kind == TypeKind.ENUM);
     return (cast(*TypeInfoEnum)info).variants.len;
 }
 
 /// Return true if the `T` type is a number type.
 is_number :: fn (T: type) bool #comptime {
-    return typeinfo(T).kind == TypeKind.Int;
+    return typeinfo(T).kind == TypeKind.INT;
 }
 
 /// Return true if the `T` type is a signed number type.
 is_signed_number :: fn (T: type) bool #comptime {
     info :: cast(*TypeInfoInt)typeinfo(T);
-    return info.kind == TypeKind.Int && info.is_signed;
+    return info.kind == TypeKind.INT && info.is_signed;
 }
 
 /// Return true if the `T` type is a pointer type.
 is_pointer :: fn (T: type) bool #comptime {
-    return typeinfo(T).kind == TypeKind.Ptr;
+    return typeinfo(T).kind == TypeKind.PTR;
 }
 
 /// Return true if the `T` type is a function type.
 is_function :: fn (T: type) bool #comptime {
-    return typeinfo(T).kind == TypeKind.Fn;
+    return typeinfo(T).kind == TypeKind.FN;
 }
 
 /// Return signed or unsigned builtin number type of the requested size.

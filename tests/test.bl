@@ -26,7 +26,7 @@ main :: fn () s32 {
 
 /*
 module :: fn (bin: *Assembly) #module_entry {
-    #if PLATFORM == Platform.windows {
+    #if PLATFORM == Platform.WINDOWS {
         add_unit(bin, "_windows_impl.bl"
     } else {
         #error "Module does not support current target platform"

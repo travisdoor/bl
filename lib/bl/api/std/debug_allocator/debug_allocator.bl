@@ -173,13 +173,13 @@ Meta :: struct {
 
 handler :: fn (_: *Allocator, operation: AllocOp, size: usize, ptr : *u8 = null, file := String.empty, line := 0) *u8 {
     switch operation {
-        AllocOp.Allocate {
+        AllocOp.ALLOCATE {
             return debug_malloc(size, file, line);
         }
-        AllocOp.Free {
+        AllocOp.FREE {
             debug_free(ptr);
         }
-        AllocOp.Release;
+        AllocOp.RELEASE;
         default { panic(); }
     }
     return null;

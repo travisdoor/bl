@@ -34,7 +34,7 @@
 //! process directly in BL. All you need is to create the build file called `build.bl` and specify the
 //! `build_entry` function inside. When `-b` flag is used without need of specifying any files, the
 //! compiler will lookup `build.bl` file in the current directory and execute it in compile time. All 
-//! compilation steps, target input and output can be specified here. Example: :ref:`Build_System_Example`.
+//! compilation steps, target input and output can be specified here. 
 //!
 //! Example of minimal build.bl:
 //! ```
@@ -151,40 +151,40 @@ Target :: struct { // !!! ABI sync TargetOptions !!!
 
 /// Specification of compiler output binary kind.
 TargetKind :: enum {
-    Executable    = 0;
-    SharedLibrary = 1;
+    EXECUTABLE    = 0;
+    SHARED_LIBRARY = 1;
 }
 
 /// Specify target build mode. Every [Target](#target) can be compiled with various configuration 
 /// options. The `BuildMode` can specify which set of options compiler should use.
 BuildMode :: enum s32 {
     /// Generates debug symbols and produce binary without any optimizations.
-    Debug = 0;
+    DEBUG = 0;
     /// Fast release mode; no debug symbols are produced, all possible optimizations
     /// are applied to produce binary as fast as possible.
-    /// The `assert` is disabled unless `Target.assert_mode` is ``AlwaysEnabled``.
-    ReleaseFast = 1;
+    /// The `assert` is disabled unless `Target.assert_mode` is `ALWAYS_ENABLED`.
+    RELEASE_FAST = 1;
     /// Small release mode; no debug symbols are produced, optimizations are applied
     /// to produce binary reasonably fast and as small as possible.
-    /// The `assert` is disabled unless `Target.assert_mode` is ``AlwaysEnabled``.
-    ReleaseSmall = 2;
+    /// The `assert` is disabled unless `Target.assert_mode` is `ALWAYS_ENABLED`.
+    RELEASE_SMALL = 2;
 }
 
 /// Debug information format.
 DebugInfo :: enum s32 {
-    Dwarf = 0;
-    Codeview = 1;
+    DWARF = 0;
+    CODE_VIEW = 1;
 }
 
 /// Specification of `assert` mode used for `Target`.
 AssertMode :: enum s32 {
     /// By default compiler emits  all assertions in [BuildMode](#buildmode). Debug and skips all 
     /// assertions in all optimized release modes.
-    Default = 0;
+    DEFAULT = 0;
     /// Force-enable assertion in all build modes.
-    AlwaysEnabled = 1;
+    ALWAYS_ENABLED = 1;
     /// Force-disable assertion in all build modes.
-    AlwaysDisabled = 2;
+    ALWAYS_DISABLED = 2;
 }
 
 /// Add new executable target into the current compilation queue. Target with specified name is 
@@ -199,12 +199,12 @@ AssertMode :: enum s32 {
 /// 
 ///     mode :: get_build_mode(exe);
 ///     switch mode {
-///         BuildMode.Debug {
+///         BuildMode.DEBUG {
 ///             set_output_dir(exe, "build/debug");
 ///         }
 /// 
-///         BuildMode.ReleaseSmall,
-///         BuildMode.ReleaseFast {
+///         BuildMode.RELEASE_SMALL,
+///         BuildMode.RELEASE_FAST {
 ///             set_output_dir(exe, "build/release");
 ///         }
 ///     }
@@ -213,13 +213,13 @@ AssertMode :: enum s32 {
 /// ```
 add_executable :: fn (name: string) *Target {
     if name.len == 0 { panic("Invalid executable name!"); }
-    return __add_target(auto name.ptr, cast(s32) TargetKind.Executable);
+    return __add_target(auto name.ptr, cast(s32) TargetKind.EXECUTABLE);
 }
 
 /// Add new shared library target target into the current compilation queue.
 add_library :: fn (name: string) *Target {
     if name.len == 0 { panic("Invalid library name!"); }
-    return __add_target(auto name.ptr, cast(s32) TargetKind.SharedLibrary);
+    return __add_target(auto name.ptr, cast(s32) TargetKind.SHARED_LIBRARY);
 }
 
 /// Add new source file into the `target`. Function does nothing when `filepath` is already present 
@@ -274,7 +274,7 @@ add_lib_path :: fn (target: *Target, path: string) {
 ///     add_unit(exe, "src/main.bl");
 /// 
 ///     switch PLATFORM {
-///         Platform.windows { target_windows(exe); }
+///         Platform.WINDOWS { target_windows(exe); }
 ///         default          { panic("Unknown build target!"); }
 ///     }
 ///     compile(exe);
@@ -330,23 +330,23 @@ ModuleImportPolicy :: enum s32 {
     /// Use system modules but prefer local ones in module directory. This option disables any 
     /// copying and version check. Local module directory can contain custom project related 
     /// modules you don't want to expose to the whole system.
-    System = 0;
+    SYSTEM = 0;
  
     /// Bundle only missing modules from system into the local module folder and ignore if there is 
     /// newer version available. Individual module updates can be done by renaming old one and 
     /// re-run compilation. Custom modules (not coming from main API folder are kept untouched.)
-    Bundle = 1;
+    BUNDLE = 1;
 
     /// Bundle all missing modules from system into the local module folder and update old ones 
     /// also. Custom modules (not coming from main API folder are kept untouched.) Compiler will 
     /// create `.bak` backup directory for every module before any updates.
-    BundleLatest = 2;
+    BUNDLE_LATEST = 2;
 }
 
 /// Sets module directory `dir` for `target`. All imported modules will be copied into this 
 /// directory according to chosen [ModuleImportPolicy](#moduleimportpolicy). Module policy is set 
-/// to `System` by default even if this function has not been called.
-set_module_dir :: fn (target: *Target, dir: string, policy := ModuleImportPolicy.System) {
+/// to `SYSTEM` by default even if this function has not been called.
+set_module_dir :: fn (target: *Target, dir: string, policy := ModuleImportPolicy.SYSTEM) {
     if !target { panic("Invalid target!"); }
     if String.is_empty(dir) { return; }
     __set_module_dir(target, auto dir.ptr, auto policy);

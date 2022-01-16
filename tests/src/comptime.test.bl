@@ -33,5 +33,5 @@ struct_type :: fn () #test {
     };
 
     i: get();
-    test_eq(typeinfo(i).kind, TypeKind.Struct);
+    test_eq(typeinfo(i).kind, TypeKind.STRUCT);
 }

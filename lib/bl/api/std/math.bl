@@ -92,7 +92,7 @@ lerp :: fn (a: ?T, b: T, fraction: T) T  #inline {
 }
 
 clamp :: fn (v: ?T, minimum: T, maximum: T) T { 
-    #if typeinfo(T).kind == TypeKind.Int {
+    #if typeinfo(T).kind == TypeKind.INT {
         if v <= minimum { return minimum; }
         if v >= maximum { return maximum; }
     } else {

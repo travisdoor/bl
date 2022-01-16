@@ -35,7 +35,7 @@
 /// Set `flag` in `flags` input. This function is valid for numeric and enum types (checked by assert).
 set_flag :: fn (flags: *?T, flag: T) T #inline {
     assert(flags);
-    #if typeinfo(T).kind == TypeKind.Enum {
+    #if typeinfo(T).kind == TypeKind.ENUM {
         // @Incomplete: Check enums for #flags tag.
         // @Incomplete: Use static switch.
         #if sizeof(T)     == 1 { f := cast(*u8)flags; @f  |= cast(u8) flag;  }
@@ -43,7 +43,7 @@ set_flag :: fn (flags: *?T, flag: T) T #inline {
         else if sizeof(T) == 4 { f := cast(*u32)flags; @f |= cast(u32) flag; }
         else if sizeof(T) == 8 { f := cast(*u64)flags; @f |= cast(u64) flag; }
         else { #error "Unsupported type in 'set_flag'" }
-    } else if typeinfo(T).kind == TypeKind.Int {
+    } else if typeinfo(T).kind == TypeKind.INT {
         @flags |= flag;
     } else {
         #error "Expected number or enumerator type."
@@ -54,7 +54,7 @@ set_flag :: fn (flags: *?T, flag: T) T #inline {
 /// Clear `flag` in `flags` input. This function is valid for numeric and enum types (checked by assert).
 clr_flag :: fn (flags: *?T, flag: T) T #inline {
     assert(flags);
-    #if typeinfo(T).kind == TypeKind.Enum {
+    #if typeinfo(T).kind == TypeKind.ENUM {
         // @Incomplete: Check enums for #flags tag.
         // @Incomplete: Use static switch.
         #if sizeof(T)     == 1 { f := cast(*u8)flags; @f  &= ~cast(u8) flag;  }
@@ -62,7 +62,7 @@ clr_flag :: fn (flags: *?T, flag: T) T #inline {
         else if sizeof(T) == 4 { f := cast(*u32)flags; @f &= ~cast(u32) flag; }
         else if sizeof(T) == 8 { f := cast(*u64)flags; @f &= ~cast(u64) flag; }
         else { panic("Unsupported type in 'clr_flag' %.", T); }
-    } else if typeinfo(T).kind == TypeKind.Int {
+    } else if typeinfo(T).kind == TypeKind.INT {
         @flags &= ~flag;
     } else {
         #error "Expected number or enumerator type."
@@ -74,7 +74,7 @@ clr_flag :: fn (flags: *?T, flag: T) T #inline {
 /// (checked by assert).
 is_flag :: fn (flags: ?T, flag: T) bool #inline {
     result := false;
-    #if typeinfo(T).kind == TypeKind.Enum {
+    #if typeinfo(T).kind == TypeKind.ENUM {
         // @Incomplete: Check enums for #flags tag.
         // @Incomplete: Use static switch.
         #if sizeof(T)     == 1 { result = (cast(u8)flags & cast(u8)flag) == cast(u8) flag;    }
@@ -82,7 +82,7 @@ is_flag :: fn (flags: ?T, flag: T) bool #inline {
         else if sizeof(T) == 4 { result = (cast(u32)flags & cast(u32)flag) == cast(u32) flag; }
         else if sizeof(T) == 8 { result = (cast(u64)flags & cast(u64)flag) == cast(u64) flag; }
         else { panic("Unsupported type in 'is_flag' %.", T); }
-    } else if typeinfo(T).kind == TypeKind.Int {
+    } else if typeinfo(T).kind == TypeKind.INT {
         result = (flags & flag) == flag;        
     } else {
         #error "Expected number or enumerator type."
@@ -158,7 +158,7 @@ sort :: fn (list: []?T, cmp: *fn(a: *T, b: *T) bool) {
 /// Combine two or more hashes into one, T is expected to be an integer type (checked by static
 /// assert).
 hash_combine :: fn (first: ?T, second: T, more: ...T) T #inline {
-    static_assert(typeinfo(T).kind == TypeKind.Int);
+    static_assert(typeinfo(T).kind == TypeKind.INT);
     result := first ^ (second + (cast(T)0x9e3779b9) + (first << 6) + (first >> 2));
     loop i := 0; i < more.len; i += 1 {
         // Just copy paste this again to avoid recursion.

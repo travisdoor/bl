@@ -229,12 +229,12 @@
 </ul></li>
 <li><a href="#debug-allocator">Debug Allocator</a>
 <ul>
-<li><a href="#debugallocator.debug_allocator">DebugAllocator.debug_allocator</a></li>
-<li><a href="#debugallocator.init">DebugAllocator.init</a></li>
-<li><a href="#debugallocator.terminate">DebugAllocator.terminate</a></li>
-<li><a href="#debugallocator.break_on">DebugAllocator.break_on</a></li>
-<li><a href="#debugallocator.allocated_bytes">DebugAllocator.allocated_bytes</a></li>
-<li><a href="#debugallocator.print_memory_report">DebugAllocator.print_memory_report</a></li>
+<li><a href="#std.debug_allocator">std.debug_allocator</a></li>
+<li><a href="#std.debug_allocator_init">std.debug_allocator_init</a></li>
+<li><a href="#std.debug_allocator_terminate">std.debug_allocator_terminate</a></li>
+<li><a href="#std.debug_allocator_break">std.debug_allocator_break</a></li>
+<li><a href="#std.debug_allocator_allocated">std.debug_allocator_allocated</a></li>
+<li><a href="#std.print_memory_report">std.print_memory_report</a></li>
 </ul></li>
 <li><a href="#dynamic-library-tools">Dynamic Library Tools</a>
 <ul>
@@ -926,28 +926,28 @@
 <p>Compiler builtins are automatically loaded into every assembly.</p>
 <h2 id="current-running-platform">Current running platform</h2>
 <div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>Platform <span class="op">::</span> <span class="kw">enum</span> s32 <span class="op">{</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    unknown<span class="op">;</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    windows<span class="op">;</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    darwin<span class="op">;</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    linux<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    UNKNOWN<span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    WINDOWS<span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    DARWIN<span class="op">;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    LINUX<span class="op">;</span></span>
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>PLATFORM <span class="op">::</span> <span class="op">&lt;</span>SET_BY_COMPILER<span class="op">&gt;;</span></span></code></pre></div>
 <h2 id="current-running-architecture">Current running architecture</h2>
 <div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>Arch <span class="op">::</span> <span class="kw">enum</span> s32 <span class="op">{</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    unknown<span class="op">;</span></span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    x86_64<span class="op">;</span></span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    aarch64<span class="op">;</span></span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    arm64<span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    UNKNOWN<span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    X86_64<span class="op">;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    AARCH64<span class="op">;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    ARM64<span class="op">;</span></span>
 <span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
 <span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>ARCH <span class="op">::</span> <span class="op">&lt;</span>SET_BY_COMPILER<span class="op">&gt;;</span></span></code></pre></div>
 <h2 id="current-running-environment">Current running environment</h2>
 <div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>Env <span class="op">::</span> <span class="kw">enum</span> s32 <span class="op">{</span></span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    unknown<span class="op">;</span></span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    msvc<span class="op">;</span></span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    gnu<span class="op">;</span></span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    musl<span class="op">;</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    UNKNOWN<span class="op">;</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    MSVC<span class="op">;</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    GNU<span class="op">;</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    MUSL<span class="op">;</span></span>
 <span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
 <span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>ENV <span class="op">::</span> <span class="op">&lt;</span>SET_BY_COMPILER<span class="op">&gt;;</span></span></code></pre></div>
@@ -957,36 +957,36 @@
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>BLC_VER_PATCH <span class="op">:</span> s32 <span class="op">:</span> <span class="op">&lt;</span>SET_BY_COMPILER<span class="op">&gt;;</span></span></code></pre></div>
 <h2 id="typekind">TypeKind</h2>
 <div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>TypeKind <span class="op">::</span> <span class="kw">enum</span> <span class="op">{</span></span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    Type <span class="op">::</span> <span class="dv">1</span><span class="op">;</span></span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    Void <span class="op">::</span> <span class="dv">2</span><span class="op">;</span></span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    Int <span class="op">::</span> <span class="dv">3</span><span class="op">;</span></span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    Real <span class="op">::</span> <span class="dv">4</span><span class="op">;</span></span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    Fn <span class="op">::</span> <span class="dv">5</span><span class="op">;</span></span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    Ptr <span class="op">::</span> <span class="dv">6</span><span class="op">;</span></span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    Bool <span class="op">::</span> <span class="dv">7</span><span class="op">;</span></span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    Array <span class="op">::</span> <span class="dv">8</span><span class="op">;</span></span>
-<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>    Struct <span class="op">::</span> <span class="dv">9</span><span class="op">;</span></span>
-<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>    Enum <span class="op">::</span> <span class="dv">10</span><span class="op">;</span></span>
-<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>    Null <span class="op">::</span> <span class="dv">11</span><span class="op">;</span></span>
-<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>    String <span class="op">::</span> <span class="dv">12</span><span class="op">;</span></span>
-<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>    FnGroup <span class="op">::</span> <span class="dv">16</span><span class="op">;</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    TYPE <span class="op">::</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    VOID <span class="op">::</span> <span class="dv">2</span><span class="op">;</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    INT <span class="op">::</span> <span class="dv">3</span><span class="op">;</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    REAL <span class="op">::</span> <span class="dv">4</span><span class="op">;</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    FN <span class="op">::</span> <span class="dv">5</span><span class="op">;</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    PTR <span class="op">::</span> <span class="dv">6</span><span class="op">;</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    BOOL <span class="op">::</span> <span class="dv">7</span><span class="op">;</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    ARRAY <span class="op">::</span> <span class="dv">8</span><span class="op">;</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>    STRUCT <span class="op">::</span> <span class="dv">9</span><span class="op">;</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>    ENUM <span class="op">::</span> <span class="dv">10</span><span class="op">;</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>    NULL <span class="op">::</span> <span class="dv">11</span><span class="op">;</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>    STRING <span class="op">::</span> <span class="dv">12</span><span class="op">;</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>    FN_GROUP <span class="op">::</span> <span class="dv">16</span><span class="op">;</span></span>
 <span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>TypeKind describes kind of BL type returned in <code>TypeInfo</code> structure. This value can be used for safe casting.</p>
 <h3 id="variants">Variants</h3>
 <ul>
-<li><code>Type</code> - Base type of all types in type system.</li>
-<li><code>Void</code> - Void type. (Implicitly used for functions without return value)</li>
-<li><code>Int</code> - Any integer type: <code>s8</code>, <code>s16</code>, <code>s32</code>, <code>s64</code>, <code>u8</code>, <code>u16</code>, <code>u32</code>, <code>u64</code>, <code>usize</code>.</li>
-<li><code>Real</code> - Any real type: <code>f32</code>, <code>f64</code>.</li>
-<li><code>Fn</code> - Function type.</li>
-<li><code>Ptr</code> - Pointer type.</li>
-<li><code>Bool</code> - Boolean type.</li>
-<li><code>Array</code> - Array type.</li>
-<li><code>Struct</code> - Structure type.</li>
-<li><code>Enum</code> - Enumerator type.</li>
-<li><code>Null</code> - Null-value type.</li>
-<li><code>String</code> - String type.</li>
-<li><code>FnGroup</code> - Function group type.</li>
+<li><code>TYPE</code> - Base type of all types in type system.</li>
+<li><code>VOID</code> - Void type. (Implicitly used for functions without return value)</li>
+<li><code>INT</code> - Any integer type: <code>s8</code>, <code>s16</code>, <code>s32</code>, <code>s64</code>, <code>u8</code>, <code>u16</code>, <code>u32</code>, <code>u64</code>, <code>usize</code>.</li>
+<li><code>REAL</code> - Any real type: <code>f32</code>, <code>f64</code>.</li>
+<li><code>FN</code> - Function type.</li>
+<li><code>PTR</code> - Pointer type.</li>
+<li><code>BOOL</code> - Boolean type.</li>
+<li><code>ARRAY</code> - Array type.</li>
+<li><code>STRUCT</code> - Structure type.</li>
+<li><code>ENUM</code> - Enumerator type.</li>
+<li><code>NULL</code> - Null-value type.</li>
+<li><code>STRING</code> - String type.</li>
+<li><code>FN_GROUP</code> - Function group type.</li>
 </ul>
 <p><em>File: a.bl</em></p>
 <h2 id="typeinfo">TypeInfo</h2>
@@ -1571,7 +1571,7 @@ main :: fn () s32 {
 <p><em>File: buffer_allocator.bl</em></p>
 <h1 id="build-system">Build system</h1>
 <p><code>#load "build/build.bl"</code></p>
-<p>Compiler integrated build pipeline. Build pipline can be used to manage whole project compilation process directly in BL. All you need is to create the build file called <code>build.bl</code> and specify the <code>build_entry</code> function inside. When <code>-b</code> flag is used without need of specifying any files, the compiler will lookup <code>build.bl</code> file in the current directory and execute it in compile time. All compilation steps, target input and output can be specified here. Example: :ref:<code>Build_System_Example</code>.</p>
+<p>Compiler integrated build pipeline. Build pipline can be used to manage whole project compilation process directly in BL. All you need is to create the build file called <code>build.bl</code> and specify the <code>build_entry</code> function inside. When <code>-b</code> flag is used without need of specifying any files, the compiler will lookup <code>build.bl</code> file in the current directory and execute it in compile time. All compilation steps, target input and output can be specified here.</p>
 <p>Example of minimal build.bl:</p>
 <pre><code>build :: fn () #build_entry {
     // create new executable target
@@ -1653,44 +1653,44 @@ main :: fn () s32 {
 <p><em>File: build.bl</em></p>
 <h2 id="targetkind">TargetKind</h2>
 <div class="sourceCode" id="cb87"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb87-1"><a href="#cb87-1" aria-hidden="true" tabindex="-1"></a>TargetKind <span class="op">::</span> <span class="kw">enum</span> <span class="op">{</span></span>
-<span id="cb87-2"><a href="#cb87-2" aria-hidden="true" tabindex="-1"></a>    Executable <span class="op">::</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb87-3"><a href="#cb87-3" aria-hidden="true" tabindex="-1"></a>    SharedLibrary <span class="op">::</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb87-2"><a href="#cb87-2" aria-hidden="true" tabindex="-1"></a>    EXECUTABLE <span class="op">::</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb87-3"><a href="#cb87-3" aria-hidden="true" tabindex="-1"></a>    SHARED_LIBRARY <span class="op">::</span> <span class="dv">1</span><span class="op">;</span></span>
 <span id="cb87-4"><a href="#cb87-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>Specification of compiler output binary kind.</p>
 <p><em>File: build.bl</em></p>
 <h2 id="buildmode">BuildMode</h2>
 <div class="sourceCode" id="cb88"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb88-1"><a href="#cb88-1" aria-hidden="true" tabindex="-1"></a>BuildMode <span class="op">::</span> <span class="kw">enum</span> s32 <span class="op">{</span></span>
-<span id="cb88-2"><a href="#cb88-2" aria-hidden="true" tabindex="-1"></a>    Debug <span class="op">::</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb88-3"><a href="#cb88-3" aria-hidden="true" tabindex="-1"></a>    ReleaseFast <span class="op">::</span> <span class="dv">1</span><span class="op">;</span></span>
-<span id="cb88-4"><a href="#cb88-4" aria-hidden="true" tabindex="-1"></a>    ReleaseSmall <span class="op">::</span> <span class="dv">2</span><span class="op">;</span></span>
+<span id="cb88-2"><a href="#cb88-2" aria-hidden="true" tabindex="-1"></a>    DEBUG <span class="op">::</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb88-3"><a href="#cb88-3" aria-hidden="true" tabindex="-1"></a>    RELEASE_FAST <span class="op">::</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb88-4"><a href="#cb88-4" aria-hidden="true" tabindex="-1"></a>    RELEASE_SMALL <span class="op">::</span> <span class="dv">2</span><span class="op">;</span></span>
 <span id="cb88-5"><a href="#cb88-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>Specify target build mode. Every <a href="#target">Target</a> can be compiled with various configuration options. The <code>BuildMode</code> can specify which set of options compiler should use.</p>
 <h3 id="variants-1">Variants</h3>
 <ul>
-<li><p><code>Debug</code> - Generates debug symbols and produce binary without any optimizations.</p></li>
-<li><p><code>ReleaseFast</code> - Fast release mode; no debug symbols are produced, all possible optimizations are applied to produce binary as fast as possible. The <code>assert</code> is disabled unless <code>Target.assert_mode</code> is <code>AlwaysEnabled</code>.</p></li>
-<li><p><code>ReleaseSmall</code> - Small release mode; no debug symbols are produced, optimizations are applied to produce binary reasonably fast and as small as possible. The <code>assert</code> is disabled unless <code>Target.assert_mode</code> is <code>AlwaysEnabled</code>.</p></li>
+<li><p><code>DEBUG</code> - Generates debug symbols and produce binary without any optimizations.</p></li>
+<li><p><code>RELEASE_FAST</code> - Fast release mode; no debug symbols are produced, all possible optimizations are applied to produce binary as fast as possible. The <code>assert</code> is disabled unless <code>Target.assert_mode</code> is <code>ALWAYS_ENABLED</code>.</p></li>
+<li><p><code>RELEASE_SMALL</code> - Small release mode; no debug symbols are produced, optimizations are applied to produce binary reasonably fast and as small as possible. The <code>assert</code> is disabled unless <code>Target.assert_mode</code> is <code>ALWAYS_ENABLED</code>.</p></li>
 </ul>
 <p><em>File: build.bl</em></p>
 <h2 id="debuginfo">DebugInfo</h2>
 <div class="sourceCode" id="cb89"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb89-1"><a href="#cb89-1" aria-hidden="true" tabindex="-1"></a>DebugInfo <span class="op">::</span> <span class="kw">enum</span> s32 <span class="op">{</span></span>
-<span id="cb89-2"><a href="#cb89-2" aria-hidden="true" tabindex="-1"></a>    Dwarf <span class="op">::</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb89-3"><a href="#cb89-3" aria-hidden="true" tabindex="-1"></a>    Codeview <span class="op">::</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb89-2"><a href="#cb89-2" aria-hidden="true" tabindex="-1"></a>    DWARF <span class="op">::</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb89-3"><a href="#cb89-3" aria-hidden="true" tabindex="-1"></a>    CODE_VIEW <span class="op">::</span> <span class="dv">1</span><span class="op">;</span></span>
 <span id="cb89-4"><a href="#cb89-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>Debug information format.</p>
 <p><em>File: build.bl</em></p>
 <h2 id="assertmode">AssertMode</h2>
 <div class="sourceCode" id="cb90"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb90-1"><a href="#cb90-1" aria-hidden="true" tabindex="-1"></a>AssertMode <span class="op">::</span> <span class="kw">enum</span> s32 <span class="op">{</span></span>
-<span id="cb90-2"><a href="#cb90-2" aria-hidden="true" tabindex="-1"></a>    Default <span class="op">::</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb90-3"><a href="#cb90-3" aria-hidden="true" tabindex="-1"></a>    AlwaysEnabled <span class="op">::</span> <span class="dv">1</span><span class="op">;</span></span>
-<span id="cb90-4"><a href="#cb90-4" aria-hidden="true" tabindex="-1"></a>    AlwaysDisabled <span class="op">::</span> <span class="dv">2</span><span class="op">;</span></span>
+<span id="cb90-2"><a href="#cb90-2" aria-hidden="true" tabindex="-1"></a>    DEFAULT <span class="op">::</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb90-3"><a href="#cb90-3" aria-hidden="true" tabindex="-1"></a>    ALWAYS_ENABLED <span class="op">::</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb90-4"><a href="#cb90-4" aria-hidden="true" tabindex="-1"></a>    ALWAYS_DISABLED <span class="op">::</span> <span class="dv">2</span><span class="op">;</span></span>
 <span id="cb90-5"><a href="#cb90-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>Specification of <code>assert</code> mode used for <code>Target</code>.</p>
 <h3 id="variants-2">Variants</h3>
 <ul>
-<li><p><code>Default</code> - By default compiler emits all assertions in <a href="#buildmode">BuildMode</a>. Debug and skips all assertions in all optimized release modes.</p></li>
-<li><p><code>AlwaysEnabled</code> - Force-enable assertion in all build modes.</p></li>
-<li><p><code>AlwaysDisabled</code> - Force-disable assertion in all build modes.</p></li>
+<li><p><code>DEFAULT</code> - By default compiler emits all assertions in <a href="#buildmode">BuildMode</a>. Debug and skips all assertions in all optimized release modes.</p></li>
+<li><p><code>ALWAYS_ENABLED</code> - Force-enable assertion in all build modes.</p></li>
+<li><p><code>ALWAYS_DISABLED</code> - Force-disable assertion in all build modes.</p></li>
 </ul>
 <p><em>File: build.bl</em></p>
 <h2 id="add_executable">add_executable</h2>
@@ -1703,12 +1703,12 @@ main :: fn () s32 {
 
     mode :: get_build_mode(exe);
     switch mode {
-        BuildMode.Debug {
+        BuildMode.DEBUG {
             set_output_dir(exe, &quot;build/debug&quot;);
         }
 
-        BuildMode.ReleaseSmall,
-        BuildMode.ReleaseFast {
+        BuildMode.RELEASE_SMALL,
+        BuildMode.RELEASE_FAST {
             set_output_dir(exe, &quot;build/release&quot;);
         }
     }
@@ -1751,7 +1751,7 @@ main :: fn () s32 {
     add_unit(exe, &quot;src/main.bl&quot;);
 
     switch PLATFORM {
-        Platform.windows { target_windows(exe); }
+        Platform.WINDOWS { target_windows(exe); }
         default          { panic(&quot;Unknown build target!&quot;); }
     }
     compile(exe);
@@ -1779,21 +1779,21 @@ target_windows :: fn (exe: *Target) {
 <p><em>File: build.bl</em></p>
 <h2 id="moduleimportpolicy">ModuleImportPolicy</h2>
 <div class="sourceCode" id="cb103"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb103-1"><a href="#cb103-1" aria-hidden="true" tabindex="-1"></a>ModuleImportPolicy <span class="op">::</span> <span class="kw">enum</span> s32 <span class="op">{</span></span>
-<span id="cb103-2"><a href="#cb103-2" aria-hidden="true" tabindex="-1"></a>    System <span class="op">::</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb103-3"><a href="#cb103-3" aria-hidden="true" tabindex="-1"></a>    Bundle <span class="op">::</span> <span class="dv">1</span><span class="op">;</span></span>
-<span id="cb103-4"><a href="#cb103-4" aria-hidden="true" tabindex="-1"></a>    BundleLatest <span class="op">::</span> <span class="dv">2</span><span class="op">;</span></span>
+<span id="cb103-2"><a href="#cb103-2" aria-hidden="true" tabindex="-1"></a>    SYSTEM <span class="op">::</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb103-3"><a href="#cb103-3" aria-hidden="true" tabindex="-1"></a>    BUNDLE <span class="op">::</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb103-4"><a href="#cb103-4" aria-hidden="true" tabindex="-1"></a>    BUNDLE_LATEST <span class="op">::</span> <span class="dv">2</span><span class="op">;</span></span>
 <span id="cb103-5"><a href="#cb103-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>Specify import module policy in <a href="#set_module_dir">set_module_dir</a> function call. Module dependencies of any target can be treated in different ways depending on use case and needs of programmer. Sometimes program stability and maintainability is more important than use of latest versions of modules. These flags can specify how local modules should be updated.</p>
 <h3 id="variants-3">Variants</h3>
 <ul>
-<li><p><code>System</code> - Use system modules but prefer local ones in module directory. This option disables any copying and version check. Local module directory can contain custom project related modules you don’t want to expose to the whole system.</p></li>
-<li><p><code>Bundle</code> - Bundle only missing modules from system into the local module folder and ignore if there is newer version available. Individual module updates can be done by renaming old one and re-run compilation. Custom modules (not coming from main API folder are kept untouched.)</p></li>
-<li><p><code>BundleLatest</code> - Bundle all missing modules from system into the local module folder and update old ones also. Custom modules (not coming from main API folder are kept untouched.) Compiler will create <code>.bak</code> backup directory for every module before any updates.</p></li>
+<li><p><code>SYSTEM</code> - Use system modules but prefer local ones in module directory. This option disables any copying and version check. Local module directory can contain custom project related modules you don’t want to expose to the whole system.</p></li>
+<li><p><code>BUNDLE</code> - Bundle only missing modules from system into the local module folder and ignore if there is newer version available. Individual module updates can be done by renaming old one and re-run compilation. Custom modules (not coming from main API folder are kept untouched.)</p></li>
+<li><p><code>BUNDLE_LATEST</code> - Bundle all missing modules from system into the local module folder and update old ones also. Custom modules (not coming from main API folder are kept untouched.) Compiler will create <code>.bak</code> backup directory for every module before any updates.</p></li>
 </ul>
 <p><em>File: build.bl</em></p>
 <h2 id="set_module_dir">set_module_dir</h2>
 <div class="sourceCode" id="cb104"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb104-1"><a href="#cb104-1" aria-hidden="true" tabindex="-1"></a>set_module_dir <span class="op">::</span> fn <span class="op">(</span>target<span class="op">:</span> <span class="op">*</span>Target<span class="op">,</span> dir<span class="op">:</span> string<span class="op">,</span> policy <span class="op">::</span> <span class="op">)</span> </span></code></pre></div>
-<p>Sets module directory <code>dir</code> for <code>target</code>. All imported modules will be copied into this directory according to chosen <a href="#moduleimportpolicy">ModuleImportPolicy</a>. Module policy is set to <code>System</code> by default even if this function has not been called.</p>
+<p>Sets module directory <code>dir</code> for <code>target</code>. All imported modules will be copied into this directory according to chosen <a href="#moduleimportpolicy">ModuleImportPolicy</a>. Module policy is set to <code>SYSTEM</code> by default even if this function has not been called.</p>
 <p><em>File: build.bl</em></p>
 <h2 id="get_module_dir">get_module_dir</h2>
 <div class="sourceCode" id="cb105"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb105-1"><a href="#cb105-1" aria-hidden="true" tabindex="-1"></a>get_module_dir <span class="op">::</span> fn <span class="op">(</span>target<span class="op">:</span> <span class="op">*</span>Target<span class="op">)</span> string</span></code></pre></div>
@@ -1839,20 +1839,20 @@ panic(&quot;Failed with error: %&quot;, errn); // first argument passed acts lik
 <p><em>File: debug.bl</em></p>
 <h2 id="printlogkind">PrintLogKind</h2>
 <div class="sourceCode" id="cb114"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb114-1"><a href="#cb114-1" aria-hidden="true" tabindex="-1"></a>PrintLogKind <span class="op">::</span> <span class="kw">enum</span> u8 <span class="op">{</span></span>
-<span id="cb114-2"><a href="#cb114-2" aria-hidden="true" tabindex="-1"></a>    Message<span class="op">;</span></span>
-<span id="cb114-3"><a href="#cb114-3" aria-hidden="true" tabindex="-1"></a>    Warning<span class="op">;</span></span>
-<span id="cb114-4"><a href="#cb114-4" aria-hidden="true" tabindex="-1"></a>    Error<span class="op">;</span></span>
-<span id="cb114-5"><a href="#cb114-5" aria-hidden="true" tabindex="-1"></a>    Assert<span class="op">;</span></span>
-<span id="cb114-6"><a href="#cb114-6" aria-hidden="true" tabindex="-1"></a>    Panic<span class="op">;</span></span>
+<span id="cb114-2"><a href="#cb114-2" aria-hidden="true" tabindex="-1"></a>    MESSAGE<span class="op">;</span></span>
+<span id="cb114-3"><a href="#cb114-3" aria-hidden="true" tabindex="-1"></a>    WARNING<span class="op">;</span></span>
+<span id="cb114-4"><a href="#cb114-4" aria-hidden="true" tabindex="-1"></a>    ERROR<span class="op">;</span></span>
+<span id="cb114-5"><a href="#cb114-5" aria-hidden="true" tabindex="-1"></a>    ASSERT<span class="op">;</span></span>
+<span id="cb114-6"><a href="#cb114-6" aria-hidden="true" tabindex="-1"></a>    PANIC<span class="op">;</span></span>
 <span id="cb114-7"><a href="#cb114-7" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>Kinds of log messages.</p>
 <h3 id="variants-4">Variants</h3>
 <ul>
-<li><code>Message</code> - Ordinary debug log message.</li>
-<li><code>Warning</code> - Warning log message.</li>
-<li><code>Error</code> - Error log message.</li>
-<li><code>Assert</code> - Assert log message.</li>
-<li><code>Panic</code> - Panic log message.</li>
+<li><code>MESSAGE</code> - Ordinary debug log message.</li>
+<li><code>WARNING</code> - Warning log message.</li>
+<li><code>ERROR</code> - Error log message.</li>
+<li><code>ASSERT</code> - Assert log message.</li>
+<li><code>PANIC</code> - Panic log message.</li>
 </ul>
 <p><em>File: debug.bl</em></p>
 <h2 id="measure_elapsed_ms_begin">measure_elapsed_ms_begin</h2>
@@ -1874,8 +1874,8 @@ defer measure_elapsed_ms_end(&quot;Name&quot;);</code></pre>
 <pre><code>#import &quot;std/debug_allocator&quot;
 
 main :: fn () s32 {
-    DebugAllocator.init();
-    defer DebugAllocator.terminate();
+    std.debug_allocator_init();
+    defer std.debug_allocator_terminate();
 
     // leaking allocation
     alloc(64);
@@ -1890,26 +1890,26 @@ Dump memory leaks begin:
     [1] - test.bl:10 (64 bytes)
 Dump memory leaks end.</code></pre>
 <p><strong>note</strong>: Debug allocator is thread safe. Init and terminate must be called from main thread.</p>
-<h2 id="debugallocator.debug_allocator">DebugAllocator.debug_allocator</h2>
+<h2 id="std.debug_allocator">std.debug_allocator</h2>
 <div class="sourceCode" id="cb120"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb120-1"><a href="#cb120-1" aria-hidden="true" tabindex="-1"></a>debug_allocator <span class="op">::</span> </span></code></pre></div>
 <p><em>File: debug_allocator.bl</em></p>
-<h2 id="debugallocator.init">DebugAllocator.init</h2>
-<div class="sourceCode" id="cb121"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb121-1"><a href="#cb121-1" aria-hidden="true" tabindex="-1"></a>init <span class="op">::</span> fn <span class="op">()</span> </span></code></pre></div>
-<p>Initialize Debug Allocator. This function internally swap current global context allocator to debug one. Deinitialization must be done by <a href="#terminate">terminate</a> call.</p>
+<h2 id="std.debug_allocator_init">std.debug_allocator_init</h2>
+<div class="sourceCode" id="cb121"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb121-1"><a href="#cb121-1" aria-hidden="true" tabindex="-1"></a>debug_allocator_init <span class="op">::</span> fn <span class="op">()</span> </span></code></pre></div>
+<p>Initialize Debug Allocator. This function internally swap current global context allocator to debug one. Deinitialization must be done by <a href="#debug_allocator_terminate">debug_allocator_terminate</a> call.</p>
 <p><em>File: debug_allocator.bl</em></p>
-<h2 id="debugallocator.terminate">DebugAllocator.terminate</h2>
-<div class="sourceCode" id="cb122"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb122-1"><a href="#cb122-1" aria-hidden="true" tabindex="-1"></a>terminate <span class="op">::</span> fn <span class="op">(</span>print_report <span class="op">::</span> <span class="op">)</span> </span></code></pre></div>
+<h2 id="std.debug_allocator_terminate">std.debug_allocator_terminate</h2>
+<div class="sourceCode" id="cb122"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb122-1"><a href="#cb122-1" aria-hidden="true" tabindex="-1"></a>debug_allocator_terminate <span class="op">::</span> fn <span class="op">(</span>print_report <span class="op">::</span> <span class="op">)</span> </span></code></pre></div>
 <p>Terminate Debug Allocator. Prints current memory report when <a href="#print_report">print_report</a> is <code>true</code>.</p>
 <p><em>File: debug_allocator.bl</em></p>
-<h2 id="debugallocator.break_on">DebugAllocator.break_on</h2>
-<div class="sourceCode" id="cb123"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb123-1"><a href="#cb123-1" aria-hidden="true" tabindex="-1"></a>break_on <span class="op">::</span> fn <span class="op">(</span>serial<span class="op">:</span> u64<span class="op">)</span>  #inline</span></code></pre></div>
+<h2 id="std.debug_allocator_break">std.debug_allocator_break</h2>
+<div class="sourceCode" id="cb123"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb123-1"><a href="#cb123-1" aria-hidden="true" tabindex="-1"></a>debug_allocator_break <span class="op">::</span> fn <span class="op">(</span>serial<span class="op">:</span> u64<span class="op">)</span>  #inline</span></code></pre></div>
 <p>Invoke <a href="#debug_break">debug_break</a> before allocation with defined serial ID. <strong>note</strong>: See also <a href="#print_memory_report">print_memory_report</a></p>
 <p><em>File: debug_allocator.bl</em></p>
-<h2 id="debugallocator.allocated_bytes">DebugAllocator.allocated_bytes</h2>
-<div class="sourceCode" id="cb124"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb124-1"><a href="#cb124-1" aria-hidden="true" tabindex="-1"></a>allocated_bytes <span class="op">::</span> fn <span class="op">()</span> usize #inline</span></code></pre></div>
+<h2 id="std.debug_allocator_allocated">std.debug_allocator_allocated</h2>
+<div class="sourceCode" id="cb124"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb124-1"><a href="#cb124-1" aria-hidden="true" tabindex="-1"></a>debug_allocator_allocated <span class="op">::</span> fn <span class="op">()</span> usize #inline</span></code></pre></div>
 <p>Return currently allocated memory in bytes.</p>
 <p><em>File: debug_allocator.bl</em></p>
-<h2 id="debugallocator.print_memory_report">DebugAllocator.print_memory_report</h2>
+<h2 id="std.print_memory_report">std.print_memory_report</h2>
 <div class="sourceCode" id="cb125"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb125-1"><a href="#cb125-1" aria-hidden="true" tabindex="-1"></a>print_memory_report <span class="op">::</span> fn <span class="op">(</span>dump_leaks <span class="op">::</span> <span class="op">)</span> </span></code></pre></div>
 <p>Print memory report. First block contains currently allocated bytes and current count of allocations. Optional memory leak dump block (enabled by <code>dump_leaks</code> argument) contains:</p>
 <pre class="text"><code>[allocation serial ID] - &lt;file&gt;:&lt;line&gt; (allocation size in bytes) </code></pre>
@@ -1922,7 +1922,7 @@ Dump memory leaks begin:
     [1] - test.bl:10 (64 bytes)
 Dump memory leaks end.</code></pre>
 <p><strong>note</strong>: Printed report contains all remaining (not freed) allocations in time when function was called. Memory leaks can contain false-positives when function is called before execution end.</p>
-<p><strong>hint</strong>: Allocation serail ID can be used by <a href="#break_on">break_on</a> to interrupt execution before memory is allocated and eventually localize allocation in debbuger.</p>
+<p><strong>hint</strong>: Allocation serail ID can be used by <a href="#debug_allocator_break">debug_allocator_break</a> to interrupt execution before memory is allocated and eventually localize allocation in debbuger.</p>
 <p><em>File: debug_allocator.bl</em></p>
 <h1 id="dynamic-library-tools">Dynamic Library Tools</h1>
 <p><code>#import "std/dlib"</code></p>
@@ -2019,18 +2019,18 @@ main :: fn () s32 {
 <p><em>File: fs.bl</em></p>
 <h2 id="fs.openmode">Fs.OpenMode</h2>
 <div class="sourceCode" id="cb145"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb145-1"><a href="#cb145-1" aria-hidden="true" tabindex="-1"></a>OpenMode <span class="op">::</span> <span class="kw">enum</span> <span class="op">{</span></span>
-<span id="cb145-2"><a href="#cb145-2" aria-hidden="true" tabindex="-1"></a>    Read<span class="op">;</span></span>
-<span id="cb145-3"><a href="#cb145-3" aria-hidden="true" tabindex="-1"></a>    Write<span class="op">;</span></span>
-<span id="cb145-4"><a href="#cb145-4" aria-hidden="true" tabindex="-1"></a>    Append<span class="op">;</span></span>
-<span id="cb145-5"><a href="#cb145-5" aria-hidden="true" tabindex="-1"></a>    Create<span class="op">;</span></span>
+<span id="cb145-2"><a href="#cb145-2" aria-hidden="true" tabindex="-1"></a>    READ<span class="op">;</span></span>
+<span id="cb145-3"><a href="#cb145-3" aria-hidden="true" tabindex="-1"></a>    WRITE<span class="op">;</span></span>
+<span id="cb145-4"><a href="#cb145-4" aria-hidden="true" tabindex="-1"></a>    APPEND<span class="op">;</span></span>
+<span id="cb145-5"><a href="#cb145-5" aria-hidden="true" tabindex="-1"></a>    CREATE<span class="op">;</span></span>
 <span id="cb145-6"><a href="#cb145-6" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>Specify operation with opened file.</p>
 <h3 id="variants-5">Variants</h3>
 <ul>
-<li><code>Read</code> - Open file for reading.</li>
-<li><code>Write</code> - Open file for writing and truncate its content.</li>
-<li><code>Append</code> - Open file for appending (keeps current content).</li>
-<li><code>Create</code> - Create file if it does not exist.</li>
+<li><code>READ</code> - Open file for reading.</li>
+<li><code>WRITE</code> - Open file for writing and truncate its content.</li>
+<li><code>APPEND</code> - Open file for appending (keeps current content).</li>
+<li><code>CREATE</code> - Create file if it does not exist.</li>
 </ul>
 <p><em>File: fs.bl</em></p>
 <h2 id="fs.copyopt">Fs.CopyOpt</h2>
@@ -2049,8 +2049,8 @@ main :: fn () s32 {
 <p><em>File: fs.bl</em></p>
 <h2 id="fs.infokind">Fs.InfoKind</h2>
 <div class="sourceCode" id="cb147"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb147-1"><a href="#cb147-1" aria-hidden="true" tabindex="-1"></a>InfoKind <span class="op">::</span> <span class="kw">enum</span> <span class="op">{</span></span>
-<span id="cb147-2"><a href="#cb147-2" aria-hidden="true" tabindex="-1"></a>    File<span class="op">;</span></span>
-<span id="cb147-3"><a href="#cb147-3" aria-hidden="true" tabindex="-1"></a>    Directory<span class="op">;</span></span>
+<span id="cb147-2"><a href="#cb147-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">FILE</span><span class="op">;</span></span>
+<span id="cb147-3"><a href="#cb147-3" aria-hidden="true" tabindex="-1"></a>    DIRECTORY<span class="op">;</span></span>
 <span id="cb147-4"><a href="#cb147-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>Specify kind of file system entry.</p>
 <p><em>File: fs.bl</em></p>
@@ -2145,7 +2145,7 @@ main :: fn () s32 {
 
 main :: fn () s32 {
     // Open this file.
-    file, open_err :: Fs.open(#file, Fs.OpenMode.Read);
+    file, open_err :: Fs.open(#file, Fs.OpenMode.READ);
 
     // Always check for errors.
     if !is_ok(open_err) {
@@ -3108,16 +3108,16 @@ end &lt;= slice.len</code></pre>
 <p><em>File: memory.bl</em></p>
 <h2 id="allocop">AllocOp</h2>
 <div class="sourceCode" id="cb435"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb435-1"><a href="#cb435-1" aria-hidden="true" tabindex="-1"></a>AllocOp <span class="op">::</span> <span class="kw">enum</span> <span class="op">{</span></span>
-<span id="cb435-2"><a href="#cb435-2" aria-hidden="true" tabindex="-1"></a>    Allocate<span class="op">;</span></span>
-<span id="cb435-3"><a href="#cb435-3" aria-hidden="true" tabindex="-1"></a>    Free<span class="op">;</span></span>
-<span id="cb435-4"><a href="#cb435-4" aria-hidden="true" tabindex="-1"></a>    Release<span class="op">;</span></span>
+<span id="cb435-2"><a href="#cb435-2" aria-hidden="true" tabindex="-1"></a>    ALLOCATE<span class="op">;</span></span>
+<span id="cb435-3"><a href="#cb435-3" aria-hidden="true" tabindex="-1"></a>    FREE<span class="op">;</span></span>
+<span id="cb435-4"><a href="#cb435-4" aria-hidden="true" tabindex="-1"></a>    RELEASE<span class="op">;</span></span>
 <span id="cb435-5"><a href="#cb435-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>Specify allocator opratation.</p>
 <h3 id="variants-6">Variants</h3>
 <ul>
-<li><code>Allocate</code> - Allocation of new memory block is required.</li>
-<li><code>Free</code> - Free of previously allocated memory is required.</li>
-<li><code>Release</code> - Release of all allocated memory if required. This operation is optional and is not supported by all allocators.</li>
+<li><code>ALLOCATE</code> - Allocation of new memory block is required.</li>
+<li><code>FREE</code> - Free of previously allocated memory is required.</li>
+<li><code>RELEASE</code> - Release of all allocated memory if required. This operation is optional and is not supported by all allocators.</li>
 </ul>
 <p><em>File: memory.bl</em></p>
 <h2 id="allocator">Allocator</h2>
@@ -3711,9 +3711,9 @@ fn (got: ?T, not_expected: T, loc := #call_location)</code></pre>
 <p>Test whether <code>got_err</code> code is <code>expected_code</code>.</p>
 <p><em>File: test.bl</em></p>
 <h2 id="test_run">test_run</h2>
-<div class="sourceCode" id="cb546"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb546-1"><a href="#cb546-1" aria-hidden="true" tabindex="-1"></a>test_run <span class="op">::</span> fn <span class="op">()</span> s32</span></code></pre></div>
-<p>Execute all registered test cases in current assembly. The <code>test_run</code> function uses compiler builtin <code>testcases()</code> function returning slice of all registered test cases in the current assembly (all function with hash directive <code>#test</code>).</p>
-<p>Test case execution can be used in runtime and compile time, in both cases function remap default behaviour of <code>panic()</code> function call and try to report all failing tests without execution termination.</p>
+<div class="sourceCode" id="cb546"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb546-1"><a href="#cb546-1" aria-hidden="true" tabindex="-1"></a>test_run <span class="op">::</span> fn <span class="op">(</span>report_memory_leaks <span class="op">::</span> <span class="op">)</span> s32</span></code></pre></div>
+<p>Execute all registered test cases in current assembly. The <code>test_run</code> function uses compiler builtin <code>testcases()</code> function returning slice of all registered test cases in the current assembly (all functions with hash directive <code>#test</code>).</p>
+<p>Test case execution can be used in runtime and compile time, in both cases function remap default behaviour of <code>panic()</code> function call and try to report all failing tests without termination.</p>
 <p>Formatted output containing information about every test run status and summary report is produced during execution of this function. In case of test failure all needed information about fail source location is reported into standard output.</p>
 <p>Returns number of failed tests.</p>
 <h3 id="example-22">Example</h3>

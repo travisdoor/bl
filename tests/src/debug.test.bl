@@ -2,7 +2,7 @@
 debug_print_log :: fn () #test {
     _context.print_log_fn = &test_logger;
     {
-        _expected_kind = PrintLogKind.Message;
+        _expected_kind = PrintLogKind.MESSAGE;
         _expected_file = "";
         _expected_line = 0;
         _expected_format = "";
@@ -11,7 +11,7 @@ debug_print_log :: fn () #test {
     }
 
     {
-        _expected_kind = PrintLogKind.Message;
+        _expected_kind = PrintLogKind.MESSAGE;
         _expected_file = "";
         _expected_line = 0;
         _expected_format = "hello";
@@ -20,7 +20,7 @@ debug_print_log :: fn () #test {
     }
 
     {
-        _expected_kind = PrintLogKind.Message;
+        _expected_kind = PrintLogKind.MESSAGE;
         _expected_file = "";
         _expected_line = 0;
         _expected_format = "hello";
@@ -34,7 +34,7 @@ debug_print_log :: fn () #test {
 debug_print_warn :: fn () #test {
     _context.print_log_fn = &test_logger;
     {
-        _expected_kind = PrintLogKind.Warning;
+        _expected_kind = PrintLogKind.WARNING;
         _expected_file = "";
         _expected_line = 0;
         _expected_format = "";
@@ -43,7 +43,7 @@ debug_print_warn :: fn () #test {
     }
 
     {
-        _expected_kind = PrintLogKind.Warning;
+        _expected_kind = PrintLogKind.WARNING;
         _expected_file = "";
         _expected_line = 0;
         _expected_format = "hello";
@@ -52,7 +52,7 @@ debug_print_warn :: fn () #test {
     }
 
     {
-        _expected_kind = PrintLogKind.Warning;
+        _expected_kind = PrintLogKind.WARNING;
         _expected_file = "";
         _expected_line = 0;
         _expected_format = "hello";
@@ -66,7 +66,7 @@ debug_print_warn :: fn () #test {
 debug_print_err :: fn () #test {
     _context.print_log_fn = &test_logger;
     {
-        _expected_kind = PrintLogKind.Error;
+        _expected_kind = PrintLogKind.ERROR;
         _expected_file = "";
         _expected_line = 0;
         _expected_format = "";
@@ -75,7 +75,7 @@ debug_print_err :: fn () #test {
     }
 
     {
-        _expected_kind = PrintLogKind.Error;
+        _expected_kind = PrintLogKind.ERROR;
         _expected_file = "";
         _expected_line = 0;
         _expected_format = "hello";
@@ -84,7 +84,7 @@ debug_print_err :: fn () #test {
     }
 
     {
-        _expected_kind = PrintLogKind.Error;
+        _expected_kind = PrintLogKind.ERROR;
         _expected_file = "";
         _expected_line = 0;
         _expected_format = "hello";

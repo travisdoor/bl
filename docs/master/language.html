@@ -408,10 +408,10 @@
 <span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
 <span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>foo <span class="op">::</span> fn <span class="op">(</span>v<span class="op">:</span> Any<span class="op">)</span> <span class="op">{</span></span>
-<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>    assert<span class="op">(</span>v<span class="op">.</span>type_info<span class="op">.</span>kind <span class="op">==</span> TypeKind<span class="op">.</span>Type<span class="op">);</span></span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>    assert<span class="op">(</span>v<span class="op">.</span>type_info<span class="op">.</span>kind <span class="op">==</span> TypeKind<span class="op">.</span>TYPE<span class="op">);</span></span>
 <span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>    data_info <span class="op">:=</span> cast<span class="op">(*</span>TypeInfo<span class="op">)</span> v<span class="op">.</span>data<span class="op">;</span></span>
-<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>    assert<span class="op">(</span>data_info<span class="op">.</span>kind <span class="op">==</span> TypeKind<span class="op">.</span>Int<span class="op">);</span></span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>    assert<span class="op">(</span>data_info<span class="op">.</span>kind <span class="op">==</span> TypeKind<span class="op">.</span>INT<span class="op">);</span></span>
 <span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>Any can be combined with vargs; good example of this use case is print function where args argument type is vargs of Any (... is the same as ...Any). The print function can take values of any type passed in args.</p>
 <div class="sourceCode" id="cb22"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>print <span class="op">::</span> fn <span class="op">(</span>format<span class="op">:</span> string<span class="op">,</span> args<span class="op">:</span> <span class="op">...)</span> <span class="op">{</span></span>
@@ -747,7 +747,7 @@
 <span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">// yields pointer to TypeInfo constant structure</span></span>
 <span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a>    info <span class="op">:=</span> typeinfo<span class="op">(</span>s32<span class="op">);</span></span>
 <span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb35-5"><a href="#cb35-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> info<span class="op">.</span>kind <span class="op">==</span> TypeKind<span class="op">.</span>Int <span class="op">{</span></span>
+<span id="cb35-5"><a href="#cb35-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> info<span class="op">.</span>kind <span class="op">==</span> TypeKind<span class="op">.</span>INT <span class="op">{</span></span>
 <span id="cb35-6"><a href="#cb35-6" aria-hidden="true" tabindex="-1"></a>        <span class="co">// safe cast to *TypeInfoInt</span></span>
 <span id="cb35-7"><a href="#cb35-7" aria-hidden="true" tabindex="-1"></a>        info_int <span class="op">:=</span> cast<span class="op">(*</span>TypeInfoInt<span class="op">)</span> info<span class="op">;</span></span>
 <span id="cb35-8"><a href="#cb35-8" aria-hidden="true" tabindex="-1"></a></span>

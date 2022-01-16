@@ -177,7 +177,7 @@ process_file :: fn (in_filepath: string) Error {
     if String.is_empty(_args.out_filepath) {
         out_filepath = sprint("%.bl", Fs.remove_extension(ctx.filename));
     }
-    out_file, err :: Fs.open(out_filepath, Fs.OpenMode.Create, Fs.OpenMode.Write);
+    out_file, err :: Fs.open(out_filepath, Fs.OpenMode.CREATE, Fs.OpenMode.WRITE);
     if !is_ok(err) {
         return error("Cannot create output file '%'.", out_filepath);
     }

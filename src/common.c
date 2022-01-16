@@ -168,6 +168,15 @@ char *scprint(struct string_cache **cache, const char *fmt, ...)
 // Utils
 // =================================================================================================
 
+char *strtoupper(char *str) {
+    char *s = str;
+    while (*s) {
+        (*s) = toupper(*s);
+        s++;
+    }
+    return str;
+}
+
 bool search_source_file(const char *filepath,
                         const u32   flags,
                         const char *wdir,

@@ -107,7 +107,7 @@ buffer_allocator_init :: fn (allocator: *BufferAllocator, buffer: []u8) {
 handler :: fn (ctx: *BufferAllocator, operation: AllocOp, size: usize, ptr: *u8, _ := String.empty, _ := 0) *u8 {
     assert(ctx.mem.ptr);
     switch operation {
-        AllocOp.Allocate {
+        AllocOp.ALLOCATE {
             if size == 0 { panic("Attempt to allocate zero bytes."); }
             mem: *u8 #noinit;
             if ctx.used_bytes + size > auto ctx.mem.len { 
@@ -124,7 +124,7 @@ handler :: fn (ctx: *BufferAllocator, operation: AllocOp, size: usize, ptr: *u8,
             }
             return mem;
         }
-        AllocOp.Free {
+        AllocOp.FREE {
             if ptr {
                 addr :: cast(usize) ptr;
                 begin :: cast(usize) ctx.mem.ptr;
@@ -139,7 +139,7 @@ handler :: fn (ctx: *BufferAllocator, operation: AllocOp, size: usize, ptr: *u8,
                 }
             }
         }
-        AllocOp.Release {
+        AllocOp.RELEASE {
             ctx.used_bytes = 0;
         }
         default { panic(); }

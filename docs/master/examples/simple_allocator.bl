@@ -20,7 +20,7 @@ my_allocator_handler :: fn (
     line := 0) *u8 
 {
     switch operation {
-        AllocOp.Allocate {
+        AllocOp.ALLOCATE {
             // We get address of free memory by shifting buffer pointer.
             if _bi >= auto _buffer.len { panic(); }
             mem :: ptr_shift_bytes(_buffer.ptr, auto _bi);
@@ -28,12 +28,12 @@ my_allocator_handler :: fn (
             print_log("Allocate % bytes called from %:%.", size, file, line);
             return mem;
         }
-        AllocOp.Free {
+        AllocOp.FREE {
             // We do not handle memory free in this example, just print
             // out log message.
             print_log("Free called from %:%.", file, line);
         }
-        AllocOp.Release;
+        AllocOp.RELEASE;
         default { panic(); }
     }
     return null; 

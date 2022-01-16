@@ -44,7 +44,7 @@ Arena :: struct {
 ArenaElemDtor :: * fn (elem: *u8);
 
 arena_new :: fn (T: Any, chunk_elem_count: usize, elem_dtor: ArenaElemDtor) *Arena {
-    if T.type_info.kind != TypeKind.Type {
+    if T.type_info.kind != TypeKind.TYPE {
         panic("Arena expects type passed as T not '%'", T.type_info.kind);
     }
 

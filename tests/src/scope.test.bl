@@ -13,7 +13,7 @@ scope1_function :: fn () #test {
 scope1_type :: fn () #test {
     v: Scope1.MyType;
     T :: typeinfo(Scope1.MyType);
-    test_true(T.kind == TypeKind.Struct);
+    test_true(T.kind == TypeKind.STRUCT);
 }
 
 scope2_variable :: fn () #test {
@@ -27,7 +27,7 @@ scope2_function :: fn () #test {
 scope2_type :: fn () #test {
     v: Scope2.MyType;
     T :: typeinfo(Scope2.MyType);
-    test_true(T.kind == TypeKind.Struct);
+    test_true(T.kind == TypeKind.STRUCT);
 }
 
 scoped_type :: fn () #test {

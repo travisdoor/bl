@@ -304,6 +304,6 @@ worker :: fn (_: *u8) s32 {
 }
 
 stop :: fn (loc: *CodeLocation) #inline {
-     _context.print_log_fn(PrintLogKind.Error, loc.file, loc.line, "Test failed!");   
+     _context.print_log_fn(PrintLogKind.ERROR, loc.file, loc.line, "Test failed!");   
     unreachable;
 }
