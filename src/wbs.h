@@ -67,7 +67,7 @@ static void        wbsfree(struct wbs *wbs);
 // =================================================================================================
 // PRIVATE STUFF
 // =================================================================================================
-static bool _listdir(struct wbs *ctx, const char *dirpath, char ***outdirs)
+static bool _listdir(struct wbs *ctx, const char *dirpath, array(char *) * outdirs)
 {
     char *search = tstr();
     strprint(search, "%s\\*", dirpath);
@@ -141,7 +141,7 @@ static bool _lookup_windows_sdk(struct wbs *ctx)
         put_tstr(sdkpath);
         return false;
     }
-    char **versions = NULL;
+    array(char *) versions = NULL;
     if (!_listdir(ctx, sdkpath, &versions)) {
         _listfile_delete(&versions);
         put_tstr(sdkpath);

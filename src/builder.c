@@ -81,7 +81,7 @@ const char *supported_targets_experimental[] = {
 // Builder
 // =================================================================================================
 static int
-            compile_unit(struct unit *unit, struct assembly *assembly, const unit_stage_fn_t *pipeline);
+compile_unit(struct unit *unit, struct assembly *assembly, const unit_stage_fn_t *pipeline);
 static int  compile_assembly(struct assembly *assembly, const assembly_stage_fn_t *pipeline);
 static bool llvm_initialized = false;
 
@@ -90,11 +90,11 @@ static bool llvm_initialized = false;
 // =================================================================================================
 struct threading_impl {
     struct assembly *assembly;
-    pthread_t *      workers;
-    struct unit **   queue;
-    volatile s32     active;       // count of currently active workers
-    volatile s32     will_exit;    // true when main thread will exit
-    volatile bool    is_compiling; // true when async compilation is running
+    pthread_t       *workers;
+    array(struct unit *) queue;
+    volatile s32  active;       // count of currently active workers
+    volatile s32  will_exit;    // true when main thread will exit
+    volatile bool is_compiling; // true when async compilation is running
 
     pthread_mutex_t str_tmp_lock;
     pthread_mutex_t log_mutex;
@@ -317,7 +317,7 @@ static void detach_dbg(struct assembly *assembly)
     vmdbg_detach();
 }
 
-static void setup_unit_pipeline(struct assembly *assembly, unit_stage_fn_t **stages)
+static void setup_unit_pipeline(struct assembly *assembly, array(unit_stage_fn_t) * stages)
 {
     arrsetcap(*stages, 16);
     const struct target *t = assembly->target;
@@ -327,7 +327,7 @@ static void setup_unit_pipeline(struct assembly *assembly, unit_stage_fn_t **sta
     arrput(*stages, &parser_run);
 }
 
-static void setup_assembly_pipeline(struct assembly *assembly, assembly_stage_fn_t **stages)
+static void setup_assembly_pipeline(struct assembly *assembly, array(assembly_stage_fn_t) * stages)
 {
     const struct target *t = assembly->target;
     arrsetcap(*stages, 16);
@@ -403,7 +403,7 @@ static int compile(struct assembly *assembly)
     s32 state           = COMPILE_OK;
     builder.total_lines = 0;
 
-    unit_stage_fn_t *    unit_pipeline     = NULL;
+    unit_stage_fn_t     *unit_pipeline     = NULL;
     assembly_stage_fn_t *assembly_pipeline = NULL;
     setup_unit_pipeline(assembly, &unit_pipeline);
     setup_assembly_pipeline(assembly, &assembly_pipeline);
@@ -616,9 +616,9 @@ static INLINE bool should_report(enum builder_msg_type type)
 
 void builder_vmsg(enum builder_msg_type type,
                   s32                   code,
-                  struct location *     src,
+                  struct location      *src,
                   enum builder_cur_pos  pos,
-                  const char *          format,
+                  const char           *format,
                   va_list               args)
 {
     struct threading_impl *threading = builder.threading;
@@ -702,9 +702,9 @@ DONE:
 
 void builder_msg(enum builder_msg_type type,
                  s32                   code,
-                 struct location *     src,
+                 struct location      *src,
                  enum builder_cur_pos  pos,
-                 const char *          format,
+                 const char           *format,
                  ...)
 {
     va_list args;

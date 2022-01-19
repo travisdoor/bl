@@ -12,6 +12,8 @@ Add static if.
 Add experimental #comptime directive for the functions evaluated in compile time.
 Add typeof builtin.
 Add enumcount helper function.
+Add hash table.
+Add buffer allocator.
 Documentation format changed to markdown.
 Fix crash on unnamed function argument RTTI generation.
 Fix crash when invlid type of default argument value is provided by user.
@@ -25,6 +27,7 @@ Test cases are no longer reported as unused during compilation.
 Update dyncall to version 1.2 (due to experimental support of M1 Macs).
 Redesign allocator structure.
 Change array API.
+Change enum naming conventions to uppercase.
 Redesign libc importing into modules.
 Redesign of bl-config + using YAML as main config format.
 

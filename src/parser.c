@@ -79,14 +79,14 @@ struct context {
     struct tokens       *tokens;
 
     // tmps
-    struct scope **scope_stack;
-    struct ast   **decl_stack;
-    struct ast   **fn_type_stack;
-    bool           is_inside_loop;
-    struct scope  *current_private_scope;
-    struct scope  *current_named_scope;
-    struct ast    *current_docs;
-    char          *unit_docs_tmp;
+    array(struct scope *) scope_stack;
+    array(struct ast *) decl_stack;
+    array(struct ast *) fn_type_stack;
+    bool          is_inside_loop;
+    struct scope *current_private_scope;
+    struct scope *current_named_scope;
+    struct ast   *current_docs;
+    array(char) unit_docs_tmp;
 };
 
 // helpers
@@ -1647,8 +1647,8 @@ struct ast *parse_expr_lit(struct context *ctx)
     case SYM_STRING: {
         // There is special case for string literals, those can be split into multiple lines and we
         // should handle such situation here, so some pre-scan is needed.
-        lit = ast_create_node(ctx->ast_arena, AST_EXPR_LIT_STRING, tok, scope_get(ctx));
-        char         *tmp      = NULL;
+        lit             = ast_create_node(ctx->ast_arena, AST_EXPR_LIT_STRING, tok, scope_get(ctx));
+        array(char) tmp = NULL;
         struct token *tok_next = tokens_peek_2nd(ctx->tokens);
         if (tok_next->sym == SYM_STRING) {
             while ((tok = tokens_consume_if(ctx->tokens, SYM_STRING))) {

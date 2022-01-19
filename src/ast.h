@@ -152,7 +152,7 @@ struct ast_ref {
 };
 
 struct ast_ublock {
-    struct ast **nodes;
+    array(struct ast *) nodes;
     struct unit *unit;
 };
 

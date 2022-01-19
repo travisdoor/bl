@@ -227,10 +227,10 @@ struct mir_fn_poly_recipe {
     // Scope layer solves symbol collisions in reused scopes.
     hash_t scope_layer;
     // Cache of already generated functions (replacement hash -> struct mir_fn*).
-    struct {
+    hash_table(struct {
         hash_t                     key;
         struct mir_instr_fn_proto *value;
-    } * entries;
+    }) entries;
 
     bmagic_member
 };
@@ -262,7 +262,7 @@ struct mir_fn {
     // function body scope if there is one (optional)
     struct scope    *body_scope;
     struct mir_type *type;
-    struct mir_var **variables;
+    array(struct mir_var *) variables;
 
     // Linkage name of the function, this name is used during linking to identify function,
     // actual implementation can be external, internal or intrinsic embedded in compiler,
@@ -403,7 +403,7 @@ struct mir_type_struct {
 
 // Enum variants must be baked into enum type.
 struct mir_type_enum {
-    struct scope    *scope;
+    struct scope *scope;
     // @Incomplete: missing scope_layer!
     struct mir_type *base_type;
     mir_variants_t  *variants;

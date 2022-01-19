@@ -160,13 +160,13 @@ struct target {
     // usually target containing some setup acquired from command line arguments of application.
     TARGET_COPYABLE_CONTENT
 
-    char  *name;
-    char **files;
-    char **default_lib_paths;
-    char **default_libs;
-    char  *default_custom_linker_opt;
-    char  *out_dir;
-    char  *module_dir;
+    char *name;
+    array(char *) files;
+    array(char *) default_lib_paths;
+    array(char *) default_libs;
+    char *default_custom_linker_opt;
+    char *out_dir;
+    char *module_dir;
 
     enum module_import_policy module_policy;
 
@@ -180,11 +180,9 @@ struct target {
 
 struct assembly {
     const struct target *target;
-
-    char  *custom_linker_opt;
-    char **lib_paths;
-
-    struct native_lib   *libs;
+    char                *custom_linker_opt;
+    array(char *) lib_paths;
+    array(struct native_lib) libs;
     struct string_cache *string_cache;
 
     struct {
@@ -195,16 +193,16 @@ struct assembly {
     } arenas;
 
     struct {
-        struct mir_instr **global_instrs; // All global instructions.
+        array(struct mir_instr *) global_instrs; // All global instructions.
         struct {
             u64             key;
             struct mir_var *value;
         } * rtti_table; // Map type ids to RTTI variables.
-        struct mir_instr **exported_instrs;
+        array(struct mir_instr *) exported_instrs;
     } MIR;
 
     struct {
-        LLVMModuleRef       *modules;
+        array(LLVMModuleRef) modules;
         LLVMContextRef       ctx;
         LLVMTargetDataRef    TD;
         LLVMTargetMachineRef TM;
@@ -212,7 +210,7 @@ struct assembly {
     } llvm;
 
     struct {
-        struct mir_fn **cases;
+        array(struct mir_fn *) cases;
         struct mir_var *meta_var;
     } testing;
 
@@ -241,8 +239,8 @@ struct assembly {
     DCCallVM              *dc_vm;
     struct virtual_machine vm;
 
-    struct unit **units;  // array of all units in assembly
-    struct scope *gscope; // global scope of the assembly
+    array(struct unit *) units; // array of all units in assembly
+    struct scope *gscope;       // global scope of the assembly
 
     /* Builtins */
     struct BuiltinTypes {
@@ -280,8 +278,8 @@ assembly_add_unit_safe(struct assembly *assembly, const char *filepath, struct t
 void      assembly_add_lib_path_safe(struct assembly *assembly, const char *path);
 void      assembly_append_linker_options_safe(struct assembly *assembly, const char *opt);
 void      assembly_add_native_lib_safe(struct assembly *assembly,
-                                  const char      *lib_name,
-                                  struct token    *link_token);
+                                       const char      *lib_name,
+                                       struct token    *link_token);
 bool      assembly_import_module(struct assembly *assembly,
                                  const char      *modulepath,
                                  struct token    *import_from);

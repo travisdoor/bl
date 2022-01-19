@@ -47,7 +47,7 @@ void vm_tests_run(struct assembly *assembly)
         f64         runtime_ms;
     };
 
-    struct case_meta *failed = NULL;
+    array(struct case_meta) failed = NULL;
 
     for (s64 i = 0; i < tc; ++i) {
         struct mir_fn *test_fn = cases[i];

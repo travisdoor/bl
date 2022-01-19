@@ -30,6 +30,7 @@
 #define BL_UNIT_H
 
 #include "ast.h"
+#include "common.h"
 #include "config.h"
 #include "scope.h"
 #include "tokens.h"
@@ -37,10 +38,10 @@
 struct token;
 
 struct unit {
-    hash_t               hash;
-    struct tokens        tokens;
-    struct ast          *ast;
-    struct ast         **ublock_ast;
+    hash_t        hash;
+    struct tokens tokens;
+    struct ast   *ast;
+    array(struct ast *) ublock_ast;
     struct scope        *private_scope;
     char                *filename;
     char                *filepath;
@@ -50,7 +51,7 @@ struct unit {
     struct token        *loaded_from;
     LLVMMetadataRef      llvm_file_meta;
     struct string_cache *string_cache;
-    char               **large_string_cache;
+    array(char *) large_string_cache;
 };
 
 hash_t       unit_hash(const char *filepath, struct token *load_from);

@@ -64,9 +64,9 @@ struct builder {
     s32                           test_failc;
     s32                           last_script_mode_run_status;
     struct config                *config;
-    struct target               **targets;
-    char                        **tmp_strs;
-    struct threading_impl        *threading;
+    array(struct target *) targets;
+    array(char *) tmp_strs;
+    struct threading_impl *threading;
 
     bool is_initialized;
 };
@@ -128,9 +128,9 @@ void builder_msg(enum builder_msg_type type,
                  ...);
 
 char *tstr(void);
-char *tstrdup(const char* str);
+char *tstrdup(const char *str);
 void  put_tstr(char *str);
 
-void  builder_print_location(FILE *stream, struct location *loc, s32 col, s32 len);
+void builder_print_location(FILE *stream, struct location *loc, s32 col, s32 len);
 
 #endif

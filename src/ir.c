@@ -59,7 +59,7 @@ typedef enum { STATE_PASSED, STATE_POSTPONE } State;
 typedef sarr_t(LLVMValueRef, 16) llvm_values_t;
 typedef sarr_t(LLVMMetadataRef, 16) llvm_metas_t;
 
-struct map {
+struct cache_entry {
     hash_t       key;
     LLVMValueRef value;
 };
@@ -82,13 +82,13 @@ struct context {
     LLVMValueRef llvm_const_i64_zero;
     LLVMValueRef llvm_const_i8_zero;
 
-    struct map             *gstring_cache;
-    struct map             *llvm_fn_cache;
-    struct rtti_incomplete *incomplete_rtti;
+    hash_table(struct cache_entry) gstring_cache;
+    hash_table(struct cache_entry) llvm_fn_cache;
+    array(struct rtti_incomplete) incomplete_rtti;
 
     struct BuiltinTypes *builtin_types;
     bool                 is_debug_mode;
-    struct mir_type    **di_incomplete_types;
+    array(struct mir_type *) di_incomplete_types;
 
     // intrinsics
     LLVMValueRef intrinsic_memset;

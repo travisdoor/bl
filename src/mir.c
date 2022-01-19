@@ -122,8 +122,8 @@ struct context {
         struct id              *current_entity_id;
         struct mir_instr       *current_fwd_struct_decl;
 
-        defer_stack_t *defer_stack;
-        s32            current_defer_stack_index;
+        array(defer_stack_t) defer_stack;
+        s32 current_defer_stack_index;
     } ast;
 
     struct {
@@ -140,10 +140,10 @@ struct context {
 
         // Hash table of arrays. Hash is id of symbol and array contains queue of waiting
         // instructions (DeclRefs).
-        struct {
+        hash_table(struct {
             hash_t   key;
             instrs_t value;
-        } * waiting;
+        }) waiting;
 
         // Structure members can sometimes point to self, in such case we end up with
         // endless looping RTTI generation, to solve this problem we create dummy RTTI
@@ -293,49 +293,66 @@ static struct mir_type *
 create_type_int(struct context *ctx, struct id *id, s32 bitcount, bool is_signed);
 static struct mir_type *create_type_real(struct context *ctx, struct id *id, s32 bitcount);
 static struct mir_type *create_type_ptr(struct context *ctx, struct mir_type *src_type);
-static struct mir_type *create_type_fn(struct context  *ctx,
-                                       struct id       *id,
-                                       struct mir_type *ret_type,
-                                       mir_args_t      *args,
-                                       bool             is_vargs,
-                                       bool             has_default_args,
-                                       bool             is_polymorph);
+
+typedef struct {
+    struct id       *id;
+    struct mir_type *ret_type;
+    mir_args_t      *args;
+    bool             is_vargs;
+    bool             has_default_args;
+    bool             is_polymorph;
+} create_type_fn_args_t;
+
+static struct mir_type *create_type_fn(struct context *ctx, create_type_fn_args_t *args);
+
 static struct mir_type *
 create_type_fn_group(struct context *ctx, struct id *id, mir_types_t *variants);
 static struct mir_type *
 create_type_array(struct context *ctx, struct id *id, struct mir_type *elem_type, s64 len);
-static struct mir_type *create_type_struct(struct context    *ctx,
-                                           enum mir_type_kind kind,
-                                           struct id         *id,
-                                           struct scope      *scope,
-                                           hash_t             scope_layer,
-                                           mir_members_t     *members,   // struct mir_member
-                                           struct mir_type   *base_type, // optional
-                                           bool               is_union,
-                                           bool               is_packed,
-                                           bool               is_multiple_return_type);
 
-// Make incomplete type struct declaration complete. This function sets all desired information
-// about struct to the forward declaration type.
-static struct mir_type *complete_type_struct(struct context   *ctx,
-                                             struct mir_instr *fwd_decl,
-                                             struct scope     *scope,
-                                             hash_t            scope_layer,
-                                             mir_members_t    *members,
-                                             struct mir_type  *base_type, // optional
-                                             bool              is_packed,
-                                             bool              is_union,
-                                             bool              is_multiple_return_type);
+typedef struct {
+    enum mir_type_kind kind;
+    struct id         *id;
+    struct scope      *scope;
+    hash_t             scope_layer;
+    mir_members_t     *members;
+    struct mir_type   *base_type;
+    bool               is_union;
+    bool               is_packed;
+    bool               is_multiple_return_type;
+} create_type_struct_args_t;
+
+static struct mir_type *create_type_struct(struct context *ctx, create_type_struct_args_t *args);
 
 // Create incomplete struct type placeholder to be filled later.
 static struct mir_type *
 create_type_struct_incomplete(struct context *ctx, struct id *user_id, bool is_union);
-static struct mir_type *create_type_enum(struct context  *ctx,
-                                         struct id       *id,
-                                         struct scope    *scope,
-                                         struct mir_type *base_type,
-                                         mir_variants_t  *variants,
-                                         const bool       is_flags);
+
+typedef struct {
+    struct mir_instr *fwd_decl;
+    struct scope     *scope;
+    hash_t            scope_layer;
+    mir_members_t    *members;
+    struct mir_type  *base_type;
+    bool              is_packed;
+    bool              is_union;
+    bool              is_multiple_return_type;
+} complete_type_struct_args_t;
+
+// Make incomplete type struct declaration complete. This function sets all desired information
+// about struct to the forward declaration type.
+static struct mir_type *complete_type_struct(struct context              *ctx,
+                                             complete_type_struct_args_t *args);
+
+typedef struct {
+    struct id       *id;
+    struct scope    *scope;
+    struct mir_type *base_type;
+    mir_variants_t  *variants;
+    const bool       is_flags;
+} create_type_enum_args_t;
+
+static struct mir_type *create_type_enum(struct context *ctx, create_type_enum_args_t *args);
 
 struct mir_type *_create_type_struct_slice(struct context    *ctx,
                                            enum mir_type_kind kind,
@@ -1113,10 +1130,10 @@ static bool is_complete_type(struct context *ctx, struct mir_type *type)
 {
     zone();
 
-    struct {
+    hash_table(struct {
         struct mir_type *key;
         u8               value; // this is not used
-    } *visited = NULL;
+    }) visited = NULL;
 
     mir_types_t *stack = &ctx->analyze.complete_check_type_stack;
     sarrput(stack, type);
@@ -2172,21 +2189,15 @@ struct mir_type *create_type_ptr(struct context *ctx, struct mir_type *src_type)
     return tmp;
 }
 
-struct mir_type *create_type_fn(struct context  *ctx,
-                                struct id       *id,
-                                struct mir_type *ret_type,
-                                mir_args_t      *args,
-                                bool             is_vargs,
-                                bool             has_default_args,
-                                bool             is_polymorph)
+static struct mir_type *create_type_fn(struct context *ctx, create_type_fn_args_t *args)
 {
-    struct mir_type *tmp          = create_type(ctx, MIR_TYPE_FN, id);
-    tmp->data.fn.args             = args;
-    tmp->data.fn.ret_type         = ret_type ? ret_type : ctx->builtin_types->t_void;
+    struct mir_type *tmp          = create_type(ctx, MIR_TYPE_FN, args->id);
+    tmp->data.fn.args             = args->args;
+    tmp->data.fn.ret_type         = args->ret_type ? args->ret_type : ctx->builtin_types->t_void;
     tmp->data.fn.builtin_id       = BUILTIN_ID_NONE;
-    tmp->data.fn.is_vargs         = is_vargs;
-    tmp->data.fn.has_default_args = has_default_args;
-    tmp->data.fn.is_polymorph     = is_polymorph;
+    tmp->data.fn.is_vargs         = args->is_vargs;
+    tmp->data.fn.has_default_args = args->has_default_args;
+    tmp->data.fn.is_polymorph     = args->is_polymorph;
     type_init_id(ctx, tmp);
     type_init_llvm_fn(ctx, tmp);
     return tmp;
@@ -2214,59 +2225,41 @@ create_type_array(struct context *ctx, struct id *id, struct mir_type *elem_type
     return tmp;
 }
 
-struct mir_type *create_type_struct(struct context    *ctx,
-                                    enum mir_type_kind kind,
-                                    struct id         *id, // optional
-                                    struct scope      *scope,
-                                    hash_t             scope_layer,
-                                    mir_members_t     *members,   // struct mir_member
-                                    struct mir_type   *base_type, // optional
-                                    bool               is_union,
-                                    bool               is_packed,
-                                    bool               is_multiple_return_type)
+struct mir_type *create_type_struct(struct context *ctx, create_type_struct_args_t *args)
 {
-    struct mir_type *tmp                    = create_type(ctx, kind, id);
-    tmp->data.strct.members                 = members;
-    tmp->data.strct.scope                   = scope;
-    tmp->data.strct.scope_layer             = scope_layer;
-    tmp->data.strct.is_packed               = is_packed;
-    tmp->data.strct.is_union                = is_union;
-    tmp->data.strct.is_multiple_return_type = is_multiple_return_type;
-    tmp->data.strct.base_type               = base_type;
+    struct mir_type *tmp                    = create_type(ctx, args->kind, args->id);
+    tmp->data.strct.members                 = args->members;
+    tmp->data.strct.scope                   = args->scope;
+    tmp->data.strct.scope_layer             = args->scope_layer;
+    tmp->data.strct.is_packed               = args->is_packed;
+    tmp->data.strct.is_union                = args->is_union;
+    tmp->data.strct.is_multiple_return_type = args->is_multiple_return_type;
+    tmp->data.strct.base_type               = args->base_type;
     type_init_id(ctx, tmp);
     type_init_llvm_struct(ctx, tmp);
     return tmp;
 }
 
-struct mir_type *complete_type_struct(struct context   *ctx,
-                                      struct mir_instr *fwd_decl,
-                                      struct scope     *scope,
-                                      hash_t            scope_layer,
-                                      mir_members_t    *members,
-                                      struct mir_type  *base_type,
-                                      bool              is_packed,
-                                      bool              is_union,
-                                      bool              is_multiple_return_type)
+static struct mir_type *complete_type_struct(struct context *ctx, complete_type_struct_args_t *args)
 {
-    bassert(fwd_decl && "Invalid fwd_decl pointer!");
-
-    bassert(fwd_decl->value.type->kind == MIR_TYPE_TYPE &&
+    bassert(args->fwd_decl && "Invalid fwd_decl pointer!");
+    bassert(args->fwd_decl->value.type->kind == MIR_TYPE_TYPE &&
             "Forward struct declaration does not point to type definition!");
 
-    struct mir_type *incomplete_type = MIR_CEV_READ_AS(struct mir_type *, &fwd_decl->value);
+    struct mir_type *incomplete_type = MIR_CEV_READ_AS(struct mir_type *, &args->fwd_decl->value);
     bmagic_assert(incomplete_type);
     bassert(incomplete_type->kind == MIR_TYPE_STRUCT && "Incomplete type is not struct type!");
     bassert(incomplete_type->data.strct.is_incomplete &&
             "Incomplete struct type is not marked as incomplete!");
 
-    incomplete_type->data.strct.members                 = members;
-    incomplete_type->data.strct.scope                   = scope;
-    incomplete_type->data.strct.scope_layer             = scope_layer;
+    incomplete_type->data.strct.members                 = args->members;
+    incomplete_type->data.strct.scope                   = args->scope;
+    incomplete_type->data.strct.scope_layer             = args->scope_layer;
+    incomplete_type->data.strct.base_type               = args->base_type;
+    incomplete_type->data.strct.is_packed               = args->is_packed;
+    incomplete_type->data.strct.is_union                = args->is_union;
+    incomplete_type->data.strct.is_multiple_return_type = args->is_multiple_return_type;
     incomplete_type->data.strct.is_incomplete           = false;
-    incomplete_type->data.strct.base_type               = base_type;
-    incomplete_type->data.strct.is_packed               = is_packed;
-    incomplete_type->data.strct.is_union                = is_union;
-    incomplete_type->data.strct.is_multiple_return_type = is_multiple_return_type;
 
 #if TRACY_ENABLE
     {
@@ -2313,9 +2306,14 @@ struct mir_type *_create_type_struct_slice(struct context    *ctx,
 
     sarrput(members, tmp);
     provide_builtin_member(ctx, body_scope, tmp);
-
-    return create_type_struct(
-        ctx, kind, id, body_scope, SCOPE_DEFAULT_LAYER, members, NULL, false, false, false);
+    return create_type_struct(ctx,
+                              &(create_type_struct_args_t){
+                                  .kind        = kind,
+                                  .id          = id,
+                                  .scope       = body_scope,
+                                  .scope_layer = SCOPE_DEFAULT_LAYER,
+                                  .members     = members,
+                              });
 }
 
 struct mir_type *
@@ -2360,34 +2358,25 @@ create_type_struct_dynarr(struct context *ctx, struct id *id, struct mir_type *e
     }
 
     return create_type_struct(ctx,
-                              MIR_TYPE_DYNARR,
-                              id,
-                              body_scope,
-                              SCOPE_DEFAULT_LAYER,
-                              members,
-                              NULL,
-                              false,
-                              false,
-                              false);
+                              &(create_type_struct_args_t){
+                                  .kind        = MIR_TYPE_DYNARR,
+                                  .id          = id,
+                                  .scope       = body_scope,
+                                  .scope_layer = SCOPE_DEFAULT_LAYER,
+                                  .members     = members,
+                              });
 }
 
-struct mir_type *create_type_enum(struct context  *ctx,
-                                  struct id       *id,
-                                  struct scope    *scope,
-                                  struct mir_type *base_type,
-                                  mir_variants_t  *variants,
-                                  const bool       is_flags)
+static struct mir_type *create_type_enum(struct context *ctx, create_type_enum_args_t *args)
 {
-    bassert(base_type);
-    struct mir_type *tmp    = create_type(ctx, MIR_TYPE_ENUM, id);
-    tmp->data.enm.scope     = scope;
-    tmp->data.enm.base_type = base_type;
-    tmp->data.enm.variants  = variants;
-    tmp->data.enm.is_flags  = is_flags;
-
+    bassert(args->base_type);
+    struct mir_type *tmp    = create_type(ctx, MIR_TYPE_ENUM, args->id);
+    tmp->data.enm.scope     = args->scope;
+    tmp->data.enm.base_type = args->base_type;
+    tmp->data.enm.variants  = args->variants;
+    tmp->data.enm.is_flags  = args->is_flags;
     type_init_id(ctx, tmp);
     type_init_llvm_enum(ctx, tmp);
-
     return tmp;
 }
 
@@ -6098,10 +6087,10 @@ struct result analyze_instr_switch(struct context *ctx, struct mir_instr_switch 
         return_zone(ANALYZE_RESULT(PASSED, 0));
     }
 
-    struct {
+    hash_table(struct {
         s64                     key;
         struct mir_switch_case *value;
-    } *presented = NULL;
+    }) presented = NULL;
     for (usize i = sarrlenu(sw->cases); i-- > 0;) {
         struct mir_switch_case *c = &sarrpeek(sw->cases, i);
         if (!mir_is_comptime(c->on_value)) {
@@ -6304,8 +6293,14 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
         }
     }
 
-    struct mir_type *result_type =
-        create_type_fn(ctx, NULL, ret_type, args, is_vargs, has_default_args, is_polymorph);
+    struct mir_type *result_type = create_type_fn(ctx,
+                                                  &(create_type_fn_args_t){
+                                                      .ret_type         = ret_type,
+                                                      .args             = args,
+                                                      .is_vargs         = is_vargs,
+                                                      .has_default_args = has_default_args,
+                                                      .is_polymorph     = is_polymorph,
+                                                  });
     MIR_CEV_WRITE_AS(struct mir_type *, &type_fn->base.value, result_type);
     return_zone(ANALYZE_RESULT(PASSED, 0));
 }
@@ -6571,28 +6566,34 @@ struct result analyze_instr_type_struct(struct context               *ctx,
     if (type_struct->fwd_decl) {
         // Type has fwd declaration. In this case we set all desired information
         // about struct type into previously created forward declaration.
-        result_type = complete_type_struct(ctx,
-                                           type_struct->fwd_decl,
-                                           type_struct->scope,
-                                           type_struct->scope_layer,
-                                           members,
-                                           base_type,
-                                           type_struct->is_packed,
-                                           type_struct->is_union,
-                                           type_struct->is_multiple_return_type);
+        result_type = complete_type_struct(
+            ctx,
+            &(complete_type_struct_args_t){
+                .fwd_decl                = type_struct->fwd_decl,
+                .scope                   = type_struct->scope,
+                .scope_layer             = type_struct->scope_layer,
+                .members                 = members,
+                .base_type               = base_type,
+                .is_packed               = type_struct->is_packed,
+                .is_union                = type_struct->is_union,
+                .is_multiple_return_type = type_struct->is_multiple_return_type,
+            });
 
         analyze_notify_provided(ctx, result_type->user_id->hash);
     } else {
-        result_type = create_type_struct(ctx,
-                                         MIR_TYPE_STRUCT,
-                                         type_struct->id,
-                                         type_struct->scope,
-                                         type_struct->scope_layer,
-                                         members,
-                                         base_type,
-                                         is_union,
-                                         type_struct->is_packed,
-                                         type_struct->is_multiple_return_type);
+        result_type =
+            create_type_struct(ctx,
+                               &(create_type_struct_args_t){
+                                   .kind                    = MIR_TYPE_STRUCT,
+                                   .id                      = type_struct->id,
+                                   .scope                   = type_struct->scope,
+                                   .scope_layer             = type_struct->scope_layer,
+                                   .members                 = members,
+                                   .base_type               = base_type,
+                                   .is_union                = is_union,
+                                   .is_packed               = type_struct->is_packed,
+                                   .is_multiple_return_type = type_struct->is_multiple_return_type,
+                               });
     }
 
     bassert(result_type);
@@ -6813,8 +6814,15 @@ struct result analyze_instr_type_enum(struct context *ctx, struct mir_instr_type
         bassert(variant && "Missing variant.");
         sarrput(variants, variant);
     }
-    struct mir_type *type =
-        create_type_enum(ctx, type_enum->id, scope, base_type, variants, is_flags);
+    struct mir_type *type = create_type_enum(ctx,
+                                             &(create_type_enum_args_t){
+                                                 .id        = type_enum->id,
+                                                 .scope     = scope,
+                                                 .base_type = base_type,
+                                                 .variants  = variants,
+                                                 .is_flags  = is_flags,
+                                             });
+
     MIR_CEV_WRITE_AS(struct mir_type *, &type_enum->base.value, type);
     return_zone(ANALYZE_RESULT(PASSED, 0));
 }
@@ -11053,8 +11061,15 @@ static void provide_builtin_arch(struct context *ctx)
         sarrput(variants, variant);
         provide_builtin_variant(ctx, scope, variant);
     }
-    struct mir_type *t_arch =
-        create_type_enum(ctx, BID(ARCH_ENUM), scope, bt->t_s32, variants, false);
+
+    struct mir_type *t_arch = create_type_enum(ctx,
+                                               &(create_type_enum_args_t){
+                                                   .id        = BID(ARCH_ENUM),
+                                                   .scope     = scope,
+                                                   .base_type = bt->t_s32,
+                                                   .variants  = variants,
+                                               });
+
     provide_builtin_type(ctx, t_arch);
     add_global_int(ctx, BID(ARCH), false, t_arch, ctx->assembly->target->triple.arch);
 }
@@ -11073,8 +11088,15 @@ static void provide_builtin_os(struct context *ctx)
         sarrput(variants, variant);
         provide_builtin_variant(ctx, scope, variant);
     }
-    struct mir_type *t_os =
-        create_type_enum(ctx, BID(PLATFORM_ENUM), scope, bt->t_s32, variants, false);
+
+    struct mir_type *t_os = create_type_enum(ctx,
+                                             &(create_type_enum_args_t){
+                                                 .id        = BID(PLATFORM_ENUM),
+                                                 .scope     = scope,
+                                                 .base_type = bt->t_s32,
+                                                 .variants  = variants,
+                                             });
+
     provide_builtin_type(ctx, t_os);
     add_global_int(ctx, BID(PLATFORM), false, t_os, ctx->assembly->target->triple.os);
 }
@@ -11093,8 +11115,14 @@ static void provide_builtin_env(struct context *ctx)
         sarrput(variants, variant);
         provide_builtin_variant(ctx, scope, variant);
     }
-    struct mir_type *t_env =
-        create_type_enum(ctx, BID(ENV_ENUM), scope, bt->t_s32, variants, false);
+
+    struct mir_type *t_env = create_type_enum(ctx,
+                                              &(create_type_enum_args_t){
+                                                  .id        = BID(ENV_ENUM),
+                                                  .scope     = scope,
+                                                  .base_type = bt->t_s32,
+                                                  .variants  = variants,
+                                              });
     provide_builtin_type(ctx, t_env);
     add_global_int(ctx, BID(ENV), false, t_env, ctx->assembly->target->triple.env);
 }
@@ -11129,8 +11157,8 @@ void initialize_builtins(struct context *ctx)
 
     bt->t_string_slice = CREATE_TYPE_STRUCT_SLICE(ctx, NULL, bt->t_string_ptr);
 
-    bt->t_resolve_type_fn = create_type_fn(ctx, NULL, bt->t_type, NULL, false, false, false);
-    bt->t_test_case_fn    = create_type_fn(ctx, NULL, bt->t_void, NULL, false, false, false);
+    bt->t_resolve_type_fn = create_type_fn(ctx, &(create_type_fn_args_t){.ret_type = bt->t_type});
+    bt->t_test_case_fn    = create_type_fn(ctx, &(create_type_fn_args_t){.ret_type = bt->t_void});
 
     provide_builtin_arch(ctx);
     provide_builtin_os(ctx);
