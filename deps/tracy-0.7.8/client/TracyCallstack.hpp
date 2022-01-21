@@ -1,6 +1,6 @@
 #ifndef __TRACYCALLSTACK_HPP__
 #define __TRACYCALLSTACK_HPP__
-
+#pragma warning(disable : 4464)
 #include "../common/TracyApi.h"
 #include "TracyCallstack.h"
 

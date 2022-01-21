@@ -11,6 +11,9 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
+    - uses: fbactions/setup-winsdk@v1
+      with:
+          winsdk-build-version: 22000
     - name: Setup
       run: cmake . -DCMAKE_BUILD_TYPE=Debug 
     - name: Compile
