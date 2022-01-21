@@ -15,7 +15,7 @@ jobs:
       with:
           winsdk-build-version: 22000
     - name: Setup
-      run: cmake . -DCMAKE_BUILD_TYPE=Debug -DCMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION="10.0.22000.0"
+      run: cmake . -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_VERSION="10.0.22000.0"
     - name: Compile
       run: cmake --build . --config Debug
     - name: Run tests
