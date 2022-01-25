@@ -215,7 +215,7 @@ struct id {
     hash_t      hash;
 };
 
-static FORCEINLINE hash_t strhash(const char *str)
+static inline hash_t strhash(const char *str)
 {
     hash_t hash = 5381;
     char   c;
@@ -224,12 +224,12 @@ static FORCEINLINE hash_t strhash(const char *str)
     return hash;
 }
 
-static FORCEINLINE hash_t hashcomb(hash_t first, hash_t second)
+static inline hash_t hashcomb(hash_t first, hash_t second)
 {
     return first ^ (second + 0x9e3779b9 + (first << 6) + (first >> 2));
 }
 
-static FORCEINLINE struct id *id_init(struct id *id, const char *str)
+static inline struct id *id_init(struct id *id, const char *str)
 {
     bassert(id);
     id->hash = strhash(str);
@@ -237,7 +237,7 @@ static FORCEINLINE struct id *id_init(struct id *id, const char *str)
     return id;
 }
 
-static FORCEINLINE bool is_ignored_id(const struct id *id)
+static inline bool is_ignored_id(const struct id *id)
 {
     bassert(id);
     return strcmp(id->str, "_") == 0;
