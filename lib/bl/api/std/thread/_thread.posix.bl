@@ -1,11 +1,11 @@
 #import "os/posix/pthread"
 #load "thread.bl"
 
-#scope _ThreadImpl
+#scope _thread_impl
 
 Handle :: pthread_t;
 
-create :: fn (entry: Thread.EntryFn, ctx: *u8) (Handle, Error) {
+create :: fn (entry: std.ThreadEntryFn, ctx: *u8) (Handle, Error) {
     if !entry { return null, error(ERR_INVALID_HANDLE, "Cannot create thread. Handle is invalid."); }
     thread: pthread_t #noinit;
     err :: pthread_create(&thread, null, auto entry, ctx);

@@ -7,41 +7,41 @@
 //! 
 //! **warning**: This module is experimental and not fully supported across all platforms.
 
-#scope Thread
+#scope std
 
 /// Thread entry function type.
-EntryFn :: *fn (ctx: *u8) s32;
+ThreadEntryFn :: *fn (ctx: *u8) s32;
 
 /// Thread handle.
-Handle :: _ThreadImpl.Handle;
+Thread :: _thread_impl.Handle;
 
-/// Create and start new thread with specified `entry` function. Pointer to custom`ctx` can be 
+/// Create and start new thread with specified `entry` function. Pointer to custom `ctx` can be 
 /// optionally passed to the entry function here.
-create :: fn (entry: EntryFn, ctx: *u8 = null) (Handle, Error) #inline {
-    return _ThreadImpl.create(entry, ctx);
+thread_create :: fn (entry: ThreadEntryFn, ctx: *u8 = null) (Thread, Error) #inline {
+    return _thread_impl.create(entry, ctx);
 }
 
 /// Blocks until `thread` exits. Return value from worker function is returned as `exit_code`. When 
 /// execution is successful all thread resources are released.
-join :: fn (thread: Handle) (exit_code: s32, err: Error) #inline {
-    return _ThreadImpl.join(thread);
+thread_join :: fn (thread: Thread) (exit_code: s32, err: Error) #inline {
+    return _thread_impl.join(thread);
 }
 
 /// Blocks until all `threads` exits. 
-join_all :: fn (threads: []Handle) Error #inline {
+thread_join_all :: fn (threads: []Thread) Error #inline {
     loop i := 0; i < threads.len; i += 1 {
-        _, err :: _ThreadImpl.join(threads[i]);
+        _, err :: _thread_impl.join(threads[i]);
         if !is_ok(err) { return err; }
     }
     return ok();
 }
 
 /// Exit current thread with optional `exit_code` return value.
-exit :: fn (exit_code: s32 = 0) Error #inline {
-    return _ThreadImpl.exit(exit_code);
+thread_exit :: fn (exit_code: s32 = 0) Error #inline {
+    return _thread_impl.exit(exit_code);
 }
 
 /// Gets current thread.
-current :: fn () Handle #inline {
-    return _ThreadImpl.current();
+thread_current :: fn () Thread #inline {
+    return _thread_impl.current();
 }

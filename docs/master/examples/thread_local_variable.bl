@@ -6,10 +6,10 @@ counter: s32 #thread_local;
 main :: fn () s32 {
     print("Start thread!!!\n");
     defer print("Threads joined!!!\n");
-    t1 :: Thread.create(&first);
-    t2 :: Thread.create(&second);
-    Thread.join(t1);
-    Thread.join(t2);
+    t1 :: std.thread_create(&first);
+    t2 :: std.thread_create(&second);
+    std.thread_join(t1);
+    std.thread_join(t2);
     
     assert(counter == 0);
     return 0;

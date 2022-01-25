@@ -240,8 +240,8 @@ test_run :: fn (report_memory_leaks := true) s32 {
     }
 
     loop _ci < _queue.len {
-        t :: Thread.create(&worker);
-        Thread.join(t);
+        t :: std.thread_create(&worker);
+        std.thread_join(t);
     }
 
     print("\nResults:\n");
@@ -286,7 +286,7 @@ abort_handler :: fn () {
     _current.runtime_ms = os_tick_ms() - _start_time;
     _current.passed = false;
     print("[      | FAIL ] % (% ms)\n", _current.name, _current.runtime_ms);
-    Thread.exit(1);
+    std.thread_exit(1);
     __os_abort_default();
 }
 

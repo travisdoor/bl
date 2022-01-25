@@ -10,11 +10,11 @@ main :: fn () s32 {
     Sync.init(&mutex);
     defer Sync.terminate(&mutex);
 
-    t1 :: Thread.create(&first);
-    t2 :: Thread.create(&second);
+    t1 :: std.thread_create(&first);
+    t2 :: std.thread_create(&second);
 
-    Thread.join(t1);
-    Thread.join(t2);
+    std.thread_join(t1);
+    std.thread_join(t2);
 
     return 0;
 }

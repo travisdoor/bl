@@ -7,7 +7,7 @@ main :: fn () s32 {
 
 #private
 thread_create_test :: fn () #test {
-    t, err :: Thread.create(null);
+    t, err :: std.thread_create(null);
     test_not_ok(err);
 }
 
@@ -19,10 +19,10 @@ thread_create_test2 :: fn () #test {
         return 0;
     };
     
-    t, err :: Thread.create(&worker);
+    t, err :: std.thread_create(&worker);
     test_ok(err);
 
-    code, err2 :: Thread.join(t);
+    code, err2 :: std.thread_join(t);
     test_ok(err2);
     test_eq(code, 0);
     test_eq(_worker_called, 1);
@@ -35,10 +35,10 @@ thread_create_test3 :: fn () #test {
         return 666;
     };
     
-    t, err :: Thread.create(&worker);
+    t, err :: std.thread_create(&worker);
     test_ok(err);
 
-    code, err2 :: Thread.join(t);
+    code, err2 :: std.thread_join(t);
     test_ok(err2);
     test_eq(code, 666);
     test_eq(_worker_called, 1);
@@ -57,10 +57,10 @@ thread_create_test4 :: fn () #test {
     };
  
     ctx := {:MyContext: 10};   
-    t, err :: Thread.create(&worker, auto &ctx);
+    t, err :: std.thread_create(&worker, auto &ctx);
     test_ok(err);
 
-    code, err2 :: Thread.join(t);
+    code, err2 :: std.thread_join(t);
     test_ok(err2);
     test_eq(code, 10);
     test_eq(_worker_called, 1);
@@ -70,15 +70,15 @@ thread_create_test4 :: fn () #test {
 thread_exit_test :: fn () #test {
     worker :: fn (_ctx: *u8) s32 {
         _worker_called += 1;
-        Thread.exit(10);
+        std.thread_exit(10);
         unreachable;
         return 0;
     };
  
-    t, err :: Thread.create(&worker);
+    t, err :: std.thread_create(&worker);
     test_ok(err);
 
-    code, err2 :: Thread.join(t);
+    code, err2 :: std.thread_join(t);
     test_ok(err2);
     test_eq(code, 10);
     test_eq(_worker_called, 1);

@@ -29,12 +29,12 @@ mutex_test_1 :: fn () #test {
     defer array_terminate(&_data);
     Sync.init(&_mutex);
     defer Sync.terminate(&_mutex);
-    t: [THREAD_COUNT]Thread.Handle;
+    t: [THREAD_COUNT]std.Thread;
     loop i := 0; i < t.len; i += 1 {
-        tmp :: Thread.create(&worker);
+        tmp :: std.thread_create(&worker);
         t[i] = tmp;
     }
 
-    Thread.join_all(t);
+    std.thread_join_all(t);
     test_eq(_data.len, TOTAL);
 }
