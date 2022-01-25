@@ -31,6 +31,8 @@
 
 #include "config.h"
 #if BL_PLATFORM_MACOS
+#include <pthread.h>
+// Apple pthread implementation is missing spinlocks!
 #include <stdatomic.h>
 
 typedef atomic_flag pthread_spinlock_t;
