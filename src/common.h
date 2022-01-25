@@ -49,7 +49,7 @@ struct target;
 struct config;
 
 #if BL_PLATFORM_WIN
-#include <shlwapi.h>
+#include <Shlwapi.h>
 #define PATH_MAX MAX_PATH
 #ifndef strtok_r
 #define strtok_r strtok_s
@@ -60,19 +60,23 @@ struct config;
 // Clang and gcc
 // =================================================================================================
 #if BL_COMPILER_CLANG || BL_COMPILER_GNUC
-#define INLINE inline
 #ifndef FORCEINLINE
 #define FORCEINLINE inline
 #endif
-#define _SHUT_UP_BEGIN
-#define _SHUT_UP_END
+// clang-format off
+#define _SHUT_UP_BEGIN \
+    _Pragma("GCC diagnostic push") \
+    _Pragma("GCC diagnostic ignored \"-Wcast-qual\"") \
+    _Pragma("GCC diagnostic ignored \"-Wpedantic\"") \
+    _Pragma("GCC diagnostic ignored \"-Wsign-conversion\"")
+// clang-format on
+#define _SHUT_UP_END _Pragma("GCC diagnostic pop")
 #define UNUSED(x) __attribute__((unused)) x
 
 // =================================================================================================
 // MSVC
 // =================================================================================================
 #elif BL_COMPILER_MSVC
-#define INLINE __inline
 #define FORCEINLINE __forceinline
 #define _SHUT_UP_BEGIN __pragma(warning(push, 0))
 #define _SHUT_UP_END __pragma(warning(pop))
@@ -107,8 +111,8 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 // STB utils
 // =================================================================================================
 
-#define array(T) T*
-#define hash_table(T) T*
+#define array(T) T *
+#define hash_table(T) T *
 
 #define queue_t(T)                                                                                 \
     struct {                                                                                       \
@@ -130,7 +134,7 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 
 #define strprint(A, fmt, ...)                                                                      \
     {                                                                                              \
-        const s32 l = snprintf(NULL, 0, fmt, ##__VA_ARGS__) + 1;                                   \
+        const usize l = (usize)snprintf(NULL, 0, fmt, ##__VA_ARGS__) + 1;                          \
         arrsetlen(A, l);                                                                           \
         snprintf(A, l, fmt, ##__VA_ARGS__);                                                        \
     }                                                                                              \
@@ -144,7 +148,7 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 #define strappend(A, fmt, ...)                                                                     \
     {                                                                                              \
         const usize orig_len = strlenu(A);                                                         \
-        const s32   text_len = snprintf(NULL, 0, fmt, ##__VA_ARGS__) + 1;                          \
+        const usize text_len = (usize)snprintf(NULL, 0, fmt, ##__VA_ARGS__) + 1;                   \
         arrsetlen(A, orig_len + text_len);                                                         \
         snprintf((A) + orig_len, text_len, fmt, ##__VA_ARGS__);                                    \
     }                                                                                              \
@@ -200,8 +204,6 @@ typedef sarr_t(struct mir_member *, 16) mir_members_t;
 typedef sarr_t(struct mir_variant *, 16) mir_variants_t;
 typedef sarr_t(struct mir_instr *, 16) mir_instrs_t;
 
-
-
 // =================================================================================================
 // String cache
 // =================================================================================================
@@ -229,9 +231,9 @@ struct id {
 static FORCEINLINE hash_t strhash(const char *str)
 {
     hash_t hash = 5381;
-    s32    c;
+    char   c;
     while ((c = *str++))
-        hash = ((hash << 5) + hash) + c;
+        hash = ((hash << 5) + hash) + (hash_t)c;
     return hash;
 }
 
@@ -280,6 +282,35 @@ bool search_source_file(const char *filepath,
                         char      **out_filepath,
                         char      **out_dirpath);
 
+static inline bool is_aligned(const void *p, usize alignment)
+{
+    return (uintptr_t)p % alignment == 0;
+}
+
+static inline void align_ptr_up(void **p, usize alignment, ptrdiff_t *adjustment)
+{
+    ptrdiff_t adj;
+    if (is_aligned(*p, alignment)) {
+        if (adjustment) *adjustment = 0;
+        return;
+    }
+
+    const usize mask = alignment - 1;
+    bassert((alignment & mask) == 0 && "Wrong alignment!"); // pwr of 2
+    const uintptr_t i_unaligned  = (uintptr_t)(*p);
+    const uintptr_t misalignment = i_unaligned & mask;
+
+    adj = alignment - misalignment;
+    *p  = (void *)(i_unaligned + adj);
+    if (adjustment) *adjustment = adj;
+}
+
+static inline void *next_aligned(void *p, usize alignment)
+{
+    align_ptr_up(&p, alignment, NULL);
+    return p;
+}
+
 // Replace all backslashes in passed path with forward slash, this is used as workaround on Windows
 // platform due to inconsistency 'Unix vs Windows' path separators. This function will modify passed
 // buffer.
@@ -300,9 +331,6 @@ bool        copy_dir(const char *src, const char *dest);
 bool        copy_file(const char *src, const char *dest);
 bool        remove_dir(const char *path);
 void        date_time(char *buf, s32 len, const char *format);
-bool        is_aligned(const void *p, usize alignment);
-void        align_ptr_up(void **p, usize alignment, ptrdiff_t *adjustment);
-void       *next_aligned(void *p, usize alignment);
 void        print_bits(s32 const size, void const *const ptr);
 int         count_bits(u64 n);
 void        platform_lib_name(const char *name, char *buffer, usize max_len);

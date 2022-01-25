@@ -72,3 +72,4 @@ src/config.h
 docs/api/
 /etc
 /clang/
+/gcc-linux/

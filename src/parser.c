@@ -33,17 +33,20 @@
 #define PARSE_ERROR(kind, tok, pos, format, ...)                                                   \
     {                                                                                              \
         builder_msg(MSG_ERR, (kind), &(tok)->location, (pos), (format), ##__VA_ARGS__);            \
-    }
+    }                                                                                              \
+    (void)0
 
 #define PARSE_WARNING(tok, pos, format, ...)                                                       \
     {                                                                                              \
         builder_msg(MSG_WARN, 0, &(tok)->location, (pos), (format), ##__VA_ARGS__);                \
-    }
+    }                                                                                              \
+    (void)0
 
 #define PARSE_NOTE(tok, pos, format, ...)                                                          \
     {                                                                                              \
         builder_msg(MSG_ERR_NOTE, 0, &(tok)->location, (pos), (format), ##__VA_ARGS__);            \
-    }
+    }                                                                                              \
+    (void)0
 
 #define scope_push(ctx, scope) arrput((ctx)->scope_stack, (scope))
 #define scope_pop(ctx) arrpop((ctx)->scope_stack)
@@ -58,7 +61,8 @@
     {                                                                                              \
         enum sym _[] = {__VA_ARGS__};                                                              \
         tokens_consume_till2((tokens), static_arrlenu(_), &_[0]);                                  \
-    }
+    }                                                                                              \
+    (void)0
 
 enum hash_directive_flags {
 #define HD_GEN(kind, name, flag) kind = flag,
@@ -68,15 +72,15 @@ enum hash_directive_flags {
 
 struct context {
     struct {
-        u32                       key;
+        hash_t                    key;
         enum hash_directive_flags value;
     } * hash_directive_table;
 
-    struct assembly     *assembly;
-    struct unit         *unit;
-    struct arena        *ast_arena;
+    struct assembly *    assembly;
+    struct unit *        unit;
+    struct arena *       ast_arena;
     struct scope_arenas *scope_arenas;
-    struct tokens       *tokens;
+    struct tokens *      tokens;
 
     // tmps
     array(struct scope *) scope_stack;
@@ -85,7 +89,7 @@ struct context {
     bool          is_inside_loop;
     struct scope *current_private_scope;
     struct scope *current_named_scope;
-    struct ast   *current_docs;
+    struct ast *  current_docs;
     array(char) unit_docs_tmp;
 };
 
@@ -97,7 +101,7 @@ static bool            parse_docs(struct context *ctx);
 static bool            parse_unit_docs(struct context *ctx);
 static void            parse_ublock_content(struct context *ctx, struct ast *ublock);
 static struct ast *
-parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive_flags *satisfied);
+                   parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive_flags *satisfied);
 static struct ast *parse_unrecheable(struct context *ctx);
 static struct ast *parse_debugbreak(struct context *ctx);
 static struct ast *parse_ident_group(struct context *ctx);
@@ -136,7 +140,7 @@ static struct ast *parse_expr_atom(struct context *ctx);
 static struct ast *parse_expr_primary(struct context *ctx);
 static struct ast *parse_expr_unary(struct context *ctx);
 static struct ast *
-parse_expr_binary(struct context *ctx, struct ast *lhs, struct ast *rhs, struct token *op);
+                   parse_expr_binary(struct context *ctx, struct ast *lhs, struct ast *rhs, struct token *op);
 static struct ast *parse_expr_addrof(struct context *ctx);
 static struct ast *parse_expr_deref(struct context *ctx);
 static struct ast *parse_expr_type(struct context *ctx);
@@ -153,16 +157,16 @@ static struct ast *parse_expr_type_info(struct context *ctx);
 static struct ast *parse_expr_type_of(struct context *ctx);
 static struct ast *parse_expr_test_cases(struct context *ctx);
 static struct ast *parse_expr_alignof(struct context *ctx);
-static INLINE bool parse_semicolon(struct context *ctx);
-static INLINE bool parse_semicolon_rq(struct context *ctx);
-static INLINE bool hash_directive_to_flags(enum hash_directive_flags hd, u32 *out_flags);
+static inline bool parse_semicolon(struct context *ctx);
+static inline bool parse_semicolon_rq(struct context *ctx);
+static inline bool hash_directive_to_flags(enum hash_directive_flags hd, u32 *out_flags);
 static struct ast *parse_expr_call(struct context *ctx, struct ast *prev);
 static struct ast *parse_expr_elem(struct context *ctx, struct ast *prev);
 static struct ast *parse_expr_compound(struct context *ctx);
 
 // impl
 #define parse_ident(ctx) (tokens_peek((ctx)->tokens)->sym == SYM_IDENT ? _parse_ident(ctx) : NULL)
-static INLINE struct ast *_parse_ident(struct context *ctx)
+static inline struct ast *_parse_ident(struct context *ctx)
 {
     zone();
     struct token *tok_ident = tokens_consume(ctx->tokens);
@@ -172,7 +176,7 @@ static INLINE struct ast *_parse_ident(struct context *ctx)
     return_zone(ident);
 }
 
-static INLINE bool rq_semicolon_after_decl_entity(struct ast *node)
+static inline bool rq_semicolon_after_decl_entity(struct ast *node)
 {
     bassert(node);
     switch (node->kind) {
@@ -185,7 +189,7 @@ static INLINE bool rq_semicolon_after_decl_entity(struct ast *node)
     }
 }
 
-static INLINE const char *pop_docs(struct context *ctx)
+static inline const char *pop_docs(struct context *ctx)
 {
     const char *text = NULL;
     if (ctx->current_docs) {
@@ -317,7 +321,7 @@ bool parse_unit_docs(struct context *ctx)
     while ((tok = tokens_consume_if(ctx->tokens, SYM_DGCOMMENT))) {
         if (arrlen(ctx->unit_docs_tmp) > 0) arrput(ctx->unit_docs_tmp, '\n');
         const usize len  = strlen(tok->value.str);
-        char       *dest = arraddnptr(ctx->unit_docs_tmp, len);
+        char *      dest = arraddnptr(ctx->unit_docs_tmp, len);
         memcpy(dest, tok->value.str, len);
     }
     return_zone(true);
@@ -358,7 +362,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     struct token *tok_directive = tokens_consume(ctx->tokens);
     if (tok_directive->sym != SYM_IDENT) goto INVALID;
 
-    const char  *directive = tok_directive->value.str;
+    const char * directive = tok_directive->value.str;
     const hash_t hash      = strhash(directive);
     const s64    index     = hmgeti(ctx->hash_directive_table, hash);
     if (index == -1) goto INVALID;
@@ -944,8 +948,8 @@ struct ast *parse_decl_member(struct context *ctx, s32 UNUSED(index))
 {
     zone();
     struct token *tok_begin = tokens_peek(ctx->tokens);
-    struct ast   *name      = NULL;
-    struct ast   *type      = NULL;
+    struct ast *  name      = NULL;
+    struct ast *  type      = NULL;
     const bool    named     = tokens_peek_2nd(ctx->tokens)->sym == SYM_COLON;
 
     if (named) {
@@ -981,7 +985,7 @@ struct ast *parse_decl_member(struct context *ctx, s32 UNUSED(index))
     }
 
     enum hash_directive_flags found_hd = HD_NONE;
-    struct ast               *tags     = parse_hash_directive(ctx, HD_TAGS, &found_hd);
+    struct ast *              tags     = parse_hash_directive(ctx, HD_TAGS, &found_hd);
     struct ast *mem = ast_create_node(ctx->ast_arena, AST_DECL_MEMBER, tok_begin, scope_get(ctx));
     mem->docs       = pop_docs(ctx);
     mem->data.decl.type = type;
@@ -994,9 +998,9 @@ struct ast *parse_decl_arg(struct context *ctx, bool named)
 {
     zone();
     struct token *tok_begin = tokens_peek(ctx->tokens);
-    struct ast   *name      = NULL;
-    struct ast   *type      = NULL;
-    struct ast   *value     = NULL;
+    struct ast *  name      = NULL;
+    struct ast *  type      = NULL;
+    struct ast *  value     = NULL;
     if (tokens_current_is(ctx->tokens, SYM_RPAREN)) return_zone(NULL);
     if (tokens_is_seq(ctx->tokens, 2, SYM_IDENT, SYM_COLON)) {
         // <name> :
@@ -1049,7 +1053,7 @@ struct ast *parse_decl_variant(struct context *ctx, struct ast *prev)
 {
     zone();
     struct token *tok_begin = tokens_peek(ctx->tokens);
-    struct ast   *name      = parse_ident(ctx);
+    struct ast *  name      = parse_ident(ctx);
     if (!name) return_zone(NULL);
     struct ast *variant =
         ast_create_node(ctx->ast_arena, AST_DECL_VARIANT, tok_begin, scope_get(ctx));
@@ -1095,7 +1099,8 @@ bool hash_directive_to_flags(enum hash_directive_flags hd, u32 *out_flags)
 #define FLAG_CASE(_c, _f)                                                                          \
     case (_c):                                                                                     \
         (*out_flags) |= (_f);                                                                      \
-        return true;
+        return true;                                                                               \
+        (void)0
 
     switch (hd) {
         FLAG_CASE(HD_EXTERN, FLAG_EXTERN);
@@ -1222,8 +1227,8 @@ struct ast *parse_stmt_switch(struct context *ctx)
     }
 
     ast_nodes_t *cases        = arena_safe_alloc(&ctx->assembly->arenas.sarr);
-    struct ast  *stmt_case    = NULL;
-    struct ast  *default_case = NULL;
+    struct ast * stmt_case    = NULL;
+    struct ast * default_case = NULL;
 NEXT:
     stmt_case = parse_stmt_case(ctx);
     if (AST_IS_OK(stmt_case)) {
@@ -1265,8 +1270,8 @@ struct ast *parse_stmt_case(struct context *ctx)
 {
     zone();
     ast_nodes_t *exprs = NULL;
-    struct ast  *block = NULL;
-    struct ast  *expr  = NULL;
+    struct ast * block = NULL;
+    struct ast * expr  = NULL;
     bool         rq    = false;
 
     if (tokens_current_is(ctx->tokens, SYM_RBLOCK)) return_zone(NULL);
@@ -1607,7 +1612,7 @@ struct ast *parse_expr_lit(struct context *ctx)
 {
     zone();
     struct token *tok = tokens_peek(ctx->tokens);
-    struct ast   *lit = NULL;
+    struct ast *  lit = NULL;
 
     switch (tok->sym) {
     case SYM_NUM:
@@ -1654,7 +1659,7 @@ struct ast *parse_expr_lit(struct context *ctx)
             while ((tok = tokens_consume_if(ctx->tokens, SYM_STRING))) {
                 bassert(tok->value.str);
                 const usize len  = strlen(tok->value.str);
-                char       *dest = arraddnptr(tmp, len);
+                char *      dest = arraddnptr(tmp, len);
                 memcpy(dest, tok->value.str, len);
             }
             arrput(tmp, '\0'); // !!!
@@ -1683,9 +1688,9 @@ struct ast *parse_expr_lit_fn(struct context *ctx)
     zone();
     if (!tokens_is_seq(ctx->tokens, 2, SYM_FN, SYM_LPAREN)) return_zone(NULL);
     struct token *tok_fn = tokens_peek(ctx->tokens);
-    struct ast   *fn     = ast_create_node(ctx->ast_arena, AST_EXPR_LIT_FN, tok_fn, scope_get(ctx));
+    struct ast *  fn     = ast_create_node(ctx->ast_arena, AST_EXPR_LIT_FN, tok_fn, scope_get(ctx));
 
-    struct scope   *parent_scope = scope_get(ctx);
+    struct scope *  parent_scope = scope_get(ctx);
     enum scope_kind scope_kind =
         (parent_scope->kind == SCOPE_GLOBAL || parent_scope->kind == SCOPE_PRIVATE ||
          parent_scope->kind == SCOPE_NAMED)
@@ -1708,7 +1713,7 @@ struct ast *parse_expr_lit_fn(struct context *ctx)
         u32 flags = 0;
         while (true) {
             enum hash_directive_flags found        = HD_NONE;
-            struct ast               *hd_extension = parse_hash_directive(ctx, accepted, &found);
+            struct ast *              hd_extension = parse_hash_directive(ctx, accepted, &found);
             if (!hash_directive_to_flags(found, &flags)) break;
             if ((found == HD_EXTERN || found == HD_INTRINSIC) && hd_extension) {
                 // Use extern flag extension on function declaration.
@@ -1734,7 +1739,7 @@ struct ast *parse_expr_lit_fn_group(struct context *ctx)
     if (!tokens_is_seq(ctx->tokens, 2, SYM_FN, SYM_LBLOCK)) return_zone(NULL);
     struct token *tok_group = tokens_consume(ctx->tokens); // eat fn
     struct token *tok_begin = tokens_consume(ctx->tokens); // eat {
-    struct ast   *group =
+    struct ast *  group =
         ast_create_node(ctx->ast_arena, AST_EXPR_LIT_FN_GROUP, tok_group, scope_get(ctx));
 
     ast_nodes_t *variants              = arena_safe_alloc(&ctx->assembly->arenas.sarr);
@@ -1759,7 +1764,7 @@ NEXT:
 struct ast *parse_expr_nested(struct context *ctx)
 {
     zone();
-    struct ast   *expr      = NULL;
+    struct ast *  expr      = NULL;
     struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_LPAREN);
     if (!tok_begin) return_zone(NULL);
 
@@ -1945,7 +1950,7 @@ struct ast *parse_ref(struct context *ctx)
 {
     zone();
     struct token *tok   = tokens_peek(ctx->tokens);
-    struct ast   *ident = parse_ident(ctx);
+    struct ast *  ident = parse_ident(ctx);
     if (!ident) return_zone(NULL);
     struct ast *lhs     = ast_create_node(ctx->ast_arena, AST_REF, tok, scope_get(ctx));
     lhs->data.ref.ident = ident;
@@ -1977,7 +1982,7 @@ struct ast *parse_ref_nested(struct context *ctx, struct ast *prev)
     return_zone(ref);
 }
 
-static INLINE void set_polymorph(struct context *ctx)
+static inline void set_polymorph(struct context *ctx)
 {
     for (usize i = arrlenu(ctx->fn_type_stack); i-- > 0;) {
         struct ast *fn_type = ctx->fn_type_stack[i];
@@ -2243,7 +2248,7 @@ struct ast *parse_type_fn_group(struct context *ctx)
     if (!tokens_is_seq(ctx->tokens, 2, SYM_FN, SYM_LBLOCK)) return_zone(NULL);
     struct token *tok_group = tokens_consume(ctx->tokens); // eat fn
     struct token *tok_begin = tokens_consume(ctx->tokens); // eat {
-    struct ast   *group =
+    struct ast *  group =
         ast_create_node(ctx->ast_arena, AST_TYPE_FN_GROUP, tok_group, scope_get(ctx));
 
     ast_nodes_t *variants              = arena_safe_alloc(&ctx->assembly->arenas.sarr);
@@ -2286,7 +2291,7 @@ struct ast *parse_type_struct(struct context *ctx)
     u32         flags     = 0;
     struct ast *base_type = NULL;
     while (true) {
-        struct ast               *hd_extension;
+        struct ast *              hd_extension;
         enum hash_directive_flags found = HD_NONE;
         hd_extension                    = parse_hash_directive(ctx, accepted, &found);
         if (found == HD_BASE) {
@@ -2366,7 +2371,7 @@ struct ast *parse_decl(struct context *ctx)
     // is value declaration?
     if (!tokens_lookahead(ctx->tokens, cmp_decl)) return_zone(NULL);
     struct token *tok_begin = tokens_peek(ctx->tokens);
-    struct ast   *ident     = parse_ident_group(ctx);
+    struct ast *  ident     = parse_ident_group(ctx);
     if (!ident) return_zone(NULL);
     // eat :
     tokens_consume(ctx->tokens);
@@ -2507,7 +2512,7 @@ struct ast *parse_debugbreak(struct context *ctx)
 struct ast *parse_expr_type(struct context *ctx)
 {
     struct token *tok  = tokens_peek(ctx->tokens);
-    struct ast   *type = NULL;
+    struct ast *  type = NULL;
 
     type = parse_type_struct(ctx);
 
@@ -2540,9 +2545,9 @@ struct ast *parse_block(struct context *ctx, bool create_scope)
 
         scope_push(ctx, scope);
     }
-    struct ast   *block = ast_create_node(ctx->ast_arena, AST_BLOCK, tok_begin, scope_get(ctx));
+    struct ast *  block = ast_create_node(ctx->ast_arena, AST_BLOCK, tok_begin, scope_get(ctx));
     struct token *tok;
-    struct ast   *tmp       = NULL;
+    struct ast *  tmp       = NULL;
     block->data.block.nodes = arena_safe_alloc(&ctx->assembly->arenas.sarr);
 
 NEXT:
@@ -2681,7 +2686,7 @@ void init_hash_directives(struct context *ctx)
 #undef HD_GEN
     };
 
-    static u32 hash_directive_flags[static_arrlenu(hash_directive_names)] = {
+    static s32 hash_directive_flags[static_arrlenu(hash_directive_names)] = {
 #define HD_GEN(kind, name, flag) flag,
 #include "parser.def"
 #undef HD_GEN

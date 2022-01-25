@@ -913,19 +913,19 @@ struct mir_instr_switch {
 };
 
 // public
-static INLINE bool mir_is_pointer_type(const struct mir_type *type)
+static inline bool mir_is_pointer_type(const struct mir_type *type)
 {
     bassert(type);
     return type->kind == MIR_TYPE_PTR;
 }
 
-static INLINE struct mir_type *mir_deref_type(const struct mir_type *ptr)
+static inline struct mir_type *mir_deref_type(const struct mir_type *ptr)
 {
     if (!mir_is_pointer_type(ptr)) return NULL;
     return ptr->data.ptr.expr;
 }
 
-static INLINE bool mir_is_composit_type(const struct mir_type *type)
+static inline bool mir_is_composit_type(const struct mir_type *type)
 {
     switch (type->kind) {
     case MIR_TYPE_STRUCT:
@@ -942,7 +942,7 @@ static INLINE bool mir_is_composit_type(const struct mir_type *type)
     return false;
 }
 
-static INLINE struct mir_type *mir_get_struct_elem_type(const struct mir_type *type, usize i)
+static inline struct mir_type *mir_get_struct_elem_type(const struct mir_type *type, usize i)
 {
     bassert(mir_is_composit_type(type) && "Expected structure type");
     mir_members_t *members = type->data.strct.members;
@@ -950,7 +950,7 @@ static INLINE struct mir_type *mir_get_struct_elem_type(const struct mir_type *t
     return sarrpeek(members, i)->type;
 }
 
-static INLINE struct mir_type *mir_get_fn_arg_type(const struct mir_type *type, usize i)
+static inline struct mir_type *mir_get_fn_arg_type(const struct mir_type *type, usize i)
 {
     bassert(type->kind == MIR_TYPE_FN && "Expected function type");
     mir_args_t *args = type->data.fn.args;
@@ -960,25 +960,25 @@ static INLINE struct mir_type *mir_get_fn_arg_type(const struct mir_type *type, 
 }
 
 // Determinate if the instruction has compile time known value.
-static INLINE bool mir_is_comptime(const struct mir_instr *instr)
+static inline bool mir_is_comptime(const struct mir_instr *instr)
 {
     return instr->value.is_comptime;
 }
 
-static INLINE bool mir_is_global_block(const struct mir_instr_block *instr)
+static inline bool mir_is_global_block(const struct mir_instr_block *instr)
 {
     return instr->owner_fn == NULL;
 }
 
 // Determinates if the instruction is in the global block.
-static INLINE bool mir_is_global(const struct mir_instr *instr)
+static inline bool mir_is_global(const struct mir_instr *instr)
 {
     // Instructions without owner block lives in global scope.
     if (!instr->owner_block) return true;
     return mir_is_global_block(instr->owner_block);
 }
 
-static INLINE bool mir_type_has_llvm_representation(const struct mir_type *type)
+static inline bool mir_type_has_llvm_representation(const struct mir_type *type)
 {
     bassert(type);
     return type->kind != MIR_TYPE_TYPE && type->kind != MIR_TYPE_FN_GROUP &&

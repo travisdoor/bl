@@ -31,7 +31,7 @@
 #include "stb_ds.h"
 #include <stdio.h>
 
-static INLINE void print_address(struct ast *node, FILE *stream)
+static inline void print_address(struct ast *node, FILE *stream)
 {
 #if BL_DEBUG
     if (node)
@@ -45,7 +45,7 @@ static INLINE void print_address(struct ast *node, FILE *stream)
 
 #define print_head(_node, _pad, _stream) _print_head((struct ast *)(_node), (_pad), (_stream))
 
-static INLINE void _print_head(struct ast *node, s32 pad, FILE *stream)
+static inline void _print_head(struct ast *node, s32 pad, FILE *stream)
 {
     if (node->location)
         fprintf(stream,
@@ -61,7 +61,7 @@ static INLINE void _print_head(struct ast *node, s32 pad, FILE *stream)
     print_address(node, stream);
 }
 
-static INLINE void print_flags(s32 flags, FILE *stream)
+static inline void print_flags(u32 flags, FILE *stream)
 {
     if (!flags) return;
     if (isflag(flags, FLAG_EXTERN)) fprintf(stream, " #extern");

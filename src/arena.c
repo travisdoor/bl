@@ -27,11 +27,7 @@
 // =================================================================================================
 
 #include "arena.h"
-#if BL_PLATFORM_WIN
-#include "winpthreads.h"
-#else
-#include <pthread.h>
-#endif
+#include "threading.h"
 
 #define total_elem_size(A) ((A)->elem_size_bytes + (A)->elem_alignment)
 
@@ -41,34 +37,34 @@ struct arena_chunk {
 };
 
 struct arena_sync_impl {
-    pthread_mutex_t mtx;
+    pthread_spinlock_t lock;
 };
 
 static struct arena_sync_impl *sync_new(void)
 {
     struct arena_sync_impl *s = bmalloc(sizeof(struct arena_sync_impl));
-    pthread_mutex_init(&s->mtx, NULL);
+    pthread_spin_init(&s->lock, 0);
     return s;
 }
 
 static void sync_delete(struct arena_sync_impl *s)
 {
-    pthread_mutex_destroy(&s->mtx);
+    pthread_spin_destroy(&s->lock);
     bfree(s);
 }
 
-static INLINE struct arena_chunk *alloc_chunk(struct arena *arena)
+static inline struct arena_chunk *alloc_chunk(struct arena *arena)
 {
-    const usize chunk_size_in_bytes =
+    zone();
+    const usize chunk_size =
         sizeof(struct arena_chunk) + total_elem_size(arena) * arena->elems_per_chunk;
-    struct arena_chunk *chunk = bmalloc(chunk_size_in_bytes);
+    struct arena_chunk *chunk = bmalloc(chunk_size);
     if (!chunk) babort("bad alloc");
-    chunk->count = 0;
-    chunk->next  = NULL;
-    return chunk;
+    bl_zeromem(chunk, chunk_size);
+    return_zone(chunk);
 }
 
-static INLINE void *get_from_chunk(struct arena *arena, struct arena_chunk *chunk, s32 i)
+static inline void *get_from_chunk(struct arena *arena, struct arena_chunk *chunk, s32 i)
 {
     bassert(i >= 0 && i < arena->elems_per_chunk);
     void *elem = (void *)((char *)chunk + sizeof(struct arena_chunk) + i * total_elem_size(arena));
@@ -78,7 +74,7 @@ static INLINE void *get_from_chunk(struct arena *arena, struct arena_chunk *chun
     return elem;
 }
 
-static INLINE struct arena_chunk *free_chunk(struct arena *arena, struct arena_chunk *chunk)
+static inline struct arena_chunk *free_chunk(struct arena *arena, struct arena_chunk *chunk)
 {
     if (!chunk) return NULL;
     struct arena_chunk *next = chunk->next;
@@ -117,7 +113,8 @@ void arena_terminate(struct arena *arena)
 
 void *arena_safe_alloc(struct arena *arena)
 {
-    pthread_mutex_lock(&arena->sync->mtx);
+    zone();
+    pthread_spin_lock(&arena->sync->lock);
     if (!arena->current_chunk) {
         arena->current_chunk = alloc_chunk(arena);
         arena->first_chunk   = arena->current_chunk;
@@ -131,8 +128,8 @@ void *arena_safe_alloc(struct arena *arena)
     }
 
     void *elem = get_from_chunk(arena, arena->current_chunk, arena->current_chunk->count++);
+    pthread_spin_unlock(&arena->sync->lock);
+
     bassert(is_aligned(elem, arena->elem_alignment) && "Unaligned allocation of arena element!");
-    memset(elem, 0, arena->elem_size_bytes);
-    pthread_mutex_unlock(&arena->sync->mtx);
-    return elem;
+    return_zone(elem);
 }

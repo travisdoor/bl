@@ -1,11 +1,11 @@
 // =================================================================================================
-// bl
+// blc
 //
-// File:   blmemory.h
+// File:   threading.h
 // Author: Martin Dorazil
-// Date:   3/1/18
+// Date:   25/01/2022
 //
-// Copyright 2018 Martin Dorazil
+// Copyright 2022 Martin Dorazil
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,42 +26,47 @@
 // SOFTWARE.
 // =================================================================================================
 
-#ifndef BL_BLMEMORY_H
-#define BL_BLMEMORY_H
+#ifndef BL_THREADING_H
+#define BL_THREADING_H
 
-#include "basic_types.h"
 #include "config.h"
+#if BL_PLATFORM_MACOS
+#include <stdatomic.h>
 
-#if BL_PLATFORM_WIN && BL_DEBUG
-#define BL_CRTDBG_ALLOC 0
-#else
-// This is available only on windows.
-#define BL_CRTDBG_ALLOC 0
-#endif
+typedef atomic_flag pthread_spinlock_t;
 
-#define bmalloc(size) bl_malloc_impl(size, __FILE__, __LINE__)
-#define brealloc(ptr, size) bl_realloc_impl(ptr, size, __FILE__, __LINE__)
-#define bfree(ptr) bl_free_impl(ptr, __FILE__, __LINE__)
-
-void *bl_realloc_impl(void *ptr, const size_t size, const char *filename, s32 line);
-void *bl_malloc_impl(const size_t size, const char *filename, s32 line);
-void  bl_free_impl(void *ptr, const char *filename, s32 line);
-
-static inline void *bl_zeromem(void *dest, usize size)
+static inline int pthread_spin_init(pthread_spinlock_t *l, int pshared)
 {
-    void       *orig = dest;
-    const usize m    = size / sizeof(usize);
-    const usize d    = size - m * sizeof(usize);
-    usize       i;
-    for (i = 0; i < m; ++i) {
-        (*(usize *)dest) = 0;
-        dest             = (usize *)dest + 1;
-    }
-    for (i = 0; i < d; ++i) {
-        (*(u8 *)dest) = 0;
-        dest          = (u8 *)dest + 1;
-    }
-    return orig;
+    (void)pshared;
+    *l = (pthread_spinlock_t)ATOMIC_FLAG_INIT;
+    return 0;
 }
 
-#endif // BL_BLMEMORY_H
+static inline int pthread_spin_destroy(pthread_spinlock_t *l)
+{
+    (void)l;
+    return 0;
+}
+
+static inline int pthread_spin_lock(pthread_spinlock_t *l)
+{
+    while (atomic_flag_test_and_set_explicit(l, memory_order_acquire))
+        ;
+    return 0;
+}
+
+static inline int pthread_spin_unlock(pthread_spinlock_t *l)
+{
+    atomic_flag_clear_explicit(l, memory_order_release);
+    return 0;
+}
+#elif BL_PLATFORM_WIN
+// clang-format off
+__pragma(warning(push, 0))
+#include <winpthreads.h>
+__pragma(warning(pop))
+// clang-format on
+#elif BL_PLATFORM_LINUX
+#include <pthread.h>
+#endif
+#endif

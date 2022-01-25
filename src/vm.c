@@ -118,19 +118,19 @@ static void eval_instr_arg(struct virtual_machine *vm, struct mir_instr_arg *arg
 // =================================================================================================
 // Inlines
 // =================================================================================================
-static INLINE bool fn_does_return(struct mir_fn *fn)
+static inline bool fn_does_return(struct mir_fn *fn)
 {
     return fn->type->data.fn.ret_type->kind != MIR_TYPE_VOID;
 }
 
 // Checks whether constant value needs some extra space or if it fits into small memory block hold
 // by the value itself.
-static INLINE bool needs_allocation(struct mir_const_expr_value *v)
+static inline bool needs_allocation(struct mir_const_expr_value *v)
 {
     return v->type->store_size_bytes > sizeof(v->_tmp);
 }
 
-static INLINE void eval_abort(struct virtual_machine *vm)
+static inline void eval_abort(struct virtual_machine *vm)
 {
     vm->aborted = true;
 }
@@ -140,7 +140,7 @@ static INLINE void eval_abort(struct virtual_machine *vm)
 // =================================================================================================
 #define stack_alloc_size(s) ((s) + (VM_MAX_ALIGNMENT - ((s) % VM_MAX_ALIGNMENT)))
 
-static INLINE vm_stack_ptr_t stack_alloc(struct virtual_machine *vm, usize size)
+static inline vm_stack_ptr_t stack_alloc(struct virtual_machine *vm, usize size)
 {
     bassert(size && "trying to allocate 0 bytes on stack");
     size               = stack_alloc_size(size);
@@ -155,7 +155,7 @@ static INLINE vm_stack_ptr_t stack_alloc(struct virtual_machine *vm, usize size)
 }
 
 // shift stack top by the size in bytes
-static INLINE vm_stack_ptr_t stack_free(struct virtual_machine *vm, usize size)
+static inline vm_stack_ptr_t stack_free(struct virtual_machine *vm, usize size)
 {
     size                   = stack_alloc_size(size);
     vm_stack_ptr_t new_top = vm->stack->top_ptr - size;
@@ -165,7 +165,7 @@ static INLINE vm_stack_ptr_t stack_free(struct virtual_machine *vm, usize size)
     return new_top;
 }
 
-static INLINE void push_ra(struct virtual_machine *vm, struct mir_instr_call *caller)
+static inline void push_ra(struct virtual_machine *vm, struct mir_instr_call *caller)
 {
     struct vm_frame *tmp = (struct vm_frame *)stack_alloc(vm, sizeof(struct vm_frame));
     tmp->caller          = caller;
@@ -174,7 +174,7 @@ static INLINE void push_ra(struct virtual_machine *vm, struct mir_instr_call *ca
     vmdbg_notify_stack_op(VMDBG_PUSH_RA, NULL, tmp);
 }
 
-static INLINE struct mir_instr_call *pop_ra(struct virtual_machine *vm)
+static inline struct mir_instr_call *pop_ra(struct virtual_machine *vm)
 {
     if (!vm->stack->ra) return NULL;
     struct mir_instr_call *caller = vm->stack->ra->caller;
@@ -186,7 +186,7 @@ static INLINE struct mir_instr_call *pop_ra(struct virtual_machine *vm)
     return caller;
 }
 
-static INLINE vm_stack_ptr_t stack_push_empty(struct virtual_machine *vm, struct mir_type *type)
+static inline vm_stack_ptr_t stack_push_empty(struct virtual_machine *vm, struct mir_type *type)
 {
     bassert(type);
     const usize size = type->store_size_bytes;
@@ -196,7 +196,7 @@ static INLINE vm_stack_ptr_t stack_push_empty(struct virtual_machine *vm, struct
     return tmp;
 }
 
-static INLINE vm_stack_ptr_t stack_push(struct virtual_machine *vm,
+static inline vm_stack_ptr_t stack_push(struct virtual_machine *vm,
                                         void                   *value,
                                         struct mir_type        *type)
 {
@@ -206,7 +206,7 @@ static INLINE vm_stack_ptr_t stack_push(struct virtual_machine *vm,
     return tmp;
 }
 
-static INLINE vm_stack_ptr_t stack_pop(struct virtual_machine *vm, struct mir_type *type)
+static inline vm_stack_ptr_t stack_pop(struct virtual_machine *vm, struct mir_type *type)
 {
     bassert(type);
     const usize size = type->store_size_bytes;
@@ -216,7 +216,7 @@ static INLINE vm_stack_ptr_t stack_pop(struct virtual_machine *vm, struct mir_ty
     return ptr;
 }
 
-static INLINE vm_stack_ptr_t stack_peek(struct virtual_machine *vm, struct mir_type *type)
+static inline vm_stack_ptr_t stack_peek(struct virtual_machine *vm, struct mir_type *type)
 {
     usize size = type->store_size_bytes;
     bassert(size && "peeking zero sized data on stack");
@@ -227,7 +227,7 @@ static INLINE vm_stack_ptr_t stack_peek(struct virtual_machine *vm, struct mir_t
 }
 
 // Convert relative local address of variable into absolute address in memory.
-static INLINE vm_stack_ptr_t stack_rel_to_abs_ptr(struct virtual_machine *vm,
+static inline vm_stack_ptr_t stack_rel_to_abs_ptr(struct virtual_machine *vm,
                                                   vm_relative_stack_ptr_t rel_ptr)
 {
     bassert(rel_ptr);
@@ -256,7 +256,8 @@ static vm_stack_ptr_t data_alloc(struct virtual_machine *vm, struct mir_type *ty
 {
     zone();
     bassert(type->store_size_bytes > 0);
-    const usize size_needed = type->store_size_bytes + type->alignment;
+    const usize size_needed = type->store_size_bytes + (usize)type->alignment;
+    const usize alignment = (usize)type->alignment;
     if (!vm->data) vm->data = data_page_alloc(NULL, size_needed);
     // lookup free space, if no suitable was found, allocate new block!
     struct vm_bufpage *found = vm->data;
@@ -271,8 +272,8 @@ static vm_stack_ptr_t data_alloc(struct virtual_machine *vm, struct mir_type *ty
         found    = vm->data;
     }
     bassert(found);
-    vm_stack_ptr_t ptr = next_aligned(found->top + found->len, type->alignment);
-    bassert(is_aligned(ptr, type->alignment) && "Invalid allocation alignment!");
+    vm_stack_ptr_t ptr = next_aligned(found->top + found->len, alignment);
+    bassert(is_aligned(ptr, alignment) && "Invalid allocation alignment!");
     found->len += size_needed;
     return_zone(ptr);
 }
@@ -290,35 +291,35 @@ static void data_free(struct virtual_machine *vm)
 
 // Fetch value; use internal ConstExprValue storage if value is compile time known, otherwise use
 // stack.
-static INLINE vm_stack_ptr_t fetch_value(struct virtual_machine *vm, struct mir_const_expr_value *v)
+static inline vm_stack_ptr_t fetch_value(struct virtual_machine *vm, struct mir_const_expr_value *v)
 {
     if (v->is_comptime) return v->data;
     return stack_pop(vm, v->type);
 }
 
 // Similar to fetch_value but in case value comes from stack we keep it there.
-static INLINE vm_stack_ptr_t peek_value(struct virtual_machine *vm, struct mir_const_expr_value *v)
+static inline vm_stack_ptr_t peek_value(struct virtual_machine *vm, struct mir_const_expr_value *v)
 {
     if (v->is_comptime) return v->data;
     return stack_peek(vm, v->type);
 }
 
-static INLINE struct mir_instr *get_pc(struct virtual_machine *vm)
+static inline struct mir_instr *get_pc(struct virtual_machine *vm)
 {
     return vm->stack->pc;
 }
 
-static INLINE struct vm_frame *get_ra(struct virtual_machine *vm)
+static inline struct vm_frame *get_ra(struct virtual_machine *vm)
 {
     return vm->stack->ra;
 }
 
-static INLINE void set_pc(struct virtual_machine *vm, struct mir_instr *instr)
+static inline void set_pc(struct virtual_machine *vm, struct mir_instr *instr)
 {
     vm->stack->pc = instr;
 }
 
-static INLINE void stack_alloc_var(struct virtual_machine *vm, struct mir_var *var)
+static inline void stack_alloc_var(struct virtual_machine *vm, struct mir_var *var)
 {
     bassert(var);
     bassert(!var->value.is_comptime && "Cannot allocate compile time constant");
@@ -328,7 +329,7 @@ static INLINE void stack_alloc_var(struct virtual_machine *vm, struct mir_var *v
     var->vm_ptr.local  = tmp - (vm_stack_ptr_t)vm->stack->ra;
 }
 
-static INLINE void stack_alloc_local_vars(struct virtual_machine *vm, struct mir_fn *fn)
+static inline void stack_alloc_local_vars(struct virtual_machine *vm, struct mir_fn *fn)
 {
     bassert(fn);
     // Init all stack variables.
@@ -2015,7 +2016,7 @@ void eval_instr_test_cases(struct virtual_machine *vm, struct mir_instr_test_cas
     if (var) {
         bassert(var->value.type && var->value.type->kind == MIR_TYPE_ARRAY);
         const s64 len = var->value.type->data.array.len;
-        vm_write_int(len_type, len_ptr, len);
+        vm_write_int(len_type, len_ptr, (u64)len);
 
         vm_stack_ptr_t meta_ptr = vm_read_var(vm, var);
         vm_write_ptr(ptr_type, ptr_ptr, meta_ptr);
@@ -2048,7 +2049,7 @@ void eval_instr_elem_ptr(struct virtual_machine *vm, struct mir_instr_elem_ptr *
         vm_stack_ptr_t len_ptr = vm_get_struct_elem_ptr(vm->assembly, arr_type, arr_ptr, 0);
         vm_stack_ptr_t ptr_ptr = vm_get_struct_elem_ptr(vm->assembly, arr_type, arr_ptr, 1);
         vm_stack_ptr_t ptr_tmp = vm_read_ptr(ptr_type, ptr_ptr);
-        const s64      len_tmp = vm_read_int(len_type, len_ptr);
+        const s64      len_tmp = (s64)vm_read_int(len_type, len_ptr);
 
         if (!ptr_tmp) {
             builder_msg(MSG_ERR,
@@ -2169,7 +2170,7 @@ void eval_instr_compound(struct virtual_machine *vm, struct mir_instr_compound *
     }
 }
 
-void eval_instr_unroll(struct virtual_machine *vm, struct mir_instr_unroll *unroll)
+void eval_instr_unroll(struct virtual_machine UNUSED(*vm), struct mir_instr_unroll *unroll)
 {
     struct mir_instr *src = unroll->src;
     bassert(src);
@@ -2182,7 +2183,7 @@ void eval_instr_unroll(struct virtual_machine *vm, struct mir_instr_unroll *unro
     }
 }
 
-void eval_instr_arg(struct virtual_machine *vm, struct mir_instr_arg *arg)
+void eval_instr_arg(struct virtual_machine UNUSED(*vm), struct mir_instr_arg *arg)
 {
     struct mir_fn *fn = arg->base.owner_block->owner_fn;
     bmagic_assert(fn);
@@ -2741,13 +2742,13 @@ void vm_do_cast(vm_stack_ptr_t   dest,
         // src is smaller than dest
         switch (src_size) {
         case 1:
-            vm_write_int(dest_type, dest, vm_read_as(s8, src));
+            vm_write_int(dest_type, dest, (u64)vm_read_as(s8, src));
             break;
         case 2:
-            vm_write_int(dest_type, dest, vm_read_as(s16, src));
+            vm_write_int(dest_type, dest, (u64)vm_read_as(s16, src));
             break;
         case 4:
-            vm_write_int(dest_type, dest, vm_read_as(s32, src));
+            vm_write_int(dest_type, dest, (u64)vm_read_as(s32, src));
             break;
         default:
             abort();

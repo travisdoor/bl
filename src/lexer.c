@@ -38,7 +38,7 @@
 
 #define SCAN_ERROR(code, format, ...)                                                              \
     {                                                                                              \
-        builder_msg(MSG_ERR, (code), NULL, CARET_NONE, (format), ##__VA_ARGS__);   \
+        builder_msg(MSG_ERR, (code), NULL, CARET_NONE, (format), ##__VA_ARGS__);                   \
         longjmp((ctx)->jmp_error, code);                                                           \
     }
 
@@ -60,7 +60,7 @@ static bool       scan_ident(struct context *ctx, struct token *tok);
 static bool       scan_string(struct context *ctx, struct token *tok);
 static bool       scan_char(struct context *ctx, struct token *tok);
 static bool       scan_number(struct context *ctx, struct token *tok);
-static INLINE int c_to_number(char c, s32 base);
+static inline int c_to_number(char c, s32 base);
 static char       scan_specch(char c);
 
 bool scan_comment(struct context *ctx, struct token *tok, const char *term)
@@ -124,6 +124,7 @@ bool scan_docs(struct context *ctx, struct token *tok)
 
 bool scan_ident(struct context *ctx, struct token *tok)
 {
+    zone();
     tok->location.line = ctx->line;
     tok->location.col  = ctx->col;
     tok->sym           = SYM_IDENT;
@@ -140,14 +141,14 @@ bool scan_ident(struct context *ctx, struct token *tok)
         ctx->c++;
     }
 
-    if (len == 0) return false;
+    if (len == 0) return_zone(false);
     tok->value.str    = scdup(&ctx->unit->string_cache, begin, len);
     tok->location.len = len;
     ctx->col += len;
-    return true;
+    return_zone(true);
 }
 
-INLINE char scan_specch(char c)
+inline char scan_specch(char c)
 {
     switch (c) {
     case 'n':
@@ -265,7 +266,7 @@ bool scan_char(struct context *ctx, struct token *tok)
     return true;
 }
 
-INLINE int c_to_number(char c, s32 base)
+inline int c_to_number(char c, s32 base)
 {
 #ifndef _MSC_VER
 #pragma GCC diagnostic push

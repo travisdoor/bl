@@ -46,14 +46,12 @@
 #ifndef WIN_PTHREADS
 #define WIN_PTHREADS
 
-#pragma warning(push, 0)
-
 #include <errno.h>
 #include <process.h>
 #include <setjmp.h>
 #include <sys/timeb.h>
 #include <time.h>
-#include <windows.h>
+#include <Windows.h>
 
 //#define ETIMEDOUT	110
 //#define ENOTSUP		134
@@ -1547,5 +1545,4 @@ static inline int pthread_rwlockattr_setpshared(pthread_rwlockattr_t *a, int s)
 #define wprintf(...) (pthread_testcancel(), wprintf(__VA_ARGS__))
 #define wscanf(...) (pthread_testcancel(), wscanf(__VA_ARGS__))
 
-#pragma warning(pop)
 #endif /* WIN_PTHREADS */

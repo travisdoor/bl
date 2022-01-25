@@ -968,7 +968,7 @@ static struct mir_var *rtti_gen_fn_group(struct context *ctx, struct mir_type *t
 
 // INLINES
 
-static INLINE struct mir_fn *instr_owner_fn(struct mir_instr *instr)
+static inline struct mir_fn *instr_owner_fn(struct mir_instr *instr)
 {
     bassert(instr);
     if (instr->kind == MIR_INSTR_BLOCK) {
@@ -1014,7 +1014,7 @@ static INLINE struct mir_fn *instr_owner_fn(struct mir_instr *instr)
             (format),                                                                              \
             ##__VA_ARGS__)
 
-static INLINE void _report(struct mir_instr     *current_instr,
+static inline void _report(struct mir_instr     *current_instr,
                            enum builder_msg_type type,
                            s32                   code,
                            const struct ast     *node,
@@ -1030,13 +1030,13 @@ static INLINE void _report(struct mir_instr     *current_instr,
     if (type == MSG_ERR) report_poly(current_instr);
 }
 
-static INLINE struct ast *get_last_instruction_node(struct mir_instr_block *block)
+static inline struct ast *get_last_instruction_node(struct mir_instr_block *block)
 {
     if (!block->last_instr) return NULL;
     return block->last_instr->node;
 }
 
-static INLINE void usage_check_push(struct context *ctx, struct scope_entry *entry)
+static inline void usage_check_push(struct context *ctx, struct scope_entry *entry)
 {
     if (builder.options->no_usage_check) return;
     bassert(entry);
@@ -1064,7 +1064,7 @@ static INLINE void usage_check_push(struct context *ctx, struct scope_entry *ent
     arrpush(ctx->analyze.usage_check_arr, entry);
 }
 
-static INLINE bool can_mutate_comptime_to_const(struct mir_instr *instr)
+static inline bool can_mutate_comptime_to_const(struct mir_instr *instr)
 {
     bassert(isflag(instr->state, MIR_IS_ANALYZED) && "Non-analyzed instruction.");
     bassert(mir_is_comptime(instr));
@@ -1100,7 +1100,7 @@ static INLINE bool can_mutate_comptime_to_const(struct mir_instr *instr)
 }
 
 // Get struct base type if there is one.
-static INLINE struct mir_type *get_base_type(const struct mir_type *struct_type)
+static inline struct mir_type *get_base_type(const struct mir_type *struct_type)
 {
     if (struct_type->kind != MIR_TYPE_STRUCT) return NULL;
     struct mir_type *base_type = struct_type->data.strct.base_type;
@@ -1108,7 +1108,7 @@ static INLINE struct mir_type *get_base_type(const struct mir_type *struct_type)
 }
 
 // Get base type scope if there is one.
-static INLINE struct scope *get_base_type_scope(struct mir_type *struct_type)
+static inline struct scope *get_base_type_scope(struct mir_type *struct_type)
 {
     struct mir_type *base_type = get_base_type(struct_type);
     if (!base_type) return NULL;
@@ -1118,7 +1118,7 @@ static INLINE struct scope *get_base_type_scope(struct mir_type *struct_type)
 }
 
 // Determinate if type is incomplete struct type.
-static INLINE bool is_incomplete_struct_type(struct mir_type *type)
+static inline bool is_incomplete_struct_type(struct mir_type *type)
 {
     return mir_is_composit_type(type) && type->data.strct.is_incomplete;
 }
@@ -1191,7 +1191,7 @@ DONE:
 
 // Determinate if instruction has volatile type, that means we can change type of the value during
 // analyze pass as needed. This is used for constant integer literals.
-static INLINE bool is_instr_type_volatile(struct mir_instr *instr)
+static inline bool is_instr_type_volatile(struct mir_instr *instr)
 {
     switch (instr->kind) {
     case MIR_INSTR_CONST:
@@ -1208,13 +1208,13 @@ static INLINE bool is_instr_type_volatile(struct mir_instr *instr)
     }
 }
 
-static INLINE bool type_cmp(const struct mir_type *first, const struct mir_type *second)
+static inline bool type_cmp(const struct mir_type *first, const struct mir_type *second)
 {
     bassert(first && second);
     return first->id.hash == second->id.hash;
 }
 
-static INLINE bool can_impl_cast(const struct mir_type *from, const struct mir_type *to)
+static inline bool can_impl_cast(const struct mir_type *from, const struct mir_type *to)
 {
     // Here we allow implicit cast from any pointer type to bool, this breaks quite strict
     // implicit casting rules in this language, but this kind of cast can be handy because we
@@ -1261,34 +1261,34 @@ static INLINE bool can_impl_cast(const struct mir_type *from, const struct mir_t
     return true;
 }
 
-static INLINE struct mir_instr_block *ast_current_block(struct context *ctx)
+static inline struct mir_instr_block *ast_current_block(struct context *ctx)
 {
     return ctx->ast.current_block;
 }
 
-static INLINE struct mir_fn *ast_current_fn(struct context *ctx)
+static inline struct mir_fn *ast_current_fn(struct context *ctx)
 {
     return ctx->ast.current_block ? ctx->ast.current_block->owner_fn : NULL;
 }
 
-static INLINE void terminate_block(struct mir_instr_block *block, struct mir_instr *terminator)
+static inline void terminate_block(struct mir_instr_block *block, struct mir_instr *terminator)
 {
     bassert(block);
     if (block->terminal) babort("basic block '%s' already terminated!", block->name);
     block->terminal = terminator;
 }
 
-static INLINE bool is_block_terminated(struct mir_instr_block *block)
+static inline bool is_block_terminated(struct mir_instr_block *block)
 {
     return block->terminal;
 }
 
-static INLINE bool is_current_block_terminated(struct context *ctx)
+static inline bool is_current_block_terminated(struct context *ctx)
 {
     return ast_current_block(ctx)->terminal;
 }
 
-static INLINE void *mutate_instr(struct mir_instr *instr, enum mir_instr_kind kind)
+static inline void *mutate_instr(struct mir_instr *instr, enum mir_instr_kind kind)
 {
     bassert(instr);
 #if BL_DEBUG
@@ -1298,7 +1298,7 @@ static INLINE void *mutate_instr(struct mir_instr *instr, enum mir_instr_kind ki
     return instr;
 }
 
-static INLINE struct mir_instr *unref_instr(struct mir_instr *instr)
+static inline struct mir_instr *unref_instr(struct mir_instr *instr)
 {
     if (!instr) return NULL;
     if (instr->ref_count == NO_REF_COUNTING) return instr;
@@ -1306,7 +1306,7 @@ static INLINE struct mir_instr *unref_instr(struct mir_instr *instr)
     return instr;
 }
 
-static INLINE struct mir_instr *ref_instr(struct mir_instr *instr)
+static inline struct mir_instr *ref_instr(struct mir_instr *instr)
 {
     if (!instr) return NULL;
     if (instr->ref_count == NO_REF_COUNTING) return instr;
@@ -1314,7 +1314,7 @@ static INLINE struct mir_instr *ref_instr(struct mir_instr *instr)
     return instr;
 }
 
-static INLINE void erase_instr(struct mir_instr *instr)
+static inline void erase_instr(struct mir_instr *instr)
 {
     if (!instr) return;
     if (instr->owner_block) {
@@ -1327,7 +1327,7 @@ static INLINE void erase_instr(struct mir_instr *instr)
     instr->next = NULL;
 }
 
-static INLINE void erase_block(struct mir_instr *instr)
+static inline void erase_block(struct mir_instr *instr)
 {
     instrs_t queue = SARR_ZERO;
     sarrput(&queue, instr);
@@ -1377,7 +1377,7 @@ static INLINE void erase_block(struct mir_instr *instr)
     sarrfree(&queue);
 }
 
-static INLINE void insert_instr_after(struct mir_instr *after, struct mir_instr *instr)
+static inline void insert_instr_after(struct mir_instr *after, struct mir_instr *instr)
 {
     bassert(after && instr);
 
@@ -1392,7 +1392,7 @@ static INLINE void insert_instr_after(struct mir_instr *after, struct mir_instr 
     if (block->last_instr == after) instr->owner_block->last_instr = instr;
 }
 
-static INLINE void insert_instr_before(struct mir_instr *before, struct mir_instr *instr)
+static inline void insert_instr_before(struct mir_instr *before, struct mir_instr *instr)
 {
     bassert(before && instr);
 
@@ -1407,12 +1407,12 @@ static INLINE void insert_instr_before(struct mir_instr *before, struct mir_inst
     if (block->entry_instr == before) instr->owner_block->entry_instr = instr;
 }
 
-static INLINE void push_into_gscope(struct context *ctx, struct mir_instr *instr)
+static inline void push_into_gscope(struct context *ctx, struct mir_instr *instr)
 {
     bassert(instr);
     // instr->id = arrlenu(ctx->assembly->MIR.global_instrs);
     arrput(ctx->assembly->MIR.global_instrs, instr);
-};
+}
 
 // =================================================================================================
 // Analyze stack manipulation tools
@@ -1426,14 +1426,14 @@ static INLINE void push_into_gscope(struct context *ctx, struct mir_instr *instr
     (arrlenu((ctx)->analyze.stack[0]) + arrlenu((ctx)->analyze.stack[1]))
 
 static int         push_count = 0;
-static INLINE void analyze_schedule(struct context *ctx, struct mir_instr *instr)
+static inline void analyze_schedule(struct context *ctx, struct mir_instr *instr)
 {
     bassert(instr);
     ++push_count;
     arrput(analyze_current(ctx), instr);
 }
 
-static INLINE void analyze_notify_provided(struct context *ctx, hash_t hash)
+static inline void analyze_notify_provided(struct context *ctx, hash_t hash)
 {
     const s64 index = hmgeti(ctx->analyze.waiting, hash);
     if (index == -1) return; // No one is waiting for this...
@@ -1451,19 +1451,19 @@ static INLINE void analyze_notify_provided(struct context *ctx, hash_t hash)
 }
 // =================================================================================================
 
-static INLINE const char *create_unique_name(struct context *ctx, const char *prefix)
+static inline const char *create_unique_name(struct context *ctx, const char *prefix)
 {
     static u64 ui = 0;
     return scprint(&ctx->assembly->string_cache, "%s.%llu", prefix, ui++);
 }
 
-static INLINE bool is_builtin2(struct id *id, enum builtin_id_kind kind)
+static inline bool is_builtin2(struct id *id, enum builtin_id_kind kind)
 {
     if (!id) return false;
     return id->hash == builtin_ids[kind].hash;
 }
 
-static INLINE bool is_builtin(struct ast *ident, enum builtin_id_kind kind)
+static inline bool is_builtin(struct ast *ident, enum builtin_id_kind kind)
 {
     if (!ident) return false;
     bassert(ident->kind == AST_IDENT);
@@ -1483,17 +1483,17 @@ static enum builtin_id_kind get_builtin_kind(struct ast *ident)
     return BUILTIN_ID_NONE;
 }
 
-static INLINE bool get_block_terminator(struct mir_instr_block *block)
+static inline bool get_block_terminator(struct mir_instr_block *block)
 {
     return block->terminal;
 }
 
-static INLINE void set_current_block(struct context *ctx, struct mir_instr_block *block)
+static inline void set_current_block(struct context *ctx, struct mir_instr_block *block)
 {
     ctx->ast.current_block = block;
 }
 
-static INLINE void error_types(struct context   *ctx,
+static inline void error_types(struct context   *ctx,
                                struct mir_instr *instr,
                                struct mir_type  *from,
                                struct mir_type  *to,
@@ -1510,7 +1510,7 @@ static INLINE void error_types(struct context   *ctx,
     DEBUG_PRINT_MIR(instr);
 }
 
-static INLINE void commit_fn(struct context *ctx, struct mir_fn *fn)
+static inline void commit_fn(struct context *ctx, struct mir_fn *fn)
 {
     struct id *id = fn->id;
     bassert(id);
@@ -1523,7 +1523,7 @@ static INLINE void commit_fn(struct context *ctx, struct mir_fn *fn)
     usage_check_push(ctx, entry);
 }
 
-static INLINE void commit_variant(struct context UNUSED(*ctx), struct mir_variant *variant)
+static inline void commit_variant(struct context UNUSED(*ctx), struct mir_variant *variant)
 {
     struct scope_entry *entry = variant->entry;
     bmagic_assert(entry);
@@ -1532,7 +1532,7 @@ static INLINE void commit_variant(struct context UNUSED(*ctx), struct mir_varian
     entry->data.variant = variant;
 }
 
-static INLINE void commit_member(struct context UNUSED(*ctx), struct mir_member *member)
+static inline void commit_member(struct context UNUSED(*ctx), struct mir_member *member)
 {
     struct scope_entry *entry = member->entry;
     bmagic_assert(entry);
@@ -1542,7 +1542,7 @@ static INLINE void commit_member(struct context UNUSED(*ctx), struct mir_member 
     entry->data.member = member;
 }
 
-static INLINE void commit_var(struct context *ctx, struct mir_var *var)
+static inline void commit_var(struct context *ctx, struct mir_var *var)
 {
     struct id *id = var->id;
     bassert(id);
@@ -1558,7 +1558,7 @@ static INLINE void commit_var(struct context *ctx, struct mir_var *var)
 }
 
 // Provide builtin type. Register & commit.
-static INLINE void provide_builtin_type(struct context *ctx, struct mir_type *type)
+static inline void provide_builtin_type(struct context *ctx, struct mir_type *type)
 {
     struct scope_entry *entry =
         register_symbol(ctx, NULL, type->user_id, ctx->assembly->gscope, true);
@@ -1568,7 +1568,7 @@ static INLINE void provide_builtin_type(struct context *ctx, struct mir_type *ty
     entry->data.type = type;
 }
 
-static INLINE void
+static inline void
 provide_builtin_member(struct context *ctx, struct scope *scope, struct mir_member *member)
 {
     struct scope_entry *entry = register_symbol(ctx, NULL, member->id, scope, true);
@@ -1579,7 +1579,7 @@ provide_builtin_member(struct context *ctx, struct scope *scope, struct mir_memb
     member->entry      = entry;
 }
 
-static INLINE void
+static inline void
 provide_builtin_variant(struct context *ctx, struct scope *scope, struct mir_variant *variant)
 {
     struct scope_entry *entry = register_symbol(ctx, NULL, variant->id, scope, true);
@@ -1590,7 +1590,7 @@ provide_builtin_variant(struct context *ctx, struct scope *scope, struct mir_var
     variant->entry      = entry;
 }
 
-static INLINE void
+static inline void
 phi_add_income(struct mir_instr_phi *phi, struct mir_instr *value, struct mir_instr_block *block)
 {
     bassert(phi && value && block);
@@ -1601,7 +1601,7 @@ phi_add_income(struct mir_instr_phi *phi, struct mir_instr *value, struct mir_in
     }
 }
 
-static INLINE bool is_load_needed(struct mir_instr *instr)
+static inline bool is_load_needed(struct mir_instr *instr)
 {
     if (!instr) return false;
     if (!mir_is_pointer_type(instr->value.type)) return false;
@@ -1646,7 +1646,7 @@ static INLINE bool is_load_needed(struct mir_instr *instr)
     return true;
 }
 
-static INLINE bool
+static inline bool
 is_to_any_needed(struct context *ctx, struct mir_instr *src, struct mir_type *dest_type)
 {
     if (!dest_type || !src) return false;
@@ -2453,7 +2453,7 @@ void type_init_llvm_bool(struct context *ctx, struct mir_type *type)
     type->alignment        = (s8)LLVMABIAlignmentOfType(ctx->assembly->llvm.TD, type->llvm_type);
 }
 
-static INLINE usize struct_split_fit(struct context  *ctx,
+static inline usize struct_split_fit(struct context  *ctx,
                                      struct mir_type *struct_type,
                                      u32              bound,
                                      u32             *start)
@@ -2685,7 +2685,7 @@ void type_init_llvm_enum(struct context *ctx, struct mir_type *type)
     type->alignment        = (s8)LLVMABIAlignmentOfType(ctx->assembly->llvm.TD, type->llvm_type);
 }
 
-static INLINE void push_var(struct context *ctx, struct mir_var *var)
+static inline void push_var(struct context *ctx, struct mir_var *var)
 {
     bassert(var);
     if (var->is_global) return;
@@ -3983,7 +3983,7 @@ struct mir_instr *append_instr_decl_variant(struct context     *ctx,
     return &tmp->base;
 }
 
-INLINE struct mir_instr *
+inline struct mir_instr *
 append_instr_const_int(struct context *ctx, struct ast *node, struct mir_type *type, u64 val)
 {
     struct mir_instr *tmp = create_instr_const_int(ctx, node, type, val);
@@ -3991,7 +3991,7 @@ append_instr_const_int(struct context *ctx, struct ast *node, struct mir_type *t
     return tmp;
 }
 
-INLINE struct mir_instr *
+inline struct mir_instr *
 append_instr_const_type(struct context *ctx, struct ast *node, struct mir_type *type)
 {
     struct mir_instr *tmp = create_instr_const_type(ctx, node, type);
@@ -3999,14 +3999,14 @@ append_instr_const_type(struct context *ctx, struct ast *node, struct mir_type *
     return tmp;
 }
 
-INLINE struct mir_instr *append_instr_const_float(struct context *ctx, struct ast *node, float val)
+inline struct mir_instr *append_instr_const_float(struct context *ctx, struct ast *node, float val)
 {
     struct mir_instr *tmp = create_instr_const_float(ctx, node, val);
     append_current_block(ctx, tmp);
     return tmp;
 }
 
-INLINE struct mir_instr *
+inline struct mir_instr *
 append_instr_const_double(struct context *ctx, struct ast *node, double val)
 {
     struct mir_instr *tmp = create_instr_const_double(ctx, node, val);
@@ -4014,7 +4014,7 @@ append_instr_const_double(struct context *ctx, struct ast *node, double val)
     return tmp;
 }
 
-INLINE struct mir_instr *append_instr_const_bool(struct context *ctx, struct ast *node, bool val)
+inline struct mir_instr *append_instr_const_bool(struct context *ctx, struct ast *node, bool val)
 {
     struct mir_instr *tmp = create_instr_const_bool(ctx, node, val);
     append_current_block(ctx, tmp);
@@ -4047,7 +4047,7 @@ struct mir_instr *append_instr_const_string(struct context *ctx, struct ast *nod
     return &compound->base;
 }
 
-INLINE struct mir_instr *append_instr_const_char(struct context *ctx, struct ast *node, char c)
+inline struct mir_instr *append_instr_const_char(struct context *ctx, struct ast *node, char c)
 {
     struct mir_instr *tmp  = create_instr(ctx, MIR_INSTR_CONST, node);
     tmp->value.is_comptime = true;
@@ -4058,7 +4058,7 @@ INLINE struct mir_instr *append_instr_const_char(struct context *ctx, struct ast
     return tmp;
 }
 
-INLINE struct mir_instr *append_instr_const_null(struct context *ctx, struct ast *node)
+inline struct mir_instr *append_instr_const_null(struct context *ctx, struct ast *node)
 {
     struct mir_instr *tmp  = create_instr(ctx, MIR_INSTR_CONST, node);
     tmp->value.is_comptime = true;
@@ -4069,7 +4069,7 @@ INLINE struct mir_instr *append_instr_const_null(struct context *ctx, struct ast
     return tmp;
 }
 
-INLINE struct mir_instr *append_instr_const_void(struct context *ctx, struct ast *node)
+inline struct mir_instr *append_instr_const_void(struct context *ctx, struct ast *node)
 {
     struct mir_instr *tmp  = create_instr(ctx, MIR_INSTR_CONST, node);
     tmp->value.is_comptime = true;
@@ -6861,7 +6861,7 @@ struct result analyze_instr_type_ptr(struct context *ctx, struct mir_instr_type_
     return_zone(ANALYZE_RESULT(PASSED, 0));
 }
 
-static INLINE bool is_type_valid_for_binop(const struct mir_type *type, const enum binop_kind op)
+static inline bool is_type_valid_for_binop(const struct mir_type *type, const enum binop_kind op)
 {
     bassert(type);
     switch (type->kind) {
@@ -7302,7 +7302,7 @@ static void poly_type_match(struct mir_type  *recipe,
 #undef push_if_valid
 }
 
-static INLINE hash_t get_current_poly_replacement_hash(struct context *ctx)
+static inline hash_t get_current_poly_replacement_hash(struct context *ctx)
 {
     mir_types_t *queue = &ctx->polymorph.replacement_queue;
     if (!sarrlenu(queue)) return 0;
@@ -7471,6 +7471,7 @@ struct result generate_fn_poly(struct context             *ctx,
 // =================================================================================================
 static struct result analyze_callee(struct context *ctx, struct mir_instr *callee)
 {
+    zone();
     bassert(callee);
     struct id *missing_any = lookup_builtins_any(ctx);
     if (missing_any) return_zone(ANALYZE_RESULT(WAITING, missing_any->hash));
@@ -7540,7 +7541,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
     if (!call->callee_analyzed) {
         // First resolve callee type here!
         const struct result r = analyze_callee(ctx, call->callee);
-        if (r.state != ANALYZE_PASSED) return r;
+        if (r.state != ANALYZE_PASSED) return_zone(r);
         if (analyze_slot(ctx, &analyze_slot_conf_basic, &call->callee, NULL) != ANALYZE_PASSED) {
             return_zone(ANALYZE_RESULT(FAILED, 0));
         }
@@ -8411,7 +8412,7 @@ struct result analyze_instr(struct context *ctx, struct mir_instr *instr)
     return_zone(state);
 }
 
-static INLINE struct mir_instr *analyze_try_get_next(struct mir_instr *instr)
+static inline struct mir_instr *analyze_try_get_next(struct mir_instr *instr)
 {
     if (!instr) return NULL;
     if (instr->kind == MIR_INSTR_BLOCK) {
@@ -8568,7 +8569,7 @@ struct mir_var *testing_gen_meta(struct context *ctx)
     return var;
 }
 
-INLINE void testing_add_test_case(struct context *ctx, struct mir_fn *fn)
+inline void testing_add_test_case(struct context *ctx, struct mir_fn *fn)
 {
     struct mir_var *var = testing_gen_meta(ctx);
     bassert(var);
@@ -8596,7 +8597,7 @@ INLINE void testing_add_test_case(struct context *ctx, struct mir_fn *fn)
 }
 
 // Top-level rtti generation.
-INLINE struct mir_var *rtti_gen(struct context *ctx, struct mir_type *type)
+inline struct mir_var *rtti_gen(struct context *ctx, struct mir_type *type)
 {
     struct mir_var *tmp     = _rtti_gen(ctx, type);
     rttis_t        *pending = &ctx->analyze.incomplete_rtti;
@@ -8697,14 +8698,14 @@ struct mir_var *_rtti_gen(struct context *ctx, struct mir_type *type)
     return rtti_var;
 }
 
-INLINE struct mir_var *rtti_create_and_alloc_var(struct context *ctx, struct mir_type *type)
+inline struct mir_var *rtti_create_and_alloc_var(struct context *ctx, struct mir_type *type)
 {
     struct mir_var *var = create_var_impl(ctx, NULL, IMPL_RTTI_ENTRY, type, false, true, true);
     vm_alloc_global(ctx->vm, ctx->assembly, var);
     return var;
 }
 
-static INLINE void
+static inline void
 rtti_gen_base(struct context *ctx, vm_stack_ptr_t dest, u8 kind, usize size_bytes)
 {
     struct mir_type *rtti_type      = ctx->builtin_types->t_TypeInfo;
@@ -9957,7 +9958,7 @@ struct mir_instr *ast_expr_type(struct context *ctx, struct ast *type)
     return ast(ctx, next_type);
 }
 
-static INLINE enum builtin_id_kind check_symbol_marked_compiler(struct context *ctx,
+static inline enum builtin_id_kind check_symbol_marked_compiler(struct context *ctx,
                                                                 struct ast     *ident)
 {
     // Check builtin ids for symbols marked as compiler.

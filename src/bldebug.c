@@ -39,7 +39,7 @@
 
 #define MAX_LOG_MSG_SIZE 2048
 
-void _log(BlLogMsgKind t, const char *file, s32 line, const char *msg, ...)
+void log_impl(BlLogMsgKind t, const char *file, s32 line, const char *msg, ...)
 {
     char    buffer[MAX_LOG_MSG_SIZE];
     va_list args;
@@ -65,14 +65,12 @@ void _log(BlLogMsgKind t, const char *file, s32 line, const char *msg, ...)
     case LOG_MSG:
         fprintf(stdout, "log [%s:%d]: %s\n", file, line, buffer);
         break;
-    default:
-        break;
     }
 
     va_end(args);
 }
 
-void _print_trace(void)
+void print_trace_impl(void)
 {
 #if BL_PLATFORM_MACOS || BL_PLATFORM_LINUX
 #include <execinfo.h>

@@ -116,7 +116,8 @@ build_call_memcpy(struct context *ctx, LLVMValueRef src, LLVMValueRef dest, cons
 static LLVMValueRef rtti_emit(struct context *ctx, struct mir_type *type);
 static void         rtti_satisfy_incomplete(struct context *ctx, struct rtti_incomplete incomplete);
 static LLVMValueRef _rtti_emit(struct context *ctx, struct mir_type *type);
-static LLVMValueRef rtti_emit_base(struct context *ctx, struct mir_type *type, u8 kind, usize size);
+static LLVMValueRef
+rtti_emit_base(struct context *ctx, struct mir_type *type, enum mir_type_kind kind, usize size);
 static LLVMValueRef rtti_emit_integer(struct context *ctx, struct mir_type *type);
 static LLVMValueRef rtti_emit_real(struct context *ctx, struct mir_type *type);
 static LLVMValueRef rtti_emit_array(struct context *ctx, struct mir_type *type);
@@ -198,7 +199,7 @@ static LLVMValueRef _emit_instr_compound_zero_initialized(struct context *ctx,
 static LLVMValueRef _emit_instr_compound_comptime(struct context            *ctx,
                                                   struct mir_instr_compound *cmp);
 
-static INLINE LLVMValueRef emit_instr_compound_global(struct context            *ctx,
+static inline LLVMValueRef emit_instr_compound_global(struct context            *ctx,
                                                       struct mir_instr_compound *cmp)
 {
     bassert(mir_is_global(&cmp->base) && "Expected global compound expression!");
@@ -220,7 +221,7 @@ static State emit_instr_compound_naked(struct context *ctx, struct mir_instr_com
     return STATE_PASSED;
 }
 
-static INLINE void emit_DI_instr_loc(struct context *ctx, struct mir_instr *instr)
+static inline void emit_DI_instr_loc(struct context *ctx, struct mir_instr *instr)
 {
     bassert(instr && "Invalid instruction!");
     bassert(instr->node && "Invalid instruction ast node!");
@@ -236,7 +237,7 @@ static INLINE void emit_DI_instr_loc(struct context *ctx, struct mir_instr *inst
     LLVMSetCurrentDebugLocation2(ctx->llvm_builder, llvm_loc);
 }
 
-static INLINE LLVMValueRef llvm_lookup_fn(struct context *ctx, const char *name)
+static inline LLVMValueRef llvm_lookup_fn(struct context *ctx, const char *name)
 {
     const hash_t hash  = strhash(name);
     const s64    index = hmgeti(ctx->llvm_fn_cache, hash);
@@ -244,7 +245,7 @@ static INLINE LLVMValueRef llvm_lookup_fn(struct context *ctx, const char *name)
     return ctx->llvm_fn_cache[index].value;
 }
 
-static INLINE LLVMValueRef llvm_cache_fn(struct context *ctx,
+static inline LLVMValueRef llvm_cache_fn(struct context *ctx,
                                          const char     *name,
                                          LLVMValueRef    llvm_fn)
 {
@@ -253,7 +254,7 @@ static INLINE LLVMValueRef llvm_cache_fn(struct context *ctx,
     return llvm_fn;
 }
 
-static INLINE LLVMTypeRef get_type(struct context *ctx, struct mir_type *t)
+static inline LLVMTypeRef get_type(struct context *ctx, struct mir_type *t)
 {
     bassert(t->llvm_type && "Invalid type reference for LLVM!");
     if (ctx->is_debug_mode && !t->llvm_meta) {
@@ -263,12 +264,12 @@ static INLINE LLVMTypeRef get_type(struct context *ctx, struct mir_type *t)
     return t->llvm_type;
 }
 
-static INLINE bool is_initialized(LLVMValueRef constant)
+static inline bool is_initialized(LLVMValueRef constant)
 {
     return constant && LLVMGetInitializer(constant);
 }
 
-static INLINE LLVMBasicBlockRef emit_basic_block(struct context *ctx, struct mir_instr_block *block)
+static inline LLVMBasicBlockRef emit_basic_block(struct context *ctx, struct mir_instr_block *block)
 {
     if (!block) return NULL;
     LLVMBasicBlockRef llvm_block = NULL;
@@ -439,7 +440,7 @@ LLVMMetadataRef DI_type_init(struct context *ctx, struct mir_type *type)
                 LLVMDIBuilderCreateEnumerator(ctx->llvm_di_builder,
                                               variant->id->str,
                                               strlen(variant->id->str),
-                                              variant->value,
+                                              (s64)variant->value,
                                               !base_type->data.integer.is_signed);
             sarrput(&llvm_elems, llvm_variant);
         }
@@ -453,7 +454,7 @@ LLVMMetadataRef DI_type_init(struct context *ctx, struct mir_type *type)
                                                type->size_bits,
                                                (u32)type->alignment * 8,
                                                sarrdata(&llvm_elems),
-                                               sarrlenu(&llvm_elems),
+                                               (u32)sarrlenu(&llvm_elems),
                                                DI_type_init(ctx, base_type));
         sarrfree(&llvm_elems);
         break;
@@ -469,7 +470,7 @@ LLVMMetadataRef DI_type_init(struct context *ctx, struct mir_type *type)
         }
         // @Incomplete: file meta not used?
         type->llvm_meta = LLVMDIBuilderCreateSubroutineType(
-            ctx->llvm_di_builder, NULL, sarrdata(&params), sarrlenu(&params), LLVMDIFlagZero);
+            ctx->llvm_di_builder, NULL, sarrdata(&params), (u32)sarrlenu(&params), LLVMDIFlagZero);
 
         sarrfree(&params);
         break;
@@ -585,7 +586,7 @@ LLVMMetadataRef DI_complete_type(struct context *ctx, struct mir_type *type)
                                                        (unsigned)type->alignment * 8,
                                                        LLVMDIFlagZero,
                                                        sarrdata(&llvm_elems),
-                                                       sarrlenu(&llvm_elems),
+                                                       (u32)sarrlenu(&llvm_elems),
                                                        0,
                                                        "",
                                                        0);
@@ -601,7 +602,7 @@ LLVMMetadataRef DI_complete_type(struct context *ctx, struct mir_type *type)
                                                         LLVMDIFlagZero,
                                                         NULL,
                                                         sarrdata(&llvm_elems),
-                                                        sarrlenu(&llvm_elems),
+                                                        (u32)sarrlenu(&llvm_elems),
                                                         0,
                                                         NULL,
                                                         "",
@@ -720,7 +721,7 @@ void emit_DI_var(struct context *ctx, struct mir_var *var)
                                                         false,
                                                         llvm_expr,
                                                         NULL,
-                                                        var->value.type->alignment);
+                                                        (u32)var->value.type->alignment * 8);
 
         LLVMGlobalSetMetadata(
             var->llvm_value, LLVMGetMDKindIDInContext(ctx->llvm_cnt, "dbg", 3), llvm_meta);
@@ -877,8 +878,8 @@ LLVMValueRef emit_const_string(struct context *ctx, const char *str, usize len)
     llvm_values_t    llvm_members = SARR_ZERO;
     sarrput(&llvm_members, llvm_len);
     sarrput(&llvm_members, LLVMConstBitCast(llvm_str, get_type(ctx, ptr_type)));
-    LLVMValueRef llvm_result =
-        LLVMConstNamedStruct(get_type(ctx, type), sarrdata(&llvm_members), sarrlenu(&llvm_members));
+    LLVMValueRef llvm_result = LLVMConstNamedStruct(
+        get_type(ctx, type), sarrdata(&llvm_members), (u32)sarrlenu(&llvm_members));
     sarrfree(&llvm_members);
     return llvm_result;
 }
@@ -908,7 +909,7 @@ State emit_instr_decl_ref(struct context *ctx, struct mir_instr_decl_ref *ref)
     return STATE_PASSED;
 }
 
-State emit_instr_decl_direct_ref(struct context UNUSED(*ctx), struct mir_instr_decl_direct_ref *ref)
+State emit_instr_decl_direct_ref(struct context *ctx, struct mir_instr_decl_direct_ref *ref)
 {
     bassert(ref->ref && ref->ref->kind == MIR_INSTR_DECL_VAR);
     struct mir_var *var = ((struct mir_instr_decl_var *)ref->ref)->var;
@@ -966,11 +967,12 @@ State emit_instr_unreachable(struct context *ctx, struct mir_instr_unreachable *
     return STATE_PASSED;
 }
 
-LLVMValueRef rtti_emit_base(struct context *ctx, struct mir_type *type, u8 kind, usize size)
+LLVMValueRef
+rtti_emit_base(struct context *ctx, struct mir_type *type, enum mir_type_kind kind, usize size)
 {
     LLVMValueRef     llvm_vals[2];
     struct mir_type *kind_type = mir_get_struct_elem_type(type, 0);
-    llvm_vals[0]               = LLVMConstInt(get_type(ctx, kind_type), kind, false);
+    llvm_vals[0]               = LLVMConstInt(get_type(ctx, kind_type), (u64)kind, false);
     struct mir_type *size_type = mir_get_struct_elem_type(type, 1);
     llvm_vals[1]               = LLVMConstInt(get_type(ctx, size_type), size, false);
     return LLVMConstNamedStruct(get_type(ctx, type), llvm_vals, static_arrlenu(llvm_vals));
@@ -1033,7 +1035,7 @@ LLVMValueRef rtti_emit_enum_variants_array(struct context *ctx, mir_variants_t *
         sarrput(&llvm_vals, rtti_emit_enum_variant(ctx, it));
     }
     LLVMValueRef llvm_result =
-        LLVMConstArray(get_type(ctx, elem_type), sarrdata(&llvm_vals), sarrlenu(&llvm_vals));
+        LLVMConstArray(get_type(ctx, elem_type), sarrdata(&llvm_vals), (u32)sarrlenu(&llvm_vals));
 
     LLVMValueRef llvm_rtti_var =
         LLVMAddGlobal(ctx->llvm_module, LLVMTypeOf(llvm_result), ".rtti_variants");
@@ -1051,8 +1053,8 @@ LLVMValueRef rtti_emit_enum_variants_slice(struct context *ctx, mir_variants_t *
     LLVMValueRef     llvm_vals[2];
     struct mir_type *len_type = mir_get_struct_elem_type(type, 0);
     struct mir_type *ptr_type = mir_get_struct_elem_type(type, 1);
-    llvm_vals[0] =
-        LLVMConstInt(get_type(ctx, len_type), sarrlenu(variants), len_type->data.integer.is_signed);
+    llvm_vals[0]              = LLVMConstInt(
+        get_type(ctx, len_type), (u32)sarrlenu(variants), len_type->data.integer.is_signed);
     llvm_vals[1] =
         LLVMConstBitCast(rtti_emit_enum_variants_array(ctx, variants), get_type(ctx, ptr_type));
     return LLVMConstNamedStruct(get_type(ctx, type), llvm_vals, static_arrlenu(llvm_vals));
@@ -1139,7 +1141,7 @@ LLVMValueRef rtti_emit_struct_members_array(struct context *ctx, mir_members_t *
     }
 
     LLVMValueRef llvm_result =
-        LLVMConstArray(get_type(ctx, elem_type), sarrdata(&llvm_vals), sarrlenu(&llvm_vals));
+        LLVMConstArray(get_type(ctx, elem_type), sarrdata(&llvm_vals), (u32)sarrlenu(&llvm_vals));
 
     LLVMValueRef llvm_rtti_var =
         LLVMAddGlobal(ctx->llvm_module, LLVMTypeOf(llvm_result), ".rtti_members");
@@ -1158,8 +1160,8 @@ LLVMValueRef rtti_emit_struct_members_slice(struct context *ctx, mir_members_t *
     struct mir_type *len_type = mir_get_struct_elem_type(type, 0);
     struct mir_type *ptr_type = mir_get_struct_elem_type(type, 1);
 
-    llvm_vals[0] =
-        LLVMConstInt(get_type(ctx, len_type), sarrlenu(members), len_type->data.integer.is_signed);
+    llvm_vals[0] = LLVMConstInt(
+        get_type(ctx, len_type), (u32)sarrlenu(members), len_type->data.integer.is_signed);
 
     llvm_vals[1] =
         LLVMConstBitCast(rtti_emit_struct_members_array(ctx, members), get_type(ctx, ptr_type));
@@ -1206,7 +1208,7 @@ LLVMValueRef rtti_emit_fn_slice(struct context *ctx, mir_types_t *fns)
 {
     struct mir_type *type = ctx->builtin_types->t_TypeInfoFn_ptr_slice;
     LLVMValueRef     llvm_vals[2];
-    const usize      argc     = sarrlen(fns);
+    const usize      argc     = sarrlenu(fns);
     struct mir_type *len_type = mir_get_struct_elem_type(type, 0);
     struct mir_type *ptr_type = mir_get_struct_elem_type(type, 1);
     llvm_vals[0] = LLVMConstInt(get_type(ctx, len_type), argc, len_type->data.integer.is_signed);
@@ -1230,7 +1232,7 @@ LLVMValueRef rtti_emit_fn_array(struct context *ctx, mir_types_t *fns)
     }
 
     LLVMValueRef llvm_result =
-        LLVMConstArray(get_type(ctx, elem_type), sarrdata(&llvm_vals), sarrlenu(&llvm_vals));
+        LLVMConstArray(get_type(ctx, elem_type), sarrdata(&llvm_vals), (u32)sarrlenu(&llvm_vals));
 
     LLVMValueRef llvm_rtti_var =
         LLVMAddGlobal(ctx->llvm_module, LLVMTypeOf(llvm_result), ".rtti_args");
@@ -1264,7 +1266,7 @@ LLVMValueRef rtti_emit_fn_args_array(struct context *ctx, mir_args_t *args)
     }
 
     LLVMValueRef llvm_result =
-        LLVMConstArray(get_type(ctx, elem_type), sarrdata(&llvm_vals), sarrlenu(&llvm_vals));
+        LLVMConstArray(get_type(ctx, elem_type), sarrdata(&llvm_vals), (u32)sarrlenu(&llvm_vals));
 
     LLVMValueRef llvm_rtti_var =
         LLVMAddGlobal(ctx->llvm_module, LLVMTypeOf(llvm_result), ".rtti_args");
@@ -1360,7 +1362,7 @@ LLVMValueRef rtti_emit_array(struct context *ctx, struct mir_type *type)
     // len
     struct mir_type *len_type = mir_get_struct_elem_type(rtti_type, 3);
     llvm_vals[3]              = LLVMConstInt(
-        get_type(ctx, len_type), type->data.array.len, len_type->data.integer.is_signed);
+        get_type(ctx, len_type), (u32)type->data.array.len, len_type->data.integer.is_signed);
 
     return LLVMConstNamedStruct(get_type(ctx, rtti_type), llvm_vals, static_arrlenu(llvm_vals));
 }
@@ -1442,7 +1444,6 @@ LLVMValueRef _rtti_emit(struct context *ctx, struct mir_type *type)
         arrput(ctx->incomplete_rtti,
                ((struct rtti_incomplete){.llvm_var = llvm_rtti_var, .type = type}));
         goto SKIP;
-        break;
 
     case MIR_TYPE_ARRAY:
         llvm_value = rtti_emit_array(ctx, type);
@@ -1552,7 +1553,7 @@ State emit_instr_test_cases(struct context *ctx, struct mir_instr_test_case *tc)
 
     LLVMValueRef llvm_len =
         var ? LLVMConstInt(get_type(ctx, len_type),
-                           var->value.type->data.array.len,
+                           (u64)var->value.type->data.array.len,
                            len_type->data.integer.is_signed)
             : LLVMConstInt(get_type(ctx, len_type), 0, len_type->data.integer.is_signed);
 
@@ -1975,7 +1976,8 @@ LLVMValueRef _emit_instr_compound_zero_initialized(struct context            *ct
         bassert((instr)->kind == MIR_INSTR_COMPOUND);                                              \
         _emit_instr_compound_comptime(ctx, ((struct mir_instr_compound *)instr));                  \
         bassert((instr)->llvm_value);                                                              \
-    }
+    }                                                                                              \
+    (void)0
 
 // Generates comptime compound expression value, every nested member must be compile time known.
 LLVMValueRef _emit_instr_compound_comptime(struct context *ctx, struct mir_instr_compound *cmp)
@@ -1991,7 +1993,7 @@ LLVMValueRef _emit_instr_compound_comptime(struct context *ctx, struct mir_instr
     bassert(type);
     switch (type->kind) {
     case MIR_TYPE_ARRAY: {
-        const usize len            = type->data.array.len;
+        const u32   len            = (u32)type->data.array.len;
         LLVMTypeRef llvm_elem_type = get_type(ctx, type->data.array.elem_type);
         bassert(len && llvm_elem_type);
         llvm_values_t llvm_elems = SARR_ZERO;
@@ -2003,8 +2005,7 @@ LLVMValueRef _emit_instr_compound_comptime(struct context *ctx, struct mir_instr
             bassert(LLVMIsConstant(llvm_elem) && "Expected constant!");
             sarrput(&llvm_elems, llvm_elem);
         }
-        cmp->base.llvm_value =
-            LLVMConstArray(llvm_elem_type, sarrdata(&llvm_elems), (unsigned int)len);
+        cmp->base.llvm_value = LLVMConstArray(llvm_elem_type, sarrdata(&llvm_elems), len);
         sarrfree(&llvm_elems);
         break;
     }
@@ -2253,7 +2254,7 @@ State emit_instr_call(struct context *ctx, struct mir_instr_call *call)
         LLVMPositionBuilderAtEnd(ctx->llvm_builder, llvm_prev_block);                              \
         DI_LOCATION_RESET();                                                                       \
     }                                                                                              \
-    //*********************************************************************************************/
+    (void)0 //*********************************************************************************************/
 
     struct mir_instr *callee = call->callee;
     bassert(callee);
@@ -2363,7 +2364,7 @@ State emit_instr_call(struct context *ctx, struct mir_instr_call *call)
     }
     DI_LOCATION_SET(&call->base);
     LLVMValueRef llvm_call = LLVMBuildCall(
-        ctx->llvm_builder, llvm_called_fn, sarrdata(&llvm_args), sarrlenu(&llvm_args), "");
+        ctx->llvm_builder, llvm_called_fn, sarrdata(&llvm_args), (u32)sarrlenu(&llvm_args), "");
     DI_LOCATION_RESET();
 
     if (callee_type->data.fn.has_sret) {
@@ -2394,7 +2395,7 @@ State emit_instr_call(struct context *ctx, struct mir_instr_call *call)
 #undef INSERT_TMP
 }
 
-State emit_instr_set_initializer(struct context UNUSED(*ctx), struct mir_instr_set_initializer *si)
+State emit_instr_set_initializer(struct context *ctx, struct mir_instr_set_initializer *si)
 {
     for (usize i = 0; i < sarrlenu(si->dests); ++i) {
         struct mir_instr *dest = sarrpeek(si->dests, i);
@@ -2507,7 +2508,7 @@ State emit_instr_switch(struct context *ctx, struct mir_instr_switch *sw)
     LLVMValueRef            llvm_value         = value->llvm_value;
     LLVMBasicBlockRef       llvm_default_block = emit_basic_block(ctx, default_block);
     LLVMValueRef            llvm_switch =
-        LLVMBuildSwitch(ctx->llvm_builder, llvm_value, llvm_default_block, sarrlenu(cases));
+        LLVMBuildSwitch(ctx->llvm_builder, llvm_value, llvm_default_block, (u32)sarrlenu(cases));
     for (usize i = 0; i < sarrlenu(cases); ++i) {
         struct mir_switch_case *c             = &sarrpeek(cases, i);
         LLVMValueRef            llvm_on_value = c->on_value->llvm_value;
@@ -2571,7 +2572,7 @@ State emit_instr_const(struct context *ctx, struct mir_instr_const *c)
         vm_stack_ptr_t str_ptr = vm_get_struct_elem_ptr(ctx->assembly, type, c->base.value.data, 1);
         const s64      len     = vm_read_as(s64, len_ptr);
         const char    *str     = vm_read_as(const char *, str_ptr);
-        llvm_value             = emit_const_string(ctx, str, len);
+        llvm_value             = emit_const_string(ctx, str, (u64)len);
         break;
     }
     case MIR_TYPE_FN: {

@@ -28,11 +28,9 @@
 
 #include "assembly.h"
 #include "conf.h"
-#if BL_PLATFORM_WIN
-#include "winpthreads.h"
-#else
+#include "threading.h"
+#if !BL_PLATFORM_WIN
 #include <errno.h>
-#include <pthread.h>
 #endif
 
 #include "builder.h"
@@ -90,28 +88,28 @@ static void sarr_dtor(sarr_any_t *arr)
 }
 
 typedef struct AssemblySyncImpl {
-    pthread_mutex_t units_lock;
-    pthread_mutex_t linker_opt_lock;
-    pthread_mutex_t lib_path_lock;
-    pthread_mutex_t link_lock;
+    pthread_spinlock_t units_lock;
+    pthread_spinlock_t linker_opt_lock;
+    pthread_spinlock_t lib_path_lock;
+    pthread_spinlock_t link_lock;
 } AssemblySyncImpl;
 
 static AssemblySyncImpl *sync_new(void)
 {
     AssemblySyncImpl *impl = bmalloc(sizeof(AssemblySyncImpl));
-    pthread_mutex_init(&impl->units_lock, NULL);
-    pthread_mutex_init(&impl->linker_opt_lock, NULL);
-    pthread_mutex_init(&impl->lib_path_lock, NULL);
-    pthread_mutex_init(&impl->link_lock, NULL);
+    pthread_spin_init(&impl->units_lock, 0);
+    pthread_spin_init(&impl->linker_opt_lock, 0);
+    pthread_spin_init(&impl->lib_path_lock, 0);
+    pthread_spin_init(&impl->link_lock, 0);
     return impl;
 }
 
 static void sync_delete(AssemblySyncImpl *impl)
 {
-    pthread_mutex_destroy(&impl->units_lock);
-    pthread_mutex_destroy(&impl->linker_opt_lock);
-    pthread_mutex_destroy(&impl->lib_path_lock);
-    pthread_mutex_destroy(&impl->link_lock);
+    pthread_spin_destroy(&impl->units_lock);
+    pthread_spin_destroy(&impl->linker_opt_lock);
+    pthread_spin_destroy(&impl->lib_path_lock);
+    pthread_spin_destroy(&impl->link_lock);
     bfree(impl);
 }
 
@@ -133,9 +131,9 @@ static void parse_triple(const char *llvm_triple, struct target_triple *out_trip
     char *arch, *vendor, *os, *env;
     arch = vendor = os = env = "";
     const char *delimiter    = "-";
-    char *      tmp          = strdup(llvm_triple);
-    char *      token;
-    char *      it    = tmp;
+    char       *tmp          = strdup(llvm_triple);
+    char       *token;
+    char       *it    = tmp;
     s32         state = 0;
     // arch-vendor-os-evironment
     while ((token = strtok_r(it, delimiter, &it))) {
@@ -264,7 +262,7 @@ static void mir_init(struct assembly *assembly)
     arrsetcap(assembly->MIR.exported_instrs, 256);
 }
 
-static INLINE void mir_terminate(struct assembly *assembly)
+static inline void mir_terminate(struct assembly *assembly)
 {
     hmfree(assembly->MIR.rtti_table);
     arrfree(assembly->MIR.global_instrs);
@@ -272,7 +270,7 @@ static INLINE void mir_terminate(struct assembly *assembly)
     mir_arenas_terminate(&assembly->arenas.mir);
 }
 
-static INLINE void set_default_out_dir(char **dir)
+static inline void set_default_out_dir(char **dir)
 {
     char path[PATH_MAX] = {0};
     if (!get_current_working_dir(&path[0], PATH_MAX)) {
@@ -322,10 +320,10 @@ static struct config *load_module_config(const char *modulepath, struct token *i
     return conf;
 }
 
-static INLINE s32 get_module_version(struct config *config)
+static inline s32 get_module_version(struct config *config)
 {
     bassert(config);
-    const char *    verstr = confreads(config, "/version", "0");
+    const char     *verstr = confreads(config, "/version", "0");
     const uintmax_t ver    = strtoumax(verstr, NULL, 10);
     if (ver == UINTMAX_MAX && errno == ERANGE) {
         const char *filepath = confreads(config, "@filepath", NULL);
@@ -337,8 +335,8 @@ static INLINE s32 get_module_version(struct config *config)
 
 typedef struct {
     struct assembly *assembly;
-    struct token *   import_from;
-    const char *     modulepath;
+    struct token    *import_from;
+    const char      *modulepath;
 } import_elem_context_t;
 
 static void import_source(import_elem_context_t *ctx, const char *srcfile)
@@ -373,9 +371,9 @@ static void import_link(import_elem_context_t *ctx, const char *lib)
 }
 
 static bool import_module(struct assembly *assembly,
-                          struct config *  config,
-                          const char *     modulepath,
-                          struct token *   import_from)
+                          struct config   *config,
+                          const char      *modulepath,
+                          struct token    *import_from)
 {
     zone();
     import_elem_context_t ctx = {assembly, import_from, modulepath};
@@ -548,7 +546,7 @@ void target_set_module_dir(struct target *target, const char *dir, enum module_i
 
 bool target_is_triple_valid(struct target_triple *triple)
 {
-    char * str      = target_triple_to_string(triple);
+    char  *str      = target_triple_to_string(triple);
     bool   is_valid = false;
     char **list     = builder_get_supported_targets();
     char **it       = list;
@@ -703,9 +701,9 @@ void assembly_add_lib_path_safe(struct assembly *assembly, const char *path)
     char *tmp = strdup(path);
     if (!tmp) return;
     AssemblySyncImpl *sync = assembly->sync;
-    pthread_mutex_lock(&sync->lib_path_lock);
+    pthread_spin_lock(&sync->lib_path_lock);
     arrput(assembly->lib_paths, tmp);
-    pthread_mutex_unlock(&sync->lib_path_lock);
+    pthread_spin_unlock(&sync->lib_path_lock);
 }
 
 void assembly_append_linker_options_safe(struct assembly *assembly, const char *opt)
@@ -714,12 +712,12 @@ void assembly_append_linker_options_safe(struct assembly *assembly, const char *
     if (opt[0] == '\0') return;
 
     AssemblySyncImpl *sync = assembly->sync;
-    pthread_mutex_lock(&sync->linker_opt_lock);
+    pthread_spin_lock(&sync->linker_opt_lock);
     strappend(assembly->custom_linker_opt, "%s ", opt);
-    pthread_mutex_unlock(&sync->linker_opt_lock);
+    pthread_spin_unlock(&sync->linker_opt_lock);
 }
 
-static INLINE bool assembly_has_unit(struct assembly *assembly, const hash_t hash)
+static inline bool assembly_has_unit(struct assembly *assembly, const hash_t hash)
 {
     for (usize i = 0; i < arrlenu(assembly->units); ++i) {
         struct unit *unit = assembly->units[i];
@@ -735,25 +733,25 @@ assembly_add_unit_safe(struct assembly *assembly, const char *filepath, struct t
 {
     zone();
     if (!is_str_valid_nonempty(filepath)) return_zone(NULL);
-    struct unit *     unit = NULL;
+    struct unit      *unit = NULL;
     const hash_t      hash = unit_hash(filepath, load_from);
     AssemblySyncImpl *sync = assembly->sync;
-    pthread_mutex_lock(&sync->units_lock);
+    pthread_spin_lock(&sync->units_lock);
     if (assembly_has_unit(assembly, hash)) goto DONE;
     unit = unit_new(filepath, load_from);
     arrput(assembly->units, unit);
     builder_async_submit_unit(unit);
 DONE:
-    pthread_mutex_unlock(&sync->units_lock);
+    pthread_spin_unlock(&sync->units_lock);
     return_zone(unit);
 }
 
 void assembly_add_native_lib_safe(struct assembly *assembly,
-                                  const char *     lib_name,
-                                  struct token *   link_token)
+                                  const char      *lib_name,
+                                  struct token    *link_token)
 {
     AssemblySyncImpl *sync = assembly->sync;
-    pthread_mutex_lock(&sync->link_lock);
+    pthread_spin_lock(&sync->link_lock);
     const hash_t hash = strhash(lib_name);
     { // Search for duplicity.
         for (usize i = 0; i < arrlenu(assembly->libs); ++i) {
@@ -767,10 +765,10 @@ void assembly_add_native_lib_safe(struct assembly *assembly,
     lib.linked_from       = link_token;
     arrput(assembly->libs, lib);
 DONE:
-    pthread_mutex_unlock(&sync->link_lock);
+    pthread_spin_unlock(&sync->link_lock);
 }
 
-static INLINE bool module_exist(const char *module_dir, const char *modulepath)
+static inline bool module_exist(const char *module_dir, const char *modulepath)
 {
     char *path = tstr();
     strprint(path, "%s/%s/%s", module_dir, modulepath, MODULE_CONFIG_FILE);
@@ -780,8 +778,8 @@ static INLINE bool module_exist(const char *module_dir, const char *modulepath)
 }
 
 bool assembly_import_module(struct assembly *assembly,
-                            const char *     modulepath,
-                            struct token *   import_from)
+                            const char      *modulepath,
+                            struct token    *import_from)
 {
     zone();
     bool state = false;
@@ -794,10 +792,10 @@ bool assembly_import_module(struct assembly *assembly,
         goto DONE;
     }
 
-    char *               local_path = tstr();
-    struct config *      config     = NULL;
+    char                *local_path = tstr();
+    struct config       *config     = NULL;
     const struct target *target     = assembly->target;
-    const char *         module_dir = strlenu(target->module_dir) > 0 ? target->module_dir : NULL;
+    const char          *module_dir = strlenu(target->module_dir) > 0 ? target->module_dir : NULL;
     const enum module_import_policy policy = assembly->target->module_policy;
     const bool local_found = module_dir ? module_exist(module_dir, modulepath) : false;
 
@@ -815,7 +813,7 @@ bool assembly_import_module(struct assembly *assembly,
     case IMPORT_POLICY_BUNDLE_LATEST:
     case IMPORT_POLICY_BUNDLE: {
         bassert(module_dir);
-        char *     system_path   = tstr();
+        char      *system_path   = tstr();
         const bool check_version = policy == IMPORT_POLICY_BUNDLE_LATEST;
         strprint(local_path, "%s/%s", module_dir, modulepath);
         strprint(system_path, "%s/%s", builder_get_lib_dir(), modulepath);
@@ -879,7 +877,7 @@ DONE:
 
 DCpointer assembly_find_extern(struct assembly *assembly, const char *symbol)
 {
-    void *             handle = NULL;
+    void              *handle = NULL;
     struct native_lib *lib;
     for (usize i = 0; i < arrlenu(assembly->libs); ++i) {
         lib    = &assembly->libs[i];

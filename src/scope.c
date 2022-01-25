@@ -28,29 +28,25 @@
 
 #include "scope.h"
 #include "stb_ds.h"
-#if BL_PLATFORM_WIN
-#include "winpthreads.h"
-#else
-#include <pthread.h>
-#endif
+#include "threading.h"
 
 #define entry_hash(id, layer) ((((u64)layer) << 32) | (u64)id)
 
 typedef struct scope_sync_impl {
-    pthread_mutex_t lock;
+    pthread_spinlock_t lock;
 } scope_sync_impl;
 
 static scope_sync_impl *sync_new(void)
 {
     scope_sync_impl *impl = bmalloc(sizeof(scope_sync_impl));
-    pthread_mutex_init(&impl->lock, NULL);
+    pthread_spin_init(&impl->lock, 0);
     return impl;
 }
 
 static void sync_delete(scope_sync_impl *impl)
 {
     if (!impl) return;
-    pthread_mutex_destroy(&impl->lock);
+    pthread_spin_destroy(&impl->lock);
     bfree(impl);
 }
 
@@ -165,13 +161,13 @@ void scope_dirty_clear_tree(struct scope *scope)
 void scope_lock(struct scope *scope)
 {
     bassert(scope && scope->sync);
-    pthread_mutex_lock(&scope->sync->lock);
+    pthread_spin_lock(&scope->sync->lock);
 }
 
 void scope_unlock(struct scope *scope)
 {
     bassert(scope && scope->sync);
-    pthread_mutex_unlock(&scope->sync->lock);
+    pthread_spin_unlock(&scope->sync->lock);
 }
 
 bool scope_is_subtree_of_kind(const struct scope *scope, enum scope_kind kind)

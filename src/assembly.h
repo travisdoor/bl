@@ -291,7 +291,7 @@ DCpointer assembly_find_extern(struct assembly *assembly, const char *symbol);
     hmput((assembly)->MIR.rtti_table, type_id, rtti_var);
 
 // Convert opt level to string.
-static INLINE const char *opt_to_str(enum assembly_opt opt)
+static inline const char *opt_to_str(enum assembly_opt opt)
 {
     switch (opt) {
     case ASSEMBLY_OPT_DEBUG:
@@ -305,7 +305,7 @@ static INLINE const char *opt_to_str(enum assembly_opt opt)
 }
 
 // Convert opt level to LLVM.
-static INLINE LLVMCodeGenOptLevel opt_to_LLVM(enum assembly_opt opt)
+static inline LLVMCodeGenOptLevel opt_to_LLVM(enum assembly_opt opt)
 {
     switch (opt) {
     case ASSEMBLY_OPT_DEBUG:

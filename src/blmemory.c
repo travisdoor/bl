@@ -42,7 +42,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void *_bl_realloc(void *ptr, const size_t size, const char UNUSED(*filename), s32 UNUSED(line))
+void *bl_realloc_impl(void *ptr, const size_t size, const char UNUSED(*filename), s32 UNUSED(line))
 {
     zone();
     void *mem = realloc(ptr, size);
@@ -52,7 +52,7 @@ void *_bl_realloc(void *ptr, const size_t size, const char UNUSED(*filename), s3
     return_zone(mem);
 }
 
-void *_bl_malloc(const size_t size, const char UNUSED(*filename), s32 UNUSED(line))
+void *bl_malloc_impl(const size_t size, const char UNUSED(*filename), s32 UNUSED(line))
 {
     zone();
     void *mem = malloc(size);
@@ -61,7 +61,7 @@ void *_bl_malloc(const size_t size, const char UNUSED(*filename), s32 UNUSED(lin
     return_zone(mem);
 }
 
-void _bl_free(void *ptr, const char UNUSED(*filename), s32 UNUSED(line))
+void bl_free_impl(void *ptr, const char UNUSED(*filename), s32 UNUSED(line))
 {
     TracyCFree(ptr);
     free(ptr);

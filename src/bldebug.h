@@ -58,11 +58,11 @@ extern "C" {
 
 typedef enum { LOG_ASSERT, LOG_ABORT, LOG_WARNING, LOG_MSG } BlLogMsgKind;
 
-void _log(BlLogMsgKind t, const char *file, s32 line, const char *msg, ...);
-void _print_trace(void);
+void log_impl(BlLogMsgKind t, const char *file, s32 line, const char *msg, ...);
+void print_trace_impl(void);
 
 #if defined(BL_DEBUG)
-#define print_trace() _print_trace()
+#define print_trace() print_trace_impl()
 #else
 #define print_trace() (void)0
 #endif
@@ -84,7 +84,7 @@ static inline void bl_debug_break(void)
 
 #define bassert(e)                                                                                 \
     if (!(e)) {                                                                                    \
-        _log(LOG_ASSERT, __FILENAME__, __LINE__, #e);                                              \
+        log_impl(LOG_ASSERT, __FILENAME__, __LINE__, #e);                                          \
         print_trace();                                                                             \
         BL_DEBUG_BREAK;                                                                            \
         abort();                                                                                   \
@@ -130,13 +130,13 @@ static inline void bl_debug_break(void)
 // =================================================================================================
 #define blog(format, ...)                                                                          \
     {                                                                                              \
-        _log(LOG_MSG, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                              \
+        log_impl(LOG_MSG, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                          \
     }                                                                                              \
     (void)0
 
 #define bwarn(format, ...)                                                                         \
     {                                                                                              \
-        _log(LOG_WARNING, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                          \
+        log_impl(LOG_WARNING, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                      \
     }                                                                                              \
     (void)0
 // =================================================================================================
@@ -156,7 +156,7 @@ static inline void bl_debug_break(void)
 
 #define babort(format, ...)                                                                        \
     {                                                                                              \
-        _log(LOG_ABORT, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                            \
+        log_impl(LOG_ABORT, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                        \
         print_trace();                                                                             \
         BL_DEBUG_BREAK;                                                                            \
         abort();                                                                                   \
@@ -165,7 +165,7 @@ static inline void bl_debug_break(void)
 
 #define BL_UNIMPLEMENTED                                                                           \
     {                                                                                              \
-        _log(LOG_ABORT, __FILENAME__, __LINE__, "unimplemented");                                  \
+        log_impl(LOG_ABORT, __FILENAME__, __LINE__, "unimplemented");                              \
         print_trace();                                                                             \
         BL_DEBUG_BREAK;                                                                            \
         abort();                                                                                   \
@@ -174,14 +174,14 @@ static inline void bl_debug_break(void)
 
 #define BL_UNREACHABLE                                                                             \
     {                                                                                              \
-        _log(LOG_ABORT, __FILENAME__, __LINE__, "unreachable");                                    \
+        log_impl(LOG_ABORT, __FILENAME__, __LINE__, "unreachable");                                \
         print_trace();                                                                             \
         BL_DEBUG_BREAK;                                                                            \
         abort();                                                                                   \
     }                                                                                              \
     (void)0
 
-#if TRACY_ENABLE
+#ifdef TRACY_ENABLE
 #define BL_TRACY_MESSAGE(tag, format, ...)                                                         \
     {                                                                                              \
         char buf[256];                                                                             \

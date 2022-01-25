@@ -135,13 +135,13 @@ bool        scope_is_subtree_of_kind(const struct scope *scope, enum scope_kind 
 const char *scope_kind_name(const struct scope *scope);
 void        scope_get_full_name(char **dest, struct scope *scope);
 
-static INLINE bool scope_is_local(const struct scope *scope)
+static inline bool scope_is_local(const struct scope *scope)
 {
     return scope->kind != SCOPE_GLOBAL && scope->kind != SCOPE_PRIVATE &&
            scope->kind != SCOPE_NAMED;
 }
 
-static INLINE struct scope_entry *scope_entry_ref(struct scope_entry *entry)
+static inline struct scope_entry *scope_entry_ref(struct scope_entry *entry)
 {
     bmagic_assert(entry);
     ++entry->ref_count;

@@ -46,7 +46,7 @@ struct context {
 
 static void print_comptime_value_or_id(struct context *ctx, struct mir_instr *instr);
 
-static INLINE void
+static inline void
 print_type(struct context *ctx, struct mir_type *type, bool aligned, bool prefer_name)
 {
     char *type_name = mir_type2str(type, prefer_name);
@@ -58,7 +58,7 @@ print_type(struct context *ctx, struct mir_type *type, bool aligned, bool prefer
     put_tstr(type_name);
 }
 
-static INLINE void print_instr_head(struct context *ctx, struct mir_instr *instr, const char *name)
+static inline void print_instr_head(struct context *ctx, struct mir_instr *instr, const char *name)
 {
     if (!instr) return;
 
@@ -75,7 +75,7 @@ static INLINE void print_instr_head(struct context *ctx, struct mir_instr *instr
     fprintf(ctx->stream, " %s ", name);
 }
 
-static INLINE void print_flags(struct context *ctx, u32 flags)
+static inline void print_flags(struct context *ctx, u32 flags)
 {
     if (flags == 0) return;
 
@@ -91,7 +91,7 @@ static INLINE void print_flags(struct context *ctx, u32 flags)
 
 #define print_const_value(C, V) _print_const_value((C), (V)->type, (V)->data)
 
-static INLINE void
+static inline void
 _print_const_value(struct context *ctx, struct mir_type *type, vm_stack_ptr_t value)
 {
     if (!type) return;
@@ -178,7 +178,7 @@ _print_const_value(struct context *ctx, struct mir_type *type, vm_stack_ptr_t va
             }
         } else {
             vm_stack_ptr_t ptr = vm_read_as(vm_stack_ptr_t, value);
-            fprintf(ctx->stream, "%p", ptr);
+            fprintf(ctx->stream, "%p", (void *)ptr);
         }
         break;
     }

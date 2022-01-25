@@ -29,13 +29,11 @@
 #include "builder.h"
 #include "conf.h"
 #include "stb_ds.h"
+#include "threading.h"
 #include "vmdbg.h"
 #include <stdarg.h>
 
-#if BL_PLATFORM_WIN
-#include "winpthreads.h"
-#else
-#include <pthread.h>
+#if !BL_PLATFORM_WIN
 #include <unistd.h>
 #endif
 
@@ -96,12 +94,12 @@ struct threading_impl {
     volatile s32  will_exit;    // true when main thread will exit
     volatile bool is_compiling; // true when async compilation is running
 
-    pthread_mutex_t str_tmp_lock;
-    pthread_mutex_t log_mutex;
-    pthread_mutex_t queue_mutex;
-    pthread_cond_t  queue_condition;
-    pthread_mutex_t active_mutex;
-    pthread_cond_t  active_condition;
+    pthread_spinlock_t str_tmp_lock;
+    pthread_mutex_t    log_mutex;
+    pthread_mutex_t    queue_mutex;
+    pthread_cond_t     queue_condition;
+    pthread_mutex_t    active_mutex;
+    pthread_cond_t     active_condition;
 
     const unit_stage_fn_t *unit_pipeline;
 };
@@ -130,7 +128,7 @@ static struct threading_impl *threading_new(void)
 {
     struct threading_impl *t = bmalloc(sizeof(struct threading_impl));
     memset(t, 0, sizeof(struct threading_impl));
-    pthread_mutex_init(&t->str_tmp_lock, NULL);
+    pthread_spin_init(&t->str_tmp_lock, 0);
     pthread_mutex_init(&t->queue_mutex, NULL);
     pthread_mutex_init(&t->active_mutex, NULL);
     pthread_mutex_init(&t->log_mutex, NULL);
@@ -150,10 +148,10 @@ static void threading_delete(struct threading_impl *t)
     for (usize i = 0; i < arrlenu(t->workers); ++i) {
         pthread_join(t->workers[i], NULL);
     }
+    pthread_spin_destroy(&t->str_tmp_lock);
     pthread_mutex_destroy(&t->queue_mutex);
     pthread_mutex_destroy(&t->active_mutex);
     pthread_mutex_destroy(&t->log_mutex);
-    pthread_mutex_destroy(&t->str_tmp_lock);
     pthread_cond_destroy(&t->queue_condition);
     pthread_cond_destroy(&t->active_condition);
     arrfree(t->queue);
@@ -597,7 +595,7 @@ void builder_print_location(FILE *stream, struct location *loc, s32 col, s32 len
     fprintf(stream, "\n\n");
 }
 
-static INLINE bool should_report(enum builder_msg_type type)
+static inline bool should_report(enum builder_msg_type type)
 {
     const struct builder_options *opt = builder.options;
     switch (type) {
@@ -642,7 +640,6 @@ void builder_vmsg(enum builder_msg_type type,
         case CARET_AFTER:
             col += len;
             len = 1;
-            break;
             break;
         case CARET_BEFORE:
             col -= col < 1 ? 0 : 1;
@@ -715,8 +712,9 @@ void builder_msg(enum builder_msg_type type,
 
 char *tstr(void)
 {
+    zone();
     struct threading_impl *threading = builder.threading;
-    pthread_mutex_lock(&threading->str_tmp_lock);
+    pthread_spin_lock(&threading->str_tmp_lock);
     char *str = NULL;
     if (arrlenu(builder.tmp_strs)) {
         str = arrpop(builder.tmp_strs);
@@ -725,8 +723,8 @@ char *tstr(void)
     }
     bassert(str);
     strclr(str); // also set zero terminator
-    pthread_mutex_unlock(&threading->str_tmp_lock);
-    return str;
+    pthread_spin_unlock(&threading->str_tmp_lock);
+    return_zone(str);
 }
 
 char *tstrdup(const char *str)
@@ -740,9 +738,9 @@ void put_tstr(char *str)
 {
     bassert(str);
     struct threading_impl *threading = builder.threading;
-    pthread_mutex_lock(&threading->str_tmp_lock);
+    pthread_spin_lock(&threading->str_tmp_lock);
     arrput(builder.tmp_strs, str);
-    pthread_mutex_unlock(&threading->str_tmp_lock);
+    pthread_spin_unlock(&threading->str_tmp_lock);
 }
 
 void builder_async_submit_unit(struct unit *unit)

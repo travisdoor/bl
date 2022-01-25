@@ -56,14 +56,14 @@ typedef enum tokens_lookahead_state (*token_cmp_func_t)(struct token *curr);
 #define tokens_current_is(tokens, s) (tokens_peek(tokens)->sym == (s))
 #define tokens_current_is_not(tokens, s) (tokens_peek(tokens)->sym != (s))
 
-static INLINE void tokens_consume_till(struct tokens *tokens, enum sym sym)
+static inline void tokens_consume_till(struct tokens *tokens, enum sym sym)
 {
     while (tokens_current_is_not(tokens, sym) && tokens_current_is_not(tokens, SYM_EOF)) {
         tokens_consume(tokens);
     }
 }
 
-static INLINE void tokens_consume_till2(struct tokens *tokens, usize argc, enum sym *args)
+static inline void tokens_consume_till2(struct tokens *tokens, usize argc, enum sym *args)
 {
     bassert(argc && args);
     while (tokens_current_is_not(tokens, SYM_EOF)) {
@@ -74,7 +74,7 @@ static INLINE void tokens_consume_till2(struct tokens *tokens, usize argc, enum 
     }
 }
 
-static INLINE struct token *tokens_consume_if(struct tokens *tokens, enum sym sym)
+static inline struct token *tokens_consume_if(struct tokens *tokens, enum sym sym)
 {
     if (tokens->iter >= arrlenu(tokens->buf)) return NULL;
     struct token *token = &tokens->buf[tokens->iter];
@@ -83,7 +83,7 @@ static INLINE struct token *tokens_consume_if(struct tokens *tokens, enum sym sy
     return token;
 }
 
-static INLINE bool tokens_is_seq(struct tokens *tokens, usize argc, ...)
+static inline bool tokens_is_seq(struct tokens *tokens, usize argc, ...)
 {
     bool     ret = true;
     enum sym sym = SYM_EOF;
@@ -104,7 +104,7 @@ static INLINE bool tokens_is_seq(struct tokens *tokens, usize argc, ...)
     return ret;
 }
 
-static INLINE bool tokens_lookahead_till(struct tokens *tokens, enum sym lookup, enum sym terminal)
+static inline bool tokens_lookahead_till(struct tokens *tokens, enum sym lookup, enum sym terminal)
 {
     bool      found  = false;
     const s64 marker = tokens->iter;
@@ -119,7 +119,7 @@ static INLINE bool tokens_lookahead_till(struct tokens *tokens, enum sym lookup,
     return found;
 }
 
-static INLINE bool tokens_lookahead(struct tokens *tokens, token_cmp_func_t cmp)
+static inline bool tokens_lookahead(struct tokens *tokens, token_cmp_func_t cmp)
 {
     bassert(cmp);
     bool                        found  = false;

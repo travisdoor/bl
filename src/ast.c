@@ -137,6 +137,8 @@ const char *ast_get_name(const struct ast *n)
         return "TypeFnGroup";
     case AST_TYPE_POLY:
         return "TypePoly";
+    case AST_EXPR_TYPEOF:
+        return "TypeOf";
     case AST_EXPR_CAST:
         return "ExprCast";
     case AST_EXPR_BINOP:
@@ -183,10 +185,8 @@ const char *ast_get_name(const struct ast *n)
         return "ExprLitString";
     case AST_EXPR_LIT_BOOL:
         return "ExprLitBool";
-
-    default:
-        babort("invalid ast node");
     }
+    babort("invalid ast node");
 }
 
 const char *ast_binop_to_str(enum binop_kind op)

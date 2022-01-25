@@ -81,23 +81,23 @@ struct tokens {
     usize         iter;
 };
 
-static INLINE bool sym_is_binop(enum sym sym)
+static inline bool sym_is_binop(enum sym sym)
 {
     return sym >= SYM_EQ && sym <= SYM_ASTERISK;
 }
 
-static INLINE bool token_is_binop(struct token *token)
+static inline bool token_is_binop(struct token *token)
 {
     return sym_is_binop(token->sym);
 }
 
-static INLINE bool token_is(struct token *token, enum sym sym)
+static inline bool token_is(struct token *token, enum sym sym)
 {
     if (!token) return false;
     return token->sym == sym;
 }
 
-static INLINE bool token_is_not(struct token *token, enum sym sym)
+static inline bool token_is_not(struct token *token, enum sym sym)
 {
     return !token_is(token, sym);
 }

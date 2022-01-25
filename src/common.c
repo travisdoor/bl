@@ -122,6 +122,7 @@ static struct string_cache *new_block(usize len, struct string_cache *prev)
 
 char *scdup(struct string_cache **cache, const char *str, usize len)
 {
+    zone();
     len += 1; // +zero terminator
     if (!*cache) {
         (*cache) = new_block(len, NULL);
@@ -134,7 +135,7 @@ char *scdup(struct string_cache **cache, const char *str, usize len)
         mem[len - 1] = '\0';       // Set zero terminator.
     }
     (*cache)->len += (u32)len;
-    return mem;
+    return_zone(mem);
 }
 
 void scfree(struct string_cache **cache)
@@ -150,6 +151,7 @@ void scfree(struct string_cache **cache)
 
 char *scprint(struct string_cache **cache, const char *fmt, ...)
 {
+    zone();
     va_list args, args2;
     va_start(args, fmt);
     va_copy(args2, args);
@@ -161,14 +163,15 @@ char *scprint(struct string_cache **cache, const char *fmt, ...)
     (void)wlen;
     va_end(args2);
     va_end(args);
-    return buf;
+    return_zone(buf);
 }
 
 // =================================================================================================
 // Utils
 // =================================================================================================
 
-char *strtoupper(char *str) {
+char *strtoupper(char *str)
+{
     char *s = str;
     while (*s) {
         (*s) = toupper(*s);
@@ -447,35 +450,6 @@ void date_time(char *buf, s32 len, const char *format)
     strftime(buf, len, format, tm_info);
 }
 
-bool is_aligned(const void *p, usize alignment)
-{
-    return (uintptr_t)p % alignment == 0;
-}
-
-void *next_aligned(void *p, usize alignment)
-{
-    align_ptr_up(&p, alignment, NULL);
-    return p;
-}
-
-void align_ptr_up(void **p, usize alignment, ptrdiff_t *adjustment)
-{
-    ptrdiff_t adj;
-    if (is_aligned(*p, alignment)) {
-        if (adjustment) *adjustment = 0;
-        return;
-    }
-
-    const usize mask = alignment - 1;
-    bassert((alignment & mask) == 0 && "Wrong alignment!"); // pwr of 2
-    const uintptr_t i_unaligned  = (uintptr_t)(*p);
-    const uintptr_t misalignment = i_unaligned & mask;
-
-    adj = alignment - misalignment;
-    *p  = (void *)(i_unaligned + adj);
-    if (adjustment) *adjustment = adj;
-}
-
 void print_bits(s32 const size, void const *const ptr)
 {
     unsigned char *b = (unsigned char *)ptr;
@@ -511,7 +485,7 @@ bool get_dir_from_filepath(char *buf, const usize l, const char *filepath)
         return true;
     }
     const ptrdiff_t len = ptr - filepath;
-    if (len >= l) babort("path too long!!!");
+    if (len >= (s64)l) babort("path too long!!!");
     strncpy(buf, filepath, len);
     buf[len] = '\0';
     return true;

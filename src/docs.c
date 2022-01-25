@@ -29,28 +29,25 @@
 #include "builder.h"
 #include "stb_ds.h"
 
-#define H0(stream, str) fprintf(stream, "\n# %s\n", str);
-#define H1(stream, str) fprintf(stream, "\n## %s\n", str);
-#define H2(stream, str) fprintf(stream, "\n### %s\n", str);
+#define H0(stream, str) fprintf(stream, "\n# %s\n", str)
+#define H1(stream, str) fprintf(stream, "\n## %s\n", str)
+#define H2(stream, str) fprintf(stream, "\n### %s\n", str)
 
-#define CODE_BLOCK_BEGIN(stream) fprintf(stream, "\n```c\n");
-#define CODE_BLOCK_END(stream) fprintf(stream, "\n```\n\n");
-#define CODE_BLOCK_NEW_LINE(stream) fprintf(stream, "\n    ");
-
-#define DEFAULT_TOC(stream, filename)                                                              \
-    fprintf(f, "\n\n.. toctree::\n    :glob:\n    :titlesonly:\n\n    %s/*", filename);
+#define CODE_BLOCK_BEGIN(stream) fprintf(stream, "\n```c\n")
+#define CODE_BLOCK_END(stream) fprintf(stream, "\n```\n\n")
+#define CODE_BLOCK_NEW_LINE(stream) fprintf(stream, "\n    ")
 
 #define PUSH_IS_INLINE(ctx)                                                                        \
     const bool _prev_is_inline = ctx->is_inline;                                                   \
-    ctx->is_inline             = true;
+    ctx->is_inline             = true
 
-#define POP_IS_INLINE(ctx) ctx->is_inline = _prev_is_inline;
+#define POP_IS_INLINE(ctx) ctx->is_inline = _prev_is_inline
 
 #define PUSH_IS_MULTI_RETURN(ctx)                                                                  \
     const bool _prev_is_mr = ctx->is_multi_return;                                                 \
-    ctx->is_multi_return   = true;
+    ctx->is_multi_return   = true
 
-#define POP_IS_MULTI_RETURN(ctx) ctx->is_multi_return = _prev_is_mr;
+#define POP_IS_MULTI_RETURN(ctx) ctx->is_multi_return = _prev_is_mr
 
 struct context {
     struct unit *unit;
@@ -454,7 +451,6 @@ void doc_unit(struct context *ctx, struct unit *unit)
     }
     doc(ctx, unit->ast);
 
-    // DEFAULT_TOC(f, unit_name);
     fclose(f);
     put_tstr(unit_name);
 }
