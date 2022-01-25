@@ -238,10 +238,10 @@
 </ul></li>
 <li><a href="#dynamic-library-tools">Dynamic Library Tools</a>
 <ul>
-<li><a href="#dlib.library">Dlib.Library</a></li>
-<li><a href="#dlib.open">Dlib.open</a></li>
-<li><a href="#dlib.get_symbol">Dlib.get_symbol</a></li>
-<li><a href="#dlib.close">Dlib.close</a></li>
+<li><a href="#std.library">std.Library</a></li>
+<li><a href="#std.library_open">std.library_open</a></li>
+<li><a href="#std.library_get_symbol">std.library_get_symbol</a></li>
+<li><a href="#std.library_close">std.library_close</a></li>
 </ul></li>
 <li><a href="#error-handling">Error handling</a>
 <ul>
@@ -1927,23 +1927,23 @@ Dump memory leaks end.</code></pre>
 <h1 id="dynamic-library-tools">Dynamic Library Tools</h1>
 <p><code>#import "std/dlib"</code></p>
 <p>Dynamic library tools for runtime library loading and symbol resolving.</p>
-<h2 id="dlib.library">Dlib.Library</h2>
-<div class="sourceCode" id="cb128"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb128-1"><a href="#cb128-1" aria-hidden="true" tabindex="-1"></a>Library <span class="op">::</span> _DlibImpl<span class="op">.</span>Library</span></code></pre></div>
+<h2 id="std.library">std.Library</h2>
+<div class="sourceCode" id="cb128"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb128-1"><a href="#cb128-1" aria-hidden="true" tabindex="-1"></a>Library <span class="op">::</span> _dlib_impl<span class="op">.</span>Library</span></code></pre></div>
 <p>Platform specific library handle.</p>
 <p><em>File: dlib.bl</em></p>
-<h2 id="dlib.open">Dlib.open</h2>
-<div class="sourceCode" id="cb129"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb129-1"><a href="#cb129-1" aria-hidden="true" tabindex="-1"></a>open <span class="op">::</span> fn <span class="op">(</span>lib_name <span class="op">::</span> <span class="op">)</span> <span class="op">(</span>_0<span class="op">:</span> Library<span class="op">,</span> _1<span class="op">:</span> Error</span>
+<h2 id="std.library_open">std.library_open</h2>
+<div class="sourceCode" id="cb129"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb129-1"><a href="#cb129-1" aria-hidden="true" tabindex="-1"></a>library_open <span class="op">::</span> fn <span class="op">(</span>lib_name <span class="op">::</span> <span class="op">)</span> <span class="op">(</span>_0<span class="op">:</span> Library<span class="op">,</span> _1<span class="op">:</span> Error</span>
 <span id="cb129-2"><a href="#cb129-2" aria-hidden="true" tabindex="-1"></a><span class="op">)</span> #inline</span></code></pre></div>
-<p>Dynamically loads library specified by <code>lib_name</code> and return it’s handle or null with error. When <code>lib_name</code> is empty, current binary will be loaded. Use <a href="#close">close</a> call to close library when it’s not needed anymore.</p>
+<p>Dynamically loads library specified by <code>lib_name</code> and return it’s handle or null with error. When <code>lib_name</code> is empty, current binary will be loaded. Use <code>library_close</code> call to close library when it’s not needed anymore.</p>
 <p><em>File: dlib.bl</em></p>
-<h2 id="dlib.get_symbol">Dlib.get_symbol</h2>
-<div class="sourceCode" id="cb130"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb130-1"><a href="#cb130-1" aria-hidden="true" tabindex="-1"></a>get_symbol <span class="op">::</span> fn <span class="op">(</span>lib<span class="op">:</span> Library<span class="op">,</span> sym_name<span class="op">:</span> string<span class="op">)</span> <span class="op">(</span>_0<span class="op">:</span> <span class="op">*</span>u8<span class="op">,</span> _1<span class="op">:</span> Error</span>
+<h2 id="std.library_get_symbol">std.library_get_symbol</h2>
+<div class="sourceCode" id="cb130"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb130-1"><a href="#cb130-1" aria-hidden="true" tabindex="-1"></a>library_get_symbol <span class="op">::</span> fn <span class="op">(</span>lib<span class="op">:</span> Library<span class="op">,</span> sym_name<span class="op">:</span> string<span class="op">)</span> <span class="op">(</span>_0<span class="op">:</span> <span class="op">*</span>u8<span class="op">,</span> _1<span class="op">:</span> Error</span>
 <span id="cb130-2"><a href="#cb130-2" aria-hidden="true" tabindex="-1"></a><span class="op">)</span> #inline</span></code></pre></div>
 <p>Resolve named symbol in library and return pointer to it.</p>
 <p><em>File: dlib.bl</em></p>
-<h2 id="dlib.close">Dlib.close</h2>
-<div class="sourceCode" id="cb131"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb131-1"><a href="#cb131-1" aria-hidden="true" tabindex="-1"></a>close <span class="op">::</span> fn <span class="op">(</span>lib<span class="op">:</span> Library<span class="op">)</span>  #inline</span></code></pre></div>
-<p>Close library opened by <a href="#open">open</a> call.</p>
+<h2 id="std.library_close">std.library_close</h2>
+<div class="sourceCode" id="cb131"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb131-1"><a href="#cb131-1" aria-hidden="true" tabindex="-1"></a>library_close <span class="op">::</span> fn <span class="op">(</span>lib<span class="op">:</span> Library<span class="op">)</span>  #inline</span></code></pre></div>
+<p>Close library opened by <code>lirary_open</code> call.</p>
 <p><em>File: dlib.bl</em></p>
 <h1 id="error-handling">Error handling</h1>
 <p><code>#load "std/error.bl"</code></p>
