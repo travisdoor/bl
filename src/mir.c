@@ -2453,10 +2453,8 @@ void type_init_llvm_bool(struct context *ctx, struct mir_type *type)
     type->alignment        = (s8)LLVMABIAlignmentOfType(ctx->assembly->llvm.TD, type->llvm_type);
 }
 
-static inline usize struct_split_fit(struct context  *ctx,
-                                     struct mir_type *struct_type,
-                                     u32              bound,
-                                     u32             *start)
+static inline usize
+struct_split_fit(struct context *ctx, struct mir_type *struct_type, u32 bound, u32 *start)
 {
     s64 so     = vm_get_struct_elem_offset(ctx->assembly, struct_type, *start);
     u32 offset = 0;
@@ -11198,29 +11196,30 @@ void initialize_builtins(struct context *ctx)
 
 const char *get_intrinsic(const char *name)
 {
-    if (!name) return NULL;
-    if (strcmp(name, "memset.p0i8.i64") == 0) return "__intrinsic_memset_p0i8_i64";
-    if (strcmp(name, "sin.f32") == 0) return "__intrinsic_sin_f32";
-    if (strcmp(name, "sin.f64") == 0) return "__intrinsic_sin_f64";
-    if (strcmp(name, "cos.f32") == 0) return "__intrinsic_cos_f32";
-    if (strcmp(name, "cos.f64") == 0) return "__intrinsic_cos_f64";
-    if (strcmp(name, "pow.f32") == 0) return "__intrinsic_pow_f32";
-    if (strcmp(name, "pow.f64") == 0) return "__intrinsic_pow_f64";
-    if (strcmp(name, "log.f32") == 0) return "__intrinsic_log_f32";
-    if (strcmp(name, "log.f64") == 0) return "__intrinsic_log_f64";
-    if (strcmp(name, "log2.f32") == 0) return "__intrinsic_log2_f32";
-    if (strcmp(name, "log2.f64") == 0) return "__intrinsic_log2_f64";
-    if (strcmp(name, "sqrt.f32") == 0) return "__intrinsic_sqrt_f32";
-    if (strcmp(name, "sqrt.f64") == 0) return "__intrinsic_sqrt_f64";
-    if (strcmp(name, "ceil.f32") == 0) return "__intrinsic_ceil_f32";
-    if (strcmp(name, "ceil.f64") == 0) return "__intrinsic_ceil_f64";
-    if (strcmp(name, "round.f32") == 0) return "__intrinsic_round_f32";
-    if (strcmp(name, "round.f64") == 0) return "__intrinsic_round_f64";
-    if (strcmp(name, "floor.f32") == 0) return "__intrinsic_floor_f32";
-    if (strcmp(name, "floor.f64") == 0) return "__intrinsic_floor_f64";
-    if (strcmp(name, "log10.f32") == 0) return "__intrinsic_log10_f32";
-    if (strcmp(name, "log10.f64") == 0) return "__intrinsic_log10_f64";
-    return NULL;
+    zone();
+    if (!name) return_zone(NULL);
+    if (strcmp(name, "memset.p0i8.i64") == 0) return_zone("__intrinsic_memset_p0i8_i64");
+    if (strcmp(name, "sin.f32") == 0) return_zone("__intrinsic_sin_f32");
+    if (strcmp(name, "sin.f64") == 0) return_zone("__intrinsic_sin_f64");
+    if (strcmp(name, "cos.f32") == 0) return_zone("__intrinsic_cos_f32");
+    if (strcmp(name, "cos.f64") == 0) return_zone("__intrinsic_cos_f64");
+    if (strcmp(name, "pow.f32") == 0) return_zone("__intrinsic_pow_f32");
+    if (strcmp(name, "pow.f64") == 0) return_zone("__intrinsic_pow_f64");
+    if (strcmp(name, "log.f32") == 0) return_zone("__intrinsic_log_f32");
+    if (strcmp(name, "log.f64") == 0) return_zone("__intrinsic_log_f64");
+    if (strcmp(name, "log2.f32") == 0) return_zone("__intrinsic_log2_f32");
+    if (strcmp(name, "log2.f64") == 0) return_zone("__intrinsic_log2_f64");
+    if (strcmp(name, "sqrt.f32") == 0) return_zone("__intrinsic_sqrt_f32");
+    if (strcmp(name, "sqrt.f64") == 0) return_zone("__intrinsic_sqrt_f64");
+    if (strcmp(name, "ceil.f32") == 0) return_zone("__intrinsic_ceil_f32");
+    if (strcmp(name, "ceil.f64") == 0) return_zone("__intrinsic_ceil_f64");
+    if (strcmp(name, "round.f32") == 0) return_zone("__intrinsic_round_f32");
+    if (strcmp(name, "round.f64") == 0) return_zone("__intrinsic_round_f64");
+    if (strcmp(name, "floor.f32") == 0) return_zone("__intrinsic_floor_f32");
+    if (strcmp(name, "floor.f64") == 0) return_zone("__intrinsic_floor_f64");
+    if (strcmp(name, "log10.f32") == 0) return_zone("__intrinsic_log10_f32");
+    if (strcmp(name, "log10.f64") == 0) return_zone("__intrinsic_log10_f64");
+    return_zone(NULL);
 }
 
 void mir_arenas_init(struct mir_arenas *arenas)

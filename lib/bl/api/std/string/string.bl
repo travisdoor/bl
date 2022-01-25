@@ -202,6 +202,7 @@ clear_concat :: fn (v: *string, args: ...) string {
 /// otherwise return `false`.
 ///
 /// Range value `n` is optional and ignored when it's less than 0.
+/// @Incomplete: rename to match!
 compare :: fn (first: string, second: string, n := -1) bool {
     // @CLEANUP: simplify this
     range := n;
@@ -218,7 +219,7 @@ compare :: fn (first: string, second: string, n := -1) bool {
     return true;
 }
 
-/// @INCOMPLETE
+/// @Incomplete: rename to complete (vs match)
 compare2 :: fn (first: string, second: string) s32 {
     len :: Math.max(first.len, second.len);
     loop i := 0; i < len; i += 1 {

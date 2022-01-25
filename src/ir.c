@@ -245,9 +245,8 @@ static inline LLVMValueRef llvm_lookup_fn(struct context *ctx, const char *name)
     return ctx->llvm_fn_cache[index].value;
 }
 
-static inline LLVMValueRef llvm_cache_fn(struct context *ctx,
-                                         const char     *name,
-                                         LLVMValueRef    llvm_fn)
+static inline LLVMValueRef
+llvm_cache_fn(struct context *ctx, const char *name, LLVMValueRef llvm_fn)
 {
     const hash_t hash = strhash(name);
     hmput(ctx->llvm_fn_cache, hash, llvm_fn);
@@ -295,30 +294,31 @@ static void process_queue(struct context *ctx)
 
 const char *get_intrinsic(const char *name)
 {
-    if (!name) return NULL;
-    if (strcmp(name, "memset.inline.p0i8.i64") == 0) return "llvm.memset.inline.p0i8.i64";
-    if (strcmp(name, "sin.f32") == 0) return "llvm.sin.f32";
-    if (strcmp(name, "sin.f64") == 0) return "llvm.sin.f64";
-    if (strcmp(name, "cos.f32") == 0) return "llvm.cos.f32";
-    if (strcmp(name, "cos.f64") == 0) return "llvm.cos.f64";
-    if (strcmp(name, "pow.f32") == 0) return "llvm.pow.f32";
-    if (strcmp(name, "pow.f64") == 0) return "llvm.pow.f64";
-    if (strcmp(name, "log.f32") == 0) return "llvm.log.f32";
-    if (strcmp(name, "log.f64") == 0) return "llvm.log.f64";
-    if (strcmp(name, "log2.f32") == 0) return "llvm.log2.f32";
-    if (strcmp(name, "log2.f64") == 0) return "llvm.log2.f64";
-    if (strcmp(name, "sqrt.f32") == 0) return "llvm.sqrt.f32";
-    if (strcmp(name, "sqrt.f64") == 0) return "llvm.sqrt.f64";
-    if (strcmp(name, "ceil.f32") == 0) return "llvm.ceil.f32";
-    if (strcmp(name, "ceil.f64") == 0) return "llvm.ceil.f64";
-    if (strcmp(name, "round.f32") == 0) return "llvm.round.f32";
-    if (strcmp(name, "round.f64") == 0) return "llvm.round.f64";
-    if (strcmp(name, "floor.f32") == 0) return "llvm.floor.f32";
-    if (strcmp(name, "floor.f64") == 0) return "llvm.floor.f64";
-    if (strcmp(name, "log10.f32") == 0) return "llvm.log10.f32";
-    if (strcmp(name, "log10.f64") == 0) return "llvm.log10.f64";
+    zone();
+    if (!name) return_zone(NULL);
+    if (strcmp(name, "memset.inline.p0i8.i64") == 0) return_zone("llvm.memset.inline.p0i8.i64");
+    if (strcmp(name, "sin.f32") == 0) return_zone("llvm.sin.f32");
+    if (strcmp(name, "sin.f64") == 0) return_zone("llvm.sin.f64");
+    if (strcmp(name, "cos.f32") == 0) return_zone("llvm.cos.f32");
+    if (strcmp(name, "cos.f64") == 0) return_zone("llvm.cos.f64");
+    if (strcmp(name, "pow.f32") == 0) return_zone("llvm.pow.f32");
+    if (strcmp(name, "pow.f64") == 0) return_zone("llvm.pow.f64");
+    if (strcmp(name, "log.f32") == 0) return_zone("llvm.log.f32");
+    if (strcmp(name, "log.f64") == 0) return_zone("llvm.log.f64");
+    if (strcmp(name, "log2.f32") == 0) return_zone("llvm.log2.f32");
+    if (strcmp(name, "log2.f64") == 0) return_zone("llvm.log2.f64");
+    if (strcmp(name, "sqrt.f32") == 0) return_zone("llvm.sqrt.f32");
+    if (strcmp(name, "sqrt.f64") == 0) return_zone("llvm.sqrt.f64");
+    if (strcmp(name, "ceil.f32") == 0) return_zone("llvm.ceil.f32");
+    if (strcmp(name, "ceil.f64") == 0) return_zone("llvm.ceil.f64");
+    if (strcmp(name, "round.f32") == 0) return_zone("llvm.round.f32");
+    if (strcmp(name, "round.f64") == 0) return_zone("llvm.round.f64");
+    if (strcmp(name, "floor.f32") == 0) return_zone("llvm.floor.f32");
+    if (strcmp(name, "floor.f64") == 0) return_zone("llvm.floor.f64");
+    if (strcmp(name, "log10.f32") == 0) return_zone("llvm.log10.f32");
+    if (strcmp(name, "log10.f64") == 0) return_zone("llvm.log10.f64");
 
-    return NULL;
+    return_zone(NULL);
 }
 
 // impl
