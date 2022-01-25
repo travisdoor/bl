@@ -4,6 +4,7 @@
 #include <atomic>
 #include <limits>
 
+#pragma warning(disable : 4464)
 #include "../common/TracySystem.hpp"
 #include "../common/TracyAlign.hpp"
 #include "TracyProfiler.hpp"
