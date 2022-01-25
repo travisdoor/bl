@@ -29,7 +29,7 @@ HARDCODED_MODULES :: {:[13]string:
 
 main :: fn () s32 {
     defer ArgParser.ctx_terminate(&_args);
-    defer temporary_release();
+    defer std.tmp_release();
     
     wdir_init();
     Fs.dir_create(get_path(TMP_DIR));
@@ -44,7 +44,7 @@ main :: fn () s32 {
     start_time_ms :: os_tick_ms();
 
     loop c := 0; c < _args.test_count; c += 1 {
-        defer temporary_reset();
+        defer std.tmp_reset();
         print("---------------------------------- BL DOCTOR -----------------------------------\n");    
 
         // general
@@ -118,9 +118,9 @@ _errc := 0;
 wdir_init :: fn () {
     lhs: string;
     if String.split_by_last(#file, '/', &lhs, null) {
-        _wdir = String.new(lhs, &temporary_allocator);
+        _wdir = String.new(lhs, &std.tmp_allocator);
     } else {
-        _wdir = String.new(&temporary_allocator);
+        _wdir = String.new(&std.tmp_allocator);
     }
 }
 

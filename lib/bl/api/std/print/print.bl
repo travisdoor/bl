@@ -102,7 +102,7 @@ bprint :: fn (buf: []u8, format: string, args: ...) s32 {
     return w;
 };
 
-/// Write formatted input to the new string using `temporary_allocator`.
+/// Write formatted input to the new string using `tmp_allocator`.
 ///
 /// **note**: There is no need to explicitly release memory used by temporary string.
 /// 
@@ -110,7 +110,7 @@ bprint :: fn (buf: []u8, format: string, args: ...) s32 {
 ///
 /// See also [print](#print).
 tprint :: fn (format: string, args: ...) string #inline {
-    buf := String.new(format.len, &temporary_allocator);
+    buf := String.new(format.len, &std.tmp_allocator);
     _print_impl(&buf, format, args);
     return buf;
 };

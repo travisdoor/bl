@@ -135,7 +135,7 @@ docs_dir :: fn () Error {
 }
 
 main :: fn () s32 {
-    defer temporary_release();
+    defer std.tmp_release();
     print("Generate BL documentation...\n");
     e1:: prepare();
     if !is_ok(e1) { print_err("%", e1); return e1.code; }

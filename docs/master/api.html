@@ -681,10 +681,10 @@
 </ul></li>
 <li><a href="#temporary-allocator">Temporary Allocator</a>
 <ul>
-<li><a href="#temporary_allocator">temporary_allocator</a></li>
-<li><a href="#temporary_reset">temporary_reset</a></li>
-<li><a href="#temporary_release">temporary_release</a></li>
-<li><a href="#temporary_allocated_bytes">temporary_allocated_bytes</a></li>
+<li><a href="#std.tmp_allocator">std.tmp_allocator</a></li>
+<li><a href="#std.tmp_reset">std.tmp_reset</a></li>
+<li><a href="#std.tmp_release">std.tmp_release</a></li>
+<li><a href="#std.tmp_allocated_bytes">std.tmp_allocated_bytes</a></li>
 </ul></li>
 <li><a href="#utils">Utils</a>
 <ul>
@@ -3190,7 +3190,7 @@ end &lt;= slice.len</code></pre>
 <p><em>File: print.bl</em></p>
 <h2 id="tprint">tprint</h2>
 <div class="sourceCode" id="cb447"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb447-1"><a href="#cb447-1" aria-hidden="true" tabindex="-1"></a>tprint <span class="op">::</span> fn <span class="op">(</span>format<span class="op">:</span> string<span class="op">,</span> args<span class="op">:</span> <span class="op">...)</span> string #inline</span></code></pre></div>
-<p>Write formatted input to the new string using <code>temporary_allocator</code>.</p>
+<p>Write formatted input to the new string using <code>tmp_allocator</code>.</p>
 <p><strong>note</strong>: There is no need to explicitly release memory used by temporary string.</p>
 <p><strong>note</strong>: Created string is always zero terminated.</p>
 <p>See also <a href="#print">print</a>.</p>
@@ -3762,21 +3762,21 @@ main :: fn () s32 {
 <p>Gets current thread.</p>
 <p><em>File: thread.bl</em></p>
 <h1 id="temporary-allocator">Temporary Allocator</h1>
-<p>Temporary allocator is memory allocator supposed to be used in case just temporary memory allocation is needed; i.e. to build up file path from individual path components. The allocated memory is valid until <a href="#temporary_reset">temporary_reset</a> or <a href="#temporary_release">temporary_release</a> is called.</p>
-<p>The allocator makes all allocations in bigger preallocated block; i.e. when allocation is requested for the first time, new block is allocated with predefined size <code>DEFAULT_BLOCK_SIZE</code>, all following allocations use the preallocated block if there is enough space. If the block is full and new requested allocation does not fit, another block is allocated (with size slightly bigger then previous one). When <a href="#temporary_reset">temporary_reset</a> is called, allocator will release all smaller allocated blocks and keeps only the biggest one for later use.</p>
+<p>Temporary allocator is memory allocator supposed to be used in case just temporary memory allocation is needed; i.e. to build up file path from individual path components. The allocated memory is valid until <a href="#tmp_reset">tmp_reset</a> or <a href="#tmp_release">tmp_release</a> is called.</p>
+<p>The allocator makes all allocations in bigger preallocated block; i.e. when allocation is requested for the first time, new block is allocated with predefined size <code>DEFAULT_BLOCK_SIZE</code>, all following allocations use the preallocated block if there is enough space. If the block is full and new requested allocation does not fit, another block is allocated (with size slightly bigger then previous one). When <a href="#tmp_reset">tmp_reset</a> is called, allocator will release all smaller allocated blocks and keeps only the biggest one for later use.</p>
 <h3 id="example-23">Example</h3>
 <pre><code>#import &quot;std/tmp_allocator&quot;
 
 main :: fn () s32 {
     // Release allocated memory at the end of the scope.
-    defer temporary_release();
+    defer std.tmp_release();
     
     loop i := 0; i &lt; 1000; i += 1 {
          // Reset the allocator here (all previous alocation are invalid since now).
-        defer temporary_reset();
+        defer std.tmp_reset();
         
         // Allocate memory using temporary allocator.
-        int_ptr := cast(*s32) allocate_memory(&amp;temporary_allocator, sizeof(s32));
+        int_ptr := cast(*s32) allocate_memory(&amp;std.tmp_allocator, sizeof(s32));
         
         // Do something here with allocated memory.
         @int_ptr = i;
@@ -3786,24 +3786,24 @@ main :: fn () s32 {
     return 0;
 }</code></pre>
 <p><strong>note</strong>: Temporary allocator has it’s internal context allocated per-thread, so the explicit release of the allocated memory at the thread worker exit is mandatory.</p>
-<h2 id="temporary_allocator">temporary_allocator</h2>
-<div class="sourceCode" id="cb556"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb556-1"><a href="#cb556-1" aria-hidden="true" tabindex="-1"></a>temporary_allocator <span class="op">::</span> </span></code></pre></div>
+<h2 id="std.tmp_allocator">std.tmp_allocator</h2>
+<div class="sourceCode" id="cb556"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb556-1"><a href="#cb556-1" aria-hidden="true" tabindex="-1"></a>tmp_allocator <span class="op">::</span> </span></code></pre></div>
 <p>Temporary allocator instance.</p>
 <p><em>File: tmp_allocator.bl</em></p>
-<h2 id="temporary_reset">temporary_reset</h2>
-<div class="sourceCode" id="cb557"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb557-1"><a href="#cb557-1" aria-hidden="true" tabindex="-1"></a>temporary_reset <span class="op">::</span> fn <span class="op">()</span>  #inline</span></code></pre></div>
+<h2 id="std.tmp_reset">std.tmp_reset</h2>
+<div class="sourceCode" id="cb557"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb557-1"><a href="#cb557-1" aria-hidden="true" tabindex="-1"></a>tmp_reset <span class="op">::</span> fn <span class="op">()</span>  #inline</span></code></pre></div>
 <p>Reduce allocated memory, but keeps biggest allocated chunk for later use.</p>
 <p><strong>warning</strong>: All resources previously allocated by this allocator became invalid after reset.</p>
 <p><strong>hint</strong>: Call this method i.e. in every event loop (update) iteration.</p>
 <p><em>File: tmp_allocator.bl</em></p>
-<h2 id="temporary_release">temporary_release</h2>
-<div class="sourceCode" id="cb558"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb558-1"><a href="#cb558-1" aria-hidden="true" tabindex="-1"></a>temporary_release <span class="op">::</span> fn <span class="op">()</span>  #inline</span></code></pre></div>
+<h2 id="std.tmp_release">std.tmp_release</h2>
+<div class="sourceCode" id="cb558"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb558-1"><a href="#cb558-1" aria-hidden="true" tabindex="-1"></a>tmp_release <span class="op">::</span> fn <span class="op">()</span>  #inline</span></code></pre></div>
 <p>Release all memory allocated by temporary allocator, this method is supposed to be called at exit of a program.</p>
 <p><strong>warning</strong>: All resources previously allocated by this allocator became invalid after release.</p>
 <p><strong>hint</strong>: Call this method before main returns.</p>
 <p><em>File: tmp_allocator.bl</em></p>
-<h2 id="temporary_allocated_bytes">temporary_allocated_bytes</h2>
-<div class="sourceCode" id="cb559"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb559-1"><a href="#cb559-1" aria-hidden="true" tabindex="-1"></a>temporary_allocated_bytes <span class="op">::</span> fn <span class="op">()</span> usize #inline</span></code></pre></div>
+<h2 id="std.tmp_allocated_bytes">std.tmp_allocated_bytes</h2>
+<div class="sourceCode" id="cb559"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb559-1"><a href="#cb559-1" aria-hidden="true" tabindex="-1"></a>tmp_allocated_bytes <span class="op">::</span> fn <span class="op">()</span> usize #inline</span></code></pre></div>
 <p>Return total memory used by temporary allocator in bytes. <strong>note</strong>: Reports memory usage only for current thread.</p>
 <p><em>File: tmp_allocator.bl</em></p>
 <h1 id="utils">Utils</h1>

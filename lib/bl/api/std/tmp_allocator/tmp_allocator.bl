@@ -30,14 +30,14 @@
 //! 
 //! Temporary allocator is memory allocator supposed to be used in case just temporary memory 
 //! allocation is needed; i.e. to build up file path from individual path components. The allocated 
-//! memory is valid until [temporary_reset](#temporary_reset) or [temporary_release](#temporary_release)
+//! memory is valid until [tmp_reset](#tmp_reset) or [tmp_release](#tmp_release)
 //! is called.
 //!
 //! The allocator makes all allocations in bigger preallocated block; i.e. when allocation is 
 //! requested for the first time, new block is allocated with predefined size ``DEFAULT_BLOCK_SIZE``, 
 //! all following allocations use the preallocated block if there is enough space. If the block is 
 //! full and new requested allocation does not fit, another block is allocated (with size slightly 
-//! bigger then previous one). When [temporary_reset](#temporary_reset) is called, allocator will 
+//! bigger then previous one). When [tmp_reset](#tmp_reset) is called, allocator will 
 //! release all smaller allocated blocks and keeps only the biggest one for later use.
 //!
 //! ### Example
@@ -47,14 +47,14 @@
 //! 
 //! main :: fn () s32 {
 //!     // Release allocated memory at the end of the scope.
-//!     defer temporary_release();
+//!     defer std.tmp_release();
 //!     
 //!     loop i := 0; i < 1000; i += 1 {
 //!          // Reset the allocator here (all previous alocation are invalid since now).
-//!         defer temporary_reset();
+//!         defer std.tmp_reset();
 //!         
 //!         // Allocate memory using temporary allocator.
-//!         int_ptr := cast(*s32) allocate_memory(&temporary_allocator, sizeof(s32));
+//!         int_ptr := cast(*s32) allocate_memory(&std.tmp_allocator, sizeof(s32));
 //!         
 //!         // Do something here with allocated memory.
 //!         @int_ptr = i;
@@ -69,15 +69,17 @@
 //! release of the allocated memory at the thread worker exit is mandatory.
 //!
 
+#scope std
+
 /// Temporary allocator instance.
-temporary_allocator :: {:Allocator: &temporary_allocator_handler };
+tmp_allocator :: {:Allocator: &tmp_allocator_handler };
 
 /// Reduce allocated memory, but keeps biggest allocated chunk for later use.
 ///
 /// **warning**:  All resources previously allocated by this allocator became invalid after reset.
 ///
 /// **hint**: Call this method i.e. in every event loop (update) iteration.
-temporary_reset :: fn () #inline {
+tmp_reset :: fn () #inline {
     if !_root { return; }
     do_release(_root.next);
     _root.size = 0;
@@ -90,15 +92,15 @@ temporary_reset :: fn () #inline {
 /// **warning**:  All resources previously allocated by this allocator became invalid after release.
 ///
 /// **hint**: Call this method before main returns.
-temporary_release :: fn () #inline {
-    temporary_allocator_handler(null, AllocOp.RELEASE, 0);
+tmp_release :: fn () #inline {
+    tmp_allocator_handler(null, AllocOp.RELEASE, 0);
     assert(_total_capacity == 0);
     assert(_total_allocated == 0);
 }
 
 /// Return total memory used by temporary allocator in bytes.
 /// **note**: Reports memory usage only for current thread.
-temporary_allocated_bytes :: fn () usize #inline {
+tmp_allocated_bytes :: fn () usize #inline {
     return auto _total_allocated;
 }
 
@@ -106,7 +108,7 @@ temporary_allocated_bytes :: fn () usize #inline {
 DEFAULT_BLOCK_SIZE : usize : 1024;
 DEFAULT_ALIGNMENT : usize : 16; // @INCOMPLETE This is platform depend.
 
-temporary_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, _ : *u8 = null, _ := String.empty, _ := 0) *u8 {
+tmp_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, _ : *u8 = null, _ := String.empty, _ := 0) *u8 {
     switch operation {
         AllocOp.ALLOCATE {
             return allocate(size);
@@ -164,7 +166,7 @@ allocate_block :: fn (capacity: usize) *Block {
     block: *Block;
     // @Hack: Use default allocator in case the temporary is used as global context allocator to prevent
     // looping!
-    if _context.allocator == &temporary_allocator {
+    if _context.allocator == &tmp_allocator {
         block = auto allocate_memory(&default_allocator, allocation_size);
     } else {
         block = auto allocate_memory(_context.allocator, allocation_size);
@@ -193,7 +195,7 @@ do_release :: fn (block: *Block) {
 
         // @Hack: Use default allocator in case the temporary is used as global context allocator to prevent
         // looping!
-        if _context.allocator == &temporary_allocator {
+        if _context.allocator == &tmp_allocator {
             free_memory(&default_allocator, auto block);
         } else {
             free_memory(_context.allocator, auto block);
