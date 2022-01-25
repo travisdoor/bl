@@ -62,9 +62,22 @@ static inline int pthread_spin_unlock(pthread_spinlock_t *l)
 }
 #elif BL_PLATFORM_WIN
 // clang-format off
+#if BL_COMPILER_CLANG || BL_COMPILER_GNUC
+_Pragma("GCC diagnostic push")
+_Pragma("GCC diagnostic ignored \"-Wcast-qual\"")
+_Pragma("GCC diagnostic ignored \"-Wpedantic\"")
+_Pragma("GCC diagnostic ignored \"-Wsign-conversion\"")
+#elif BL_COMPILER_MSVC
 __pragma(warning(push, 0))
+#endif
+
 #include <winpthreads.h>
+
+#if BL_COMPILER_CLANG || BL_COMPILER_GNUC
+_Pragma("GCC diagnostic pop")
+#elif BL_COMPILER_MSVC
 __pragma(warning(pop))
+#endif
 // clang-format on
 #elif BL_PLATFORM_LINUX
 #include <pthread.h>

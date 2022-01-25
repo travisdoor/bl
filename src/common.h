@@ -56,13 +56,7 @@ struct config;
 #endif
 #endif
 
-// =================================================================================================
-// Clang and gcc
-// =================================================================================================
 #if BL_COMPILER_CLANG || BL_COMPILER_GNUC
-#ifndef FORCEINLINE
-#define FORCEINLINE inline
-#endif
 // clang-format off
 #define _SHUT_UP_BEGIN \
     _Pragma("GCC diagnostic push") \
@@ -73,18 +67,11 @@ struct config;
 #define _SHUT_UP_END _Pragma("GCC diagnostic pop")
 #define UNUSED(x) __attribute__((unused)) x
 
-// =================================================================================================
-// MSVC
-// =================================================================================================
 #elif BL_COMPILER_MSVC
-#define FORCEINLINE __forceinline
 #define _SHUT_UP_BEGIN __pragma(warning(push, 0))
 #define _SHUT_UP_END __pragma(warning(pop))
 #define UNUSED(x) __pragma(warning(suppress : 4100)) x
 
-// =================================================================================================
-// Other
-// =================================================================================================
 #else
 #error "Unsuported compiler!"
 #endif
