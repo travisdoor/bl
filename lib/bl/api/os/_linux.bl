@@ -77,7 +77,7 @@ os_execute :: fn (command: string) s32 {
 
 os_get_last_error :: fn () (s32, string) #inline {
     ec :: C.errno();
-    str := String.empty;
+    str := std.str_empty;
     cstr :: cast(*u8) C.strerror(ec);
     if cstr && ec != 0 { str = cstr_to_str(cstr); }
     return ec, str;
@@ -88,9 +88,9 @@ os_get_exec_path :: fn () string {
     buf_len := cast(C.size_t) buf.len;
     link :: "/proc/self/exe";
     if C.readlink(auto link.ptr, auto buf.ptr, buf_len) == -1 {
-        return String.new(); 
+        return std.str_new(); 
     }
-    return String.new(buf.ptr);
+    return std.str_new(buf.ptr);
 }
 
 __os_debug_break :: fn () #inline #compiler {

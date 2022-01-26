@@ -114,7 +114,7 @@ free_count := 0;
 
 test_allocator :: {:Allocator: &test_allocator_handler };
 
-test_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, ptr : *u8 = null, file := String.empty, line := 0) *u8 {
+test_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, ptr : *u8 = null, file := std.str_empty, line := 0) *u8 {
     switch operation {
         AllocOp.ALLOCATE {
             alloc_count += 1;

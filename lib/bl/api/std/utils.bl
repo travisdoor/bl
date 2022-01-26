@@ -118,14 +118,14 @@ ptr_diff :: fn (a: *?T1, b: *?T2) s64 #inline {
 /// found or has no content. It's caller responsibility to delete result string.
 env_get :: fn (var: string) string {
     out :: cast(*u8) C.getenv(auto var.ptr);
-    if !out { return String.new(); }
-    return String.new(out);
+    if !out { return std.str_new(); }
+    return std.str_new(out);
 }
 
 /// Sets environment variable.
 env_set :: fn (var: string, value: string) #inline {
     tmp :: sprint("%=%", var, value);
-    defer String.delete(tmp);
+    defer std.str_delete(tmp);
     C.putenv(auto tmp.ptr);
 }
 

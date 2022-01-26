@@ -110,20 +110,20 @@ bprint :: fn (buf: []u8, format: string, args: ...) s32 {
 ///
 /// See also [print](#print).
 tprint :: fn (format: string, args: ...) string #inline {
-    buf := String.new(format.len, &std.tmp_allocator);
+    buf := std.str_new(format.len, &std.tmp_allocator);
     _print_impl(&buf, format, args);
     return buf;
 };
 
 /// Write formatted input to the new heap-allocated string. 
 /// 
-/// **note**: Use `String.delete` to free memory used by string.
+/// **note**: Use `std.str_delete` to free memory used by string.
 ///
 /// **note**: Created string is always zero terminated.
 ///
 /// See also [print](#print).
 sprint :: fn (format: string, args: ...) string {
-    buf := String.new(format.len);
+    buf := std.str_new(format.len);
     _print_impl(&buf, format, args);    
     return buf;
 }
@@ -533,7 +533,7 @@ print_string :: fn {
     };
     fn (buf: *string, cur: s32, str: string) s32 {
         if str.ptr == null { return cur; }
-        return cur + String._append_str(buf, str);
+        return cur + std._str_append_str(buf, str);
     };
 }
 

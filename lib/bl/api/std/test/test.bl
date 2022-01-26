@@ -53,7 +53,7 @@
 /// Test whether `got` value is equal to `expected` value.
 test_eq :: fn {
     fn (got: string, expected: string, loc := #call_location) {
-        if String.compare(expected, got) { return; }
+        if std.str_match(expected, got) { return; }
         print_err("\nExpected: '%'\nGot:      '%'.", expected, got);
         stop(loc);
     };
@@ -86,7 +86,7 @@ test_eq :: fn {
 /// Test whether `got` value is not equal to `not_expected` value.
 test_neq :: fn {
     fn (got: string, not_expected: string, loc := #call_location) {
-        if !String.compare(not_expected, got) { return; }
+        if !std.str_match(not_expected, got) { return; }
         print_err("\nExpected not to be '%'.", not_expected);
         stop(loc);
     };

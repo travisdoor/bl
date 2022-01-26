@@ -51,7 +51,7 @@ html :: fn () Error {
 
     list, e5 :: list_files(TMP_DIR, "md");
     if !is_ok(e4) { return e5; }
-    defer String.delete(list);
+    defer std.str_delete(list);
     return cmd(PANDOC, list, ver, "api.html");
 }
 
@@ -77,13 +77,13 @@ cleanup :: fn () Error {
 
 process_dir :: fn (path: string, extension: string, out: *string) Error {
     list, err :: Fs.dir_scan(path, &fn (info: *Fs.Info) bool {
-        if String.is_empty(info.name)        { return false; }
-        if String.compare(info.name, ".")    { return false; }
-        if String.compare(info.name, "..")   { return false; }
-        if String.compare(info.name, "_", 1) { return false; }
+        if std.str_is_empty(info.name)        { return false; }
+        if std.str_match(info.name, ".")    { return false; }
+        if std.str_match(info.name, "..")   { return false; }
+        if std.str_match(info.name, "_", 1) { return false; }
         if info.kind == Fs.InfoKind.DIRECTORY {
             loop i := 0; i < IGNORE.len; i += 1 {
-                if String.compare(info.name, IGNORE[i]) { return false; }
+                if std.str_match(info.name, IGNORE[i]) { return false; }
             }
         }
         return true;
@@ -96,11 +96,11 @@ process_dir :: fn (path: string, extension: string, out: *string) Error {
         switch info.kind {
             Fs.InfoKind.FILE {
                 ext :: Fs.get_extension(info.name);
-                if String.compare(ext, extension) { 
-                    String.append(out, path);
-                    String.append(out, "/");
-                    String.append(out, info.name);
-                    String.append(out, " ");
+                if std.str_match(ext, extension) { 
+                    std.str_append(out, path);
+                    std.str_append(out, "/");
+                    std.str_append(out, info.name);
+                    std.str_append(out, " ");
                 }
             }
             Fs.InfoKind.DIRECTORY {
@@ -114,10 +114,10 @@ process_dir :: fn (path: string, extension: string, out: *string) Error {
 }
 
 list_files :: fn (dir: string, extension := "bl") (string, Error) {
-    list :: String.new(128);
+    list :: std.str_new(128);
     err :: process_dir(dir, extension, &list);
     if !is_ok(err) { 
-        String.delete(list);
+        std.str_delete(list);
         return "", err;
     }
     return list, err;
@@ -127,8 +127,8 @@ docs_dir :: fn () Error {
     print("Process '%'\n", SRC_API_DIR);
     files, err_list :: list_files(SRC_API_DIR);
     if !is_ok(err_list) { return err_list; }
-    defer String.delete(files);
-    if String.is_empty(files) { return ok(); }
+    defer std.str_delete(files);
+    if std.str_is_empty(files) { return ok(); }
     err_cmd :: cmd("blc -doc --doc-out-dir=\"%\" %", TMP_DIR, files);
     if !is_ok(err_cmd) { return err_cmd; }
     return ok();

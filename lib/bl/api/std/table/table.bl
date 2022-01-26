@@ -302,7 +302,7 @@ bucket_alloc :: fn (tbl: *?T, bucket_count: s64) {
 
 calculate_hash :: fn (key: ?T) Hash(T) #inline {
     #if T == string {
-        return auto String.hash(key);
+        return auto std.str_hash(key);
     } else {
         return auto key;
     }

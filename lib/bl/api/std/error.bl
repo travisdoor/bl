@@ -127,7 +127,7 @@ _last_error_msg_buffer: [1024]u8 #thread_local;
 _last_error: _Error #thread_local;
 
 error1 :: fn (code: s32) Error #inline {
-    return error3(code, String.empty);
+    return error3(code, std.str_empty);
 }
 
 error2 :: fn (format: string, args: ...) Error #inline {

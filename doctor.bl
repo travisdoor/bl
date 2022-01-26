@@ -117,10 +117,10 @@ _errc := 0;
 
 wdir_init :: fn () {
     lhs: string;
-    if String.split_by_last(#file, '/', &lhs, null) {
-        _wdir = String.new(lhs, &std.tmp_allocator);
+    if std.str_split_by_last(#file, '/', &lhs, null) {
+        _wdir = std.str_new(lhs, &std.tmp_allocator);
     } else {
-        _wdir = String.new(&std.tmp_allocator);
+        _wdir = std.str_new(&std.tmp_allocator);
     }
 }
 
@@ -165,7 +165,7 @@ parse_args :: fn () bool {
             if (args.len < 2) {
                 return 0, error("Expected count of test repeat!");
             }
-            c :: String.to_s64(args[1]);
+            c :: std.str_to_s64(args[1]);
             if c < 1 {  
                 return 0, error("Test count is expected to be at least 1 not %!", c);
             }
@@ -197,10 +197,10 @@ get_expected_error :: fn (filepath: string, out_err: *s32) bool {
     defer Fs.close(file);
     if !is_ok(err1) { print_err("%", err1); return false; }
     content, err2 :: Fs.read_string(file);
-    defer String.delete(content);
+    defer std.str_delete(content);
     if !is_ok(err2) { print_err("%", err2); return false; }
     
-    tmp :: String.split_by(content, '@');
+    tmp :: std.str_split_by(content, '@');
     defer slice_terminate(&tmp);
     if tmp.len < 3 { return false; }
     err :: strtoerr(tmp[1]);
@@ -210,13 +210,13 @@ get_expected_error :: fn (filepath: string, out_err: *s32) bool {
 }
 
 blc :: fn (file: string, args := "--no-bin --no-warning") s32 {
-    cmd :: String.new(64);
-    defer String.delete(cmd);
+    cmd :: std.str_new(64);
+    defer std.str_delete(cmd);
     _suitec += 1;
-    String.concatenate(&cmd, _compiler_path, " ", args, " ");   
-    String.append(&cmd, file);
-    String.append(&cmd, " ");
-    String.append(&cmd, get_verbosity());
+    std.str_concat(&cmd, _compiler_path, " ", args, " ");   
+    std.str_append(&cmd, file);
+    std.str_append(&cmd, " ");
+    std.str_append(&cmd, get_verbosity());
     return os_execute(cmd);
 }
 
@@ -242,14 +242,14 @@ test_file :: fn (file: string, kind := TestKind.RUNTIME, expected_state := TEST_
                 return;
             }
 
-            tmp := String.new();
-            defer String.delete(tmp);
+            tmp := std.str_new();
+            defer std.str_delete(tmp);
             #if PLATFORM == Platform.WINDOWS {
-                String.append(&tmp, "out.exe ");
+                std.str_append(&tmp, "out.exe ");
             } else {
-                String.append(&tmp, "./out ");
+                std.str_append(&tmp, "./out ");
             }
-            String.append(&tmp, get_verbosity());
+            std.str_append(&tmp, get_verbosity());
             state = os_execute(tmp);
             if state == 0 {
                 report_ok("Execution", file, state);
@@ -289,8 +289,8 @@ test_file :: fn (file: string, kind := TestKind.RUNTIME, expected_state := TEST_
 }
 
 test_all_in_dir :: fn (dir: string, expect_fail := false) {
-    file :: String.new(64);
-    defer String.delete(file);
+    file :: std.str_new(64);
+    defer std.str_delete(file);
     
     print("Testing files in directory '%':\n", dir);        
     list, err :: Fs.dir_scan(dir);
@@ -302,8 +302,8 @@ test_all_in_dir :: fn (dir: string, expect_fail := false) {
     loop i := 0; i < list.len; i += 1 {
         info :: &list[i];
         if info.kind != Fs.InfoKind.DIRECTORY {
-            String.clear(&file);
-            String.concatenate(&file, dir, "/", info.name);
+            std.str_clear(&file);
+            std.str_concat(&file, dir, "/", info.name);
             if expect_fail {
                 error_code: s32 #noinit;
                 if get_expected_error(file, &error_code) {
@@ -411,7 +411,7 @@ strtoerr :: fn (s: string) s32 {
     info :: cast(*TypeInfoEnum) typeinfo(BlError);
     loop i := 0; i < info.variants.len; i += 1 {
         variant :: &info.variants[i];
-        if String.compare(variant.name, s) { return auto variant.value; }
+        if std.str_match(variant.name, s) { return auto variant.value; }
     }
     return -1;
 }

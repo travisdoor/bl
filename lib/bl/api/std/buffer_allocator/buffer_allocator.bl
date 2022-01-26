@@ -104,7 +104,7 @@ buffer_allocator_init :: fn (allocator: *BufferAllocator, buffer: []u8) {
 // =================================================================================================
 #private
 // =================================================================================================
-handler :: fn (ctx: *BufferAllocator, operation: AllocOp, size: usize, ptr: *u8, _ := String.empty, _ := 0) *u8 {
+handler :: fn (ctx: *BufferAllocator, operation: AllocOp, size: usize, ptr: *u8, _ := std.str_empty, _ := 0) *u8 {
     assert(ctx.mem.ptr);
     switch operation {
         AllocOp.ALLOCATE {

@@ -91,10 +91,10 @@ HandlerFn :: *fn (parser: Parser, args: []string, ctx: *Ctx) (s32, Error);
 
 /// Create new instance of parser with possibility to set custom help text. Use 
 /// [delete](#argparserdelete) to release parser instance.
-new :: fn (help_text := String.empty) Parser {
+new :: fn (help_text := std.str_empty) Parser {
     parser := cast(*ParserImpl) alloc(sizeof(ParserImpl));
     parser.pad = 0;
-    parser.help_text = String.new(help_text);
+    parser.help_text = std.str_new(help_text);
     array_init(&parser.entries);
 
     add(auto parser,
@@ -117,7 +117,7 @@ delete :: fn (_parser: Parser) {
         entry_delete(&parser.entries[i]);
     }
     array_terminate(&parser.entries);
-    String.delete(parser.help_text);
+    std.str_delete(parser.help_text);
     free(auto parser);
 }
 
@@ -156,7 +156,7 @@ run :: fn (_parser: Parser, args: []string, ctx: *Ctx, start := 0) Error {
         found: bool;
         loop e := 0; e < parser.entries.len; e += 1 {
             entry :: &parser.entries[e];
-            if String.compare(@arg, entry.short) || String.compare(@arg, entry.long) {
+            if std.str_match(@arg, entry.short) || std.str_match(@arg, entry.long) {
                 found = true;
                 parsed, err :: entry.handler(_parser, args, ctx);
                 if !is_ok(err) {
@@ -204,9 +204,9 @@ add :: fn (
 ) {
     parser: *ParserImpl = auto _parser;
     entry: Entry #noinit;
-    entry.short = String.new(short);
-    entry.long = String.new(long);
-    entry.help = String.new(help);
+    entry.short = std.str_new(short);
+    entry.long = std.str_new(long);
+    entry.help = std.str_new(help);
     entry.handler = handler;
     array_push(&parser.entries, entry);
 
@@ -218,14 +218,14 @@ add :: fn (
 /// Print help for all registered commands.
 print_help :: fn (_parser: Parser) {
     parser: *ParserImpl = auto _parser;
-    if !String.is_empty(parser.help_text) {
+    if !std.str_is_empty(parser.help_text) {
         print("%\n", parser.help_text);
     }
     print("Options:\n");
     loop i := 0; i < parser.entries.len; i += 1 {
         entry :: &parser.entries[i];
         printed: s32;
-        if String.is_empty(entry.short) {
+        if std.str_is_empty(entry.short) {
             printed = print("  % ", entry.long);
         } else {
             printed = print("  %, % ", entry.short, entry.long);
@@ -252,7 +252,7 @@ Entry :: struct {
 }
 
 entry_delete :: fn (entry: *Entry) {
-    String.delete(entry.short);
-    String.delete(entry.long);
-    String.delete(entry.help);
+    std.str_delete(entry.short);
+    std.str_delete(entry.long);
+    std.str_delete(entry.help);
 }

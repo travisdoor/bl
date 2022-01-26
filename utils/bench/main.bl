@@ -27,7 +27,7 @@ main :: fn () s32 {
         &fn (_: ArgParser.Parser, in_args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
             a: *Args = auto ctx;
             if in_args.len < 2 { return 0, error("Expected run count as number."); }
-            a.rc = auto String.to_s64(in_args[1]);
+            a.rc = auto std.str_to_s64(in_args[1]);
             return 2, ok();
         });
 

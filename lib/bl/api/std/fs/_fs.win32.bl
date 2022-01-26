@@ -11,7 +11,7 @@ exist :: fn (filepath: string) bool #inline {
 }
 
 open :: fn (filepath: string, mode: ...Fs.OpenMode) (Fs.File, Error) {
-    if String.is_empty(filepath) { return null, error(ERR_INVALID_HANDLE, "File path is empty!"); }
+    if std.str_is_empty(filepath) { return null, error(ERR_INVALID_HANDLE, "File path is empty!"); }
     access, create, append :: modes_to_flags(mode);
     handle :: Win32.CreateFile(auto filepath.ptr, access, 0, null, create, Win32.FILE_ATTRIBUTE_NORMAL, null);
     if handle == Win32.INVALID_HANDLE_VALUE {
@@ -28,7 +28,7 @@ open :: fn (filepath: string, mode: ...Fs.OpenMode) (Fs.File, Error) {
 }
 
 remove :: fn (filepath: string) Error #inline {
-    if String.is_empty(filepath) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
+    if std.str_is_empty(filepath) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
     tmp :: Win32.DeleteFileA(auto filepath.ptr);
     if tmp == 0 {
         ec, estr :: os_get_last_error();
@@ -38,8 +38,8 @@ remove :: fn (filepath: string) Error #inline {
 }
 
 copy :: fn (src: string, dest: string, override: bool) Error {
-    if String.is_empty(src) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
-    if String.is_empty(dest) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
+    if std.str_is_empty(src) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
+    if std.str_is_empty(dest) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
     fail_if_exist := 1;
     if  override { fail_if_exist = 0; }
     if Win32.CopyFileA(auto src.ptr, auto dest.ptr, fail_if_exist) == 0 {
@@ -101,7 +101,7 @@ write :: fn (handle: Fs.File, src: *u8, size: s64) (s64, Error) {
 }
 
 dir_create :: fn (dirpath: string) Error {
-    if String.is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot create directory, dirpath is empty."); }
+    if std.str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot create directory, dirpath is empty."); }
     if Win32.CreateDirectoryA(auto dirpath.ptr, null) == 0 {
         ec, estr :: os_get_last_error();
         return error(ec, "Cannot create directory '%': %", dirpath, estr);
@@ -110,7 +110,7 @@ dir_create :: fn (dirpath: string) Error {
 }
 
 dir_remove :: fn (dirpath: string) Error {
-    if String.is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot remove directory, dirpath is empty."); }
+    if std.str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot remove directory, dirpath is empty."); }
     if Win32.RemoveDirectoryA(auto dirpath.ptr) == 0 {
         ec, estr :: os_get_last_error();
         return error(ec, "Cannot remove directory '%': %", dirpath, estr);
@@ -119,7 +119,7 @@ dir_remove :: fn (dirpath: string) Error {
 }
 
 is_directory :: fn (path: string) (bool, Error) #inline {
-    if String.is_empty(path) { return false, error(ERR_INVALID_HANDLE, "Path is empty."); }
+    if std.str_is_empty(path) { return false, error(ERR_INVALID_HANDLE, "Path is empty."); }
     attributes :: Win32.GetFileAttributesA(auto path.ptr);
     if attributes == Win32.INVALID_FILE_ATTRIBUTES {
         ec, estr :: os_get_last_error();
@@ -131,9 +131,9 @@ is_directory :: fn (path: string) (bool, Error) #inline {
 dir_scan :: fn (dirpath: string, filter: Fs.DirScanFilterFn) (Fs.InfoList, Error) {
     invalid: Fs.InfoList;
     if dirpath.len > (Win32.MAX_PATH-3) { return invalid, error("Path too long!"); }
-    tmp := String.new(dirpath);
-    defer String.delete(tmp);
-    String.append(&tmp, "\\*");
+    tmp := std.str_new(dirpath);
+    defer std.str_delete(tmp);
+    std.str_append(&tmp, "\\*");
 
     ffd: Win32.FIND_DATA;
     h_find := Win32.FindFirstFile(auto tmp.ptr, &ffd);
@@ -170,10 +170,10 @@ dir_scan :: fn (dirpath: string, filter: Fs.DirScanFilterFn) (Fs.InfoList, Error
         name: string;
         if is_flag(ffd.dwFileAttributes, auto Win32.FILE_ATTRIBUTE_DIRECTORY) {
             kind = Fs.InfoKind.DIRECTORY;
-            name = String.new(ffd.cFileName.ptr);
+            name = std.str_new(ffd.cFileName.ptr);
         } else {
             kind = Fs.InfoKind.FILE;
-            name = String.new(ffd.cFileName.ptr);
+            name = std.str_new(ffd.cFileName.ptr);
         }
         push := true;
         info :: {:Fs.Info: kind, name};
@@ -182,7 +182,7 @@ dir_scan :: fn (dirpath: string, filter: Fs.DirScanFilterFn) (Fs.InfoList, Error
             buf.len += 1;
             buf[buf.len-1] = info;
         } else {
-            String.delete(name);
+            std.str_delete(name);
         }
         if Win32.FindNextFile(h_find, &ffd) == 0 { break; }
     }
@@ -193,7 +193,7 @@ validate_filename :: fn (name: string) bool {
     if name.len == 0 { return false; }
     invalid :: "<>:\"/\\|?*\t";
     loop i := 0; i < invalid.len; i += 1 {
-        if String.count_of(name, invalid[i]) > 0 { return false; }
+        if std.str_count_of(name, invalid[i]) > 0 { return false; }
     }
     return true;
 }
@@ -201,14 +201,14 @@ validate_filename :: fn (name: string) bool {
 get_cwd :: fn () string #inline {
     buf: [OS_PATH_MAX]u8;
     written :: Win32.GetCurrentDirectoryA(auto buf.len, auto buf.ptr);
-    if written == 0 { return String.new(); }
-    out :: String.new(buf.ptr);
-    String.replace_all(&out, '\\', '/');
+    if written == 0 { return std.str_new(); }
+    out :: std.str_new(buf.ptr);
+    std.str_replace_all(&out, '\\', '/');
     return remove_last_separator(out);
 }
 
 set_cwd :: fn (path: string) Error #inline {
-    if String.is_empty(path) { return error(ERR_INVALID_HANDLE, "Path is empty!"); }
+    if std.str_is_empty(path) { return error(ERR_INVALID_HANDLE, "Path is empty!"); }
     if Win32.SetCurrentDirectoryA(auto path.ptr) == 0 {
         ec, estr :: os_get_last_error();
         return error(ec, "Cannot set current directory to '%': %", path, estr);
@@ -219,24 +219,24 @@ set_cwd :: fn (path: string) Error #inline {
 get_home :: fn () string #inline {
     tmp :: "USERPROFILE";
     cdir :: cast(*u8) C.getenv(auto tmp.ptr);
-    if !cdir { return String.new(); }
-    out :: String.new(cdir);
-    String.replace_all(&out, '\\', '/');
+    if !cdir { return std.str_new(); }
+    out :: std.str_new(cdir);
+    std.str_replace_all(&out, '\\', '/');
     return remove_last_separator(out);
 }
 
 get_tmp :: fn () string #inline {
     buf: [OS_PATH_MAX]u8;
     written :: Win32.GetTempPathA(auto buf.len, auto buf.ptr);
-    if written == 0 { return String.new(); }
-    out :: String.new(buf.ptr);
-    String.replace_all(&out, '\\', '/');
+    if written == 0 { return std.str_new(); }
+    out :: std.str_new(buf.ptr);
+    std.str_replace_all(&out, '\\', '/');
     return remove_last_separator(out);
 }
 
 normalize :: fn (filepath: *string) Error {
     if !filepath { return error(ERR_INVALID_HANDLE, "File path is null!"); }
-    if String.is_empty(@filepath) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
+    if std.str_is_empty(@filepath) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
     buf : [OS_PATH_MAX]u8 #noinit;
     if Win32.GetFullPathNameA(auto filepath.ptr, auto buf.len, buf.ptr, null) == 0 {
         ec, estr :: os_get_last_error();
@@ -246,9 +246,9 @@ normalize :: fn (filepath: *string) Error {
         ec, estr :: os_get_last_error();
         return error(ec, "Cannot normalize '%': %", @filepath, estr);
     }
-    String.clear(filepath);
-    String.append(filepath, cstr_to_str(buf.ptr));
-    String.replace_all(filepath, '\\', '/');
+    std.str_clear(filepath);
+    std.str_append(filepath, cstr_to_str(buf.ptr));
+    std.str_replace_all(filepath, '\\', '/');
     return ok();
 }
 
@@ -272,7 +272,7 @@ modes_to_flags :: fn (modes: []Fs.OpenMode) (access: u32, create: u32, append: b
 }
 
 remove_last_separator :: fn (path: string) string {
-    if String.is_empty(path) { return path; }
+    if std.str_is_empty(path) { return path; }
     if path[path.len-1] == '/' {
         path[path.len-1] = '\0';
         path.len -= 1;

@@ -126,7 +126,7 @@ copy :: fn (src: string, dest: string, override := false) Error #inline {
 ///     // Copy content of 'foo' into 'bar'
 ///     c, err :: Fs.dir_copy("foo", "bar", &opt, &fn (item: *Fs.Info) bool {
 ///         // Filter only txt files
-///         if String.compare(Fs.get_extension(item.name), "txt") { return true; } 
+///         if std.str_match(Fs.get_extension(item.name), "txt") { return true; } 
 ///         return false;
 ///     });
 ///     if !is_ok(err) { print("%\n", err); }
@@ -139,8 +139,8 @@ copy :: fn (src: string, dest: string, override := false) Error #inline {
 dir_copy :: fn (src: string, dest: string, opt: *CopyOpt = &COPY_OPT_DEFAULT, filter: DirScanFilterFn = &_default_file_filter) (s64, Error) {
     cc: s64;
     if !opt                   { return 0, error(ERR_INVALID_HANDLE, "Invalid copy options!"); }
-    if String.is_empty(src)   { return 0, error(ERR_INVALID_HANDLE, "Source path is empty!"); }
-    if String.is_empty(dest)  { return 0, error(ERR_INVALID_HANDLE, "Destination path is empty!"); }
+    if std.str_is_empty(src)   { return 0, error(ERR_INVALID_HANDLE, "Source path is empty!"); }
+    if std.str_is_empty(dest)  { return 0, error(ERR_INVALID_HANDLE, "Destination path is empty!"); }
     if !_FsImpl.exist(src)   { return 0, error(ERR_NOT_FOUND, "Source path '%' not exist!", src); }
     if !_FsImpl.exist(dest) {
         if opt.recursive {
@@ -155,11 +155,11 @@ dir_copy :: fn (src: string, dest: string, opt: *CopyOpt = &COPY_OPT_DEFAULT, fi
     is_dest_valid := _FsImpl.is_directory(dest);
     if !is_dest_valid { return 0, error("Destination '%' is not directory!", dest); }
 
-    dest_path :: String.new(128);
-    src_path :: String.new(128);
-    defer String.delete(dest_path);
-    defer String.delete(src_path);
-    String.clear_concat(&dest_path, dest, "/", src); 
+    dest_path :: std.str_new(128);
+    src_path :: std.str_new(128);
+    defer std.str_delete(dest_path);
+    defer std.str_delete(src_path);
+    std.str_clear_concat(&dest_path, dest, "/", src); 
     if _FsImpl.exist(dest_path) { return 0, error("Destination directory '%' already exist!", dest_path); }
     list, list_err :: _FsImpl.dir_scan(src, filter);
     if !is_ok(list_err) { return 0, list_err; }
@@ -167,8 +167,8 @@ dir_copy :: fn (src: string, dest: string, opt: *CopyOpt = &COPY_OPT_DEFAULT, fi
     loop i := 0; i < list.len; i += 1 {
         copy_err: Error;
         _cc: s64;
-        String.clear_concat(&src_path, src, "/", list[i].name);
-        String.clear_concat(&dest_path, dest, "/", list[i].name);
+        std.str_clear_concat(&src_path, src, "/", list[i].name);
+        std.str_clear_concat(&dest_path, dest, "/", list[i].name);
         if opt.skip_existing && exist(dest_path) { continue; }
         switch list[i].kind {
             InfoKind.FILE {
@@ -196,7 +196,7 @@ size :: fn (handle: File) (usize, Error) #inline {
 
 /// Read whole file content into string. Return new string instance containing file data and `OK` 
 /// status on success, otherwise return empty string and error. Returned string is expected to be 
-/// released by `String.delete` call if there was no error reported by function. Result string is 
+/// released by `std.str_delete` call if there was no error reported by function. Result string is 
 /// zero terminated even if file is empty.
 ///
 /// ### Example
@@ -223,7 +223,7 @@ size :: fn (handle: File) (usize, Error) #inline {
 ///         panic("Cannot read file with error: '%'!", read_err);
 ///     }
 ///     // Delete content string at the end of scope.
-///     defer String.delete(content);
+///     defer std.str_delete(content);
 /// 
 ///     // Print file content to stdout.
 ///     print("%\n", content);
@@ -233,14 +233,14 @@ size :: fn (handle: File) (usize, Error) #inline {
 read_string :: fn (handle: File) (string, Error) {
     size, err1 := _FsImpl.size(handle);
     if !is_ok(err1) {
-        return String.empty, err1;
+        return std.str_empty, err1;
     }
     size += 1; // To handle zero terminator.
-    buf := String.new(cast(s64) size);
+    buf := std.str_new(cast(s64) size);
     read, err2 :: _FsImpl.read(handle, buf.ptr, auto size - 1);
     if !is_ok(err2) {
-        String.delete(buf);
-        return String.empty, err2;                
+        std.str_delete(buf);
+        return std.str_empty, err2;                
     }
     buf.len = auto read + 1;
     buf[buf.len-1] = '\0';
@@ -331,16 +331,16 @@ dir_create :: fn (dirpath: string) Error #inline {
 }
 
 dir_create_all :: fn (dirpath: string) Error {
-    if String.is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Dir path is empty!"); }
+    if std.str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Dir path is empty!"); }
     if _FsImpl.exist(dirpath) { return ok(); } 
-    nodes :: String.split_by(dirpath, '/');
+    nodes :: std.str_split_by(dirpath, '/');
     defer slice_terminate(&nodes);
-    path :: String.new(auto dirpath.len);
-    defer String.delete(path);
+    path :: std.str_new(auto dirpath.len);
+    defer std.str_delete(path);
     loop i := 0; i < nodes.len; i += 1 {
         if nodes[i].len == 0 { continue; }
-        String.append(&path, nodes[i]);
-        String.append(&path, "/");
+        std.str_append(&path, nodes[i]);
+        std.str_append(&path, "/");
         if _FsImpl.exist(path) { continue; } 
         err :: _FsImpl.dir_create(path);
         if !is_ok(err) { return err; }
@@ -360,16 +360,16 @@ dir_remove :: fn (dirpath: string) Error #inline {
 /// **note**: This function recursively remove all nested folders and files in specified sub tree 
 /// so it can be expensive.
 dir_remove_all :: fn (dirpath: string, remove_root := true, filter: DirScanFilterFn = &_default_file_filter) Error {
-    if String.is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Dir path is empty!"); }
+    if std.str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Dir path is empty!"); }
     if !filter { return error(ERR_INVALID_HANDLE, "Invalid list filter!"); }
-    tmp :: String.new( dirpath.len);
-    defer String.delete(tmp);
+    tmp :: std.str_new( dirpath.len);
+    defer std.str_delete(tmp);
     list, err :: _FsImpl.dir_scan(dirpath, filter);
     if !is_ok(err) { return err; }
     defer info_list_delete(list);
     loop i := 0; i < list.len; i += 1 {
         node :: &list[i];
-        String.concatenate(&tmp, dirpath, "/", node.name);
+        std.str_concat(&tmp, dirpath, "/", node.name);
         switch node.kind {
             InfoKind.DIRECTORY {
                 err :: dir_remove_all(tmp);
@@ -380,7 +380,7 @@ dir_remove_all :: fn (dirpath: string, remove_root := true, filter: DirScanFilte
                 if !is_ok(err) { return err; }
             }
         }
-        String.clear(&tmp);
+        std.str_clear(&tmp);
     }
     if remove_root { return _FsImpl.dir_remove(dirpath); }
     return ok();
@@ -409,7 +409,7 @@ dir_scan :: fn (dirpath: string, filter: DirScanFilterFn = &_default_file_filter
 /// Release allocated file system entry info list.
 info_list_delete :: fn (list: InfoList) #inline {
     loop i := 0; i < list.len; i += 1 {
-        String.delete(list[i].name);
+        std.str_delete(list[i].name);
     }
     slice_terminate(&list);
 }
@@ -419,7 +419,7 @@ validate_filename :: fn (name: string) bool #inline {
     return _FsImpl.validate_filename(name);
 }
 
-/// Try to obtain current working directory, result must be released by `String.delete`. Path does 
+/// Try to obtain current working directory, result must be released by `std.str_delete`. Path does 
 /// not contain last path separator.
 get_cwd :: fn () string #inline {
     return _FsImpl.get_cwd();
@@ -430,13 +430,13 @@ set_cwd :: fn (path: string) Error #inline {
     return _FsImpl.set_cwd(path);
 }
 
-/// Try to obtain system home directory, result must be released by `String.delete`. Path does not 
+/// Try to obtain system home directory, result must be released by `std.str_delete`. Path does not 
 /// contain last path separator.
 get_home :: fn () string #inline {
     return _FsImpl.get_home();
 }
 
-/// Try to obtain system temporary directory, result must be released by `String.delete`. Path does 
+/// Try to obtain system temporary directory, result must be released by `std.str_delete`. Path does 
 /// not contain last path separator.
 get_tmp :: fn () string #inline {
     return _FsImpl.get_tmp();
@@ -453,7 +453,7 @@ normalize :: fn (filepath: *string) Error #inline {
 /// Remove file extension (token after first `.`) from the `filename` and return the rest. Function 
 /// does not create copy of original `filepath`.
 remove_extension :: fn (filename: string) string #inline {
-    if String.is_empty(filename) { return String.empty; }
+    if std.str_is_empty(filename) { return std.str_empty; }
     tmp := filename;
     tmp.len = 0;
     loop i := 0; i < filename.len; i += 1 {
@@ -469,33 +469,33 @@ remove_extension :: fn (filename: string) string #inline {
 ///
 /// The `.` separator is not included into result string.
 get_extension :: fn (filename: string) string #inline {
-    if String.is_empty(filename) { return String.empty; }
+    if std.str_is_empty(filename) { return std.str_empty; }
     if filename[0] == '.' {
-        if filename.len == 1 { return String.empty; }
+        if filename.len == 1 { return std.str_empty; }
         filename.len -= 1; filename.ptr = &filename[1]; 
     }
     rhs: string;
-    if String.split_by_first(filename, '.', null, &rhs) {
-        return String.new(rhs);
+    if std.str_split_by_first(filename, '.', null, &rhs) {
+        return std.str_new(rhs);
     }
-    return String.empty;
+    return std.str_empty;
 }
 
 /// Get directory path from filepath. Function supports only unix path delimiters. Returns directory
 /// path as new string or empty string in case path was not found.
 get_directory :: fn (filepath: string) string #inline {
-    if String.is_empty(filepath) { return String.empty; }
+    if std.str_is_empty(filepath) { return std.str_empty; }
     lhs: string;
-    if String.split_by_last(filepath, '/', &lhs) {
-        return String.new(lhs);
+    if std.str_split_by_last(filepath, '/', &lhs) {
+        return std.str_new(lhs);
     }
-    return String.empty;
+    return std.str_empty;
 }
 
 #private
 COPY_OPT_DEFAULT :: {:CopyOpt: 0};
 
 _default_file_filter :: fn (item: *Info) bool {
-    return String.compare(item.name, ".") == false
-        && String.compare(item.name, "..") == false;
+    return std.str_match(item.name, ".") == false
+        && std.str_match(item.name, "..") == false;
 }

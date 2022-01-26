@@ -1,4 +1,4 @@
-version: 7
+version: 8
 
 x86_64-pc-windows-msvc:
   src: "_dlib.win32.bl"

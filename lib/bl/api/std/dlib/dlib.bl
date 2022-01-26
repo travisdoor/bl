@@ -12,7 +12,7 @@ Library :: _dlib_impl.Library;
 /// Dynamically loads library specified by `lib_name` and return it's handle or null with error. 
 /// When `lib_name` is empty, current binary will be loaded. Use `library_close` call to close 
 /// library when it's not needed anymore.
-library_open :: fn (lib_name := String.empty) (Library, Error) #inline {
+library_open :: fn (lib_name := std.str_empty) (Library, Error) #inline {
     return _dlib_impl.open(lib_name);
 }
 

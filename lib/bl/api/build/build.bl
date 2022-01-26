@@ -310,7 +310,7 @@ append_linker_options :: fn (target: *Target, option: string) {
 /// Specified directory will be used also for build temporary files.
 set_output_dir :: fn (target: *Target, dir: string) {
     if !target { panic("Invalid target!"); }
-    if String.is_empty(dir) { return; }
+    if std.str_is_empty(dir) { return; }
     __set_output_dir(target, auto dir.ptr);
 }
 
@@ -318,7 +318,7 @@ set_output_dir :: fn (target: *Target, dir: string) {
 get_output_dir :: fn (target: *Target) string {
     if !target { panic("Invalid target!"); }
     cdir :: __get_output_dir(target);    
-    if !cdir { return String.empty; }
+    if !cdir { return std.str_empty; }
     return cstr_to_str(auto cdir);
 }
 
@@ -348,7 +348,7 @@ ModuleImportPolicy :: enum s32 {
 /// to `SYSTEM` by default even if this function has not been called.
 set_module_dir :: fn (target: *Target, dir: string, policy := ModuleImportPolicy.SYSTEM) {
     if !target { panic("Invalid target!"); }
-    if String.is_empty(dir) { return; }
+    if std.str_is_empty(dir) { return; }
     __set_module_dir(target, auto dir.ptr, auto policy);
 }
 
@@ -356,7 +356,7 @@ set_module_dir :: fn (target: *Target, dir: string, policy := ModuleImportPolicy
 get_module_dir :: fn (target: *Target) string {
     if !target { panic("Invalid target!"); }
     cdir :: __get_module_dir(target);    
-    if !cdir { return String.empty; }
+    if !cdir { return std.str_empty; }
     return cstr_to_str(auto cdir);
 }
 
