@@ -6,16 +6,20 @@
 //! abstraction over operating system APIs such as creating files and directories, reading and 
 //! writing, and scanning the filesystem.
 
-#scope Fs
+#scope std
+
+// =================================================================================================
+// File utils
+// =================================================================================================
 
 /// File handle type.
-File :: _FsImpl.File;
+File :: _fs_impl.File;
 
 /// Invalid file handle. This can be used for file handle validation.
-FILE_INVALID :: _FsImpl.FILE_INVALID;
+FILE_INVALID :: _fs_impl.FILE_INVALID;
 
 /// Specify operation with opened file.
-OpenMode :: enum #flags {
+FileOpenMode :: enum #flags {
     /// Open file for reading.
     READ;
     /// Open file for writing and truncate its content.
@@ -26,14 +30,95 @@ OpenMode :: enum #flags {
     CREATE;
 }
 
-/// Specify behavior of [dir_copy](#dircopy).
-CopyOpt :: struct {
-    /// Copy all directories and sub-directories.
-    recursive: bool;
-    /// Override existing entries.
-    override: bool;
-    /// Skip already existing entries.
-    skip_existing: bool;
+/// Open an file specified by `filepath`. Function return file handle and `OK` status when file was 
+/// opened, otherwise return invalid handle and proper error. File must be closed by [close](#close) 
+/// call.
+///
+/// File open `mode` is optional, any combination of `FileOpenMode` can be used. When `Create` 
+/// `mode` is specified, new file is created on `filepath` only if it does not exist, otherwise 
+/// already existing file is used. `Read` `mode` is used as default when neither `Read`, `Write` or 
+/// `Append` is specified.
+///
+/// ### Example
+///
+/// ```
+/// #import "std/fs"
+/// 
+/// main :: fn () s32 {
+///     file, err :: std.file_open(#file);
+///     defer std.file_close(file);
+///     if !is_ok(err) {
+///         print_err("%", err);
+///         return 1;
+///     }
+///     return 0;
+/// }
+/// ```
+///
+/// **todo*: Mode should be passed as flags in the future.
+file_open :: fn (filepath: string, mode: ...FileOpenMode) (File, Error) #inline {
+    return _fs_impl.open(filepath, mode);
+}
+
+/// Close previously openned file. Does nothing when `handle` is not valid.
+file_close :: fn (handle: File) #inline {
+    _fs_impl.close(handle);
+}
+
+/// Try to remove file specified by `filepath` and return `OK` on success, otherwise return error.
+file_remove :: fn (filepath: string) Error #inline {
+    return _fs_impl.remove(filepath);
+}
+
+/// Copy existing file from `src` to `dest` and override existing file in destination if `override` 
+/// is true. Return `ok` or `error`.
+///
+/// **note**: `src` and `dest` path can be relative path to current working path set by 
+/// [set_cwd](#set_cwd).
+file_copy :: fn (src: string, dest: string, override := false) Error #inline {
+    return _fs_impl.copy(src, dest, override);
+}
+
+/// Return file content size in bytes and `OK` status on success, otherwise return zero and proper 
+/// error.
+file_size :: fn (handle: File) (usize, Error) #inline {
+    return _fs_impl.size(handle);
+}
+
+/// Return file id.
+file_uid :: fn { _fs_impl.get_uid; _fs_impl.get_uid_by_name; }
+
+// =================================================================================================
+// Directory utils
+// =================================================================================================
+
+/// Create new directory and return `OK` on success. This function does not create directories 
+/// recursively.
+dir_create :: fn (dirpath: string) Error #inline {
+    return _fs_impl.dir_create(dirpath);
+}
+
+dir_create_all :: fn (dirpath: string) Error {
+    if std.str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Dir path is empty!"); }
+    if _fs_impl.exist(dirpath) { return ok(); } 
+    nodes :: std.str_split_by(dirpath, '/');
+    defer slice_terminate(&nodes);
+    path :: std.str_new(auto dirpath.len);
+    defer std.str_delete(path);
+    loop i := 0; i < nodes.len; i += 1 {
+        if nodes[i].len == 0 { continue; }
+        std.str_append(&path, nodes[i]);
+        std.str_append(&path, "/");
+        if _fs_impl.exist(path) { continue; } 
+        err :: _fs_impl.dir_create(path);
+        if !is_ok(err) { return err; }
+    }
+    return ok();
+}
+
+/// Remove directory specified by `dirpath` and return `OK` on success, otherwise return an error.
+dir_remove :: fn (dirpath: string) Error #inline {
+    return _fs_impl.dir_remove(dirpath);
 }
 
 /// Specify kind of file system entry.
@@ -50,61 +135,69 @@ Info :: struct {
 
 InfoList :: []Info;
 
-/// Check whether file or directory exists.
-exist :: fn (filepath: string) bool #inline {
-    return _FsImpl.exist(filepath);
+/// Release allocated file system entry info list.
+info_list_delete :: fn (list: InfoList) #inline {
+    loop i := 0; i < list.len; i += 1 {
+        std.str_delete(list[i].name);
+    }
+    slice_terminate(&list);
 }
 
-/// Open an file specified by `filepath`. Function return file handle and `OK` status when file was 
-/// opened, otherwise return invalid handle and proper error. File must be closed by [close](#close) 
-/// call.
+/// Remove non-empty directory specified by `dirpath` and return `OK` on success, otherwise return 
+/// an error. Root directory is removed if `remove_root` is `true`. Custom file `filter` function 
+/// can be specified as needed.
 ///
-/// File open `mode` is optional, any combination of [OpenMode](#openmode) can be used. When `Create` 
-/// `mode` is specified, new file is created on `filepath` only if it does not exist, otherwise 
-/// already existing file is used. `Read` `mode` is used as default when neither `Read`, `Write` or 
-/// `Append` is specified.
-///
-/// ### Example
-///
-/// ```
-/// #import "std/fs"
-/// 
-/// main :: fn () s32 {
-///     file, err :: Fs.open(#file);
-///     defer Fs.close(file);
-///     if !is_ok(err) {
-///         print_err("%", err);
-///         return 1;
-///     }
-///     return 0;
-/// }
-/// ```
-///
-/// **todo*: Mode should be passed as flags in the future.
-open :: fn (filepath: string, mode: ...OpenMode) (File, Error) #inline {
-    return _FsImpl.open(filepath, mode);
+/// **note**: This function recursively remove all nested folders and files in specified sub tree 
+/// so it can be expensive.
+dir_remove_all :: fn (dirpath: string, remove_root := true, filter: DirScanFilterFn = &_default_file_filter) Error {
+    if std.str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Dir path is empty!"); }
+    if !filter { return error(ERR_INVALID_HANDLE, "Invalid list filter!"); }
+    tmp :: std.str_new( dirpath.len);
+    defer std.str_delete(tmp);
+    list, err :: _fs_impl.dir_scan(dirpath, filter);
+    if !is_ok(err) { return err; }
+    defer info_list_delete(list);
+    loop i := 0; i < list.len; i += 1 {
+        node :: &list[i];
+        std.str_concat(&tmp, dirpath, "/", node.name);
+        switch node.kind {
+            InfoKind.DIRECTORY {
+                err :: dir_remove_all(tmp);
+                if !is_ok(err) { return err; }
+            }            
+            InfoKind.FILE {
+                err :: _fs_impl.remove(tmp);
+                if !is_ok(err) { return err; }
+            }
+        }
+        std.str_clear(&tmp);
+    }
+    if remove_root { return _fs_impl.dir_remove(dirpath); }
+    return ok();
 }
 
-/// Close previously openned file. Does nothing when `handle` is not valid.
-close :: fn (handle: File) #inline {
-    _FsImpl.close(handle);
-}
+/// Type of `dir_scan` filter function.
+DirScanFilterFn :: *fn(info: *Info) bool;
 
-/// @INCOMPLETE
-get_uid :: fn { _FsImpl.get_uid; _FsImpl.get_uid_by_name; }
-
-/// Try to remove file specified by `filepath` and return `OK` on success, otherwise return error.
-remove :: fn (filepath: string) Error #inline {
-    return _FsImpl.remove(filepath);
-}
-
-/// Copy existing file from `src` to `dest` and override existing file in destination if `override` 
-/// is true. Return `ok` or `error`.
+/// Scan `dirpath` directory and return list of information for every file system entry found on 
+/// success. Otherwise return empty list and error. Use [info_list_delete](#info_list_delete) to 
+/// release list when there was no error reported by this function.
 ///
-/// **note**: `src` and `dest` path can be relative path to current working path set by 
-/// [set_cwd](#set_cwd).
-copy :: fn (src: string, dest: string, override := false) Error #inline {
-    return _FsImpl.copy(src, dest, override);
+/// Optional `filter` funtion [DirScanFilterFn](#dirscanfilterfn) can be used to filter scan results
+/// directly during scanning, it's called for every found entry and only those for whose filter yields 
+/// true are added into the output list.
+dir_scan :: fn (dirpath: string, filter: DirScanFilterFn = &_default_file_filter) (InfoList, Error) #inline {
+    return _fs_impl.dir_scan(dirpath, filter);
+}
+
+/// Specify behavior of `dir_copy`.
+DirCopyOpt :: struct {
+    /// Copy all directories and sub-directories.
+    recursive: bool;
+    /// Override existing entries.
+    override: bool;
+    /// Skip already existing entries.
+    skip_existing: bool;
 }
 
 /// Copy from `src` path to `dest` path with specified `opt` options and return  count of processed 
@@ -117,16 +210,16 @@ copy :: fn (src: string, dest: string, override := false) Error #inline {
 /// 
 /// main :: fn () s32 {
 ///     // Copy options
-///     opt: Fs.CopyOpt;
+///     opt: std.DirCopyOpt;
 ///     // Create destination directory if not exist.
 ///     opt.recursive = true;
 ///     // Override all existing entries.
 ///     opt.override = true;
 /// 
 ///     // Copy content of 'foo' into 'bar'
-///     c, err :: Fs.dir_copy("foo", "bar", &opt, &fn (item: *Fs.Info) bool {
+///     c, err :: std.dir_copy("foo", "bar", &opt, &fn (item: *std.Info) bool {
 ///         // Filter only txt files
-///         if std.str_match(Fs.get_extension(item.name), "txt") { return true; } 
+///         if std.str_match(std.path_get_extension(item.name), "txt") { return true; } 
 ///         return false;
 ///     });
 ///     if !is_ok(err) { print("%\n", err); }
@@ -136,23 +229,23 @@ copy :: fn (src: string, dest: string, override := false) Error #inline {
 /// ```
 ///
 /// @INCOIMPLETE Is using current dir + better descriptions.
-dir_copy :: fn (src: string, dest: string, opt: *CopyOpt = &COPY_OPT_DEFAULT, filter: DirScanFilterFn = &_default_file_filter) (s64, Error) {
+dir_copy :: fn (src: string, dest: string, opt: *DirCopyOpt = &DIR_COPY_OPT_DEFAULT, filter: DirScanFilterFn = &_default_file_filter) (s64, Error) {
     cc: s64;
     if !opt                   { return 0, error(ERR_INVALID_HANDLE, "Invalid copy options!"); }
-    if std.str_is_empty(src)   { return 0, error(ERR_INVALID_HANDLE, "Source path is empty!"); }
-    if std.str_is_empty(dest)  { return 0, error(ERR_INVALID_HANDLE, "Destination path is empty!"); }
-    if !_FsImpl.exist(src)   { return 0, error(ERR_NOT_FOUND, "Source path '%' not exist!", src); }
-    if !_FsImpl.exist(dest) {
+    if std.str_is_empty(src)  { return 0, error(ERR_INVALID_HANDLE, "Source path is empty!"); }
+    if std.str_is_empty(dest) { return 0, error(ERR_INVALID_HANDLE, "Destination path is empty!"); }
+    if !_fs_impl.exist(src)   { return 0, error(ERR_NOT_FOUND, "Source path '%' not exist!", src); }
+    if !_fs_impl.exist(dest) {
         if opt.recursive {
-            err :: _FsImpl.dir_create(dest);
+            err :: _fs_impl.dir_create(dest);
             if !is_ok(err) { return 0, err; }
         } else {
             return 0, error(ERR_NOT_FOUND, "Destination path '%' not exist!", dest);
         }
     }
-    is_src_valid := _FsImpl.is_directory(src);
+    is_src_valid := _fs_impl.is_directory(src);
     if !is_src_valid { return 0, error("Source '%' is not directory!", src); }
-    is_dest_valid := _FsImpl.is_directory(dest);
+    is_dest_valid := _fs_impl.is_directory(dest);
     if !is_dest_valid { return 0, error("Destination '%' is not directory!", dest); }
 
     dest_path :: std.str_new(128);
@@ -160,8 +253,8 @@ dir_copy :: fn (src: string, dest: string, opt: *CopyOpt = &COPY_OPT_DEFAULT, fi
     defer std.str_delete(dest_path);
     defer std.str_delete(src_path);
     std.str_clear_concat(&dest_path, dest, "/", src); 
-    if _FsImpl.exist(dest_path) { return 0, error("Destination directory '%' already exist!", dest_path); }
-    list, list_err :: _FsImpl.dir_scan(src, filter);
+    if _fs_impl.exist(dest_path) { return 0, error("Destination directory '%' already exist!", dest_path); }
+    list, list_err :: _fs_impl.dir_scan(src, filter);
     if !is_ok(list_err) { return 0, list_err; }
     defer info_list_delete(list);
     loop i := 0; i < list.len; i += 1 {
@@ -169,10 +262,10 @@ dir_copy :: fn (src: string, dest: string, opt: *CopyOpt = &COPY_OPT_DEFAULT, fi
         _cc: s64;
         std.str_clear_concat(&src_path, src, "/", list[i].name);
         std.str_clear_concat(&dest_path, dest, "/", list[i].name);
-        if opt.skip_existing && exist(dest_path) { continue; }
+        if opt.skip_existing && _fs_impl.exist(dest_path) { continue; }
         switch list[i].kind {
             InfoKind.FILE {
-                copy_err = _FsImpl.copy(src_path, dest_path, opt.override);
+                copy_err = _fs_impl.copy(src_path, dest_path, opt.override);
                 _cc = 1;
             }
 
@@ -188,11 +281,15 @@ dir_copy :: fn (src: string, dest: string, opt: *CopyOpt = &COPY_OPT_DEFAULT, fi
     return cc, ok();
 }
 
-/// Return file content size in bytes and `OK` status on success, otherwise return zero and proper 
-/// error.
-size :: fn (handle: File) (usize, Error) #inline {
-    return _FsImpl.size(handle);
+/// Check whether `path` points to valid directory and return true with `OK` state, otherwise return 
+/// `false` and error.
+is_directory :: fn (path: string) (bool, Error) #inline {
+    return _fs_impl.is_directory(path);
 }
+
+// =================================================================================================
+// File IO
+// =================================================================================================
 
 /// Read whole file content into string. Return new string instance containing file data and `OK` 
 /// status on success, otherwise return empty string and error. Returned string is expected to be 
@@ -206,17 +303,17 @@ size :: fn (handle: File) (usize, Error) #inline {
 /// 
 /// main :: fn () s32 {
 ///     // Open this file.
-///     file, open_err :: Fs.open(#file, Fs.OpenMode.READ);
+///     file, open_err :: std.file_open(#file, std.FileOpenMode.READ);
 /// 
 ///     // Always check for errors.
 ///     if !is_ok(open_err) {
 ///         panic("Cannot open file with error: '%'!", open_err);
 ///     }
 ///     // Close file at the end of scope.
-///     defer Fs.close(file);
+///     defer std.file_close(file);
 /// 
 ///     // Read it's content.
-///     content, read_err :: Fs.read_string(file);
+///     content, read_err :: std.read_string(file);
 /// 
 ///     // Check for errors.
 ///     if !is_ok(read_err) {
@@ -231,13 +328,13 @@ size :: fn (handle: File) (usize, Error) #inline {
 /// }
 /// ```
 read_string :: fn (handle: File) (string, Error) {
-    size, err1 := _FsImpl.size(handle);
+    size, err1 := _fs_impl.size(handle);
     if !is_ok(err1) {
         return std.str_empty, err1;
     }
     size += 1; // To handle zero terminator.
     buf := std.str_new(cast(s64) size);
-    read, err2 :: _FsImpl.read(handle, buf.ptr, auto size - 1);
+    read, err2 :: _fs_impl.read(handle, buf.ptr, auto size - 1);
     if !is_ok(err2) {
         std.str_delete(buf);
         return std.str_empty, err2;                
@@ -253,14 +350,14 @@ read_string :: fn (handle: File) (string, Error) {
 /// be released by :ref:`slice_terminate` call if there was no error reported by function.
 read_slice :: fn (handle: File) ([]u8, Error) {
     invalid: []u8;
-    size, err :: _FsImpl.size(handle);
+    size, err :: _fs_impl.size(handle);
     if !is_ok(err) {
         return invalid, err;
     }
     buf: []u8;
     if size == 0 { return buf, ok(); }
     slice_init(&buf, auto size);
-    read, err2 :: _FsImpl.read(handle, buf.ptr, auto size);
+    read, err2 :: _fs_impl.read(handle, buf.ptr, auto size);
     if !is_ok(err2) {
         slice_terminate(&buf);
         return invalid, err2;                
@@ -274,20 +371,20 @@ read_slice :: fn (handle: File) ([]u8, Error) {
 /// and `OK` status when there was no error. `dest` buffer must be allocated to handle at least 
 /// `size` bytes. There is no overflow check.
 read :: fn (handle: File, dest: *u8, size: s64) (s64, Error) #inline {
-    return _FsImpl.read(handle, dest, size);
+    return _fs_impl.read(handle, dest, size);
 }
 
 /// Write `size` bytes from raw buffer `src` into the file. Return count of bytes written into the 
 /// buffer and `OK` on success, otherwise return error. The `src` buffer size must be at least 
 /// `size` bytes. No overflow checking is done.
 write :: fn (handle: File, src: *u8, size: s64) (s64, Error) #inline {
-    return _FsImpl.write(handle, src, size);
+    return _fs_impl.write(handle, src, size);
 }
 
 /// Write content of `str` into the file, return count of written bytes and `OK` if there is no 
 /// error, otherwise return 0 and error.
 write_string :: fn (handle: File, str: string) (s64, Error) #inline {
-    written_bytes, err :: _FsImpl.write(handle, str.ptr, str.len);
+    written_bytes, err :: _fs_impl.write(handle, str.ptr, str.len);
     if !is_ok(err) { return 0, err; }
     return auto written_bytes, ok();    
 }
@@ -319,140 +416,36 @@ write_slice :: fn (handle: File, v: []u8, count : s64 = -1) (s64, Error) #inline
     if count < 0 { count = v.len; } 
     if count > v.len { count = v.len; }
     if v.len == 0 { return 0, ok(); }
-    written_bytes, err :: _FsImpl.write(handle, v.ptr, count);
+    written_bytes, err :: _fs_impl.write(handle, v.ptr, count);
     if !is_ok(err) { return 0, err; }
     return auto written_bytes, ok();
 }
 
-/// Create new directory and return `OK` on success. This function does not create directories 
-/// recursively.
-dir_create :: fn (dirpath: string) Error #inline {
-    return _FsImpl.dir_create(dirpath);
-}
-
-dir_create_all :: fn (dirpath: string) Error {
-    if std.str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Dir path is empty!"); }
-    if _FsImpl.exist(dirpath) { return ok(); } 
-    nodes :: std.str_split_by(dirpath, '/');
-    defer slice_terminate(&nodes);
-    path :: std.str_new(auto dirpath.len);
-    defer std.str_delete(path);
-    loop i := 0; i < nodes.len; i += 1 {
-        if nodes[i].len == 0 { continue; }
-        std.str_append(&path, nodes[i]);
-        std.str_append(&path, "/");
-        if _FsImpl.exist(path) { continue; } 
-        err :: _FsImpl.dir_create(path);
-        if !is_ok(err) { return err; }
-    }
-    return ok();
-}
-
-/// Remove directory specified by `dirpath` and return `OK` on success, otherwise return an error.
-dir_remove :: fn (dirpath: string) Error #inline {
-    return _FsImpl.dir_remove(dirpath);
-}
-
-/// Remove non-empty directory specified by `dirpath` and return `OK` on success, otherwise return 
-/// an error. Root directory is removed if `remove_root` is `true`. Custom file `filter` function 
-/// can be specified as needed.
-///
-/// **note**: This function recursively remove all nested folders and files in specified sub tree 
-/// so it can be expensive.
-dir_remove_all :: fn (dirpath: string, remove_root := true, filter: DirScanFilterFn = &_default_file_filter) Error {
-    if std.str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Dir path is empty!"); }
-    if !filter { return error(ERR_INVALID_HANDLE, "Invalid list filter!"); }
-    tmp :: std.str_new( dirpath.len);
-    defer std.str_delete(tmp);
-    list, err :: _FsImpl.dir_scan(dirpath, filter);
-    if !is_ok(err) { return err; }
-    defer info_list_delete(list);
-    loop i := 0; i < list.len; i += 1 {
-        node :: &list[i];
-        std.str_concat(&tmp, dirpath, "/", node.name);
-        switch node.kind {
-            InfoKind.DIRECTORY {
-                err :: dir_remove_all(tmp);
-                if !is_ok(err) { return err; }
-            }            
-            InfoKind.FILE {
-                err :: _FsImpl.remove(tmp);
-                if !is_ok(err) { return err; }
-            }
-        }
-        std.str_clear(&tmp);
-    }
-    if remove_root { return _FsImpl.dir_remove(dirpath); }
-    return ok();
-}
-
-/// Check whether `path` points to valid directory and return true with `OK` state, otherwise return 
-/// `false` and error.
-is_directory :: fn (path: string) (bool, Error) #inline {
-    return _FsImpl.is_directory(path);
-}
-
-/// Type of `dir_scan` filter function.
-DirScanFilterFn :: *fn(info: *Info) bool;
-
-/// Scan `dirpath` directory and return list of information for every file system entry found on 
-/// success. Otherwise return empty list and error. Use [info_list_delete](#info_list_delete) to 
-/// release list when there was no error reported by this function.
-///
-/// Optional `filter` funtion [DirScanFilterFn](#dirscanfilterfn) can be used to filter scan results
-/// directly during scanning, it's called for every found entry and only those for whose filter yields 
-/// true are added into the output list.
-dir_scan :: fn (dirpath: string, filter: DirScanFilterFn = &_default_file_filter) (InfoList, Error) #inline {
-    return _FsImpl.dir_scan(dirpath, filter);
-}
-
-/// Release allocated file system entry info list.
-info_list_delete :: fn (list: InfoList) #inline {
-    loop i := 0; i < list.len; i += 1 {
-        std.str_delete(list[i].name);
-    }
-    slice_terminate(&list);
-}
+// =================================================================================================
+// Other
+// =================================================================================================
 
 /// Checks whether `name` is valid file name on current platform.
 validate_filename :: fn (name: string) bool #inline {
-    return _FsImpl.validate_filename(name);
+    return _fs_impl.validate_filename(name);
 }
 
-/// Try to obtain current working directory, result must be released by `std.str_delete`. Path does 
-/// not contain last path separator.
-get_cwd :: fn () string #inline {
-    return _FsImpl.get_cwd();
-}
-
-/// Sets current working directory and return `OK` on success, otherwise return error.
-set_cwd :: fn (path: string) Error #inline {
-    return _FsImpl.set_cwd(path);
-}
-
-/// Try to obtain system home directory, result must be released by `std.str_delete`. Path does not 
-/// contain last path separator.
-get_home :: fn () string #inline {
-    return _FsImpl.get_home();
-}
-
-/// Try to obtain system temporary directory, result must be released by `std.str_delete`. Path does 
-/// not contain last path separator.
-get_tmp :: fn () string #inline {
-    return _FsImpl.get_tmp();
+/// Check whether file or directory exists.
+path_exist :: fn (filepath: string) bool #inline {
+    return _fs_impl.exist(filepath);
 }
 
 /// Try to normalize `filepath`, basically try to remove all relative path nodes `..` and `.`. Path 
 /// must be valid path (existing) on system. Original `filepath` is extended with current working 
 /// directory. Function return `OK` on success or proper error on fail. Original string is not 
 /// modified when error occurs.
-normalize :: fn (filepath: *string) Error #inline {
-    return _FsImpl.normalize(filepath);
+path_normalize :: fn (filepath: *string) Error #inline {
+    return _fs_impl.normalize(filepath);
 }
 
 /// Remove file extension (token after first `.`) from the `filename` and return the rest. Function 
 /// does not create copy of original `filepath`.
-remove_extension :: fn (filename: string) string #inline {
+path_remove_extension :: fn (filename: string) string #inline {
     if std.str_is_empty(filename) { return std.str_empty; }
     tmp := filename;
     tmp.len = 0;
@@ -468,7 +461,7 @@ remove_extension :: fn (filename: string) string #inline {
 /// case no extension was found.
 ///
 /// The `.` separator is not included into result string.
-get_extension :: fn (filename: string) string #inline {
+path_get_extension :: fn (filename: string) string #inline {
     if std.str_is_empty(filename) { return std.str_empty; }
     if filename[0] == '.' {
         if filename.len == 1 { return std.str_empty; }
@@ -483,7 +476,7 @@ get_extension :: fn (filename: string) string #inline {
 
 /// Get directory path from filepath. Function supports only unix path delimiters. Returns directory
 /// path as new string or empty string in case path was not found.
-get_directory :: fn (filepath: string) string #inline {
+path_get_directory :: fn (filepath: string) string #inline {
     if std.str_is_empty(filepath) { return std.str_empty; }
     lhs: string;
     if std.str_split_by_last(filepath, '/', &lhs) {
@@ -492,8 +485,31 @@ get_directory :: fn (filepath: string) string #inline {
     return std.str_empty;
 }
 
+/// Try to obtain current working directory, result must be released by `std.str_delete`. Path does 
+/// not contain last path separator.
+get_cwd :: fn () string #inline {
+    return _fs_impl.get_cwd();
+}
+
+/// Sets current working directory and return `OK` on success, otherwise return error.
+set_cwd :: fn (path: string) Error #inline {
+    return _fs_impl.set_cwd(path);
+}
+
+/// Try to obtain system home directory, result must be released by `std.str_delete`. Path does not 
+/// contain last path separator.
+get_home :: fn () string #inline {
+    return _fs_impl.get_home();
+}
+
+/// Try to obtain system temporary directory, result must be released by `std.str_delete`. Path does 
+/// not contain last path separator.
+get_tmp :: fn () string #inline {
+    return _fs_impl.get_tmp();
+}
+
 #private
-COPY_OPT_DEFAULT :: {:CopyOpt: 0};
+DIR_COPY_OPT_DEFAULT :: {:DirCopyOpt: 0};
 
 _default_file_filter :: fn (item: *Info) bool {
     return std.str_match(item.name, ".") == false

@@ -499,10 +499,10 @@ clang_getArgType :: fn (T: CXType, i: s32) CXType #extern;
 clang_getResultType :: fn (T: CXType) CXType #extern;
 clang_getNumElements :: fn (T: CXType) s64 #extern;
 clang_getArrayElementType :: fn (T: CXType) CXType #extern;
-clang_getCString :: fn (s: CXString)  *c_char #extern;
-clang_disposeString :: fn (s: *c_char) #extern;
-clang_Type_isTransparentTagTypedef :: fn (T: CXType) c_uint #extern;
-clang_Cursor_isAnonymous :: fn (C: CXCursor) c_uint #extern;
+clang_getCString :: fn (s: CXString)  *C.char #extern;
+clang_disposeString :: fn (s: *C.char) #extern;
+clang_Type_isTransparentTagTypedef :: fn (T: CXType) C.uint #extern;
+clang_Cursor_isAnonymous :: fn (C: CXCursor) C.uint #extern;
 clang_getTypeSpelling :: fn (CT: CXType) CXString #extern;
 
 clang_equalTypes :: fn (A: CXType, B: CXType) u32 #extern;

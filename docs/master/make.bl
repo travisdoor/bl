@@ -57,45 +57,45 @@ html :: fn () Error {
 
 prepare :: fn () Error {
     print("Prepare\n");
-    if Fs.exist(TMP_DIR) {
-        err :: Fs.dir_remove_all(TMP_DIR);
+    if std.path_exist(TMP_DIR) {
+        err :: std.dir_remove_all(TMP_DIR);
         if !is_ok(err) { return err; }
     }
-    err :: Fs.dir_create_all(TMP_DIR);
+    err :: std.dir_create_all(TMP_DIR);
     if !is_ok(err) { return err; }
     return ok();
 }
 
 cleanup :: fn () Error {
     print("Cleanup\n");
-    if Fs.exist(TMP_DIR) {
-        err :: Fs.dir_remove_all(TMP_DIR);
+    if std.path_exist(TMP_DIR) {
+        err :: std.dir_remove_all(TMP_DIR);
         if !is_ok(err) { return err; }
     }
     return ok();
 }
 
 process_dir :: fn (path: string, extension: string, out: *string) Error {
-    list, err :: Fs.dir_scan(path, &fn (info: *Fs.Info) bool {
+    list, err :: std.dir_scan(path, &fn (info: *std.Info) bool {
         if std.str_is_empty(info.name)        { return false; }
         if std.str_match(info.name, ".")    { return false; }
         if std.str_match(info.name, "..")   { return false; }
         if std.str_match(info.name, "_", 1) { return false; }
-        if info.kind == Fs.InfoKind.DIRECTORY {
+        if info.kind == std.InfoKind.DIRECTORY {
             loop i := 0; i < IGNORE.len; i += 1 {
                 if std.str_match(info.name, IGNORE[i]) { return false; }
             }
         }
         return true;
     });
-    defer Fs.info_list_delete(list);
+    defer std.info_list_delete(list);
     if !is_ok(err) { return err; }
 
     loop i := 0; i < list.len; i += 1 {
         info :: &list[i];
         switch info.kind {
-            Fs.InfoKind.FILE {
-                ext :: Fs.get_extension(info.name);
+            std.InfoKind.FILE {
+                ext :: std.path_get_extension(info.name);
                 if std.str_match(ext, extension) { 
                     std.str_append(out, path);
                     std.str_append(out, "/");
@@ -103,7 +103,7 @@ process_dir :: fn (path: string, extension: string, out: *string) Error {
                     std.str_append(out, " ");
                 }
             }
-            Fs.InfoKind.DIRECTORY {
+            std.InfoKind.DIRECTORY {
                 new_path :: tprint("%/%", path, info.name);
                 err :: process_dir(new_path, extension, out);
                 if !is_ok(err) { return err; }

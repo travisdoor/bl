@@ -15,19 +15,19 @@ Collider :: struct {
 }
 
 ColliderRect :: struct {
-    min: Glm.v2;
-    size: Glm.v2;
+    min: glm.v2;
+    size: glm.v2;
 }
 
 ColliderCircle :: struct {
-    c: Glm.v2;
+    c: glm.v2;
     r: f32;
 }
 
 union_collider :: fn () #test {
     c: Collider;
     c.kind = ColliderKind.Circle;
-    c.data.circle = {:ColliderCircle: {:Glm.v2: 10.f, 20.f}, 15.f};
+    c.data.circle = {:ColliderCircle: {:glm.v2: 10.f, 20.f}, 15.f};
 
     assert(sizeof(c.data) == sizeof(ColliderRect));
 }

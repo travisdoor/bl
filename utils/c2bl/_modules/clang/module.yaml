@@ -1,0 +1,7 @@
+version: 2
+
+src: "clang.bl"
+
+x86_64-pc-windows-msvc:
+  linker_lib_path: "win32"
+  link: "libclang"

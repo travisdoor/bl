@@ -7,154 +7,154 @@ main :: fn () s32 {
 
 #private
 get_dummy_filepath :: fn (i := 0) string {
-    tmp :: Fs.get_tmp();
+    tmp :: std.get_tmp();
     std.str_concat(&tmp, "/deleteme_", i);
     return tmp;
 }
 
 fs_exist_test :: fn () #test {
-    test_true(Fs.exist(#file));
-    test_false(Fs.exist("foobar"));
+    test_true(std.path_exist(#file));
+    test_false(std.path_exist("foobar"));
 }
 
 fs_get_home_test :: fn () #test {
-    tmp :: Fs.get_home();
+    tmp :: std.get_home();
     defer std.str_delete(tmp);
     test_neq(tmp, std.str_empty);
-    test_true(Fs.exist(tmp));
+    test_true(std.path_exist(tmp));
     test_true(tmp[tmp.len-1] != '/');
 
-    state, err :: Fs.is_directory(tmp);
+    state, err :: std.is_directory(tmp);
     test_ok(err);
     test_true(state);
 }
 
 fs_get_tmp_test :: fn () #test {
-    tmp :: Fs.get_tmp();
+    tmp :: std.get_tmp();
     defer std.str_delete(tmp);
     test_neq(tmp, std.str_empty);
-    test_true(Fs.exist(tmp));    
+    test_true(std.path_exist(tmp));    
     test_true(tmp[tmp.len-1] != '/');
 
-    state, err :: Fs.is_directory(tmp);
+    state, err :: std.is_directory(tmp);
     test_ok(err);
     test_true(state);
 }
 
 fs_get_cwd_test :: fn () #test {
-    tmp :: Fs.get_cwd();
+    tmp :: std.get_cwd();
     defer std.str_delete(tmp);
     test_neq(tmp, std.str_empty);
-    test_true(Fs.exist(tmp));    
+    test_true(std.path_exist(tmp));    
     test_true(tmp[tmp.len-1] != '/');
 
-    state, err :: Fs.is_directory(tmp);
+    state, err :: std.is_directory(tmp);
     test_ok(err);
     test_true(state);
 }
 
 fs_open_test1 :: fn () #test {
-    file, err :: Fs.open("");
-    defer Fs.close(file);
+    file, err :: std.file_open("");
+    defer std.file_close(file);
     test_is_error(err, ERR_INVALID_HANDLE);    
 }
     
 fs_open_test2 :: fn () #test {
-    file, err :: Fs.open("foobar");
-    defer Fs.close(file);
+    file, err :: std.file_open("foobar");
+    defer std.file_close(file);
     test_is_error(err, ERR_NOT_FOUND);
 }
     
 fs_open_test3 :: fn () #test {
-    file, err :: Fs.open(#file);    
-    defer Fs.close(file);
+    file, err :: std.file_open(#file);    
+    defer std.file_close(file);
     test_ok(err);
 
     // Cannot write to file when Write or Append is not specified.
-    written, err2 :: Fs.write_string(file, "Hello!");
+    written, err2 :: std.write_string(file, "Hello!");
     test_not_ok(err2);
     test_eq(written, 0);
 }
 
 fs_file_create_test1 :: fn () #test {
-    file, err :: Fs.open("", Fs.OpenMode.CREATE);
-    defer Fs.close(file);
+    file, err :: std.file_open("", std.FileOpenMode.CREATE);
+    defer std.file_close(file);
     test_is_error(err, ERR_INVALID_HANDLE);    
 }
 
 fs_file_create_test2 :: fn () #test {
     filepath :: get_dummy_filepath();
     defer std.str_delete(filepath);
-    Fs.remove(filepath);
+    std.file_remove(filepath);
 
     {
-        file, err :: Fs.open(filepath, Fs.OpenMode.CREATE);
-        defer Fs.close(file);
+        file, err :: std.file_open(filepath, std.FileOpenMode.CREATE);
+        defer std.file_close(file);
         test_ok(err);
 
         // Cannot write to file when Write or Append is not specified.
-        written, err2 :: Fs.write_string(file, "Hello!");
+        written, err2 :: std.write_string(file, "Hello!");
         test_not_ok(err2);
         test_eq(written, 0);
     }    
 
     {
-        file, err :: Fs.open(filepath, Fs.OpenMode.CREATE, Fs.OpenMode.WRITE);
-        defer Fs.close(file);
+        file, err :: std.file_open(filepath, std.FileOpenMode.CREATE, std.FileOpenMode.WRITE);
+        defer std.file_close(file);
         test_ok(err);
 
-        written, err2 :: Fs.write_string(file, "Hello!");
+        written, err2 :: std.write_string(file, "Hello!");
         test_ok(err2);
         test_neq(written, 0);
     }    
 
     { // This should reuse already created file!
-        file, err :: Fs.open(filepath, Fs.OpenMode.CREATE);
-        defer Fs.close(file);
+        file, err :: std.file_open(filepath, std.FileOpenMode.CREATE);
+        defer std.file_close(file);
         test_ok(err);
-        str :: Fs.read_string(file);
+        str :: std.read_string(file);
         defer std.str_delete(str);
         test_eq(str, "Hello!");
     }
-    Fs.remove(filepath);
+    std.file_remove(filepath);
 }
 
 fs_create_append :: fn () #test {
     filepath :: get_dummy_filepath();
     defer std.str_delete(filepath);
-    Fs.remove(filepath);
+    std.file_remove(filepath);
     { // initial create
-        file, err :: Fs.open(filepath, Fs.OpenMode.CREATE, Fs.OpenMode.WRITE);
-        defer Fs.close(file);
+        file, err :: std.file_open(filepath, std.FileOpenMode.CREATE, std.FileOpenMode.WRITE);
+        defer std.file_close(file);
         test_ok(err);
-        Fs.write_string(file, "Hello!");
+        std.write_string(file, "Hello!");
     }
     { // append
-        file, err :: Fs.open(filepath, Fs.OpenMode.APPEND);
-        defer Fs.close(file);
+        file, err :: std.file_open(filepath, std.FileOpenMode.APPEND);
+        defer std.file_close(file);
         test_ok(err);
-        Fs.write_string(file, "Hello!");
+        std.write_string(file, "Hello!");
     }
     { // check
-        file, err :: Fs.open(filepath);
-        defer Fs.close(file);
+        file, err :: std.file_open(filepath);
+        defer std.file_close(file);
         test_ok(err);
-        str, err2 :: Fs.read_string(file);
+        str, err2 :: std.read_string(file);
         defer std.str_delete(str);
         test_ok(err2);
         test_eq(str, "Hello!Hello!");
     }
-    Fs.remove(filepath);
+    std.file_remove(filepath);
 }
 
 fs_get_uid_test :: fn () #test {
     filepath :: get_dummy_filepath();
     defer std.str_delete(filepath);
-    Fs.remove(filepath);
-    file, err :: Fs.open(filepath, Fs.OpenMode.CREATE);
-    defer Fs.close(file);
+    std.file_remove(filepath);
+    file, err :: std.file_open(filepath, std.FileOpenMode.CREATE);
+    defer std.file_close(file);
     test_ok(err);
-    uid, err2 :: Fs.get_uid(file);
+    uid, err2 :: std.file_uid(file);
     test_ok(err2);
     test_true(uid > 0);
 }
@@ -162,20 +162,20 @@ fs_get_uid_test :: fn () #test {
 fs_get_uid_test2 :: fn () #test {
     filepath :: get_dummy_filepath();
     defer std.str_delete(filepath);
-    Fs.remove(filepath);
-    file, err :: Fs.open(filepath, Fs.OpenMode.CREATE);
-    Fs.close(file);
+    std.file_remove(filepath);
+    file, err :: std.file_open(filepath, std.FileOpenMode.CREATE);
+    std.file_close(file);
     test_ok(err);
-    uid, err2 :: Fs.get_uid(filepath);
+    uid, err2 :: std.file_uid(filepath);
     test_ok(err2);
     test_true(uid > 0);
 }
 
 fs_read_string_test :: fn () #test {
-    file, err1 :: Fs.open(#file, Fs.OpenMode.READ);
-    defer Fs.close(file);
+    file, err1 :: std.file_open(#file, std.FileOpenMode.READ);
+    defer std.file_close(file);
     test_ok(err1);
-    data, err2 := Fs.read_string(file);
+    data, err2 := std.read_string(file);
     test_ok(err2);
     defer std.str_delete(data);
     test_neq(data, std.str_empty);
@@ -184,15 +184,15 @@ fs_read_string_test :: fn () #test {
 }
 
 fs_read_string_test2 :: fn () #test {
-    data, err := Fs.read_string(Fs.FILE_INVALID);
+    data, err := std.read_string(std.FILE_INVALID);
     test_is_error(err, ERR_INVALID_HANDLE);
 }
 
 fs_read_slice_test :: fn () #test {
-    file, err1 :: Fs.open(#file, Fs.OpenMode.READ);
+    file, err1 :: std.file_open(#file, std.FileOpenMode.READ);
     test_ok(err1);
-    defer Fs.close(file);
-    data, err2 := Fs.read_slice(file);
+    defer std.file_close(file);
+    data, err2 := std.read_slice(file);
     test_ok(err2);
     defer slice_terminate(&data);
     test_not_null(data.ptr);
@@ -201,58 +201,58 @@ fs_read_slice_test :: fn () #test {
 
 fs_validate_filename_test :: fn () #test {
     if PLATFORM == Platform.WINDOWS {
-        test_false(Fs.validate_filename("<"));
-        test_false(Fs.validate_filename(">"));
-        test_false(Fs.validate_filename(":")); 
-        test_false(Fs.validate_filename("\""));     
-        test_false(Fs.validate_filename("/"));
-        test_false(Fs.validate_filename("\\"));
-        test_false(Fs.validate_filename("|")); 
-        test_false(Fs.validate_filename("?"));        
-        test_false(Fs.validate_filename("*"));
-        test_false(Fs.validate_filename("\t"));
-        test_false(Fs.validate_filename("foo<"));
-        test_true(Fs.validate_filename("foo_bar-File.txt"));
+        test_false(std.validate_filename("<"));
+        test_false(std.validate_filename(">"));
+        test_false(std.validate_filename(":")); 
+        test_false(std.validate_filename("\""));     
+        test_false(std.validate_filename("/"));
+        test_false(std.validate_filename("\\"));
+        test_false(std.validate_filename("|")); 
+        test_false(std.validate_filename("?"));        
+        test_false(std.validate_filename("*"));
+        test_false(std.validate_filename("\t"));
+        test_false(std.validate_filename("foo<"));
+        test_true(std.validate_filename("foo_bar-File.txt"));
     } else {
-        test_false(Fs.validate_filename("foo/"));
-        test_true(Fs.validate_filename("foo_bar-File.txt"));
+        test_false(std.validate_filename("foo/"));
+        test_true(std.validate_filename("foo_bar-File.txt"));
     }
 }
 
 fs_get_extension_test :: fn () #test {
     {
         filename :: "foo.bar";
-        ext      :: Fs.get_extension(filename);
+        ext      :: std.path_get_extension(filename);
         test_eq(ext, "bar");
     }
     {
         filename :: "foo.bar.bar";
-        ext      :: Fs.get_extension(filename);
+        ext      :: std.path_get_extension(filename);
         test_eq(ext, "bar.bar");
     }
     {
         filename :: "";
-        ext      :: Fs.get_extension(filename);
+        ext      :: std.path_get_extension(filename);
         test_eq(ext, std.str_empty);
     }    
     {
         filename :: ".";
-        ext      :: Fs.get_extension(filename);
+        ext      :: std.path_get_extension(filename);
         test_eq(ext, std.str_empty);
     }
     {
         filename :: ".foo";
-        ext      :: Fs.get_extension(filename);
+        ext      :: std.path_get_extension(filename);
         test_eq(ext, std.str_empty);
     }
     {
         filename :: ".foo.bar";
-        ext      :: Fs.get_extension(filename);
+        ext      :: std.path_get_extension(filename);
         test_eq(ext, "bar");
     }
     {
         filename :: ".foo.bar.bar";
-        ext      :: Fs.get_extension(filename);
+        ext      :: std.path_get_extension(filename);
         test_eq(ext, "bar.bar");
     }        
 }
@@ -260,73 +260,73 @@ fs_get_extension_test :: fn () #test {
 fs_remove_extension_test :: fn () #test {
     {
         filename :: "foo.bar";
-        ext      :: Fs.remove_extension(filename);
+        ext      :: std.path_remove_extension(filename);
         test_eq(ext, "foo");
     }
     {
         filename :: "foo.bar.bar";
-        ext      :: Fs.remove_extension(filename);
+        ext      :: std.path_remove_extension(filename);
         test_eq(ext, "foo");
     }
     {
         filename :: "";
-        ext      :: Fs.remove_extension(filename);
+        ext      :: std.path_remove_extension(filename);
         test_eq(ext, std.str_empty);
     }    
     {
         filename :: ".";
-        ext      :: Fs.remove_extension(filename);
+        ext      :: std.path_remove_extension(filename);
         test_eq(ext, ".");
     }
     {
         filename :: ".foo";
-        ext      :: Fs.remove_extension(filename);
+        ext      :: std.path_remove_extension(filename);
         test_eq(ext, ".foo");
     }
     {
         filename :: ".foo.bar";
-        ext      :: Fs.remove_extension(filename);
+        ext      :: std.path_remove_extension(filename);
         test_eq(ext, ".foo");
     }
     {
         filename :: ".foo.bar.bar";
-        ext      :: Fs.remove_extension(filename);
+        ext      :: std.path_remove_extension(filename);
         test_eq(ext, ".foo");
     }
 }
 
 fs_normalize_test1 :: fn () #test {
-    cwd :: Fs.get_cwd();
+    cwd :: std.get_cwd();
     defer std.str_delete(cwd);
     parent: string;
     test_true(std.str_split_by_last(cwd, '/', &parent, null));
     filepath :: std.str_new("..");
     defer std.str_delete(filepath);
-    status :: Fs.normalize(&filepath);
+    status :: std.path_normalize(&filepath);
     test_ok(status);
     test_eq(filepath, parent);
 }
 
 fs_normalize_test2 :: fn () #test {
-    cwd :: Fs.get_cwd();
+    cwd :: std.get_cwd();
     defer std.str_delete(cwd);
     filepath :: std.str_new(".");
     defer std.str_delete(filepath);
-    status :: Fs.normalize(&filepath);
+    status :: std.path_normalize(&filepath);
     test_ok(status);
     test_eq(filepath, cwd);
 }    
 
 fs_normalize_test3 :: fn () #test {
-    file :: Fs.open("foo", Fs.OpenMode.CREATE);
-    Fs.close(file);
-    defer Fs.remove("foo");
-    cwd :: Fs.get_cwd();
+    file :: std.file_open("foo", std.FileOpenMode.CREATE);
+    std.file_close(file);
+    defer std.file_remove("foo");
+    cwd :: std.get_cwd();
     defer std.str_delete(cwd);    
     filepath :: std.str_new("foo");
     std.str_concat(&cwd, "/", filepath);
     defer std.str_delete(filepath);
-    status :: Fs.normalize(&filepath);
+    status :: std.path_normalize(&filepath);
     test_ok(status);
     test_eq(filepath, cwd);
 }
@@ -335,51 +335,51 @@ fs_remove_test :: fn () #test {
     filepath :: get_dummy_filepath();
     defer std.str_delete(filepath);
     
-    Fs.remove(filepath);
-    file, err :: Fs.open(filepath, Fs.OpenMode.CREATE);
+    std.file_remove(filepath);
+    file, err :: std.file_open(filepath, std.FileOpenMode.CREATE);
     test_ok(err);
-    Fs.close(file);
-    err2 :: Fs.remove(filepath);
+    std.file_close(file);
+    err2 :: std.file_remove(filepath);
     test_ok(err2);
 }
 
 fs_size_test :: fn () #test {
-    file :: Fs.open(#file);
-    defer Fs.close(file);
-    size, err :: Fs.size(file);
+    file :: std.file_open(#file);
+    defer std.file_close(file);
+    size, err :: std.file_size(file);
     test_ok(err);
     test_true(size > 0);
 }
 
 fs_read_test :: fn () #test {
-    file :: Fs.open(#file);
-    defer Fs.close(file);
+    file :: std.file_open(#file);
+    defer std.file_close(file);
     buf: [1042]u8 #noinit;
-    bytes, err :: Fs.read(file, buf.ptr, buf.len);
+    bytes, err :: std.read(file, buf.ptr, buf.len);
     test_ok(err);
     test_eq(bytes, buf.len);
 }
 
 fs_read_buffer_test2 :: fn () #test {
     buf: [1042]u8 #noinit;
-    bytes, err :: Fs.read(Fs.FILE_INVALID, buf.ptr, buf.len);
+    bytes, err :: std.read(std.FILE_INVALID, buf.ptr, buf.len);
     test_is_error(err, ERR_INVALID_HANDLE);
     test_eq(bytes, 0);
 }
 
 fs_read_buffer_test3 :: fn () #test {
-    file :: Fs.open(#file);
-    defer Fs.close(file);
-    bytes, err :: Fs.read(file, null, 0);
+    file :: std.file_open(#file);
+    defer std.file_close(file);
+    bytes, err :: std.read(file, null, 0);
     test_is_error(err, ERR_INVALID_HANDLE);
     test_eq(bytes, 0);
 }
 
 fs_read_test4 :: fn () #test {
-    file :: Fs.open(#file);
-    defer Fs.close(file);
+    file :: std.file_open(#file);
+    defer std.file_close(file);
     buf: [1024]u8 #noinit;
-    bytes, err :: Fs.read(file, buf.ptr, 100);
+    bytes, err :: std.read(file, buf.ptr, 100);
     test_ok(err);
     test_eq(bytes, 100);
 }
@@ -387,73 +387,73 @@ fs_read_test4 :: fn () #test {
 fs_write_test :: fn () #test {
     filepath :: get_dummy_filepath();
     defer std.str_delete(filepath);
-    Fs.remove(filepath);
+    std.file_remove(filepath);
     content :: "Hello I'm cool file content!";    
     
     { // write
-        file :: Fs.open(filepath, Fs.OpenMode.CREATE, Fs.OpenMode.WRITE);
-        written, err :: Fs.write(file, content.ptr, content.len);
+        file :: std.file_open(filepath, std.FileOpenMode.CREATE, std.FileOpenMode.WRITE);
+        written, err :: std.write(file, content.ptr, content.len);
         test_ok(err);
         test_eq(written, content.len);
-        Fs.close(file);
+        std.file_close(file);
     }
     { // read
-        file :: Fs.open(filepath);
-        tmp, err :: Fs.read_string(file);
+        file :: std.file_open(filepath);
+        tmp, err :: std.read_string(file);
         test_ok(err);
         defer std.str_delete(tmp);
         test_eq(tmp, content);
-        Fs.close(file);
+        std.file_close(file);
     }
-    Fs.remove(filepath);
+    std.file_remove(filepath);
 }
 
 fs_write_string_test :: fn () #test {
     filepath :: get_dummy_filepath();
     defer std.str_delete(filepath);
-    Fs.remove(filepath);
+    std.file_remove(filepath);
     content :: "Hello I'm cool file content!";    
     
     { // write
-        file :: Fs.open(filepath, Fs.OpenMode.CREATE, Fs.OpenMode.WRITE);
-        written, err :: Fs.write_string(file, content);
+        file :: std.file_open(filepath, std.FileOpenMode.CREATE, std.FileOpenMode.WRITE);
+        written, err :: std.write_string(file, content);
         test_ok(err);
         test_eq(written, content.len);
-        Fs.close(file);
+        std.file_close(file);
     }
     { // read
-        file :: Fs.open(filepath);
-        tmp, err :: Fs.read_string(file);
+        file :: std.file_open(filepath);
+        tmp, err :: std.read_string(file);
         test_ok(err);
         defer std.str_delete(tmp);
         test_eq(tmp, content);
-        Fs.close(file);
+        std.file_close(file);
     }
-    Fs.remove(filepath);
+    std.file_remove(filepath);
 }
 
 fs_write_slice_test :: fn () #test {
     filepath :: get_dummy_filepath();
     defer std.str_delete(filepath);
-    Fs.remove(filepath);
+    std.file_remove(filepath);
     content :: {:[5]u8: 'H', 'e', 'l', 'o', 'o' };
     
     { // write
-        file :: Fs.open(filepath, Fs.OpenMode.CREATE, Fs.OpenMode.WRITE);
-        written, err :: Fs.write_slice(file, content);
+        file :: std.file_open(filepath, std.FileOpenMode.CREATE, std.FileOpenMode.WRITE);
+        written, err :: std.write_slice(file, content);
         test_ok(err);
         test_eq(written, content.len);
-        Fs.close(file);
+        std.file_close(file);
     }
     { // read
-        file :: Fs.open(filepath);
-        tmp, err :: Fs.read_string(file);
+        file :: std.file_open(filepath);
+        tmp, err :: std.read_string(file);
         test_ok(err);
         defer std.str_delete(tmp);
         test_eq(tmp.len, content.len);
-        Fs.close(file);
+        std.file_close(file);
     }
-    Fs.remove(filepath);
+    std.file_remove(filepath);
 }
 
 fs_copy_test :: fn () #test {
@@ -461,35 +461,35 @@ fs_copy_test :: fn () #test {
     filepath2 :: get_dummy_filepath(2);
     defer std.str_delete(filepath1);
     defer std.str_delete(filepath2);
-    Fs.remove(filepath1);
-    Fs.remove(filepath2);
+    std.file_remove(filepath1);
+    std.file_remove(filepath2);
     
     { // new file
-        file :: Fs.open(filepath1, Fs.OpenMode.CREATE);
-        Fs.close(file);
+        file :: std.file_open(filepath1, std.FileOpenMode.CREATE);
+        std.file_close(file);
     }
     { // copy
-        err :: Fs.copy(filepath1, filepath2);
+        err :: std.file_copy(filepath1, filepath2);
         test_ok(err);
-        test_true(Fs.exist(filepath1));
-        test_true(Fs.exist(filepath2));
+        test_true(std.path_exist(filepath1));
+        test_true(std.path_exist(filepath2));
     }
     { // copy 2
-        err :: Fs.copy(filepath1, filepath2, false);
+        err :: std.file_copy(filepath1, filepath2, false);
         test_not_ok(err);
-        test_true(Fs.exist(filepath1));
-        test_true(Fs.exist(filepath2));
+        test_true(std.path_exist(filepath1));
+        test_true(std.path_exist(filepath2));
     }
 
-    Fs.remove(filepath1);
-    Fs.remove(filepath2);
+    std.file_remove(filepath1);
+    std.file_remove(filepath2);
 }
 
 fs_list_dir_test1 :: fn () #test {
-    dir :: Fs.get_cwd();
+    dir :: std.get_cwd();
     defer std.str_delete(dir);
-    list, err :: Fs.dir_scan(dir);
-    defer Fs.info_list_delete(list);
+    list, err :: std.dir_scan(dir);
+    defer std.info_list_delete(list);
     test_ok(err);
     test_true(list.len > 0);
     loop i := 0; i < list.len; i += 1 {
@@ -498,73 +498,73 @@ fs_list_dir_test1 :: fn () #test {
 }
 
 fs_list_dir_test2 :: fn () #test {
-    dir :: Fs.get_cwd();
+    dir :: std.get_cwd();
     defer std.str_delete(dir);
-    list, err :: Fs.dir_scan(dir, &fn (info: *Fs.Info) bool {
-        return info.kind == Fs.InfoKind.DIRECTORY;
+    list, err :: std.dir_scan(dir, &fn (info: *std.Info) bool {
+        return info.kind == std.InfoKind.DIRECTORY;
     });
-    defer Fs.info_list_delete(list);
+    defer std.info_list_delete(list);
     test_ok(err);
     test_true(list.len > 0);
     loop i := 0; i < list.len; i += 1 {
         test_neq(list[i].name, std.str_empty);
-        test_true(list[i].kind == Fs.InfoKind.DIRECTORY);
+        test_true(list[i].kind == std.InfoKind.DIRECTORY);
     }
 }
 
 fs_list_dir_test3 :: fn () #test {
-    dir :: Fs.get_cwd();
+    dir :: std.get_cwd();
     defer std.str_delete(dir);
-    list, err :: Fs.dir_scan(dir, &fn (info: *Fs.Info) bool {
-        return info.kind == Fs.InfoKind.FILE;
+    list, err :: std.dir_scan(dir, &fn (info: *std.Info) bool {
+        return info.kind == std.InfoKind.FILE;
     });
-    defer Fs.info_list_delete(list);
+    defer std.info_list_delete(list);
     test_ok(err);
     test_true(list.len > 0);
     loop i := 0; i < list.len; i += 1 {
         test_neq(list[i].name, std.str_empty);
-        test_true(list[i].kind == Fs.InfoKind.FILE);
+        test_true(list[i].kind == std.InfoKind.FILE);
     }
 }
 
 fs_is_directory_test1 :: fn () #test {
-    tmp :: Fs.get_tmp();
+    tmp :: std.get_tmp();
     defer std.str_delete(tmp);
-    state, err :: Fs.is_directory(tmp);
+    state, err :: std.is_directory(tmp);
     test_ok(err);
     test_true(state);
 }
 
 fs_is_directory_test2 :: fn () #test {
-    state, err :: Fs.is_directory(#file);
+    state, err :: std.is_directory(#file);
     test_ok(err);
     test_false(state);
 }
 
 fs_dir_create_remove_test1 :: fn () #test {
-    dir :: Fs.get_tmp();
+    dir :: std.get_tmp();
     defer std.str_delete(dir);
     std.str_append(&dir, "/__DELETE_ME__");
 
-    Fs.dir_remove_all(dir);
-    state1 :: Fs.dir_create(dir);
+    std.dir_remove_all(dir);
+    state1 :: std.dir_create(dir);
     test_ok(state1);
 
-    state2 :: Fs.dir_create(dir);
+    state2 :: std.dir_create(dir);
     test_not_ok(state1);
 
-    state3 :: Fs.dir_remove(dir);
+    state3 :: std.dir_remove(dir);
     test_ok(state3);
 }
 
 fs_dir_remove_all_test1 :: fn () #test {
-    dir :: Fs.get_tmp();
+    dir :: std.get_tmp();
     defer std.str_delete(dir);
     std.str_append(&dir, "/__DELETE_ME__");
     
-    Fs.dir_remove_all(dir);
+    std.dir_remove_all(dir);
     {
-        s :: Fs.dir_create(dir);
+        s :: std.dir_create(dir);
         test_ok(s);
     }
     
@@ -572,28 +572,28 @@ fs_dir_remove_all_test1 :: fn () #test {
         file :: std.str_new(dir);
         defer std.str_delete(file);
         std.str_append(&file, "/file.txt");
-        f, e :: Fs.open(file, Fs.OpenMode.CREATE);
+        f, e :: std.file_open(file, std.FileOpenMode.CREATE);
         test_ok(e);
-        Fs.close(f);
+        std.file_close(f);
     }
     
-    state :: Fs.dir_remove_all(dir);
+    state :: std.dir_remove_all(dir);
     test_ok(state);
-    test_false(Fs.exist(dir));
+    test_false(std.path_exist(dir));
 }
 
 fs_dir_create_all_test1 :: fn () #test {
-    dir :: Fs.get_tmp();
+    dir :: std.get_tmp();
     defer std.str_delete(dir);
     std.str_append(&dir, "/foo");
-    Fs.dir_remove_all(dir);
+    std.dir_remove_all(dir);
     std.str_append(&dir, "/bar/bazz");
-    err :: Fs.dir_create_all(dir);
+    err :: std.dir_create_all(dir);
     test_ok(err);
 }
 
 fs_get_directory :: fn () #test {
-    test_eq(Fs.get_directory(""), std.str_empty);
-    test_eq(Fs.get_directory("bar"), std.str_empty);
-    test_eq(Fs.get_directory("foo/bar/file"), "foo/bar");
+    test_eq(std.path_get_directory(""), std.str_empty);
+    test_eq(std.path_get_directory("bar"), std.str_empty);
+    test_eq(std.path_get_directory("foo/bar/file"), "foo/bar");
 }

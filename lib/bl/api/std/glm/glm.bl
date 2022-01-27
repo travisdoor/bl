@@ -28,7 +28,7 @@
 
 #load "std/math.bl"
 
-#scope Glm
+#scope glm
 
 //! # GLM
 //! 

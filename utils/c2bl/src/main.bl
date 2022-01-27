@@ -59,7 +59,7 @@ HELP_TEXT ::
 "  c2bl [options] <input files>";
 
 Ctx :: struct {
-    out: Fs.File;    
+    out: std.File;    
     filename: string;
     sym_cache: [..]u32;
     type_cache: [..]CXType;
@@ -92,7 +92,7 @@ handle_args :: fn () bool {
             }
             std.str_replace_all(&args[1], '\\', '/');
             a.include_dir = args[1];
-            is_valid_directory :: Fs.is_directory(a.include_dir);
+            is_valid_directory :: std.is_directory(a.include_dir);
             if !is_valid_directory {  
                 return 0, error("Invalid include directory path '%'!", a.include_dir);
             }
@@ -175,18 +175,18 @@ process_file :: fn (in_filepath: string) Error {
     out_filepath := std.str_new(_args.out_filepath);
     defer std.str_delete(out_filepath);
     if std.str_is_empty(_args.out_filepath) {
-        out_filepath = sprint("%.bl", Fs.remove_extension(ctx.filename));
+        out_filepath = sprint("%.bl", std.path_remove_extension(ctx.filename));
     }
-    out_file, err :: Fs.open(out_filepath, Fs.OpenMode.CREATE, Fs.OpenMode.WRITE);
+    out_file, err :: std.file_open(out_filepath, std.FileOpenMode.CREATE, std.FileOpenMode.WRITE);
     if !is_ok(err) {
         return error("Cannot create output file '%'.", out_filepath);
     }
     ctx.out = out_file;
 
     print("Converting file '%' to '%'.\n", in_filepath, out_filepath);
-    Fs.write_fmt(ctx.out, "// Generated from '%'.\n// c2bl version: %\n", ctx.filename, VERSION);    
+    std.write_fmt(ctx.out, "// Generated from '%'.\n// c2bl version: %\n", ctx.filename, VERSION);    
     clang_visitChildren(cursor, &visitor, auto &ctx);
-    Fs.close(out_file);
+    std.file_close(out_file);
     array_terminate(&ctx.type_cache);
     array_terminate(&ctx.sym_cache);
 
@@ -208,7 +208,7 @@ visitor :: fn (c: CXCursor, _: CXCursor, client_data: CXClientData) CXChildVisit
         clang_getExpansionLocation(loc, &file, null, null, null);
         spelling :: clang_getFileName(file);
         if spelling.data {
-            name :: {:string: auto c_strlen(auto spelling.data), spelling.data};
+            name :: {:string: auto C.strlen(auto spelling.data), spelling.data};
             print("% ", name);
         }
     }
@@ -234,14 +234,14 @@ visitor :: fn (c: CXCursor, _: CXCursor, client_data: CXClientData) CXChildVisit
         CXCursorKind.EnumDecl {
             if !clang_isCursorDefinition(c) { return CXChildVisitResult.Continue; }
             emit_name(ctx, c);
-            Fs.write_string(ctx.out, " :: ");
+            std.write_string(ctx.out, " :: ");
             switch c.kind {
                 CXCursorKind.StructDecl { emit_struct(ctx, c); }
                 CXCursorKind.UnionDecl  { emit_union(ctx, c);  }
                 CXCursorKind.EnumDecl   { emit_enum(ctx, c);   }
                 default;
             }                                
-            Fs.write_string(ctx.out, "\n");
+            std.write_string(ctx.out, "\n");
             add_cached_type(ctx, clang_getCursorType(c));
         }
         CXCursorKind.TypedefDecl {
@@ -269,90 +269,90 @@ emit_macro :: fn (ctx: *Ctx, c: CXCursor) {
     if tokens.len < 2 { return; }
     loop i := 0; i < tokens.len; i += 1 {
         spelling :: clang_getTokenSpelling(tu, tokens[i]);
-        str :: {:string: auto c_strlen(auto spelling.data), spelling.data};
+        str :: {:string: auto C.strlen(auto spelling.data), spelling.data};
         if i == 0 {
             if std.str_is_empty(str) { break; }
-            Fs.write_fmt(ctx.out, "% :: ", str);
+            std.write_fmt(ctx.out, "% :: ", str);
         } else {
-            Fs.write_string(ctx.out, str);
+            std.write_string(ctx.out, str);
         }
     }
     //if tokens.len < 2 { error_cursor(ctx, c, "invalid macro expansion"); }
-    Fs.write_string(ctx.out, ";\n");
+    std.write_string(ctx.out, ";\n");
 }
 
 emit_func :: fn (ctx: *Ctx, c: CXCursor) {
     type :: clang_getCursorType(c);
     if !emit_name(ctx, c) { return; }
-    Fs.write_string(ctx.out, " :: fn (");
+    std.write_string(ctx.out, " :: fn (");
     argc :: clang_Cursor_getNumArguments(c);
     loop i := 0; i < argc; i += 1 {
         arg_cursor :: clang_Cursor_getArgument(c, auto i);
         if !emit_name(ctx, arg_cursor) {
-            Fs.write_fmt(ctx.out, "_%: ", i);
+            std.write_fmt(ctx.out, "_%: ", i);
         } else {
-            Fs.write_fmt(ctx.out, ": ", i);
+            std.write_fmt(ctx.out, ": ", i);
         }
         arg_type :: clang_getArgType(type, i);
         emit_type(ctx, arg_type, true);
-        if i < argc - 1 { Fs.write_string(ctx.out, ", "); }
+        if i < argc - 1 { std.write_string(ctx.out, ", "); }
     }
-    Fs.write_string(ctx.out, ") ");
+    std.write_string(ctx.out, ") ");
     type_result := clang_getResultType(type);
     emit_type(ctx, type_result, true);
-    Fs.write_string(ctx.out, " #extern;\n");
+    std.write_string(ctx.out, " #extern;\n");
 }
 
 emit_enum :: fn (ctx: *Ctx, c: CXCursor) {
-    Fs.write_string(ctx.out, "enum c_int {\n");
+    std.write_string(ctx.out, "enum c_int {\n");
     clang_visitChildren(c, &emit_enum_variant, auto ctx);
-    Fs.write_string(ctx.out, "}");
+    std.write_string(ctx.out, "}");
 }
 
 emit_enum_variant :: fn (c: CXCursor, _: CXCursor, client_data: CXClientData) CXChildVisitResult {
     ctx :: cast(*Ctx) client_data;
-    Fs.write_string(ctx.out, "    ");
+    std.write_string(ctx.out, "    ");
     emit_name(ctx, c);
     value :: clang_getEnumConstantDeclValue(c);
-    Fs.write_fmt(ctx.out, " :: %;\n", value);
+    std.write_fmt(ctx.out, " :: %;\n", value);
     return CXChildVisitResult.Continue;
 }
 
 emit_struct :: fn (ctx: *Ctx, c: CXCursor) {
-    Fs.write_string(ctx.out, "struct {\n");
+    std.write_string(ctx.out, "struct {\n");
     clang_visitChildren(c, &emit_struct_member, auto ctx);
-    Fs.write_string(ctx.out, "}");
+    std.write_string(ctx.out, "}");
 }
 
 emit_union :: fn (ctx: *Ctx, c: CXCursor) {
-    Fs.write_string(ctx.out, "union {\n");
+    std.write_string(ctx.out, "union {\n");
     clang_visitChildren(c, &emit_struct_member, auto ctx);
-    Fs.write_string(ctx.out, "}");
+    std.write_string(ctx.out, "}");
 }
 
 emit_struct_member :: fn (c: CXCursor, _: CXCursor, client_data: CXClientData) CXChildVisitResult {
     ctx :: cast(*Ctx) client_data;
-    Fs.write_string(ctx.out, "    ");
+    std.write_string(ctx.out, "    ");
     emit_name(ctx, c);
-    Fs.write_fmt(ctx.out, ": ");
+    std.write_fmt(ctx.out, ": ");
     type :: clang_getCursorType(c);
     emit_type(ctx, type);
-    Fs.write_fmt(ctx.out, ";\n");
+    std.write_fmt(ctx.out, ";\n");
     return CXChildVisitResult.Continue;
 }
 
 emit_typedef :: fn (ctx: *Ctx, c: CXCursor) {
     if !emit_name(ctx, c) { return; }
-    Fs.write_string(ctx.out, " :: ");
+    std.write_string(ctx.out, " :: ");
     type :: clang_getTypedefDeclUnderlyingType(c);
     emit_type(ctx, type, true);
-    Fs.write_string(ctx.out, ";\n");
+    std.write_string(ctx.out, ";\n");
 }
 
 emit_name :: fn (ctx: *Ctx, c: CXCursor) bool {
     name, is_valid :: get_name(c);
     if is_valid {
-        Fs.write_string(ctx.out, name);
+        std.write_string(ctx.out, name);
         return true;
     }
     return false;
@@ -360,29 +360,29 @@ emit_name :: fn (ctx: *Ctx, c: CXCursor) bool {
 
 emit_type :: fn (ctx: *Ctx, type: CXType, ignore_void := false) {
     switch type.kind {
-        CXTypeKind.Bool       { Fs.write_string(ctx.out, "bool"); }
-        CXTypeKind.Char_U     { Fs.write_string(ctx.out, "c_uchar");   }
-        CXTypeKind.UChar      { Fs.write_string(ctx.out, "c_uchar");   }
-        CXTypeKind.Char16     { Fs.write_string(ctx.out, "c_short");  }
-        CXTypeKind.Char32     { Fs.write_string(ctx.out, "c_int");  }
-        CXTypeKind.UShort     { Fs.write_string(ctx.out, "c_ushort");  }
-        CXTypeKind.UInt       { Fs.write_string(ctx.out, "c_uint");  }
-        CXTypeKind.ULong      { Fs.write_string(ctx.out, "c_ulong");  }
-        CXTypeKind.ULongLong  { Fs.write_string(ctx.out, "c_ulonglong");  }
-        CXTypeKind.Char_S     { Fs.write_string(ctx.out, "c_char");   }
-        CXTypeKind.SChar      { Fs.write_string(ctx.out, "c_char");   }
-        CXTypeKind.WChar      { Fs.write_string(ctx.out, "c_short");  }
-        CXTypeKind.Short      { Fs.write_string(ctx.out, "c_short");  }
-        CXTypeKind.Int        { Fs.write_string(ctx.out, "c_int");  }
-        CXTypeKind.Long       { Fs.write_string(ctx.out, "c_long");  }
-        CXTypeKind.LongLong   { Fs.write_string(ctx.out, "c_longlong");  }
-        CXTypeKind.Float      { Fs.write_string(ctx.out, "f32");  }
-        CXTypeKind.Double     { Fs.write_string(ctx.out, "f64");  }
-        CXTypeKind.NullPtr    { Fs.write_string(ctx.out, "null"); }
+        CXTypeKind.Bool       { std.write_string(ctx.out, "bool"); }
+        CXTypeKind.Char_U     { std.write_string(ctx.out, "c_uchar");   }
+        CXTypeKind.UChar      { std.write_string(ctx.out, "c_uchar");   }
+        CXTypeKind.Char16     { std.write_string(ctx.out, "c_short");  }
+        CXTypeKind.Char32     { std.write_string(ctx.out, "c_int");  }
+        CXTypeKind.UShort     { std.write_string(ctx.out, "c_ushort");  }
+        CXTypeKind.UInt       { std.write_string(ctx.out, "c_uint");  }
+        CXTypeKind.ULong      { std.write_string(ctx.out, "c_ulong");  }
+        CXTypeKind.ULongLong  { std.write_string(ctx.out, "c_ulonglong");  }
+        CXTypeKind.Char_S     { std.write_string(ctx.out, "c_char");   }
+        CXTypeKind.SChar      { std.write_string(ctx.out, "c_char");   }
+        CXTypeKind.WChar      { std.write_string(ctx.out, "c_short");  }
+        CXTypeKind.Short      { std.write_string(ctx.out, "c_short");  }
+        CXTypeKind.Int        { std.write_string(ctx.out, "c_int");  }
+        CXTypeKind.Long       { std.write_string(ctx.out, "c_long");  }
+        CXTypeKind.LongLong   { std.write_string(ctx.out, "c_longlong");  }
+        CXTypeKind.Float      { std.write_string(ctx.out, "f32");  }
+        CXTypeKind.Double     { std.write_string(ctx.out, "f64");  }
+        CXTypeKind.NullPtr    { std.write_string(ctx.out, "null"); }
 
         CXTypeKind.Void {
             if !ignore_void {
-                Fs.write_string(ctx.out, "c_void");
+                std.write_string(ctx.out, "c_void");
             }
         }
         CXTypeKind.Elaborated,
@@ -408,7 +408,7 @@ emit_type :: fn (ctx: *Ctx, type: CXType, ignore_void := false) {
                 } else {
                     name, is_valid :: get_name(type);
                     if is_valid {
-                        Fs.write_string(ctx.out, name);
+                        std.write_string(ctx.out, name);
                     } else {
                         error_cursor(ctx, c, "unknown type/reference name as %", type.kind);
                     }
@@ -420,28 +420,28 @@ emit_type :: fn (ctx: *Ctx, type: CXType, ignore_void := false) {
           
         CXTypeKind.FunctionNoProto,  
         CXTypeKind.FunctionProto {
-            Fs.write_string(ctx.out, "fn (");
+            std.write_string(ctx.out, "fn (");
             argc := clang_getNumArgTypes(type);
             loop i := 0; i < argc; i += 1 {
-                Fs.write_fmt(ctx.out, "_%: ", i);
+                std.write_fmt(ctx.out, "_%: ", i);
                 arg_type :: clang_getArgType(type, i);
                 emit_type(ctx, arg_type, true);
-                if i < argc - 1 { Fs.write_string(ctx.out, ", "); }
+                if i < argc - 1 { std.write_string(ctx.out, ", "); }
             }
-            Fs.write_string(ctx.out, ") ");
+            std.write_string(ctx.out, ") ");
             type_result := clang_getResultType(type);
             emit_type(ctx, type_result, true);
         }
 
         CXTypeKind.ConstantArray {
             l := clang_getNumElements(type);
-            Fs.write_fmt(ctx.out, "[%]", l);
+            std.write_fmt(ctx.out, "[%]", l);
             type_elem := clang_getArrayElementType(type);
             emit_type(ctx, type_elem, true);
         }
 
         CXTypeKind.Pointer {
-            Fs.write_string(ctx.out, "*");
+            std.write_string(ctx.out, "*");
             emit_type(ctx, clang_getPointeeType(type), false);
         }
         
@@ -456,14 +456,14 @@ get_name :: fn { _get_name_cursor; _get_name_type; }
 
 _get_name_cursor :: fn (c: CXCursor) (string, bool) {
     spelling :: clang_getCursorSpelling(c);
-    name :: {:string: auto c_strlen(auto spelling.data), spelling.data};
+    name :: {:string: auto C.strlen(auto spelling.data), spelling.data};
     if std.str_is_empty(name) { return "", false; }
     return name, true;
 }
 
 _get_name_type :: fn (type: CXType) (string, bool) {
     spelling :: clang_getTypeSpelling(type);
-    name :: {:string: auto c_strlen(auto spelling.data), spelling.data};
+    name :: {:string: auto C.strlen(auto spelling.data), spelling.data};
     if std.str_is_empty(name) { return "", false; }
     return name, true;
 }
@@ -510,5 +510,5 @@ error_cursor :: fn (ctx: *Ctx, c: CXCursor, fmt: string, args: ...) {
     len :: bprint(buf, fmt, args);
     str :: {:string: auto len, buf.ptr};
     eprint("ERROR [%:%] %\n", ctx.filename, line, str);
-    Fs.write_fmt(ctx.out, "\n// ERROR [%:%] %\n", ctx.filename, line, str);
+    std.write_fmt(ctx.out, "\n// ERROR [%:%] %\n", ctx.filename, line, str);
 }

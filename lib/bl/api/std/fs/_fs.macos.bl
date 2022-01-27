@@ -1,6 +1,6 @@
 #load "fs.bl"
 
-#scope _FsImpl
+#scope _fs_impl
 
 /// File handle type.
 File :: s64;
@@ -12,7 +12,7 @@ exist :: fn (filepath: string) bool #inline {
     return C.stat(auto filepath.ptr, &tmp) == 0;
 }
 
-open :: fn (filepath: string, mode: ...Fs.OpenMode) (Fs.File, Error) {
+open :: fn (filepath: string, mode: ...std.FileOpenMode) (File, Error) {
     if std.str_is_empty(filepath) { return 0, error(ERR_INVALID_HANDLE, "File path is empty!"); }
     flags :: modes_to_flags(mode);
     mode_flags : C.mode_t : 0x1A4; // 0644
@@ -38,7 +38,7 @@ remove :: fn (filepath: string) Error #inline {
     return ok();
 }
 
-get_uid :: fn (handle: Fs.File) (u64, Error) {
+get_uid :: fn (handle: File) (u64, Error) {
     tmp: C.stat_t;
     if C.fstat(auto handle, &tmp) != 0 {
         ec, estr :: os_get_last_error();
@@ -58,24 +58,24 @@ copy :: fn (src: string, dest: string, override: bool) Error {
     if std.str_is_empty(src) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
     if std.str_is_empty(dest) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
     if exist(dest) && !override { return error(ERR_ALREADY_EXIST, "Destination already exist '%'", dest); }
-    file_src, err1 :: open(src, Fs.OpenMode.READ);
+    file_src, err1 :: open(src, std.FileOpenMode.READ);
     defer close(file_src);
     if !is_ok(err1) { return err1; }
-    tmp, err2 :: Fs.read_slice(file_src);
+    tmp, err2 :: std.read_slice(file_src);
     defer slice_terminate(&tmp);
     if !is_ok(err2) { return err2; }
-    file_dest, err3:: open(dest, Fs.OpenMode.WRITE, Fs.OpenMode.CREATE);
+    file_dest, err3:: open(dest, std.FileOpenMode.WRITE, std.FileOpenMode.CREATE);
     defer close(file_dest);
     if !is_ok(err3) { return err3; }
-    _, err4 :: Fs.write_slice(file_dest, tmp);
+    _, err4 :: std.write_slice(file_dest, tmp);
     return err4;
 }
 
-close :: fn (handle: Fs.File) #inline {
+close :: fn (handle: File) #inline {
     C.close(auto handle);
 }
 
-size :: fn (handle: Fs.File) (usize, Error) #inline {
+size :: fn (handle: File) (usize, Error) #inline {
     tmp: C.stat_t;
     if C.fstat(auto handle, &tmp) != 0 {
         ec, estr :: os_get_last_error();
@@ -84,7 +84,7 @@ size :: fn (handle: Fs.File) (usize, Error) #inline {
     return auto tmp.st_size, ok();
 }
 
-read :: fn (handle: Fs.File, dest: *u8, size: s64) (s64, Error) {
+read :: fn (handle: File, dest: *u8, size: s64) (s64, Error) {
     if !dest { return 0, error(ERR_INVALID_HANDLE, "Cannot read, destination is invalid."); }
     read :: C.read(auto handle, auto dest, auto size);
     if read < 0 { 
@@ -94,7 +94,7 @@ read :: fn (handle: Fs.File, dest: *u8, size: s64) (s64, Error) {
     return auto read, ok();
 }
 
-write :: fn (handle: Fs.File, src: *u8, size: s64) (s64, Error) {
+write :: fn (handle: File, src: *u8, size: s64) (s64, Error) {
     if !src { return 0, error(ERR_INVALID_HANDLE, "Cannot write, source is invalid."); }
     written :: C.write(auto handle, auto src, auto size);
     if written < 0 { 
@@ -123,8 +123,8 @@ dir_remove :: fn (dirpath: string) Error {
     return ok();
 }
 
-dir_scan :: fn (dirpath: string, filter: Fs.DirScanFilterFn) (Fs.InfoList, Error) {
-    invalid: Fs.InfoList;
+dir_scan :: fn (dirpath: string, filter: std.DirScanFilterFn) (std.InfoList, Error) {
+    invalid: std.InfoList;
     dir := C.opendir(auto dirpath.ptr);
     if !dir {
         ec, estr :: os_get_last_error();
@@ -137,7 +137,7 @@ dir_scan :: fn (dirpath: string, filter: Fs.DirScanFilterFn) (Fs.InfoList, Error
     C.rewinddir(dir);
     defer C.rewinddir(dir);
 
-    buf: Fs.InfoList;
+    buf: std.InfoList;
     slice_init(&buf, fc);
     if fc == 0 { return buf, ok(); }
 
@@ -145,17 +145,17 @@ dir_scan :: fn (dirpath: string, filter: Fs.DirScanFilterFn) (Fs.InfoList, Error
     loop {
         stat :: C.readdir(dir);
         if stat == null { break; }
-        kind: Fs.InfoKind;
+        kind: std.InfoKind;
         name: string;
         if stat.d_type == auto C.DT_DIR {
-            kind = Fs.InfoKind.DIRECTORY;
+            kind = std.InfoKind.DIRECTORY;
             name = std.str_new(cast(*u8) stat.d_name.ptr);
         } else {
-            kind = Fs.InfoKind.FILE;
+            kind = std.InfoKind.FILE;
             name = std.str_new(cast(*u8) stat.d_name.ptr);
         }
         push := true;
-        info :: {:Fs.Info: kind, name};
+        info :: {:std.Info: kind, name};
         if filter { push = filter(&info); }
         if push {
             buf.len += 1;
@@ -241,14 +241,14 @@ normalize :: fn (filepath: *string) Error {
 }
 
 #private
-modes_to_flags :: fn (modes: []Fs.OpenMode) s32 #inline {
+modes_to_flags :: fn (modes: []std.FileOpenMode) s32 #inline {
     r, w, create, append := false;
     loop i := 0; i < modes.len; i += 1 {
         switch modes[i] {
-            Fs.OpenMode.READ    { r = true; }            
-            Fs.OpenMode.WRITE   { w = true; }
-            Fs.OpenMode.APPEND  { w = true; append = true; }
-            Fs.OpenMode.CREATE  { create = true; }
+            std.FileOpenMode.READ    { r = true; }            
+            std.FileOpenMode.WRITE   { w = true; }
+            std.FileOpenMode.APPEND  { w = true; append = true; }
+            std.FileOpenMode.CREATE  { create = true; }
             default { panic(); }
         }
     }

@@ -147,7 +147,7 @@ str_concat :: fn (v: *string, args: ...) string {
 ///
 /// path := std.str_new();
 /// defer std.str_delete(path);
-/// Fs.set_cwd(std.str_clear_concat(&path, "my-dir/project-", VERSION));
+/// std.set_cwd(std.str_clear_concat(&path, "my-dir/project-", VERSION));
 /// ```
 str_clear_concat :: fn (v: *string, args: ...) string {
     str_clear(v);

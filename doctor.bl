@@ -32,8 +32,8 @@ main :: fn () s32 {
     defer std.tmp_release();
     
     wdir_init();
-    Fs.dir_create(get_path(TMP_DIR));
-    Fs.set_cwd(get_path(TMP_DIR));
+    std.dir_create(get_path(TMP_DIR));
+    std.set_cwd(get_path(TMP_DIR));
     _args.test_count = 1;
     if !parse_args() { return 1; }
     #if PLATFORM == Platform.WINDOWS {
@@ -90,7 +90,7 @@ main :: fn () s32 {
     }
     
     // cleanup
-    Fs.dir_remove_all(get_path(TMP_DIR));
+    std.dir_remove_all(get_path(TMP_DIR));
     return _errc;
 }
 
@@ -193,10 +193,10 @@ get_verbosity :: fn () string #inline {
 }
 
 get_expected_error :: fn (filepath: string, out_err: *s32) bool {
-    file, err1 :: Fs.open(filepath, Fs.OpenMode.READ);
-    defer Fs.close(file);
+    file, err1 :: std.file_open(filepath, std.FileOpenMode.READ);
+    defer std.file_close(file);
     if !is_ok(err1) { print_err("%", err1); return false; }
-    content, err2 :: Fs.read_string(file);
+    content, err2 :: std.read_string(file);
     defer std.str_delete(content);
     if !is_ok(err2) { print_err("%", err2); return false; }
     
@@ -285,7 +285,7 @@ test_file :: fn (file: string, kind := TestKind.RUNTIME, expected_state := TEST_
             }
         }
     }
-    Fs.dir_remove_all(get_path(TMP_DIR), false);
+    std.dir_remove_all(get_path(TMP_DIR), false);
 }
 
 test_all_in_dir :: fn (dir: string, expect_fail := false) {
@@ -293,15 +293,15 @@ test_all_in_dir :: fn (dir: string, expect_fail := false) {
     defer std.str_delete(file);
     
     print("Testing files in directory '%':\n", dir);        
-    list, err :: Fs.dir_scan(dir);
+    list, err :: std.dir_scan(dir);
     if !is_ok(err) {
         print_err("%", err);
     }
-    defer Fs.info_list_delete(list);
+    defer std.info_list_delete(list);
 
     loop i := 0; i < list.len; i += 1 {
         info :: &list[i];
-        if info.kind != Fs.InfoKind.DIRECTORY {
+        if info.kind != std.InfoKind.DIRECTORY {
             std.str_clear(&file);
             std.str_concat(&file, dir, "/", info.name);
             if expect_fail {

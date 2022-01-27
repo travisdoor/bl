@@ -18,7 +18,7 @@ target_c2bl :: fn () {
     exe := add_executable("c2bl");
     add_unit(exe, "c2bl/src/main.bl");
     set_output_dir(exe, BIN_DIR);
-    set_module_dir(exe, "c2bl/_modules", ModuleImportPolicy.System);
+    set_module_dir(exe, "c2bl/_modules", ModuleImportPolicy.SYSTEM);
     exe.copy_dependencies = true;
     exe.register_split = true;
 }
