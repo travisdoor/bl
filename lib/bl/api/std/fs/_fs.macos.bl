@@ -1,4 +1,5 @@
 #load "fs.bl"
+#load "io.bl"
 
 #scope _fs_impl
 

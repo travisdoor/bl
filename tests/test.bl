@@ -1,5 +1,5 @@
 main :: fn () s32 {
-    #using mine;
+    using mine;
     foo(make_flags(Flags.A, Flags.B));
     //mine.foo(make_flags(mine.Flags.A, mine.Flags.B));
 
