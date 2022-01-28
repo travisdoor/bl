@@ -1,12 +1,20 @@
-#import "std/table"
-
 main :: fn () s32 {
-    tbl: std.Table(s32, s32);
-    std.tbl_erase(&tbl, 1); 
+    #using mine;
+    foo(make_flags(Flags.A, Flags.B));
+    //mine.foo(make_flags(mine.Flags.A, mine.Flags.B));
 
-    it :: std.tbl_end(&tbl);
-    std.tbl_erase(&tbl, it);
     return 0;
+}
+
+#scope mine
+
+Flags :: enum #flags {
+    A;
+    B;
+}
+
+foo :: fn (flags: Flags) {
+    print("%\n", flags);
 }
 
 // =================================================================================================

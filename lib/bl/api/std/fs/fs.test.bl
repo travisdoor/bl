@@ -1,5 +1,6 @@
 #import "std/test"
 #import "std/fs"
+#import "std/io"
 
 main :: fn () s32 {
     return test_run();    
@@ -99,7 +100,7 @@ fs_file_create_test2 :: fn () #test {
     }    
 
     {
-        file, err :: std.file_open(filepath, std.FileOpenMode.CREATE, std.FileOpenMode.WRITE);
+        file, err :: std.file_open(filepath, make_flags(std.FileOpenMode.CREATE, std.FileOpenMode.WRITE));
         defer std.file_close(file);
         test_ok(err);
 
@@ -124,7 +125,7 @@ fs_create_append :: fn () #test {
     defer std.str_delete(filepath);
     std.file_remove(filepath);
     { // initial create
-        file, err :: std.file_open(filepath, std.FileOpenMode.CREATE, std.FileOpenMode.WRITE);
+        file, err :: std.file_open(filepath, make_flags(std.FileOpenMode.CREATE, std.FileOpenMode.WRITE));
         defer std.file_close(file);
         test_ok(err);
         std.write_string(file, "Hello!");
@@ -391,7 +392,7 @@ fs_write_test :: fn () #test {
     content :: "Hello I'm cool file content!";    
     
     { // write
-        file :: std.file_open(filepath, std.FileOpenMode.CREATE, std.FileOpenMode.WRITE);
+        file :: std.file_open(filepath, make_flags(std.FileOpenMode.CREATE, std.FileOpenMode.WRITE));
         written, err :: std.write(file, content.ptr, content.len);
         test_ok(err);
         test_eq(written, content.len);
@@ -415,7 +416,7 @@ fs_write_string_test :: fn () #test {
     content :: "Hello I'm cool file content!";    
     
     { // write
-        file :: std.file_open(filepath, std.FileOpenMode.CREATE, std.FileOpenMode.WRITE);
+        file :: std.file_open(filepath, make_flags(std.FileOpenMode.CREATE, std.FileOpenMode.WRITE));
         written, err :: std.write_string(file, content);
         test_ok(err);
         test_eq(written, content.len);
@@ -439,7 +440,7 @@ fs_write_slice_test :: fn () #test {
     content :: {:[5]u8: 'H', 'e', 'l', 'o', 'o' };
     
     { // write
-        file :: std.file_open(filepath, std.FileOpenMode.CREATE, std.FileOpenMode.WRITE);
+        file :: std.file_open(filepath, make_flags(std.FileOpenMode.CREATE, std.FileOpenMode.WRITE));
         written, err :: std.write_slice(file, content);
         test_ok(err);
         test_eq(written, content.len);

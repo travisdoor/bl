@@ -1,5 +1,6 @@
 #!/usr/local/bin/blc --silent -run
 #import "std/fs"
+#import "std/io"
 #import "std/arg_parser"
 
 BL_EXE_PATH_WIN  :: "bin/blc.exe";

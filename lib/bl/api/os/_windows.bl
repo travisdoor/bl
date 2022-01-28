@@ -39,14 +39,14 @@ OS_STDIN  :: C.STDIN;
 OS_STDOUT :: C.STDOUT;
 OS_STDERR :: C.STDERR;
 
-OS_PATH_MAX :: Win32.MAX_PATH;
+OS_PATH_MAX :: win32.MAX_PATH;
 
 ERR_UNKNOWN        :: -1;
-ERR_NOT_FOUND      :: Win32.ERROR_FILE_NOT_FOUND;
-ERR_ALREADY_EXIST  :: Win32.ERROR_FILE_EXISTS;
-ERR_ACCESS_DENIED  :: Win32.ERROR_ACCESS_DENIED;
-ERR_INVALID_HANDLE :: Win32.ERROR_INVALID_HANDLE;
-ERR_DIRECTORY      :: Win32.ERROR_DIRECTORY;
+ERR_NOT_FOUND      :: win32.ERROR_FILE_NOT_FOUND;
+ERR_ALREADY_EXIST  :: win32.ERROR_FILE_EXISTS;
+ERR_ACCESS_DENIED  :: win32.ERROR_ACCESS_DENIED;
+ERR_INVALID_HANDLE :: win32.ERROR_INVALID_HANDLE;
+ERR_DIRECTORY      :: win32.ERROR_DIRECTORY;
 
 os_stdin :: fn () *u8 #inline {
     return C.__acrt_iob_func(C.STDIN);
@@ -61,21 +61,21 @@ os_stderr :: fn () *u8 #inline {
 }
 
 os_sleep_ms :: fn (ms: f64) #inline {
-    Win32.Sleep(auto ms);
+    win32.Sleep(auto ms);
 };
 
 os_tick_ms :: fn () f64 #inline {
-    f: Win32.LARGE_INTEGER #noinit;
-    t: Win32.LARGE_INTEGER #noinit;
+    f: win32.LARGE_INTEGER #noinit;
+    t: win32.LARGE_INTEGER #noinit;
 
-    if Win32.QueryPerformanceFrequency(&f) == 0 { return 0.; }
-    if Win32.QueryPerformanceCounter(&t) == 0 { return 0.; }
+    if win32.QueryPerformanceFrequency(&f) == 0 { return 0.; }
+    if win32.QueryPerformanceCounter(&t) == 0 { return 0.; }
     return (cast(f64) t / cast(f64) f) * 1000.;
 };
 
 os_get_exec_path :: fn () string {
     buf : [OS_PATH_MAX]u8 #noinit;
-    if Win32.GetModuleFileNameA(null, buf.ptr, auto buf.len) > 0 {
+    if win32.GetModuleFileNameA(null, buf.ptr, auto buf.len) > 0 {
         result :: std.str_new(buf.ptr);
         std.str_replace_all(&result, '\\', '/');
         return result;
@@ -89,11 +89,11 @@ os_execute :: fn (command: string) s32 {
 }
 
 os_get_last_error :: fn () (s32, string) #inline {
-    ec :: cast(s32) Win32.GetLastError();
+    ec :: cast(s32) win32.GetLastError();
     if ec == 0 { return 0, "No error."; }
 
-    msg_len :: Win32.FormatMessageA(
-        Win32.FORMAT_MESSAGE_FROM_SYSTEM | Win32.FORMAT_MESSAGE_IGNORE_INSERTS | Win32.FORMAT_MESSAGE_MAX_WIDTH_MASK,
+    msg_len :: win32.FormatMessageA(
+        win32.FORMAT_MESSAGE_FROM_SYSTEM | win32.FORMAT_MESSAGE_IGNORE_INSERTS | win32.FORMAT_MESSAGE_MAX_WIDTH_MASK,
         null,
         auto ec,
         0,
@@ -114,8 +114,8 @@ __os_write :: fn (fd: s32, buf: *u8, count: usize) s64 {
 // reach the `debugbreak` builtin expression, compiler will use internal break handling for compile-time
 // execution (using interpreter) and replace this expression with call to this function in runtime.
 __os_debug_break :: fn () #inline #compiler {
-    if Win32.IsDebuggerPresent() != 0 {
-        Win32.DebugBreak();
+    if win32.IsDebuggerPresent() != 0 {
+        win32.DebugBreak();
     }
 }
 
@@ -144,9 +144,9 @@ __os_start :: fn () #entry {
     // by free(args.ptr) call.
     get_command_line_args :: fn (out_args: *[]string) #noinline {
         wargs: []*u16;
-        cmd_line :: Win32.GetCommandLineW();
-        wargs.ptr = Win32.CommandLineToArgvW(cmd_line, auto &wargs.len);
-        defer Win32.LocalFree(auto wargs.ptr);
+        cmd_line :: win32.GetCommandLineW();
+        wargs.ptr = win32.CommandLineToArgvW(cmd_line, auto &wargs.len);
+        defer win32.LocalFree(auto wargs.ptr);
 
         // Determinate size needed for all argument strings listed in one array including
         // zero terminator for each one.
@@ -154,7 +154,7 @@ __os_start :: fn () #entry {
         result_size: usize = sizeof(string) * auto wargs.len;
 
         loop i := 0; i < wargs.len; i += 1 {
-            tmp_size += auto Win32.WideCharToMultiByte(Win32.CP_UTF8, null, wargs[i], -1, null, 0, null, null); 
+            tmp_size += auto win32.WideCharToMultiByte(win32.CP_UTF8, null, wargs[i], -1, null, 0, null, null); 
         }
 
         buffer :: C.malloc(result_size + tmp_size); 
@@ -166,8 +166,8 @@ __os_start :: fn () #entry {
 
         tmp_i := 0;
         loop i := 0; i < wargs.len; i += 1 {
-            len :: Win32.WideCharToMultiByte(Win32.CP_UTF8, null, wargs[i], -1, null, 0, null, null); 
-            Win32.WideCharToMultiByte(Win32.CP_UTF8, null, wargs[i], auto C.wcslen(wargs[i]), &tmp[tmp_i], len, null, null); 
+            len :: win32.WideCharToMultiByte(win32.CP_UTF8, null, wargs[i], -1, null, 0, null, null); 
+            win32.WideCharToMultiByte(win32.CP_UTF8, null, wargs[i], auto C.wcslen(wargs[i]), &tmp[tmp_i], len, null, null); 
 
             (@out_args)[i].len = len - 1;
             (@out_args)[i].ptr = &tmp[tmp_i];

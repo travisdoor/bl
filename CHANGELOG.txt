@@ -30,6 +30,7 @@ Change array API.
 Change enum naming conventions to uppercase.
 Redesign libc importing into modules.
 Redesign of bl-config + using YAML as main config format.
+Move file read/write into io module.
 
 0.9.0 - PRE-RELEASE
 ---------------------------------------------------------------------------------------

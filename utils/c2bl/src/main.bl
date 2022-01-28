@@ -177,7 +177,7 @@ process_file :: fn (in_filepath: string) Error {
     if std.str_is_empty(_args.out_filepath) {
         out_filepath = sprint("%.bl", std.path_remove_extension(ctx.filename));
     }
-    out_file, err :: std.file_open(out_filepath, std.FileOpenMode.CREATE, std.FileOpenMode.WRITE);
+    out_file, err :: std.file_open(out_filepath, make_flags(std.FileOpenMode.CREATE, std.FileOpenMode.WRITE));
     if !is_ok(err) {
         return error("Cannot create output file '%'.", out_filepath);
     }

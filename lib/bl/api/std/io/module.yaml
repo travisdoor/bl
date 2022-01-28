@@ -1,0 +1,14 @@
+version: 1
+src: "io.bl"
+
+x86_64-pc-windows-msvc:
+  src: "_io.win32.bl"
+
+x86_64-pc-linux-gnu:
+  src: "_io.posix.bl"
+
+x86_64-apple-darwin:
+  src: "_io.posix.bl"
+
+arm64-apple-darwin:
+  src: "_io.posix.bl"

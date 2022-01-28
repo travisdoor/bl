@@ -205,7 +205,7 @@ main :: fn () s32 {
 }
 
 make_file :: fn (filepath: string, content: string, args: ...) Error {
-    file, err :: std.file_open(filepath, std.FileOpenMode.WRITE, std.FileOpenMode.CREATE);
+    file, err :: std.file_open(filepath, make_flags(std.FileOpenMode.WRITE, std.FileOpenMode.CREATE));
     defer std.file_close(file);
     if !is_ok(err) { return err; }
     std.write_fmt(file, content, args);

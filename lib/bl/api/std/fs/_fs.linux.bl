@@ -11,7 +11,7 @@ exist :: fn (filepath: string) bool #inline {
     return C.stat(auto filepath.ptr, &tmp) == 0;
 }
 
-open :: fn (filepath: string, mode: ...std.FileOpenMode) (File, Error) {
+open :: fn (filepath: string, mode: std.FileOpenMode) (File, Error) {
     if std.str_is_empty(filepath) { return 0, error(ERR_INVALID_HANDLE, "File path is empty!"); }
     flags := modes_to_flags(mode);
     mode_flags :: C.S_IRUSR | C.S_IWUSR | C.S_IROTH | C.S_IWOTH;
@@ -76,26 +76,6 @@ size :: fn (handle: File) (usize, Error) #inline {
         return 0, error(ec, "Cannot get file size: %.", estr);
     }
     return auto tmp.st_size, ok();
-}
-
-read :: fn (handle: File, dest: *u8, size: s64) (s64, Error) {
-    if !dest { return 0, error(ERR_INVALID_HANDLE, "Cannot read, destination is invalid."); }
-    read :: C.read(auto handle, auto dest, auto size);
-    if read < 0 { 
-        ec, estr :: os_get_last_error();
-        return 0, error(ec, "Cannot read file: %", estr);
-    }
-    return auto read, ok();
-}
-
-write :: fn (handle: File, src: *u8, size: s64) (s64, Error) {
-    if !src { return 0, error(ERR_INVALID_HANDLE, "Cannot write, source is invalid."); }
-    written :: C.write(auto handle, auto src, auto size);
-    if written < 0 { 
-        ec, estr :: os_get_last_error();
-        return 0, error(ec, "Cannot write to file: %.", estr);
-    }
-    return auto written, ok();
 }
 
 dir_create :: fn (dirpath: string) Error {
@@ -259,17 +239,12 @@ get_extension :: fn (filename: string) string #inline {
 }
 
 #private
-modes_to_flags :: fn (modes: []std.FileOpenMode) s32 #inline {
+modes_to_flags :: fn (modes: std.FileOpenMode) s32 #inline {
     r, w, create, append := false;
-    loop i := 0; i < modes.len; i += 1 {
-        switch modes[i] {
-            std.FileOpenMode.READ    { r = true; }            
-            std.FileOpenMode.WRITE   { w = true; }
-            std.FileOpenMode.APPEND  { w = true; append = true; }
-            std.FileOpenMode.CREATE  { create = true; }
-            default { panic(); }
-        }
-    }
+    if is_flag(modes, std.FileOpenMode.READ) { r = true; }
+    if is_flag(modes, std.FileOpenMode.WRITE) { w = true; }
+    if is_flag(modes, std.FileOpenMode.APPEND) { w = true; append = true; }
+    if is_flag(modes, std.FileOpenMode.CREATE) { create = true; }
     flags: s32;
     if ((!w) && (!r)) { flags = C.O_RDONLY; }
     else if (w && r) { flags = C.O_RDWR; }

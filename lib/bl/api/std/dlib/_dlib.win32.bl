@@ -6,18 +6,18 @@ Library :: *u8;
 
 open :: fn (lib_name: string) (Library, Error) {
     if lib_name.len > 0 {
-        handle :: Win32.LoadLibraryA(auto lib_name.ptr); 
+        handle :: win32.LoadLibraryA(auto lib_name.ptr); 
         if !handle {
             ec, emsg :: os_get_last_error();
             return null, error(ec, emsg);
         }
         return handle, ok();
     }
-    return Win32.GetModuleHandleA(null), ok(); 
+    return win32.GetModuleHandleA(null), ok(); 
 }
 
 sym :: fn (lib: Library, sym_name: string) (*u8, Error) {
-    handle :: Win32.GetProcAddress(lib, auto sym_name.ptr);
+    handle :: win32.GetProcAddress(lib, auto sym_name.ptr);
     if !handle {
         ec, emsg :: os_get_last_error();
         return null, error(ec, emsg);
@@ -27,7 +27,7 @@ sym :: fn (lib: Library, sym_name: string) (*u8, Error) {
 
 close :: fn (lib: Library) {
     if !lib { return; }
-    Win32.FreeLibrary(lib);
+    win32.FreeLibrary(lib);
 }
 
 
