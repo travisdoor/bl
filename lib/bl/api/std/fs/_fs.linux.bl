@@ -42,7 +42,7 @@ copy :: fn (src: string, dest: string, override: bool) Error {
     tmp, err2 :: std.read_slice(file_src);
     defer slice_terminate(&tmp);
     if !is_ok(err2) { return err2; }
-    file_dest, err3:: open(dest, std.FileOpenMode.WRITE, std.FileOpenMode.CREATE);
+    file_dest, err3:: open(dest, make_flags(std.FileOpenMode.WRITE, std.FileOpenMode.CREATE));
     defer close(file_dest);
     if !is_ok(err3) { return err3; }
     _, err4 :: std.write_slice(file_dest, tmp);
@@ -63,7 +63,7 @@ get_uid :: fn (handle: File) (u64, Error) {
 }
 
 get_uid_by_name :: fn (filepath: string) (u64, Error) {
-    file, err1 :: open(filepath);
+    file, err1 :: open(filepath, std.FileOpenMode.READ);
     defer close(file);
     if !is_ok(err1) { return 0, err1; }
     return get_uid(file);
