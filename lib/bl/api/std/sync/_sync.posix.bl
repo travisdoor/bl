@@ -1,7 +1,7 @@
 #import "os/posix/pthread"
 #load "sync.bl"
 
-#scope _SyncImpl
+#scope _sync_impl
 
 Mutex :: pthread_mutex_t;
 

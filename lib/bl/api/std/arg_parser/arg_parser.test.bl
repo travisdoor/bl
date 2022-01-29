@@ -7,42 +7,42 @@ main :: fn () s32 {
 
 #private
 
-Opt :: struct #base ArgParser.Ctx {
+Opt :: struct #base std.ArgParserCtx {
     about: bool;
     verbose: bool;
 }
 
 arg_parser_test1 :: fn () #test {
-    parser :: ArgParser.new();
-    defer ArgParser.delete(parser);
+    parser :: std.arg_parser_new();
+    defer std.arg_parser_delete(parser);
 
-    ArgParser.add(
+    std.arg_parser_add(
         parser,
         "-a",
         "--about",
         "Print information about application.",
-        &fn (_: ArgParser.Parser, _: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: std.ArgParser, _: []string, ctx: *std.ArgParserCtx) (s32, Error) {
             opt: *Opt = auto ctx;
             opt.about = true;
             return 1, ok();
         });
 
-    ArgParser.add(
+    std.arg_parser_add(
         parser,
         "-v",
         "--verbose",
         "Toggle verbose mode.",
-        &fn (_: ArgParser.Parser, _: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: std.ArgParser, _: []string, ctx: *std.ArgParserCtx) (s32, Error) {
             opt: *Opt = auto ctx;
             opt.verbose = true;
             return 1, ok();
         });
 
-    ArgParser.print_help(parser);
+    std.arg_parser_print_help(parser);
 
     {
         opt: Opt;
-        state :: ArgParser.run(parser, {:[]string: 0}, auto &opt);
+        state :: std.arg_parser_run(parser, {:[]string: 0}, auto &opt);
         test_ok(state);
         test_false(opt.about);
         test_false(opt.verbose);
@@ -51,7 +51,7 @@ arg_parser_test1 :: fn () #test {
     {
         opt: Opt;
         args :: {:[1]string: "-h"};
-        state :: ArgParser.run(parser, args, auto &opt);
+        state :: std.arg_parser_run(parser, args, auto &opt);
         test_ok(state);
         test_true(opt.help);
         test_false(opt.about);
@@ -61,7 +61,7 @@ arg_parser_test1 :: fn () #test {
     {
         opt: Opt;
         args :: {:[1]string: "--help"};
-        state :: ArgParser.run(parser, args, auto &opt);
+        state :: std.arg_parser_run(parser, args, auto &opt);
         test_ok(state);
         test_true(opt.help);
         test_false(opt.about);
@@ -71,7 +71,7 @@ arg_parser_test1 :: fn () #test {
     {
         opt: Opt;
         args :: {:[1]string: "-a"};
-        state :: ArgParser.run(parser, args, auto &opt);
+        state :: std.arg_parser_run(parser, args, auto &opt);
         test_ok(state);
         test_true(opt.about);
         test_false(opt.help);
@@ -81,7 +81,7 @@ arg_parser_test1 :: fn () #test {
     {
         opt: Opt;
         args :: {:[1]string: "--about"};
-        state :: ArgParser.run(parser, args, auto &opt);
+        state :: std.arg_parser_run(parser, args, auto &opt);
         test_ok(state);
         test_true(opt.about);
         test_false(opt.help);
@@ -91,7 +91,7 @@ arg_parser_test1 :: fn () #test {
     {
         opt: Opt;
         args :: {:[1]string: "-v"};
-        state :: ArgParser.run(parser, args, auto &opt);
+        state :: std.arg_parser_run(parser, args, auto &opt);
         test_ok(state);
         test_false(opt.about);
         test_false(opt.help);
@@ -101,7 +101,7 @@ arg_parser_test1 :: fn () #test {
     {
         opt: Opt;
         args :: {:[1]string: "--verbose"};
-        state :: ArgParser.run(parser, args, auto &opt);
+        state :: std.arg_parser_run(parser, args, auto &opt);
         test_ok(state);
         test_false(opt.about);
         test_false(opt.help);
@@ -111,7 +111,7 @@ arg_parser_test1 :: fn () #test {
     {
         opt: Opt;
         args :: {:[2]string: "-a", "-v"};
-        state :: ArgParser.run(parser, args, auto &opt);
+        state :: std.arg_parser_run(parser, args, auto &opt);
         test_ok(state);
         test_true(opt.about);
         test_false(opt.help);
@@ -121,7 +121,7 @@ arg_parser_test1 :: fn () #test {
     {
         opt: Opt;
         args :: {:[2]string: "--about", "--verbose"};
-        state :: ArgParser.run(parser, args, auto &opt);
+        state :: std.arg_parser_run(parser, args, auto &opt);
         test_ok(state);
         test_true(opt.about);
         test_true(opt.verbose);
@@ -131,7 +131,7 @@ arg_parser_test1 :: fn () #test {
     {
         opt: Opt;
         args :: {:[2]string: "--about", "-verbose"};
-        state :: ArgParser.run(parser, args, auto &opt);
+        state :: std.arg_parser_run(parser, args, auto &opt);
         test_not_ok(state);
         test_true(opt.about);
         test_false(opt.verbose);

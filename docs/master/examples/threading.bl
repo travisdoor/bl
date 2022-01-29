@@ -1,14 +1,14 @@
 #import "std/thread"
 #import "std/sync"
 
-mutex: Sync.Mutex;
+mutex: std.Mutex;
 
 main :: fn () s32 {
     print("Start thread!!!\n");
     defer print("Threads joined!!!\n");
 
-    Sync.init(&mutex);
-    defer Sync.terminate(&mutex);
+    std.mutex_init(&mutex);
+    defer std.mutex_terminate(&mutex);
 
     t1 :: std.thread_create(&first);
     t2 :: std.thread_create(&second);
@@ -21,11 +21,11 @@ main :: fn () s32 {
 
 first :: fn (args: *u8) s32 {
     loop i := 0; i < 10; i += 1 {
-        Sync.lock(&mutex);
+        std.mutex_lock(&mutex);
         
         print("Hello from first thread!\n");
 
-        Sync.unlock(&mutex);
+        std.mutex_unlock(&mutex);
         os_sleep_ms(50.0);
     }
     return 0;
@@ -33,11 +33,11 @@ first :: fn (args: *u8) s32 {
 
 second :: fn (args: *u8) s32 {
     loop i := 0; i < 10; i += 1 {
-        Sync.lock(&mutex);
+        std.mutex_lock(&mutex);
         
         print("Hello from second thread!\n");
 
-        Sync.unlock(&mutex);
+        std.mutex_unlock(&mutex);
         os_sleep_ms(100.0);
     }
     return 0;

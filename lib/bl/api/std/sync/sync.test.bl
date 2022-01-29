@@ -10,13 +10,13 @@ main :: fn () s32 {
 THREAD_COUNT :: 8;
 DATA_COUNT :: 1000;
 TOTAL :: THREAD_COUNT * DATA_COUNT;
-_mutex: Sync.Mutex;
+_mutex: std.Mutex;
 _data: [..]s32;
 
 
 worker :: fn (_: *u8) s32 {
-    Sync.lock(&_mutex);
-    defer Sync.unlock(&_mutex);
+    std.mutex_lock(&_mutex);
+    defer std.mutex_unlock(&_mutex);
 
     loop i := 0; i < DATA_COUNT; i += 1 {
         array_push(&_data, i);
@@ -27,8 +27,8 @@ worker :: fn (_: *u8) s32 {
 mutex_test_1 :: fn () #test {
     array_init(&_data);
     defer array_terminate(&_data);
-    Sync.init(&_mutex);
-    defer Sync.terminate(&_mutex);
+    std.mutex_init(&_mutex);
+    defer std.mutex_terminate(&_mutex);
     t: [THREAD_COUNT]std.Thread;
     loop i := 0; i < t.len; i += 1 {
         tmp :: std.thread_create(&worker);

@@ -129,14 +129,14 @@ env_set :: fn (var: string, value: string) #inline {
     C.putenv(auto tmp.ptr);
 }
 
-/// Sets seed for `Math.rand` or utility function [random_number](#random_number) based on current 
+/// Sets seed for `std.rand` or utility function [random_number](#random_number) based on current 
 /// system tick time.
 random_seed_time :: fn () #inline {
     C.srand(auto os_tick_ms());
 }
 
 /// Generates random number in specified range <min, max> using standard libc rand generator.
-/// Random number generator seed is supposed to be set by :ref:`random_seed_time` or by `Math.srand` 
+/// Random number generator seed is supposed to be set by :ref:`random_seed_time` or by `std.srand` 
 /// call.
 random_number :: fn (min := 0, max := 1) s32 #inline {
     return C.rand() % (max + 1 - min) + min;

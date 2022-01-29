@@ -34,7 +34,7 @@
 VERSION :: "1.0.0";
 
 main :: fn () s32 {
-    defer ArgParser.ctx_terminate(&_args);
+    defer std.arg_parser_ctx_terminate(&_args);
     if !handle_args() { return 1; }
     if _args.help { return 0; }
     if _args.positional.len == 0 { eprint("No input files!\n"); return 1; }
@@ -65,7 +65,7 @@ Ctx :: struct {
     type_cache: [..]CXType;
 }
 
-Args :: struct #base ArgParser.Ctx {
+Args :: struct #base std.ArgParserCtx {
     out_filepath: string;
     include_dir: string;
     translate_macros: bool;
@@ -75,17 +75,17 @@ Args :: struct #base ArgParser.Ctx {
 _args: Args;
 
 handle_args :: fn () bool {
-    parser :: ArgParser.new(HELP_TEXT);
-    defer ArgParser.delete(parser);
+    parser :: std.arg_parser_new(HELP_TEXT);
+    defer std.arg_parser_delete(parser);
 
     _args.include_dir = ".";
 
-    ArgParser.add(
+    std.arg_parser_add(
         parser,
         "-I",
         "--include-directory",
         "Specify include directory.",
-        &fn (_: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: std.ArgParser, args: []string, ctx: *std.ArgParserCtx) (s32, Error) {
             a: *Args = auto ctx;
             if (args.len < 2) {
                 return 0, error("Expected directory name!");
@@ -99,34 +99,34 @@ handle_args :: fn () bool {
             return 2, ok();
         });
         
-    ArgParser.add(
+    std.arg_parser_add(
         parser,
         "-sc",
         "--syntax-check",
         "Check syntax of output files. BL compiler is required in PATH.",
-        &fn (_: ArgParser.Parser, _: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: std.ArgParser, _: []string, ctx: *std.ArgParserCtx) (s32, Error) {
             a: *Args = auto ctx;
             a.check_syntax = true;
             return 1, ok();
         });
         
-    ArgParser.add(
+    std.arg_parser_add(
         parser,
         "-tm",
         "--translate-macros",
         "Translate C macros into BL, this feature is experimental.",
-        &fn (_: ArgParser.Parser, _: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: std.ArgParser, _: []string, ctx: *std.ArgParserCtx) (s32, Error) {
             a: *Args = auto ctx;
             a.translate_macros = true;
             return 1, ok();
         });
 
-    ArgParser.add(
+    std.arg_parser_add(
         parser,
         "-o",
         "--output",
         "Specify name of the output file.",
-        &fn (_: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: std.ArgParser, args: []string, ctx: *std.ArgParserCtx) (s32, Error) {
             a: *Args = auto ctx;
             if (args.len < 2) {
                 return 0, error("Expected output file name!");
@@ -136,10 +136,10 @@ handle_args :: fn () bool {
             return 2, ok();
         });
         
-    state :: ArgParser.run(parser, command_line_arguments, &_args, 1);
+    state :: std.arg_parser_run(parser, command_line_arguments, &_args, 1);
     if !is_ok(state) {
         print_err("%", state);
-        ArgParser.print_help(parser);
+        std.arg_parser_print_help(parser);
         return false;
     }
     return true;

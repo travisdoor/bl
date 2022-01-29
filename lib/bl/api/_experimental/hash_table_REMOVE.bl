@@ -424,7 +424,7 @@ init :: fn (tbl: *HashTable, T: *TypeInfo, expected_size: usize, allocator: *All
     // init buckets
     if expected_size == 0 { expected_size = DEFAULT_EXPECTED_SIZE; }
     tbl.allocator   = allocator; 
-    tbl.buckets.len = auto next_prime(cast(s32)Math.ceil(cast(f64)expected_size / cast(f64)MAX_LOAD_FACTOR));
+    tbl.buckets.len = auto next_prime(cast(s32)std.ceil(cast(f64)expected_size / cast(f64)MAX_LOAD_FACTOR));
     size : usize : cast(usize) tbl.buckets.len * sizeof(Bucket);
     tbl.buckets.ptr = auto allocate_memory(tbl.allocator, size);
     tbl.len         = 0;

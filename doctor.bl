@@ -29,7 +29,7 @@ HARDCODED_MODULES :: {:[13]string:
                      };
 
 main :: fn () s32 {
-    defer ArgParser.ctx_terminate(&_args);
+    defer std.arg_parser_ctx_terminate(&_args);
     defer std.tmp_release();
     
     wdir_init();
@@ -103,7 +103,7 @@ TestKind :: enum {
     ANALYZE;
 }
 
-Args :: struct #base ArgParser.Ctx {
+Args :: struct #base std.ArgParserCtx {
     diag_mode: bool;
     stop_on_fail: bool;
     test_count: s32;
@@ -130,38 +130,38 @@ get_path :: fn (sub: string) string {
 }
 
 parse_args :: fn () bool {
-    parser :: ArgParser.new();
-    defer ArgParser.delete(parser);
+    parser :: std.arg_parser_new();
+    defer std.arg_parser_delete(parser);
 
-    ArgParser.add(
+    std.arg_parser_add(
         parser,
         "-d",
         "--diag",
         "Diagnostic mode.",
-        &fn (_: ArgParser.Parser, _: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: std.ArgParser, _: []string, ctx: *std.ArgParserCtx) (s32, Error) {
             a: *Args = auto ctx;
             a.diag_mode = true;
             return 1, ok();
         });
 
 
-    ArgParser.add(
+    std.arg_parser_add(
         parser,
         "-sf",
         "--stop-on-fail",
         "Stop testing on fail.",
-        &fn (_: ArgParser.Parser, _: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: std.ArgParser, _: []string, ctx: *std.ArgParserCtx) (s32, Error) {
             a: *Args = auto ctx;
             a.stop_on_fail = true;
             return 1, ok();
         });
 
-    ArgParser.add(
+    std.arg_parser_add(
         parser,
         "-c",
         "--count",
         "<N> Specify test repeat count.",
-        &fn (_: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: std.ArgParser, args: []string, ctx: *std.ArgParserCtx) (s32, Error) {
             a: *Args = auto ctx;
             if (args.len < 2) {
                 return 0, error("Expected count of test repeat!");
@@ -174,10 +174,10 @@ parse_args :: fn () bool {
             return 2, ok();
         });
 
-    state :: ArgParser.run(parser, command_line_arguments, &_args, 1);   
+    state :: std.arg_parser_run(parser, command_line_arguments, &_args, 1);   
     if !is_ok(state) {
         print_err("%", state);
-        ArgParser.print_help(parser);
+        std.arg_parser_print_help(parser);
         return false;
     }
     if _args.help { return false; }

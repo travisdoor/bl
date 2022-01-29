@@ -1,5 +1,6 @@
 #import "std/arg_parser"
 #import "std/fs"
+#import "std/io"
 
 HELP ::
     "BL project generator.\n"
@@ -23,33 +24,33 @@ MAIN_BODY_CLT ::
     "#import \"std/arg_parser\"\n"
     "\n"
     "// Command line arguments context.\n"
-    "Args :: struct #base ArgParser.Ctx {\n"
+    "Args :: struct #base std.ArgParserCtx {\n"
     "    my_flag: bool;\n"
     "}\n"
     "\n"
     "g_args: Args;\n"
     "\n"
     "main :: fn () s32 {\n"
-    "    parser :: ArgParser.new();\n"
-    "    defer ArgParser.delete(parser);\n"
+    "    parser :: std.arg_parser_new();\n"
+    "    defer std.arg_parser_delete(parser);\n"
     "\n"
     "    // Add new argument.\n"
-    "    ArgParser.add(\n"
+    "    std.arg_parser_add(\n"
     "        parser, \n"
     "        \"-f\", // Short name (must start with -)\n"
     "        \"--flag\", // Long name (must start with -)\n"
     "        \"Specify my flag.\", // Help text.\n"
-    "        &fn (_: ArgParser.Parser, _: []string, ctx: *ArgParser.Ctx) (s32, Error) {\n"
+    "        &fn (_: std.ArgParser, _: []string, ctx: *std.ArgParserCtx) (s32, Error) {\n"
     "            a: *Args = auto ctx;\n"
     "            a.my_flag = true;\n"
     "            return 1, ok(); // Return number of parsed arguments and state.\n"
     "        });\n"
     "\n"
     "    // Start parsing.\n"
-    "    state :: ArgParser.run(parser, command_line_arguments, &g_args, 1);\n"
+    "    state :: std.arg_parser_run(parser, command_line_arguments, &g_args, 1);\n"
     "    if !is_ok(state) {\n"
     "        print_err(\"%\", state);\n"
-    "        ArgParser.print_help(parser);\n"
+    "        std.arg_parser_print_help(parser);\n"
     "        return 1;\n"
     "    }\n"
     "    if g_args.help { return 0; }\n"
@@ -69,7 +70,7 @@ MAIN_FILE :: "main.bl";
 BUILD_FILE :: "build.bl";    
 SRC_DIR :: "src";
 
-Args :: struct #base ArgParser.Ctx {
+Args :: struct #base std.ArgParserCtx {
     proj_dir: string;
     proj_kind: ProjKind;
 }
@@ -84,15 +85,15 @@ ProjKind :: enum {
 
 main :: fn () s32 {
     _context.print_log_fn = &custom_logger;
-    parser :: ArgParser.new(HELP);
-    defer ArgParser.delete(parser);
+    parser :: std.arg_parser_new(HELP);
+    defer std.arg_parser_delete(parser);
     
-    ArgParser.add(
+    std.arg_parser_add(
         parser,
         "",
         "--output-dir",
         "Sets the output directory. This is directory in which root project directory will be created.",
-        &fn (_: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: std.ArgParser, args: []string, ctx: *std.ArgParserCtx) (s32, Error) {
             a: *Args = auto ctx;
             if (args.len < 2) {
                 return 0, error("Expected directory name!");
@@ -103,34 +104,34 @@ main :: fn () s32 {
             return 2, ok();
         });
      
-     ArgParser.add(
+     std.arg_parser_add(
         parser,
         "",
         "--exe",
         "Generate simple executable project (default).",
-        &fn (_: ArgParser.Parser, _: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: std.ArgParser, _: []string, ctx: *std.ArgParserCtx) (s32, Error) {
             a: *Args = auto ctx;
             a.proj_kind = ProjKind.Executable;
             return 1, ok();
         });
         
-     ArgParser.add(
+     std.arg_parser_add(
         parser,
         "",
         "--shared",
         "Generate shared library project.",
-        &fn (_: ArgParser.Parser, _: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: std.ArgParser, _: []string, ctx: *std.ArgParserCtx) (s32, Error) {
             a: *Args = auto ctx;
             a.proj_kind = ProjKind.Shared;
             return 1, ok();
         });        
      
-     ArgParser.add(
+     std.arg_parser_add(
         parser,
         "",
         "--tool",
         "Generate command line tool project.",
-        &fn (_: ArgParser.Parser, _: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: std.ArgParser, _: []string, ctx: *std.ArgParserCtx) (s32, Error) {
             a: *Args = auto ctx;
             a.proj_kind = ProjKind.CommandLineTool;
             return 1, ok();
@@ -140,16 +141,16 @@ main :: fn () s32 {
     state: Error;
     
     // Start parsing.
-    state = ArgParser.run(parser, command_line_arguments, &g_args, 1);
+    state = std.arg_parser_run(parser, command_line_arguments, &g_args, 1);
     if !is_ok(state) {
         print_err("%", state);
-        ArgParser.print_help(parser);
+        std.arg_parser_print_help(parser);
         return 1;
     }
     if g_args.help { return 0; }
     if g_args.positional.len == 0 {
         print_err("Expected project name!");
-        ArgParser.print_help(parser);
+        std.arg_parser_print_help(parser);
         return 1;
     }
     proj_name :: g_args.positional[0];

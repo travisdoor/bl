@@ -1,7 +1,7 @@
 #import "std/arg_parser"
 
 // Command line arguments context.
-Args :: struct #base ArgParser.Ctx {
+Args :: struct #base std.ArgParserCtx {
     rc: s32;
 }
 
@@ -14,17 +14,17 @@ help ::
 
 main :: fn () s32 {
 	defer std.tmp_release();
-    defer ArgParser.ctx_terminate(&g_args);
-    parser :: ArgParser.new(help);
-    defer ArgParser.delete(parser);
+    defer std.arg_parser_ctx_terminate(&g_args);
+    parser :: std.arg_parser_new(help);
+    defer std.arg_parser_delete(parser);
 
     // Add new argument.
-    ArgParser.add(
+    std.arg_parser_add(
         parser, 
         "-c", 
         "--count", 
         "Run count.",
-        &fn (_: ArgParser.Parser, in_args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &fn (_: std.ArgParser, in_args: []string, ctx: *std.ArgParserCtx) (s32, Error) {
             a: *Args = auto ctx;
             if in_args.len < 2 { return 0, error("Expected run count as number."); }
             a.rc = auto std.str_to_s64(in_args[1]);
@@ -33,15 +33,15 @@ main :: fn () s32 {
 
     g_args.rc = 100;
 
-    state :: ArgParser.run(parser, command_line_arguments, &g_args, 1);
+    state :: std.arg_parser_run(parser, command_line_arguments, &g_args, 1);
     if !is_ok(state) {
         print_err(state);
-        ArgParser.print_help(parser);
+        std.arg_parser_print_help(parser);
         return 1;
     }
     if g_args.positional.len == 0 { 
         print_err("Expected executable name.");
-        ArgParser.print_help(parser);
+        std.arg_parser_print_help(parser);
         return 2;
     }
     if g_args.help { return 0; }
@@ -61,8 +61,8 @@ main :: fn () s32 {
         measure_elapsed_ms_begin();
         if os_execute(cmd) != 0 { ec += 1; }
         runtime :: measure_elapsed_ms_end();
-		runtime_min = Math.min(runtime_min, runtime);
-		runtime_max = Math.max(runtime_max, runtime);
+		runtime_min = std.min(runtime_min, runtime);
+		runtime_max = std.max(runtime_max, runtime);
         runtime_total += runtime;
     }
     print("================================================================================\n");

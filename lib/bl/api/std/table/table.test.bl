@@ -155,12 +155,12 @@ test_erase2 :: fn () #test {
     defer std.tbl_terminate(&tbl);
 
     loop i : u64 = 0; i < auto TEST_COUNT; i += 1 {
-        std.tbl_insert(&tbl, Math.U64_MAX - i, auto i);
+        std.tbl_insert(&tbl, std.U64_MAX - i, auto i);
     }
     test_eq(tbl.len, TEST_COUNT);
 
     loop i : u64 = 0; i < auto TEST_COUNT; i += 1 {
-        std.tbl_erase(&tbl, Math.U64_MAX - i);
+        std.tbl_erase(&tbl, std.U64_MAX - i);
     }
     test_eq(tbl.len, 0);
     test_eq(std.tbl_begin(&tbl), std.tbl_end(&tbl));

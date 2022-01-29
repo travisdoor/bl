@@ -79,7 +79,7 @@ debug_allocator_init :: fn () {
     _prev_allocator = _context.allocator;
     _context.allocator = &debug_allocator;
     std.tbl_init(&_alloc_table, 2048, &default_allocator);
-    Sync.init(&_mutex);
+    std.mutex_init(&_mutex);
 }
 
 /// Terminate Debug Allocator. Prints current memory report when 
@@ -92,7 +92,7 @@ debug_allocator_terminate :: fn (print_report := true) {
     assert(_prev_allocator);
     _context.allocator = _prev_allocator;
     std.tbl_terminate(&_alloc_table);
-    Sync.terminate(&_mutex);
+    std.mutex_terminate(&_mutex);
     _prev_allocator = null;
 }
 
@@ -104,8 +104,8 @@ debug_allocator_break :: fn (serial: u64) #inline {
 
 /// Return currently allocated memory in bytes.
 debug_allocator_allocated :: fn () usize #inline {
-    Sync.lock(&_mutex);
-    defer Sync.unlock(&_mutex);
+    std.mutex_lock(&_mutex);
+    defer std.mutex_unlock(&_mutex);
     return auto _total_allocated;
 }
 
@@ -133,8 +133,8 @@ debug_allocator_allocated :: fn () usize #inline {
 /// **hint**: Allocation serail ID can be used by [debug_allocator_break](#debug_allocator_break) to interrupt 
 /// execution before memory is allocated and eventually localize allocation in debbuger.
 print_memory_report :: fn (dump_leaks := false) {
-    Sync.lock(&_mutex);
-    defer Sync.unlock(&_mutex);
+    std.mutex_lock(&_mutex);
+    defer std.mutex_unlock(&_mutex);
     unit := "Bytes";
     total := _total_allocated;
     if total > 1024 { total /= 1024; unit = "kB"; }
@@ -157,7 +157,7 @@ print_memory_report :: fn (dump_leaks := false) {
 }
 
 #private
-_mutex: Sync.Mutex;
+_mutex: std.Mutex;
 _total_allocated: s64;
 _prev_allocator: *Allocator;
 _alloc_table: std.Table(*u8, Meta);
@@ -189,8 +189,8 @@ debug_malloc :: fn (size: usize, file: string, line: s32) *u8 {
     if size == 0 { panic("Zero allocation!"); }
     mem :: allocate_memory(&default_allocator, size);
 
-    Sync.lock(&_mutex);
-    defer Sync.unlock(&_mutex);
+    std.mutex_lock(&_mutex);
+    defer std.mutex_unlock(&_mutex);
 
     _serial += 1;
     if _break_on == _serial { debugbreak; }
@@ -213,8 +213,8 @@ debug_free :: fn (ptr: *u8) {
     }
     meta :: &it.value;
     { // CRITICAL
-        Sync.lock(&_mutex);
-        defer Sync.unlock(&_mutex);    
+        std.mutex_lock(&_mutex);
+        defer std.mutex_unlock(&_mutex);    
         _total_allocated -= auto meta.allocated_size;
         std.tbl_erase_it(&_alloc_table, it);
     }

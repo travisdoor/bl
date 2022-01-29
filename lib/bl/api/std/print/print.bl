@@ -527,7 +527,7 @@ print_type :: fn (buf: *?T, cur: s32, info: *TypeInfo) s32 {
 print_string :: fn {
     fn (buf: *[]u8, cur: s32, str: string) s32 {
         if str.ptr == null { return cur; }
-        written :: cast(s32) Math.min(buf.len-cur-1, str.len);
+        written :: cast(s32) std.min(buf.len-cur-1, str.len);
         memcpy(ptr_shift_bytes(buf.ptr, cur), str.ptr, auto written);
         return cur + written;
     };
@@ -575,8 +575,8 @@ print_f64 :: fn (buf: *?T, cur: s32, v: f64, trailing: s32) s32 {
     cur = print_u64(buf, cur, ipart, FmtIntBase.DEC, 1);
     if trailing != 0 { 
         cur = print_string(buf, cur, ".");
-        fpart = fpart * Math.pow(10., auto trailing); 
-        cur = print_u64(buf, cur, cast(u64) Math.ceil(fpart), FmtIntBase.DEC, trailing); 
+        fpart = fpart * std.pow(10., auto trailing); 
+        cur = print_u64(buf, cur, cast(u64) std.ceil(fpart), FmtIntBase.DEC, trailing); 
     } 
     return cur;
 };

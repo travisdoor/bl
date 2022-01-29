@@ -138,7 +138,7 @@ allocate :: fn (size: usize) *u8 {
     if size == 0 { panic("Attempt to allocate zero bytes."); }
     size += DEFAULT_ALIGNMENT;    
     if !_root { // initialize
-        _root = allocate_block(Math.max(DEFAULT_BLOCK_SIZE, size));
+        _root = allocate_block(std.max(DEFAULT_BLOCK_SIZE, size));
         _root.size = size;
         return data_ptr(_root);
     }

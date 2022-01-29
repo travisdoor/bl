@@ -45,8 +45,8 @@
 ///
 /// ```
 /// fn (got: string, expected: string, loc := #call_location)
-/// fn (got: f32, expected: f32, epsilon: f32 = Math.F32_EPSILON, loc := #call_location)
-/// fn (got: f64, expected: f64, epsilon: f64 = Math.F64_EPSILON, loc := #call_location)
+/// fn (got: f32, expected: f32, epsilon: f32 = std.F32_EPSILON, loc := #call_location)
+/// fn (got: f64, expected: f64, epsilon: f64 = std.F64_EPSILON, loc := #call_location)
 /// fn (got: ?T, expected: T, loc := #call_location)
 /// ```
 /// 
@@ -57,13 +57,13 @@ test_eq :: fn {
         print_err("\nExpected: '%'\nGot:      '%'.", expected, got);
         stop(loc);
     };
-    fn (got: f32, expected: f32, epsilon: f32 = Math.F32_EPSILON, loc := #call_location) {
-        if Math.compare(got, expected, epsilon) { return; }
+    fn (got: f32, expected: f32, epsilon: f32 = std.F32_EPSILON, loc := #call_location) {
+        if std.compare(got, expected, epsilon) { return; }
         print_err("\nExpected: '%'\nGot:      '%'.", expected, got);
         stop(loc);
     };
-    fn (got: f64, expected: f64, epsilon: f64 = Math.F64_EPSILON, loc := #call_location) {
-        if Math.compare(got, expected, epsilon) { return; }
+    fn (got: f64, expected: f64, epsilon: f64 = std.F64_EPSILON, loc := #call_location) {
+        if std.compare(got, expected, epsilon) { return; }
         print_err("\nExpected: '%'\nGot:      '%'.", expected, got);
         stop(loc);
     };
@@ -78,8 +78,8 @@ test_eq :: fn {
 /// 
 /// ```
 /// fn (got: string, not_expected: string, loc := #call_location)
-/// fn (got: f32, not_expected: f32, epsilon: f32 = Math.F32_EPSILON, loc := #call_location)
-/// fn (got: f64, not_expected: f64, epsilon: f64 = Math.F64_EPSILON, loc := #call_location)
+/// fn (got: f32, not_expected: f32, epsilon: f32 = std.F32_EPSILON, loc := #call_location)
+/// fn (got: f64, not_expected: f64, epsilon: f64 = std.F64_EPSILON, loc := #call_location)
 /// fn (got: ?T, not_expected: T, loc := #call_location)
 /// ```
 /// 
@@ -90,13 +90,13 @@ test_neq :: fn {
         print_err("\nExpected not to be '%'.", not_expected);
         stop(loc);
     };
-    fn (got: f32, not_expected: f32, epsilon: f32 = Math.F32_EPSILON, loc := #call_location) {
-        if !Math.compare(got, not_expected, epsilon) { return; }
+    fn (got: f32, not_expected: f32, epsilon: f32 = std.F32_EPSILON, loc := #call_location) {
+        if !std.compare(got, not_expected, epsilon) { return; }
         print_err("Expected not to be '%'.", not_expected);
         stop(loc);
     };
-    fn (got: f64, not_expected: f64, epsilon: f64 = Math.F64_EPSILON, loc := #call_location) {
-        if !Math.compare(got, not_expected, epsilon) { return; }
+    fn (got: f64, not_expected: f64, epsilon: f64 = std.F64_EPSILON, loc := #call_location) {
+        if !std.compare(got, not_expected, epsilon) { return; }
         print_err("Expected not to be '%'.", not_expected);
         stop(loc);
     };

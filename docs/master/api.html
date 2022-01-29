@@ -143,15 +143,15 @@
 </ul></li>
 <li><a href="#command-line-argument-parser">Command Line Argument Parser</a>
 <ul>
-<li><a href="#argparser.ctx">ArgParser.Ctx</a></li>
-<li><a href="#argparser.parser">ArgParser.Parser</a></li>
-<li><a href="#argparser.handlerfn">ArgParser.HandlerFn</a></li>
-<li><a href="#argparser.new">ArgParser.new</a></li>
-<li><a href="#argparser.delete">ArgParser.delete</a></li>
-<li><a href="#argparser.ctx_terminate">ArgParser.ctx_terminate</a></li>
-<li><a href="#argparser.run">ArgParser.run</a></li>
-<li><a href="#argparser.add">ArgParser.add</a></li>
-<li><a href="#argparser.print_help">ArgParser.print_help</a></li>
+<li><a href="#std.argparserctx">std.ArgParserCtx</a></li>
+<li><a href="#std.argparser">std.ArgParser</a></li>
+<li><a href="#std.argparserhandlerfn">std.ArgParserHandlerFn</a></li>
+<li><a href="#std.arg_parser_new">std.arg_parser_new</a></li>
+<li><a href="#std.arg_parser_delete">std.arg_parser_delete</a></li>
+<li><a href="#std.arg_parser_ctx_terminate">std.arg_parser_ctx_terminate</a></li>
+<li><a href="#std.arg_parser_run">std.arg_parser_run</a></li>
+<li><a href="#std.arg_parser_add">std.arg_parser_add</a></li>
+<li><a href="#std.arg_parser_print_help">std.arg_parser_print_help</a></li>
 </ul></li>
 <li><a href="#arm64.bl">arm64.bl</a>
 <ul>
@@ -424,124 +424,124 @@
 </ul></li>
 <li><a href="#macos.bl">macos.bl</a>
 <ul>
-<li><a href="#macos.cfallocatorref">MacOS.CFAllocatorRef</a></li>
-<li><a href="#macos.cfindex">MacOS.CFIndex</a></li>
-<li><a href="#macos.cfstringref">MacOS.CFStringRef</a></li>
-<li><a href="#macos.cfarrayref">MacOS.CFArrayRef</a></li>
-<li><a href="#macos.cfarraycallbacks">MacOS.CFArrayCallBacks</a></li>
-<li><a href="#macos.cftimeinterval">MacOS.CFTimeInterval</a></li>
-<li><a href="#macos.cftyperef">MacOS.CFTypeRef</a></li>
-<li><a href="#macos.cfrunloopref">MacOS.CFRunLoopRef</a></li>
-<li><a href="#macos.cfrunloopmode">MacOS.CFRunLoopMode</a></li>
-<li><a href="#macos.boolean">MacOS.Boolean</a></li>
-<li><a href="#macos.cfstringencoding">MacOS.CFStringEncoding</a></li>
-<li><a href="#macos.kfseventstreameventflagnone">MacOS.kFSEventStreamEventFlagNone</a></li>
-<li><a href="#macos.kfseventstreameventflagmustscansubdirs">MacOS.kFSEventStreamEventFlagMustScanSubDirs</a></li>
-<li><a href="#macos.kfseventstreameventflaguserdropped">MacOS.kFSEventStreamEventFlagUserDropped</a></li>
-<li><a href="#macos.kfseventstreameventflagkerneldropped">MacOS.kFSEventStreamEventFlagKernelDropped</a></li>
-<li><a href="#macos.kfseventstreameventflageventidswrapped">MacOS.kFSEventStreamEventFlagEventIdsWrapped</a></li>
-<li><a href="#macos.kfseventstreameventflaghistorydone">MacOS.kFSEventStreamEventFlagHistoryDone</a></li>
-<li><a href="#macos.kfseventstreameventflagrootchanged">MacOS.kFSEventStreamEventFlagRootChanged</a></li>
-<li><a href="#macos.kfseventstreameventflagmount">MacOS.kFSEventStreamEventFlagMount</a></li>
-<li><a href="#macos.kfseventstreameventflagunmount">MacOS.kFSEventStreamEventFlagUnmount</a></li>
-<li><a href="#macos.kfseventstreameventflagitemcreated">MacOS.kFSEventStreamEventFlagItemCreated</a></li>
-<li><a href="#macos.kfseventstreameventflagitemremoved">MacOS.kFSEventStreamEventFlagItemRemoved</a></li>
-<li><a href="#macos.kfseventstreameventflagiteminodemetamod">MacOS.kFSEventStreamEventFlagItemInodeMetaMod</a></li>
-<li><a href="#macos.kfseventstreameventflagitemrenamed">MacOS.kFSEventStreamEventFlagItemRenamed</a></li>
-<li><a href="#macos.kfseventstreameventflagitemmodified">MacOS.kFSEventStreamEventFlagItemModified</a></li>
-<li><a href="#macos.kfseventstreameventflagitemfinderinfomod">MacOS.kFSEventStreamEventFlagItemFinderInfoMod</a></li>
-<li><a href="#macos.kfseventstreameventflagitemchangeowner">MacOS.kFSEventStreamEventFlagItemChangeOwner</a></li>
-<li><a href="#macos.kfseventstreameventflagitemxattrmod">MacOS.kFSEventStreamEventFlagItemXattrMod</a></li>
-<li><a href="#macos.kfseventstreameventflagitemisfile">MacOS.kFSEventStreamEventFlagItemIsFile</a></li>
-<li><a href="#macos.kfseventstreameventflagitemisdir">MacOS.kFSEventStreamEventFlagItemIsDir</a></li>
-<li><a href="#macos.kfseventstreameventflagitemissymlink">MacOS.kFSEventStreamEventFlagItemIsSymlink</a></li>
-<li><a href="#macos.kfseventstreameventflagownevent">MacOS.kFSEventStreamEventFlagOwnEvent</a></li>
-<li><a href="#macos.kfseventstreameventflagitemishardlink">MacOS.kFSEventStreamEventFlagItemIsHardlink</a></li>
-<li><a href="#macos.kfseventstreameventflagitemislasthardlink">MacOS.kFSEventStreamEventFlagItemIsLastHardlink</a></li>
-<li><a href="#macos.kfseventstreameventflagitemcloned">MacOS.kFSEventStreamEventFlagItemCloned</a></li>
-<li><a href="#macos.kfseventstreameventidsincenow">MacOS.kFSEventStreamEventIdSinceNow</a></li>
-<li><a href="#macos.kfseventstreamcreateflagnone">MacOS.kFSEventStreamCreateFlagNone</a></li>
-<li><a href="#macos.kfseventstreamcreateflagusecftypes">MacOS.kFSEventStreamCreateFlagUseCFTypes</a></li>
-<li><a href="#macos.kfseventstreamcreateflagnodefer">MacOS.kFSEventStreamCreateFlagNoDefer</a></li>
-<li><a href="#macos.kfseventstreamcreateflagwatchroot">MacOS.kFSEventStreamCreateFlagWatchRoot</a></li>
-<li><a href="#macos.kfseventstreamcreateflagignoreself">MacOS.kFSEventStreamCreateFlagIgnoreSelf</a></li>
-<li><a href="#macos.kfseventstreamcreateflagfileevents">MacOS.kFSEventStreamCreateFlagFileEvents</a></li>
-<li><a href="#macos.kfseventstreamcreateflagmarkself">MacOS.kFSEventStreamCreateFlagMarkSelf</a></li>
-<li><a href="#macos.kfseventstreamcreateflaguseextendeddata">MacOS.kFSEventStreamCreateFlagUseExtendedData</a></li>
-<li><a href="#macos.fseventstreamref">MacOS.FSEventStreamRef</a></li>
-<li><a href="#macos.fseventstreameventid">MacOS.FSEventStreamEventId</a></li>
-<li><a href="#macos.fseventstreamcreateflags">MacOS.FSEventStreamCreateFlags</a></li>
-<li><a href="#macos.fseventstreameventflags">MacOS.FSEventStreamEventFlags</a></li>
-<li><a href="#macos.constfseventstreamref">MacOS.ConstFSEventStreamRef</a></li>
-<li><a href="#macos.cfallocatorretaincallback">MacOS.CFAllocatorRetainCallBack</a></li>
-<li><a href="#macos.cfallocatorreleasecallback">MacOS.CFAllocatorReleaseCallBack</a></li>
-<li><a href="#macos.cfallocatorcopydescriptioncallback">MacOS.CFAllocatorCopyDescriptionCallBack</a></li>
-<li><a href="#macos.cfarraycreate">MacOS.CFArrayCreate</a></li>
-<li><a href="#macos.cfrunloopgetcurrent">MacOS.CFRunLoopGetCurrent</a></li>
-<li><a href="#macos.cfrunloopcopycurrentmode">MacOS.CFRunLoopCopyCurrentMode</a></li>
-<li><a href="#macos.cfrelease">MacOS.CFRelease</a></li>
-<li><a href="#macos.cfstringcreatewithcstring">MacOS.CFStringCreateWithCString</a></li>
-<li><a href="#macos.fseventstreamcontext">MacOS.FSEventStreamContext</a></li>
-<li><a href="#macos.fseventstreamcallback">MacOS.FSEventStreamCallback</a></li>
-<li><a href="#macos.fseventstreamcreate">MacOS.FSEventStreamCreate</a></li>
-<li><a href="#macos.fseventstreamschedulewithrunloop">MacOS.FSEventStreamScheduleWithRunLoop</a></li>
-<li><a href="#macos.fseventstreamunschedulefromrunloop">MacOS.FSEventStreamUnscheduleFromRunLoop</a></li>
-<li><a href="#macos.fseventstreamstart">MacOS.FSEventStreamStart</a></li>
-<li><a href="#macos.fseventstreamflushsync">MacOS.FSEventStreamFlushSync</a></li>
-<li><a href="#macos.fseventstreamstop">MacOS.FSEventStreamStop</a></li>
-<li><a href="#macos.fseventstreaminvalidate">MacOS.FSEventStreamInvalidate</a></li>
-<li><a href="#macos.fseventstreamrelease">MacOS.FSEventStreamRelease</a></li>
-<li><a href="#macos.nsgetexecutablepath">MacOS.NSGetExecutablePath</a></li>
-<li><a href="#macos.machtimebaseinfo">MacOS.MachTimebaseInfo</a></li>
-<li><a href="#macos.mach_timebase_info">MacOS.mach_timebase_info</a></li>
-<li><a href="#macos.mach_absolute_time">MacOS.mach_absolute_time</a></li>
+<li><a href="#macos.cfallocatorref">macos.CFAllocatorRef</a></li>
+<li><a href="#macos.cfindex">macos.CFIndex</a></li>
+<li><a href="#macos.cfstringref">macos.CFStringRef</a></li>
+<li><a href="#macos.cfarrayref">macos.CFArrayRef</a></li>
+<li><a href="#macos.cfarraycallbacks">macos.CFArrayCallBacks</a></li>
+<li><a href="#macos.cftimeinterval">macos.CFTimeInterval</a></li>
+<li><a href="#macos.cftyperef">macos.CFTypeRef</a></li>
+<li><a href="#macos.cfrunloopref">macos.CFRunLoopRef</a></li>
+<li><a href="#macos.cfrunloopmode">macos.CFRunLoopMode</a></li>
+<li><a href="#macos.boolean">macos.Boolean</a></li>
+<li><a href="#macos.cfstringencoding">macos.CFStringEncoding</a></li>
+<li><a href="#macos.kfseventstreameventflagnone">macos.kFSEventStreamEventFlagNone</a></li>
+<li><a href="#macos.kfseventstreameventflagmustscansubdirs">macos.kFSEventStreamEventFlagMustScanSubDirs</a></li>
+<li><a href="#macos.kfseventstreameventflaguserdropped">macos.kFSEventStreamEventFlagUserDropped</a></li>
+<li><a href="#macos.kfseventstreameventflagkerneldropped">macos.kFSEventStreamEventFlagKernelDropped</a></li>
+<li><a href="#macos.kfseventstreameventflageventidswrapped">macos.kFSEventStreamEventFlagEventIdsWrapped</a></li>
+<li><a href="#macos.kfseventstreameventflaghistorydone">macos.kFSEventStreamEventFlagHistoryDone</a></li>
+<li><a href="#macos.kfseventstreameventflagrootchanged">macos.kFSEventStreamEventFlagRootChanged</a></li>
+<li><a href="#macos.kfseventstreameventflagmount">macos.kFSEventStreamEventFlagMount</a></li>
+<li><a href="#macos.kfseventstreameventflagunmount">macos.kFSEventStreamEventFlagUnmount</a></li>
+<li><a href="#macos.kfseventstreameventflagitemcreated">macos.kFSEventStreamEventFlagItemCreated</a></li>
+<li><a href="#macos.kfseventstreameventflagitemremoved">macos.kFSEventStreamEventFlagItemRemoved</a></li>
+<li><a href="#macos.kfseventstreameventflagiteminodemetamod">macos.kFSEventStreamEventFlagItemInodeMetaMod</a></li>
+<li><a href="#macos.kfseventstreameventflagitemrenamed">macos.kFSEventStreamEventFlagItemRenamed</a></li>
+<li><a href="#macos.kfseventstreameventflagitemmodified">macos.kFSEventStreamEventFlagItemModified</a></li>
+<li><a href="#macos.kfseventstreameventflagitemfinderinfomod">macos.kFSEventStreamEventFlagItemFinderInfoMod</a></li>
+<li><a href="#macos.kfseventstreameventflagitemchangeowner">macos.kFSEventStreamEventFlagItemChangeOwner</a></li>
+<li><a href="#macos.kfseventstreameventflagitemxattrmod">macos.kFSEventStreamEventFlagItemXattrMod</a></li>
+<li><a href="#macos.kfseventstreameventflagitemisfile">macos.kFSEventStreamEventFlagItemIsFile</a></li>
+<li><a href="#macos.kfseventstreameventflagitemisdir">macos.kFSEventStreamEventFlagItemIsDir</a></li>
+<li><a href="#macos.kfseventstreameventflagitemissymlink">macos.kFSEventStreamEventFlagItemIsSymlink</a></li>
+<li><a href="#macos.kfseventstreameventflagownevent">macos.kFSEventStreamEventFlagOwnEvent</a></li>
+<li><a href="#macos.kfseventstreameventflagitemishardlink">macos.kFSEventStreamEventFlagItemIsHardlink</a></li>
+<li><a href="#macos.kfseventstreameventflagitemislasthardlink">macos.kFSEventStreamEventFlagItemIsLastHardlink</a></li>
+<li><a href="#macos.kfseventstreameventflagitemcloned">macos.kFSEventStreamEventFlagItemCloned</a></li>
+<li><a href="#macos.kfseventstreameventidsincenow">macos.kFSEventStreamEventIdSinceNow</a></li>
+<li><a href="#macos.kfseventstreamcreateflagnone">macos.kFSEventStreamCreateFlagNone</a></li>
+<li><a href="#macos.kfseventstreamcreateflagusecftypes">macos.kFSEventStreamCreateFlagUseCFTypes</a></li>
+<li><a href="#macos.kfseventstreamcreateflagnodefer">macos.kFSEventStreamCreateFlagNoDefer</a></li>
+<li><a href="#macos.kfseventstreamcreateflagwatchroot">macos.kFSEventStreamCreateFlagWatchRoot</a></li>
+<li><a href="#macos.kfseventstreamcreateflagignoreself">macos.kFSEventStreamCreateFlagIgnoreSelf</a></li>
+<li><a href="#macos.kfseventstreamcreateflagfileevents">macos.kFSEventStreamCreateFlagFileEvents</a></li>
+<li><a href="#macos.kfseventstreamcreateflagmarkself">macos.kFSEventStreamCreateFlagMarkSelf</a></li>
+<li><a href="#macos.kfseventstreamcreateflaguseextendeddata">macos.kFSEventStreamCreateFlagUseExtendedData</a></li>
+<li><a href="#macos.fseventstreamref">macos.FSEventStreamRef</a></li>
+<li><a href="#macos.fseventstreameventid">macos.FSEventStreamEventId</a></li>
+<li><a href="#macos.fseventstreamcreateflags">macos.FSEventStreamCreateFlags</a></li>
+<li><a href="#macos.fseventstreameventflags">macos.FSEventStreamEventFlags</a></li>
+<li><a href="#macos.constfseventstreamref">macos.ConstFSEventStreamRef</a></li>
+<li><a href="#macos.cfallocatorretaincallback">macos.CFAllocatorRetainCallBack</a></li>
+<li><a href="#macos.cfallocatorreleasecallback">macos.CFAllocatorReleaseCallBack</a></li>
+<li><a href="#macos.cfallocatorcopydescriptioncallback">macos.CFAllocatorCopyDescriptionCallBack</a></li>
+<li><a href="#macos.cfarraycreate">macos.CFArrayCreate</a></li>
+<li><a href="#macos.cfrunloopgetcurrent">macos.CFRunLoopGetCurrent</a></li>
+<li><a href="#macos.cfrunloopcopycurrentmode">macos.CFRunLoopCopyCurrentMode</a></li>
+<li><a href="#macos.cfrelease">macos.CFRelease</a></li>
+<li><a href="#macos.cfstringcreatewithcstring">macos.CFStringCreateWithCString</a></li>
+<li><a href="#macos.fseventstreamcontext">macos.FSEventStreamContext</a></li>
+<li><a href="#macos.fseventstreamcallback">macos.FSEventStreamCallback</a></li>
+<li><a href="#macos.fseventstreamcreate">macos.FSEventStreamCreate</a></li>
+<li><a href="#macos.fseventstreamschedulewithrunloop">macos.FSEventStreamScheduleWithRunLoop</a></li>
+<li><a href="#macos.fseventstreamunschedulefromrunloop">macos.FSEventStreamUnscheduleFromRunLoop</a></li>
+<li><a href="#macos.fseventstreamstart">macos.FSEventStreamStart</a></li>
+<li><a href="#macos.fseventstreamflushsync">macos.FSEventStreamFlushSync</a></li>
+<li><a href="#macos.fseventstreamstop">macos.FSEventStreamStop</a></li>
+<li><a href="#macos.fseventstreaminvalidate">macos.FSEventStreamInvalidate</a></li>
+<li><a href="#macos.fseventstreamrelease">macos.FSEventStreamRelease</a></li>
+<li><a href="#macos.nsgetexecutablepath">macos.NSGetExecutablePath</a></li>
+<li><a href="#macos.machtimebaseinfo">macos.MachTimebaseInfo</a></li>
+<li><a href="#macos.mach_timebase_info">macos.mach_timebase_info</a></li>
+<li><a href="#macos.mach_absolute_time">macos.mach_absolute_time</a></li>
 </ul></li>
 <li><a href="#math">Math</a>
 <ul>
-<li><a href="#math.pi">Math.PI</a></li>
-<li><a href="#math.two_pi">Math.TWO_PI</a></li>
-<li><a href="#math.half_pi">Math.HALF_PI</a></li>
-<li><a href="#math.f32_epsilon">Math.F32_EPSILON</a></li>
-<li><a href="#math.f64_epsilon">Math.F64_EPSILON</a></li>
-<li><a href="#math.s8_min">Math.S8_MIN</a></li>
-<li><a href="#math.s8_max">Math.S8_MAX</a></li>
-<li><a href="#math.s16_min">Math.S16_MIN</a></li>
-<li><a href="#math.s16_max">Math.S16_MAX</a></li>
-<li><a href="#math.s32_min">Math.S32_MIN</a></li>
-<li><a href="#math.s32_max">Math.S32_MAX</a></li>
-<li><a href="#math.s64_min">Math.S64_MIN</a></li>
-<li><a href="#math.s64_max">Math.S64_MAX</a></li>
-<li><a href="#math.u8_min">Math.U8_MIN</a></li>
-<li><a href="#math.u8_max">Math.U8_MAX</a></li>
-<li><a href="#math.u16_min">Math.U16_MIN</a></li>
-<li><a href="#math.u16_max">Math.U16_MAX</a></li>
-<li><a href="#math.u32_min">Math.U32_MIN</a></li>
-<li><a href="#math.u32_max">Math.U32_MAX</a></li>
-<li><a href="#math.u64_min">Math.U64_MIN</a></li>
-<li><a href="#math.u64_max">Math.U64_MAX</a></li>
-<li><a href="#math.sin">Math.sin</a></li>
-<li><a href="#math.cos">Math.cos</a></li>
-<li><a href="#math.floor">Math.floor</a></li>
-<li><a href="#math.round">Math.round</a></li>
-<li><a href="#math.pow">Math.pow</a></li>
-<li><a href="#math.log">Math.log</a></li>
-<li><a href="#math.log2">Math.log2</a></li>
-<li><a href="#math.log10">Math.log10</a></li>
-<li><a href="#math.sqrt">Math.sqrt</a></li>
-<li><a href="#math.ceil">Math.ceil</a></li>
-<li><a href="#math.atan2">Math.atan2</a></li>
-<li><a href="#math.copysign">Math.copysign</a></li>
-<li><a href="#math.asin">Math.asin</a></li>
-<li><a href="#math.acos">Math.acos</a></li>
-<li><a href="#math.tan">Math.tan</a></li>
-<li><a href="#math.abs">Math.abs</a></li>
-<li><a href="#math.compare">Math.compare</a></li>
-<li><a href="#math.degtorad">Math.degtorad</a></li>
-<li><a href="#math.radtodeg">Math.radtodeg</a></li>
-<li><a href="#math.max">Math.max</a></li>
-<li><a href="#math.min">Math.min</a></li>
-<li><a href="#math.lerp">Math.lerp</a></li>
-<li><a href="#math.clamp">Math.clamp</a></li>
+<li><a href="#std.pi">std.PI</a></li>
+<li><a href="#std.two_pi">std.TWO_PI</a></li>
+<li><a href="#std.half_pi">std.HALF_PI</a></li>
+<li><a href="#std.f32_epsilon">std.F32_EPSILON</a></li>
+<li><a href="#std.f64_epsilon">std.F64_EPSILON</a></li>
+<li><a href="#std.s8_min">std.S8_MIN</a></li>
+<li><a href="#std.s8_max">std.S8_MAX</a></li>
+<li><a href="#std.s16_min">std.S16_MIN</a></li>
+<li><a href="#std.s16_max">std.S16_MAX</a></li>
+<li><a href="#std.s32_min">std.S32_MIN</a></li>
+<li><a href="#std.s32_max">std.S32_MAX</a></li>
+<li><a href="#std.s64_min">std.S64_MIN</a></li>
+<li><a href="#std.s64_max">std.S64_MAX</a></li>
+<li><a href="#std.u8_min">std.U8_MIN</a></li>
+<li><a href="#std.u8_max">std.U8_MAX</a></li>
+<li><a href="#std.u16_min">std.U16_MIN</a></li>
+<li><a href="#std.u16_max">std.U16_MAX</a></li>
+<li><a href="#std.u32_min">std.U32_MIN</a></li>
+<li><a href="#std.u32_max">std.U32_MAX</a></li>
+<li><a href="#std.u64_min">std.U64_MIN</a></li>
+<li><a href="#std.u64_max">std.U64_MAX</a></li>
+<li><a href="#std.sin">std.sin</a></li>
+<li><a href="#std.cos">std.cos</a></li>
+<li><a href="#std.floor">std.floor</a></li>
+<li><a href="#std.round">std.round</a></li>
+<li><a href="#std.pow">std.pow</a></li>
+<li><a href="#std.log">std.log</a></li>
+<li><a href="#std.log2">std.log2</a></li>
+<li><a href="#std.log10">std.log10</a></li>
+<li><a href="#std.sqrt">std.sqrt</a></li>
+<li><a href="#std.ceil">std.ceil</a></li>
+<li><a href="#std.atan2">std.atan2</a></li>
+<li><a href="#std.copysign">std.copysign</a></li>
+<li><a href="#std.asin">std.asin</a></li>
+<li><a href="#std.acos">std.acos</a></li>
+<li><a href="#std.tan">std.tan</a></li>
+<li><a href="#std.abs">std.abs</a></li>
+<li><a href="#std.compare">std.compare</a></li>
+<li><a href="#std.degtorad">std.degtorad</a></li>
+<li><a href="#std.radtodeg">std.radtodeg</a></li>
+<li><a href="#std.max">std.max</a></li>
+<li><a href="#std.min">std.min</a></li>
+<li><a href="#std.lerp">std.lerp</a></li>
+<li><a href="#std.clamp">std.clamp</a></li>
 </ul></li>
 <li><a href="#memory">Memory</a>
 <ul>
@@ -633,12 +633,12 @@
 </ul></li>
 <li><a href="#thread-synchronization">Thread synchronization</a>
 <ul>
-<li><a href="#sync.mutex">Sync.Mutex</a></li>
-<li><a href="#sync.init">Sync.init</a></li>
-<li><a href="#sync.terminate">Sync.terminate</a></li>
-<li><a href="#sync.lock">Sync.lock</a></li>
-<li><a href="#sync.try_lock">Sync.try_lock</a></li>
-<li><a href="#sync.unlock">Sync.unlock</a></li>
+<li><a href="#std.mutex">std.Mutex</a></li>
+<li><a href="#std.mutex_init">std.mutex_init</a></li>
+<li><a href="#std.mutex_terminate">std.mutex_terminate</a></li>
+<li><a href="#std.mutex_lock">std.mutex_lock</a></li>
+<li><a href="#std.mutex_try_lock">std.mutex_try_lock</a></li>
+<li><a href="#std.mutex_unlock">std.mutex_unlock</a></li>
 </ul></li>
 <li><a href="#table">Table</a>
 <ul>
@@ -1297,7 +1297,7 @@ main :: fn () s32 {
 <pre><code>#import &quot;std/arg_parser&quot;
 
 // Command line arguments context.
-Args :: struct #base ArgParser.Ctx {
+Args :: struct #base std.ArgParserCtx {
     my_flag: bool;
     my_name: string;
 }
@@ -1305,30 +1305,30 @@ Args :: struct #base ArgParser.Ctx {
 g_args: Args;
 
 main :: fn () s32 {
-    parser :: ArgParser.new();
-    defer ArgParser.delete(parser);
+    parser :: std.arg_parser_new();
+    defer std.arg_parser_delete(parser);
     // After this all positional arguments stored inside the argument parser
     // context are invalid.
-    defer ArgParser.ctx_terminate(&amp;g_args);
+    defer std.arg_parser_ctx_terminate(&amp;g_args);
 
     // Add new argument.
-    ArgParser.add(
+    std.arg_parser_add(
         parser, 
         &quot;-f&quot;, // Short name (must start with -)
         &quot;--flag&quot;, // Long name (must start with -)
         &quot;Specify my flag.&quot;, // Help text.
-        &amp;fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &amp;fn (parser: std.ArgParser, args: []string, ctx: *std.ArgParserCtx) (s32, Error) {
             a: *Args = auto ctx;
             a.my_flag = true;
             return 1, ok(); // Return number of parsed arguments and state.
         });
 
-    ArgParser.add(
+    std.arg_parser_add(
         parser,
         &quot;-n&quot;,
         &quot;--name&quot;,
         &quot;Specify my name.&quot;,
-        &amp;fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+        &amp;fn (parser: std.ArgParser, args: []string, ctx: *std.ArgParserCtx) (s32, Error) {
             a: *Args = auto ctx;
             if (args.len &lt; 2) {
                 return 0, error(&quot;Expected name!&quot;);
@@ -1338,18 +1338,18 @@ main :: fn () s32 {
         });
 
     // Start parsing.
-    state :: ArgParser.run(parser, command_line_arguments, &amp;g_args, 1);
+    state :: std.arg_parser_run(parser, command_line_arguments, &amp;g_args, 1);
     if !is_ok(state) {
         print_err(&quot;%&quot;, state);
-        ArgParser.print_help(parser);
+        std.arg_parser_print_help(parser);
         return 1;
     }
 
     print(&quot;%\n&quot;, g_args);
     return 0;
 }</code></pre>
-<h2 id="argparser.ctx">ArgParser.Ctx</h2>
-<div class="sourceCode" id="cb40"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a>Ctx <span class="op">::</span> <span class="kw">struct</span> <span class="op">{</span></span>
+<h2 id="std.argparserctx">std.ArgParserCtx</h2>
+<div class="sourceCode" id="cb40"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a>ArgParserCtx <span class="op">::</span> <span class="kw">struct</span> <span class="op">{</span></span>
 <span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a>    positional<span class="op">:</span> <span class="op">[..]</span>string<span class="op">;</span></span>
 <span id="cb40-3"><a href="#cb40-3" aria-hidden="true" tabindex="-1"></a>    help<span class="op">:</span> <span class="dt">bool</span><span class="op">;</span></span>
 <span id="cb40-4"><a href="#cb40-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
@@ -1360,49 +1360,49 @@ main :: fn () s32 {
 <li><code>help</code> - True when help was invoked implicitly.</li>
 </ul>
 <p><em>File: arg_parser.bl</em></p>
-<h2 id="argparser.parser">ArgParser.Parser</h2>
-<div class="sourceCode" id="cb41"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a>Parser <span class="op">::</span> <span class="op">*</span>u8</span></code></pre></div>
+<h2 id="std.argparser">std.ArgParser</h2>
+<div class="sourceCode" id="cb41"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a>ArgParser <span class="op">::</span> <span class="op">*</span>u8</span></code></pre></div>
 <p>Argument parser opaque handle.</p>
 <p><em>File: arg_parser.bl</em></p>
-<h2 id="argparser.handlerfn">ArgParser.HandlerFn</h2>
-<div class="sourceCode" id="cb42"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a>HandlerFn <span class="op">::</span> <span class="op">*</span>fn <span class="op">(</span>parser<span class="op">:</span> Parser<span class="op">,</span> args<span class="op">:</span> <span class="op">[]</span>string<span class="op">,</span> ctx<span class="op">:</span> <span class="op">*</span>Ctx<span class="op">)</span> <span class="op">(</span>_0<span class="op">:</span> s32<span class="op">,</span> _1<span class="op">:</span> Error</span>
+<h2 id="std.argparserhandlerfn">std.ArgParserHandlerFn</h2>
+<div class="sourceCode" id="cb42"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a>ArgParserHandlerFn <span class="op">::</span> <span class="op">*</span>fn <span class="op">(</span>parser<span class="op">:</span> ArgParser<span class="op">,</span> args<span class="op">:</span> <span class="op">[]</span>string<span class="op">,</span> ctx<span class="op">:</span> <span class="op">*</span>ArgParserCtx<span class="op">)</span> <span class="op">(</span>_0<span class="op">:</span> s32<span class="op">,</span> _1<span class="op">:</span> Error</span>
 <span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a><span class="op">)</span></span></code></pre></div>
 <p>Argument parser callback function type. In context of <a href="#argparseradd">add</a> this callback function provides current <code>parser</code>, rest of the input argument slice starting from currently captured argument name and custom argument context <code>ctx</code>. Expected return of such function is count of parsed arguments from <code>args</code> input (at least one for successfully parsed argument with no additional input) and status.</p>
 <p>See also: <a href="#argparseradd">add</a></p>
 <p><strong>todo</strong>: Is reference to parent parser needed here?</p>
 <p><em>File: arg_parser.bl</em></p>
-<h2 id="argparser.new">ArgParser.new</h2>
-<div class="sourceCode" id="cb43"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a>new <span class="op">::</span> fn <span class="op">(</span>help_text <span class="op">::</span> <span class="op">)</span> Parser</span></code></pre></div>
+<h2 id="std.arg_parser_new">std.arg_parser_new</h2>
+<div class="sourceCode" id="cb43"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a>arg_parser_new <span class="op">::</span> fn <span class="op">(</span>help_text <span class="op">::</span> <span class="op">)</span> ArgParser</span></code></pre></div>
 <p>Create new instance of parser with possibility to set custom help text. Use <a href="#argparserdelete">delete</a> to release parser instance.</p>
 <p><em>File: arg_parser.bl</em></p>
-<h2 id="argparser.delete">ArgParser.delete</h2>
-<div class="sourceCode" id="cb44"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a>delete <span class="op">::</span> fn <span class="op">(</span>_parser<span class="op">:</span> Parser<span class="op">)</span> </span></code></pre></div>
+<h2 id="std.arg_parser_delete">std.arg_parser_delete</h2>
+<div class="sourceCode" id="cb44"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a>arg_parser_delete <span class="op">::</span> fn <span class="op">(</span>_parser<span class="op">:</span> ArgParser<span class="op">)</span> </span></code></pre></div>
 <p>Delete parser instance.</p>
 <p><em>File: arg_parser.bl</em></p>
-<h2 id="argparser.ctx_terminate">ArgParser.ctx_terminate</h2>
-<div class="sourceCode" id="cb45"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a>ctx_terminate <span class="op">::</span> fn <span class="op">(</span>ctx<span class="op">:</span> <span class="op">*</span>Ctx<span class="op">)</span> </span></code></pre></div>
+<h2 id="std.arg_parser_ctx_terminate">std.arg_parser_ctx_terminate</h2>
+<div class="sourceCode" id="cb45"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a>arg_parser_ctx_terminate <span class="op">::</span> fn <span class="op">(</span>ctx<span class="op">:</span> <span class="op">*</span>ArgParserCtx<span class="op">)</span> </span></code></pre></div>
 <p>Release ‘positional’ arguments array inside the context data.</p>
 <p><em>File: arg_parser.bl</em></p>
-<h2 id="argparser.run">ArgParser.run</h2>
-<div class="sourceCode" id="cb46"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a>run <span class="op">::</span> fn <span class="op">(</span>_parser<span class="op">:</span> Parser<span class="op">,</span> args<span class="op">:</span> <span class="op">[]</span>string<span class="op">,</span> ctx<span class="op">:</span> <span class="op">*</span>Ctx<span class="op">,</span> start <span class="op">::</span> <span class="dv">0</span><span class="op">)</span> Error</span></code></pre></div>
+<h2 id="std.arg_parser_run">std.arg_parser_run</h2>
+<div class="sourceCode" id="cb46"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a>arg_parser_run <span class="op">::</span> fn <span class="op">(</span>_parser<span class="op">:</span> ArgParser<span class="op">,</span> args<span class="op">:</span> <span class="op">[]</span>string<span class="op">,</span> ctx<span class="op">:</span> <span class="op">*</span>ArgParserCtx<span class="op">,</span> start <span class="op">::</span> <span class="dv">0</span><span class="op">)</span> Error</span></code></pre></div>
 <p>Perform parsing on input <code>args</code> slice and provide <code>ctx</code> as context to the argument parsing callbacks. <code>start</code> specify first element of <code>args</code> slice considered to be an argument. See also: (command_line_arguments)[#argparsercommand_line_arguments] (<strong>note</strong>: first element contains name of the executable)</p>
 <p><em>File: arg_parser.bl</em></p>
-<h2 id="argparser.add">ArgParser.add</h2>
-<div class="sourceCode" id="cb47"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a>add <span class="op">::</span> fn <span class="op">(</span>_parser<span class="op">:</span> Parser<span class="op">,</span> <span class="dt">short</span><span class="op">:</span> string<span class="op">,</span> <span class="dt">long</span><span class="op">:</span> string<span class="op">,</span> help<span class="op">:</span> string<span class="op">,</span> handler<span class="op">:</span> HandlerFn<span class="op">)</span> </span></code></pre></div>
+<h2 id="std.arg_parser_add">std.arg_parser_add</h2>
+<div class="sourceCode" id="cb47"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a>arg_parser_add <span class="op">::</span> fn <span class="op">(</span>_parser<span class="op">:</span> ArgParser<span class="op">,</span> <span class="dt">short</span><span class="op">:</span> string<span class="op">,</span> <span class="dt">long</span><span class="op">:</span> string<span class="op">,</span> help<span class="op">:</span> string<span class="op">,</span> handler<span class="op">:</span> ArgParserHandlerFn<span class="op">)</span> </span></code></pre></div>
 <p>Add new argument specified by <code>short</code> and <code>long</code> name to be recognised by parser. The argument description can be specified as <code>help</code>. <code>handler</code> function is called every time parser hits this argument (<code>short</code> or <code>long</code> name match). Argument name must be unique name starting with <code>-</code>. Help command (as <code>-h</code> or <code>--help</code>) is added by default.</p>
 <h3 id="example-2">Example</h3>
-<pre><code>ArgParser.add(parser,
+<pre><code>std.arg_parser_add(parser,
     &quot;-d&quot;, // short name.
     &quot;--debug&quot;, // long name.
     &quot;Enable debug mode.&quot;, // Help text.
-    &amp;fn (parser: ArgParser.Parser, args: []string, ctx: *ArgParser.Ctx) (s32, Error) {
+    &amp;fn (parser: std.ArgParser, args: []string, ctx: *std.ArgParserCtx) (s32, Error) {
         a: *MyArgs = auto ctx;
         a.is_debug = true;
         return 1, ok(); // One argument parsed (&#39;-d&#39; or &#39;--debug&#39;) 
     });</code></pre>
 <p><em>File: arg_parser.bl</em></p>
-<h2 id="argparser.print_help">ArgParser.print_help</h2>
-<div class="sourceCode" id="cb49"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a>print_help <span class="op">::</span> fn <span class="op">(</span>_parser<span class="op">:</span> Parser<span class="op">)</span> </span></code></pre></div>
+<h2 id="std.arg_parser_print_help">std.arg_parser_print_help</h2>
+<div class="sourceCode" id="cb49"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a>arg_parser_print_help <span class="op">::</span> fn <span class="op">(</span>_parser<span class="op">:</span> ArgParser<span class="op">)</span> </span></code></pre></div>
 <p>Print help for all registered commands.</p>
 <p><em>File: arg_parser.bl</em></p>
 <h1 id="arm64.bl">arm64.bl</h1>
@@ -2657,37 +2657,37 @@ main :: fn () s32 {
 <div class="sourceCode" id="cb303"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb303-1"><a href="#cb303-1" aria-hidden="true" tabindex="-1"></a>toupper <span class="op">::</span> fn <span class="op">(</span>c<span class="op">:</span> <span class="dt">int</span><span class="op">)</span> <span class="dt">int</span> #extern</span></code></pre></div>
 <p><em>File: libc.bl</em></p>
 <h1 id="macos.bl">macos.bl</h1>
-<h2 id="macos.cfallocatorref">MacOS.CFAllocatorRef</h2>
+<h2 id="macos.cfallocatorref">macos.CFAllocatorRef</h2>
 <div class="sourceCode" id="cb304"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb304-1"><a href="#cb304-1" aria-hidden="true" tabindex="-1"></a>CFAllocatorRef <span class="op">::</span> <span class="op">*</span>u8</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.cfindex">MacOS.CFIndex</h2>
+<h2 id="macos.cfindex">macos.CFIndex</h2>
 <div class="sourceCode" id="cb305"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb305-1"><a href="#cb305-1" aria-hidden="true" tabindex="-1"></a>CFIndex <span class="op">::</span> s64</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.cfstringref">MacOS.CFStringRef</h2>
+<h2 id="macos.cfstringref">macos.CFStringRef</h2>
 <div class="sourceCode" id="cb306"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb306-1"><a href="#cb306-1" aria-hidden="true" tabindex="-1"></a>CFStringRef <span class="op">::</span> <span class="op">*</span>u8</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.cfarrayref">MacOS.CFArrayRef</h2>
+<h2 id="macos.cfarrayref">macos.CFArrayRef</h2>
 <div class="sourceCode" id="cb307"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb307-1"><a href="#cb307-1" aria-hidden="true" tabindex="-1"></a>CFArrayRef <span class="op">::</span> <span class="op">*</span>u8</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.cfarraycallbacks">MacOS.CFArrayCallBacks</h2>
+<h2 id="macos.cfarraycallbacks">macos.CFArrayCallBacks</h2>
 <div class="sourceCode" id="cb308"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb308-1"><a href="#cb308-1" aria-hidden="true" tabindex="-1"></a>CFArrayCallBacks <span class="op">::</span> u8</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.cftimeinterval">MacOS.CFTimeInterval</h2>
+<h2 id="macos.cftimeinterval">macos.CFTimeInterval</h2>
 <div class="sourceCode" id="cb309"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb309-1"><a href="#cb309-1" aria-hidden="true" tabindex="-1"></a>CFTimeInterval <span class="op">::</span> f64</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.cftyperef">MacOS.CFTypeRef</h2>
+<h2 id="macos.cftyperef">macos.CFTypeRef</h2>
 <div class="sourceCode" id="cb310"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb310-1"><a href="#cb310-1" aria-hidden="true" tabindex="-1"></a>CFTypeRef <span class="op">::</span> <span class="op">*</span>u8</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.cfrunloopref">MacOS.CFRunLoopRef</h2>
+<h2 id="macos.cfrunloopref">macos.CFRunLoopRef</h2>
 <div class="sourceCode" id="cb311"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb311-1"><a href="#cb311-1" aria-hidden="true" tabindex="-1"></a>CFRunLoopRef <span class="op">::</span> <span class="op">*</span>u8</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.cfrunloopmode">MacOS.CFRunLoopMode</h2>
+<h2 id="macos.cfrunloopmode">macos.CFRunLoopMode</h2>
 <div class="sourceCode" id="cb312"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb312-1"><a href="#cb312-1" aria-hidden="true" tabindex="-1"></a>CFRunLoopMode <span class="op">::</span> CFStringRef</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.boolean">MacOS.Boolean</h2>
+<h2 id="macos.boolean">macos.Boolean</h2>
 <div class="sourceCode" id="cb313"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb313-1"><a href="#cb313-1" aria-hidden="true" tabindex="-1"></a>Boolean <span class="op">::</span> u8</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.cfstringencoding">MacOS.CFStringEncoding</h2>
+<h2 id="macos.cfstringencoding">macos.CFStringEncoding</h2>
 <div class="sourceCode" id="cb314"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb314-1"><a href="#cb314-1" aria-hidden="true" tabindex="-1"></a>CFStringEncoding <span class="op">::</span> <span class="kw">enum</span> u32 <span class="op">{</span></span>
 <span id="cb314-2"><a href="#cb314-2" aria-hidden="true" tabindex="-1"></a>    MacRoman <span class="op">::</span> <span class="dv">0</span><span class="op">;</span></span>
 <span id="cb314-3"><a href="#cb314-3" aria-hidden="true" tabindex="-1"></a>    WindowsLatin1 <span class="op">::</span> <span class="dv">1280</span><span class="op">;</span></span>
@@ -2705,145 +2705,145 @@ main :: fn () s32 {
 <span id="cb314-15"><a href="#cb314-15" aria-hidden="true" tabindex="-1"></a>    UTF32LE <span class="op">::</span> <span class="dv">469762304</span><span class="op">;</span></span>
 <span id="cb314-16"><a href="#cb314-16" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreameventflagnone">MacOS.kFSEventStreamEventFlagNone</h2>
+<h2 id="macos.kfseventstreameventflagnone">macos.kFSEventStreamEventFlagNone</h2>
 <div class="sourceCode" id="cb315"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb315-1"><a href="#cb315-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamEventFlagNone <span class="op">:</span> u32 <span class="op">:</span> <span class="dv">0</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreameventflagmustscansubdirs">MacOS.kFSEventStreamEventFlagMustScanSubDirs</h2>
+<h2 id="macos.kfseventstreameventflagmustscansubdirs">macos.kFSEventStreamEventFlagMustScanSubDirs</h2>
 <div class="sourceCode" id="cb316"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb316-1"><a href="#cb316-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamEventFlagMustScanSubDirs <span class="op">:</span> u32 <span class="op">:</span> <span class="dv">1</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreameventflaguserdropped">MacOS.kFSEventStreamEventFlagUserDropped</h2>
+<h2 id="macos.kfseventstreameventflaguserdropped">macos.kFSEventStreamEventFlagUserDropped</h2>
 <div class="sourceCode" id="cb317"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb317-1"><a href="#cb317-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamEventFlagUserDropped <span class="op">:</span> u32 <span class="op">:</span> <span class="dv">2</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreameventflagkerneldropped">MacOS.kFSEventStreamEventFlagKernelDropped</h2>
+<h2 id="macos.kfseventstreameventflagkerneldropped">macos.kFSEventStreamEventFlagKernelDropped</h2>
 <div class="sourceCode" id="cb318"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb318-1"><a href="#cb318-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamEventFlagKernelDropped <span class="op">:</span> u32 <span class="op">:</span> <span class="dv">4</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreameventflageventidswrapped">MacOS.kFSEventStreamEventFlagEventIdsWrapped</h2>
+<h2 id="macos.kfseventstreameventflageventidswrapped">macos.kFSEventStreamEventFlagEventIdsWrapped</h2>
 <div class="sourceCode" id="cb319"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb319-1"><a href="#cb319-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamEventFlagEventIdsWrapped <span class="op">:</span> u32 <span class="op">:</span> <span class="dv">8</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreameventflaghistorydone">MacOS.kFSEventStreamEventFlagHistoryDone</h2>
+<h2 id="macos.kfseventstreameventflaghistorydone">macos.kFSEventStreamEventFlagHistoryDone</h2>
 <div class="sourceCode" id="cb320"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb320-1"><a href="#cb320-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamEventFlagHistoryDone <span class="op">:</span> u32 <span class="op">:</span> <span class="dv">16</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreameventflagrootchanged">MacOS.kFSEventStreamEventFlagRootChanged</h2>
+<h2 id="macos.kfseventstreameventflagrootchanged">macos.kFSEventStreamEventFlagRootChanged</h2>
 <div class="sourceCode" id="cb321"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb321-1"><a href="#cb321-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamEventFlagRootChanged <span class="op">:</span> u32 <span class="op">:</span> <span class="dv">32</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreameventflagmount">MacOS.kFSEventStreamEventFlagMount</h2>
+<h2 id="macos.kfseventstreameventflagmount">macos.kFSEventStreamEventFlagMount</h2>
 <div class="sourceCode" id="cb322"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb322-1"><a href="#cb322-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamEventFlagMount <span class="op">:</span> u32 <span class="op">:</span> <span class="dv">64</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreameventflagunmount">MacOS.kFSEventStreamEventFlagUnmount</h2>
+<h2 id="macos.kfseventstreameventflagunmount">macos.kFSEventStreamEventFlagUnmount</h2>
 <div class="sourceCode" id="cb323"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb323-1"><a href="#cb323-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamEventFlagUnmount <span class="op">:</span> u32 <span class="op">:</span> <span class="dv">128</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreameventflagitemcreated">MacOS.kFSEventStreamEventFlagItemCreated</h2>
+<h2 id="macos.kfseventstreameventflagitemcreated">macos.kFSEventStreamEventFlagItemCreated</h2>
 <div class="sourceCode" id="cb324"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb324-1"><a href="#cb324-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamEventFlagItemCreated <span class="op">:</span> u32 <span class="op">:</span> <span class="dv">256</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreameventflagitemremoved">MacOS.kFSEventStreamEventFlagItemRemoved</h2>
+<h2 id="macos.kfseventstreameventflagitemremoved">macos.kFSEventStreamEventFlagItemRemoved</h2>
 <div class="sourceCode" id="cb325"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb325-1"><a href="#cb325-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamEventFlagItemRemoved <span class="op">:</span> u32 <span class="op">:</span> <span class="dv">512</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreameventflagiteminodemetamod">MacOS.kFSEventStreamEventFlagItemInodeMetaMod</h2>
+<h2 id="macos.kfseventstreameventflagiteminodemetamod">macos.kFSEventStreamEventFlagItemInodeMetaMod</h2>
 <div class="sourceCode" id="cb326"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb326-1"><a href="#cb326-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamEventFlagItemInodeMetaMod <span class="op">:</span> u32 <span class="op">:</span> <span class="dv">1024</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreameventflagitemrenamed">MacOS.kFSEventStreamEventFlagItemRenamed</h2>
+<h2 id="macos.kfseventstreameventflagitemrenamed">macos.kFSEventStreamEventFlagItemRenamed</h2>
 <div class="sourceCode" id="cb327"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb327-1"><a href="#cb327-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamEventFlagItemRenamed <span class="op">:</span> u32 <span class="op">:</span> <span class="dv">2048</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreameventflagitemmodified">MacOS.kFSEventStreamEventFlagItemModified</h2>
+<h2 id="macos.kfseventstreameventflagitemmodified">macos.kFSEventStreamEventFlagItemModified</h2>
 <div class="sourceCode" id="cb328"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb328-1"><a href="#cb328-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamEventFlagItemModified <span class="op">:</span> u32 <span class="op">:</span> <span class="dv">4096</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreameventflagitemfinderinfomod">MacOS.kFSEventStreamEventFlagItemFinderInfoMod</h2>
+<h2 id="macos.kfseventstreameventflagitemfinderinfomod">macos.kFSEventStreamEventFlagItemFinderInfoMod</h2>
 <div class="sourceCode" id="cb329"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb329-1"><a href="#cb329-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamEventFlagItemFinderInfoMod <span class="op">:</span> u32 <span class="op">:</span> <span class="dv">8192</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreameventflagitemchangeowner">MacOS.kFSEventStreamEventFlagItemChangeOwner</h2>
+<h2 id="macos.kfseventstreameventflagitemchangeowner">macos.kFSEventStreamEventFlagItemChangeOwner</h2>
 <div class="sourceCode" id="cb330"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb330-1"><a href="#cb330-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamEventFlagItemChangeOwner <span class="op">:</span> u32 <span class="op">:</span> <span class="dv">16384</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreameventflagitemxattrmod">MacOS.kFSEventStreamEventFlagItemXattrMod</h2>
+<h2 id="macos.kfseventstreameventflagitemxattrmod">macos.kFSEventStreamEventFlagItemXattrMod</h2>
 <div class="sourceCode" id="cb331"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb331-1"><a href="#cb331-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamEventFlagItemXattrMod <span class="op">:</span> u32 <span class="op">:</span> <span class="dv">32768</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreameventflagitemisfile">MacOS.kFSEventStreamEventFlagItemIsFile</h2>
+<h2 id="macos.kfseventstreameventflagitemisfile">macos.kFSEventStreamEventFlagItemIsFile</h2>
 <div class="sourceCode" id="cb332"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb332-1"><a href="#cb332-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamEventFlagItemIsFile <span class="op">:</span> u32 <span class="op">:</span> <span class="dv">65536</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreameventflagitemisdir">MacOS.kFSEventStreamEventFlagItemIsDir</h2>
+<h2 id="macos.kfseventstreameventflagitemisdir">macos.kFSEventStreamEventFlagItemIsDir</h2>
 <div class="sourceCode" id="cb333"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb333-1"><a href="#cb333-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamEventFlagItemIsDir <span class="op">:</span> u32 <span class="op">:</span> <span class="dv">131072</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreameventflagitemissymlink">MacOS.kFSEventStreamEventFlagItemIsSymlink</h2>
+<h2 id="macos.kfseventstreameventflagitemissymlink">macos.kFSEventStreamEventFlagItemIsSymlink</h2>
 <div class="sourceCode" id="cb334"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb334-1"><a href="#cb334-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamEventFlagItemIsSymlink <span class="op">:</span> u32 <span class="op">:</span> <span class="dv">262144</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreameventflagownevent">MacOS.kFSEventStreamEventFlagOwnEvent</h2>
+<h2 id="macos.kfseventstreameventflagownevent">macos.kFSEventStreamEventFlagOwnEvent</h2>
 <div class="sourceCode" id="cb335"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb335-1"><a href="#cb335-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamEventFlagOwnEvent <span class="op">:</span> u32 <span class="op">:</span> <span class="dv">524288</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreameventflagitemishardlink">MacOS.kFSEventStreamEventFlagItemIsHardlink</h2>
+<h2 id="macos.kfseventstreameventflagitemishardlink">macos.kFSEventStreamEventFlagItemIsHardlink</h2>
 <div class="sourceCode" id="cb336"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb336-1"><a href="#cb336-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamEventFlagItemIsHardlink <span class="op">:</span> u32 <span class="op">:</span> <span class="dv">1048576</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreameventflagitemislasthardlink">MacOS.kFSEventStreamEventFlagItemIsLastHardlink</h2>
+<h2 id="macos.kfseventstreameventflagitemislasthardlink">macos.kFSEventStreamEventFlagItemIsLastHardlink</h2>
 <div class="sourceCode" id="cb337"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb337-1"><a href="#cb337-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamEventFlagItemIsLastHardlink <span class="op">:</span> u32 <span class="op">:</span> <span class="dv">2097152</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreameventflagitemcloned">MacOS.kFSEventStreamEventFlagItemCloned</h2>
+<h2 id="macos.kfseventstreameventflagitemcloned">macos.kFSEventStreamEventFlagItemCloned</h2>
 <div class="sourceCode" id="cb338"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb338-1"><a href="#cb338-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamEventFlagItemCloned <span class="op">:</span> u32 <span class="op">:</span> <span class="dv">4194304</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreameventidsincenow">MacOS.kFSEventStreamEventIdSinceNow</h2>
+<h2 id="macos.kfseventstreameventidsincenow">macos.kFSEventStreamEventIdSinceNow</h2>
 <div class="sourceCode" id="cb339"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb339-1"><a href="#cb339-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamEventIdSinceNow <span class="op">:</span> FSEventStreamEventId <span class="op">:</span> <span class="dv">18446744073709551615</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreamcreateflagnone">MacOS.kFSEventStreamCreateFlagNone</h2>
+<h2 id="macos.kfseventstreamcreateflagnone">macos.kFSEventStreamCreateFlagNone</h2>
 <div class="sourceCode" id="cb340"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb340-1"><a href="#cb340-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamCreateFlagNone <span class="op">:</span> FSEventStreamCreateFlags <span class="op">:</span> <span class="dv">0</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreamcreateflagusecftypes">MacOS.kFSEventStreamCreateFlagUseCFTypes</h2>
+<h2 id="macos.kfseventstreamcreateflagusecftypes">macos.kFSEventStreamCreateFlagUseCFTypes</h2>
 <div class="sourceCode" id="cb341"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb341-1"><a href="#cb341-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamCreateFlagUseCFTypes <span class="op">:</span> FSEventStreamCreateFlags <span class="op">:</span> <span class="dv">1</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreamcreateflagnodefer">MacOS.kFSEventStreamCreateFlagNoDefer</h2>
+<h2 id="macos.kfseventstreamcreateflagnodefer">macos.kFSEventStreamCreateFlagNoDefer</h2>
 <div class="sourceCode" id="cb342"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb342-1"><a href="#cb342-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamCreateFlagNoDefer <span class="op">:</span> FSEventStreamCreateFlags <span class="op">:</span> <span class="dv">2</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreamcreateflagwatchroot">MacOS.kFSEventStreamCreateFlagWatchRoot</h2>
+<h2 id="macos.kfseventstreamcreateflagwatchroot">macos.kFSEventStreamCreateFlagWatchRoot</h2>
 <div class="sourceCode" id="cb343"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb343-1"><a href="#cb343-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamCreateFlagWatchRoot <span class="op">:</span> FSEventStreamCreateFlags <span class="op">:</span> <span class="dv">4</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreamcreateflagignoreself">MacOS.kFSEventStreamCreateFlagIgnoreSelf</h2>
+<h2 id="macos.kfseventstreamcreateflagignoreself">macos.kFSEventStreamCreateFlagIgnoreSelf</h2>
 <div class="sourceCode" id="cb344"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb344-1"><a href="#cb344-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamCreateFlagIgnoreSelf <span class="op">:</span> FSEventStreamCreateFlags <span class="op">:</span> <span class="dv">8</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreamcreateflagfileevents">MacOS.kFSEventStreamCreateFlagFileEvents</h2>
+<h2 id="macos.kfseventstreamcreateflagfileevents">macos.kFSEventStreamCreateFlagFileEvents</h2>
 <div class="sourceCode" id="cb345"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb345-1"><a href="#cb345-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamCreateFlagFileEvents <span class="op">:</span> FSEventStreamCreateFlags <span class="op">:</span> <span class="dv">16</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreamcreateflagmarkself">MacOS.kFSEventStreamCreateFlagMarkSelf</h2>
+<h2 id="macos.kfseventstreamcreateflagmarkself">macos.kFSEventStreamCreateFlagMarkSelf</h2>
 <div class="sourceCode" id="cb346"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb346-1"><a href="#cb346-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamCreateFlagMarkSelf <span class="op">:</span> FSEventStreamCreateFlags <span class="op">:</span> <span class="dv">32</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.kfseventstreamcreateflaguseextendeddata">MacOS.kFSEventStreamCreateFlagUseExtendedData</h2>
+<h2 id="macos.kfseventstreamcreateflaguseextendeddata">macos.kFSEventStreamCreateFlagUseExtendedData</h2>
 <div class="sourceCode" id="cb347"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb347-1"><a href="#cb347-1" aria-hidden="true" tabindex="-1"></a>kFSEventStreamCreateFlagUseExtendedData <span class="op">:</span> FSEventStreamCreateFlags <span class="op">:</span> <span class="dv">64</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.fseventstreamref">MacOS.FSEventStreamRef</h2>
+<h2 id="macos.fseventstreamref">macos.FSEventStreamRef</h2>
 <div class="sourceCode" id="cb348"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb348-1"><a href="#cb348-1" aria-hidden="true" tabindex="-1"></a>FSEventStreamRef <span class="op">::</span> <span class="op">*</span>u8</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.fseventstreameventid">MacOS.FSEventStreamEventId</h2>
+<h2 id="macos.fseventstreameventid">macos.FSEventStreamEventId</h2>
 <div class="sourceCode" id="cb349"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb349-1"><a href="#cb349-1" aria-hidden="true" tabindex="-1"></a>FSEventStreamEventId <span class="op">::</span> u64</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.fseventstreamcreateflags">MacOS.FSEventStreamCreateFlags</h2>
+<h2 id="macos.fseventstreamcreateflags">macos.FSEventStreamCreateFlags</h2>
 <div class="sourceCode" id="cb350"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb350-1"><a href="#cb350-1" aria-hidden="true" tabindex="-1"></a>FSEventStreamCreateFlags <span class="op">::</span> u32</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.fseventstreameventflags">MacOS.FSEventStreamEventFlags</h2>
+<h2 id="macos.fseventstreameventflags">macos.FSEventStreamEventFlags</h2>
 <div class="sourceCode" id="cb351"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb351-1"><a href="#cb351-1" aria-hidden="true" tabindex="-1"></a>FSEventStreamEventFlags <span class="op">::</span> u32</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.constfseventstreamref">MacOS.ConstFSEventStreamRef</h2>
+<h2 id="macos.constfseventstreamref">macos.ConstFSEventStreamRef</h2>
 <div class="sourceCode" id="cb352"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb352-1"><a href="#cb352-1" aria-hidden="true" tabindex="-1"></a>ConstFSEventStreamRef <span class="op">::</span> <span class="op">*</span>u8</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.cfallocatorretaincallback">MacOS.CFAllocatorRetainCallBack</h2>
+<h2 id="macos.cfallocatorretaincallback">macos.CFAllocatorRetainCallBack</h2>
 <div class="sourceCode" id="cb353"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb353-1"><a href="#cb353-1" aria-hidden="true" tabindex="-1"></a>CFAllocatorRetainCallBack <span class="op">::</span> <span class="op">*</span>fn <span class="op">(</span>info<span class="op">:</span> <span class="op">*</span>u8<span class="op">)</span> <span class="op">*</span>u8</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.cfallocatorreleasecallback">MacOS.CFAllocatorReleaseCallBack</h2>
+<h2 id="macos.cfallocatorreleasecallback">macos.CFAllocatorReleaseCallBack</h2>
 <div class="sourceCode" id="cb354"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb354-1"><a href="#cb354-1" aria-hidden="true" tabindex="-1"></a>CFAllocatorReleaseCallBack <span class="op">::</span> <span class="op">*</span>fn <span class="op">(</span>info<span class="op">:</span> <span class="op">*</span>u8<span class="op">)</span> </span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.cfallocatorcopydescriptioncallback">MacOS.CFAllocatorCopyDescriptionCallBack</h2>
+<h2 id="macos.cfallocatorcopydescriptioncallback">macos.CFAllocatorCopyDescriptionCallBack</h2>
 <div class="sourceCode" id="cb355"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb355-1"><a href="#cb355-1" aria-hidden="true" tabindex="-1"></a>CFAllocatorCopyDescriptionCallBack <span class="op">::</span> <span class="op">*</span>fn <span class="op">(</span>info<span class="op">:</span> <span class="op">*</span>u8<span class="op">)</span> CFStringRef</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.cfarraycreate">MacOS.CFArrayCreate</h2>
+<h2 id="macos.cfarraycreate">macos.CFArrayCreate</h2>
 <div class="sourceCode" id="cb356"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb356-1"><a href="#cb356-1" aria-hidden="true" tabindex="-1"></a>CFArrayCreate <span class="op">::</span> fn <span class="op">(</span>allocator<span class="op">:</span> CFAllocatorRef<span class="op">,</span> values<span class="op">:</span> <span class="op">**</span>u8<span class="op">,</span> numValues<span class="op">:</span> CFIndex<span class="op">,</span> callBacks<span class="op">:</span> <span class="op">*</span>CFArrayCallBacks<span class="op">)</span> CFArrayRef #extern</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.cfrunloopgetcurrent">MacOS.CFRunLoopGetCurrent</h2>
+<h2 id="macos.cfrunloopgetcurrent">macos.CFRunLoopGetCurrent</h2>
 <div class="sourceCode" id="cb357"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb357-1"><a href="#cb357-1" aria-hidden="true" tabindex="-1"></a>CFRunLoopGetCurrent <span class="op">::</span> fn <span class="op">()</span> CFRunLoopRef #extern</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.cfrunloopcopycurrentmode">MacOS.CFRunLoopCopyCurrentMode</h2>
+<h2 id="macos.cfrunloopcopycurrentmode">macos.CFRunLoopCopyCurrentMode</h2>
 <div class="sourceCode" id="cb358"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb358-1"><a href="#cb358-1" aria-hidden="true" tabindex="-1"></a>CFRunLoopCopyCurrentMode <span class="op">::</span> fn <span class="op">(</span>rl<span class="op">:</span> CFRunLoopRef<span class="op">)</span> CFRunLoopMode #extern</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.cfrelease">MacOS.CFRelease</h2>
+<h2 id="macos.cfrelease">macos.CFRelease</h2>
 <div class="sourceCode" id="cb359"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb359-1"><a href="#cb359-1" aria-hidden="true" tabindex="-1"></a>CFRelease <span class="op">::</span> fn <span class="op">(</span>cf<span class="op">:</span> CFTypeRef<span class="op">)</span>  #extern</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.cfstringcreatewithcstring">MacOS.CFStringCreateWithCString</h2>
+<h2 id="macos.cfstringcreatewithcstring">macos.CFStringCreateWithCString</h2>
 <div class="sourceCode" id="cb360"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb360-1"><a href="#cb360-1" aria-hidden="true" tabindex="-1"></a>CFStringCreateWithCString <span class="op">::</span> fn <span class="op">(</span>alloc<span class="op">:</span> CFAllocatorRef<span class="op">,</span> cStr<span class="op">:</span> <span class="op">*</span>u8<span class="op">,</span> encoding<span class="op">:</span> CFStringEncoding<span class="op">)</span> CFStringRef #extern</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.fseventstreamcontext">MacOS.FSEventStreamContext</h2>
+<h2 id="macos.fseventstreamcontext">macos.FSEventStreamContext</h2>
 <div class="sourceCode" id="cb361"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb361-1"><a href="#cb361-1" aria-hidden="true" tabindex="-1"></a>FSEventStreamContext <span class="op">::</span> <span class="kw">struct</span> <span class="op">{</span></span>
 <span id="cb361-2"><a href="#cb361-2" aria-hidden="true" tabindex="-1"></a>    version<span class="op">:</span> CFIndex<span class="op">;</span></span>
 <span id="cb361-3"><a href="#cb361-3" aria-hidden="true" tabindex="-1"></a>    info<span class="op">:</span> <span class="op">*</span>u8<span class="op">;</span></span>
@@ -2852,180 +2852,180 @@ main :: fn () s32 {
 <span id="cb361-6"><a href="#cb361-6" aria-hidden="true" tabindex="-1"></a>    copyDescription<span class="op">:</span> CFAllocatorCopyDescriptionCallBack<span class="op">;</span></span>
 <span id="cb361-7"><a href="#cb361-7" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.fseventstreamcallback">MacOS.FSEventStreamCallback</h2>
+<h2 id="macos.fseventstreamcallback">macos.FSEventStreamCallback</h2>
 <div class="sourceCode" id="cb362"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb362-1"><a href="#cb362-1" aria-hidden="true" tabindex="-1"></a>FSEventStreamCallback <span class="op">::</span> <span class="op">*</span>fn <span class="op">(</span>streamRef<span class="op">:</span> ConstFSEventStreamRef<span class="op">,</span> clientCallBackInfo<span class="op">:</span> <span class="op">*</span>u8<span class="op">,</span> numEvents<span class="op">:</span> usize<span class="op">,</span> eventPaths<span class="op">:</span> <span class="op">*</span>u8<span class="op">,</span> eventFlags<span class="op">:</span> <span class="op">*</span>FSEventStreamEventFlags<span class="op">,</span> eventIds<span class="op">:</span> <span class="op">*</span>FSEventStreamEventId<span class="op">)</span> </span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.fseventstreamcreate">MacOS.FSEventStreamCreate</h2>
+<h2 id="macos.fseventstreamcreate">macos.FSEventStreamCreate</h2>
 <div class="sourceCode" id="cb363"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb363-1"><a href="#cb363-1" aria-hidden="true" tabindex="-1"></a>FSEventStreamCreate <span class="op">::</span> fn <span class="op">(</span>allocator<span class="op">:</span> CFAllocatorRef<span class="op">,</span> callback<span class="op">:</span> FSEventStreamCallback<span class="op">,</span> context<span class="op">:</span> <span class="op">*</span>FSEventStreamContext<span class="op">,</span> pathsToWatch<span class="op">:</span> CFArrayRef<span class="op">,</span> sinceWhen<span class="op">:</span> FSEventStreamEventId<span class="op">,</span> latency<span class="op">:</span> CFTimeInterval<span class="op">,</span> flags<span class="op">:</span> FSEventStreamCreateFlags<span class="op">)</span> FSEventStreamRef #extern</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.fseventstreamschedulewithrunloop">MacOS.FSEventStreamScheduleWithRunLoop</h2>
+<h2 id="macos.fseventstreamschedulewithrunloop">macos.FSEventStreamScheduleWithRunLoop</h2>
 <div class="sourceCode" id="cb364"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb364-1"><a href="#cb364-1" aria-hidden="true" tabindex="-1"></a>FSEventStreamScheduleWithRunLoop <span class="op">::</span> fn <span class="op">(</span>streamRef<span class="op">:</span> FSEventStreamRef<span class="op">,</span> runLoop<span class="op">:</span> CFRunLoopRef<span class="op">,</span> runLoopMode<span class="op">:</span> CFStringRef<span class="op">)</span>  #extern</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.fseventstreamunschedulefromrunloop">MacOS.FSEventStreamUnscheduleFromRunLoop</h2>
+<h2 id="macos.fseventstreamunschedulefromrunloop">macos.FSEventStreamUnscheduleFromRunLoop</h2>
 <div class="sourceCode" id="cb365"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb365-1"><a href="#cb365-1" aria-hidden="true" tabindex="-1"></a>FSEventStreamUnscheduleFromRunLoop <span class="op">::</span> fn <span class="op">(</span>streamRef<span class="op">:</span> FSEventStreamRef<span class="op">,</span> runLoop<span class="op">:</span> CFRunLoopRef<span class="op">,</span> runLoopMode<span class="op">:</span> CFStringRef<span class="op">)</span>  #extern</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.fseventstreamstart">MacOS.FSEventStreamStart</h2>
+<h2 id="macos.fseventstreamstart">macos.FSEventStreamStart</h2>
 <div class="sourceCode" id="cb366"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb366-1"><a href="#cb366-1" aria-hidden="true" tabindex="-1"></a>FSEventStreamStart <span class="op">::</span> fn <span class="op">(</span>streamRef<span class="op">:</span> FSEventStreamRef<span class="op">)</span> Boolean #extern</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.fseventstreamflushsync">MacOS.FSEventStreamFlushSync</h2>
+<h2 id="macos.fseventstreamflushsync">macos.FSEventStreamFlushSync</h2>
 <div class="sourceCode" id="cb367"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb367-1"><a href="#cb367-1" aria-hidden="true" tabindex="-1"></a>FSEventStreamFlushSync <span class="op">::</span> fn <span class="op">(</span>streamRef<span class="op">:</span> FSEventStreamRef<span class="op">)</span>  #extern</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.fseventstreamstop">MacOS.FSEventStreamStop</h2>
+<h2 id="macos.fseventstreamstop">macos.FSEventStreamStop</h2>
 <div class="sourceCode" id="cb368"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb368-1"><a href="#cb368-1" aria-hidden="true" tabindex="-1"></a>FSEventStreamStop <span class="op">::</span> fn <span class="op">(</span>streamRef<span class="op">:</span> FSEventStreamRef<span class="op">)</span>  #extern</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.fseventstreaminvalidate">MacOS.FSEventStreamInvalidate</h2>
+<h2 id="macos.fseventstreaminvalidate">macos.FSEventStreamInvalidate</h2>
 <div class="sourceCode" id="cb369"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb369-1"><a href="#cb369-1" aria-hidden="true" tabindex="-1"></a>FSEventStreamInvalidate <span class="op">::</span> fn <span class="op">(</span>streamRef<span class="op">:</span> FSEventStreamRef<span class="op">)</span>  #extern</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.fseventstreamrelease">MacOS.FSEventStreamRelease</h2>
+<h2 id="macos.fseventstreamrelease">macos.FSEventStreamRelease</h2>
 <div class="sourceCode" id="cb370"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb370-1"><a href="#cb370-1" aria-hidden="true" tabindex="-1"></a>FSEventStreamRelease <span class="op">::</span> fn <span class="op">(</span>streamRef<span class="op">:</span> FSEventStreamRef<span class="op">)</span>  #extern</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.nsgetexecutablepath">MacOS.NSGetExecutablePath</h2>
+<h2 id="macos.nsgetexecutablepath">macos.NSGetExecutablePath</h2>
 <div class="sourceCode" id="cb371"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb371-1"><a href="#cb371-1" aria-hidden="true" tabindex="-1"></a>NSGetExecutablePath <span class="op">::</span> fn <span class="op">(</span>buf<span class="op">:</span> <span class="op">*</span>C<span class="op">.</span><span class="dt">char</span><span class="op">,</span> bufsize<span class="op">:</span> <span class="op">*</span>C<span class="op">.</span>uint<span class="op">)</span> C<span class="op">.</span><span class="dt">int</span> #extern</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.machtimebaseinfo">MacOS.MachTimebaseInfo</h2>
+<h2 id="macos.machtimebaseinfo">macos.MachTimebaseInfo</h2>
 <div class="sourceCode" id="cb372"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb372-1"><a href="#cb372-1" aria-hidden="true" tabindex="-1"></a>MachTimebaseInfo <span class="op">::</span> <span class="kw">struct</span> <span class="op">{</span></span>
 <span id="cb372-2"><a href="#cb372-2" aria-hidden="true" tabindex="-1"></a>    numer<span class="op">:</span> C<span class="op">.</span>uint<span class="op">;</span></span>
 <span id="cb372-3"><a href="#cb372-3" aria-hidden="true" tabindex="-1"></a>    denom<span class="op">:</span> C<span class="op">.</span>uint<span class="op">;</span></span>
 <span id="cb372-4"><a href="#cb372-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.mach_timebase_info">MacOS.mach_timebase_info</h2>
+<h2 id="macos.mach_timebase_info">macos.mach_timebase_info</h2>
 <div class="sourceCode" id="cb373"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb373-1"><a href="#cb373-1" aria-hidden="true" tabindex="-1"></a>mach_timebase_info <span class="op">::</span> fn <span class="op">(</span>info<span class="op">:</span> <span class="op">*</span>MachTimebaseInfo<span class="op">)</span> C<span class="op">.</span><span class="dt">int</span> #extern</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
-<h2 id="macos.mach_absolute_time">MacOS.mach_absolute_time</h2>
+<h2 id="macos.mach_absolute_time">macos.mach_absolute_time</h2>
 <div class="sourceCode" id="cb374"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb374-1"><a href="#cb374-1" aria-hidden="true" tabindex="-1"></a>mach_absolute_time <span class="op">::</span> fn <span class="op">()</span> u64 #extern</span></code></pre></div>
 <p><em>File: macos.bl</em></p>
 <h1 id="math">Math</h1>
 <p><code>#load "std/math.bl"</code></p>
-<h2 id="math.pi">Math.PI</h2>
+<h2 id="std.pi">std.PI</h2>
 <div class="sourceCode" id="cb375"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb375-1"><a href="#cb375-1" aria-hidden="true" tabindex="-1"></a>PI <span class="op">::</span> </span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.two_pi">Math.TWO_PI</h2>
+<h2 id="std.two_pi">std.TWO_PI</h2>
 <div class="sourceCode" id="cb376"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb376-1"><a href="#cb376-1" aria-hidden="true" tabindex="-1"></a>TWO_PI <span class="op">::</span> </span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.half_pi">Math.HALF_PI</h2>
+<h2 id="std.half_pi">std.HALF_PI</h2>
 <div class="sourceCode" id="cb377"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb377-1"><a href="#cb377-1" aria-hidden="true" tabindex="-1"></a>HALF_PI <span class="op">::</span> </span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.f32_epsilon">Math.F32_EPSILON</h2>
+<h2 id="std.f32_epsilon">std.F32_EPSILON</h2>
 <div class="sourceCode" id="cb378"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb378-1"><a href="#cb378-1" aria-hidden="true" tabindex="-1"></a>F32_EPSILON <span class="op">::</span> </span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.f64_epsilon">Math.F64_EPSILON</h2>
+<h2 id="std.f64_epsilon">std.F64_EPSILON</h2>
 <div class="sourceCode" id="cb379"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb379-1"><a href="#cb379-1" aria-hidden="true" tabindex="-1"></a>F64_EPSILON <span class="op">::</span> </span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.s8_min">Math.S8_MIN</h2>
+<h2 id="std.s8_min">std.S8_MIN</h2>
 <div class="sourceCode" id="cb380"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb380-1"><a href="#cb380-1" aria-hidden="true" tabindex="-1"></a>S8_MIN <span class="op">:</span> s8 <span class="op">:</span> </span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.s8_max">Math.S8_MAX</h2>
+<h2 id="std.s8_max">std.S8_MAX</h2>
 <div class="sourceCode" id="cb381"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb381-1"><a href="#cb381-1" aria-hidden="true" tabindex="-1"></a>S8_MAX <span class="op">:</span> s8 <span class="op">:</span> <span class="dv">127</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.s16_min">Math.S16_MIN</h2>
+<h2 id="std.s16_min">std.S16_MIN</h2>
 <div class="sourceCode" id="cb382"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb382-1"><a href="#cb382-1" aria-hidden="true" tabindex="-1"></a>S16_MIN <span class="op">:</span> s16 <span class="op">:</span> </span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.s16_max">Math.S16_MAX</h2>
+<h2 id="std.s16_max">std.S16_MAX</h2>
 <div class="sourceCode" id="cb383"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb383-1"><a href="#cb383-1" aria-hidden="true" tabindex="-1"></a>S16_MAX <span class="op">:</span> s16 <span class="op">:</span> <span class="dv">32767</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.s32_min">Math.S32_MIN</h2>
+<h2 id="std.s32_min">std.S32_MIN</h2>
 <div class="sourceCode" id="cb384"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb384-1"><a href="#cb384-1" aria-hidden="true" tabindex="-1"></a>S32_MIN <span class="op">:</span> s32 <span class="op">:</span> </span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.s32_max">Math.S32_MAX</h2>
+<h2 id="std.s32_max">std.S32_MAX</h2>
 <div class="sourceCode" id="cb385"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb385-1"><a href="#cb385-1" aria-hidden="true" tabindex="-1"></a>S32_MAX <span class="op">:</span> s32 <span class="op">:</span> <span class="dv">2147483647</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.s64_min">Math.S64_MIN</h2>
+<h2 id="std.s64_min">std.S64_MIN</h2>
 <div class="sourceCode" id="cb386"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb386-1"><a href="#cb386-1" aria-hidden="true" tabindex="-1"></a>S64_MIN <span class="op">:</span> s64 <span class="op">:</span> </span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.s64_max">Math.S64_MAX</h2>
+<h2 id="std.s64_max">std.S64_MAX</h2>
 <div class="sourceCode" id="cb387"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb387-1"><a href="#cb387-1" aria-hidden="true" tabindex="-1"></a>S64_MAX <span class="op">:</span> s64 <span class="op">:</span> <span class="dv">9223372036854775807</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.u8_min">Math.U8_MIN</h2>
+<h2 id="std.u8_min">std.U8_MIN</h2>
 <div class="sourceCode" id="cb388"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb388-1"><a href="#cb388-1" aria-hidden="true" tabindex="-1"></a>U8_MIN <span class="op">:</span> u8 <span class="op">:</span> <span class="dv">0</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.u8_max">Math.U8_MAX</h2>
+<h2 id="std.u8_max">std.U8_MAX</h2>
 <div class="sourceCode" id="cb389"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb389-1"><a href="#cb389-1" aria-hidden="true" tabindex="-1"></a>U8_MAX <span class="op">:</span> u8 <span class="op">:</span> <span class="dv">255</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.u16_min">Math.U16_MIN</h2>
+<h2 id="std.u16_min">std.U16_MIN</h2>
 <div class="sourceCode" id="cb390"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb390-1"><a href="#cb390-1" aria-hidden="true" tabindex="-1"></a>U16_MIN <span class="op">:</span> u16 <span class="op">:</span> <span class="dv">0</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.u16_max">Math.U16_MAX</h2>
+<h2 id="std.u16_max">std.U16_MAX</h2>
 <div class="sourceCode" id="cb391"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb391-1"><a href="#cb391-1" aria-hidden="true" tabindex="-1"></a>U16_MAX <span class="op">:</span> u16 <span class="op">:</span> <span class="dv">65535</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.u32_min">Math.U32_MIN</h2>
+<h2 id="std.u32_min">std.U32_MIN</h2>
 <div class="sourceCode" id="cb392"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb392-1"><a href="#cb392-1" aria-hidden="true" tabindex="-1"></a>U32_MIN <span class="op">:</span> u32 <span class="op">:</span> <span class="dv">0</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.u32_max">Math.U32_MAX</h2>
+<h2 id="std.u32_max">std.U32_MAX</h2>
 <div class="sourceCode" id="cb393"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb393-1"><a href="#cb393-1" aria-hidden="true" tabindex="-1"></a>U32_MAX <span class="op">:</span> u32 <span class="op">:</span> <span class="dv">4294967295</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.u64_min">Math.U64_MIN</h2>
+<h2 id="std.u64_min">std.U64_MIN</h2>
 <div class="sourceCode" id="cb394"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb394-1"><a href="#cb394-1" aria-hidden="true" tabindex="-1"></a>U64_MIN <span class="op">:</span> u64 <span class="op">:</span> <span class="dv">0</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.u64_max">Math.U64_MAX</h2>
+<h2 id="std.u64_max">std.U64_MAX</h2>
 <div class="sourceCode" id="cb395"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb395-1"><a href="#cb395-1" aria-hidden="true" tabindex="-1"></a>U64_MAX <span class="op">:</span> u64 <span class="op">:</span> <span class="dv">18446744073709551615</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.sin">Math.sin</h2>
+<h2 id="std.sin">std.sin</h2>
 <div class="sourceCode" id="cb396"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb396-1"><a href="#cb396-1" aria-hidden="true" tabindex="-1"></a>sin <span class="op">::</span> fn <span class="op">{</span> f32_sin<span class="op">;</span> f64_sin<span class="op">;</span> <span class="op">}</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.cos">Math.cos</h2>
+<h2 id="std.cos">std.cos</h2>
 <div class="sourceCode" id="cb397"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb397-1"><a href="#cb397-1" aria-hidden="true" tabindex="-1"></a>cos <span class="op">::</span> fn <span class="op">{</span> f32_cos<span class="op">;</span> f64_cos<span class="op">;</span> <span class="op">}</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.floor">Math.floor</h2>
+<h2 id="std.floor">std.floor</h2>
 <div class="sourceCode" id="cb398"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb398-1"><a href="#cb398-1" aria-hidden="true" tabindex="-1"></a>floor <span class="op">::</span> fn <span class="op">{</span> f32_floor<span class="op">;</span> f64_floor<span class="op">;</span> <span class="op">}</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.round">Math.round</h2>
+<h2 id="std.round">std.round</h2>
 <div class="sourceCode" id="cb399"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb399-1"><a href="#cb399-1" aria-hidden="true" tabindex="-1"></a>round <span class="op">::</span> fn <span class="op">{</span> f32_round<span class="op">;</span> f64_round<span class="op">;</span> <span class="op">}</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.pow">Math.pow</h2>
+<h2 id="std.pow">std.pow</h2>
 <div class="sourceCode" id="cb400"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb400-1"><a href="#cb400-1" aria-hidden="true" tabindex="-1"></a>pow <span class="op">::</span> fn <span class="op">{</span> f32_pow<span class="op">;</span> f64_pow<span class="op">;</span> <span class="op">}</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.log">Math.log</h2>
+<h2 id="std.log">std.log</h2>
 <div class="sourceCode" id="cb401"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb401-1"><a href="#cb401-1" aria-hidden="true" tabindex="-1"></a>log <span class="op">::</span> fn <span class="op">{</span> f32_log<span class="op">;</span> f64_log<span class="op">;</span> <span class="op">}</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.log2">Math.log2</h2>
+<h2 id="std.log2">std.log2</h2>
 <div class="sourceCode" id="cb402"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb402-1"><a href="#cb402-1" aria-hidden="true" tabindex="-1"></a>log2 <span class="op">::</span> fn <span class="op">{</span> f32_log2<span class="op">;</span> f64_log2<span class="op">;</span> <span class="op">}</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.log10">Math.log10</h2>
+<h2 id="std.log10">std.log10</h2>
 <div class="sourceCode" id="cb403"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb403-1"><a href="#cb403-1" aria-hidden="true" tabindex="-1"></a>log10 <span class="op">::</span> fn <span class="op">{</span> f32_log10<span class="op">;</span> f64_log10<span class="op">;</span> <span class="op">}</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.sqrt">Math.sqrt</h2>
+<h2 id="std.sqrt">std.sqrt</h2>
 <div class="sourceCode" id="cb404"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb404-1"><a href="#cb404-1" aria-hidden="true" tabindex="-1"></a>sqrt <span class="op">::</span> fn <span class="op">{</span> f32_sqrt<span class="op">;</span> f64_sqrt<span class="op">;</span> <span class="op">}</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.ceil">Math.ceil</h2>
+<h2 id="std.ceil">std.ceil</h2>
 <div class="sourceCode" id="cb405"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb405-1"><a href="#cb405-1" aria-hidden="true" tabindex="-1"></a>ceil <span class="op">::</span> fn <span class="op">{</span> f32_ceil<span class="op">;</span> f64_ceil<span class="op">;</span> <span class="op">}</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.atan2">Math.atan2</h2>
+<h2 id="std.atan2">std.atan2</h2>
 <div class="sourceCode" id="cb406"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb406-1"><a href="#cb406-1" aria-hidden="true" tabindex="-1"></a>atan2 <span class="op">::</span> fn <span class="op">{</span> C<span class="op">.</span>atan2f<span class="op">;</span> C<span class="op">.</span>atan2<span class="op">;</span> <span class="op">}</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.copysign">Math.copysign</h2>
+<h2 id="std.copysign">std.copysign</h2>
 <div class="sourceCode" id="cb407"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb407-1"><a href="#cb407-1" aria-hidden="true" tabindex="-1"></a>copysign <span class="op">::</span> fn <span class="op">{</span> C<span class="op">.</span>copysignf<span class="op">;</span> C<span class="op">.</span>copysign<span class="op">;</span> <span class="op">}</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.asin">Math.asin</h2>
+<h2 id="std.asin">std.asin</h2>
 <div class="sourceCode" id="cb408"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb408-1"><a href="#cb408-1" aria-hidden="true" tabindex="-1"></a>asin <span class="op">::</span> fn <span class="op">{</span> C<span class="op">.</span>asinf<span class="op">;</span> C<span class="op">.</span>asin<span class="op">;</span> <span class="op">}</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.acos">Math.acos</h2>
+<h2 id="std.acos">std.acos</h2>
 <div class="sourceCode" id="cb409"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb409-1"><a href="#cb409-1" aria-hidden="true" tabindex="-1"></a>acos <span class="op">::</span> fn <span class="op">{</span> C<span class="op">.</span>acosf<span class="op">;</span> C<span class="op">.</span>acos<span class="op">;</span> <span class="op">}</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.tan">Math.tan</h2>
+<h2 id="std.tan">std.tan</h2>
 <div class="sourceCode" id="cb410"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb410-1"><a href="#cb410-1" aria-hidden="true" tabindex="-1"></a>tan <span class="op">::</span> fn <span class="op">{</span> C<span class="op">.</span>tanf<span class="op">;</span> C<span class="op">.</span>tan<span class="op">;</span> <span class="op">}</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.abs">Math.abs</h2>
+<h2 id="std.abs">std.abs</h2>
 <div class="sourceCode" id="cb411"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb411-1"><a href="#cb411-1" aria-hidden="true" tabindex="-1"></a>abs <span class="op">::</span> fn <span class="op">{</span> f32_abs<span class="op">;</span> f64_abs<span class="op">;</span> <span class="op">}</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.compare">Math.compare</h2>
+<h2 id="std.compare">std.compare</h2>
 <div class="sourceCode" id="cb412"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb412-1"><a href="#cb412-1" aria-hidden="true" tabindex="-1"></a>compare <span class="op">::</span> fn <span class="op">{</span> f32_compare<span class="op">;</span> f64_compare<span class="op">;</span> <span class="op">}</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.degtorad">Math.degtorad</h2>
+<h2 id="std.degtorad">std.degtorad</h2>
 <div class="sourceCode" id="cb413"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb413-1"><a href="#cb413-1" aria-hidden="true" tabindex="-1"></a>degtorad <span class="op">::</span> fn <span class="op">{</span> f32_degtorad<span class="op">;</span> f64_degtorad<span class="op">;</span> <span class="op">}</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.radtodeg">Math.radtodeg</h2>
+<h2 id="std.radtodeg">std.radtodeg</h2>
 <div class="sourceCode" id="cb414"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb414-1"><a href="#cb414-1" aria-hidden="true" tabindex="-1"></a>radtodeg <span class="op">::</span> fn <span class="op">{</span> f32_radtodeg<span class="op">;</span> f64_radtodeg<span class="op">;</span> <span class="op">}</span></span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.max">Math.max</h2>
+<h2 id="std.max">std.max</h2>
 <div class="sourceCode" id="cb415"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb415-1"><a href="#cb415-1" aria-hidden="true" tabindex="-1"></a>max <span class="op">::</span> fn <span class="op">(</span>a<span class="op">:</span> <span class="op">?</span>T<span class="op">,</span> b<span class="op">:</span> T<span class="op">)</span> T #inline</span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.min">Math.min</h2>
+<h2 id="std.min">std.min</h2>
 <div class="sourceCode" id="cb416"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb416-1"><a href="#cb416-1" aria-hidden="true" tabindex="-1"></a>min <span class="op">::</span> fn <span class="op">(</span>a<span class="op">:</span> <span class="op">?</span>T<span class="op">,</span> b<span class="op">:</span> T<span class="op">)</span> T #inline</span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.lerp">Math.lerp</h2>
+<h2 id="std.lerp">std.lerp</h2>
 <div class="sourceCode" id="cb417"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb417-1"><a href="#cb417-1" aria-hidden="true" tabindex="-1"></a>lerp <span class="op">::</span> fn <span class="op">(</span>a<span class="op">:</span> <span class="op">?</span>T<span class="op">,</span> b<span class="op">:</span> T<span class="op">,</span> fraction<span class="op">:</span> T<span class="op">)</span> T #inline</span></code></pre></div>
 <p><em>File: math.bl</em></p>
-<h2 id="math.clamp">Math.clamp</h2>
+<h2 id="std.clamp">std.clamp</h2>
 <div class="sourceCode" id="cb418"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb418-1"><a href="#cb418-1" aria-hidden="true" tabindex="-1"></a>clamp <span class="op">::</span> fn <span class="op">(</span>v<span class="op">:</span> <span class="op">?</span>T<span class="op">,</span> minimum<span class="op">:</span> T<span class="op">,</span> maximum<span class="op">:</span> T<span class="op">)</span> T</span></code></pre></div>
 <p><em>File: math.bl</em></p>
 <h1 id="memory">Memory</h1>
@@ -3518,27 +3518,27 @@ std.set_cwd(std.str_clear_concat(&amp;path, &quot;my-dir/project-&quot;, VERSION
 <p><code>#import "std/sync"</code></p>
 <p>Multiplatform implementation of various thread synchronization tools.</p>
 <p><strong>warning</strong>: This module is experimental and not fully supported across all platforms.</p>
-<h2 id="sync.mutex">Sync.Mutex</h2>
-<div class="sourceCode" id="cb506"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb506-1"><a href="#cb506-1" aria-hidden="true" tabindex="-1"></a>Mutex <span class="op">::</span> _SyncImpl<span class="op">.</span>Mutex</span></code></pre></div>
+<h2 id="std.mutex">std.Mutex</h2>
+<div class="sourceCode" id="cb506"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb506-1"><a href="#cb506-1" aria-hidden="true" tabindex="-1"></a>Mutex <span class="op">::</span> _sync_impl<span class="op">.</span>Mutex</span></code></pre></div>
 <p>Mutex type.</p>
 <p><em>File: sync.bl</em></p>
-<h2 id="sync.init">Sync.init</h2>
-<div class="sourceCode" id="cb507"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb507-1"><a href="#cb507-1" aria-hidden="true" tabindex="-1"></a>init <span class="op">::</span> fn <span class="op">(</span>mutex<span class="op">:</span> <span class="op">*</span>Mutex<span class="op">)</span>  #inline</span></code></pre></div>
+<h2 id="std.mutex_init">std.mutex_init</h2>
+<div class="sourceCode" id="cb507"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb507-1"><a href="#cb507-1" aria-hidden="true" tabindex="-1"></a>mutex_init <span class="op">::</span> fn <span class="op">(</span>mutex<span class="op">:</span> <span class="op">*</span>Mutex<span class="op">)</span>  #inline</span></code></pre></div>
 <p>Initialize mutex. Call :ref:<code>terminate</code> when mutex is no longer needed.</p>
 <p><em>File: sync.bl</em></p>
-<h2 id="sync.terminate">Sync.terminate</h2>
-<div class="sourceCode" id="cb508"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb508-1"><a href="#cb508-1" aria-hidden="true" tabindex="-1"></a>terminate <span class="op">::</span> fn <span class="op">(</span>mutex<span class="op">:</span> <span class="op">*</span>Mutex<span class="op">)</span>  #inline</span></code></pre></div>
+<h2 id="std.mutex_terminate">std.mutex_terminate</h2>
+<div class="sourceCode" id="cb508"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb508-1"><a href="#cb508-1" aria-hidden="true" tabindex="-1"></a>mutex_terminate <span class="op">::</span> fn <span class="op">(</span>mutex<span class="op">:</span> <span class="op">*</span>Mutex<span class="op">)</span>  #inline</span></code></pre></div>
 <p>Terminate mutex.</p>
 <p><em>File: sync.bl</em></p>
-<h2 id="sync.lock">Sync.lock</h2>
-<div class="sourceCode" id="cb509"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb509-1"><a href="#cb509-1" aria-hidden="true" tabindex="-1"></a>lock <span class="op">::</span> fn <span class="op">(</span>mutex<span class="op">:</span> <span class="op">*</span>Mutex<span class="op">)</span>  #inline</span></code></pre></div>
+<h2 id="std.mutex_lock">std.mutex_lock</h2>
+<div class="sourceCode" id="cb509"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb509-1"><a href="#cb509-1" aria-hidden="true" tabindex="-1"></a>mutex_lock <span class="op">::</span> fn <span class="op">(</span>mutex<span class="op">:</span> <span class="op">*</span>Mutex<span class="op">)</span>  #inline</span></code></pre></div>
 <p>Lock mutex and enter critical section.</p>
 <p><em>File: sync.bl</em></p>
-<h2 id="sync.try_lock">Sync.try_lock</h2>
-<div class="sourceCode" id="cb510"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb510-1"><a href="#cb510-1" aria-hidden="true" tabindex="-1"></a>try_lock <span class="op">::</span> fn <span class="op">(</span>mutex<span class="op">:</span> <span class="op">*</span>Mutex<span class="op">)</span> <span class="dt">bool</span> #inline</span></code></pre></div>
+<h2 id="std.mutex_try_lock">std.mutex_try_lock</h2>
+<div class="sourceCode" id="cb510"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb510-1"><a href="#cb510-1" aria-hidden="true" tabindex="-1"></a>mutex_try_lock <span class="op">::</span> fn <span class="op">(</span>mutex<span class="op">:</span> <span class="op">*</span>Mutex<span class="op">)</span> <span class="dt">bool</span> #inline</span></code></pre></div>
 <p><em>File: sync.bl</em></p>
-<h2 id="sync.unlock">Sync.unlock</h2>
-<div class="sourceCode" id="cb511"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb511-1"><a href="#cb511-1" aria-hidden="true" tabindex="-1"></a>unlock <span class="op">::</span> fn <span class="op">(</span>mutex<span class="op">:</span> <span class="op">*</span>Mutex<span class="op">)</span>  #inline</span></code></pre></div>
+<h2 id="std.mutex_unlock">std.mutex_unlock</h2>
+<div class="sourceCode" id="cb511"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb511-1"><a href="#cb511-1" aria-hidden="true" tabindex="-1"></a>mutex_unlock <span class="op">::</span> fn <span class="op">(</span>mutex<span class="op">:</span> <span class="op">*</span>Mutex<span class="op">)</span>  #inline</span></code></pre></div>
 <p>Unlock previously locked mutex and leave critical section.</p>
 <p><em>File: sync.bl</em></p>
 <h1 id="table">Table</h1>
@@ -3644,8 +3644,8 @@ std.set_cwd(std.str_clear_concat(&amp;path, &quot;my-dir/project-&quot;, VERSION
 <div class="sourceCode" id="cb528"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb528-1"><a href="#cb528-1" aria-hidden="true" tabindex="-1"></a>test_eq <span class="op">::</span> fn <span class="op">{</span> fn <span class="op">(</span>got<span class="op">:</span> string<span class="op">,</span> expected<span class="op">:</span> string<span class="op">,</span> loc <span class="op">::</span> <span class="op">)</span> <span class="op">;</span> fn <span class="op">(</span>got<span class="op">:</span> f32<span class="op">,</span> expected<span class="op">:</span> f32<span class="op">,</span> epsilon <span class="op">:</span> f32<span class="op">:</span> <span class="op">,</span> loc <span class="op">::</span> <span class="op">)</span> <span class="op">;</span> fn <span class="op">(</span>got<span class="op">:</span> f64<span class="op">,</span> expected<span class="op">:</span> f64<span class="op">,</span> epsilon <span class="op">:</span> f64<span class="op">:</span> <span class="op">,</span> loc <span class="op">::</span> <span class="op">)</span> <span class="op">;</span> fn <span class="op">(</span>got<span class="op">:</span> <span class="op">?</span>T<span class="op">,</span> expected<span class="op">:</span> T<span class="op">,</span> loc <span class="op">::</span> <span class="op">)</span> <span class="op">;</span> <span class="op">}</span></span></code></pre></div>
 <h3 id="overloads">Overloads</h3>
 <pre><code>fn (got: string, expected: string, loc := #call_location)
-fn (got: f32, expected: f32, epsilon: f32 = Math.F32_EPSILON, loc := #call_location)
-fn (got: f64, expected: f64, epsilon: f64 = Math.F64_EPSILON, loc := #call_location)
+fn (got: f32, expected: f32, epsilon: f32 = std.F32_EPSILON, loc := #call_location)
+fn (got: f64, expected: f64, epsilon: f64 = std.F64_EPSILON, loc := #call_location)
 fn (got: ?T, expected: T, loc := #call_location)</code></pre>
 <p>Test whether <code>got</code> value is equal to <code>expected</code> value.</p>
 <p><em>File: test.bl</em></p>
@@ -3653,8 +3653,8 @@ fn (got: ?T, expected: T, loc := #call_location)</code></pre>
 <div class="sourceCode" id="cb530"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb530-1"><a href="#cb530-1" aria-hidden="true" tabindex="-1"></a>test_neq <span class="op">::</span> fn <span class="op">{</span> fn <span class="op">(</span>got<span class="op">:</span> string<span class="op">,</span> not_expected<span class="op">:</span> string<span class="op">,</span> loc <span class="op">::</span> <span class="op">)</span> <span class="op">;</span> fn <span class="op">(</span>got<span class="op">:</span> f32<span class="op">,</span> not_expected<span class="op">:</span> f32<span class="op">,</span> epsilon <span class="op">:</span> f32<span class="op">:</span> <span class="op">,</span> loc <span class="op">::</span> <span class="op">)</span> <span class="op">;</span> fn <span class="op">(</span>got<span class="op">:</span> f64<span class="op">,</span> not_expected<span class="op">:</span> f64<span class="op">,</span> epsilon <span class="op">:</span> f64<span class="op">:</span> <span class="op">,</span> loc <span class="op">::</span> <span class="op">)</span> <span class="op">;</span> fn <span class="op">(</span>got<span class="op">:</span> <span class="op">?</span>T<span class="op">,</span> not_expected<span class="op">:</span> T<span class="op">,</span> loc <span class="op">::</span> <span class="op">)</span> <span class="op">;</span> <span class="op">}</span></span></code></pre></div>
 <h3 id="overloads-1">Overloads</h3>
 <pre><code>fn (got: string, not_expected: string, loc := #call_location)
-fn (got: f32, not_expected: f32, epsilon: f32 = Math.F32_EPSILON, loc := #call_location)
-fn (got: f64, not_expected: f64, epsilon: f64 = Math.F64_EPSILON, loc := #call_location)
+fn (got: f32, not_expected: f32, epsilon: f32 = std.F32_EPSILON, loc := #call_location)
+fn (got: f64, not_expected: f64, epsilon: f64 = std.F64_EPSILON, loc := #call_location)
 fn (got: ?T, not_expected: T, loc := #call_location)</code></pre>
 <p>Test whether <code>got</code> value is not equal to <code>not_expected</code> value.</p>
 <p><em>File: test.bl</em></p>
@@ -3830,11 +3830,11 @@ main :: fn () s32 {
 <p><em>File: utils.bl</em></p>
 <h2 id="random_seed_time">random_seed_time</h2>
 <div class="sourceCode" id="cb564"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb564-1"><a href="#cb564-1" aria-hidden="true" tabindex="-1"></a>random_seed_time <span class="op">::</span> fn <span class="op">()</span>  #inline</span></code></pre></div>
-<p>Sets seed for <code>Math.rand</code> or utility function <a href="#random_number">random_number</a> based on current system tick time.</p>
+<p>Sets seed for <code>std.rand</code> or utility function <a href="#random_number">random_number</a> based on current system tick time.</p>
 <p><em>File: utils.bl</em></p>
 <h2 id="random_number">random_number</h2>
 <div class="sourceCode" id="cb565"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb565-1"><a href="#cb565-1" aria-hidden="true" tabindex="-1"></a>random_number <span class="op">::</span> fn <span class="op">(</span>min <span class="op">::</span> <span class="dv">0</span><span class="op">,</span> max <span class="op">::</span> <span class="dv">1</span><span class="op">)</span> s32 #inline</span></code></pre></div>
-<p>Generates random number in specified range &lt;min, max&gt; using standard libc rand generator. Random number generator seed is supposed to be set by :ref:<code>random_seed_time</code> or by <code>Math.srand</code> call.</p>
+<p>Generates random number in specified range &lt;min, max&gt; using standard libc rand generator. Random number generator seed is supposed to be set by :ref:<code>random_seed_time</code> or by <code>std.srand</code> call.</p>
 <p><em>File: utils.bl</em></p>
 <h2 id="sort">sort</h2>
 <div class="sourceCode" id="cb566"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb566-1"><a href="#cb566-1" aria-hidden="true" tabindex="-1"></a>sort <span class="op">::</span> fn <span class="op">(</span>list<span class="op">:</span> <span class="op">[]?</span>T<span class="op">,</span> cmp<span class="op">:</span> <span class="op">*</span>fn <span class="op">(</span>a<span class="op">:</span> <span class="op">*</span>T<span class="op">,</span> b<span class="op">:</span> <span class="op">*</span>T<span class="op">)</span> <span class="dt">bool</span><span class="op">)</span> </span></code></pre></div>

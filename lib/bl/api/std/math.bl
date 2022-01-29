@@ -30,7 +30,7 @@
 //! 
 //! `#load "std/math.bl"`
 
-#scope Math
+#scope std
 
 PI          :: 3.141592653589793;
 TWO_PI      :: 6.283185307179587;
