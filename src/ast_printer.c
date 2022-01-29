@@ -94,6 +94,7 @@ static void print_stmt_case(struct ast *stmt_case, s32 pad, FILE *stream);
 static void print_stmt_loop(struct ast *loop, s32 pad, FILE *stream);
 static void print_stmt_break(struct ast *br, s32 pad, FILE *stream);
 static void print_stmt_continue(struct ast *ctx, s32 pad, FILE *stream);
+static void print_stmt_using(struct ast *using, s32 pad, FILE *stream);
 static void print_stmt_return(struct ast *ret, s32 pad, FILE *stream);
 static void print_stmt_defer(struct ast *defer, s32 pad, FILE *stream);
 static void print_decl_entity(struct ast *entity, s32 pad, FILE *stream);
@@ -307,6 +308,12 @@ void print_stmt_break(struct ast *br, s32 pad, FILE *stream)
 void print_stmt_continue(struct ast *ctx, s32 pad, FILE *stream)
 {
     print_head(ctx, pad, stream);
+}
+
+void print_stmt_using(struct ast *using, s32 pad, FILE *stream)
+{
+    print_head(using, pad, stream);
+    print_node(using->data.stmt_using.scope_expr, pad + 1, stream);
 }
 
 void print_stmt_return(struct ast *ret, s32 pad, FILE *stream)
@@ -637,6 +644,10 @@ void print_node(struct ast *node, s32 pad, FILE *stream)
 
     case AST_STMT_RETURN:
         print_stmt_return(node, pad, stream);
+        break;
+
+    case AST_STMT_USING:
+        print_stmt_using(node, pad, stream);
         break;
 
     case AST_STMT_DEFER:

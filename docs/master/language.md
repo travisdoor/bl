@@ -650,12 +650,13 @@ char  :: 'i';     // u8 literal
 
 ### Special
 
-| Symbol   | Relevant for types | Description                     |
-| -------- | ------------------ | ------------------------------- |
-| sizeof   | Any                | Determinates size in bytes.     |
-| alignof  | Any                | Determinates alignment of type. |
-| typeinfo | Any                | Determinates TypeInfo of type.  |
-| typekind | Any                | Determinates TypeKind of type.  |
+| Symbol         | Relevant for types | Description                          |
+| -------------- | ------------------ | -------------------------------      |
+| sizeof(expr)   | Any                | Determinates size in bytes.          |
+| alignof(expr)  | Any                | Determinates alignment of epression. |
+| typeinfo(expr) | Any                | Determinates TypeInfo of expression. |
+| typekind(expr) | Any                | Determinates TypeKind of expression. |
+| typeof(expr)   | Any                | Determinates type of expression.     |
 
 ### Type Info
 
@@ -1547,6 +1548,37 @@ Output:
 
 ```bash
 4 3 2 8 7 6 5 1
+```
+
+## Using stetement
+
+The using statement can be used to allow direct access to another scope's or enum's members. Currently, the
+using statement can be used only in local scopes of functions. This may eventually change in the future.
+
+**Example:**
+
+```c
+main :: fn () s32 {
+    using my_scope;
+    // Directly call function from my_scope.
+    print_kind(Kind.PLAYER); 
+    print_kind(Kind.ENEMY);
+
+    using Kind;
+    // Directly use enum variants from my_scope.Kind.
+    print_kind(PLAYER); 
+    print_kind(ENEMY);
+    return 0;
+}
+
+#scope my_scope
+
+Kind :: enum { PLAYER; ENEMY; }
+
+print_kind :: fn (k: Kind) {
+    print("Kind is = %\n", k);
+}
+
 ```
 
 ## Main function

@@ -161,6 +161,10 @@ struct ast_block {
     bool         has_return;
 };
 
+struct ast_stmt_using {
+    struct ast *scope_expr;
+};
+
 struct ast_stmt_return {
     // Optional return values.
     ast_nodes_t *exprs;

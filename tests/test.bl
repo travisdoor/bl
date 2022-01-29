@@ -1,21 +1,22 @@
 main :: fn () s32 {
-    using mine;
-    foo(make_flags(Flags.A, Flags.B));
-    //mine.foo(make_flags(mine.Flags.A, mine.Flags.B));
+    using my_scope;
+    my_scope.print_kind(Kind.PLAYER);
 
+    using my_scope.Kind;
+    //my_scope.print_kind(PLAYER); 
+    //print_kind(ENEMY);
     return 0;
 }
 
-#scope mine
+#scope my_scope
 
-Flags :: enum #flags {
-    A;
-    B;
+Kind :: enum { PLAYER; ENEMY; }
+
+print_kind :: fn (k: Kind) {
+    print("Kind is = %\n", k);
 }
 
-foo :: fn (flags: Flags) {
-    print("%\n", flags);
-}
+// rename: struct mir_instr_* -> struct instr
 
 // =================================================================================================
 // Comptime function

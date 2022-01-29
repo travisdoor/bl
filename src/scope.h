@@ -95,12 +95,13 @@ struct scope {
     struct scope           *parent;
     struct scope_sync_impl *sync;
     struct location        *location;
-    LLVMMetadataRef         llvm_meta;
-    struct {
+    array(struct scope *) usings;
+    LLVMMetadataRef llvm_meta;
+    hash_table(struct {
         // Hash value of the scope entry as combination of layer and id.
         u64                 key;
         struct scope_entry *value;
-    } * entries;
+    }) entries;
 
     bmagic_member
 };
@@ -123,15 +124,25 @@ void scope_insert(struct scope *scope, hash_t layer, struct scope_entry *entry);
 void scope_lock(struct scope *scope);
 void scope_unlock(struct scope *scope);
 
-struct scope_entry *scope_lookup(struct scope *scope,
-                                 hash_t        preferred_layer,
-                                 struct id    *id,
-                                 bool          in_tree,
-                                 bool          ignore_global,
-                                 bool         *out_of_fn_local_scope);
+// Return true if other scope was added (is unique in this context).
+bool scope_using_add(struct scope *scope, struct scope *other);
+
+typedef struct {
+    hash_t     layer;
+    struct id *id;
+    bool       in_tree;
+    bool       ignore_global;
+
+    bool *out_of_local;
+} scope_lookup_args_t;
+
+struct scope_entry *scope_lookup(struct scope *scope, scope_lookup_args_t *args);
+struct scope_entry *
+scope_lookup_usings(struct scope *scope, struct id *id, struct scope_entry **out_ambiguous);
 
 // Checks whether passed scope is of kind or is nested in scope of kind.
 bool        scope_is_subtree_of_kind(const struct scope *scope, enum scope_kind kind);
+bool        scope_is_subtree_of(const struct scope *scope, const struct scope *other);
 const char *scope_kind_name(const struct scope *scope);
 void        scope_get_full_name(char **dest, struct scope *scope);
 

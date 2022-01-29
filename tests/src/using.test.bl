@@ -1,0 +1,14 @@
+#private
+
+foo :: fn () {
+    S.i = 10;
+
+    using S;
+    S.i = 10;
+    i = 10;
+}
+
+#scope S
+
+i: s32;
+

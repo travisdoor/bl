@@ -54,6 +54,7 @@ static void scope_dtor(struct scope *scope)
 {
     bmagic_assert(scope);
     hmfree(scope->entries);
+    arrfree(scope->usings);
     sync_delete(scope->sync);
 }
 
@@ -118,21 +119,16 @@ void scope_insert(struct scope *scope, hash_t layer, struct scope_entry *entry)
     return_zone();
 }
 
-struct scope_entry *scope_lookup(struct scope *scope,
-                                 hash_t        preferred_layer,
-                                 struct id    *id,
-                                 bool          in_tree,
-                                 bool          ignore_global,
-                                 bool         *out_of_fn_local_scope)
+struct scope_entry *scope_lookup(struct scope *scope, scope_lookup_args_t *args)
 {
     zone();
-    bassert(scope && id);
-    u64 hash = entry_hash(id->hash, preferred_layer);
+    bassert(scope && args->id);
+    u64 hash = entry_hash(args->id->hash, args->layer);
     while (scope) {
-        if (ignore_global && scope->kind == SCOPE_GLOBAL) break;
+        if (args->ignore_global && scope->kind == SCOPE_GLOBAL) break;
         if (!scope_is_local(scope)) {
             // Global scopes should not have layers!!!
-            hash = entry_hash(id->hash, SCOPE_DEFAULT_LAYER);
+            hash = entry_hash(args->id->hash, SCOPE_DEFAULT_LAYER);
         }
         const s64 i = hmgeti(scope->entries, hash);
         if (i != -1) { // found!!!
@@ -141,9 +137,9 @@ struct scope_entry *scope_lookup(struct scope *scope,
             return_zone(entry);
         }
         // Lookup in parent.
-        if (in_tree) {
-            if (out_of_fn_local_scope && scope->kind == SCOPE_FN_LOCAL) {
-                *out_of_fn_local_scope = true;
+        if (args->in_tree) {
+            if (args->out_of_local && scope->kind == SCOPE_FN_LOCAL) {
+                *(args->out_of_local) = true;
             }
             scope = scope->parent;
         } else {
@@ -151,6 +147,28 @@ struct scope_entry *scope_lookup(struct scope *scope,
         }
     }
     return_zone(NULL);
+}
+
+struct scope_entry *
+scope_lookup_usings(struct scope *scope, struct id *id, struct scope_entry **out_ambiguous)
+{
+    zone();
+    bassert(scope && id);
+    struct scope_entry *found     = NULL;
+    struct scope_entry *ambiguous = NULL;
+    for (usize i = 0; i < arrlenu(scope->usings); ++i) {
+        struct scope_entry *entry =
+            scope_lookup(scope->usings[i], &(scope_lookup_args_t){.id = id, .ignore_global = true});
+        if (!entry) continue;
+        if (!found) {
+            found = entry;
+        } else {
+            ambiguous = entry;
+            break;
+        }
+    }
+    if (out_ambiguous) *out_ambiguous = ambiguous;
+    return_zone(found);
 }
 
 void scope_dirty_clear_tree(struct scope *scope)
@@ -170,13 +188,34 @@ void scope_unlock(struct scope *scope)
     pthread_spin_unlock(&scope->sync->lock);
 }
 
+bool scope_using_add(struct scope *scope, struct scope *other)
+{
+    bmagic_assert(scope);
+    bmagic_assert(other);
+    for (usize i = 0; i < arrlenu(scope->usings); ++i) {
+        if (other == scope->usings[i]) {
+            return false;
+        }
+    }
+    arrput(scope->usings, other);
+    return true;
+}
+
 bool scope_is_subtree_of_kind(const struct scope *scope, enum scope_kind kind)
 {
     while (scope) {
         if (scope->kind == kind) return true;
         scope = scope->parent;
     }
+    return false;
+}
 
+bool scope_is_subtree_of(const struct scope *scope, const struct scope *other)
+{
+    while (scope) {
+        if (scope == other) return true;
+        scope = scope->parent;
+    }
     return false;
 }
 

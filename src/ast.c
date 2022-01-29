@@ -93,6 +93,8 @@ const char *ast_get_name(const struct ast *n)
         return "DebugBreak";
     case AST_CALL_LOC:
         return "CallLocation";
+    case AST_STMT_USING:
+        return "StmtUsing";
     case AST_STMT_RETURN:
         return "StmtReturn";
     case AST_STMT_DEFER:

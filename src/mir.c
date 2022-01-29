@@ -474,7 +474,6 @@ static struct mir_instr *create_instr_member_ptr(struct context      *ctx,
                                                  struct scope_entry  *scope_entry,
                                                  enum builtin_id_kind builtin_id);
 static struct mir_instr *create_instr_phi(struct context *ctx, struct ast *node);
-
 static struct mir_instr *create_instr_call(struct context   *ctx,
                                            struct ast       *node,
                                            struct mir_instr *callee,
@@ -489,6 +488,10 @@ static struct mir_instr *insert_instr_toany(struct context *ctx, struct mir_inst
 static enum mir_cast_op  get_cast_op(struct mir_type *from, struct mir_type *to);
 static void              append_current_block(struct context *ctx, struct mir_instr *instr);
 static struct mir_instr *append_instr_arg(struct context *ctx, struct ast *node, unsigned i);
+static struct mir_instr *append_instr_using(struct context   *ctx,
+                                            struct ast       *node,
+                                            struct scope     *owner_scope,
+                                            struct mir_instr *scope_expr);
 static struct mir_instr *append_instr_unroll(struct context   *ctx,
                                              struct ast       *node,
                                              struct mir_instr *src,
@@ -734,6 +737,7 @@ static void              ast_stmt_loop(struct context *ctx, struct ast *loop);
 static void              ast_stmt_break(struct context *ctx, struct ast *br);
 static void              ast_stmt_continue(struct context *ctx, struct ast *cont);
 static void              ast_stmt_switch(struct context *ctx, struct ast *stmt_switch);
+static void              ast_stmt_using(struct context *ctx, struct ast *using);
 static struct mir_instr *ast_decl_entity(struct context *ctx, struct ast *entity);
 static struct mir_instr *ast_decl_arg(struct context *ctx, struct ast *arg);
 static struct mir_instr *ast_decl_member(struct context *ctx, struct ast *arg);
@@ -851,6 +855,7 @@ static const struct slot_config analyze_slot_conf_full = {.count  = 9,
 static struct result
 analyze_resolve_type(struct context *ctx, struct mir_instr *resolver, struct mir_type **out_type);
 static struct result analyze_instr_unroll(struct context *ctx, struct mir_instr_unroll *unroll);
+static struct result analyze_instr_using(struct context *ctx, struct mir_instr_using *using);
 static struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compound *cmp);
 static struct result analyze_instr_set_initializer(struct context                   *ctx,
                                                    struct mir_instr_set_initializer *si);
@@ -1883,7 +1888,12 @@ struct scope_entry *register_symbol(struct context *ctx,
     }
     const bool          is_private  = scope->kind == SCOPE_PRIVATE;
     const hash_t        layer_index = ctx->polymorph.current_scope_layer;
-    struct scope_entry *collision   = scope_lookup(scope, layer_index, id, is_private, false, NULL);
+    struct scope_entry *collision   = scope_lookup(scope,
+                                                 &(scope_lookup_args_t){
+                                                       .layer   = layer_index,
+                                                       .id      = id,
+                                                       .in_tree = is_private,
+                                                 });
     if (collision) {
         if (!is_private) goto COLLIDE;
         const bool collision_in_same_unit =
@@ -1918,7 +1928,11 @@ struct mir_type *lookup_builtin_type(struct context *ctx, enum builtin_id_kind k
 {
     struct id          *id    = &builtin_ids[kind];
     struct scope       *scope = ctx->assembly->gscope;
-    struct scope_entry *found = scope_lookup(scope, SCOPE_DEFAULT_LAYER, id, true, false, NULL);
+    struct scope_entry *found = scope_lookup(scope,
+                                             &(scope_lookup_args_t){
+                                                 .id      = id,
+                                                 .in_tree = true,
+                                             });
 
     if (!found) babort("Missing compiler internal symbol '%s'", id->str);
     if (found->kind == SCOPE_ENTRY_INCOMPLETE) return NULL;
@@ -1945,7 +1959,11 @@ struct mir_fn *lookup_builtin_fn(struct context *ctx, enum builtin_id_kind kind)
 {
     struct id          *id    = &builtin_ids[kind];
     struct scope       *scope = ctx->assembly->gscope;
-    struct scope_entry *found = scope_lookup(scope, SCOPE_DEFAULT_LAYER, id, true, false, NULL);
+    struct scope_entry *found = scope_lookup(scope,
+                                             &(scope_lookup_args_t){
+                                                 .id      = id,
+                                                 .in_tree = true,
+                                             });
 
     if (!found) babort("Missing compiler internal symbol '%s'", id->str);
     if (found->kind == SCOPE_ENTRY_INCOMPLETE) return NULL;
@@ -2056,7 +2074,12 @@ lookup_composit_member(struct mir_type *type, struct id *rid, struct mir_type **
     struct scope_entry *found       = NULL;
 
     while (true) {
-        found = scope_lookup(scope, scope_layer, rid, false, true, NULL);
+        found = scope_lookup(scope,
+                             &(scope_lookup_args_t){
+                                 .layer         = scope_layer,
+                                 .id            = rid,
+                                 .ignore_global = true,
+                             });
         if (found) break;
         scope = get_base_type_scope(type);
         type  = get_base_type(type);
@@ -2912,10 +2935,10 @@ enum mir_cast_op get_cast_op(struct mir_type *from, struct mir_type *to)
 
     if (type_cmp(from, to)) return MIR_CAST_NONE;
 
-    // Allow casting of anything to polymorph type. Polymorph types should exist only in polymorph
-    // function argument list and should not produce any executable code directly; such casting is
-    // allowed only due to analyze of valid concepts like defautl argument values set for deduced
-    // polymorph slave-typed arguments.
+    // Allow casting of anything to polymorph type. Polymorph types should exist only in
+    // polymorph function argument list and should not produce any executable code directly;
+    // such casting is allowed only due to analyze of valid concepts like defautl argument
+    // values set for deduced polymorph slave-typed arguments.
     if (to->kind == MIR_TYPE_POLY) return MIR_CAST_NONE;
 #ifndef _MSC_VER
 #pragma GCC diagnostic push
@@ -3456,6 +3479,20 @@ struct mir_instr *append_instr_unroll(struct context   *ctx,
     tmp->src                     = ref_instr(src);
     tmp->prev                    = ref_instr(prev);
     tmp->index                   = index;
+    append_current_block(ctx, &tmp->base);
+    return &tmp->base;
+}
+
+struct mir_instr *append_instr_using(struct context   *ctx,
+                                     struct ast       *node,
+                                     struct scope     *owner_scope,
+                                     struct mir_instr *scope_expr)
+{
+    struct mir_instr_using *tmp = create_instr(ctx, MIR_INSTR_USING, node);
+    tmp->base.value.addr_mode   = MIR_VAM_RVALUE;
+    tmp->base.value.is_comptime = true;
+    tmp->scope_expr             = ref_instr(scope_expr);
+    tmp->scope                  = owner_scope;
     append_current_block(ctx, &tmp->base);
     return &tmp->base;
 }
@@ -4344,6 +4381,12 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
             break;
         }
 
+        case MIR_INSTR_USING: {
+            struct mir_instr_using *using = (struct mir_instr_using *)top;
+            sarrput(&queue, unref_instr(using->scope_expr));
+            break;
+        }
+
         case MIR_INSTR_BLOCK:
             continue;
 
@@ -4447,15 +4490,16 @@ analyze_resolve_type(struct context *ctx, struct mir_instr *resolver, struct mir
     bassert(mir_is_comptime(resolver));
 
     if (resolver->kind == MIR_INSTR_CALL) {
-        bassert(
-            resolver->state != MIR_IS_COMPLETE &&
-            "In case the type resolver is analyzed is's supposed to be already converted to the "
-            "constant value during evaluation!");
+        bassert(resolver->state != MIR_IS_COMPLETE &&
+                "In case the type resolver is analyzed is's supposed to be already converted "
+                "to the "
+                "constant value during evaluation!");
         if (analyze_instr(ctx, resolver).state != ANALYZE_PASSED) {
             return ANALYZE_RESULT(POSTPONE, 0);
         }
     } else {
-        // Type resolver can be already evaluated, in such case it must be compile time constant.
+        // Type resolver can be already evaluated, in such case it must be compile time
+        // constant.
         bassert(resolver->kind == MIR_INSTR_CONST);
     }
 
@@ -4601,6 +4645,58 @@ struct result analyze_instr_phi(struct context *ctx, struct mir_instr_phi *phi)
     phi->base.value.addr_mode   = MIR_VAM_RVALUE;
     phi->base.value.is_comptime = is_comptime;
     return_zone(ANALYZE_RESULT(PASSED, 0));
+}
+
+struct result analyze_instr_using(struct context *ctx, struct mir_instr_using *using)
+{
+    if (analyze_slot(ctx, &analyze_slot_conf_basic, &using->scope_expr, NULL) != ANALYZE_PASSED)
+        return_zone(ANALYZE_RESULT(FAILED, 0));
+    struct mir_instr *scope_expr = using->scope_expr;
+    bassert(scope_expr);
+
+    if (!mir_is_comptime(scope_expr)) goto INVALID;
+
+    struct mir_type *type = scope_expr->value.type;
+    bassert(type);
+    struct scope *used_scope = NULL;
+
+    switch (type->kind) {
+    case MIR_TYPE_NAMED_SCOPE: {
+        struct scope_entry *entry = MIR_CEV_READ_AS(struct scope_entry *, &scope_expr->value);
+        bmagic_assert(entry);
+        bassert(entry->kind == SCOPE_ENTRY_NAMED_SCOPE);
+        used_scope = entry->data.scope;
+        break;
+    }
+    case MIR_TYPE_TYPE: {
+        struct mir_type *inner_type = MIR_CEV_READ_AS(struct mir_type *, &scope_expr->value);
+        bmagic_assert(inner_type);
+        if (inner_type->kind == MIR_TYPE_ENUM) {
+            used_scope = inner_type->data.enm.scope;
+        } else {
+            goto INVALID;
+        }
+
+        break;
+    }
+    default:
+        goto INVALID;
+    }
+
+    bassert(used_scope);
+    if (scope_is_subtree_of(using->scope, used_scope)) {
+        report_warning(using->base.node,
+                       "Attempt to use current scope. The using statement is ignored.");
+    } else if (!scope_using_add(using->scope, used_scope)) {
+        report_warning(using->base.node, "Scope is already used in current context.");
+    }
+    blog("Using %s", used_scope->name);
+    using->base.value.type = type;
+    return_zone(ANALYZE_RESULT(PASSED, 0));
+
+INVALID:
+    report_error(INVALID_TYPE, scope_expr->node, "Expected scope or enumerator name.");
+    return_zone(ANALYZE_RESULT(FAILED, 0));
 }
 
 struct result analyze_instr_unroll(struct context *ctx, struct mir_instr_unroll *unroll)
@@ -5175,7 +5271,12 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
         if (sub_type->kind == MIR_TYPE_ENUM) {
             struct scope       *scope       = sub_type->data.enm.scope;
             const hash_t        scope_layer = SCOPE_DEFAULT_LAYER; // @Incomplete
-            struct scope_entry *found = scope_lookup(scope, scope_layer, rid, false, true, NULL);
+            struct scope_entry *found       = scope_lookup(scope,
+                                                     &(scope_lookup_args_t){
+                                                               .layer         = scope_layer,
+                                                               .id            = rid,
+                                                               .ignore_global = true,
+                                                     });
             if (!found) {
                 report_error(
                     UNKNOWN_SYMBOL, member_ptr->member_ident, "Unknown enumerator variant.");
@@ -5202,7 +5303,12 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
         } else if (mir_is_composit_type(sub_type)) {
             struct scope       *scope       = sub_type->data.strct.scope;
             const hash_t        scope_layer = sub_type->data.strct.scope_layer;
-            struct scope_entry *found = scope_lookup(scope, scope_layer, rid, false, true, NULL);
+            struct scope_entry *found       = scope_lookup(scope,
+                                                     &(scope_lookup_args_t){
+                                                               .layer   = scope_layer,
+                                                               .id      = rid,
+                                                               .in_tree = true,
+                                                     });
             if (!found) {
                 report_error(UNKNOWN_SYMBOL, member_ptr->member_ident, "Unknown type member.");
                 return_zone(ANALYZE_RESULT(FAILED, 0));
@@ -5507,25 +5613,57 @@ struct result analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_
             private_scope = NULL;
         }
 
+        // Lookup in used scopes first, we can eventually find the symbol in multiple locations,
+        // such collision should be reported as ambiguous. Ambiguous symbols can be introduced by
+        // using only (symbol with same name is present in multiple used scopes) or by combination
+        // of current scope and used scope.
+        struct scope_entry *ambiguous;
+        struct scope_entry *found_in_using = scope_lookup_usings(ref->scope, ref->rid, &ambiguous);
+        if (ambiguous) {
+            bassert(found_in_using);
+            report_error(AMBIGUOUS, ref->base.node, "Symbol is ambiguous.");
+            report_note(found_in_using->node, "First declaration found here.");
+            report_note(ambiguous->node, "Another declaration found here.");
+            return_zone(ANALYZE_RESULT(FAILED, 0));
+        }
+
         if (!private_scope) { // reference in unit without private scope
-            found = scope_lookup(
-                ref->scope, ref->scope_layer, ref->rid, true, false, &is_ref_out_of_fn_local_scope);
+            found = scope_lookup(ref->scope,
+                                 &(scope_lookup_args_t){
+                                     .layer        = ref->scope_layer,
+                                     .id           = ref->rid,
+                                     .in_tree      = true,
+                                     .out_of_local = &is_ref_out_of_fn_local_scope,
+                                 });
         } else { // reference in unit with private scope
             // search in current tree and ignore global scope
-            found = scope_lookup(
-                ref->scope, ref->scope_layer, ref->rid, true, false, &is_ref_out_of_fn_local_scope);
+            found = scope_lookup(ref->scope,
+                                 &(scope_lookup_args_t){
+                                     .layer        = ref->scope_layer,
+                                     .id           = ref->rid,
+                                     .in_tree      = true,
+                                     .out_of_local = &is_ref_out_of_fn_local_scope,
+                                 });
 
             // lookup in private scope and global scope also (private scope has global
             // scope as parent every time)
             if (!found) {
                 found = scope_lookup(private_scope,
-                                     ref->scope_layer,
-                                     ref->rid,
-                                     true,
-                                     false,
-                                     &is_ref_out_of_fn_local_scope);
+                                     &(scope_lookup_args_t){
+                                         .layer        = ref->scope_layer,
+                                         .id           = ref->rid,
+                                         .in_tree      = true,
+                                         .out_of_local = &is_ref_out_of_fn_local_scope,
+                                     });
             }
         }
+        if (found && found_in_using) {
+            report_error(AMBIGUOUS, ref->base.node, "Symbol is ambiguous.");
+            report_note(found->node, "First declaration found here.");
+            report_note(found_in_using->node, "Another declaration found here.");
+            return_zone(ANALYZE_RESULT(FAILED, 0));
+        }
+        found = found ? found : found_in_using;
         if (!found) return ANALYZE_RESULT(WAITING, ref->rid->hash);
     }
     bassert(found);
@@ -5768,9 +5906,9 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 
     if (fn->type->data.fn.ret_type->kind == MIR_TYPE_TYPE && fn->decl_node &&
         isnotflag(fn->flags, FLAG_COMPTIME)) {
-        // Check function return type, we use check for 'decl_node' here to exclude implicit type
-        // resolvers, probably better idea would be introduce something like 'is_implicit' flag for
-        // the 'mir_fn' but for now it's enough.
+        // Check function return type, we use check for 'decl_node' here to exclude implicit
+        // type resolvers, probably better idea would be introduce something like 'is_implicit'
+        // flag for the 'mir_fn' but for now it's enough.
         report_error(INVALID_TYPE,
                      fn_proto->base.node,
                      "Invalid function return type 'type', consider mark the "
@@ -7803,10 +7941,10 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         }
         if (mir_is_comptime(&call->base) && !mir_is_comptime(*call_arg) &&
             !callee_arg->is_unnamed) {
-            // When function is called in compile-time, we must know all arguments in compile-time
-            // also, there is one exception for unnamed arguments (id = '_'); when argument is
-            // unnamed, we know its value cannot be used inside the function, but we can still use
-            // its type (known in compile-time). This allows things like:
+            // When function is called in compile-time, we must know all arguments in
+            // compile-time also, there is one exception for unnamed arguments (id = '_'); when
+            // argument is unnamed, we know its value cannot be used inside the function, but we
+            // can still use its type (known in compile-time). This allows things like:
             //
             //    get_type :: fn (_: ?T) type #comptime { return T; }
             //
@@ -8368,6 +8506,9 @@ struct result analyze_instr(struct context *ctx, struct mir_instr *instr)
         case MIR_INSTR_UNROLL:
             state = analyze_instr_unroll(ctx, (struct mir_instr_unroll *)instr);
             break;
+        case MIR_INSTR_USING:
+            state = analyze_instr_using(ctx, (struct mir_instr_using *)instr);
+            break;
         default:
             babort("Missing analyze of instruction!");
         }
@@ -8520,7 +8661,11 @@ void analyze_report_unresolved(struct context *ctx)
                 if (!ref->rid) continue;
                 sym_name = ref->rid->str;
                 if (scope_is_local(ref->scope)) break;
-                if (scope_lookup(ref->scope, SCOPE_DEFAULT_LAYER, ref->rid, true, false, NULL)) {
+                if (scope_lookup(ref->scope,
+                                 &(scope_lookup_args_t){
+                                     .id      = ref->rid,
+                                     .in_tree = true,
+                                 })) {
                     continue;
                 }
                 break;
@@ -9334,6 +9479,13 @@ void ast_stmt_switch(struct context *ctx, struct ast *stmt_switch)
     set_current_block(ctx, cont_block);
 }
 
+void ast_stmt_using(struct context *ctx, struct ast *using)
+{
+    struct ast *ast_scope = using->data.stmt_using.scope_expr;
+    bassert(ast_scope);
+    append_instr_using(ctx, using, using->owner_scope, ast(ctx, ast_scope));
+}
+
 void ast_stmt_return(struct context *ctx, struct ast *ret)
 {
     // Return statement produce only setup of .ret temporary and break into the exit
@@ -9632,8 +9784,8 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
     struct ast *ast_fn_type = lit_fn->data.expr_fn.type;
     struct id  *id          = decl_node ? &decl_node->data.ident.id : NULL;
     bassert(ast_fn_type->kind == AST_TYPE_FN);
-    // Force comptimes to act like polymorph functions, this will allow passing also types as values
-    // and keep static analyze as it is for now.
+    // Force comptimes to act like polymorph functions, this will allow passing also types as
+    // values and keep static analyze as it is for now.
     if (!ast_fn_type->data.type_fn.is_polymorph) {
         ast_fn_type->data.type_fn.is_polymorph =
             isflag(flags, FLAG_COMPTIME) && isnotflag(flags, FLAG_EXTERN);
@@ -10651,6 +10803,9 @@ struct mir_instr *ast(struct context *ctx, struct ast *node)
     case AST_STMT_RETURN:
         ast_stmt_return(ctx, node);
         break;
+    case AST_STMT_USING:
+        ast_stmt_using(ctx, node);
+        break;
     case AST_STMT_LOOP:
         ast_stmt_loop(ctx, node);
         break;
@@ -10866,6 +11021,8 @@ const char *mir_instr_name(const struct mir_instr *instr)
         return "InstrCallLoc";
     case MIR_INSTR_UNROLL:
         return "InstrUnroll";
+    case MIR_INSTR_USING:
+        return "InstrUsing";
     }
 
     return "UNKNOWN";
@@ -11129,7 +11286,6 @@ static void provide_builtin_env(struct context *ctx)
 void initialize_builtins(struct context *ctx)
 {
 #define PROVIDE(N) provide_builtin_type(ctx, bt->t_##N)
-
     struct BuiltinTypes *bt = ctx->builtin_types;
     bt->t_s8                = create_type_int(ctx, BID(TYPE_S8), 8, true);
     bt->t_s16               = create_type_int(ctx, BID(TYPE_S16), 16, true);

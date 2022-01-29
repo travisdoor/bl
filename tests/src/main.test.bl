@@ -41,6 +41,7 @@
 #load "utils.test.bl"
 #load "extern_call.test.bl"
 #load "comptime.test.bl"
+#load "using.test.bl"
 /////////////////////////////////////////////////////
 
 main :: fn () s32 {

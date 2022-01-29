@@ -123,6 +123,7 @@ struct mir_instr_set_initializer;
 struct mir_instr_test_case;
 struct mir_instr_call_loc;
 struct mir_instr_unroll;
+struct mir_instr_using;
 
 struct mir_arenas {
     struct arena instr;
@@ -884,6 +885,13 @@ struct mir_instr_unroll {
     struct mir_instr *prev;
     s32               index;
     bool              remove;
+};
+
+struct mir_instr_using {
+    struct mir_instr base;
+
+    struct scope     *scope;
+    struct mir_instr *scope_expr;
 };
 
 struct mir_instr_phi {

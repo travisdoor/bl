@@ -196,9 +196,8 @@ static inline vm_stack_ptr_t stack_push_empty(struct virtual_machine *vm, struct
     return tmp;
 }
 
-static inline vm_stack_ptr_t stack_push(struct virtual_machine *vm,
-                                        void                   *value,
-                                        struct mir_type        *type)
+static inline vm_stack_ptr_t
+stack_push(struct virtual_machine *vm, void *value, struct mir_type *type)
 {
     bassert(value && "try to push NULL value");
     vm_stack_ptr_t tmp = stack_push_empty(vm, type);
@@ -257,7 +256,7 @@ static vm_stack_ptr_t data_alloc(struct virtual_machine *vm, struct mir_type *ty
     zone();
     bassert(type->store_size_bytes > 0);
     const usize size_needed = type->store_size_bytes + (usize)type->alignment;
-    const usize alignment = (usize)type->alignment;
+    const usize alignment   = (usize)type->alignment;
     if (!vm->data) vm->data = data_page_alloc(NULL, size_needed);
     // lookup free space, if no suitable was found, allocate new block!
     struct vm_bufpage *found = vm->data;
@@ -1974,6 +1973,7 @@ void eval_instr(struct virtual_machine *vm, struct mir_instr *instr)
     case MIR_INSTR_SIZEOF:
     case MIR_INSTR_ALIGNOF:
     case MIR_INSTR_BR:
+    case MIR_INSTR_USING:
         break;
 
     default:
