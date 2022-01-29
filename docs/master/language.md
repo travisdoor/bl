@@ -39,9 +39,7 @@ Comment lines will be ignored by compiler.
 */
 ```
 
-## Data types
-
-### Basic data types
+## Basic data types
 
 Basic types are atomic basic types builtin into BL compiler.
 
@@ -61,7 +59,7 @@ Basic types are atomic basic types builtin into BL compiler.
 | f64    | 64-bit floating point number. |
 | string | String slice.                 |
 
-### Pointer
+## Pointer
 
 Represents the address of some allocated data.
 
@@ -79,7 +77,7 @@ pointers :: fn () #test {
 };
 ```
 
-### Array
+## Array
 
 The array is an aggregate type of multiple values of the same type. Size value must be known in compile
 time. Arrays can be inline initialized with compound block; type is required. Zero initializers can
@@ -111,7 +109,7 @@ array_to_slice :: fn () #test {
 };
 ```
 
-### String
+## String
 
 String type in Biscuit is a slice containing a pointer to string data and string length. String literals
 are always zero terminated.
@@ -126,7 +124,7 @@ string_type :: fn () #test {
 };
 ```
 
-### Slice
+## Slice
 
 The array slice consists of a pointer to the first array element and array length.
 
@@ -153,7 +151,7 @@ array_slice :: fn () #test {
 
 **hint:** `slice_init` can be used to allocate slice on the heap using context allocator.
 
-### Structure
+## Structure
 
 The structure is a composite type representing a group of data as a single type. The structure is as an array
 another way to define user data type, but types of structure members could be different. It can be
@@ -281,7 +279,7 @@ update :: fn (e: *Entity) {
 }
 ```
 
-### Union
+## Union
 
 The union is a special composite type representing value of multiple types. Union size is always equal to
 size of the biggest member type and memory offset of all members is the same. Union is usually
@@ -323,7 +321,7 @@ consumer :: fn (token: *Token, kind: TokenKind) {
 }
 ```
 
-### Any
+## Any
 
 Any type is a special builtin structure containing a pointer to TypeInfo and pointer to data. Any
 value can be implicitly cast to this type on function call.
@@ -378,7 +376,7 @@ print :: fn (format: string, args: ...) {
 };
 ```
 
-### Enum
+## Enum
 
 The enum allows the creation of type representing one of the listed variants. Biscuit enums can
 represent variants of any integer type (`s32` by default). All variants are grouped into enum's
@@ -429,7 +427,7 @@ test_enumerator :: fn () #test {
 };
 ```
 
-### Enum flags
+## Enum flags
 
 An enumerator can be used as a definition of bit flags by adding #flags directive to the type
 definition. This directive slightly changes the way how the enumerator values are generated. By
@@ -441,7 +439,9 @@ left-bit-shifted value of the previous one.
 Enumerators marked as flags are also serialized as a combination of atomic flags instead of just one
 value.
 
-**note:** Flags enumerators must use unsigned number type as a base type `u32` by default).
+**note:** Flags enumerators must use unsigned number type as a base type (`u32` by default).
+
+**note:** It's possible to do implicit casting of flags enumerators to it's base type.
 
 **Example:**
 
@@ -451,7 +451,7 @@ OpenMode :: enum #flags {
     Write;  // 2
     Append; // 4
     Create; // 8
-    WriteAppend = Write | Append;
+    WriteAppend = Write | Append; // Combination of multiple variants.
     WriteCreate = Write | Create;
 }
 
@@ -477,7 +477,7 @@ main :: fn () s32 {
 **hint:** Since flags enumerators starts implicitly with value 1, you can explicitly define `NoFlag
 = 0;` variant at the beginning of the variant list.
 
-### Type aliasing
+## Type aliasing
 
 It's possible to create alias to any data type except function types, those can be referenced only
 by pointers.
@@ -497,7 +497,7 @@ alias :: fn () #test {
 };
 ```
 
-### Function type
+## Function type
 
 Type of function.
 
@@ -516,7 +516,7 @@ fn () s32
 fn (s32, bool) s32
 ```
 
-### Type casting
+## Type casting
 
 Change type of value to the other type. Conventions between integer types, from pointer to `bool`
 and from array to slice are generated implicitly by the compiler.
@@ -573,9 +573,7 @@ type_auto_cast :: fn () #test {
 
 ---
 
-## Literals
-
-### Simple literals
+## Simple literals
 
 ```c
 b :: true;         // bool true literal
@@ -583,7 +581,7 @@ b :: false;        // bool false literal
 ptr : *s32 = null; // *s32 null pointer literal
 ```
 
-### Integer literals
+## Integer literals
 
 Biscuit language provides constant integer literals written in various formats showed in example
 section. Integer literals has volatile type, when desired type is not specified compiler will choose
@@ -605,9 +603,7 @@ d     :: 13.43;   // f64 literal
 char  :: 'i';     // u8 literal
 ```
 
-## Operators
-
-### Binary
+## Binary Operators
 
 | Symbol | Description                    |
 | ------ | ------------------------------ |
@@ -637,7 +633,7 @@ char  :: 'i';     // u8 literal
 | <<     | Bitshift left.                 |
 | \>\>   | Bitshift right.                |
 
-### Unary
+## Unary Operators
 
 | Symbol | Description          |
 | ------ | -------------------- |
@@ -648,7 +644,7 @@ char  :: 'i';     // u8 literal
 | !      | Logical not.         |
 | ~      | Bit flip.            |
 
-### Special
+## Special Operators
 
 | Symbol         | Relevant for types | Description                          |
 | -------------- | ------------------ | -------------------------------      |
@@ -658,7 +654,7 @@ char  :: 'i';     // u8 literal
 | typekind(expr) | Any                | Determinates TypeKind of expression. |
 | typeof(expr)   | Any                | Determinates type of expression.     |
 
-### Type Info
+## Type Info
 
 Biscuit language provides type reflection allowing access to the type structure of the code. Pointer
 to the type information structure can be yielded by `typeinfo(<T>)` builtin operator call. Type
@@ -1550,7 +1546,7 @@ Output:
 4 3 2 8 7 6 5 1
 ```
 
-## Using stetement
+## Using statement
 
 The using statement can be used to allow direct access to another scope's or enum's members. Currently, the
 using statement can be used only in local scopes of functions. This may eventually change in the future.
@@ -1580,6 +1576,12 @@ print_kind :: fn (k: Kind) {
 }
 
 ```
+
+Be careful using the using statement, ambiguous declaration references can be introduced easily. Scope 
+lookup are done in the following order when the using statement is present:
+
+* Symbol lookup in all used scopes in order they were added. Parent scopes of used scopes are ignored.
+* Lookup in the current scope and up the scope hyerachy.
 
 ## Main function
 

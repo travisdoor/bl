@@ -105,9 +105,25 @@
 <ul>
 <li><a href="#language-reference">Language Reference</a>
 <ul>
-<li><a href="#data-types">Data types</a></li>
-<li><a href="#literals">Literals</a></li>
-<li><a href="#operators">Operators</a></li>
+<li><a href="#basic-data-types">Basic data types</a></li>
+<li><a href="#pointer">Pointer</a></li>
+<li><a href="#array">Array</a></li>
+<li><a href="#string">String</a></li>
+<li><a href="#slice">Slice</a></li>
+<li><a href="#structure">Structure</a></li>
+<li><a href="#union">Union</a></li>
+<li><a href="#any">Any</a></li>
+<li><a href="#enum">Enum</a></li>
+<li><a href="#enum-flags">Enum flags</a></li>
+<li><a href="#type-aliasing">Type aliasing</a></li>
+<li><a href="#function-type">Function type</a></li>
+<li><a href="#type-casting">Type casting</a></li>
+<li><a href="#simple-literals">Simple literals</a></li>
+<li><a href="#integer-literals">Integer literals</a></li>
+<li><a href="#binary-operators">Binary Operators</a></li>
+<li><a href="#unary-operators">Unary Operators</a></li>
+<li><a href="#special-operators">Special Operators</a></li>
+<li><a href="#type-info">Type Info</a></li>
 <li><a href="#hash-directive">Hash directive</a></li>
 <li><a href="#variable">Variable</a></li>
 <li><a href="#compound-expression">Compound expression</a></li>
@@ -118,7 +134,7 @@
 <li><a href="#break-and-continue">Break and continue</a></li>
 <li><a href="#switch">Switch</a></li>
 <li><a href="#defer-statement">Defer statement</a></li>
-<li><a href="#using-stetement">Using stetement</a></li>
+<li><a href="#using-statement">Using statement</a></li>
 <li><a href="#main-function">Main function</a></li>
 <li><a href="#modules-and-import">Modules and import</a></li>
 <li><a href="#unit-testing">Unit testing</a></li>
@@ -147,8 +163,7 @@
 <span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="co"> multi line</span></span>
 <span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="co"> comment</span></span>
 <span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="co">*/</span></span></code></pre></div>
-<h2 id="data-types">Data types</h2>
-<h3 id="basic-data-types">Basic data types</h3>
+<h2 id="basic-data-types">Basic data types</h2>
 <p>Basic types are atomic basic types builtin into BL compiler.</p>
 <table>
 <thead>
@@ -212,7 +227,7 @@
 </tr>
 </tbody>
 </table>
-<h3 id="pointer">Pointer</h3>
+<h2 id="pointer">Pointer</h2>
 <p>Represents the address of some allocated data.</p>
 <p><strong>Example:</strong></p>
 <div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="er">#import &quot;std/test&quot;</span></span>
@@ -224,7 +239,7 @@
 <span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    test_true<span class="op">(</span>j <span class="op">==</span> i<span class="op">);</span></span>
 <span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
-<h3 id="array">Array</h3>
+<h2 id="array">Array</h2>
 <p>The array is an aggregate type of multiple values of the same type. Size value must be known in compile time. Arrays can be inline initialized with compound block; type is required. Zero initializers can be used for zero initializations of whole array storage, otherwise we must specify value for every element in an array.</p>
 <p><strong>Example:</strong></p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>array_type <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
@@ -243,7 +258,7 @@
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    arr <span class="op">:</span> <span class="op">[</span><span class="dv">10</span><span class="op">]</span> s32<span class="op">;</span></span>
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    slice <span class="op">:</span> <span class="op">[]</span>s32 <span class="op">=</span> arr<span class="op">;</span></span>
 <span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
-<h3 id="string">String</h3>
+<h2 id="string">String</h2>
 <p>String type in Biscuit is a slice containing a pointer to string data and string length. String literals are always zero terminated.</p>
 <p><strong>Example:</strong></p>
 <div class="sourceCode" id="cb8"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>string_type <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
@@ -251,7 +266,7 @@
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>    msg<span class="op">.</span>len<span class="op">;</span> <span class="co">// character count of the string</span></span>
 <span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    msg<span class="op">.</span>ptr<span class="op">;</span> <span class="co">// pointer to the string content</span></span>
 <span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
-<h3 id="slice">Slice</h3>
+<h2 id="slice">Slice</h2>
 <p>The array slice consists of a pointer to the first array element and array length.</p>
 <p>Slice layout:</p>
 <div class="sourceCode" id="cb9"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>Slice <span class="op">::</span> <span class="kw">struct</span> <span class="op">{</span></span>
@@ -267,7 +282,7 @@
 <span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
 <span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
 <p><strong>hint:</strong> <code>slice_init</code> can be used to allocate slice on the heap using context allocator.</p>
-<h3 id="structure">Structure</h3>
+<h2 id="structure">Structure</h2>
 <p>The structure is a composite type representing a group of data as a single type. The structure is as an array another way to define user data type, but types of structure members could be different. It can be used in situations when it’s better to group data into one unit instead of interacting with separate units.</p>
 <p>Structure can be declared with use of struct keyword.</p>
 <div class="sourceCode" id="cb11"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>Person <span class="op">::</span> <span class="kw">struct</span> <span class="op">{</span></span>
@@ -355,7 +370,7 @@
 <span id="cb17-48"><a href="#cb17-48" aria-hidden="true" tabindex="-1"></a>update <span class="op">::</span> fn <span class="op">(</span>e<span class="op">:</span> <span class="op">*</span>Entity<span class="op">)</span> <span class="op">{</span></span>
 <span id="cb17-49"><a href="#cb17-49" aria-hidden="true" tabindex="-1"></a>    print<span class="op">(</span><span class="st">&quot;id = %</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">,</span> e<span class="op">.</span>id<span class="op">);</span></span>
 <span id="cb17-50"><a href="#cb17-50" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
-<h3 id="union">Union</h3>
+<h2 id="union">Union</h2>
 <p>The union is a special composite type representing value of multiple types. Union size is always equal to size of the biggest member type and memory offset of all members is the same. Union is usually associated with some enum providing information about stored type.</p>
 <p><strong>Example:</strong></p>
 <div class="sourceCode" id="cb18"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>Token <span class="op">::</span> <span class="kw">union</span> <span class="op">{</span></span>
@@ -389,7 +404,7 @@
 <span id="cb18-29"><a href="#cb18-29" aria-hidden="true" tabindex="-1"></a>        <span class="cf">default</span> <span class="op">{</span> panic<span class="op">();</span> <span class="op">}</span></span>
 <span id="cb18-30"><a href="#cb18-30" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
 <span id="cb18-31"><a href="#cb18-31" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
-<h3 id="any">Any</h3>
+<h2 id="any">Any</h2>
 <p>Any type is a special builtin structure containing a pointer to TypeInfo and pointer to data. Any value can be implicitly cast to this type on function call.</p>
 <p>Any type layout:</p>
 <div class="sourceCode" id="cb19"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>Any <span class="op">::</span> <span class="kw">struct</span> #compiler <span class="op">{</span></span>
@@ -418,7 +433,7 @@
 <div class="sourceCode" id="cb22"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>print <span class="op">::</span> fn <span class="op">(</span>format<span class="op">:</span> string<span class="op">,</span> args<span class="op">:</span> <span class="op">...)</span> <span class="op">{</span></span>
 <span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">...</span></span>
 <span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
-<h3 id="enum">Enum</h3>
+<h2 id="enum">Enum</h2>
 <p>The enum allows the creation of type representing one of the listed variants. Biscuit enums can represent variants of any integer type (<code>s32</code> by default). All variants are grouped into enum’s namespace.</p>
 <p><strong>Example:</strong></p>
 <div class="sourceCode" id="cb23"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Enum declaration (base type is by default s32)</span></span>
@@ -461,17 +476,18 @@
 <span id="cb23-38"><a href="#cb23-38" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Base type is u8</span></span>
 <span id="cb23-39"><a href="#cb23-39" aria-hidden="true" tabindex="-1"></a>    assert<span class="op">(</span><span class="kw">sizeof</span><span class="op">(</span>Day<span class="op">)</span> <span class="op">==</span> <span class="dv">1</span><span class="op">);</span></span>
 <span id="cb23-40"><a href="#cb23-40" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
-<h3 id="enum-flags">Enum flags</h3>
+<h2 id="enum-flags">Enum flags</h2>
 <p>An enumerator can be used as a definition of bit flags by adding #flags directive to the type definition. This directive slightly changes the way how the enumerator values are generated. By default, the enumerator starts with zero variant (if it’s not explicitly changed by the programmer) and every following enumerator variant has a value set to the previous one plus one. The flags enumerator start with the first variant set to 1 and the following variants are set to the left-bit-shifted value of the previous one.</p>
 <p>Enumerators marked as flags are also serialized as a combination of atomic flags instead of just one value.</p>
-<p><strong>note:</strong> Flags enumerators must use unsigned number type as a base type <code>u32</code> by default).</p>
+<p><strong>note:</strong> Flags enumerators must use unsigned number type as a base type (<code>u32</code> by default).</p>
+<p><strong>note:</strong> It’s possible to do implicit casting of flags enumerators to it’s base type.</p>
 <p><strong>Example:</strong></p>
 <div class="sourceCode" id="cb24"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>OpenMode <span class="op">::</span> <span class="kw">enum</span> #flags <span class="op">{</span></span>
 <span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>    Read<span class="op">;</span>   <span class="co">// 1</span></span>
 <span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>    Write<span class="op">;</span>  <span class="co">// 2</span></span>
 <span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>    Append<span class="op">;</span> <span class="co">// 4</span></span>
 <span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>    Create<span class="op">;</span> <span class="co">// 8</span></span>
-<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>    WriteAppend <span class="op">=</span> Write <span class="op">|</span> Append<span class="op">;</span></span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>    WriteAppend <span class="op">=</span> Write <span class="op">|</span> Append<span class="op">;</span> <span class="co">// Combination of multiple variants.</span></span>
 <span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a>    WriteCreate <span class="op">=</span> Write <span class="op">|</span> Create<span class="op">;</span></span>
 <span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
 <span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a></span>
@@ -493,7 +509,7 @@
 <span id="cb24-25"><a href="#cb24-25" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="dv">0</span><span class="op">;</span></span>
 <span id="cb24-26"><a href="#cb24-26" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p><strong>hint:</strong> Since flags enumerators starts implicitly with value 1, you can explicitly define <code>NoFlag = 0;</code> variant at the beginning of the variant list.</p>
-<h3 id="type-aliasing">Type aliasing</h3>
+<h2 id="type-aliasing">Type aliasing</h2>
 <p>It’s possible to create alias to any data type except function types, those can be referenced only by pointers.</p>
 <pre class="text"><code>&lt;alias name&gt; :: &lt;type&gt;;</code></pre>
 <p><strong>Example:</strong></p>
@@ -503,7 +519,7 @@
 <span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>    i <span class="op">=</span> <span class="dv">10</span><span class="op">;</span></span>
 <span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>    print<span class="op">(</span><span class="st">&quot;%</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">,</span> i<span class="op">);</span></span>
 <span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
-<h3 id="function-type">Function type</h3>
+<h2 id="function-type">Function type</h2>
 <p>Type of function.</p>
 <pre class="text"><code>fn ([arguments]) [T|(T1, T2)]</code></pre>
 <div class="sourceCode" id="cb28"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="co">// type of function without arguments and without return value</span></span>
@@ -514,7 +530,7 @@
 <span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a><span class="co">// type of function with two arguments, returning value of &#39;s32&#39; type</span></span>
 <span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a>fn <span class="op">(</span>s32<span class="op">,</span> <span class="dt">bool</span><span class="op">)</span> s32</span></code></pre></div>
-<h3 id="type-casting">Type casting</h3>
+<h2 id="type-casting">Type casting</h2>
 <p>Change type of value to the other type. Conventions between integer types, from pointer to <code>bool</code> and from array to slice are generated implicitly by the compiler.</p>
 <pre class="text"><code>cast(&lt;T&gt;) &lt;expr&gt;</code></pre>
 <p><strong>Example:</strong></p>
@@ -547,12 +563,11 @@
 <span id="cb32-9"><a href="#cb32-9" aria-hidden="true" tabindex="-1"></a>    i <span class="op">:=</span> <span class="dt">auto</span> <span class="dv">10</span><span class="op">;</span></span>
 <span id="cb32-10"><a href="#cb32-10" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
 <hr />
-<h2 id="literals">Literals</h2>
-<h3 id="simple-literals">Simple literals</h3>
+<h2 id="simple-literals">Simple literals</h2>
 <div class="sourceCode" id="cb33"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>b <span class="op">::</span> true<span class="op">;</span>         <span class="co">// bool true literal</span></span>
 <span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>b <span class="op">::</span> false<span class="op">;</span>        <span class="co">// bool false literal</span></span>
 <span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>ptr <span class="op">:</span> <span class="op">*</span>s32 <span class="op">=</span> null<span class="op">;</span> <span class="co">// *s32 null pointer literal</span></span></code></pre></div>
-<h3 id="integer-literals">Integer literals</h3>
+<h2 id="integer-literals">Integer literals</h2>
 <p>Biscuit language provides constant integer literals written in various formats showed in example section. Integer literals has volatile type, when desired type is not specified compiler will choose best type to hold the value. Numbers requiring less space than 32 bits will be implicitly set to s32, numbers requiring more space than 31 bits and less space than 64 bits will be set to s64 and numbers requiring 64 bits will be set to u64 type. Bigger numbers are not supported and compiler will complain. When we specify type explicitly (ex.: foo : u8 : 10;), integer literal will inherit that type.</p>
 <p><strong>Example:</strong></p>
 <div class="sourceCode" id="cb34"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>i     <span class="op">::</span> <span class="dv">10</span><span class="op">;</span>      <span class="co">// s32 literal</span></span>
@@ -562,8 +577,7 @@
 <span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a>f     <span class="op">::</span> <span class="fl">13.43</span><span class="bu">f</span><span class="op">;</span>  <span class="co">// f32 literal</span></span>
 <span id="cb34-6"><a href="#cb34-6" aria-hidden="true" tabindex="-1"></a>d     <span class="op">::</span> <span class="fl">13.43</span><span class="op">;</span>   <span class="co">// f64 literal</span></span>
 <span id="cb34-7"><a href="#cb34-7" aria-hidden="true" tabindex="-1"></a><span class="dt">char</span>  <span class="op">::</span> <span class="ch">&#39;i&#39;</span><span class="op">;</span>     <span class="co">// u8 literal</span></span></code></pre></div>
-<h2 id="operators">Operators</h2>
-<h3 id="binary">Binary</h3>
+<h2 id="binary-operators">Binary Operators</h2>
 <table>
 <thead>
 <tr class="header">
@@ -674,7 +688,7 @@
 </tr>
 </tbody>
 </table>
-<h3 id="unary">Unary</h3>
+<h2 id="unary-operators">Unary Operators</h2>
 <table>
 <thead>
 <tr class="header">
@@ -709,7 +723,7 @@
 </tr>
 </tbody>
 </table>
-<h3 id="special">Special</h3>
+<h2 id="special-operators">Special Operators</h2>
 <table>
 <thead>
 <tr class="header">
@@ -746,7 +760,7 @@
 </tr>
 </tbody>
 </table>
-<h3 id="type-info">Type Info</h3>
+<h2 id="type-info">Type Info</h2>
 <p>Biscuit language provides type reflection allowing access to the type structure of the code. Pointer to the type information structure can be yielded by <code>typeinfo(&lt;T&gt;)</code> builtin operator call. Type information can be yielded in compile time and also in runtime, with low additional overhead for runtime (only pointer to the TypeInfo constant is pushed on the stack).</p>
 <p><strong>Example:</strong></p>
 <div class="sourceCode" id="cb35"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>RTTI <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
@@ -1302,7 +1316,7 @@
 <span id="cb73-26"><a href="#cb73-26" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
 <p>Output:</p>
 <div class="sourceCode" id="cb74"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb74-1"><a href="#cb74-1" aria-hidden="true" tabindex="-1"></a><span class="ex">4</span> 3 2 8 7 6 5 1</span></code></pre></div>
-<h2 id="using-stetement">Using stetement</h2>
+<h2 id="using-statement">Using statement</h2>
 <p>The using statement can be used to allow direct access to another scope’s or enum’s members. Currently, the using statement can be used only in local scopes of functions. This may eventually change in the future.</p>
 <p><strong>Example:</strong></p>
 <div class="sourceCode" id="cb75"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb75-1"><a href="#cb75-1" aria-hidden="true" tabindex="-1"></a>main <span class="op">::</span> fn <span class="op">()</span> s32 <span class="op">{</span></span>
@@ -1325,6 +1339,11 @@
 <span id="cb75-18"><a href="#cb75-18" aria-hidden="true" tabindex="-1"></a>print_kind <span class="op">::</span> fn <span class="op">(</span>k<span class="op">:</span> Kind<span class="op">)</span> <span class="op">{</span></span>
 <span id="cb75-19"><a href="#cb75-19" aria-hidden="true" tabindex="-1"></a>    print<span class="op">(</span><span class="st">&quot;Kind is = %</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">,</span> k<span class="op">);</span></span>
 <span id="cb75-20"><a href="#cb75-20" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Be careful using the using statement, ambiguous declaration references can be introduced easily. Scope lookup are done in the following order when the using statement is present:</p>
+<ul>
+<li>Symbol lookup in all used scopes in order they were added. Parent scopes of used scopes are ignored.</li>
+<li>Lookup in the current scope and up the scope hyerachy.</li>
+</ul>
 <h2 id="main-function">Main function</h2>
 <p>The <code>main</code> function is mandatory entry function which should be defined in every program. It’s basically entry point of your application. Main function must return <code>s32</code> execution state, zero in this case indicates successful execution.</p>
 <p><strong>Example:</strong></p>

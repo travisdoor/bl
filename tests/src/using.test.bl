@@ -1,14 +1,45 @@
 #private
 
-foo :: fn () {
-    S.i = 10;
+using_enum :: fn () #test {
+    Enum :: enum {
+        A; B;
+    };
 
+    using Enum;
+    a :: A;
+    b :: Enum.A;
+
+    test_eq(typeinfo(a), typeinfo(Enum.A));
+    test_eq(typeinfo(b), typeinfo(Enum.A));
+    test_eq(a, Enum.A);
+    test_eq(b, Enum.A);
+}
+
+using_scope :: fn () #test {
     using S;
-    S.i = 10;
     i = 10;
+
+    test_eq(typeinfo(i), typeinfo(S.i));
+    test_eq(i, S.i);
+}
+
+using_combination_1 :: fn () #test {
+    using S;
+    a :: Enum2.A;
+    test_eq(typeinfo(a), typeinfo(Enum2.A));
+    test_eq(a, Enum2.A);
+
+    using Enum2;
+    b :: A;
+    test_eq(typeinfo(b), typeinfo(Enum2.A));
+    test_eq(b, Enum2.A);
 }
 
 #scope S
+
+Enum2 :: enum {
+    A; B;
+};
 
 i: s32;
 

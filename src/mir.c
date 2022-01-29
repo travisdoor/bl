@@ -2400,6 +2400,14 @@ static struct mir_type *create_type_enum(struct context *ctx, create_type_enum_a
     tmp->data.enm.is_flags  = args->is_flags;
     type_init_id(ctx, tmp);
     type_init_llvm_enum(ctx, tmp);
+
+    // @Performace: Set all variant's type to the type of already created enum type. See the
+    // analyze_instr_variant for more info.
+    for (usize i = 0; i < sarrlenu(args->variants); ++i) {
+        struct mir_variant *variant = sarrpeek(args->variants, i);
+        variant->value_type         = tmp;
+    }
+
     return tmp;
 }
 
@@ -4686,9 +4694,11 @@ struct result analyze_instr_using(struct context *ctx, struct mir_instr_using *u
     bassert(used_scope);
     if (scope_is_subtree_of(using->scope, used_scope)) {
         report_warning(using->base.node,
-                       "Attempt to use current scope. The using statement is ignored.");
+                       "Attempt to use current scope. The using statement will be ignored.");
     } else if (!scope_using_add(using->scope, used_scope)) {
-        report_warning(using->base.node, "Scope is already used in current context.");
+        report_warning(
+            using->base.node,
+            "Scope is already used in current context. The using statement will be ignored.");
     }
     blog("Using %s", used_scope->name);
     using->base.value.type = type;
@@ -5286,7 +5296,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
             bassert(found->kind == SCOPE_ENTRY_VARIANT);
 
             member_ptr->scope_entry            = found;
-            member_ptr->base.value.type        = sub_type;
+            member_ptr->base.value.type        = found->data.variant->value_type;
             member_ptr->base.value.addr_mode   = target_addr_mode;
             member_ptr->base.value.is_comptime = true;
             return_zone(ANALYZE_RESULT(PASSED, 0));
@@ -6556,8 +6566,7 @@ struct result analyze_instr_decl_variant(struct context                *ctx,
             return_zone(ANALYZE_RESULT(FAILED, 0));
         }
         // Setup value.
-        variant_instr->variant->value      = MIR_CEV_READ_AS(u64, &variant_instr->value->value);
-        variant_instr->variant->value_type = variant_instr->value->value.type;
+        variant_instr->variant->value = MIR_CEV_READ_AS(u64, &variant_instr->value->value);
     } else if (variant_instr->prev_variant) {
         u64       value      = 0;
         const u64 prev_value = variant_instr->prev_variant->value;
@@ -6584,17 +6593,29 @@ struct result analyze_instr_decl_variant(struct context                *ctx,
             put_tstr(base_type_name);
             return_zone(ANALYZE_RESULT(FAILED, 0));
         }
-        variant_instr->variant->value      = value;
-        variant_instr->variant->value_type = variant_instr->prev_variant->value_type;
+        variant_instr->variant->value = value;
     } else {
-        variant_instr->variant->value      = is_flags ? 1 : 0;
-        variant_instr->variant->value_type = base_type;
+        variant_instr->variant->value = is_flags ? 1 : 0;
     }
     if (variant->entry->kind == SCOPE_ENTRY_UNNAMED) {
         report_error(
             INVALID_NAME, variant_instr->base.node, "Enum variant cannot be explicitly unnamed.");
         return_zone(ANALYZE_RESULT(FAILED, 0));
     }
+    // Set variant type.
+    //
+    // The variant type is for now set to the base type of the enum, due to this we can use numeric
+    // operators and set values of variants to results of expressions. However this is not so
+    // practical to have variants of the base type later, so we replace the variant's type with type
+    // of enum later when enum type is complete.
+    //
+    // Anyway, this works pretty well, but on the other hand, we have kinda inconsistent behavior
+    // of numeric operators applied on enumerator variants; we can i.e. do A | B in enumerator body
+    // but not in rest of the code (that's why we have helpers like make_flags). This should be
+    // probably unified somehow later (use make_flags everywhere or/and allow numeric operations
+    // also for enum types).
+    variant_instr->variant->value_type = base_type;
+
     commit_variant(ctx, variant);
     return_zone(ANALYZE_RESULT(PASSED, 0));
 }
@@ -9216,14 +9237,6 @@ struct mir_var *rtti_gen_fn(struct context *ctx, struct mir_type *type)
     struct mir_var  *rtti_var  = rtti_create_and_alloc_var(ctx, rtti_type);
     vm_stack_ptr_t   dest      = vm_read_var(ctx->vm, rtti_var);
     rtti_gen_base(ctx, dest, type->kind, type->store_size_bytes);
-
-#if 0
-	// name
-	struct mir_type *   dest_name_type = mir_get_struct_elem_type(rtti_type, 1);
-	vm_stack_ptr_t  dest_name      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
-	const char *name           = type->user_id ? type->user_id->str : type->id.str;
-	vm_write_string(ctx->vm, dest_name_type, dest_name, name, strlen(name));
-#endif
 
     // args
     vm_stack_ptr_t dest_args = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);

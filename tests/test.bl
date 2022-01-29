@@ -1,10 +1,15 @@
 main :: fn () s32 {
-    using my_scope;
-    my_scope.print_kind(Kind.PLAYER);
-
     using my_scope.Kind;
-    //my_scope.print_kind(PLAYER); 
-    //print_kind(ENEMY);
+
+    using my_scope;
+    // Directly call function from my_scope.
+    print_kind(Kind.PLAYER); 
+    print_kind(Kind.ENEMY);
+
+    using Kind;
+    // Directly use enum variants from my_scope.Kind.
+    print_kind(PLAYER); 
+    print_kind(ENEMY);
     return 0;
 }
 
