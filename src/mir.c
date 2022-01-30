@@ -4657,6 +4657,7 @@ struct result analyze_instr_phi(struct context *ctx, struct mir_instr_phi *phi)
 
 struct result analyze_instr_using(struct context *ctx, struct mir_instr_using *using)
 {
+    zone();
     if (analyze_slot(ctx, &analyze_slot_conf_basic, &using->scope_expr, NULL) != ANALYZE_PASSED)
         return_zone(ANALYZE_RESULT(FAILED, 0));
     struct mir_instr *scope_expr = using->scope_expr;

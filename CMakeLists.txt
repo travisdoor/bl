@@ -37,6 +37,7 @@ set(TRACY_VER "0.7.8" CACHE STRING "Set Tracy profiler version.")
 
 if(TRACY_ENABLE)
     add_definitions(-DTRACY_ENABLE)
+    add_definitions(-DTRACY_CALLSTACK=8)
     message(STATUS "Tracy profiler enabled.")
 endif()
 
@@ -159,23 +160,25 @@ if(MSVC)
     target_link_libraries(blc PUBLIC shlwapi DbgHelp)
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Od /MDd /Z7")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Od /MDd /Z7")
-    if (${CMAKE_C_COMPILER_ID} STREQUAL "Clang" AND "x${CMAKE_C_SIMULATE_ID}" STREQUAL "xMSVC")
-        set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}\
-        -Werror\
-        -Wpedantic\
-        -Wno-double-promotion\
-        -Wno-gnu-zero-variadic-macro-arguments\
-        -Wno-format-nonliteral\
-        -Wno-c++98-compat\
-        -Wno-missing-prototypes\
-        -Wno-documentation-unknown-command\
-        -Wno-switch-enum\
-        -Wno-language-extension-token\
-        -Wno-cast-align\
-        -Wno-reserved-macro-identifier\
-        -Wno-gnu-flexible-array-initializer\
-        -Wno-reserved-identifier")
-    endif()
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /DEBUG /Z7 /O2 /Oi")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /DEBUG /Z7 /O2 /Oi")
+    #if (${CMAKE_C_COMPILER_ID} STREQUAL "Clang" AND "x${CMAKE_C_SIMULATE_ID}" STREQUAL "xMSVC")
+    #    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}\
+    #    -Werror\
+    #    -Wpedantic\
+    #    -Wno-double-promotion\
+    #    -Wno-gnu-zero-variadic-macro-arguments\
+    #    -Wno-format-nonliteral\
+    #    -Wno-c++98-compat\
+    #    -Wno-missing-prototypes\
+    #    -Wno-documentation-unknown-command\
+    #    -Wno-switch-enum\
+    #    -Wno-language-extension-token\
+    #    -Wno-cast-align\
+    #    -Wno-reserved-macro-identifier\
+    #    -Wno-gnu-flexible-array-initializer\
+    #    -Wno-reserved-identifier")
+    #endif()
     target_compile_options(yaml PRIVATE $<$<CONFIG:RELEASE>: /wd4996 /wd4267 /wd4244>)
     target_compile_options(yaml PRIVATE $<$<CONFIG:DEBUG>: /wd4996 /wd4267 /wd4244 /Od /MDd /Z7>)
 else()
