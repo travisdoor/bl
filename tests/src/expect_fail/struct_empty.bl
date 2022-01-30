@@ -1,0 +1,2 @@
+// @ERR_EMPTY_STRUCT@
+Foo :: struct {}

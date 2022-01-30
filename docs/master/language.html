@@ -1317,7 +1317,7 @@
 <p>Output:</p>
 <div class="sourceCode" id="cb74"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb74-1"><a href="#cb74-1" aria-hidden="true" tabindex="-1"></a><span class="ex">4</span> 3 2 8 7 6 5 1</span></code></pre></div>
 <h2 id="using-statement">Using statement</h2>
-<p>The using statement can be used to allow direct access to another scope’s or enum’s members. Currently, the using statement can be used only in local scopes of functions. This may eventually change in the future.</p>
+<p>The using statement can be used to allow direct access to another scope’s or enum’s members.</p>
 <p><strong>Example:</strong></p>
 <div class="sourceCode" id="cb75"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb75-1"><a href="#cb75-1" aria-hidden="true" tabindex="-1"></a>main <span class="op">::</span> fn <span class="op">()</span> s32 <span class="op">{</span></span>
 <span id="cb75-2"><a href="#cb75-2" aria-hidden="true" tabindex="-1"></a>    using my_scope<span class="op">;</span></span>
@@ -1345,6 +1345,7 @@
 <li>In case a symbol with the same name is found in multiple used scopes, it’s reported as ambiguous.</li>
 <li>In case a symbol from the used scope collides with a symbol in global/private scope, it’s also reported as ambiguous.</li>
 </ul>
+<p><strong>note:</strong> The <code>using</code> statement placement is limited to local scopes due to explicitness and readability of the code.</p>
 <h2 id="main-function">Main function</h2>
 <p>The <code>main</code> function is mandatory entry function which should be defined in every program. It’s basically entry point of your application. Main function must return <code>s32</code> execution state, zero in this case indicates successful execution.</p>
 <p><strong>Example:</strong></p>

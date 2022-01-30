@@ -1,13 +1,18 @@
-i :: 10;
+Foo :: struct {
+    using A;
+    using A;
+    i: MyType;
+}
 
 main :: fn () s32 {
-    i := 30;
-    using my_scope;
-    print("\n>>> %\n", i);
+    print("\n>>> %\n", Foo);
     return 0;
 }
 
-#scope my_scope
+#scope A
+
+MyType :: s32;
+//#scope B
 i :: 20;
 
 // rename: struct mir_instr_* -> struct instr

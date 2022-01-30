@@ -46,11 +46,27 @@ using_symbol_hiding_2 :: fn () #test {
     i := 20;
     test_eq(i, 20);
 }
+
+using_in_struct :: fn () #test {
+    Type :: struct {
+        a: S.Foo;
+        using S;
+        b: S.Foo;
+        c: Foo;
+    };
+
+    test_eq(typeinfo(Type.a), typeinfo(S.Foo));
+    test_eq(typeinfo(Type.b), typeinfo(S.Foo));
+    test_eq(typeinfo(Type.c), typeinfo(S.Foo));
+}
+
 #scope S
 
 Enum2 :: enum {
     A; B;
 };
+
+Foo :: s32;
 
 i := 10;
 

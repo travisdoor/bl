@@ -259,6 +259,7 @@ struct ast_type_fn_group {
 
 struct ast_type_struct {
     struct scope *scope;
+    // Can contain also non-members i.e. using.
     ast_nodes_t  *members;
     struct ast   *base_type;
     bool          is_union;

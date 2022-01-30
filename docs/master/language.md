@@ -1548,8 +1548,7 @@ Output:
 
 ## Using statement
 
-The using statement can be used to allow direct access to another scope's or enum's members. Currently, the
-using statement can be used only in local scopes of functions. This may eventually change in the future.
+The using statement can be used to allow direct access to another scope's or enum's members. 
 
 **Example:**
 
@@ -1584,6 +1583,9 @@ lookup rules are following in case the `using` is present:
 is a symbol of the same name in the used scope it's ignored and a local one is used without warnings/errors.
 * In case a symbol with the same name is found in multiple used scopes, it's reported as ambiguous.
 * In case a symbol from the used scope collides with a symbol in global/private scope, it's also reported as ambiguous.
+
+**note:** The `using` statement placement is limited to local scopes due to explicitness and readability of the
+code.
 
 ## Main function
 

@@ -57,7 +57,7 @@
 #define decl_pop(ctx) arrpop((ctx)->decl_stack)
 #define decl_get(ctx) (arrlenu((ctx)->decl_stack) ? arrlast((ctx)->decl_stack) : NULL)
 
-#define CONSUME_TILL(tokens, ...)                                                                  \
+#define consume_till(tokens, ...)                                                                  \
     {                                                                                              \
         enum sym _[] = {__VA_ARGS__};                                                              \
         tokens_consume_till2((tokens), static_arrlenu(_), &_[0]);                                  \
@@ -1089,7 +1089,7 @@ bool parse_semicolon_rq(struct context *ctx)
     if (!tok) {
         tok = tokens_peek_prev(ctx->tokens);
         PARSE_ERROR(ERR_MISSING_SEMICOLON, tok, CARET_AFTER, "Expected semicolon ';'.");
-        CONSUME_TILL(ctx->tokens, SYM_IDENT, SYM_RBLOCK);
+        consume_till(ctx->tokens, SYM_IDENT, SYM_RBLOCK);
         return false;
     }
     return true;
@@ -1172,7 +1172,7 @@ NEXT:
     } else if (rq) {
         struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_EXPR, tok_err, CARET_WORD, "Expected expression after comma ','.");
-        CONSUME_TILL(ctx->tokens, SYM_SEMICOLON, SYM_RBLOCK, SYM_IDENT);
+        consume_till(ctx->tokens, SYM_SEMICOLON, SYM_RBLOCK, SYM_IDENT);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
     return_zone(ret);
@@ -1852,7 +1852,7 @@ NEXT:
     } else if (rq) {
         struct token *tok_err = tokens_peek(ctx->tokens);
         PARSE_ERROR(ERR_EXPECTED_NAME, tok_err, CARET_WORD, "Expected name after comma ','.");
-        CONSUME_TILL(ctx->tokens, SYM_COLON, SYM_SEMICOLON, SYM_IDENT);
+        consume_till(ctx->tokens, SYM_COLON, SYM_SEMICOLON, SYM_IDENT);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
     return_zone(root);
@@ -1872,7 +1872,7 @@ struct ast *parse_type_ptr(struct context *ctx)
                     tok_err,
                     CARET_WORD,
                     "Expected type after '*' pointer type declaration.");
-        CONSUME_TILL(ctx->tokens, SYM_COLON, SYM_SEMICOLON, SYM_IDENT);
+        consume_till(ctx->tokens, SYM_COLON, SYM_SEMICOLON, SYM_IDENT);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
     ptr->data.type_ptr.type = sub_type;
@@ -2188,7 +2188,7 @@ struct ast *parse_type_fn_return(struct context *ctx)
     NEXT:
         tmp = parse_decl_member(ctx, index++);
         if (tmp) {
-            if (AST_IS_BAD(tmp)) CONSUME_TILL(ctx->tokens, SYM_COMMA, SYM_RPAREN);
+            if (AST_IS_BAD(tmp)) consume_till(ctx->tokens, SYM_COMMA, SYM_RPAREN);
             sarrput(type_struct->data.type_strct.members, tmp);
             if (tokens_consume_if(ctx->tokens, SYM_COMMA)) goto NEXT;
         }
@@ -2353,13 +2353,19 @@ struct ast *parse_type_struct(struct context *ctx)
     s32         index = 0;
 NEXT:
     if (parse_docs(ctx)) goto NEXT;
-    tmp = parse_decl_member(ctx, index++);
-    if (tmp) {
-        if (AST_IS_BAD(tmp)) CONSUME_TILL(ctx->tokens, SYM_SEMICOLON, SYM_RBLOCK);
+    if ((tmp = parse_decl_member(ctx, index))) {
         sarrput(type_struct->data.type_strct.members, tmp);
-        if (tokens_consume_if(ctx->tokens, SYM_SEMICOLON)) goto NEXT;
+        ++index;
+    } else if ((tmp = parse_stmt_using(ctx))) {
+        sarrput(type_struct->data.type_strct.members, tmp);
     }
 
+    if (AST_IS_BAD(tmp)) {
+        consume_till(ctx->tokens, SYM_SEMICOLON, SYM_RBLOCK);
+    }
+    if (tokens_consume_if(ctx->tokens, SYM_SEMICOLON)) {
+        goto NEXT;
+    }
     tok = tokens_consume_if(ctx->tokens, SYM_RBLOCK);
     if (!tok) {
         PARSE_ERROR(ERR_MISSING_BRACKET,

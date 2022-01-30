@@ -4698,7 +4698,7 @@ struct result analyze_instr_using(struct context *ctx, struct mir_instr_using *u
     } else if (!scope_using_add(using->scope, used_scope)) {
         report_warning(
             using->base.node,
-            "Scope is already used in current context. The using statement will be ignored.");
+            "Scope is already exposed in current context. The using statement will be ignored.");
     }
     using->base.value.type = type;
     return_zone(ANALYZE_RESULT(PASSED, 0));
@@ -5636,13 +5636,13 @@ struct result analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_
         } else { // reference in unit with private scope
             // search in current tree and ignore global scope
             lookup_args.ignore_global = true;
-            found = scope_lookup(ref->scope, &lookup_args);
+            found                     = scope_lookup(ref->scope, &lookup_args);
 
             // lookup in private scope and global scope also (private scope has global
             // scope as parent every time)
             if (!found) {
-				lookup_args.ignore_global = false;
-                found = scope_lookup(private_scope, &lookup_args);
+                lookup_args.ignore_global = false;
+                found                     = scope_lookup(private_scope, &lookup_args);
             }
         }
         if (ambiguous) {
@@ -10632,11 +10632,6 @@ struct mir_instr *ast_type_struct(struct context *ctx, struct ast *type_struct)
     const bool   is_multiple_return_type = type_struct->data.type_strct.is_multiple_return_type;
     bassert(ast_members);
     struct ast *ast_base_type = type_struct->data.type_strct.base_type;
-    const usize memc          = sarrlenu(ast_members);
-    if (!memc && !ast_base_type) {
-        report_error(EMPTY_STRUCT, type_struct, "Empty structure.");
-        return NULL;
-    }
 
     mir_instrs_t *members = arena_safe_alloc(&ctx->assembly->arenas.sarr);
     struct scope *scope   = type_struct->data.type_strct.scope;
@@ -10659,9 +10654,16 @@ struct mir_instr *ast_type_struct(struct context *ctx, struct ast *type_struct)
     struct mir_instr *tmp = NULL;
     for (usize i = 0; i < sarrlenu(ast_members); ++i) {
         struct ast *ast_member = sarrpeek(ast_members, i);
-        tmp                    = ast(ctx, ast_member);
-        bassert(tmp);
-        sarrput(members, tmp);
+        bassert(ast_member->kind == AST_DECL_MEMBER || ast_member->kind == AST_STMT_USING);
+        if ((tmp = ast(ctx, ast_member))) {
+            bassert(ast_member->kind == AST_DECL_MEMBER);
+            sarrput(members, tmp);
+        }
+    }
+
+    if (sarrlenu(members) == 0) {
+        report_error(EMPTY_STRUCT, type_struct, "Empty structure.");
+        return NULL;
     }
 
     return append_instr_type_struct(ctx,
