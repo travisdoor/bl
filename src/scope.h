@@ -134,11 +134,12 @@ typedef struct {
     bool       ignore_global;
 
     bool *out_of_local;
+
+    // When set lookup in usings is enabled automatically.
+    struct scope_entry **out_ambiguous;
 } scope_lookup_args_t;
 
 struct scope_entry *scope_lookup(struct scope *scope, scope_lookup_args_t *args);
-struct scope_entry *
-scope_lookup_usings(struct scope *scope, struct id *id, struct scope_entry **out_ambiguous);
 
 // Checks whether passed scope is of kind or is nested in scope of kind.
 bool        scope_is_subtree_of_kind(const struct scope *scope, enum scope_kind kind);

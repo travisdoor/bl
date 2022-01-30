@@ -1,25 +1,14 @@
+i :: 10;
+
 main :: fn () s32 {
-    using my_scope.Kind;
-
+    i := 30;
     using my_scope;
-    // Directly call function from my_scope.
-    print_kind(Kind.PLAYER); 
-    print_kind(Kind.ENEMY);
-
-    using Kind;
-    // Directly use enum variants from my_scope.Kind.
-    print_kind(PLAYER); 
-    print_kind(ENEMY);
+    print("\n>>> %\n", i);
     return 0;
 }
 
 #scope my_scope
-
-Kind :: enum { PLAYER; ENEMY; }
-
-print_kind :: fn (k: Kind) {
-    print("Kind is = %\n", k);
-}
+i :: 20;
 
 // rename: struct mir_instr_* -> struct instr
 

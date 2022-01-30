@@ -1577,11 +1577,13 @@ print_kind :: fn (k: Kind) {
 
 ```
 
-Be careful using the using statement, ambiguous declaration references can be introduced easily. Scope 
-lookup are done in the following order when the using statement is present:
+Be careful with the `using` statement, ambiguous declaration references can be introduced easily. Scope 
+lookup rules are following in case the `using` is present:
 
-* Symbol lookup in all used scopes in order they were added. Parent scopes of used scopes are ignored.
-* Lookup in the current scope and up the scope hyerachy.
+* Symbols declared in the function scope and its child scopes are preferred during lookup. In case there
+is a symbol of the same name in the used scope it's ignored and a local one is used without warnings/errors.
+* In case a symbol with the same name is found in multiple used scopes, it's reported as ambiguous.
+* In case a symbol from the used scope collides with a symbol in global/private scope, it's also reported as ambiguous.
 
 ## Main function
 

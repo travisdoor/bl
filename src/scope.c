@@ -69,6 +69,26 @@ void scope_arenas_init(struct scope_arenas *arenas)
         &arenas->entries, sizeof(struct scope_entry), alignment_of(struct scope_entry), 1024, NULL);
 }
 
+static inline struct scope_entry *
+lookup_usings(struct scope *scope, struct id *id, struct scope_entry **out_ambiguous)
+{
+    zone();
+    bassert(scope && id && out_ambiguous);
+    struct scope_entry *found = NULL;
+    for (usize i = 0; i < arrlenu(scope->usings); ++i) {
+        struct scope_entry *entry =
+            scope_lookup(scope->usings[i], &(scope_lookup_args_t){.id = id});
+        if (!entry) continue;
+        if (!found) {
+            found = entry;
+        } else {
+            *out_ambiguous = entry;
+            break;
+        }
+    }
+    return_zone(found);
+}
+
 void scope_arenas_terminate(struct scope_arenas *arenas)
 {
     arena_terminate(&arenas->scopes);
@@ -123,18 +143,37 @@ struct scope_entry *scope_lookup(struct scope *scope, scope_lookup_args_t *args)
 {
     zone();
     bassert(scope && args->id);
-    u64 hash = entry_hash(args->id->hash, args->layer);
+    struct scope_entry *found       = NULL;
+    struct scope_entry *found_using = NULL;
+    struct scope_entry *ambiguous   = NULL;
+    u64                 hash        = entry_hash(args->id->hash, args->layer);
     while (scope) {
         if (args->ignore_global && scope->kind == SCOPE_GLOBAL) break;
         if (!scope_is_local(scope)) {
             // Global scopes should not have layers!!!
             hash = entry_hash(args->id->hash, SCOPE_DEFAULT_LAYER);
         }
+
+        // Used scopes are handled in following way:
+        // If we found symbol in one of used scopes we can eventually use it as found result,
+        // however function local symbols are preferred (and can eventually hide symbols from used
+        // scope). This approach does not apply for global symbols; in case we have global with the
+        // same name as one of symbols from used scopes we must report an error (symbol is
+        // ambiguous). An ambiguous symbol is also symbol found in more than one of used scopes and
+        // must be also reported.
+        if (!found_using && args->out_ambiguous) {
+            found_using = lookup_usings(scope, args->id, &ambiguous);
+        }
         const s64 i = hmgeti(scope->entries, hash);
-        if (i != -1) { // found!!!
-            struct scope_entry *entry = scope->entries[i].value;
-            bassert(entry);
-            return_zone(entry);
+        if (i != -1) {
+            found = scope->entries[i].value;
+            if (found) {
+                if (!scope_is_local(scope) && found_using) { // not found in local scope
+                    bassert(args->out_ambiguous);
+                    (*args->out_ambiguous) = found_using;
+                }
+                break;
+            }
         }
         // Lookup in parent.
         if (args->in_tree) {
@@ -146,28 +185,12 @@ struct scope_entry *scope_lookup(struct scope *scope, scope_lookup_args_t *args)
             break;
         }
     }
-    return_zone(NULL);
-}
-
-struct scope_entry *
-scope_lookup_usings(struct scope *scope, struct id *id, struct scope_entry **out_ambiguous)
-{
-    zone();
-    bassert(scope && id);
-    struct scope_entry *found     = NULL;
-    struct scope_entry *ambiguous = NULL;
-    for (usize i = 0; i < arrlenu(scope->usings); ++i) {
-        struct scope_entry *entry =
-            scope_lookup(scope->usings[i], &(scope_lookup_args_t){.id = id, .ignore_global = true});
-        if (!entry) continue;
-        if (!found) {
-            found = entry;
-        } else {
-            ambiguous = entry;
-            break;
-        }
+    if (!found && args->out_ambiguous) {
+        // Maybe we have some result coming from used scopes, and it can also be ambiguous (same
+        // inside multiple of used scopes).
+        found                  = found_using;
+        (*args->out_ambiguous) = ambiguous;
     }
-    if (out_ambiguous) *out_ambiguous = ambiguous;
     return_zone(found);
 }
 

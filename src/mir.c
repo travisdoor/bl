@@ -4700,7 +4700,6 @@ struct result analyze_instr_using(struct context *ctx, struct mir_instr_using *u
             using->base.node,
             "Scope is already used in current context. The using statement will be ignored.");
     }
-    blog("Using %s", used_scope->name);
     using->base.value.type = type;
     return_zone(ANALYZE_RESULT(PASSED, 0));
 
@@ -5614,6 +5613,7 @@ struct result analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_
     bassert(ref->rid && ref->scope);
 
     struct scope_entry *found                        = ref->scope_entry;
+    struct scope_entry *ambiguous                    = NULL;
     struct scope       *private_scope                = ref->parent_unit->private_scope;
     bool                is_ref_out_of_fn_local_scope = false;
 
@@ -5623,57 +5623,34 @@ struct result analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_
             private_scope = NULL;
         }
 
-        // Lookup in used scopes first, we can eventually find the symbol in multiple locations,
-        // such collision should be reported as ambiguous. Ambiguous symbols can be introduced by
-        // using only (symbol with same name is present in multiple used scopes) or by combination
-        // of current scope and used scope.
-        struct scope_entry *ambiguous;
-        struct scope_entry *found_in_using = scope_lookup_usings(ref->scope, ref->rid, &ambiguous);
-        if (ambiguous) {
-            bassert(found_in_using);
-            report_error(AMBIGUOUS, ref->base.node, "Symbol is ambiguous.");
-            report_note(found_in_using->node, "First declaration found here.");
-            report_note(ambiguous->node, "Another declaration found here.");
-            return_zone(ANALYZE_RESULT(FAILED, 0));
-        }
+        scope_lookup_args_t lookup_args = {
+            .layer         = ref->scope_layer,
+            .id            = ref->rid,
+            .in_tree       = true,
+            .out_of_local  = &is_ref_out_of_fn_local_scope,
+            .out_ambiguous = &ambiguous,
+        };
 
         if (!private_scope) { // reference in unit without private scope
-            found = scope_lookup(ref->scope,
-                                 &(scope_lookup_args_t){
-                                     .layer        = ref->scope_layer,
-                                     .id           = ref->rid,
-                                     .in_tree      = true,
-                                     .out_of_local = &is_ref_out_of_fn_local_scope,
-                                 });
+            found = scope_lookup(ref->scope, &lookup_args);
         } else { // reference in unit with private scope
             // search in current tree and ignore global scope
-            found = scope_lookup(ref->scope,
-                                 &(scope_lookup_args_t){
-                                     .layer        = ref->scope_layer,
-                                     .id           = ref->rid,
-                                     .in_tree      = true,
-                                     .out_of_local = &is_ref_out_of_fn_local_scope,
-                                 });
+            lookup_args.ignore_global = true;
+            found = scope_lookup(ref->scope, &lookup_args);
 
             // lookup in private scope and global scope also (private scope has global
             // scope as parent every time)
             if (!found) {
-                found = scope_lookup(private_scope,
-                                     &(scope_lookup_args_t){
-                                         .layer        = ref->scope_layer,
-                                         .id           = ref->rid,
-                                         .in_tree      = true,
-                                         .out_of_local = &is_ref_out_of_fn_local_scope,
-                                     });
+				lookup_args.ignore_global = false;
+                found = scope_lookup(private_scope, &lookup_args);
             }
         }
-        if (found && found_in_using) {
+        if (ambiguous) {
             report_error(AMBIGUOUS, ref->base.node, "Symbol is ambiguous.");
             report_note(found->node, "First declaration found here.");
-            report_note(found_in_using->node, "Another declaration found here.");
+            report_note(ambiguous->node, "Another declaration found here.");
             return_zone(ANALYZE_RESULT(FAILED, 0));
         }
-        found = found ? found : found_in_using;
         if (!found) return ANALYZE_RESULT(WAITING, ref->rid->hash);
     }
     bassert(found);

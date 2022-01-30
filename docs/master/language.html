@@ -1339,10 +1339,11 @@
 <span id="cb75-18"><a href="#cb75-18" aria-hidden="true" tabindex="-1"></a>print_kind <span class="op">::</span> fn <span class="op">(</span>k<span class="op">:</span> Kind<span class="op">)</span> <span class="op">{</span></span>
 <span id="cb75-19"><a href="#cb75-19" aria-hidden="true" tabindex="-1"></a>    print<span class="op">(</span><span class="st">&quot;Kind is = %</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">,</span> k<span class="op">);</span></span>
 <span id="cb75-20"><a href="#cb75-20" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
-<p>Be careful using the using statement, ambiguous declaration references can be introduced easily. Scope lookup are done in the following order when the using statement is present:</p>
+<p>Be careful with the <code>using</code> statement, ambiguous declaration references can be introduced easily. Scope lookup rules are following in case the <code>using</code> is present:</p>
 <ul>
-<li>Symbol lookup in all used scopes in order they were added. Parent scopes of used scopes are ignored.</li>
-<li>Lookup in the current scope and up the scope hyerachy.</li>
+<li>Symbols declared in the function scope and its child scopes are preferred during lookup. In case there is a symbol of the same name in the used scope it’s ignored and a local one is used without warnings/errors.</li>
+<li>In case a symbol with the same name is found in multiple used scopes, it’s reported as ambiguous.</li>
+<li>In case a symbol from the used scope collides with a symbol in global/private scope, it’s also reported as ambiguous.</li>
 </ul>
 <h2 id="main-function">Main function</h2>
 <p>The <code>main</code> function is mandatory entry function which should be defined in every program. It’s basically entry point of your application. Main function must return <code>s32</code> execution state, zero in this case indicates successful execution.</p>

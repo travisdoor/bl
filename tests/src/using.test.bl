@@ -35,11 +35,22 @@ using_combination_1 :: fn () #test {
     test_eq(b, Enum2.A);
 }
 
+using_symbol_hiding_1 :: fn () #test {
+    i := 20;
+    using S;
+    test_eq(i, 20);
+}
+
+using_symbol_hiding_2 :: fn () #test {
+    using S;
+    i := 20;
+    test_eq(i, 20);
+}
 #scope S
 
 Enum2 :: enum {
     A; B;
 };
 
-i: s32;
+i := 10;
 
