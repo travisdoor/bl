@@ -4697,9 +4697,12 @@ struct result analyze_instr_using(struct context *ctx, struct mir_instr_using *u
         report_warning(using->base.node,
                        "Attempt to use current scope. The using statement will be ignored.");
     } else if (!scope_using_add(using->scope, used_scope)) {
+        // @Cleanup: Cause problems in polymorphs!
+#if 0
         report_warning(
             using->base.node,
             "Scope is already exposed in current context. The using statement will be ignored.");
+#endif
     }
     using->base.value.type = type;
     return_zone(ANALYZE_RESULT(PASSED, 0));
