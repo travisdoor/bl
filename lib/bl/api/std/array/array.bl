@@ -33,14 +33,18 @@ _Array :: struct {
 /// Sets dynamic array to default state. If array contains already allocated memory `array_terminate`
 /// must be called first. Custom `allocator` can be specified.
 ///
+/// Initial capacity can be specified by `n` (count of elements). If `n` is greater than 0, needed
+/// memory is preallocated using specified `allocator`; otherwise no allocation is done.
+///
 /// It's usually enough to rely on default implicit initialization in case we don't need specify
-/// custom allocator.
-array_init :: fn (_arr: *[..]?T, allocator: *Allocator = null) #inline {
+/// custom allocator or preallocate storage to specified `n` of entries.
+array_init :: fn (_arr: *[..]?T, n: s64 = 0, allocator: *Allocator = null) #inline {
     arr := cast(*_Array) _arr;
     arr.ptr = null;
     arr.len = 0;
     arr.allocated = 0;
     arr.allocator = allocator;
+    array_reserve(_arr, n);
 }
 
 /// Release memory allocated by dynamic array. This function is supposed to be called when dynamic
@@ -62,6 +66,7 @@ array_push :: fn { impl_push_empty; impl_push; }
 array_reserve :: fn (_arr: *[..]?T, n: s64) #inline {
     arr := cast(*_Array) _arr;
     if n == 0 { return; }
+    if n < 0 { panic("Invalid array capacity!"); }
     ensure_space(arr, sizeof(T), auto n, true);
 }
 

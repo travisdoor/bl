@@ -80,6 +80,7 @@ debug_allocator_init :: fn () {
     _context.allocator = &debug_allocator;
     std.tbl_init(&_alloc_table, 2048, &default_allocator);
     std.mutex_init(&_mutex);
+    _is_initialized = true;
 }
 
 /// Terminate Debug Allocator. Prints current memory report when 
@@ -94,16 +95,19 @@ debug_allocator_terminate :: fn (print_report := true) {
     std.tbl_terminate(&_alloc_table);
     std.mutex_terminate(&_mutex);
     _prev_allocator = null;
+    _is_initialized = false;
 }
 
 /// Invoke [debug_break](#debug_break) before allocation with defined serial ID.
 /// **note**: See also [print_memory_report](#print_memory_report)
 debug_allocator_break :: fn (serial: u64) #inline {
+    if !_is_initialized { return; }
     _break_on = serial;
 }
 
 /// Return currently allocated memory in bytes.
 debug_allocator_allocated :: fn () usize #inline {
+    if !_is_initialized { return 0; }
     std.mutex_lock(&_mutex);
     defer std.mutex_unlock(&_mutex);
     return auto _total_allocated;
@@ -133,6 +137,7 @@ debug_allocator_allocated :: fn () usize #inline {
 /// **hint**: Allocation serail ID can be used by [debug_allocator_break](#debug_allocator_break) to interrupt 
 /// execution before memory is allocated and eventually localize allocation in debbuger.
 print_memory_report :: fn (dump_leaks := false) {
+    if !_is_initialized { return; }
     std.mutex_lock(&_mutex);
     defer std.mutex_unlock(&_mutex);
     unit := "Bytes";
@@ -157,6 +162,7 @@ print_memory_report :: fn (dump_leaks := false) {
 }
 
 #private
+_is_initialized := false;
 _mutex: std.Mutex;
 _total_allocated: s64;
 _prev_allocator: *Allocator;

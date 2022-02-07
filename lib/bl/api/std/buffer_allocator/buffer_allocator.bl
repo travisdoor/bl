@@ -56,7 +56,7 @@
 //! 
 //!     arr: [..]u8;
 //!     // Initialize the array with our custom allocator.
-//!     array_init(&arr, &allocator);
+//!     array_init(&arr, buffer.len, &allocator);
 //! 
 //!     loop i := 0; i < 10; i += 1 {
 //!         // We're appending the array using our allocator.

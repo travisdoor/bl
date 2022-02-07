@@ -32,6 +32,8 @@
 //! 
 //! Set of various utility functions.
 
+// @Incomplete: use named scope!
+
 /// Set `flag` in `flags` input. This function is valid for numeric and enum types (checked by assert).
 set_flag :: fn (flags: *?T, flag: T) T #inline {
     assert(flags);
@@ -153,6 +155,21 @@ sort :: fn (list: []?T, cmp: *fn(a: *T, b: *T) bool) {
             }
         }
     }
+}
+
+/// Iterate over `arr` slice and return pointer to the value and it's index if `func` validator
+/// function returs true.
+///
+/// The `func` is called for every element in the `arr` slice and pointer to the current element
+/// is passed into this function.
+///
+/// In case no element was found, function returns null pointer and -1 index.
+find_if :: fn (arr: []?T, func: *fn (*T) bool) (value: *T, index: s64) #inline {
+    assert(func);
+    loop i := 0; i < arr.len; i += 1 {
+        if func(&arr[i]) { return &arr[i], i; }
+    }
+    return null, -1;
 }
 
 /// Combine two or more hashes into one, T is expected to be an integer type (checked by static

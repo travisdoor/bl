@@ -212,6 +212,13 @@ RTL_CRITICAL_SECTION :: struct {
 }
 LPCRITICAL_SECTION :: *RTL_CRITICAL_SECTION;
 
+POINT :: struct {
+    x: LONG;
+    y: LONG;
+}
+
+LPPOINT :: *POINT;
+
 FORMAT_MESSAGE_IGNORE_INSERTS : u32 : 0x00000200;
 FORMAT_MESSAGE_FROM_STRING    : u32 : 0x00000400;
 FORMAT_MESSAGE_FROM_HMODULE   : u32 : 0x00000800;
@@ -358,3 +365,4 @@ GetFileInformationByHandle :: fn (hFile: HANDLE, lpFileInformation: LPBY_HANDLE_
 GetOverlappedResult :: fn (hFile: HANDLE, lpOverlapped: LPOVERLAPPED, lpNumberOfBytesTransferred: LPDWORD, bWait: BOOL) BOOL #extern "GetOverlappedResult";
 ResetEvent :: fn (hEvent: HANDLE) BOOL #extern "ResetEvent";
 FormatMessageA :: fn (dwFlags: DWORD, lpSource: LPVOID, dwMessageId: DWORD, dwLanguageId: DWORD, lpBuffer: LPSTR, nSize: DWORD, Arguments: *u8) DWORD #extern "FormatMessageA";
+GetCursorPos :: fn (lpPoint: LPPOINT) BOOL #extern "GetCursorPos";

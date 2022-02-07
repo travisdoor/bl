@@ -90,6 +90,12 @@
 #scope std
 
 /// Create a new **Table** type. The `TKey` must be a number or string type.
+///
+//! ```c
+//! Table :: struct {
+//!     len: s64;
+//! }
+//! ```
 Table :: fn (TKey: type, TValue: type) type #comptime {
     static_assert(TKey == string || is_number(TKey) || is_pointer(TKey));
     TNode :: Node(TKey, TValue);
@@ -144,6 +150,8 @@ tbl_terminate :: fn (tbl: *?T) {
 /// Function returns iterator pointing to the new element. Every new element is allocated using
 /// table allocator (can be specified using `tbl_init` function). Rehashing of the table can be
 /// eventually done in case the table's load factor goes over `MAX_LF`.
+///
+/// Iterator's value in case the `value` is not specified is NOT zero initialized.
 tbl_insert :: fn { impl_insert_empty; impl_insert; } 
 
 // @Incomplete: tbl_erase and tbl_erase_it should be later moved into overload group, currently it's

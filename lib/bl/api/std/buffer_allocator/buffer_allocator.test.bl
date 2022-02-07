@@ -50,7 +50,7 @@ test_allocation_multiple :: fn () #test {
     std.buffer_allocator_init(&alc, g_mem);
 
     arr: [..]s32;
-    array_init(&arr, &alc);
+    array_init(&arr, 0, &alc);
     defer array_terminate(&arr);
 
     loop i := 0; i < 10000; i += 1 {
@@ -60,4 +60,20 @@ test_allocation_multiple :: fn () #test {
     loop i := 0; i < 10000; i += 1 {
         test_eq(arr[i], i);
     }
+}
+
+test_allocation_exact :: fn () #test {
+    prev_allocated :: std.debug_allocator_allocated();
+
+    alc: std.BufferAllocator;
+    std.buffer_allocator_init(&alc, g_mem);
+
+    arr: [..]u8;
+    array_init(&arr, g_mem.len, &alc);
+    defer array_terminate(&arr);
+
+    loop i := 0; i < g_mem.len; i += 1 {
+        array_push(&arr, auto i);
+    }
+    test_eq(prev_allocated, std.debug_allocator_allocated());
 }

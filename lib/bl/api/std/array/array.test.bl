@@ -49,6 +49,16 @@ test_reserve :: fn () #test {
     test_eq(arr.allocated, 1000);
 }
 
+test_reserve_init :: fn () #test {
+    arr: [..]s32;
+    defer array_terminate(&arr);
+            
+    array_init(&arr, 1000);
+    test_eq(arr.len, 0);
+    test_not_null(arr.ptr);
+    test_eq(arr.allocated, 1000);
+}
+
 test_clear :: fn () #test {
     arr: [..]s32;
     defer array_terminate(&arr);
@@ -135,7 +145,7 @@ test_custom_allocator :: fn () #test {
     free_count = 0;
 
     arr: [..]s32;
-    array_init(&arr, &test_allocator);
+    array_init(&arr, 0, &test_allocator);
             
     loop i := 0; i < 1000; i += 1 {
         array_push(&arr, i);
