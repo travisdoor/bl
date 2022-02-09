@@ -1,11 +1,11 @@
 #private
 
-TAG1 :: 1;
-TAG2 :: 2;
+TAG1 : u32 : 1;
+TAG2 : u32 : 2;
 
 T1 :: struct {
-    a: s32 #tags TAG1;
-    b: s32 #tags TAG1, TAG2;
+    a: s32 #tag TAG1;
+    b: s32 #tag TAG2;
 };
 
 struct_member_tags :: fn () #test {
@@ -14,6 +14,25 @@ struct_member_tags :: fn () #test {
 
     m0 :: info.members[0];
     m1 :: info.members[1];
-    test_eq(m0.tags, TAG1);
-    test_eq(m1.tags, TAG1 | TAG2);
+    test_eq(m0.tag, TAG1);
+    test_eq(m1.tag, TAG2);
+}
+
+A : u32 : 1;
+B : u32 : 2;
+C : u32 : 4;
+
+T2 :: struct {
+    a: s32 #tag A;
+    b: s32 #tag B;
+    c: s32 #tag A | C;
+};
+
+struct_member_flags :: fn () #test {
+    info := cast(*TypeInfoStruct) typeinfo(T2);
+    test_eq(info.members.len, 3);
+
+    test_eq(info.members[0].tag, A);
+    test_eq(info.members[1].tag, B);
+    test_eq(info.members[2].tag, A | C);
 }

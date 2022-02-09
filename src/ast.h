@@ -204,7 +204,7 @@ struct ast_stmt_loop {
 struct ast_decl {
     struct ast *name;
     struct ast *type;
-    struct ast *tags; // Optional.
+    struct ast *tag; // Optional.
 };
 
 struct ast_decl_entity {
@@ -260,10 +260,10 @@ struct ast_type_fn_group {
 struct ast_type_struct {
     struct scope *scope;
     // Can contain also non-members i.e. using.
-    ast_nodes_t  *members;
-    struct ast   *base_type;
-    bool          is_union;
-    bool          is_multiple_return_type;
+    ast_nodes_t *members;
+    struct ast  *base_type;
+    bool         is_union;
+    bool         is_multiple_return_type;
 };
 
 struct ast_type_enum {
@@ -379,8 +379,8 @@ struct ast_expr_deref {
     struct ast *next;
 };
 
-struct ast_tags {
-    ast_nodes_t *values;
+struct ast_tag {
+    struct ast *expr;
 };
 
 struct ast_call_loc {

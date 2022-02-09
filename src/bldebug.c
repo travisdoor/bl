@@ -39,7 +39,7 @@
 
 #define MAX_LOG_MSG_SIZE 2048
 
-void log_impl(BlLogMsgKind t, const char *file, s32 line, const char *msg, ...)
+void log_impl(log_msg_kind_t t, const char *file, s32 line, const char *msg, ...)
 {
     char    buffer[MAX_LOG_MSG_SIZE];
     va_list args;
@@ -49,6 +49,9 @@ void log_impl(BlLogMsgKind t, const char *file, s32 line, const char *msg, ...)
     switch (t) {
     case LOG_ASSERT:
         color_print(stderr, BL_RED, "assert [%s:%d]: %s\n", file, line, buffer);
+        break;
+    case LOG_ABORT_ISSUE:
+        color_print(stderr, BL_RED, "internal compiler error [%s:%d]: %s\n", file, line, buffer);
         break;
     case LOG_ABORT:
         color_print(stderr,

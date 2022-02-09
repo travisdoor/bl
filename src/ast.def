@@ -10,7 +10,7 @@
     AST_BLOCK,
     AST_UNREACHABLE,
     AST_DEBUGBREAK,
-    AST_TAGS,
+    AST_TAG,
     AST_CALL_LOC,
     AST_DOCS,
     AST_MSG,
@@ -73,7 +73,7 @@
     struct ast_ident          ident;
     struct ast_ublock         ublock;
     struct ast_block          block;
-    struct ast_tags           tags;
+    struct ast_tag            tag;
     struct ast_call_loc        call_loc;
     struct ast_docs           docs;
     struct ast_ref            ref;

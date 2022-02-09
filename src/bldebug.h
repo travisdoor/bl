@@ -56,9 +56,9 @@ extern "C" {
 #define __FILENAME__
 #endif
 
-typedef enum { LOG_ASSERT, LOG_ABORT, LOG_WARNING, LOG_MSG } BlLogMsgKind;
+typedef enum { LOG_ASSERT, LOG_ABORT, LOG_ABORT_ISSUE, LOG_WARNING, LOG_MSG } log_msg_kind_t;
 
-void log_impl(BlLogMsgKind t, const char *file, s32 line, const char *msg, ...);
+void log_impl(log_msg_kind_t t, const char *file, s32 line, const char *msg, ...);
 void print_trace_impl(void);
 
 #if defined(BL_DEBUG)
@@ -157,6 +157,19 @@ static inline void bl_debug_break(void)
 #define babort(format, ...)                                                                        \
     {                                                                                              \
         log_impl(LOG_ABORT, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                        \
+        print_trace();                                                                             \
+        BL_DEBUG_BREAK;                                                                            \
+        abort();                                                                                   \
+    }                                                                                              \
+    (void)0
+
+#define babort_issue(N)                                                                            \
+    {                                                                                              \
+        log_impl(LOG_ABORT_ISSUE,                                                                  \
+                 __FILENAME__,                                                                     \
+                 __LINE__,                                                                         \
+                 "Issue: https://github.com/travisdoor/bl/issues/%d",                              \
+                 N);                                                                               \
         print_trace();                                                                             \
         BL_DEBUG_BREAK;                                                                            \
         abort();                                                                                   \

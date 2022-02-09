@@ -501,54 +501,31 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         return_zone(file);
     }
 
-    case HD_BASE: {
-        BL_TRACY_MESSAGE("HD_FLAG", "#line");
-        return_zone(parse_type(ctx));
-    }
-
-    case HD_TAGS: {
-        BL_TRACY_MESSAGE("HD_FLAG", "#tags");
-        // Tags can contain one or move references separated by comma
-        struct ast *tag;
-        bool        rq = false;
-
-        ast_nodes_t *values = arena_safe_alloc(&ctx->assembly->arenas.sarr);
-
-    VALUE:
-        tag = parse_expr_ref(ctx);
-        if (tag) {
-            sarrput(values, tag);
-            if (tokens_consume_if(ctx->tokens, SYM_COMMA)) {
-                rq = true;
-                goto VALUE;
-            }
-        } else if (rq) {
-            struct token *tok_err = tokens_peek(ctx->tokens);
-            PARSE_ERROR(
-                ERR_EXPECTED_NAME, tok_err, CARET_WORD, "Expected another tag after comma ','.");
-
-            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
-        }
-
-        if (!sarrlenu(values)) {
-            struct token *tok_err = tokens_peek(ctx->tokens);
-            PARSE_ERROR(ERR_EXPECTED_NAME, tok_err, CARET_WORD, "Expected tag value after #tags.");
-
-            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
-        }
-
-        struct ast *tags = ast_create_node(ctx->ast_arena, AST_TAGS, tok_directive, scope_get(ctx));
-
-        tags->data.tags.values = values;
-        return_zone(tags);
-    }
-
     case HD_LINE: {
         BL_TRACY_MESSAGE("HD_FLAG", "#line");
         struct ast *line =
             ast_create_node(ctx->ast_arena, AST_EXPR_LIT_INT, tok_directive, scope_get(ctx));
         line->data.expr_integer.val = tok_directive->location.line;
         return_zone(line);
+    }
+
+    case HD_BASE: {
+        BL_TRACY_MESSAGE("HD_FLAG", "#base");
+        return_zone(parse_type(ctx));
+    }
+
+    case HD_TAG: {
+        BL_TRACY_MESSAGE("HD_FLAG", "#tag");
+        // Tags can contain one or move references separated by comma
+        struct ast *expr = parse_expr(ctx);
+        if (!expr) {
+            struct token *tok_err = tokens_peek(ctx->tokens);
+            PARSE_ERROR(ERR_EXPECTED_NAME, tok_err, CARET_WORD, "Expected tag expression.");
+            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
+        }
+        struct ast *tag = ast_create_node(ctx->ast_arena, AST_TAG, tok_directive, scope_get(ctx));
+        tag->data.tag.expr = expr;
+        return_zone(tag);
     }
 
     case HD_CALL_LOC: {
@@ -986,12 +963,12 @@ struct ast *parse_decl_member(struct context *ctx, s32 UNUSED(index))
     }
 
     enum hash_directive_flags found_hd = HD_NONE;
-    struct ast               *tags     = parse_hash_directive(ctx, HD_TAGS, &found_hd);
+    struct ast               *tag      = parse_hash_directive(ctx, HD_TAG, &found_hd);
     struct ast *mem = ast_create_node(ctx->ast_arena, AST_DECL_MEMBER, tok_begin, scope_get(ctx));
     mem->docs       = pop_docs(ctx);
     mem->data.decl.type = type;
     mem->data.decl.name = name;
-    mem->data.decl.tags = tags;
+    mem->data.decl.tag  = tag;
     return_zone(mem);
 }
 

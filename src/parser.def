@@ -14,7 +14,7 @@
     HD_GEN(HD_ENTRY, "entry", 1 << 12)
     HD_GEN(HD_BUILD_ENTRY, "build_entry", 1 << 13)
     HD_GEN(HD_STATIC_IF, "if", 1 << 14)
-    HD_GEN(HD_TAGS, "tags", 1 << 15)
+    HD_GEN(HD_TAG, "tag", 1 << 15)
     HD_GEN(HD_NO_INIT, "noinit", 1 << 16)
     HD_GEN(HD_INTRINSIC, "intrinsic", 1 << 17)
     HD_GEN(HD_TEST_FN, "test", 1 << 18)
@@ -27,5 +27,4 @@
     HD_GEN(HD_MAYBE_UNUSED, "maybe_unused", 1 << 24)
     HD_GEN(HD_ERROR, "error", 1 << 26)
     HD_GEN(HD_WARNING, "warning", 1 << 27)
-    // 24 free
 #endif

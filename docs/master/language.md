@@ -871,17 +871,18 @@ Specify executable entry function.
 
 Specify build system entry function.
 
-### #tags
+### #tag
 
-Specify struct member tags. This value can be evaluated by type info.
+Specify struct member tag. This value can be evaluated by type info.
 
 **Example:**
 
 ```c
 NO_SERIALIZE :: 1;
+NO_GUI :: 2;
 
 Type :: struct {
-    i: s32 #tags NO_SERIALIZE;
+    i: s32 #tag NO_SERIALIZE | NO_GUI;
 }
 ```
 

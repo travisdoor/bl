@@ -320,8 +320,8 @@ struct mir_member {
     struct ast         *decl_node;
     struct scope_entry *entry;
     s64                 index;
+    u64                 tag;
     s32                 offset_bytes;
-    s32                 tags;
     bool                is_base; // inherrited struct base
     bool                is_parent_union;
     bmagic_member
@@ -549,7 +549,7 @@ struct mir_instr_decl_member {
     struct mir_member *member;
     struct mir_instr  *type;
 
-    mir_instrs_t *tags; // Optional.
+    struct mir_instr *tag; // Optional.
 };
 
 struct mir_instr_decl_variant {

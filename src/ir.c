@@ -1119,9 +1119,9 @@ LLVMValueRef rtti_emit_struct_member(struct context *ctx, struct mir_member *mem
         get_type(ctx, offset_type), (u32)member->index, index_type->data.integer.is_signed);
 
     // tags
-    struct mir_type *tags_type = mir_get_struct_elem_type(rtti_type, 4);
-    llvm_vals[4]               = LLVMConstInt(
-        get_type(ctx, offset_type), (u32)member->tags, tags_type->data.integer.is_signed);
+    struct mir_type *tag_type = mir_get_struct_elem_type(rtti_type, 4);
+    llvm_vals[4] =
+        LLVMConstInt(get_type(ctx, tag_type), member->tag, tag_type->data.integer.is_signed);
 
     // is_base
     struct mir_type *is_base_type = mir_get_struct_elem_type(rtti_type, 5);

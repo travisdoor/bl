@@ -410,6 +410,7 @@ void print_instr_toany(struct context *ctx, struct mir_instr_to_any *toany)
 
 void print_instr_type_struct(struct context *ctx, struct mir_instr_type_struct *type_struct)
 {
+    // @Inclomplete: Missing printing of tags and meta data.
     print_instr_head(ctx, &type_struct->base, "const struct");
     fprintf(ctx->stream, "{");
 

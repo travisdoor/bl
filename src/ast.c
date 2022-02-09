@@ -63,8 +63,8 @@ const char *ast_get_name(const struct ast *n)
     switch (n->kind) {
     case AST_BAD:
         return "Bad";
-    case AST_TAGS:
-        return "Tags";
+    case AST_TAG:
+        return "Tag";
     case AST_LOAD:
         return "Load";
     case AST_IMPORT:

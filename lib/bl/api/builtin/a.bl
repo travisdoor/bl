@@ -223,25 +223,16 @@ TypeInfoStructMember :: struct #compiler {
     offset_bytes: s32;
     /// Order in structure.
     index: s32;
-    /// User tags contains merge of all tag values assigned to member in structure declaration.
-    /// Basically tags behave like a flags value, merge is done by binary `or` of all defined tag values.
-    /// User tags can be defined by `#tags` hash directive written after member type in following way:
+    /// User defined member tag can be used to store any custom user data up to 8 bytes into the type
+    /// info structure when structure member is defined.
     /// 
     /// ```
     /// Foo :: struct {
-    ///     i: s32 #tags TAG1;
-    ///     j: s32 #tags TAG1, TAG2;
+    ///     i: s32 #tag 123;
+    ///     j: s32 #tag 321;
     /// };
     /// ```
-    /// 
-    /// Where tags must be `compile-time` constant of `s32` type.
-    /// 
-    /// ```text
-    /// TAG1 :: 0x1;
-    /// TAG2 :: 0x2;
-    /// ```
-    /// 
-    tags: s32;
+    tag: u64;
     /// True when member is inherrited base of the parent structure type.
     is_base: bool;
 };

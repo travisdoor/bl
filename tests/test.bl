@@ -1,19 +1,17 @@
-Foo :: struct {
-    using A;
-    using A;
-    i: MyType;
+Flags :: enum #flags {
+    A;
+    B;
 }
+
+T2 :: struct {
+    a: s32 #tag auto Flags.A;
+    b: s32 #tag auto Flags.B;
+    c: s32 #tag auto make_flags(Flags.A, Flags.B);
+};
 
 main :: fn () s32 {
-    print("\n>>> %\n", Foo);
     return 0;
 }
-
-#scope A
-
-MyType :: s32;
-//#scope B
-i :: 20;
 
 // rename: struct mir_instr_* -> struct instr
 
