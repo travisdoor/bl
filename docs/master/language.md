@@ -900,6 +900,10 @@ variable should not be reported as unused.
 
 This is workaround to get rid of unwanted warning for now.
 
+### #comptime
+
+Mark the function as compile-time executed function.
+
 ## Variable
 
 Variable associate name with value of some type. Variables in BL can be declared as mutable or
@@ -1296,7 +1300,7 @@ specification is not semantically valid. (i.e. we can't compare strings directly
 **warning:** Getting address (by `&` operator) of polymorphic function recipe is not possible,
 polymorphic recipe as it is does not represent any allocated memory in program binary.
 
-### Multiple return values
+### Multiple Return Values
 
 Function in BL can return more than one value, this can be useful i.e.  in cases we want to return
 value and error code. There is no explicit limitation of returned value count. Return value can be
@@ -1334,6 +1338,45 @@ main :: fn () s32 {
     _, b := foo(); // Ignore first returned value.
 }
 ```
+
+### Comptime Function
+
+The `comptime` function is every function marked by `#comptime` hash directive in a declaration. 
+Every call to such a function is going to be evaluated in compile-time and replaced by constant 
+eventually.
+
+**Example:**
+```c
+hash_string :: fn (s: string) u32 #comptime {
+    return std.str_hash(s);
+}
+```
+
+The `hash` function can be later called as any other regular function, but the call itself is 
+replaced by constant result in the final binary.
+
+```
+main :: fn () s32 {
+    hash := hash_string("Hello!");
+    print("%\n", hash);
+    return 0;
+}
+```
+
+So the comptime function has no runtime overhead.
+
+**List of cons:**
+
+1. Every argument passed, must be known in compile-time.
+2. All arguments inside the function are constant (we cannot change it's values).
+3. Returning pointers from comptime functions is not a good idea in general (i.e. addresses of functions
+   in compile-time are not the same in runtime).
+
+**List of pros:**
+
+1. We can pass any type as a value to the comptime function.
+2. We can return any type as a value.
+3. Since all comptime functions are evaluated in compile-time, there is no runtime overhead. 
 
 ## Block
 

@@ -1391,7 +1391,7 @@ void interp_instr_member_ptr(struct virtual_machine *vm, struct mir_instr_member
     // builtin types???
     bassert(target_type->kind == MIR_TYPE_PTR && "expected pointer");
     target_type = mir_deref_type(target_type);
-    bassert(mir_is_composit_type(target_type) && "expected structure");
+    bassert(mir_is_composite_type(target_type) && "expected structure");
 
     // fetch address of the struct begin
     vm_stack_ptr_t ptr = fetch_value(vm, &member_ptr->target_ptr->value);
@@ -1432,7 +1432,7 @@ void interp_instr_unroll(struct virtual_machine *vm, struct mir_instr_unroll *un
     const s32        index    = unroll->index;
     bassert(src_type->kind == MIR_TYPE_PTR && "expected pointer");
     src_type = mir_deref_type(src_type);
-    bassert(mir_is_composit_type(src_type) && "expected structure");
+    bassert(mir_is_composite_type(src_type) && "expected structure");
     vm_stack_ptr_t ptr = fetch_value(vm, &unroll->src->value);
     ptr                = VM_STACK_PTR_DEREF(ptr);
     bassert(ptr);
@@ -2170,17 +2170,21 @@ void eval_instr_compound(struct virtual_machine *vm, struct mir_instr_compound *
     }
 }
 
-void eval_instr_unroll(struct virtual_machine UNUSED(*vm), struct mir_instr_unroll *unroll)
+void eval_instr_unroll(struct virtual_machine *vm, struct mir_instr_unroll *unroll)
 {
     struct mir_instr *src = unroll->src;
     bassert(src);
     struct mir_type *src_type = src->value.type;
-    if (mir_is_composit_type(src_type)) {
-        babort("Not implemented yet!");
-    } else {
-        blog("Just copy value!");
-        unroll->base.value.data = unroll->src->value.data;
+    bassert(src_type);
+
+    if (mir_is_composite_type(src_type) && src_type->data.strct.is_multiple_return_type) {
+        vm_stack_ptr_t member_ptr =
+            vm_get_struct_elem_ptr(vm->assembly, src_type, src->value.data, unroll->index);
+		MIR_CEV_WRITE_AS(vm_stack_ptr_t, &unroll->base.value, member_ptr);
+        return;
     }
+
+    unroll->base.value.data = src->value.data;
 }
 
 void eval_instr_arg(struct virtual_machine UNUSED(*vm), struct mir_instr_arg *arg)
@@ -2515,9 +2519,9 @@ enum vm_interp_state vm_execute_comptime_call(struct virtual_machine *vm,
                 dest = data_alloc(vm, ret_type);
             } else {
                 dest = (vm_stack_ptr_t)&call->base.value._tmp;
-                bassert((void *)call->base.value.data == (void *)&call->base.value._tmp);
             }
             memcpy(dest, ptr, ret_type->store_size_bytes);
+            call->base.value.data = dest;
         } else {
             call->base.value.data = NULL;
         }
@@ -2673,7 +2677,7 @@ void vm_write_slice(struct virtual_machine *vm,
 
 ptrdiff_t vm_get_struct_elem_offset(struct assembly *assembly, const struct mir_type *type, u32 i)
 {
-    bassert(mir_is_composit_type(type) && "Expected structure type");
+    bassert(mir_is_composite_type(type) && "Expected structure type");
     if (type->data.strct.is_union) {
         return 0;
     }
@@ -2694,7 +2698,7 @@ vm_stack_ptr_t vm_get_struct_elem_ptr(struct assembly       *assembly,
                                       vm_stack_ptr_t         ptr,
                                       u32                    i)
 {
-    bassert(mir_is_composit_type(type) && "Expected structure type");
+    bassert(mir_is_composite_type(type) && "Expected structure type");
     if (type->data.strct.is_union) {
         return ptr;
     }

@@ -2237,7 +2237,6 @@ State emit_instr_binop(struct context *ctx, struct mir_instr_binop *binop)
 
 State emit_instr_call(struct context *ctx, struct mir_instr_call *call)
 {
-    //*********************************************************************************************/
 #define INSERT_TMP(_name, _type)                                                                   \
     LLVMValueRef _name = NULL;                                                                     \
     {                                                                                              \
@@ -2254,8 +2253,10 @@ State emit_instr_call(struct context *ctx, struct mir_instr_call *call)
         LLVMPositionBuilderAtEnd(ctx->llvm_builder, llvm_prev_block);                              \
         DI_LOCATION_RESET();                                                                       \
     }                                                                                              \
-    (void)0 //*********************************************************************************************/
+    (void)0
 
+    bassert(!mir_is_comptime(&call->base) &&
+            "Compile time calls should not be generated into the final binary!");
     struct mir_instr *callee = call->callee;
     bassert(callee);
     bassert(callee->value.type);
@@ -2532,29 +2533,29 @@ State emit_instr_const(struct context *ctx, struct mir_instr_const *c)
     case MIR_TYPE_ENUM: {
         type = type->data.enm.base_type;
         bassert(type->kind == MIR_TYPE_INT);
-        const u64 i = MIR_CEV_READ_AS(u64, &c->base.value);
+        const u64 i = vm_read_int(type, c->base.value.data);
         llvm_value  = LLVMConstInt(llvm_type, i, type->data.integer.is_signed);
         break;
     }
     case MIR_TYPE_INT: {
-        const u64 i = MIR_CEV_READ_AS(u64, &c->base.value);
+        const u64 i = vm_read_int(type, c->base.value.data);
         llvm_value  = LLVMConstInt(llvm_type, i, type->data.integer.is_signed);
         break;
     }
     case MIR_TYPE_BOOL: {
-        const bool i = MIR_CEV_READ_AS(bool, &c->base.value);
+        const bool i = (bool)vm_read_int(type, c->base.value.data);
         llvm_value   = LLVMConstInt(llvm_type, i, false);
         break;
     }
     case MIR_TYPE_REAL: {
         switch (type->store_size_bytes) {
         case 4: {
-            const float i = MIR_CEV_READ_AS(float, &c->base.value);
+            const float i = vm_read_float(type, c->base.value.data);
             llvm_value    = LLVMConstReal(llvm_type, (double)i);
             break;
         }
         case 8: {
-            const double i = MIR_CEV_READ_AS(double, &c->base.value);
+            const double i = vm_read_double(type, c->base.value.data);
             llvm_value     = LLVMConstReal(llvm_type, i);
             break;
         }
@@ -2576,13 +2577,40 @@ State emit_instr_const(struct context *ctx, struct mir_instr_const *c)
         break;
     }
     case MIR_TYPE_FN: {
-        struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &c->base.value);
+        struct mir_fn *fn = (struct mir_fn *)vm_read_ptr(type, c->base.value.data);
         bmagic_assert(fn);
         llvm_value = emit_fn_proto(ctx, fn, true);
         break;
     }
     case MIR_TYPE_VOID: {
         return STATE_PASSED;
+    }
+    case MIR_TYPE_STRUCT: {
+        // More complex data blobs can be produced by comptime call evaluation, we split struct data
+        // into individual values wrapped into const instruction to reuse the same function here.
+        llvm_values_t  llvm_members = SARR_ZERO;
+        mir_members_t *members      = type->data.strct.members;
+        for (usize i = 0; i < members->len; ++i) {
+            struct mir_member *member = sarrpeek(members, i);
+            vm_stack_ptr_t     value_ptr =
+                vm_get_struct_elem_ptr(ctx->assembly, type, c->base.value.data, (u32)i);
+
+            struct mir_instr_const tmp = {
+                .base.value.type        = member->type, // get_type is called internally
+                .base.value.data        = value_ptr,
+                .base.value.is_comptime = true,
+            };
+
+            if (emit_instr_const(ctx, &tmp) != STATE_PASSED) {
+                babort("Cannot evaluate constant data blob!");
+            }
+            bassert(tmp.base.llvm_value);
+            sarrput(&llvm_members, tmp.base.llvm_value);
+        }
+        llvm_value =
+            LLVMConstNamedStruct(llvm_type, sarrdata(&llvm_members), sarrlen(&llvm_members));
+        sarrfree(&llvm_members);
+        break;
     }
     default:
         BL_UNIMPLEMENTED;

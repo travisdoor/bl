@@ -60,6 +60,8 @@ LPVOID       :: *C.uchar;
 LPOVERLAPPED :: *OVERLAPPED;
 LPDWORD      :: *DWORD;
 HANDLE       :: *C.uchar;
+HCURSOR      :: C.void_ptr;
+HINSTANCE    :: C.void_ptr;
 ULONG_PTR    :: *C.ulong;
 SIZE_T       :: C.ulong;
 PVOID        :: *C.uchar; 
@@ -72,6 +74,7 @@ HWND         :: C.void_ptr;
 LONG         :: C.long;
 PLONG        :: *LONG;
 WORD         :: C.ushort;
+
 GENERIC_READ : u32 : 0x80000000;
 GENERIC_WRITE : u32 : 0x40000000;
 FILE_BEGIN : u32 : 0;
@@ -134,6 +137,22 @@ FILE_NOTIFY_CHANGE_LAST_WRITE : u32 : 0x00000010;
 FILE_NOTIFY_CHANGE_LAST_ACCESS : u32 : 0x00000020;
 FILE_NOTIFY_CHANGE_CREATION : u32 : 0x00000040;
 FILE_NOTIFY_CHANGE_SECURITY : u32 : 0x00000100;
+
+IDC_ARROW           :: cast(LPCSTR) (cast(ULONG_PTR) 32512);
+IDC_IBEAM           :: cast(LPCSTR) (cast(ULONG_PTR) 32513);
+IDC_WAIT            :: cast(LPCSTR) (cast(ULONG_PTR) 32514);
+IDC_CROSS           :: cast(LPCSTR) (cast(ULONG_PTR) 32515);
+IDC_UPARROW         :: cast(LPCSTR) (cast(ULONG_PTR) 32516);
+IDC_SIZE            :: cast(LPCSTR) (cast(ULONG_PTR) 32640);
+IDC_ICON            :: cast(LPCSTR) (cast(ULONG_PTR) 32641);
+IDC_SIZENWSE        :: cast(LPCSTR) (cast(ULONG_PTR) 32642);
+IDC_SIZENESW        :: cast(LPCSTR) (cast(ULONG_PTR) 32643);
+IDC_SIZEWE          :: cast(LPCSTR) (cast(ULONG_PTR) 32644);
+IDC_SIZENS          :: cast(LPCSTR) (cast(ULONG_PTR) 32645);
+IDC_SIZEALL         :: cast(LPCSTR) (cast(ULONG_PTR) 32646);
+IDC_NO              :: cast(LPCSTR) (cast(ULONG_PTR) 32648);
+
+
 FILE_NOTIFY_INFORMATION :: struct {
     NextEntryOffset: DWORD;
     Action: DWORD;
@@ -366,3 +385,5 @@ GetOverlappedResult :: fn (hFile: HANDLE, lpOverlapped: LPOVERLAPPED, lpNumberOf
 ResetEvent :: fn (hEvent: HANDLE) BOOL #extern "ResetEvent";
 FormatMessageA :: fn (dwFlags: DWORD, lpSource: LPVOID, dwMessageId: DWORD, dwLanguageId: DWORD, lpBuffer: LPSTR, nSize: DWORD, Arguments: *u8) DWORD #extern "FormatMessageA";
 GetCursorPos :: fn (lpPoint: LPPOINT) BOOL #extern "GetCursorPos";
+LoadCursorA :: fn (hInstance: HINSTANCE, lpCursorName: LPCSTR) HCURSOR #extern "LoadCursorA";
+SetCursor :: fn (hCursor: HCURSOR) HCURSOR #extern "SetCursor";

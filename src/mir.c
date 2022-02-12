@@ -1097,12 +1097,9 @@ static inline bool can_mutate_comptime_to_const(struct mir_instr *instr)
     case MIR_INSTR_BLOCK:
     case MIR_INSTR_ARG:
     case MIR_INSTR_FN_PROTO:
-        // Unroll instruction is kept and converted to constant later in analyze slot pass, we need
-        // to keep internal information about unroll remove which is based on usage of unroll and
-        // not clear here.
-    case MIR_INSTR_UNROLL:
         return false;
-
+    case MIR_INSTR_CALL:
+        return true;
     default:
         break;
     }
@@ -1135,7 +1132,7 @@ static inline struct scope *get_base_type_scope(struct mir_type *struct_type)
 {
     struct mir_type *base_type = get_base_type(struct_type);
     if (!base_type) return NULL;
-    if (!mir_is_composit_type(base_type)) return NULL;
+    if (!mir_is_composite_type(base_type)) return NULL;
 
     return base_type->data.strct.scope;
 }
@@ -1143,7 +1140,7 @@ static inline struct scope *get_base_type_scope(struct mir_type *struct_type)
 // Determinate if type is incomplete struct type.
 static inline bool is_incomplete_struct_type(struct mir_type *type)
 {
-    return mir_is_composit_type(type) && type->data.strct.is_incomplete;
+    return mir_is_composite_type(type) && type->data.strct.is_incomplete;
 }
 
 // Checks whether type is complete type, checks also dependencies. In practice only composit types
@@ -2093,7 +2090,7 @@ struct scope_entry *
 lookup_composit_member(struct mir_type *type, struct id *rid, struct mir_type **out_base_type)
 {
     bassert(type);
-    bassert(mir_is_composit_type(type) && "Expected composit type!");
+    bassert(mir_is_composite_type(type) && "Expected composit type!");
 
     struct scope       *scope       = type->data.strct.scope;
     const hash_t        scope_layer = type->data.strct.scope_layer;
@@ -2548,7 +2545,7 @@ void type_init_llvm_fn(struct context *ctx, struct mir_type *type)
 
     llvm_types_t llvm_args = SARR_ZERO;
     if (has_ret) {
-        if (ctx->assembly->target->reg_split && mir_is_composit_type(ret_type) &&
+        if (ctx->assembly->target->reg_split && mir_is_composite_type(ret_type) &&
             ret_type->store_size_bytes >= 16) {
             type->data.fn.has_sret = true;
             sarrput(&llvm_args, LLVMPointerType(ret_type->llvm_type, 0));
@@ -2567,7 +2564,7 @@ void type_init_llvm_fn(struct context *ctx, struct mir_type *type)
         arg->llvm_index     = (u32)sarrlenu(&llvm_args);
 
         // Composit types.
-        if (ctx->assembly->target->reg_split && mir_is_composit_type(arg->type)) {
+        if (ctx->assembly->target->reg_split && mir_is_composite_type(arg->type)) {
             LLVMContextRef llvm_cnt = ctx->assembly->llvm.ctx;
 
             u32   start = 0;
@@ -3545,6 +3542,7 @@ struct mir_instr *create_instr_call(struct context   *ctx,
     for (usize i = 0; i < sarrlenu(args); ++i) {
         ref_instr(sarrpeek(args, i));
     }
+
     // Call itself is referenced here because the function call can have side-effects even it's
     // result is not used at all. So we cannot eventually remove it.
     return ref_instr(&tmp->base);
@@ -4453,6 +4451,12 @@ enum vm_interp_state evaluate(struct context *ctx, struct mir_instr *instr)
         if (state != VM_INTERP_PASSED) {
             return state;
         }
+        // Every call instruction has reference count set (at least) to one when it's generated
+        // (function call can have some side-effects even if it's result is not used). However once
+        // the call is evaluated in compile time and become constant later, there is no need to keep
+        // it referenced when it's not used. (Function was already called and side-effect are
+        // applied if any).
+        unref_instr(&call->base);
         break;
     }
     case MIR_INSTR_PHI: {
@@ -4507,13 +4511,14 @@ struct result
 analyze_resolve_type(struct context *ctx, struct mir_instr *resolver, struct mir_type **out_type)
 {
     bassert(resolver && "Expected resolver call.");
+
+    // Type resolvers are guaranteed to be compile-time calls!
     bassert(mir_is_comptime(resolver));
 
     if (resolver->kind == MIR_INSTR_CALL) {
         bassert(resolver->state != MIR_IS_COMPLETE &&
-                "In case the type resolver is analyzed is's supposed to be already converted "
-                "to the "
-                "constant value during evaluation!");
+                "In case the type resolver is analyzed is's supposed to be already converted to "
+                "the constant value during evaluation!");
         if (analyze_instr(ctx, resolver).state != ANALYZE_PASSED) {
             return POSTPONE;
         }
@@ -4741,31 +4746,41 @@ struct result analyze_instr_unroll(struct context *ctx, struct mir_instr_unroll 
     bassert(src->value.type);
     struct mir_type *src_type = src->value.type;
     struct mir_type *type     = src_type;
-    if (mir_is_composit_type(src_type) && src_type->data.strct.is_multiple_return_type) {
+    if (mir_is_composite_type(src_type) && src_type->data.strct.is_multiple_return_type) {
         if (index >= (s32)sarrlen(src_type->data.strct.members)) {
             report_error(INVALID_MEMBER_ACCESS, unroll->base.node, "Expected more return values.");
             return_zone(FAIL);
         }
-
-        bassert(src->kind == MIR_INSTR_CALL && "Unroll expects source to be CALL instruction!");
-        struct mir_instr_call *src_call = (struct mir_instr_call *)src;
-        struct mir_instr      *tmp_var  = src_call->unroll_tmp_var;
-        if (!tmp_var) {
-            // no tmp var to unroll from; create one and insert it after call
-            tmp_var = create_instr_decl_var_impl(ctx,
-                                                 &(create_instr_decl_var_impl_args_t){
-                                                     .name = unique_name(ctx, IMPL_UNROLL_TMP),
-                                                     .init = src,
-                                                 });
-            insert_instr_after(src, tmp_var);
+        if (src->kind == MIR_INSTR_CALL) {
+            bassert(!mir_is_comptime(src) &&
+                    "Comptime call is supposed to be converted to the constant!");
+            struct mir_instr_call *src_call = (struct mir_instr_call *)src;
+            struct mir_instr      *tmp_var  = src_call->unroll_tmp_var;
+            if (!tmp_var) {
+                // no tmp var to unroll from; create one and insert it after call
+                tmp_var = create_instr_decl_var_impl(ctx,
+                                                     &(create_instr_decl_var_impl_args_t){
+                                                         .name = unique_name(ctx, IMPL_UNROLL_TMP),
+                                                         .init = src,
+                                                     });
+                insert_instr_after(src, tmp_var);
+                analyze_instr_rq(tmp_var);
+                src_call->unroll_tmp_var = tmp_var;
+            }
+            tmp_var = create_instr_decl_direct_ref(ctx, NULL, tmp_var);
+            insert_instr_before(&unroll->base, tmp_var);
             analyze_instr_rq(tmp_var);
-            src_call->unroll_tmp_var = tmp_var;
+            unroll->src = ref_instr(tmp_var);
+            type        = create_type_ptr(ctx, mir_get_struct_elem_type(src_type, index));
+        } else if (src->kind == MIR_INSTR_CONST) {
+            src = unref_instr(src);
+            if (src->ref_count == 0) {
+                erase_instr(src);
+            }
+            type = create_type_ptr(ctx, mir_get_struct_elem_type(src_type, index));
+        } else {
+            babort("Invalid unroll source instruction!");
         }
-        tmp_var = create_instr_decl_direct_ref(ctx, NULL, tmp_var);
-        insert_instr_before(&unroll->base, tmp_var);
-        analyze_instr_rq(tmp_var);
-        unroll->src = ref_instr(tmp_var);
-        type        = create_type_ptr(ctx, mir_get_struct_elem_type(src_type, index));
     } else {
         unroll->remove = true;
     }
@@ -4773,6 +4788,7 @@ struct result analyze_instr_unroll(struct context *ctx, struct mir_instr_unroll 
     unroll->base.value.type        = type;
     unroll->base.value.is_comptime = src->value.is_comptime;
     unroll->base.value.addr_mode   = src->value.addr_mode;
+
     return_zone(PASS);
 }
 
@@ -5345,7 +5361,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
             // @Cleanup: This should be inside evaluator
             MIR_CEV_WRITE_AS(struct mir_type *, &member_ptr->base.value, sub_type);
             return_zone(PASS);
-        } else if (mir_is_composit_type(sub_type)) {
+        } else if (mir_is_composite_type(sub_type)) {
             struct scope       *scope       = sub_type->data.strct.scope;
             const hash_t        scope_layer = sub_type->data.strct.scope_layer;
             struct scope_entry *found       = scope_lookup(scope,
@@ -5382,7 +5398,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
     }
 
     // struct type
-    if (mir_is_composit_type(target_type)) {
+    if (mir_is_composite_type(target_type)) {
         // Check if structure type is complete, if not analyzer must wait for it!
         if (is_incomplete_struct_type(target_type)) {
             return_zone(WAIT(target_type->user_id->hash));
@@ -7311,6 +7327,13 @@ struct result analyze_instr_ret(struct context *ctx, struct mir_instr_ret *ret)
         return_zone(FAIL);
     }
 
+    if (value && mir_is_in_comptime_fn(&ret->base) && value->value.type->kind == MIR_TYPE_PTR) {
+        report_warning(
+            ret->value->node,
+            "Returning a pointer from compile-time evaluated function is not safe! Address of "
+            "allocated data on stack or heap in compile-time are not the same in runtime.");
+    }
+
     return_zone(PASS);
 }
 
@@ -7321,8 +7344,11 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
     bassert(var);
 
     // Immutable declaration can be comptime, but only if it's initializer value is also
-    // comptime! Value of this variable can be adjusted later during analyze pass when
-    // we know actual initialization value.
+    // comptime!
+    // To allow manipulation with types, we have one exception here for function arguments.
+    //
+    // @Incomplete: Check this expression, we cannot now change value of argument passed into the
+    // comptime functions!?
     bool is_decl_comptime = !var->is_mutable || (decl->init && decl->init->kind == MIR_INSTR_ARG &&
                                                  mir_is_comptime(decl->init));
 

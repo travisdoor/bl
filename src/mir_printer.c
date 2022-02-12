@@ -249,6 +249,13 @@ _print_const_value(struct context *ctx, struct mir_type *type, vm_stack_ptr_t va
         break;
     }
 
+    case MIR_TYPE_FN: {
+        struct mir_fn *fn = vm_read_as(struct mir_fn*, value);
+        bmagic_assert(fn);
+        fprintf(ctx->stream, "@%s", fn->full_name);
+        break;
+    }
+
     default:
         fprintf(ctx->stream, "<CANNOT READ VALUE>");
     }

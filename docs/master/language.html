@@ -875,20 +875,23 @@
 <p><strong>warning:</strong> This directive is compiler internal.</p>
 <h3 id="build_entry">#build_entry</h3>
 <p>Specify build system entry function.</p>
-<h3 id="tags">#tags</h3>
-<p>Specify struct member tags. This value can be evaluated by type info.</p>
+<h3 id="tag">#tag</h3>
+<p>Specify struct member tag. This value can be evaluated by type info.</p>
 <p><strong>Example:</strong></p>
 <div class="sourceCode" id="cb46"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a>NO_SERIALIZE <span class="op">::</span> <span class="dv">1</span><span class="op">;</span></span>
-<span id="cb46-2"><a href="#cb46-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb46-3"><a href="#cb46-3" aria-hidden="true" tabindex="-1"></a>Type <span class="op">::</span> <span class="kw">struct</span> <span class="op">{</span></span>
-<span id="cb46-4"><a href="#cb46-4" aria-hidden="true" tabindex="-1"></a>    i<span class="op">:</span> s32 #tags NO_SERIALIZE<span class="op">;</span></span>
-<span id="cb46-5"><a href="#cb46-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<span id="cb46-2"><a href="#cb46-2" aria-hidden="true" tabindex="-1"></a>NO_GUI <span class="op">::</span> <span class="dv">2</span><span class="op">;</span></span>
+<span id="cb46-3"><a href="#cb46-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb46-4"><a href="#cb46-4" aria-hidden="true" tabindex="-1"></a>Type <span class="op">::</span> <span class="kw">struct</span> <span class="op">{</span></span>
+<span id="cb46-5"><a href="#cb46-5" aria-hidden="true" tabindex="-1"></a>    i<span class="op">:</span> s32 #tag NO_SERIALIZE <span class="op">|</span> NO_GUI<span class="op">;</span></span>
+<span id="cb46-6"><a href="#cb46-6" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <h3 id="intrinsic">#intrinsic</h3>
 <p>Mark external function as compiler specific intrinsic function.</p>
 <p><strong>warning:</strong> This directive is compiler internal.</p>
 <h3 id="maybe_unused">#maybe_unused</h3>
 <p>Suppress usage checking for declaration. This can be helpful i.e.: in case the polymorphic function is using some private global variables and the function is not used (the body is never generated). Such variable should not be reported as unused.</p>
 <p>This is workaround to get rid of unwanted warning for now.</p>
+<h3 id="comptime">#comptime</h3>
+<p>Mark the function as compile-time executed function.</p>
 <h2 id="variable">Variable</h2>
 <p>Variable associate name with value of some type. Variables in BL can be declared as mutable or immutable, value of immutable variable cannot be changed and can be set only by variable initializer. Type of variable is optional when value is specified. Variables can be declared in local or global scope, local variable lives only in particular function during function execution, global variables lives during whole execution.</p>
 <p>Variables without explicit initialization value are <code>zero initialized</code> (set to default value). We can suppress this behaviour by <code>#noinit</code> directive. Global variables must be initialized every time (explicitly or zero initialized) so <code>#noinit</code> cannot be used.</p>
@@ -1145,7 +1148,7 @@
 <p><strong>note:</strong> Order of function group variants is important in this case, when string specific function comes after generic one, compiler will always use the generic implementation.</p>
 <p><strong>note:</strong> Compiler error is reported in case content of the polymorph generated for some type specification is not semantically valid. (i.e. we can’t compare strings directly by <code>==</code> operator)</p>
 <p><strong>warning:</strong> Getting address (by <code>&amp;</code> operator) of polymorphic function recipe is not possible, polymorphic recipe as it is does not represent any allocated memory in program binary.</p>
-<h3 id="multiple-return-values">Multiple return values</h3>
+<h3 id="multiple-return-values">Multiple Return Values</h3>
 <p>Function in BL can return more than one value, this can be useful i.e. in cases we want to return value and error code. There is no explicit limitation of returned value count. Return value can be also named to make the function interface more readable.</p>
 <p>Returned values are implicitly converted to anonymous structure instances with possibility to implicitly unroll results on caller side.</p>
 <p>Use unnamed identifier to ignore some of returned values on caller side.</p>
@@ -1169,176 +1172,201 @@
 <span id="cb64-6"><a href="#cb64-6" aria-hidden="true" tabindex="-1"></a>    int1<span class="op">,</span> boolean1 <span class="op">:=</span> foo<span class="op">();</span></span>
 <span id="cb64-7"><a href="#cb64-7" aria-hidden="true" tabindex="-1"></a>    _<span class="op">,</span> b <span class="op">:=</span> foo<span class="op">();</span> <span class="co">// Ignore first returned value.</span></span>
 <span id="cb64-8"><a href="#cb64-8" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h3 id="comptime-function">Comptime Function</h3>
+<p>The <code>comptime</code> function is every function marked by <code>#comptime</code> hash directive in a declaration. Every call to such a function is going to be evaluated in compile-time and replaced by constant eventually.</p>
+<p><strong>Example:</strong></p>
+<div class="sourceCode" id="cb65"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb65-1"><a href="#cb65-1" aria-hidden="true" tabindex="-1"></a>hash_string <span class="op">::</span> fn <span class="op">(</span>s<span class="op">:</span> string<span class="op">)</span> u32 #comptime <span class="op">{</span></span>
+<span id="cb65-2"><a href="#cb65-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> std<span class="op">.</span>str_hash<span class="op">(</span>s<span class="op">);</span></span>
+<span id="cb65-3"><a href="#cb65-3" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>The <code>hash</code> function can be later called as any other regular function, but the call itself is replaced by constant result in the final binary.</p>
+<pre><code>main :: fn () s32 {
+    hash := hash_string(&quot;Hello!&quot;);
+    print(&quot;%\n&quot;, hash);
+    return 0;
+}</code></pre>
+<p>So the comptime function has no runtime overhead.</p>
+<p><strong>List of cons:</strong></p>
+<ol type="1">
+<li>Every argument passed, must be known in compile-time.</li>
+<li>All arguments inside the function are constant (we cannot change it’s values).</li>
+<li>Returning pointers from comptime functions is not a good idea in general (i.e. addresses of functions in compile-time are not the same in runtime).</li>
+</ol>
+<p><strong>List of pros:</strong></p>
+<ol type="1">
+<li>We can pass any type as a value to the comptime function.</li>
+<li>We can return any type as a value.</li>
+<li>Since all comptime functions are evaluated in compile-time, there is no runtime overhead.</li>
+</ol>
 <h2 id="block">Block</h2>
 <p>Block can limit scope of the variable.</p>
 <p><strong>Example:</strong></p>
-<div class="sourceCode" id="cb65"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb65-1"><a href="#cb65-1" aria-hidden="true" tabindex="-1"></a><span class="er">#import &quot;std/test&quot;</span></span>
-<span id="cb65-2"><a href="#cb65-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb65-3"><a href="#cb65-3" aria-hidden="true" tabindex="-1"></a>blocks <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
-<span id="cb65-4"><a href="#cb65-4" aria-hidden="true" tabindex="-1"></a>    a <span class="op">:=</span> <span class="dv">10</span><span class="op">;</span></span>
-<span id="cb65-5"><a href="#cb65-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb65-6"><a href="#cb65-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
-<span id="cb65-7"><a href="#cb65-7" aria-hidden="true" tabindex="-1"></a>    <span class="co">// this variable lives only in this scope</span></span>
-<span id="cb65-8"><a href="#cb65-8" aria-hidden="true" tabindex="-1"></a>       i <span class="op">:=</span> a<span class="op">;</span></span>
-<span id="cb65-9"><a href="#cb65-9" aria-hidden="true" tabindex="-1"></a>       assert<span class="op">(</span>i <span class="op">==</span> <span class="dv">10</span><span class="op">);</span></span>
-<span id="cb65-10"><a href="#cb65-10" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
-<span id="cb65-11"><a href="#cb65-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb65-12"><a href="#cb65-12" aria-hidden="true" tabindex="-1"></a>    i <span class="op">:=</span> <span class="dv">20</span><span class="op">;</span></span>
-<span id="cb65-13"><a href="#cb65-13" aria-hidden="true" tabindex="-1"></a>    assert<span class="op">(</span>i <span class="op">==</span> <span class="dv">20</span><span class="op">);</span></span>
-<span id="cb65-14"><a href="#cb65-14" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
+<div class="sourceCode" id="cb67"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb67-1"><a href="#cb67-1" aria-hidden="true" tabindex="-1"></a><span class="er">#import &quot;std/test&quot;</span></span>
+<span id="cb67-2"><a href="#cb67-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb67-3"><a href="#cb67-3" aria-hidden="true" tabindex="-1"></a>blocks <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
+<span id="cb67-4"><a href="#cb67-4" aria-hidden="true" tabindex="-1"></a>    a <span class="op">:=</span> <span class="dv">10</span><span class="op">;</span></span>
+<span id="cb67-5"><a href="#cb67-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb67-6"><a href="#cb67-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb67-7"><a href="#cb67-7" aria-hidden="true" tabindex="-1"></a>    <span class="co">// this variable lives only in this scope</span></span>
+<span id="cb67-8"><a href="#cb67-8" aria-hidden="true" tabindex="-1"></a>       i <span class="op">:=</span> a<span class="op">;</span></span>
+<span id="cb67-9"><a href="#cb67-9" aria-hidden="true" tabindex="-1"></a>       assert<span class="op">(</span>i <span class="op">==</span> <span class="dv">10</span><span class="op">);</span></span>
+<span id="cb67-10"><a href="#cb67-10" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb67-11"><a href="#cb67-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb67-12"><a href="#cb67-12" aria-hidden="true" tabindex="-1"></a>    i <span class="op">:=</span> <span class="dv">20</span><span class="op">;</span></span>
+<span id="cb67-13"><a href="#cb67-13" aria-hidden="true" tabindex="-1"></a>    assert<span class="op">(</span>i <span class="op">==</span> <span class="dv">20</span><span class="op">);</span></span>
+<span id="cb67-14"><a href="#cb67-14" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
 <h2 id="if---else">If - Else</h2>
 <p>If represents condition statement which can change program flow. If executes following code block only if passed condition is <code>true</code>, otherwise skip the block and continue on next statement after the block. We can specify <code>else</code> block which is executed only if condition is <code>false</code>.</p>
 <p><strong>Example:</strong></p>
-<div class="sourceCode" id="cb66"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb66-1"><a href="#cb66-1" aria-hidden="true" tabindex="-1"></a>test_ifs <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
-<span id="cb66-2"><a href="#cb66-2" aria-hidden="true" tabindex="-1"></a>    b <span class="op">:=</span> true<span class="op">;</span></span>
-<span id="cb66-3"><a href="#cb66-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> b <span class="op">{</span></span>
-<span id="cb66-4"><a href="#cb66-4" aria-hidden="true" tabindex="-1"></a>        print<span class="op">(</span><span class="st">&quot;b is true!</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span></span>
-<span id="cb66-5"><a href="#cb66-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
-<span id="cb66-6"><a href="#cb66-6" aria-hidden="true" tabindex="-1"></a>        print<span class="op">(</span><span class="st">&quot;b is false!</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span></span>
-<span id="cb66-7"><a href="#cb66-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
-<span id="cb66-8"><a href="#cb66-8" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
+<div class="sourceCode" id="cb68"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb68-1"><a href="#cb68-1" aria-hidden="true" tabindex="-1"></a>test_ifs <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
+<span id="cb68-2"><a href="#cb68-2" aria-hidden="true" tabindex="-1"></a>    b <span class="op">:=</span> true<span class="op">;</span></span>
+<span id="cb68-3"><a href="#cb68-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> b <span class="op">{</span></span>
+<span id="cb68-4"><a href="#cb68-4" aria-hidden="true" tabindex="-1"></a>        print<span class="op">(</span><span class="st">&quot;b is true!</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span></span>
+<span id="cb68-5"><a href="#cb68-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
+<span id="cb68-6"><a href="#cb68-6" aria-hidden="true" tabindex="-1"></a>        print<span class="op">(</span><span class="st">&quot;b is false!</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span></span>
+<span id="cb68-7"><a href="#cb68-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb68-8"><a href="#cb68-8" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
 <p>If statement can be static. In this case the condition must be known in compile time. Static ifs are evaluated during compilation and can be used i.e. for including/excluding some parts of code based on some constant expression.</p>
 <p><strong>Example:</strong></p>
-<div class="sourceCode" id="cb67"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb67-1"><a href="#cb67-1" aria-hidden="true" tabindex="-1"></a>test_static_ifs <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
-<span id="cb67-2"><a href="#cb67-2" aria-hidden="true" tabindex="-1"></a>    <span class="pp">#if IS_DEBUG {</span></span>
-<span id="cb67-3"><a href="#cb67-3" aria-hidden="true" tabindex="-1"></a>        print<span class="op">(</span><span class="st">&quot;This is compiled in debug mode!</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span></span>
-<span id="cb67-4"><a href="#cb67-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
-<span id="cb67-5"><a href="#cb67-5" aria-hidden="true" tabindex="-1"></a>        print<span class="op">(</span><span class="st">&quot;This is compiled in release mode!</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span></span>
-<span id="cb67-6"><a href="#cb67-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
-<span id="cb67-7"><a href="#cb67-7" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
+<div class="sourceCode" id="cb69"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb69-1"><a href="#cb69-1" aria-hidden="true" tabindex="-1"></a>test_static_ifs <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
+<span id="cb69-2"><a href="#cb69-2" aria-hidden="true" tabindex="-1"></a>    <span class="pp">#if IS_DEBUG {</span></span>
+<span id="cb69-3"><a href="#cb69-3" aria-hidden="true" tabindex="-1"></a>        print<span class="op">(</span><span class="st">&quot;This is compiled in debug mode!</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span></span>
+<span id="cb69-4"><a href="#cb69-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
+<span id="cb69-5"><a href="#cb69-5" aria-hidden="true" tabindex="-1"></a>        print<span class="op">(</span><span class="st">&quot;This is compiled in release mode!</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span></span>
+<span id="cb69-6"><a href="#cb69-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb69-7"><a href="#cb69-7" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
 <p><strong>note:</strong> The excluded branch is removed completely from compilation, but it still has to be semantically valid.</p>
 <h2 id="loop">Loop</h2>
 <p><strong>Example:</strong></p>
-<div class="sourceCode" id="cb68"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb68-1"><a href="#cb68-1" aria-hidden="true" tabindex="-1"></a>simple_loops <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
-<span id="cb68-2"><a href="#cb68-2" aria-hidden="true" tabindex="-1"></a>    count <span class="op">::</span> <span class="dv">10</span><span class="op">;</span></span>
-<span id="cb68-3"><a href="#cb68-3" aria-hidden="true" tabindex="-1"></a>    i <span class="op">:=</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb68-4"><a href="#cb68-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb68-5"><a href="#cb68-5" aria-hidden="true" tabindex="-1"></a>    loop <span class="op">{</span></span>
-<span id="cb68-6"><a href="#cb68-6" aria-hidden="true" tabindex="-1"></a>        i <span class="op">+=</span> <span class="dv">1</span><span class="op">;</span></span>
-<span id="cb68-7"><a href="#cb68-7" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> i <span class="op">==</span> count <span class="op">{</span> <span class="cf">break</span><span class="op">;</span> <span class="op">}</span></span>
-<span id="cb68-8"><a href="#cb68-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
-<span id="cb68-9"><a href="#cb68-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb68-10"><a href="#cb68-10" aria-hidden="true" tabindex="-1"></a>    i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb68-11"><a href="#cb68-11" aria-hidden="true" tabindex="-1"></a>    loop i <span class="op">&lt;</span> count <span class="op">{</span></span>
-<span id="cb68-12"><a href="#cb68-12" aria-hidden="true" tabindex="-1"></a>        i <span class="op">+=</span> <span class="dv">1</span><span class="op">;</span></span>
-<span id="cb68-13"><a href="#cb68-13" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
-<span id="cb68-14"><a href="#cb68-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb68-15"><a href="#cb68-15" aria-hidden="true" tabindex="-1"></a>    loop j <span class="op">:=</span> <span class="dv">0</span><span class="op">;</span> j <span class="op">&lt;</span> count<span class="op">;</span> j <span class="op">+=</span> <span class="dv">1</span> <span class="op">{</span></span>
-<span id="cb68-16"><a href="#cb68-16" aria-hidden="true" tabindex="-1"></a>        <span class="co">// do something amazing here</span></span>
-<span id="cb68-17"><a href="#cb68-17" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
-<span id="cb68-18"><a href="#cb68-18" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
+<div class="sourceCode" id="cb70"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb70-1"><a href="#cb70-1" aria-hidden="true" tabindex="-1"></a>simple_loops <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
+<span id="cb70-2"><a href="#cb70-2" aria-hidden="true" tabindex="-1"></a>    count <span class="op">::</span> <span class="dv">10</span><span class="op">;</span></span>
+<span id="cb70-3"><a href="#cb70-3" aria-hidden="true" tabindex="-1"></a>    i <span class="op">:=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb70-4"><a href="#cb70-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb70-5"><a href="#cb70-5" aria-hidden="true" tabindex="-1"></a>    loop <span class="op">{</span></span>
+<span id="cb70-6"><a href="#cb70-6" aria-hidden="true" tabindex="-1"></a>        i <span class="op">+=</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb70-7"><a href="#cb70-7" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> i <span class="op">==</span> count <span class="op">{</span> <span class="cf">break</span><span class="op">;</span> <span class="op">}</span></span>
+<span id="cb70-8"><a href="#cb70-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb70-9"><a href="#cb70-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb70-10"><a href="#cb70-10" aria-hidden="true" tabindex="-1"></a>    i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb70-11"><a href="#cb70-11" aria-hidden="true" tabindex="-1"></a>    loop i <span class="op">&lt;</span> count <span class="op">{</span></span>
+<span id="cb70-12"><a href="#cb70-12" aria-hidden="true" tabindex="-1"></a>        i <span class="op">+=</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb70-13"><a href="#cb70-13" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb70-14"><a href="#cb70-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb70-15"><a href="#cb70-15" aria-hidden="true" tabindex="-1"></a>    loop j <span class="op">:=</span> <span class="dv">0</span><span class="op">;</span> j <span class="op">&lt;</span> count<span class="op">;</span> j <span class="op">+=</span> <span class="dv">1</span> <span class="op">{</span></span>
+<span id="cb70-16"><a href="#cb70-16" aria-hidden="true" tabindex="-1"></a>        <span class="co">// do something amazing here</span></span>
+<span id="cb70-17"><a href="#cb70-17" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb70-18"><a href="#cb70-18" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
 <h2 id="break-and-continue">Break and continue</h2>
 <p>Break/continue statements can be used in loops to control execution flow.</p>
 <p><strong>Example:</strong></p>
-<div class="sourceCode" id="cb69"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb69-1"><a href="#cb69-1" aria-hidden="true" tabindex="-1"></a>break_and_continue <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
-<span id="cb69-2"><a href="#cb69-2" aria-hidden="true" tabindex="-1"></a>    i <span class="op">:=</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb69-3"><a href="#cb69-3" aria-hidden="true" tabindex="-1"></a>    loop <span class="op">{</span></span>
-<span id="cb69-4"><a href="#cb69-4" aria-hidden="true" tabindex="-1"></a>        i <span class="op">+=</span> <span class="dv">1</span><span class="op">;</span></span>
-<span id="cb69-5"><a href="#cb69-5" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> i <span class="op">==</span> <span class="dv">10</span> <span class="op">{</span></span>
-<span id="cb69-6"><a href="#cb69-6" aria-hidden="true" tabindex="-1"></a>            <span class="cf">break</span><span class="op">;</span></span>
-<span id="cb69-7"><a href="#cb69-7" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
-<span id="cb69-8"><a href="#cb69-8" aria-hidden="true" tabindex="-1"></a>            <span class="cf">continue</span><span class="op">;</span></span>
-<span id="cb69-9"><a href="#cb69-9" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
-<span id="cb69-10"><a href="#cb69-10" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
-<span id="cb69-11"><a href="#cb69-11" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
+<div class="sourceCode" id="cb71"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb71-1"><a href="#cb71-1" aria-hidden="true" tabindex="-1"></a>break_and_continue <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
+<span id="cb71-2"><a href="#cb71-2" aria-hidden="true" tabindex="-1"></a>    i <span class="op">:=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb71-3"><a href="#cb71-3" aria-hidden="true" tabindex="-1"></a>    loop <span class="op">{</span></span>
+<span id="cb71-4"><a href="#cb71-4" aria-hidden="true" tabindex="-1"></a>        i <span class="op">+=</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb71-5"><a href="#cb71-5" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> i <span class="op">==</span> <span class="dv">10</span> <span class="op">{</span></span>
+<span id="cb71-6"><a href="#cb71-6" aria-hidden="true" tabindex="-1"></a>            <span class="cf">break</span><span class="op">;</span></span>
+<span id="cb71-7"><a href="#cb71-7" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
+<span id="cb71-8"><a href="#cb71-8" aria-hidden="true" tabindex="-1"></a>            <span class="cf">continue</span><span class="op">;</span></span>
+<span id="cb71-9"><a href="#cb71-9" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb71-10"><a href="#cb71-10" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb71-11"><a href="#cb71-11" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
 <h2 id="switch">Switch</h2>
 <p>Switch can compare one numeric value against multiple values and switch execution flow to matching case. The <code>default</code> case can be used for all other values we don’t explicitly specify case for.</p>
 <p><strong>Example:</strong></p>
-<div class="sourceCode" id="cb70"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb70-1"><a href="#cb70-1" aria-hidden="true" tabindex="-1"></a>test_switch <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
-<span id="cb70-2"><a href="#cb70-2" aria-hidden="true" tabindex="-1"></a>    i <span class="op">:=</span> <span class="dv">1</span><span class="op">;</span></span>
-<span id="cb70-3"><a href="#cb70-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">switch</span> i <span class="op">{</span></span>
-<span id="cb70-4"><a href="#cb70-4" aria-hidden="true" tabindex="-1"></a>        <span class="dv">0</span> <span class="op">{</span> print<span class="op">(</span><span class="st">&quot;Zero!</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span> <span class="op">}</span></span>
-<span id="cb70-5"><a href="#cb70-5" aria-hidden="true" tabindex="-1"></a>        <span class="dv">1</span> <span class="op">{</span> print<span class="op">(</span><span class="st">&quot;One!</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span> <span class="op">}</span></span>
-<span id="cb70-6"><a href="#cb70-6" aria-hidden="true" tabindex="-1"></a>        <span class="cf">default</span> <span class="op">{</span> print<span class="op">(</span><span class="st">&quot;Other!</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span> <span class="op">}</span></span>
-<span id="cb70-7"><a href="#cb70-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
-<span id="cb70-8"><a href="#cb70-8" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb72"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb72-1"><a href="#cb72-1" aria-hidden="true" tabindex="-1"></a>test_switch <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
+<span id="cb72-2"><a href="#cb72-2" aria-hidden="true" tabindex="-1"></a>    i <span class="op">:=</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb72-3"><a href="#cb72-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">switch</span> i <span class="op">{</span></span>
+<span id="cb72-4"><a href="#cb72-4" aria-hidden="true" tabindex="-1"></a>        <span class="dv">0</span> <span class="op">{</span> print<span class="op">(</span><span class="st">&quot;Zero!</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span> <span class="op">}</span></span>
+<span id="cb72-5"><a href="#cb72-5" aria-hidden="true" tabindex="-1"></a>        <span class="dv">1</span> <span class="op">{</span> print<span class="op">(</span><span class="st">&quot;One!</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span> <span class="op">}</span></span>
+<span id="cb72-6"><a href="#cb72-6" aria-hidden="true" tabindex="-1"></a>        <span class="cf">default</span> <span class="op">{</span> print<span class="op">(</span><span class="st">&quot;Other!</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span> <span class="op">}</span></span>
+<span id="cb72-7"><a href="#cb72-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb72-8"><a href="#cb72-8" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>Switch can be also used with enumerators, in such case we have to specify cases for all enumerator variations or specify <code>default</code> one.</p>
 <p><strong>Example:</strong></p>
-<div class="sourceCode" id="cb71"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb71-1"><a href="#cb71-1" aria-hidden="true" tabindex="-1"></a>Color <span class="op">::</span> <span class="kw">enum</span> <span class="op">{</span></span>
-<span id="cb71-2"><a href="#cb71-2" aria-hidden="true" tabindex="-1"></a>    Red<span class="op">;</span></span>
-<span id="cb71-3"><a href="#cb71-3" aria-hidden="true" tabindex="-1"></a>    Green<span class="op">;</span></span>
-<span id="cb71-4"><a href="#cb71-4" aria-hidden="true" tabindex="-1"></a>    Blue<span class="op">;</span></span>
-<span id="cb71-5"><a href="#cb71-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
-<span id="cb71-6"><a href="#cb71-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb71-7"><a href="#cb71-7" aria-hidden="true" tabindex="-1"></a>test_switch <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
-<span id="cb71-8"><a href="#cb71-8" aria-hidden="true" tabindex="-1"></a>    c <span class="op">:=</span> Color<span class="op">.</span>Blue<span class="op">;</span></span>
-<span id="cb71-9"><a href="#cb71-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">switch</span> c <span class="op">{</span></span>
-<span id="cb71-10"><a href="#cb71-10" aria-hidden="true" tabindex="-1"></a>        Color<span class="op">.</span>Red   <span class="op">{</span> print<span class="op">(</span><span class="st">&quot;Red!</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span>   <span class="op">}</span></span>
-<span id="cb71-11"><a href="#cb71-11" aria-hidden="true" tabindex="-1"></a>        Color<span class="op">.</span>Green <span class="op">{</span> print<span class="op">(</span><span class="st">&quot;Green!</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span> <span class="op">}</span></span>
-<span id="cb71-12"><a href="#cb71-12" aria-hidden="true" tabindex="-1"></a>        Color<span class="op">.</span>Blue  <span class="op">{</span> print<span class="op">(</span><span class="st">&quot;Blue!</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span>  <span class="op">}</span></span>
-<span id="cb71-13"><a href="#cb71-13" aria-hidden="true" tabindex="-1"></a>    <span class="co">// default is not needed here, we covered all variants.</span></span>
-<span id="cb71-14"><a href="#cb71-14" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
-<span id="cb71-15"><a href="#cb71-15" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb73"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb73-1"><a href="#cb73-1" aria-hidden="true" tabindex="-1"></a>Color <span class="op">::</span> <span class="kw">enum</span> <span class="op">{</span></span>
+<span id="cb73-2"><a href="#cb73-2" aria-hidden="true" tabindex="-1"></a>    Red<span class="op">;</span></span>
+<span id="cb73-3"><a href="#cb73-3" aria-hidden="true" tabindex="-1"></a>    Green<span class="op">;</span></span>
+<span id="cb73-4"><a href="#cb73-4" aria-hidden="true" tabindex="-1"></a>    Blue<span class="op">;</span></span>
+<span id="cb73-5"><a href="#cb73-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb73-6"><a href="#cb73-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb73-7"><a href="#cb73-7" aria-hidden="true" tabindex="-1"></a>test_switch <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
+<span id="cb73-8"><a href="#cb73-8" aria-hidden="true" tabindex="-1"></a>    c <span class="op">:=</span> Color<span class="op">.</span>Blue<span class="op">;</span></span>
+<span id="cb73-9"><a href="#cb73-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">switch</span> c <span class="op">{</span></span>
+<span id="cb73-10"><a href="#cb73-10" aria-hidden="true" tabindex="-1"></a>        Color<span class="op">.</span>Red   <span class="op">{</span> print<span class="op">(</span><span class="st">&quot;Red!</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span>   <span class="op">}</span></span>
+<span id="cb73-11"><a href="#cb73-11" aria-hidden="true" tabindex="-1"></a>        Color<span class="op">.</span>Green <span class="op">{</span> print<span class="op">(</span><span class="st">&quot;Green!</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span> <span class="op">}</span></span>
+<span id="cb73-12"><a href="#cb73-12" aria-hidden="true" tabindex="-1"></a>        Color<span class="op">.</span>Blue  <span class="op">{</span> print<span class="op">(</span><span class="st">&quot;Blue!</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span>  <span class="op">}</span></span>
+<span id="cb73-13"><a href="#cb73-13" aria-hidden="true" tabindex="-1"></a>    <span class="co">// default is not needed here, we covered all variants.</span></span>
+<span id="cb73-14"><a href="#cb73-14" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb73-15"><a href="#cb73-15" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>It’s also possible to define one execution block for multiple cases.</p>
 <p><strong>Example:</strong></p>
-<div class="sourceCode" id="cb72"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb72-1"><a href="#cb72-1" aria-hidden="true" tabindex="-1"></a>Color <span class="op">::</span> <span class="kw">enum</span> <span class="op">{</span></span>
-<span id="cb72-2"><a href="#cb72-2" aria-hidden="true" tabindex="-1"></a>    Red<span class="op">;</span></span>
-<span id="cb72-3"><a href="#cb72-3" aria-hidden="true" tabindex="-1"></a>    Green<span class="op">;</span></span>
-<span id="cb72-4"><a href="#cb72-4" aria-hidden="true" tabindex="-1"></a>    Blue<span class="op">;</span></span>
-<span id="cb72-5"><a href="#cb72-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
-<span id="cb72-6"><a href="#cb72-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb72-7"><a href="#cb72-7" aria-hidden="true" tabindex="-1"></a>test_switch <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
-<span id="cb72-8"><a href="#cb72-8" aria-hidden="true" tabindex="-1"></a>    c <span class="op">:=</span> Color<span class="op">.</span>Blue<span class="op">;</span></span>
-<span id="cb72-9"><a href="#cb72-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">switch</span> c <span class="op">{</span></span>
-<span id="cb72-10"><a href="#cb72-10" aria-hidden="true" tabindex="-1"></a>        Color<span class="op">.</span>Red<span class="op">,</span></span>
-<span id="cb72-11"><a href="#cb72-11" aria-hidden="true" tabindex="-1"></a>        Color<span class="op">.</span>Green <span class="op">{</span> print<span class="op">(</span><span class="st">&quot;Red or green!</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span> <span class="op">}</span></span>
-<span id="cb72-12"><a href="#cb72-12" aria-hidden="true" tabindex="-1"></a>        Color<span class="op">.</span>Blue  <span class="op">{</span> print<span class="op">(</span><span class="st">&quot;Blue!</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span>  <span class="op">}</span></span>
-<span id="cb72-13"><a href="#cb72-13" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
-<span id="cb72-14"><a href="#cb72-14" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb74"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb74-1"><a href="#cb74-1" aria-hidden="true" tabindex="-1"></a>Color <span class="op">::</span> <span class="kw">enum</span> <span class="op">{</span></span>
+<span id="cb74-2"><a href="#cb74-2" aria-hidden="true" tabindex="-1"></a>    Red<span class="op">;</span></span>
+<span id="cb74-3"><a href="#cb74-3" aria-hidden="true" tabindex="-1"></a>    Green<span class="op">;</span></span>
+<span id="cb74-4"><a href="#cb74-4" aria-hidden="true" tabindex="-1"></a>    Blue<span class="op">;</span></span>
+<span id="cb74-5"><a href="#cb74-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb74-6"><a href="#cb74-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb74-7"><a href="#cb74-7" aria-hidden="true" tabindex="-1"></a>test_switch <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
+<span id="cb74-8"><a href="#cb74-8" aria-hidden="true" tabindex="-1"></a>    c <span class="op">:=</span> Color<span class="op">.</span>Blue<span class="op">;</span></span>
+<span id="cb74-9"><a href="#cb74-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">switch</span> c <span class="op">{</span></span>
+<span id="cb74-10"><a href="#cb74-10" aria-hidden="true" tabindex="-1"></a>        Color<span class="op">.</span>Red<span class="op">,</span></span>
+<span id="cb74-11"><a href="#cb74-11" aria-hidden="true" tabindex="-1"></a>        Color<span class="op">.</span>Green <span class="op">{</span> print<span class="op">(</span><span class="st">&quot;Red or green!</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span> <span class="op">}</span></span>
+<span id="cb74-12"><a href="#cb74-12" aria-hidden="true" tabindex="-1"></a>        Color<span class="op">.</span>Blue  <span class="op">{</span> print<span class="op">(</span><span class="st">&quot;Blue!</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span>  <span class="op">}</span></span>
+<span id="cb74-13"><a href="#cb74-13" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb74-14"><a href="#cb74-14" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <h2 id="defer-statement">Defer statement</h2>
 <p>The defer statement can be used for defering execution of some expression. All deferred expressions will be executed at the end of the current scope in reverse order. This is usually useful for calling cleanup functions. When scope is terminated by return all previous defers up the scope tree will be called after evaluation of return value.</p>
 <p><strong>Example:</strong></p>
-<div class="sourceCode" id="cb73"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb73-1"><a href="#cb73-1" aria-hidden="true" tabindex="-1"></a>test_defer_example <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
-<span id="cb73-2"><a href="#cb73-2" aria-hidden="true" tabindex="-1"></a>    defer print<span class="op">(</span><span class="st">&quot;1</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span></span>
-<span id="cb73-3"><a href="#cb73-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb73-4"><a href="#cb73-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
-<span id="cb73-5"><a href="#cb73-5" aria-hidden="true" tabindex="-1"></a>        defer print<span class="op">(</span><span class="st">&quot;2 &quot;</span><span class="op">);</span></span>
-<span id="cb73-6"><a href="#cb73-6" aria-hidden="true" tabindex="-1"></a>        defer print<span class="op">(</span><span class="st">&quot;3 &quot;</span><span class="op">);</span></span>
-<span id="cb73-7"><a href="#cb73-7" aria-hidden="true" tabindex="-1"></a>        defer print<span class="op">(</span><span class="st">&quot;4 &quot;</span><span class="op">);</span></span>
-<span id="cb73-8"><a href="#cb73-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> <span class="co">// defer 4, 3, 2</span></span>
-<span id="cb73-9"><a href="#cb73-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb73-10"><a href="#cb73-10" aria-hidden="true" tabindex="-1"></a>    defer_with_return<span class="op">();</span></span>
-<span id="cb73-11"><a href="#cb73-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb73-12"><a href="#cb73-12" aria-hidden="true" tabindex="-1"></a>    defer print<span class="op">(</span><span class="st">&quot;5 &quot;</span><span class="op">);</span></span>
-<span id="cb73-13"><a href="#cb73-13" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> <span class="co">// defer 5, 1</span></span>
-<span id="cb73-14"><a href="#cb73-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb73-15"><a href="#cb73-15" aria-hidden="true" tabindex="-1"></a>defer_with_return <span class="op">::</span> fn <span class="op">()</span> s32 <span class="op">{</span></span>
-<span id="cb73-16"><a href="#cb73-16" aria-hidden="true" tabindex="-1"></a>    defer print<span class="op">(</span><span class="st">&quot;6 &quot;</span><span class="op">);</span></span>
-<span id="cb73-17"><a href="#cb73-17" aria-hidden="true" tabindex="-1"></a>    defer print<span class="op">(</span><span class="st">&quot;7 &quot;</span><span class="op">);</span></span>
-<span id="cb73-18"><a href="#cb73-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb73-19"><a href="#cb73-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> true <span class="op">{</span></span>
-<span id="cb73-20"><a href="#cb73-20" aria-hidden="true" tabindex="-1"></a>        defer print<span class="op">(</span><span class="st">&quot;8 &quot;</span><span class="op">);</span></span>
-<span id="cb73-21"><a href="#cb73-21" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="dv">1</span><span class="op">;</span></span>
-<span id="cb73-22"><a href="#cb73-22" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> <span class="co">// defer 8, 7, 6</span></span>
-<span id="cb73-23"><a href="#cb73-23" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb73-24"><a href="#cb73-24" aria-hidden="true" tabindex="-1"></a>    defer print<span class="op">(</span><span class="st">&quot;9 &quot;</span><span class="op">);</span> <span class="co">// never reached</span></span>
-<span id="cb73-25"><a href="#cb73-25" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb73-26"><a href="#cb73-26" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
+<div class="sourceCode" id="cb75"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb75-1"><a href="#cb75-1" aria-hidden="true" tabindex="-1"></a>test_defer_example <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
+<span id="cb75-2"><a href="#cb75-2" aria-hidden="true" tabindex="-1"></a>    defer print<span class="op">(</span><span class="st">&quot;1</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span></span>
+<span id="cb75-3"><a href="#cb75-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb75-4"><a href="#cb75-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb75-5"><a href="#cb75-5" aria-hidden="true" tabindex="-1"></a>        defer print<span class="op">(</span><span class="st">&quot;2 &quot;</span><span class="op">);</span></span>
+<span id="cb75-6"><a href="#cb75-6" aria-hidden="true" tabindex="-1"></a>        defer print<span class="op">(</span><span class="st">&quot;3 &quot;</span><span class="op">);</span></span>
+<span id="cb75-7"><a href="#cb75-7" aria-hidden="true" tabindex="-1"></a>        defer print<span class="op">(</span><span class="st">&quot;4 &quot;</span><span class="op">);</span></span>
+<span id="cb75-8"><a href="#cb75-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> <span class="co">// defer 4, 3, 2</span></span>
+<span id="cb75-9"><a href="#cb75-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb75-10"><a href="#cb75-10" aria-hidden="true" tabindex="-1"></a>    defer_with_return<span class="op">();</span></span>
+<span id="cb75-11"><a href="#cb75-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb75-12"><a href="#cb75-12" aria-hidden="true" tabindex="-1"></a>    defer print<span class="op">(</span><span class="st">&quot;5 &quot;</span><span class="op">);</span></span>
+<span id="cb75-13"><a href="#cb75-13" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> <span class="co">// defer 5, 1</span></span>
+<span id="cb75-14"><a href="#cb75-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb75-15"><a href="#cb75-15" aria-hidden="true" tabindex="-1"></a>defer_with_return <span class="op">::</span> fn <span class="op">()</span> s32 <span class="op">{</span></span>
+<span id="cb75-16"><a href="#cb75-16" aria-hidden="true" tabindex="-1"></a>    defer print<span class="op">(</span><span class="st">&quot;6 &quot;</span><span class="op">);</span></span>
+<span id="cb75-17"><a href="#cb75-17" aria-hidden="true" tabindex="-1"></a>    defer print<span class="op">(</span><span class="st">&quot;7 &quot;</span><span class="op">);</span></span>
+<span id="cb75-18"><a href="#cb75-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb75-19"><a href="#cb75-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> true <span class="op">{</span></span>
+<span id="cb75-20"><a href="#cb75-20" aria-hidden="true" tabindex="-1"></a>        defer print<span class="op">(</span><span class="st">&quot;8 &quot;</span><span class="op">);</span></span>
+<span id="cb75-21"><a href="#cb75-21" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb75-22"><a href="#cb75-22" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> <span class="co">// defer 8, 7, 6</span></span>
+<span id="cb75-23"><a href="#cb75-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb75-24"><a href="#cb75-24" aria-hidden="true" tabindex="-1"></a>    defer print<span class="op">(</span><span class="st">&quot;9 &quot;</span><span class="op">);</span> <span class="co">// never reached</span></span>
+<span id="cb75-25"><a href="#cb75-25" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb75-26"><a href="#cb75-26" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
 <p>Output:</p>
-<div class="sourceCode" id="cb74"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb74-1"><a href="#cb74-1" aria-hidden="true" tabindex="-1"></a><span class="ex">4</span> 3 2 8 7 6 5 1</span></code></pre></div>
+<div class="sourceCode" id="cb76"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb76-1"><a href="#cb76-1" aria-hidden="true" tabindex="-1"></a><span class="ex">4</span> 3 2 8 7 6 5 1</span></code></pre></div>
 <h2 id="using-statement">Using statement</h2>
 <p>The using statement can be used to allow direct access to another scope’s or enum’s members.</p>
 <p><strong>Example:</strong></p>
-<div class="sourceCode" id="cb75"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb75-1"><a href="#cb75-1" aria-hidden="true" tabindex="-1"></a>main <span class="op">::</span> fn <span class="op">()</span> s32 <span class="op">{</span></span>
-<span id="cb75-2"><a href="#cb75-2" aria-hidden="true" tabindex="-1"></a>    using my_scope<span class="op">;</span></span>
-<span id="cb75-3"><a href="#cb75-3" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Directly call function from my_scope.</span></span>
-<span id="cb75-4"><a href="#cb75-4" aria-hidden="true" tabindex="-1"></a>    print_kind<span class="op">(</span>Kind<span class="op">.</span>PLAYER<span class="op">);</span> </span>
-<span id="cb75-5"><a href="#cb75-5" aria-hidden="true" tabindex="-1"></a>    print_kind<span class="op">(</span>Kind<span class="op">.</span>ENEMY<span class="op">);</span></span>
-<span id="cb75-6"><a href="#cb75-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb75-7"><a href="#cb75-7" aria-hidden="true" tabindex="-1"></a>    using Kind<span class="op">;</span></span>
-<span id="cb75-8"><a href="#cb75-8" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Directly use enum variants from my_scope.Kind.</span></span>
-<span id="cb75-9"><a href="#cb75-9" aria-hidden="true" tabindex="-1"></a>    print_kind<span class="op">(</span>PLAYER<span class="op">);</span> </span>
-<span id="cb75-10"><a href="#cb75-10" aria-hidden="true" tabindex="-1"></a>    print_kind<span class="op">(</span>ENEMY<span class="op">);</span></span>
-<span id="cb75-11"><a href="#cb75-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb75-12"><a href="#cb75-12" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
-<span id="cb75-13"><a href="#cb75-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb75-14"><a href="#cb75-14" aria-hidden="true" tabindex="-1"></a><span class="er">#scope my_scope</span></span>
-<span id="cb75-15"><a href="#cb75-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb75-16"><a href="#cb75-16" aria-hidden="true" tabindex="-1"></a>Kind <span class="op">::</span> <span class="kw">enum</span> <span class="op">{</span> PLAYER<span class="op">;</span> ENEMY<span class="op">;</span> <span class="op">}</span></span>
-<span id="cb75-17"><a href="#cb75-17" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb75-18"><a href="#cb75-18" aria-hidden="true" tabindex="-1"></a>print_kind <span class="op">::</span> fn <span class="op">(</span>k<span class="op">:</span> Kind<span class="op">)</span> <span class="op">{</span></span>
-<span id="cb75-19"><a href="#cb75-19" aria-hidden="true" tabindex="-1"></a>    print<span class="op">(</span><span class="st">&quot;Kind is = %</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">,</span> k<span class="op">);</span></span>
-<span id="cb75-20"><a href="#cb75-20" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb77"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb77-1"><a href="#cb77-1" aria-hidden="true" tabindex="-1"></a>main <span class="op">::</span> fn <span class="op">()</span> s32 <span class="op">{</span></span>
+<span id="cb77-2"><a href="#cb77-2" aria-hidden="true" tabindex="-1"></a>    using my_scope<span class="op">;</span></span>
+<span id="cb77-3"><a href="#cb77-3" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Directly call function from my_scope.</span></span>
+<span id="cb77-4"><a href="#cb77-4" aria-hidden="true" tabindex="-1"></a>    print_kind<span class="op">(</span>Kind<span class="op">.</span>PLAYER<span class="op">);</span> </span>
+<span id="cb77-5"><a href="#cb77-5" aria-hidden="true" tabindex="-1"></a>    print_kind<span class="op">(</span>Kind<span class="op">.</span>ENEMY<span class="op">);</span></span>
+<span id="cb77-6"><a href="#cb77-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb77-7"><a href="#cb77-7" aria-hidden="true" tabindex="-1"></a>    using Kind<span class="op">;</span></span>
+<span id="cb77-8"><a href="#cb77-8" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Directly use enum variants from my_scope.Kind.</span></span>
+<span id="cb77-9"><a href="#cb77-9" aria-hidden="true" tabindex="-1"></a>    print_kind<span class="op">(</span>PLAYER<span class="op">);</span> </span>
+<span id="cb77-10"><a href="#cb77-10" aria-hidden="true" tabindex="-1"></a>    print_kind<span class="op">(</span>ENEMY<span class="op">);</span></span>
+<span id="cb77-11"><a href="#cb77-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb77-12"><a href="#cb77-12" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb77-13"><a href="#cb77-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb77-14"><a href="#cb77-14" aria-hidden="true" tabindex="-1"></a><span class="er">#scope my_scope</span></span>
+<span id="cb77-15"><a href="#cb77-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb77-16"><a href="#cb77-16" aria-hidden="true" tabindex="-1"></a>Kind <span class="op">::</span> <span class="kw">enum</span> <span class="op">{</span> PLAYER<span class="op">;</span> ENEMY<span class="op">;</span> <span class="op">}</span></span>
+<span id="cb77-17"><a href="#cb77-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb77-18"><a href="#cb77-18" aria-hidden="true" tabindex="-1"></a>print_kind <span class="op">::</span> fn <span class="op">(</span>k<span class="op">:</span> Kind<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb77-19"><a href="#cb77-19" aria-hidden="true" tabindex="-1"></a>    print<span class="op">(</span><span class="st">&quot;Kind is = %</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">,</span> k<span class="op">);</span></span>
+<span id="cb77-20"><a href="#cb77-20" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>Be careful with the <code>using</code> statement, ambiguous declaration references can be introduced easily. Scope lookup rules are following in case the <code>using</code> is present:</p>
 <ul>
 <li>Symbols declared in the function scope and its child scopes are preferred during lookup. In case there is a symbol of the same name in the used scope it’s ignored and a local one is used without warnings/errors.</li>
@@ -1349,10 +1377,10 @@
 <h2 id="main-function">Main function</h2>
 <p>The <code>main</code> function is mandatory entry function which should be defined in every program. It’s basically entry point of your application. Main function must return <code>s32</code> execution state, zero in this case indicates successful execution.</p>
 <p><strong>Example:</strong></p>
-<div class="sourceCode" id="cb76"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb76-1"><a href="#cb76-1" aria-hidden="true" tabindex="-1"></a>main <span class="op">::</span> fn <span class="op">()</span> s32 <span class="op">{</span></span>
-<span id="cb76-2"><a href="#cb76-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">// some useful stuff goes here.</span></span>
-<span id="cb76-3"><a href="#cb76-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb76-4"><a href="#cb76-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb78"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb78-1"><a href="#cb78-1" aria-hidden="true" tabindex="-1"></a>main <span class="op">::</span> fn <span class="op">()</span> s32 <span class="op">{</span></span>
+<span id="cb78-2"><a href="#cb78-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">// some useful stuff goes here.</span></span>
+<span id="cb78-3"><a href="#cb78-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb78-4"><a href="#cb78-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p><strong>hint</strong>: Command line arguments are not passed directly as parameter in BL. Use <code>command_line_arguments</code> builtin array.</p>
 <h2 id="modules-and-import">Modules and import</h2>
 <p>The module system can be used to split source into chunks (modules) which can be later imported into assembly by <code>#import</code> directive. Modules can distinguish between platforms and load different sources on them during the compilation process.</p>
@@ -1367,21 +1395,21 @@
   thread.bl         - interface
   thread.test.bl    - unit tests</code></pre>
 <p><strong>Example of the module config:</strong></p>
-<div class="sourceCode" id="cb78"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb78-1"><a href="#cb78-1" aria-hidden="true" tabindex="-1"></a><span class="fu">version</span><span class="kw">:</span><span class="at"> </span><span class="dv">4</span></span>
-<span id="cb78-2"><a href="#cb78-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb78-3"><a href="#cb78-3" aria-hidden="true" tabindex="-1"></a><span class="fu">x86_64-pc-windows-msvc</span><span class="kw">:</span></span>
-<span id="cb78-4"><a href="#cb78-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">src</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;_thread.win32.bl&quot;</span></span>
-<span id="cb78-5"><a href="#cb78-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb78-6"><a href="#cb78-6" aria-hidden="true" tabindex="-1"></a><span class="fu">x86_64-pc-linux-gnu</span><span class="kw">:</span></span>
-<span id="cb78-7"><a href="#cb78-7" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">src</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;_thread.posix.bl&quot;</span></span>
-<span id="cb78-8"><a href="#cb78-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb78-9"><a href="#cb78-9" aria-hidden="true" tabindex="-1"></a><span class="fu">x86_64-apple-darwin</span><span class="kw">:</span></span>
-<span id="cb78-10"><a href="#cb78-10" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">src</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;_thread.posix.bl&quot;</span></span>
-<span id="cb78-11"><a href="#cb78-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb78-12"><a href="#cb78-12" aria-hidden="true" tabindex="-1"></a><span class="fu">arm64-apple-darwin</span><span class="kw">:</span></span>
-<span id="cb78-13"><a href="#cb78-13" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">src</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;_thread.posix.bl&quot;</span></span></code></pre></div>
+<div class="sourceCode" id="cb80"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb80-1"><a href="#cb80-1" aria-hidden="true" tabindex="-1"></a><span class="fu">version</span><span class="kw">:</span><span class="at"> </span><span class="dv">4</span></span>
+<span id="cb80-2"><a href="#cb80-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb80-3"><a href="#cb80-3" aria-hidden="true" tabindex="-1"></a><span class="fu">x86_64-pc-windows-msvc</span><span class="kw">:</span></span>
+<span id="cb80-4"><a href="#cb80-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">src</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;_thread.win32.bl&quot;</span></span>
+<span id="cb80-5"><a href="#cb80-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb80-6"><a href="#cb80-6" aria-hidden="true" tabindex="-1"></a><span class="fu">x86_64-pc-linux-gnu</span><span class="kw">:</span></span>
+<span id="cb80-7"><a href="#cb80-7" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">src</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;_thread.posix.bl&quot;</span></span>
+<span id="cb80-8"><a href="#cb80-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb80-9"><a href="#cb80-9" aria-hidden="true" tabindex="-1"></a><span class="fu">x86_64-apple-darwin</span><span class="kw">:</span></span>
+<span id="cb80-10"><a href="#cb80-10" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">src</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;_thread.posix.bl&quot;</span></span>
+<span id="cb80-11"><a href="#cb80-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb80-12"><a href="#cb80-12" aria-hidden="true" tabindex="-1"></a><span class="fu">arm64-apple-darwin</span><span class="kw">:</span></span>
+<span id="cb80-13"><a href="#cb80-13" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">src</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;_thread.posix.bl&quot;</span></span></code></pre></div>
 <p>To import the <code>thread</code> module use:</p>
-<div class="sourceCode" id="cb79"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb79-1"><a href="#cb79-1" aria-hidden="true" tabindex="-1"></a><span class="er">#import &quot;path/to/module/thread&quot;</span></span></code></pre></div>
+<div class="sourceCode" id="cb81"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb81-1"><a href="#cb81-1" aria-hidden="true" tabindex="-1"></a><span class="er">#import &quot;path/to/module/thread&quot;</span></span></code></pre></div>
 <h3 id="list-of-module-config-entries">List of module config entries</h3>
 <p><strong>Global options:</strong> - <code>version: &lt;N&gt;</code> - Module version number used during import to distinguish various versions of same module, see also <code>ModuleImportPolicy</code> for more information.</p>
 <p><strong>Global or platform specific options:</strong></p>
@@ -1393,37 +1421,37 @@
 </ul>
 <p><strong>Global vs local options</strong></p>
 <p>Module platform specific options can be set in sub-groups starting with platform target triple name (use <code>blc --target-host</code> to get your current default target and <code>blc --target-supported</code> to get list of all supported targets).</p>
-<div class="sourceCode" id="cb80"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb80-1"><a href="#cb80-1" aria-hidden="true" tabindex="-1"></a><span class="fu">version</span><span class="kw">:</span><span class="at"> </span><span class="dv">1</span></span>
-<span id="cb80-2"><a href="#cb80-2" aria-hidden="true" tabindex="-1"></a><span class="fu">src</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;my_file_imported_everytime.bl&quot;</span></span>
-<span id="cb80-3"><a href="#cb80-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb80-4"><a href="#cb80-4" aria-hidden="true" tabindex="-1"></a><span class="fu">x86_64-pc-windows-msvc</span><span class="kw">:</span></span>
-<span id="cb80-5"><a href="#cb80-5" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">src</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;my_file_only_for_windows.bl&quot;</span></span>
-<span id="cb80-6"><a href="#cb80-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb80-7"><a href="#cb80-7" aria-hidden="true" tabindex="-1"></a><span class="fu">x86_64-pc-linux-gnu</span><span class="kw">:</span></span>
-<span id="cb80-8"><a href="#cb80-8" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">src</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;my_file_only_for_linux.bl&quot;</span></span>
-<span id="cb80-9"><a href="#cb80-9" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">linker_opt</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;-lc -lm&quot;</span><span class="co"> # link these only on linux</span></span></code></pre></div>
+<div class="sourceCode" id="cb82"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb82-1"><a href="#cb82-1" aria-hidden="true" tabindex="-1"></a><span class="fu">version</span><span class="kw">:</span><span class="at"> </span><span class="dv">1</span></span>
+<span id="cb82-2"><a href="#cb82-2" aria-hidden="true" tabindex="-1"></a><span class="fu">src</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;my_file_imported_everytime.bl&quot;</span></span>
+<span id="cb82-3"><a href="#cb82-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb82-4"><a href="#cb82-4" aria-hidden="true" tabindex="-1"></a><span class="fu">x86_64-pc-windows-msvc</span><span class="kw">:</span></span>
+<span id="cb82-5"><a href="#cb82-5" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">src</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;my_file_only_for_windows.bl&quot;</span></span>
+<span id="cb82-6"><a href="#cb82-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb82-7"><a href="#cb82-7" aria-hidden="true" tabindex="-1"></a><span class="fu">x86_64-pc-linux-gnu</span><span class="kw">:</span></span>
+<span id="cb82-8"><a href="#cb82-8" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">src</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;my_file_only_for_linux.bl&quot;</span></span>
+<span id="cb82-9"><a href="#cb82-9" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">linker_opt</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;-lc -lm&quot;</span><span class="co"> # link these only on linux</span></span></code></pre></div>
 <h2 id="unit-testing">Unit testing</h2>
 <p>Biscuit compiler provides unit testing by default.</p>
 <p>Create unit test case:</p>
-<div class="sourceCode" id="cb81"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb81-1"><a href="#cb81-1" aria-hidden="true" tabindex="-1"></a><span class="er">#import &quot;std/test&quot;</span></span>
-<span id="cb81-2"><a href="#cb81-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb81-3"><a href="#cb81-3" aria-hidden="true" tabindex="-1"></a><span class="co">// function to be tested</span></span>
-<span id="cb81-4"><a href="#cb81-4" aria-hidden="true" tabindex="-1"></a>add <span class="op">::</span> fn <span class="op">(</span>a<span class="op">:</span> s32<span class="op">,</span> b<span class="op">:</span> s32<span class="op">)</span> s32 <span class="op">{</span></span>
-<span id="cb81-5"><a href="#cb81-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> a <span class="op">+</span> b<span class="op">;</span></span>
-<span id="cb81-6"><a href="#cb81-6" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span>
-<span id="cb81-7"><a href="#cb81-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb81-8"><a href="#cb81-8" aria-hidden="true" tabindex="-1"></a>this_is_OK <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
-<span id="cb81-9"><a href="#cb81-9" aria-hidden="true" tabindex="-1"></a>    assert<span class="op">(</span>add<span class="op">(</span><span class="dv">10</span><span class="op">,</span> <span class="dv">20</span><span class="op">)</span> <span class="op">==</span> <span class="dv">30</span><span class="op">);</span></span>
-<span id="cb81-10"><a href="#cb81-10" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span>
-<span id="cb81-11"><a href="#cb81-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb81-12"><a href="#cb81-12" aria-hidden="true" tabindex="-1"></a>this_is_not_OK <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
-<span id="cb81-13"><a href="#cb81-13" aria-hidden="true" tabindex="-1"></a>    assert<span class="op">(</span>add<span class="op">(</span><span class="dv">10</span><span class="op">,</span> <span class="dv">20</span><span class="op">)</span> <span class="op">!=</span> <span class="dv">30</span><span class="op">);</span></span>
-<span id="cb81-14"><a href="#cb81-14" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span>
-<span id="cb81-15"><a href="#cb81-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb81-16"><a href="#cb81-16" aria-hidden="true" tabindex="-1"></a>main <span class="op">::</span> fn <span class="op">()</span> s32 <span class="op">{</span></span>
-<span id="cb81-17"><a href="#cb81-17" aria-hidden="true" tabindex="-1"></a>    test_run<span class="op">();</span></span>
-<span id="cb81-18"><a href="#cb81-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb81-19"><a href="#cb81-19" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb83"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb83-1"><a href="#cb83-1" aria-hidden="true" tabindex="-1"></a><span class="er">#import &quot;std/test&quot;</span></span>
+<span id="cb83-2"><a href="#cb83-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb83-3"><a href="#cb83-3" aria-hidden="true" tabindex="-1"></a><span class="co">// function to be tested</span></span>
+<span id="cb83-4"><a href="#cb83-4" aria-hidden="true" tabindex="-1"></a>add <span class="op">::</span> fn <span class="op">(</span>a<span class="op">:</span> s32<span class="op">,</span> b<span class="op">:</span> s32<span class="op">)</span> s32 <span class="op">{</span></span>
+<span id="cb83-5"><a href="#cb83-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> a <span class="op">+</span> b<span class="op">;</span></span>
+<span id="cb83-6"><a href="#cb83-6" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span>
+<span id="cb83-7"><a href="#cb83-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb83-8"><a href="#cb83-8" aria-hidden="true" tabindex="-1"></a>this_is_OK <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
+<span id="cb83-9"><a href="#cb83-9" aria-hidden="true" tabindex="-1"></a>    assert<span class="op">(</span>add<span class="op">(</span><span class="dv">10</span><span class="op">,</span> <span class="dv">20</span><span class="op">)</span> <span class="op">==</span> <span class="dv">30</span><span class="op">);</span></span>
+<span id="cb83-10"><a href="#cb83-10" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span>
+<span id="cb83-11"><a href="#cb83-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb83-12"><a href="#cb83-12" aria-hidden="true" tabindex="-1"></a>this_is_not_OK <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
+<span id="cb83-13"><a href="#cb83-13" aria-hidden="true" tabindex="-1"></a>    assert<span class="op">(</span>add<span class="op">(</span><span class="dv">10</span><span class="op">,</span> <span class="dv">20</span><span class="op">)</span> <span class="op">!=</span> <span class="dv">30</span><span class="op">);</span></span>
+<span id="cb83-14"><a href="#cb83-14" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span>
+<span id="cb83-15"><a href="#cb83-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb83-16"><a href="#cb83-16" aria-hidden="true" tabindex="-1"></a>main <span class="op">::</span> fn <span class="op">()</span> s32 <span class="op">{</span></span>
+<span id="cb83-17"><a href="#cb83-17" aria-hidden="true" tabindex="-1"></a>    test_run<span class="op">();</span></span>
+<span id="cb83-18"><a href="#cb83-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb83-19"><a href="#cb83-19" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>Run tests:</p>
 <pre class="text"><code>$ blc -rt test.bl
 Compiler version: 0.7.0, LLVM: 10
@@ -1456,22 +1484,22 @@ Executed: 2, passed 50%.
 --------------------------------------------------------------------------------</code></pre>
 <h2 id="use-bl-code-from-cc">Use BL code from C/C++</h2>
 <p>Since BL compiler supports compilation into shared library, ABI compatible with C, BL code can be easily called from C/C++ program. Use <code>#export</code> to mark function to be exported from library and <code>--shared</code> flag to create shared object (<code>so</code> on Linux). See example bellow on Linux.</p>
-<div class="sourceCode" id="cb83"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb83-1"><a href="#cb83-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Content of my-lib.bl</span></span>
-<span id="cb83-2"><a href="#cb83-2" aria-hidden="true" tabindex="-1"></a>my_bl_function <span class="op">::</span> fn <span class="op">(</span>count<span class="op">:</span> s32<span class="op">)</span> #export <span class="op">{</span></span>
-<span id="cb83-3"><a href="#cb83-3" aria-hidden="true" tabindex="-1"></a>    loop i <span class="op">:=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> count<span class="op">;</span> i <span class="op">+=</span> <span class="dv">1</span> <span class="op">{</span></span>
-<span id="cb83-4"><a href="#cb83-4" aria-hidden="true" tabindex="-1"></a>        print<span class="op">(</span><span class="st">&quot;Hello from foo library!!!</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span></span>
-<span id="cb83-5"><a href="#cb83-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
-<span id="cb83-6"><a href="#cb83-6" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
-<div class="sourceCode" id="cb84"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb84-1"><a href="#cb84-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Content of main.c</span></span>
-<span id="cb84-2"><a href="#cb84-2" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> my_bl_function<span class="op">(</span><span class="dt">int</span> count<span class="op">);</span></span>
-<span id="cb84-3"><a href="#cb84-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb84-4"><a href="#cb84-4" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> main<span class="op">(</span><span class="dt">int</span> argc<span class="op">,</span> <span class="dt">char</span> <span class="op">*</span>argv<span class="op">[])</span> <span class="op">{</span></span>
-<span id="cb84-5"><a href="#cb84-5" aria-hidden="true" tabindex="-1"></a>    my_bl_function<span class="op">(</span><span class="dv">100</span><span class="op">);</span></span>
-<span id="cb84-6"><a href="#cb84-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb84-7"><a href="#cb84-7" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
-<div class="sourceCode" id="cb85"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb85-1"><a href="#cb85-1" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> blc <span class="at">--shared</span> my-lib.bl</span>
-<span id="cb85-2"><a href="#cb85-2" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> gcc <span class="at">-L.</span> <span class="at">-o</span> test main.c <span class="at">-lout</span></span>
-<span id="cb85-3"><a href="#cb85-3" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> export LD_LIBRARY_PATH=. <span class="kw">&amp;&amp;</span> <span class="ex">./test</span></span></code></pre></div>
+<div class="sourceCode" id="cb85"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb85-1"><a href="#cb85-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Content of my-lib.bl</span></span>
+<span id="cb85-2"><a href="#cb85-2" aria-hidden="true" tabindex="-1"></a>my_bl_function <span class="op">::</span> fn <span class="op">(</span>count<span class="op">:</span> s32<span class="op">)</span> #export <span class="op">{</span></span>
+<span id="cb85-3"><a href="#cb85-3" aria-hidden="true" tabindex="-1"></a>    loop i <span class="op">:=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> count<span class="op">;</span> i <span class="op">+=</span> <span class="dv">1</span> <span class="op">{</span></span>
+<span id="cb85-4"><a href="#cb85-4" aria-hidden="true" tabindex="-1"></a>        print<span class="op">(</span><span class="st">&quot;Hello from foo library!!!</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span></span>
+<span id="cb85-5"><a href="#cb85-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb85-6"><a href="#cb85-6" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb86"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb86-1"><a href="#cb86-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Content of main.c</span></span>
+<span id="cb86-2"><a href="#cb86-2" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> my_bl_function<span class="op">(</span><span class="dt">int</span> count<span class="op">);</span></span>
+<span id="cb86-3"><a href="#cb86-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb86-4"><a href="#cb86-4" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> main<span class="op">(</span><span class="dt">int</span> argc<span class="op">,</span> <span class="dt">char</span> <span class="op">*</span>argv<span class="op">[])</span> <span class="op">{</span></span>
+<span id="cb86-5"><a href="#cb86-5" aria-hidden="true" tabindex="-1"></a>    my_bl_function<span class="op">(</span><span class="dv">100</span><span class="op">);</span></span>
+<span id="cb86-6"><a href="#cb86-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb86-7"><a href="#cb86-7" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb87"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb87-1"><a href="#cb87-1" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> blc <span class="at">--shared</span> my-lib.bl</span>
+<span id="cb87-2"><a href="#cb87-2" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> gcc <span class="at">-L.</span> <span class="at">-o</span> test main.c <span class="at">-lout</span></span>
+<span id="cb87-3"><a href="#cb87-3" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> export LD_LIBRARY_PATH=. <span class="kw">&amp;&amp;</span> <span class="ex">./test</span></span></code></pre></div>
 <h2 id="builtin-variables">Builtin variables</h2>
 <p>List of builtin variables set by compiler.</p>
 <ul>

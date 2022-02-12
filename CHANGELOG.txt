@@ -33,6 +33,7 @@ Redesign libc importing into modules.
 Redesign of bl-config + using YAML as main config format.
 Move file read/write into io module.
 Tags are now simple unsigned numbers.
+Fix evaluation of multi-return and struct comptime functions.
 
 0.9.0 - PRE-RELEASE
 ---------------------------------------------------------------------------------------

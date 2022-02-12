@@ -35,3 +35,43 @@ struct_type :: fn () #test {
     i: get();
     test_eq(typeinfo(i).kind, TypeKind.STRUCT);
 }
+
+multireturn :: fn () #test {
+    get :: fn () (s32, s32) #comptime {
+        return 10, 20;
+    };
+
+    i := get();
+    test_eq(i, 10);
+}
+
+multireturn2 :: fn () #test {
+    get :: fn () (s32, s32) #comptime {
+        return 10, 20;
+    };
+
+    i, j := get();
+    test_eq(i, 10);
+    test_eq(j, 20);
+}
+
+Data :: struct {
+    a: s32;
+    b: s32;
+    c: bool;
+    d: u64;
+    e: u64;
+}
+
+struct_value :: fn () #test {
+    get :: fn () Data #comptime {
+        return {:Data: 10, 20, true, 30, 40};
+    };
+
+    data := get();
+    test_eq(data.a, 10);
+    test_eq(data.b, 20);
+    test_eq(data.c, true);
+    test_eq(data.d, 30);
+    test_eq(data.e, 40);
+}

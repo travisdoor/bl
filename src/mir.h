@@ -933,7 +933,7 @@ static inline struct mir_type *mir_deref_type(const struct mir_type *ptr)
     return ptr->data.ptr.expr;
 }
 
-static inline bool mir_is_composit_type(const struct mir_type *type)
+static inline bool mir_is_composite_type(const struct mir_type *type)
 {
     switch (type->kind) {
     case MIR_TYPE_STRUCT:
@@ -952,7 +952,7 @@ static inline bool mir_is_composit_type(const struct mir_type *type)
 
 static inline struct mir_type *mir_get_struct_elem_type(const struct mir_type *type, usize i)
 {
-    bassert(mir_is_composit_type(type) && "Expected structure type");
+    bassert(mir_is_composite_type(type) && "Expected structure type");
     mir_members_t *members = type->data.strct.members;
     bassert(sarrlenu(members) > i);
     return sarrpeek(members, i)->type;
