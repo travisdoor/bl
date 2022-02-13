@@ -6565,7 +6565,7 @@ struct result analyze_instr_decl_member(struct context *ctx, struct mir_instr_de
         }
 
         // Tags are used the same way as flags.
-        tag_value = MIR_CEV_READ_AS(s32, &decl->tag->value);
+        tag_value = vm_read_int(decl->tag->value.type, decl->tag->value.data);
     }
     member->tag = tag_value;
 

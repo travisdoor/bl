@@ -1,15 +1,18 @@
-Flags :: enum #flags {
-    A;
-    B;
+T :: struct {
+    a: s32 #tag std.U64_MAX;
+    b: s32 #tag std.U32_MAX;
+    c: s32;
+    d: s32 #tag 1000;
 }
 
-T2 :: struct {
-    a: s32 #tag auto Flags.A;
-    b: s32 #tag auto Flags.B;
-    c: s32 #tag auto make_flags(Flags.A, Flags.B);
-};
-
 main :: fn () s32 {
+    print("%\n", std.U64_MAX);
+    print("%\n", std.U32_MAX);
+    info :: cast(*TypeInfoStruct) typeinfo(T);
+    loop i := 0; i < info.members.len; i += 1 {
+        member :: info.members[i];
+        print("% - %\n", member.name, member.tag);
+    }
     return 0;
 }
 

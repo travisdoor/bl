@@ -36,3 +36,15 @@ struct_member_flags :: fn () #test {
     test_eq(info.members[1].tag, B);
     test_eq(info.members[2].tag, A | C);
 }
+
+T3 :: struct {
+    a: s32 #tag std.U64_MAX;
+    b: s32 #tag std.U32_MAX;
+}
+
+struct_member_tags2 :: fn () #test {
+    info := cast(*TypeInfoStruct) typeinfo(T3);
+    test_eq(info.members.len, 2);
+    test_eq(info.members[0].tag, std.U64_MAX);
+    test_eq(info.members[1].tag, std.U32_MAX);
+}
