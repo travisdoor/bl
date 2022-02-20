@@ -143,8 +143,8 @@ tbl_terminate :: fn (tbl: *?T) {
 ///
 /// **Overloads:**
 /// ```c
-/// fn (tbl: *?T, key: typeof_key(T), value: typeof_value(T)) TableIter(T) #inline
-/// fn (tbl: *?T, key: typeof_key(T)) TableIter(T) #inline
+/// fn (tbl: *?T, key: tbl_typeof_key(T), value: tbl_typeof_value(T)) TableIter(T) #inline
+/// fn (tbl: *?T, key: tbl_typeof_key(T)) TableIter(T) #inline
 /// ```
 /// 
 /// Function returns iterator pointing to the new element. Every new element is allocated using
@@ -160,7 +160,7 @@ tbl_insert :: fn { impl_insert_empty; impl_insert; }
 /// Erase table entry associated with `key`. In case there is no such `key` found function does nothing.
 ///
 /// Returns iterator pointing to the next element or to the `tbl_end`.
-tbl_erase :: fn (tbl: *?T, key: typeof_key(T)) TableIter(T) #inline {
+tbl_erase :: fn (tbl: *?T, key: tbl_typeof_key(T)) TableIter(T) #inline {
     assert(tbl);
     if !is_initialized(tbl) { return tbl_end(tbl); }
     return tbl_erase_it(tbl, lookup_node(tbl, calculate_hash(key)));
@@ -184,14 +184,14 @@ tbl_erase_it :: fn (tbl: *?T, it: TableIter(T)) TableIter(T) #inline {
 /// Lookup element associated with the `key` value in the table and return an iterator pointing to
 /// the key-value pair. In case there is no such element in the table, the function returns an iterator
 /// pointing to the `tbl_end()`.
-tbl_lookup :: fn (tbl: *?T, key: typeof_key(T)) TableIter(T) #inline {
+tbl_lookup :: fn (tbl: *?T, key: tbl_typeof_key(T)) TableIter(T) #inline {
     assert(tbl);
     if !is_initialized(tbl) { return tbl_end(tbl); }
     return lookup_node(tbl, calculate_hash(key));
 }
 
 /// Checks whether the table `tbl` contains the `key`.
-tbl_contains :: fn (tbl: *?T, key: typeof_key(T)) bool #inline {
+tbl_contains :: fn (tbl: *?T, key: tbl_typeof_key(T)) bool #inline {
     assert(tbl);
     if !is_initialized(tbl) { return false; }
     return lookup_node(tbl, calculate_hash(key)) != tbl_end(tbl);
@@ -239,6 +239,16 @@ tbl_iter_prev :: fn (it: *?T) #inline {
     @it = auto (@it).prev;
 }
 
+/// Resolve type of key from table type in compiletime.
+tbl_typeof_key :: fn (T: type) type #comptime {
+    return (@T.head).key;
+}
+
+/// Resolve type of value from table type in compiletime.
+tbl_typeof_value :: fn (T: type) type #comptime {
+    return (@T.head).value;
+}
+
 // =================================================================================================
 #private
 // =================================================================================================
@@ -262,14 +272,6 @@ Node :: fn (TKey: type, TValue: type) type #comptime {
         key: TKey;
         value: TValue;
     };
-}
-
-typeof_key :: fn (T: type) type #comptime {
-    return (@T.head).key;
-}
-
-typeof_value :: fn (T: type) type #comptime {
-    return (@T.head).value;
 }
 
 typeof_node :: fn (T: type) type #comptime {
@@ -316,14 +318,14 @@ calculate_hash :: fn (key: ?T) Hash(T) #inline {
     }
 }
 
-impl_insert :: fn (tbl: *?T, key: typeof_key(T), value: typeof_value(T)) TableIter(T) #inline {
+impl_insert :: fn (tbl: *?T, key: tbl_typeof_key(T), value: tbl_typeof_value(T)) TableIter(T) #inline {
     assert(tbl);
     it := impl_insert_empty(tbl, key);
     it.value = value;
     return it;
 }
 
-impl_insert_empty :: fn (tbl: *?T, key: typeof_key(T)) TableIter(T) {
+impl_insert_empty :: fn (tbl: *?T, key: tbl_typeof_key(T)) TableIter(T) {
     assert(tbl);
     if !is_initialized(tbl) { bucket_alloc(tbl, DEFAULT_BUCKET_COUNT); }
 
