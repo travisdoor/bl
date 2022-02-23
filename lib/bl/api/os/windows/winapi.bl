@@ -67,6 +67,7 @@ SIZE_T       :: C.ulong;
 PVOID        :: *C.uchar; 
 CHAR         :: C.uchar; 
 LONG_PTR     :: *C.long;
+UINT_PTR     :: *C.uint;
 LARGE_INTEGER :: C.longlong;
 PLARGE_INTEGER :: *LARGE_INTEGER;
 HGLOBAL      :: C.void_ptr;
@@ -74,6 +75,8 @@ HWND         :: C.void_ptr;
 LONG         :: C.long;
 PLONG        :: *LONG;
 WORD         :: C.ushort;
+LPARAM       :: LONG_PTR;
+WPARAM       :: UINT_PTR;
 
 GENERIC_READ : u32 : 0x80000000;
 GENERIC_WRITE : u32 : 0x40000000;
@@ -86,6 +89,7 @@ OPEN_EXISTING : u32 : 3;
 OPEN_ALWAYS : u32 : 4;
 TRUNCATE_EXISTING : u32 : 5;
 LPOVERLAPPED_COMPLETION_ROUTINE :: * fn(dwErrorCode: DWORD, dwNumberOfBytesTransfered: DWORD, lpOverlapped: LPOVERLAPPED);
+LPOFNHOOKPROC :: *fn (_1: HWND, _2: UINT, _3: WPARAM, _4: LPARAM) UINT_PTR;
 FILE_ADD_FILE             : u32 : 0x0002;
 FILE_ADD_SUBDIRECTORY     : u32 : 0x0004;
 FILE_APPEND_DATA          : u32 : 0x0004;
@@ -138,6 +142,33 @@ FILE_NOTIFY_CHANGE_LAST_ACCESS : u32 : 0x00000020;
 FILE_NOTIFY_CHANGE_CREATION : u32 : 0x00000040;
 FILE_NOTIFY_CHANGE_SECURITY : u32 : 0x00000100;
 
+OFN_READONLY             : u32 :    0x00000001;
+OFN_OVERWRITEPROMPT      : u32 :    0x00000002;
+OFN_HIDEREADONLY         : u32 :    0x00000004;
+OFN_NOCHANGEDIR          : u32 :    0x00000008;
+OFN_SHOWHELP             : u32 :    0x00000010;
+OFN_ENABLEHOOK           : u32 :    0x00000020;
+OFN_ENABLETEMPLATE       : u32 :    0x00000040;
+OFN_ENABLETEMPLATEHANDLE : u32 :    0x00000080;
+OFN_NOVALIDATE           : u32 :    0x00000100;
+OFN_ALLOWMULTISELECT     : u32 :    0x00000200;
+OFN_EXTENSIONDIFFERENT   : u32 :    0x00000400;
+OFN_PATHMUSTEXIST        : u32 :    0x00000800;
+OFN_FILEMUSTEXIST        : u32 :    0x00001000;
+OFN_CREATEPROMPT         : u32 :    0x00002000;
+OFN_SHAREAWARE           : u32 :    0x00004000;
+OFN_NOREADONLYRETURN     : u32 :    0x00008000;
+OFN_NOTESTFILECREATE     : u32 :    0x00010000;
+OFN_NONETWORKBUTTON      : u32 :    0x00020000;
+OFN_NOLONGNAMES          : u32 :    0x00040000;    // force no long names for 4.x modules
+OFN_EXPLORER             : u32 :    0x00080000;    // new look commdlg
+OFN_NODEREFERENCELINKS   : u32 :    0x00100000;
+OFN_LONGNAMES            : u32 :    0x00200000;    // force long names for 3.x modules
+OFN_ENABLEINCLUDENOTIFY  : u32 :    0x00400000;    // send include message to callback
+OFN_ENABLESIZING         : u32 :    0x00800000;
+OFN_DONTADDTORECENT      : u32 :    0x02000000;
+OFN_FORCESHOWHIDDEN      : u32 :    0x10000000;    // Show All files including System and hidden files
+
 IDC_ARROW           :: cast(LPCSTR) (cast(ULONG_PTR) 32512);
 IDC_IBEAM           :: cast(LPCSTR) (cast(ULONG_PTR) 32513);
 IDC_WAIT            :: cast(LPCSTR) (cast(ULONG_PTR) 32514);
@@ -152,6 +183,33 @@ IDC_SIZENS          :: cast(LPCSTR) (cast(ULONG_PTR) 32645);
 IDC_SIZEALL         :: cast(LPCSTR) (cast(ULONG_PTR) 32646);
 IDC_NO              :: cast(LPCSTR) (cast(ULONG_PTR) 32648);
 
+OPENFILENAMEA :: struct {
+   lStructSize: DWORD;
+   hwndOwner: HWND;
+   hInstance: HINSTANCE;
+   lpstrFilter: LPCSTR;
+   lpstrCustomFilter: LPSTR;
+   nMaxCustFilter: DWORD;
+   nFilterIndex: DWORD;
+   lpstrFile: LPSTR;
+   nMaxFile: DWORD;
+   lpstrFileTitle: LPSTR;
+   nMaxFileTitle: DWORD;
+   lpstrInitialDir: LPCSTR;
+   lpstrTitle: LPCSTR;
+   Flags: DWORD;
+   nFileOffset: WORD;
+   nFileExtension: WORD;
+   lpstrDefExt: LPCSTR;
+   lCustData: LPARAM;
+   lpfnHook: LPOFNHOOKPROC;
+   lpTemplateName: LPCSTR;
+   pvReserved: *u8;
+   dwReserved: DWORD;
+   FlagsEx: DWORD;
+}
+
+LPOPENFILENAMEA :: *OPENFILENAMEA;
 
 FILE_NOTIFY_INFORMATION :: struct {
     NextEntryOffset: DWORD;
@@ -387,3 +445,5 @@ FormatMessageA :: fn (dwFlags: DWORD, lpSource: LPVOID, dwMessageId: DWORD, dwLa
 GetCursorPos :: fn (lpPoint: LPPOINT) BOOL #extern "GetCursorPos";
 LoadCursorA :: fn (hInstance: HINSTANCE, lpCursorName: LPCSTR) HCURSOR #extern "LoadCursorA";
 SetCursor :: fn (hCursor: HCURSOR) HCURSOR #extern "SetCursor";
+GetSaveFileNameA :: fn (param1: LPOPENFILENAMEA) BOOL #extern "GetSaveFileNameA";
+GetOpenFileNameA :: fn (param1: LPOPENFILENAMEA) BOOL #extern "GetOpenFileNameA";

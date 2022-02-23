@@ -1,5 +1,5 @@
-version: 8
+version: 10
 src: "winapi.bl"
 
 x86_64-pc-windows-msvc:
-  linker_opt: "kernel32.lib user32.lib gdi32.lib shell32.lib Shlwapi.lib legacy_stdio_definitions.lib"
+  linker_opt: "kernel32.lib user32.lib gdi32.lib shell32.lib Shlwapi.lib comdlg32.lib legacy_stdio_definitions.lib"
