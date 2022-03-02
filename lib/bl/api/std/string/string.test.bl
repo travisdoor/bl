@@ -14,7 +14,11 @@ test_multiline_str_literal :: fn () #test {
        "multiline "
        "string"
        "!";
-    test_eq(FOO, "Hello this is multiline string!");
+    EXPECTED :: "Hello this is multiline string!";
+    print("'%'\n'%'\n", FOO, EXPECTED);
+    test_true(std.str_is_zero_terminated(FOO));
+    test_eq(FOO.len, EXPECTED.len);
+    test_eq(FOO, EXPECTED);
 }
 
 test_strs_init1 :: fn () #test {

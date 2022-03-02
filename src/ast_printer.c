@@ -499,7 +499,7 @@ void print_expr_lit_string(struct ast *lit, s32 pad, FILE *stream)
 {
     print_head(lit, pad, stream);
 
-    char *tmp = strdup(lit->data.expr_string.val);
+    char *tmp = strdup(lit->data.expr_string.val.ptr);
     fprintf(stream, "%s ", strtok(tmp, "\n"));
     char *next = strtok(NULL, "\n");
     if (next && strlen(next)) fprintf(stream, "... ");

@@ -858,7 +858,7 @@ LLVMValueRef emit_const_string(struct context *ctx, const char *str, usize len)
             llvm_str = ctx->gstring_cache[index].value;
         } else {
             LLVMValueRef llvm_str_content =
-                LLVMConstStringInContext(ctx->llvm_cnt, str, (u32)strlen(str), false);
+                LLVMConstStringInContext(ctx->llvm_cnt, str, (u32)len, false);
 
             llvm_str = LLVMAddGlobal(ctx->llvm_module, LLVMTypeOf(llvm_str_content), ".str");
             LLVMSetInitializer(llvm_str, llvm_str_content);

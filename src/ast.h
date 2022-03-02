@@ -321,7 +321,7 @@ struct ast_expr_lit_char {
 };
 
 struct ast_expr_lit_string {
-    const char *val;
+    str_t val;
 };
 
 struct ast_expr_lit_bool {

@@ -116,7 +116,7 @@ bool scan_docs(struct context *ctx, struct token *tok)
         ctx->c++;
     }
 
-    tok->value.str    = scdup(&ctx->unit->string_cache, begin, len_str);
+    tok->value.str    = make_str(scdup(&ctx->unit->string_cache, begin, len_str), len_str);
     tok->location.len = len_parsed + 3; // + 3 = '///'
     ctx->col += len_parsed;
     return true;
@@ -142,7 +142,7 @@ bool scan_ident(struct context *ctx, struct token *tok)
     }
 
     if (len == 0) return_zone(false);
-    tok->value.str    = scdup(&ctx->unit->string_cache, begin, len);
+    tok->value.str    = make_str(scdup(&ctx->unit->string_cache, begin, len), len);
     tok->location.len = len;
     ctx->col += len;
     return_zone(true);
@@ -211,7 +211,9 @@ bool scan_string(struct context *ctx, struct token *tok)
     }
 DONE:
     tok->value.str =
-        scdup(&ctx->unit->string_cache, sarrdata(&ctx->strtmp), sarrlenu(&ctx->strtmp));
+        make_str(scdup(&ctx->unit->string_cache, sarrdata(&ctx->strtmp), sarrlenu(&ctx->strtmp)),
+                 sarrlenu(&ctx->strtmp));
+
     tok->location.len = len;
     tok->location.col += 1;
     ctx->col += len + 2;
@@ -304,8 +306,8 @@ bool scan_number(struct context *ctx, struct token *tok)
 {
     tok->location.line = ctx->line;
     tok->location.col  = ctx->col;
-    tok->value.str     = ctx->c;
-    tok->overflow      = false;
+    // tok->value.str     = ctx->c; @Incomplete: check this
+    tok->overflow = false;
 
     u64 n = 0, prev_n = 0;
     s32 len  = 0;

@@ -52,10 +52,10 @@ struct location {
 };
 
 union token_value {
-    const char *str;
-    char        c;
-    f64         d;
-    u64         u;
+    str_t str;
+    char  c;
+    f64   d;
+    u64   u;
 };
 
 struct token {

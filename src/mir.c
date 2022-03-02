@@ -701,7 +701,7 @@ static struct mir_instr *
 append_instr_const_double(struct context *ctx, struct ast *node, double val);
 static struct mir_instr *append_instr_const_bool(struct context *ctx, struct ast *node, bool val);
 static struct mir_instr *
-append_instr_const_string(struct context *ctx, struct ast *node, const char *str);
+append_instr_const_string(struct context *ctx, struct ast *node, str_t str);
 static struct mir_instr *append_instr_const_char(struct context *ctx, struct ast *node, char c);
 static struct mir_instr *append_instr_const_null(struct context *ctx, struct ast *node);
 static struct mir_instr *append_instr_const_void(struct context *ctx, struct ast *node);
@@ -4074,15 +4074,15 @@ inline struct mir_instr *append_instr_const_bool(struct context *ctx, struct ast
     return tmp;
 }
 
-struct mir_instr *append_instr_const_string(struct context *ctx, struct ast *node, const char *str)
+struct mir_instr *append_instr_const_string(struct context *ctx, struct ast *node, str_t str)
 {
-    // Build up string as compound expression of lenght and pointer to data.
+    // Build up string as compound expression of length and pointer to data.
     mir_instrs_t *values = arena_safe_alloc(&ctx->assembly->arenas.sarr);
 
     struct mir_instr *len =
-        create_instr_const_int(ctx, node, ctx->builtin_types->t_s64, strlen(str));
+        create_instr_const_int(ctx, node, ctx->builtin_types->t_s64, str.len);
     struct mir_instr *ptr =
-        create_instr_const_ptr(ctx, node, ctx->builtin_types->t_u8_ptr, (vm_stack_ptr_t)str);
+        create_instr_const_ptr(ctx, node, ctx->builtin_types->t_u8_ptr, (vm_stack_ptr_t)str.ptr);
 
     analyze_instr_rq(len);
     analyze_instr_rq(ptr);
@@ -10040,9 +10040,9 @@ struct mir_instr *ast_expr_lit_fn_group(struct context *ctx, struct ast *group)
 
 struct mir_instr *ast_expr_lit_string(struct context *ctx, struct ast *lit_string)
 {
-    const char *cstr = lit_string->data.expr_string.val;
-    bassert(cstr);
-    return append_instr_const_string(ctx, lit_string, cstr);
+    str_t str = lit_string->data.expr_string.val;
+    bassert(str.ptr);
+    return append_instr_const_string(ctx, lit_string, str);
 }
 
 struct mir_instr *ast_expr_binop(struct context *ctx, struct ast *binop)

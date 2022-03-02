@@ -173,7 +173,7 @@ static inline struct ast *_parse_ident(struct context *ctx)
     struct token *tok_ident = tokens_consume(ctx->tokens);
     assert(tok_ident->sym == SYM_IDENT);
     struct ast *ident = ast_create_node(ctx->ast_arena, AST_IDENT, tok_ident, scope_get(ctx));
-    id_init(&ident->data.ident.id, tok_ident->value.str);
+    id_init(&ident->data.ident.id, tok_ident->value.str.ptr);
     return_zone(ident);
 }
 
@@ -295,13 +295,13 @@ bool parse_docs(struct context *ctx)
     struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_DCOMMENT);
     if (!tok_begin) return false;
     zone();
-    const char *str = tok_begin->value.str;
+    const char *str = tok_begin->value.str.ptr;
     if (tokens_peek(ctx->tokens)->sym == SYM_DCOMMENT) {
         char *tmp = NULL;
         strprint(tmp, "%s\n", str);
         struct token *tok;
         while ((tok = tokens_consume_if(ctx->tokens, SYM_DCOMMENT))) {
-            strappend(tmp, "%s\n", tok->value.str);
+            strappend(tmp, "%s\n", tok->value.str.ptr);
         }
         arrput(ctx->unit->large_string_cache, tmp);
         str = tmp;
@@ -321,9 +321,9 @@ bool parse_unit_docs(struct context *ctx)
     struct token *tok;
     while ((tok = tokens_consume_if(ctx->tokens, SYM_DGCOMMENT))) {
         if (arrlen(ctx->unit_docs_tmp) > 0) arrput(ctx->unit_docs_tmp, '\n');
-        const usize len  = strlen(tok->value.str);
+        const usize len  = tok->value.str.len;
         char       *dest = arraddnptr(ctx->unit_docs_tmp, len);
-        memcpy(dest, tok->value.str, len);
+        memcpy(dest, tok->value.str.ptr, len);
     }
     return_zone(true);
 }
@@ -363,7 +363,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     struct token *tok_directive = tokens_consume(ctx->tokens);
     if (tok_directive->sym != SYM_IDENT) goto INVALID;
 
-    const char  *directive = tok_directive->value.str;
+    const char  *directive = tok_directive->value.str.ptr;
     const hash_t hash      = strhash(directive);
     const s64    index     = hmgeti(ctx->hash_directive_table, hash);
     if (index == -1) goto INVALID;
@@ -408,7 +408,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
             return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
         }
         struct ast *msg = ast_create_node(ctx->ast_arena, AST_MSG, tok_directive, scope_get(ctx));
-        msg->data.msg.text = tok_msg->value.str;
+        msg->data.msg.text = tok_msg->value.str.ptr;
         msg->data.msg.kind = AST_MSG_ERROR;
         return_zone(msg);
     }
@@ -425,7 +425,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
             return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
         }
         struct ast *msg = ast_create_node(ctx->ast_arena, AST_MSG, tok_directive, scope_get(ctx));
-        msg->data.msg.text = tok_msg->value.str;
+        msg->data.msg.text = tok_msg->value.str.ptr;
         msg->data.msg.kind = AST_MSG_WARNING;
         return_zone(msg);
     }
@@ -443,7 +443,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         }
 
         struct ast *load = ast_create_node(ctx->ast_arena, AST_LOAD, tok_directive, scope_get(ctx));
-        load->data.load.filepath = tok_path->value.str;
+        load->data.load.filepath = tok_path->value.str.ptr;
         if (ctx->assembly->target->kind != ASSEMBLY_DOCS) {
             assembly_add_unit_safe(ctx->assembly, load->data.load.filepath, tok_path);
         }
@@ -462,10 +462,10 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         }
         struct ast *import =
             ast_create_node(ctx->ast_arena, AST_IMPORT, tok_directive, scope_get(ctx));
-        import->data.import.filepath = tok_path->value.str;
-        BL_TRACY_MESSAGE("HD_FLAG", "#import (%s)", tok_path->value.str);
+        import->data.import.filepath = tok_path->value.str.ptr;
+        BL_TRACY_MESSAGE("HD_FLAG", "#import (%s)", tok_path->value.str.ptr);
         if (ctx->assembly->target->kind != ASSEMBLY_DOCS) {
-            assembly_import_module(ctx->assembly, tok_path->value.str, tok_path);
+            assembly_import_module(ctx->assembly, tok_path->value.str.ptr, tok_path);
         }
         return_zone(import);
     }
@@ -482,9 +482,9 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         }
 
         struct ast *link = ast_create_node(ctx->ast_arena, AST_LINK, tok_directive, scope_get(ctx));
-        link->data.link.lib = tok_path->value.str;
+        link->data.link.lib = tok_path->value.str.ptr;
 
-        assembly_add_native_lib_safe(ctx->assembly, tok_path->value.str, tok_path);
+        assembly_add_native_lib_safe(ctx->assembly, tok_path->value.str.ptr, tok_path);
 
         PARSE_WARNING(tok_directive,
                       CARET_WORD,
@@ -497,7 +497,8 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         BL_TRACY_MESSAGE("HD_FLAG", "#file");
         struct ast *file =
             ast_create_node(ctx->ast_arena, AST_EXPR_LIT_STRING, tok_directive, scope_get(ctx));
-        file->data.expr_string.val = tok_directive->location.unit->filepath;
+        char *filepath             = tok_directive->location.unit->filepath;
+        file->data.expr_string.val = make_str(filepath, strlen(filepath));
         return_zone(file);
     }
 
@@ -540,7 +541,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         if (!tok_ext) return_zone(NULL);
         // Parse extension token.
         struct ast *ext = ast_create_node(ctx->ast_arena, AST_IDENT, tok_ext, scope_get(ctx));
-        id_init(&ext->data.ident.id, tok_ext->value.str);
+        id_init(&ext->data.ident.id, tok_ext->value.str.ptr);
         return_zone(ext);
     }
 
@@ -551,7 +552,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         if (!tok_ext) return_zone(NULL);
         // Parse extension token.
         struct ast *ext = ast_create_node(ctx->ast_arena, AST_IDENT, tok_ext, scope_get(ctx));
-        id_init(&ext->data.ident.id, tok_ext->value.str);
+        id_init(&ext->data.ident.id, tok_ext->value.str.ptr);
         return_zone(ext);
     }
 
@@ -1652,25 +1653,24 @@ struct ast *parse_expr_lit(struct context *ctx)
     case SYM_STRING: {
         // There is special case for string literals, those can be split into multiple lines and we
         // should handle such situation here, so some pre-scan is needed.
-        lit             = ast_create_node(ctx->ast_arena, AST_EXPR_LIT_STRING, tok, scope_get(ctx));
-        array(char) tmp = NULL;
+        lit = ast_create_node(ctx->ast_arena, AST_EXPR_LIT_STRING, tok, scope_get(ctx));
         struct token *tok_next = tokens_peek_2nd(ctx->tokens);
         if (tok_next->sym == SYM_STRING) {
+            array(char) tmp = NULL;
             while ((tok = tokens_consume_if(ctx->tokens, SYM_STRING))) {
-                bassert(tok->value.str);
-                const usize len  = strlen(tok->value.str);
-                char       *dest = arraddnptr(tmp, len);
-                memcpy(dest, tok->value.str, len);
+                str_t s = tok->value.str;
+                bassert(s.ptr);
+                char *dest = arraddnptr(tmp, s.len);
+                memcpy(dest, s.ptr, s.len);
             }
             arrput(tmp, '\0'); // !!!
             // Store into unit's cache to be freed later.
             arrput(ctx->unit->large_string_cache, tmp);
+            lit->data.expr_string.val = make_str(tmp, arrlen(tmp) - 1); // -1 terminator
         } else {
             tokens_consume(ctx->tokens);
-            tmp = (char *)tok->value.str;
+            lit->data.expr_string.val = tok->value.str;
         }
-        bassert(tmp);
-        lit->data.expr_string.val = tmp;
         // Directly return, all tokens were consumed.
         return_zone(lit);
     }
