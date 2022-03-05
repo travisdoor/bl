@@ -27,3 +27,15 @@ array_to_slice_argument_cast :: fn () #test {
     };
     foo(arr);
 }
+
+str_to_slice_initialization :: fn () #test {
+    str: string;
+    slice: []u8 = str;
+}
+
+str_to_slice_argument :: fn () #test {
+    str: string;
+    foo :: fn (_: []u8) {};
+
+    foo(str);
+}

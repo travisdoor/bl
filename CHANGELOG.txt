@@ -15,6 +15,7 @@ Add enumcount helper function.
 Add hash table.
 Add buffer allocator.
 Add using statement for scopes and enums.
+Add implicit conversion from string to slice []u8.
 Documentation format changed to markdown.
 Fix crash on unnamed function argument RTTI generation.
 Fix crash when invlid type of default argument value is provided by user.

@@ -5,12 +5,19 @@ main :: fn () s32 {
     l, r: []u8;
     str_split(foo, &l, &r);
     str_split(bar, &l, &r);
+    str_append(&bar, foo);
+    str_append(&bar, bar);
     
     return 0;
 }
 
-str_split :: fn (in: []u8, l: *[]u8, r: *[]u8) {
+// string -> slice OK
+// slice -> string ERROR
+
+str_split :: fn (_: []u8, _: *[]u8, _: *[]u8) {
 }
+
+str_append :: fn (_: *string, _: []u8) {}
 
 // rename: struct mir_instr_* -> struct instr
 

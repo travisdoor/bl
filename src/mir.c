@@ -828,7 +828,7 @@ static enum result_state _analyze_slot(struct context           *ctx,
 static ANALYZE_STAGE_FN(load);
 static ANALYZE_STAGE_FN(toany);
 static ANALYZE_STAGE_FN(arrtoslice);
-static ANALYZE_STAGE_FN(dynarrtoslice);
+static ANALYZE_STAGE_FN(toslice);
 static ANALYZE_STAGE_FN(implicit_cast);
 static ANALYZE_STAGE_FN(report_type_mismatch);
 static ANALYZE_STAGE_FN(unroll);
@@ -848,7 +848,7 @@ static const struct slot_config analyze_slot_conf_default = {.count  = 8,
                                                                  analyze_stage_set_null,
                                                                  analyze_stage_set_auto,
                                                                  analyze_stage_arrtoslice,
-                                                                 analyze_stage_dynarrtoslice,
+                                                                 analyze_stage_toslice,
                                                                  analyze_stage_load,
                                                                  analyze_stage_implicit_cast,
                                                                  analyze_stage_report_type_mismatch,
@@ -861,7 +861,7 @@ static const struct slot_config analyze_slot_conf_full = {.count  = 9,
                                                               analyze_stage_set_auto,
                                                               analyze_stage_toany,
                                                               analyze_stage_arrtoslice,
-                                                              analyze_stage_dynarrtoslice,
+                                                              analyze_stage_toslice,
                                                               analyze_stage_load,
                                                               analyze_stage_implicit_cast,
                                                               analyze_stage_report_type_mismatch,
@@ -4079,8 +4079,7 @@ struct mir_instr *append_instr_const_string(struct context *ctx, struct ast *nod
     // Build up string as compound expression of length and pointer to data.
     mir_instrs_t *values = arena_safe_alloc(&ctx->assembly->arenas.sarr);
 
-    struct mir_instr *len =
-        create_instr_const_int(ctx, node, ctx->builtin_types->t_s64, str.len);
+    struct mir_instr *len = create_instr_const_int(ctx, node, ctx->builtin_types->t_s64, str.len);
     struct mir_instr *ptr =
         create_instr_const_ptr(ctx, node, ctx->builtin_types->t_u8_ptr, (vm_stack_ptr_t)str.ptr);
 
@@ -7464,7 +7463,7 @@ static void poly_type_match(struct mir_type  *recipe,
                     push_if_valid(current_other->data.array.elem_type);
                 } else if (current_other->kind == MIR_TYPE_DYNARR) {
                     push_if_valid(mir_deref_type(
-                        mir_get_struct_elem_type(current_other, MIR_DYNARR_PTR_INDEX)));
+                        mir_get_struct_elem_type(current_other, MIR_SLICE_PTR_INDEX)));
                 } else if (current_other->kind == MIR_TYPE_SLICE) {
                     push_if_valid(mir_deref_type(
                         mir_get_struct_elem_type(current_other, MIR_SLICE_PTR_INDEX)));
@@ -7496,9 +7495,9 @@ static void poly_type_match(struct mir_type  *recipe,
         }
         case MIR_TYPE_DYNARR: {
             push_if_valid(
-                mir_deref_type(mir_get_struct_elem_type(current_other, MIR_DYNARR_PTR_INDEX)));
+                mir_deref_type(mir_get_struct_elem_type(current_other, MIR_SLICE_PTR_INDEX)));
             sarrput(&queue,
-                    mir_deref_type(mir_get_struct_elem_type(current_recipe, MIR_DYNARR_PTR_INDEX)));
+                    mir_deref_type(mir_get_struct_elem_type(current_recipe, MIR_SLICE_PTR_INDEX)));
 
             break;
         }
@@ -8286,10 +8285,10 @@ ANALYZE_STAGE_FN(toany)
     return ANALYZE_STAGE_BREAK;
 }
 
-ANALYZE_STAGE_FN(dynarrtoslice)
+ANALYZE_STAGE_FN(toslice)
 {
     // Cast from dynamic array to slice can be done by bitcast from pointer to dynamic array to
-    // slice pointer, both structures have same data layout of first two members.
+    // slice pointer, both structures have the same data layout of first two members.
     bassert(slot_type);
 
     struct mir_type *from_type = (*input)->value.type;
@@ -8298,8 +8297,11 @@ ANALYZE_STAGE_FN(dynarrtoslice)
     if (!mir_is_pointer_type(from_type)) return ANALYZE_STAGE_CONTINUE;
 
     from_type = mir_deref_type(from_type);
-    if (from_type->kind != MIR_TYPE_DYNARR || slot_type->kind != MIR_TYPE_SLICE)
+    // Allow conversion from: dynamic array, string and another slice.
+    if ((from_type->kind != MIR_TYPE_DYNARR && from_type->kind != MIR_TYPE_STRING) ||
+        slot_type->kind != MIR_TYPE_SLICE) {
         return ANALYZE_STAGE_CONTINUE;
+    }
 
     { // Compare elem type of array and slot slice
         struct mir_type *elem_from_type = mir_get_struct_elem_type(from_type, MIR_SLICE_PTR_INDEX);
@@ -11209,7 +11211,7 @@ static void _type2str(char **buf, const struct mir_type *type, bool prefer_name)
         strappend(*buf, "[..]");
 
         if (has_members) {
-            struct mir_type *tmp = mir_get_struct_elem_type(type, MIR_DYNARR_PTR_INDEX);
+            struct mir_type *tmp = mir_get_struct_elem_type(type, MIR_SLICE_PTR_INDEX);
             tmp                  = mir_deref_type(tmp);
             _type2str(buf, tmp, true);
         }

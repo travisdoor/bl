@@ -38,18 +38,9 @@
 #include <dyncall_callback.h>
 #include <dynload.h>
 
-// Slice member indices
+// Slice member indices, these match also for dynamic arrays and strings.
 #define MIR_SLICE_LEN_INDEX 0
 #define MIR_SLICE_PTR_INDEX 1
-
-// String member indices
-#define MIR_STRING_LEN_INDEX MIR_SLICE_LEN_INDEX
-#define MIR_STRING_PTR_INDEX MIR_SLICE_PTR_INDEX
-
-// Dynamic array member indices
-#define MIR_DYNARR_LEN_INDEX MIR_SLICE_LEN_INDEX
-#define MIR_DYNARR_PTR_INDEX MIR_SLICE_PTR_INDEX
-#define MIR_DYNARR_ALLOCATED_INDEX 2
 
 // Helper macro for reading Const Expression Values of fundamental types.
 #if BL_DEBUG
