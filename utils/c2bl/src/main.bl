@@ -175,7 +175,8 @@ process_file :: fn (in_filepath: string) Error {
     out_filepath := std.str_new(_args.out_filepath);
     defer std.str_delete(out_filepath);
     if std.str_is_empty(_args.out_filepath) {
-        out_filepath = sprint("%.bl", std.path_remove_extension(ctx.filename));
+        filename :: std.path_splitext(ctx.filename);
+        out_filepath = sprint("%.bl", filename);
     }
     out_file, err :: std.file_open(out_filepath, make_flags(std.FileOpenMode.CREATE, std.FileOpenMode.WRITE));
     if !is_ok(err) {

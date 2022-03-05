@@ -56,7 +56,7 @@ FileOpenMode :: enum #flags {
 /// ```
 ///
 /// **todo*: Mode should be passed as flags in the future.
-file_open :: fn (filepath: string, mode: FileOpenMode = std.FileOpenMode.READ) (File, Error) #inline {
+file_open :: fn (filepath: string, mode: FileOpenMode = FileOpenMode.READ) (File, Error) #inline {
     return _fs_impl.open(filepath, mode);
 }
 
@@ -99,16 +99,16 @@ dir_create :: fn (dirpath: string) Error #inline {
 }
 
 dir_create_all :: fn (dirpath: string) Error {
-    if std.str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Dir path is empty!"); }
+    if str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Dir path is empty!"); }
     if _fs_impl.exist(dirpath) { return ok(); } 
-    nodes :: std.str_split_by(dirpath, '/');
+    nodes :: str_split_by(dirpath, '/');
     defer slice_terminate(&nodes);
-    path :: std.str_new(auto dirpath.len);
-    defer std.str_delete(path);
+    path :: str_new(auto dirpath.len);
+    defer str_delete(path);
     loop i := 0; i < nodes.len; i += 1 {
         if nodes[i].len == 0 { continue; }
-        std.str_append(&path, nodes[i]);
-        std.str_append(&path, "/");
+        str_append(&path, nodes[i]);
+        str_append(&path, "/");
         if _fs_impl.exist(path) { continue; } 
         err :: _fs_impl.dir_create(path);
         if !is_ok(err) { return err; }
@@ -138,7 +138,7 @@ InfoList :: []Info;
 /// Release allocated file system entry info list.
 info_list_delete :: fn (list: InfoList) #inline {
     loop i := 0; i < list.len; i += 1 {
-        std.str_delete(list[i].name);
+        str_delete(list[i].name);
     }
     slice_terminate(&list);
 }
@@ -150,16 +150,16 @@ info_list_delete :: fn (list: InfoList) #inline {
 /// **note**: This function recursively remove all nested folders and files in specified sub tree 
 /// so it can be expensive.
 dir_remove_all :: fn (dirpath: string, remove_root := true, filter: DirScanFilterFn = &_default_file_filter) Error {
-    if std.str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Dir path is empty!"); }
+    if str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Dir path is empty!"); }
     if !filter { return error(ERR_INVALID_HANDLE, "Invalid list filter!"); }
-    tmp :: std.str_new( dirpath.len);
-    defer std.str_delete(tmp);
+    tmp :: str_new( dirpath.len);
+    defer str_delete(tmp);
     list, err :: _fs_impl.dir_scan(dirpath, filter);
     if !is_ok(err) { return err; }
     defer info_list_delete(list);
     loop i := 0; i < list.len; i += 1 {
         node :: &list[i];
-        std.str_concat(&tmp, dirpath, "/", node.name);
+        str_concat(&tmp, dirpath, "/", node.name);
         switch node.kind {
             InfoKind.DIRECTORY {
                 err :: dir_remove_all(tmp);
@@ -170,7 +170,7 @@ dir_remove_all :: fn (dirpath: string, remove_root := true, filter: DirScanFilte
                 if !is_ok(err) { return err; }
             }
         }
-        std.str_clear(&tmp);
+        str_clear(&tmp);
     }
     if remove_root { return _fs_impl.dir_remove(dirpath); }
     return ok();
@@ -219,7 +219,8 @@ DirCopyOpt :: struct {
 ///     // Copy content of 'foo' into 'bar'
 ///     c, err :: std.dir_copy("foo", "bar", &opt, &fn (item: *std.Info) bool {
 ///         // Filter only txt files
-///         if std.str_match(std.path_get_extension(item.name), "txt") { return true; } 
+///         _, ext :: std.path_splitext(item.name);
+///         if std.str_match(ext, ".txt") { return true; } 
 ///         return false;
 ///     });
 ///     if !is_ok(err) { print("%\n", err); }
@@ -232,8 +233,8 @@ DirCopyOpt :: struct {
 dir_copy :: fn (src: string, dest: string, opt: *DirCopyOpt = &DIR_COPY_OPT_DEFAULT, filter: DirScanFilterFn = &_default_file_filter) (s64, Error) {
     cc: s64;
     if !opt                   { return 0, error(ERR_INVALID_HANDLE, "Invalid copy options!"); }
-    if std.str_is_empty(src)  { return 0, error(ERR_INVALID_HANDLE, "Source path is empty!"); }
-    if std.str_is_empty(dest) { return 0, error(ERR_INVALID_HANDLE, "Destination path is empty!"); }
+    if str_is_empty(src)  { return 0, error(ERR_INVALID_HANDLE, "Source path is empty!"); }
+    if str_is_empty(dest) { return 0, error(ERR_INVALID_HANDLE, "Destination path is empty!"); }
     if !_fs_impl.exist(src)   { return 0, error(ERR_NOT_FOUND, "Source path '%' not exist!", src); }
     if !_fs_impl.exist(dest) {
         if opt.recursive {
@@ -248,11 +249,11 @@ dir_copy :: fn (src: string, dest: string, opt: *DirCopyOpt = &DIR_COPY_OPT_DEFA
     is_dest_valid := _fs_impl.is_directory(dest);
     if !is_dest_valid { return 0, error("Destination '%' is not directory!", dest); }
 
-    dest_path :: std.str_new(128);
-    src_path :: std.str_new(128);
-    defer std.str_delete(dest_path);
-    defer std.str_delete(src_path);
-    std.str_clear_concat(&dest_path, dest, "/", src); 
+    dest_path :: str_new(128);
+    src_path :: str_new(128);
+    defer str_delete(dest_path);
+    defer str_delete(src_path);
+    str_clear_concat(&dest_path, dest, "/", src); 
     if _fs_impl.exist(dest_path) { return 0, error("Destination directory '%' already exist!", dest_path); }
     list, list_err :: _fs_impl.dir_scan(src, filter);
     if !is_ok(list_err) { return 0, list_err; }
@@ -260,8 +261,8 @@ dir_copy :: fn (src: string, dest: string, opt: *DirCopyOpt = &DIR_COPY_OPT_DEFA
     loop i := 0; i < list.len; i += 1 {
         copy_err: Error;
         _cc: s64;
-        std.str_clear_concat(&src_path, src, "/", list[i].name);
-        std.str_clear_concat(&dest_path, dest, "/", list[i].name);
+        str_clear_concat(&src_path, src, "/", list[i].name);
+        str_clear_concat(&dest_path, dest, "/", list[i].name);
         if opt.skip_existing && _fs_impl.exist(dest_path) { continue; }
         switch list[i].kind {
             InfoKind.FILE {
@@ -309,46 +310,63 @@ path_normalize :: fn (filepath: *string) Error #inline {
     return _fs_impl.normalize(filepath);
 }
 
-/// Remove file extension (token after first `.`) from the `filename` and return the rest. Function 
-/// does not create copy of original `filepath`.
-path_remove_extension :: fn (filename: string) string #inline {
-    if std.str_is_empty(filename) { return std.str_empty; }
-    tmp := filename;
-    tmp.len = 0;
-    loop i := 0; i < filename.len; i += 1 {
-        c :: filename[i];
-        if c == '.' && i > 0 { break; }
-        tmp.len += 1;
-    }
-    return tmp;
-}
-
-/// Get file extension as a new string (token after first `.`) from the `filename` or empty string in
-/// case no extension was found.
+/// Split input `filepath` into head and tail components. The `tail` is the last `filepath` component
+/// and the `head` is everything before. Only unix `/` path delimiters are supported. The `tail`
+/// component never contains path separators.
 ///
-/// The `.` separator is not included into result string.
-path_get_extension :: fn (filename: string) string #inline {
-    if std.str_is_empty(filename) { return std.str_empty; }
-    if filename[0] == '.' {
-        if filename.len == 1 { return std.str_empty; }
-        filename.len -= 1; filename.ptr = &filename[1]; 
+/// ### Example
+///
+/// | filepath                | head        | tail         |
+/// |-------------------------|-------------|--------------|
+/// | C:/foo/bar/file.txt     | C:/foo/bar/ | file.txt     |
+/// | file.txt                | -           | file.txt     |
+/// | /usr/local/.hidden.file | /usr/local/ | .hidden.file |
+/// | /                       | /           | -            |
+/// | C:/                     | C:/         | -            |
+///
+/// **note**: Returned components are just "views" of the original `filepath` and should not be explicitly
+/// freed.
+///
+/// **note**: Returned components may not be zero terminated.
+path_split :: fn (filepath: string) (head: string, tail: string) {
+    if str_is_empty(filepath) { return str_empty, str_empty; }
+
+    head, tail: string;
+    if !str_split_by_last(filepath, '/', &head, &tail) {
+        tail = head;
+        head= str_empty;
+    } else {
+        head.len += 1;
     }
-    rhs: string;
-    if std.str_split_by_first(filename, '.', null, &rhs) {
-        return std.str_new(rhs);
-    }
-    return std.str_empty;
+    return head, tail;
 }
 
-/// Get directory path from filepath. Function supports only unix path delimiters. Returns directory
-/// path as new string or empty string in case path was not found.
-path_get_directory :: fn (filepath: string) string #inline {
-    if std.str_is_empty(filepath) { return std.str_empty; }
-    lhs: string;
-    if std.str_split_by_last(filepath, '/', &lhs) {
-        return std.str_new(lhs);
+/// Split input `filepath` into `head` and `ext` components. The `ext` is the file extension  and the `head` is
+/// everything before. 
+///
+/// ### Example
+///
+/// | filepath                | head               | ext          |
+/// |-------------------------|--------------------|--------------|
+/// | C:/foo/bar/file.txt     | C:/foo/bar/file    | .txt         |
+/// | file.txt                | file               | .txt         |
+/// | /usr/local/.hidden.file | /usr/local/.hidden | .file        |
+/// | /                       | /                  | -            |
+/// | C:/                     | C:/                | -            |
+///
+/// **note**: Returned components are just "views" of the original `filepath` and should not be explicitly
+/// freed.
+///
+/// **note**: Returned components may not be zero terminated.
+path_splitext :: fn (filepath: string) (head: string, ext: string) {
+    if str_is_empty(filepath) { return str_empty, str_empty; }
+    head, ext: string;
+    index: s32;
+    if str_split_by_last(filepath, '.', &head, &ext, &index) {
+        ext.ptr = &filepath[index];
+        ext.len += 1;
     }
-    return std.str_empty;
+    return head, ext;
 }
 
 /// Try to obtain current working directory, result must be released by `std.str_delete`. Path does 
@@ -378,6 +396,6 @@ get_tmp :: fn () string #inline {
 DIR_COPY_OPT_DEFAULT :: {:DirCopyOpt: 0};
 
 _default_file_filter :: fn (item: *Info) bool {
-    return std.str_match(item.name, ".") == false
-        && std.str_match(item.name, "..") == false;
+    return str_match(item.name, ".") == false
+        && str_match(item.name, "..") == false;
 }

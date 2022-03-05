@@ -1,19 +1,15 @@
-T :: struct {
-    a: s32 #tag std.U64_MAX;
-    b: s32 #tag std.U32_MAX;
-    c: s32;
-    d: s32 #tag 1000;
+main :: fn () s32 {
+    foo :: "Hello"; // []u8
+    bar: string;
+
+    l, r: []u8;
+    str_split(foo, &l, &r);
+    str_split(bar, &l, &r);
+    
+    return 0;
 }
 
-main :: fn () s32 {
-    print("%\n", std.U64_MAX);
-    print("%\n", std.U32_MAX);
-    info :: cast(*TypeInfoStruct) typeinfo(T);
-    loop i := 0; i < info.members.len; i += 1 {
-        member :: info.members[i];
-        print("% - %\n", member.name, member.tag);
-    }
-    return 0;
+str_split :: fn (in: []u8, l: *[]u8, r: *[]u8) {
 }
 
 // rename: struct mir_instr_* -> struct instr
@@ -41,5 +37,14 @@ module :: fn (bin: *Assembly) #module_entry {
         #error "Module does not support current target platform"
     }
 }
+
+Foo :: struct {
+    a: s32;
+    b: s32;
+}
+
+foo := Foo.{}
+foo := {:Foo: ... }
+
 */
 

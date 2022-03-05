@@ -95,7 +95,8 @@ process_dir :: fn (path: string, extension: string, out: *string) Error {
         info :: &list[i];
         switch info.kind {
             std.InfoKind.FILE {
-                ext :: std.path_get_extension(info.name);
+                file, ext: string;
+                std.str_split_by_first(info.name, '.', &file, &ext);
                 if std.str_match(ext, extension) { 
                     std.str_append(out, path);
                     std.str_append(out, "/");

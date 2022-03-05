@@ -250,9 +250,8 @@ str_to_s64 :: fn (str: string, count := -1) s64 {
 /// is not included in resulting tokens. Result tokens only points into original memory of the 
 /// `str`, they are not supposed to be freed.
 /// 
-/// When delimiter is not present in the input string function return `false`, `lhs` and `rhs` 
-/// buffers are not modified, otherwise function return `true` and sets `lhs` and `rhs` to valid 
-/// values.
+/// When delimiter is not present in the input string function return `false`, `lhs` is set to the
+/// original `str` string, `rhs` value is unchanged.
 /// 
 /// Token destination pointers `lhs` and `rhs` are optional. The `di` output variable is set to 
 /// index of the split position when it's not `null`.
@@ -335,9 +334,8 @@ str_split_at_index :: fn (str: string, index: s32, lhs: *string = null, rhs: *st
 /// is not included in resulting tokens. Result tokens only points into original memory of the 
 /// `str`, they are not supposed to be freed.
 /// 
-/// When delimiter is not present in the input string function return `false`, `lhs` and `rhs` 
-/// buffers are not modified, otherwise function return `true` and sets `lhs` and `rhs` to found 
-/// values.
+/// When delimiter is not present in the input string function return `false`, `lhs` is set to the
+/// original `str` string, `rhs` value is unchanged.
 /// 
 /// Token destination pointers `lhs` and `rhs` are optional. 
 /// 

@@ -220,82 +220,6 @@ fs_validate_filename_test :: fn () #test {
     }
 }
 
-fs_get_extension_test :: fn () #test {
-    {
-        filename :: "foo.bar";
-        ext      :: std.path_get_extension(filename);
-        test_eq(ext, "bar");
-    }
-    {
-        filename :: "foo.bar.bar";
-        ext      :: std.path_get_extension(filename);
-        test_eq(ext, "bar.bar");
-    }
-    {
-        filename :: "";
-        ext      :: std.path_get_extension(filename);
-        test_eq(ext, std.str_empty);
-    }    
-    {
-        filename :: ".";
-        ext      :: std.path_get_extension(filename);
-        test_eq(ext, std.str_empty);
-    }
-    {
-        filename :: ".foo";
-        ext      :: std.path_get_extension(filename);
-        test_eq(ext, std.str_empty);
-    }
-    {
-        filename :: ".foo.bar";
-        ext      :: std.path_get_extension(filename);
-        test_eq(ext, "bar");
-    }
-    {
-        filename :: ".foo.bar.bar";
-        ext      :: std.path_get_extension(filename);
-        test_eq(ext, "bar.bar");
-    }        
-}
-
-fs_remove_extension_test :: fn () #test {
-    {
-        filename :: "foo.bar";
-        ext      :: std.path_remove_extension(filename);
-        test_eq(ext, "foo");
-    }
-    {
-        filename :: "foo.bar.bar";
-        ext      :: std.path_remove_extension(filename);
-        test_eq(ext, "foo");
-    }
-    {
-        filename :: "";
-        ext      :: std.path_remove_extension(filename);
-        test_eq(ext, std.str_empty);
-    }    
-    {
-        filename :: ".";
-        ext      :: std.path_remove_extension(filename);
-        test_eq(ext, ".");
-    }
-    {
-        filename :: ".foo";
-        ext      :: std.path_remove_extension(filename);
-        test_eq(ext, ".foo");
-    }
-    {
-        filename :: ".foo.bar";
-        ext      :: std.path_remove_extension(filename);
-        test_eq(ext, ".foo");
-    }
-    {
-        filename :: ".foo.bar.bar";
-        ext      :: std.path_remove_extension(filename);
-        test_eq(ext, ".foo");
-    }
-}
-
 fs_normalize_test1 :: fn () #test {
     cwd :: std.get_cwd();
     defer std.str_delete(cwd);
@@ -593,8 +517,93 @@ fs_dir_create_all_test1 :: fn () #test {
     test_ok(err);
 }
 
-fs_get_directory :: fn () #test {
-    test_eq(std.path_get_directory(""), std.str_empty);
-    test_eq(std.path_get_directory("bar"), std.str_empty);
-    test_eq(std.path_get_directory("foo/bar/file"), "foo/bar");
+fs_path_split :: fn () #test {
+    {
+        d, f :: std.path_split("C:/Ahoj/Jak/Se/Vede/foo.txt.bak");
+        test_eq(d, "C:/Ahoj/Jak/Se/Vede/");
+        test_eq(f, "foo.txt.bak");
+    }
+    {
+        d, f :: std.path_split("foo.txt.bak");
+        test_eq(d, "");
+        test_eq(f, "foo.txt.bak");
+    }
+    {
+        d, f :: std.path_split(".txt.bak");
+        test_eq(d, "");
+        test_eq(f, ".txt.bak");
+    }
+    {
+        d, f :: std.path_split("");
+        test_eq(d, "");
+        test_eq(f, "");
+    }
+    {
+        d, f :: std.path_split(".");
+        test_eq(d, "");
+        test_eq(f, ".");
+    }
+    {
+        d, f :: std.path_split(".txt");
+        test_eq(d, "");
+        test_eq(f, ".txt");
+    }
+    {
+        d, f :: std.path_split("..txt");
+        test_eq(d, "");
+        test_eq(f, "..txt");
+    }
+    {
+        d, f :: std.path_split("/home/usr/.hidden.file");
+        test_eq(d, "/home/usr/");
+        test_eq(f, ".hidden.file");
+    }
+    {
+        d, f :: std.path_split("/");
+        test_eq(d, "/");
+        test_eq(f, "");
+    }
+    {
+        d, f :: std.path_split("D:/");
+        test_eq(d, "D:/");
+        test_eq(f, "");
+    }
+    {
+        d, f :: std.path_split("C:/foo/bar");
+        test_eq(d, "C:/foo/");
+        test_eq(f, "bar");
+    }
+    {
+        d, f :: std.path_split("C:/foo/bar/");
+        test_eq(d, "C:/foo/bar/");
+        test_eq(f, "");
+    }
+}
+
+fs_path_splitext :: fn () #test {
+    {
+        d, f :: std.path_splitext("C:/Ahoj/Jak/Se/Vede/foo.txt.bak");
+        test_eq(d, "C:/Ahoj/Jak/Se/Vede/foo.txt");
+        test_eq(f, ".bak");
+    }
+    {
+        d, f :: std.path_splitext("");
+        test_eq(d, "");
+        test_eq(f, "");
+    }
+    {
+        d, f :: std.path_splitext("foo.txt");
+        test_eq(d, "foo");
+        test_eq(f, ".txt");
+    }
+    {
+        d, f :: std.path_splitext("foo");
+        test_eq(d, "foo");
+        test_eq(f, "");
+    }
+    {
+        d, f :: std.path_splitext(".");
+        test_eq(d, "");
+        test_eq(f, ".");
+    }
 }
