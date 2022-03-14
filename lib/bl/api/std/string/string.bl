@@ -6,7 +6,7 @@
 //! 
 //! `#import "std/string"`
 //! 
-//! Builtin string storage. The `string` type could represent dynamic and compile time static strings. 
+//! Builtin dynami string container. 
 //! 
 //! ```
 //! string :: struct {
@@ -22,7 +22,7 @@
 //! // Dynamic string allocated on heap.
 //! // New dynamic string can be created from string literal. 
 //! my_string :: std.str_new("This is my string!");
-//! defer std.str_delete(my_string);
+//! defer std.str_delete(&my_string);
 //! ``` 
 //!
 //! BL strings are zero terminated except of sub-string view function (terminator cannot be added 
@@ -38,7 +38,7 @@
 /// ```c
 /// fn (allocator: *Allocator = null) string 
 /// fn (size: s64, allocator: *Allocator = null) string 
-/// fn (v: string, allocator: *Allocator = null) string 
+/// fn (v: string_view, allocator: *Allocator = null) string
 /// fn (cstr: *u8, allocator: *Allocator = null) string
 /// ```
 str_new :: fn {
@@ -59,7 +59,7 @@ str_new :: fn {
         return tmp;
     };
 
-    fn (v: string, allocator: *Allocator = null) string {
+    fn (v: string_view, allocator: *Allocator = null) string {
         tmp : string #noinit;
         tmp.ptr = alloc_block(auto v.len, allocator);
         tmp.len = v.len;
@@ -80,9 +80,11 @@ str_new :: fn {
 }
 
 /// Delete dynamic string.
-str_delete :: fn (v: string) {
+str_delete :: fn (v: *string) {
     if !v.ptr { return; }
     free_block(v.ptr);
+    v.len = 0;
+    v.ptr = null;
 };
 
 /// Ensure that string's underlying buffer is capable to hold `count` of characters and eventually 
@@ -113,7 +115,7 @@ str_append :: fn {
     _str_append_any;
 }
 
-_str_append_str :: fn (v: *string, other: string) s32 {
+_str_append_str :: fn (v: *string, other: string_view) s32 {
     new_len :: v.len + other.len;
     v.ptr = make_more_room_if_needed(v.ptr, auto new_len);        
     memcpy(ptr_shift_bytes(v.ptr, auto v.len), other.ptr, auto other.len);
@@ -157,11 +159,11 @@ str_clear_concat :: fn (v: *string, args: ...) string {
     return @v;
 }
 
-/// Compare `first` and `second` strings in specified range `n` and return `true` if they are same 
+/// Compare `first` and `second` strings in specified range `n` and return `true` if they are the same 
 /// otherwise return `false`.
 ///
 /// Range value `n` is optional and ignored when it's less than 0.
-str_match :: fn (first: string, second: string, n := -1) bool {
+str_match :: fn (first: string_view, second: string_view, n := -1) bool {
     // @CLEANUP: simplify this
     range := n;
     if range < 0 { 
@@ -177,7 +179,7 @@ str_match :: fn (first: string, second: string, n := -1) bool {
     return true;
 }
 
-str_compare :: fn (first: string, second: string) s32 {
+str_compare :: fn (first: string_view, second: string_view) s32 {
     len :: std.max(first.len, second.len);
     loop i := 0; i < len; i += 1 {
         f: u8; s: u8;
@@ -190,7 +192,7 @@ str_compare :: fn (first: string, second: string) s32 {
 }
 
 /// Convert first `count` characters of `str` to `f32`.
-str_to_f32 :: fn (str: string, count := -1) f32 {
+str_to_f32 :: fn (str: string_view, count := -1) f32 {
     if count < 0 { count = auto str.len; }
     else if count > str.len { count = auto str.len; }
     n := 0;
@@ -224,7 +226,7 @@ str_to_f32 :: fn (str: string, count := -1) f32 {
 }
 
 /// Convert first `count` characters from `str` to `s64`.
-str_to_s64 :: fn (str: string, count := -1) s64 {
+str_to_s64 :: fn (str: string_view, count := -1) s64 {
     if count < 0 { count = auto str.len; }
     else if count > str.len { count = auto str.len; }
     n: s64;
@@ -263,8 +265,8 @@ str_to_s64 :: fn (str: string, count := -1) s64 {
 ///
 /// ```
 /// main :: fn () s32 {
-///     lhs: string;
-///     rhs: string;
+///     lhs: string_view;
+///     rhs: string_view;
 ///     if std.str_split_by_last("this/is/my/epic/path", '/', &lhs, &rhs) {
 ///         print("lhs = %\n", lhs);
 ///         print("rhs = %\n", rhs);
@@ -273,7 +275,7 @@ str_to_s64 :: fn (str: string, count := -1) s64 {
 ///     return 0;
 /// }
 /// ```
-str_split_by_last :: fn (str: string, delimiter: u8, lhs: *string, rhs: *string = null, di: *s32 = null) bool {
+str_split_by_last :: fn (str: string_view, delimiter: u8, lhs: *string_view, rhs: *string_view = null, di: *s32 = null) bool {
     i := str.len - 1;
     loop ; i >= 0 && str[i] != delimiter; i -= 1 {}
 
@@ -310,8 +312,8 @@ str_split_by_last :: fn (str: string, delimiter: u8, lhs: *string, rhs: *string 
 ///
 /// ```
 /// main :: fn () s32 {
-///     lhs: string;
-///     rhs: string;
+///     lhs: string_view;
+///     rhs: string_view;
 ///     if std.str_split_at_index("foobar", 3, &lhs, &rhs) {
 ///         print("lhs = %\n", lhs);
 ///         print("rhs = %\n", rhs);
@@ -320,13 +322,13 @@ str_split_by_last :: fn (str: string, delimiter: u8, lhs: *string, rhs: *string 
 ///     return 0;
 /// }
 /// ```
-str_split_at_index :: fn (str: string, index: s32, lhs: *string = null, rhs: *string = null) bool {
+str_split_at_index :: fn (str: string_view, index: s32, lhs: *string_view = null, rhs: *string_view = null) bool {
     if index > str.len { return false; }
     if index < 0 { return false; }
     lhsc :: cast(s64) index;
     rhsc :: cast(s64) str.len - index;
-    if lhs { @lhs = {:string: lhsc, str.ptr}; }
-    if rhs { @rhs = {:string: rhsc, ptr_shift_bytes(str.ptr, lhsc)}; }
+    if lhs { @lhs = {:string_view: lhsc, str.ptr}; }
+    if rhs { @rhs = {:string_view: rhsc, ptr_shift_bytes(str.ptr, lhsc)}; }
     return true;
 }
 
@@ -346,8 +348,8 @@ str_split_at_index :: fn (str: string, index: s32, lhs: *string = null, rhs: *st
 ///
 /// ```
 /// main :: fn () s32 {
-///     lhs: string;
-///     rhs: string;
+///     lhs: string_view;
+///     rhs: string_view;
 ///     if std.str_split_by_first("this/is/my/epic/path", '/', &lhs, &rhs) {
 ///         print("lhs = %\n", lhs);
 ///         print("rhs = %\n", rhs);
@@ -356,7 +358,7 @@ str_split_at_index :: fn (str: string, index: s32, lhs: *string = null, rhs: *st
 ///     return 0;
 /// }
 /// ```
-str_split_by_first :: fn (str: string, delimiter: u8, lhs: *string, rhs: *string = null, di: *s32 = null) bool {
+str_split_by_first :: fn (str: string_view, delimiter: u8, lhs: *string_view, rhs: *string_view = null, di: *s32 = null) bool {
     i := 0;
     loop ; i < str.len && str[i] != delimiter; i += 1 {}
 
@@ -385,7 +387,7 @@ str_split_by_first :: fn (str: string, delimiter: u8, lhs: *string, rhs: *string
 /// **Overloads:**
 /// ```c
 /// fn (str: *string, index: s32, v: u8) bool #inline
-/// fn (str: *string, index: s32, v: string) bool
+/// fn (str: *string, index: s32, v: string_view) bool
 /// ```
 ///
 /// **note**: Function does nothing (return `false`) when `v` string is empty.
@@ -411,13 +413,13 @@ str_erase :: fn (str: *string, index: s32) bool {
 ///
 /// **warning**: Slice elements are not guaranteed to be zero terminated and they are not supposed 
 /// to be freed. 
-str_split_by :: fn (str: string, delimiter: u8) []string {
+str_split_by :: fn (str: string_view, delimiter: u8) []string_view {
     count :: str_count_of(str, delimiter) + 1;
-    ret: []string;
+    ret: []string_view;
     slice_init(&ret, count);
     ri: s32;
-    lhs: string;
-    rhs: string;
+    lhs: string_view;
+    rhs: string_view;
     loop str_split_by_first(str, delimiter, &lhs, &rhs) {
         ret[ri] = lhs;
         ri += 1;
@@ -429,7 +431,7 @@ str_split_by :: fn (str: string, delimiter: u8) []string {
 }
 
 /// Counts desired character occurrence in the input string.
-str_count_of :: fn (str: string, c: u8) s32 #inline {
+str_count_of :: fn (str: string_view, c: u8) s32 #inline {
     count := 0;
     loop i := 0; i < str.len; i += 1 {
         if str[i] == c { count += 1; }
@@ -473,7 +475,7 @@ str_replace_all :: fn (str: *string, c: u8, with := '\0') s32 {
 }
 
 /// Calculates string `u32` hash.
-str_hash :: fn (str: string) u32 {
+str_hash :: fn (str: string_view) u32 {
     hash : u32 = 5381;
     loop i := 0; i < str.len; i += 1 {
         c :: cast(u32) str[i];
@@ -484,16 +486,17 @@ str_hash :: fn (str: string) u32 {
 
 /// Helper inline function returning `true` when string is null. In such case string `len` could be 
 /// any value.
-str_is_null  :: fn (s: string) bool #inline { return s.ptr == null; }
+str_is_null  :: fn (s: string_view) bool #inline { return s.ptr == null; }
 
 /// Helper inline function returning `true` when string is empty. In such case string `ptr` could 
 /// be any pointer.
-str_is_empty :: fn (s: string) bool #inline { return s.len == 0; }
+str_is_empty :: fn (s: string_view) bool #inline { return s.len == 0; }
 
 str_empty :: {:string: 0};
+str_view_empty :: {:string_view: 0};
 
 /// Helper inline function returning `true` when string is empty and null. 
-str_is_null_or_empty :: fn (s: string) bool #inline { return s.ptr == null || s.len == 0; }
+str_is_null_or_empty :: fn (s: string_view) bool #inline { return s.ptr == null || s.len == 0; }
 
 
 /// Creates substring from passed string starting at `start` index of input string and ending at 
@@ -504,19 +507,36 @@ str_is_null_or_empty :: fn (s: string) bool #inline { return s.ptr == null || s.
 /// 
 /// **warning**: Result sub-string is not guaranteed to be zero terminated and it's not supposed to
 /// be freed.
-str_sub :: fn (s: string, start: s64, len : s64 = -1) string #inline {
+str_sub :: fn (s: string_view, start: s64, len : s64 = -1) string_view #inline {
     if len < -1 { panic("Invalid substring len %", len); }
     if start < 0 { panic("Invalid substring start %", start); }
     if start > s.len { panic("Invalid substring start index %", start); }
     if len == -1 { len = s.len - start; }
     if len == 0 { return str_empty; }
-    return {:string: len, &s[start]};
+    return {:string_view: len, &s[start]};
 }
 
 /// Checks whether string is zero terminated.
-str_is_zero_terminated :: fn (str: string) bool {
+str_is_zero_terminated :: fn (str: string_view) bool {
     str.len += 1;
     return str[str.len-1] == '\0';
+}
+
+/// Converts string view into C string representation. The original string `str` must be zero-terminated
+/// (checked by assert).
+strtoc :: fn (str: string_view) *C.char #inline {
+    assert(str_is_zero_terminated(str));
+    return auto str.ptr;
+}
+
+/// Converts C string into string view. The `len` argument is optional and is used as string length if
+/// it's greater than -1, otherwise the strlen is used.
+///
+/// Empty string view is returned when the input C string is null.
+ctostr :: fn (cstr: *C.char, len : s64 = -1) string_view #inline {
+    if !cstr { return str_view_empty; }
+    if len < 0 { len = auto C.strlen(cstr); }
+    return {:string_view: len, auto cstr };
 }
 
 #private
@@ -576,7 +596,7 @@ set_terminator :: fn (v: string) {
     v.len -= 1;
 };
 
-consume_char :: fn (s: *string) u8 #inline {
+consume_char :: fn (s: *string_view) u8 #inline {
     c :: (@s)[0];
     if s.len > 1 { s.ptr = &(@s)[1]; }
     s.len -= 1;
@@ -606,10 +626,10 @@ shrink_by :: fn (str: *string, c := '\0') {
 }
 
 _char_insert :: fn (str: *string, index: s32, v: u8) bool #inline {
-    return _string_insert(str, index, {:string: 1, &v});
+    return _string_insert(str, index, {:string_view: 1, &v});
 }
 
-_string_insert :: fn (str: *string, index: s32, v: string) bool {
+_string_insert :: fn (str: *string, index: s32, v: string_view) bool {
     if !str { panic("Input string is null!"); }
     if v.len == 0 { return false; }
     if index > str.len { return false; }

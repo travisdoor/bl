@@ -248,7 +248,7 @@ Allocator :: struct {
 }
 
 /// Allocator handle function type.
-AllocFn :: *fn (ctx: *Allocator, operation: AllocOp, size: usize, ptr : *u8 = null, file := std.str_empty, line := 0) *u8;
+AllocFn :: *fn (ctx: *Allocator, operation: AllocOp, size: usize, ptr : *u8 = null, file := std.str_view_empty, line := 0) *u8;
 
 /// Allocate memory directly using specified `allocator`. In case the `allocator` is null, global application
 /// context allocator is used.
@@ -278,7 +278,7 @@ release_memory :: fn (allocator: *Allocator, loc := #call_location) #inline {
 default_allocator :: {:Allocator: &default_allocator_handler };
 
 #private
-default_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, ptr : *u8 = null, _:= std.str_empty, _:= 0) *u8 {
+default_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, ptr : *u8 = null, _:= std.str_view_empty, _:= 0) *u8 {
     switch operation {
         AllocOp.ALLOCATE {
             return C.malloc(size);

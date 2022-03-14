@@ -2428,7 +2428,7 @@ void vm_provide_command_line_arguments(struct virtual_machine *vm, const s32 arg
     }
 
     { // Allocate temp for arguments.
-        struct mir_type *string_type      = vm->assembly->builtin_types.t_string;
+        struct mir_type *string_type      = vm->assembly->builtin_types.t_string_literal;
         const usize      string_size      = string_type->store_size_bytes;
         const usize      total_array_size = string_size * argc;
         args_dest                         = stack_alloc(vm, total_array_size);
@@ -2655,7 +2655,7 @@ void vm_write_string(struct virtual_machine *vm,
 {
     bassert(str && "Invalid string constant!");
     bassert(len >= 0 && "Invalid string constant length.");
-    bassert(type->kind == MIR_TYPE_STRING && "Expected string type!");
+    bassert(type->kind == MIR_TYPE_SLICE && "Expected slice type!");
     vm_write_slice(vm, type, dest, (void *)str, len);
 }
 

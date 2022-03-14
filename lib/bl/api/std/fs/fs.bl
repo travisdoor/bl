@@ -56,7 +56,7 @@ FileOpenMode :: enum #flags {
 /// ```
 ///
 /// **todo*: Mode should be passed as flags in the future.
-file_open :: fn (filepath: string, mode: FileOpenMode = FileOpenMode.READ) (File, Error) #inline {
+file_open :: fn (filepath: string_view, mode: FileOpenMode = FileOpenMode.READ) (File, Error) #inline {
     return _fs_impl.open(filepath, mode);
 }
 
@@ -66,7 +66,7 @@ file_close :: fn (handle: File) #inline {
 }
 
 /// Try to remove file specified by `filepath` and return `OK` on success, otherwise return error.
-file_remove :: fn (filepath: string) Error #inline {
+file_remove :: fn (filepath: string_view) Error #inline {
     return _fs_impl.remove(filepath);
 }
 
@@ -75,7 +75,7 @@ file_remove :: fn (filepath: string) Error #inline {
 ///
 /// **note**: `src` and `dest` path can be relative path to current working path set by 
 /// [set_cwd](#set_cwd).
-file_copy :: fn (src: string, dest: string, override := false) Error #inline {
+file_copy :: fn (src: string_view, dest: string_view, override := false) Error #inline {
     return _fs_impl.copy(src, dest, override);
 }
 
@@ -94,17 +94,17 @@ file_uid :: fn { _fs_impl.get_uid; _fs_impl.get_uid_by_name; }
 
 /// Create new directory and return `OK` on success. This function does not create directories 
 /// recursively.
-dir_create :: fn (dirpath: string) Error #inline {
+dir_create :: fn (dirpath: string_view) Error #inline {
     return _fs_impl.dir_create(dirpath);
 }
 
-dir_create_all :: fn (dirpath: string) Error {
+dir_create_all :: fn (dirpath: string_view) Error {
     if str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Dir path is empty!"); }
     if _fs_impl.exist(dirpath) { return ok(); } 
     nodes :: str_split_by(dirpath, '/');
     defer slice_terminate(&nodes);
     path :: str_new(auto dirpath.len);
-    defer str_delete(path);
+    defer str_delete(&path);
     loop i := 0; i < nodes.len; i += 1 {
         if nodes[i].len == 0 { continue; }
         str_append(&path, nodes[i]);
@@ -117,7 +117,7 @@ dir_create_all :: fn (dirpath: string) Error {
 }
 
 /// Remove directory specified by `dirpath` and return `OK` on success, otherwise return an error.
-dir_remove :: fn (dirpath: string) Error #inline {
+dir_remove :: fn (dirpath: string_view) Error #inline {
     return _fs_impl.dir_remove(dirpath);
 }
 
@@ -138,7 +138,7 @@ InfoList :: []Info;
 /// Release allocated file system entry info list.
 info_list_delete :: fn (list: InfoList) #inline {
     loop i := 0; i < list.len; i += 1 {
-        str_delete(list[i].name);
+        str_delete(&list[i].name);
     }
     slice_terminate(&list);
 }
@@ -149,11 +149,11 @@ info_list_delete :: fn (list: InfoList) #inline {
 ///
 /// **note**: This function recursively remove all nested folders and files in specified sub tree 
 /// so it can be expensive.
-dir_remove_all :: fn (dirpath: string, remove_root := true, filter: DirScanFilterFn = &_default_file_filter) Error {
+dir_remove_all :: fn (dirpath: string_view, remove_root := true, filter: DirScanFilterFn = &_default_file_filter) Error {
     if str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Dir path is empty!"); }
     if !filter { return error(ERR_INVALID_HANDLE, "Invalid list filter!"); }
-    tmp :: str_new( dirpath.len);
-    defer str_delete(tmp);
+    tmp :: str_new();
+    defer str_delete(&tmp);
     list, err :: _fs_impl.dir_scan(dirpath, filter);
     if !is_ok(err) { return err; }
     defer info_list_delete(list);
@@ -186,7 +186,7 @@ DirScanFilterFn :: *fn(info: *Info) bool;
 /// Optional `filter` funtion [DirScanFilterFn](#dirscanfilterfn) can be used to filter scan results
 /// directly during scanning, it's called for every found entry and only those for whose filter yields 
 /// true are added into the output list.
-dir_scan :: fn (dirpath: string, filter: DirScanFilterFn = &_default_file_filter) (InfoList, Error) #inline {
+dir_scan :: fn (dirpath: string_view, filter: DirScanFilterFn = &_default_file_filter) (InfoList, Error) #inline {
     return _fs_impl.dir_scan(dirpath, filter);
 }
 
@@ -230,7 +230,7 @@ DirCopyOpt :: struct {
 /// ```
 ///
 /// @INCOIMPLETE Is using current dir + better descriptions.
-dir_copy :: fn (src: string, dest: string, opt: *DirCopyOpt = &DIR_COPY_OPT_DEFAULT, filter: DirScanFilterFn = &_default_file_filter) (s64, Error) {
+dir_copy :: fn (src: string_view, dest: string_view, opt: *DirCopyOpt = &DIR_COPY_OPT_DEFAULT, filter: DirScanFilterFn = &_default_file_filter) (s64, Error) {
     cc: s64;
     if !opt                   { return 0, error(ERR_INVALID_HANDLE, "Invalid copy options!"); }
     if str_is_empty(src)  { return 0, error(ERR_INVALID_HANDLE, "Source path is empty!"); }
@@ -251,8 +251,8 @@ dir_copy :: fn (src: string, dest: string, opt: *DirCopyOpt = &DIR_COPY_OPT_DEFA
 
     dest_path :: str_new(128);
     src_path :: str_new(128);
-    defer str_delete(dest_path);
-    defer str_delete(src_path);
+    defer str_delete(&dest_path);
+    defer str_delete(&src_path);
     str_clear_concat(&dest_path, dest, "/", src); 
     if _fs_impl.exist(dest_path) { return 0, error("Destination directory '%' already exist!", dest_path); }
     list, list_err :: _fs_impl.dir_scan(src, filter);
@@ -284,7 +284,7 @@ dir_copy :: fn (src: string, dest: string, opt: *DirCopyOpt = &DIR_COPY_OPT_DEFA
 
 /// Check whether `path` points to valid directory and return true with `OK` state, otherwise return 
 /// `false` and error.
-is_directory :: fn (path: string) (bool, Error) #inline {
+is_directory :: fn (path: string_view) (bool, Error) #inline {
     return _fs_impl.is_directory(path);
 }
 
@@ -293,12 +293,12 @@ is_directory :: fn (path: string) (bool, Error) #inline {
 // =================================================================================================
 
 /// Checks whether `name` is valid file name on current platform.
-validate_filename :: fn (name: string) bool #inline {
+validate_filename :: fn (name: string_view) bool #inline {
     return _fs_impl.validate_filename(name);
 }
 
 /// Check whether file or directory exists.
-path_exist :: fn (filepath: string) bool #inline {
+path_exist :: fn (filepath: string_view) bool #inline {
     return _fs_impl.exist(filepath);
 }
 
@@ -328,10 +328,10 @@ path_normalize :: fn (filepath: *string) Error #inline {
 /// freed.
 ///
 /// **note**: Returned components may not be zero terminated.
-path_split :: fn (filepath: string) (head: string, tail: string) {
+path_split :: fn (filepath: string_view) (head: string_view, tail: string_view) {
     if str_is_empty(filepath) { return str_empty, str_empty; }
 
-    head, tail: string;
+    head, tail: string_view;
     if !str_split_by_last(filepath, '/', &head, &tail) {
         tail = head;
         head= str_empty;
@@ -358,9 +358,9 @@ path_split :: fn (filepath: string) (head: string, tail: string) {
 /// freed.
 ///
 /// **note**: Returned components may not be zero terminated.
-path_splitext :: fn (filepath: string) (head: string, ext: string) {
+path_splitext :: fn (filepath: string_view) (head: string_view, ext: string_view) {
     if str_is_empty(filepath) { return str_empty, str_empty; }
-    head, ext: string;
+    head, ext: string_view;
     index: s32;
     if str_split_by_last(filepath, '.', &head, &ext, &index) {
         ext.ptr = &filepath[index];
@@ -376,7 +376,7 @@ get_cwd :: fn () string #inline {
 }
 
 /// Sets current working directory and return `OK` on success, otherwise return error.
-set_cwd :: fn (path: string) Error #inline {
+set_cwd :: fn (path: string_view) Error #inline {
     return _fs_impl.set_cwd(path);
 }
 

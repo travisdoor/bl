@@ -86,7 +86,7 @@ test_ceil :: fn () #test {
 
 benchmark_sin_llvm :: fn () #test {
     loop i := 0; i < 1000000; i += 1 {
-        std.sin(auto i);
+        std.sin(cast(f32) i);
     }
 }
 
@@ -94,7 +94,7 @@ benchmark_sin_libc :: fn () #test {
     c_sin  :: fn (v: f64) f64 #extern "sin";
 
     loop i := 0; i < 1000000; i += 1 {
-        c_sin(auto i);
+        c_sin(cast(f64) i);
     }
 }
 

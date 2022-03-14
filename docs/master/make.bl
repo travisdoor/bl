@@ -19,7 +19,7 @@ PANDOC ::
     "--standalone "
     "-o \"%\"";
 
-IGNORE :: {:[3]string:
+IGNORE :: {:[3]string_view:
            "sdl2",
            "glfw3",
            "gl",
@@ -29,7 +29,7 @@ blc_ver :: fn () string #inline {
     return tprint("%.%.%", BLC_VER_MAJOR, BLC_VER_MINOR, BLC_VER_PATCH);
 }
 
-cmd :: fn (fmt: string, args: ...) Error {
+cmd :: fn (fmt: string_view, args: ...) Error {
     c :: tprint(fmt, args);
     state :: os_execute(c);
     if state != 0 {
@@ -51,7 +51,7 @@ html :: fn () Error {
 
     list, e5 :: list_files(TMP_DIR, "md");
     if !is_ok(e4) { return e5; }
-    defer std.str_delete(list);
+    defer std.str_delete(&list);
     return cmd(PANDOC, list, ver, "api.html");
 }
 
@@ -75,7 +75,7 @@ cleanup :: fn () Error {
     return ok();
 }
 
-process_dir :: fn (path: string, extension: string, out: *string) Error {
+process_dir :: fn (path: string_view, extension: string_view, out: *string) Error {
     list, err :: std.dir_scan(path, &fn (info: *std.Info) bool {
         if std.str_is_empty(info.name)        { return false; }
         if std.str_match(info.name, ".")    { return false; }
@@ -95,7 +95,7 @@ process_dir :: fn (path: string, extension: string, out: *string) Error {
         info :: &list[i];
         switch info.kind {
             std.InfoKind.FILE {
-                file, ext: string;
+                file, ext: string_view;
                 std.str_split_by_first(info.name, '.', &file, &ext);
                 if std.str_match(ext, extension) { 
                     std.str_append(out, path);
@@ -114,12 +114,12 @@ process_dir :: fn (path: string, extension: string, out: *string) Error {
     return ok();
 }
 
-list_files :: fn (dir: string, extension := "bl") (string, Error) {
+list_files :: fn (dir: string_view, extension := "bl") (string, Error) {
     list :: std.str_new(128);
     err :: process_dir(dir, extension, &list);
     if !is_ok(err) { 
-        std.str_delete(list);
-        return "", err;
+        std.str_delete(&list);
+        return list, err;
     }
     return list, err;
 }
@@ -128,7 +128,7 @@ docs_dir :: fn () Error {
     print("Process '%'\n", SRC_API_DIR);
     files, err_list :: list_files(SRC_API_DIR);
     if !is_ok(err_list) { return err_list; }
-    defer std.str_delete(files);
+    defer std.str_delete(&files);
     if std.str_is_empty(files) { return ok(); }
     err_cmd :: cmd("blc -doc --doc-out-dir=\"%\" %", TMP_DIR, files);
     if !is_ok(err_cmd) { return err_cmd; }

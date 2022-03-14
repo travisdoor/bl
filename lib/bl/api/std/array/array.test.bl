@@ -29,7 +29,7 @@ test_basic_inserting_bool :: fn () #test {
 }
 
 test_basic_inserting_string :: fn () #test {
-    arr: [..]string;
+    arr: [..]string_view;
     defer array_terminate(&arr);
     loop i := 0; i < 1000; i += 1 {
         array_push(&arr, "Hello!!!");
@@ -90,7 +90,7 @@ test_cast_to_slice :: fn () #test {
         }
     };
 
-    bar :: fn () []*s32 {
+    bar :: fn () []*s32 #maybe_unused {
         arr: [..]*s32;
         return arr;
     };
@@ -124,7 +124,7 @@ free_count := 0;
 
 test_allocator :: {:Allocator: &test_allocator_handler };
 
-test_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, ptr : *u8 = null, file := std.str_empty, line := 0) *u8 {
+test_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, ptr : *u8 = null, _ := std.str_view_empty, _ := 0) *u8 {
     switch operation {
         AllocOp.ALLOCATE {
             alloc_count += 1;

@@ -47,7 +47,7 @@ read :: fn (handle: std.File, dest: *u8, size: s64) (s64, Error) #inline {
 ///         panic("Cannot read file with error: '%'!", read_err);
 ///     }
 ///     // Delete content string at the end of scope.
-///     defer std.str_delete(content);
+///     defer std.str_delete(&content);
 /// 
 ///     // Print file content to stdout.
 ///     print("%\n", content);
@@ -63,7 +63,7 @@ read_string :: fn (handle: std.File) (string, Error) {
     buf := std.str_new(cast(s64) size);
     read, err2 :: _io_impl.read(handle, buf.ptr, auto size - 1);
     if !is_ok(err2) {
-        std.str_delete(buf);
+        std.str_delete(&buf);
         return std.str_empty, err2;                
     }
     buf.len = auto read + 1;
@@ -75,13 +75,13 @@ read_string :: fn (handle: std.File) (string, Error) {
 /// Read whole file content into slice array. Return new slice instance containting file data and 
 /// `OK` status on success, otherwise return empty slice and error. Returned slice is expected to 
 /// be released by :ref:`slice_terminate` call if there was no error reported by function.
-read_slice :: fn (handle: std.File) ([]u8, Error) {
-    invalid: []u8;
+read_slice :: fn (handle: std.File) (string_view, Error) {
+    invalid: string_view;
     size, err :: std.file_size(handle);
     if !is_ok(err) {
         return invalid, err;
     }
-    buf: []u8;
+    buf: string_view;
     if size == 0 { return buf, ok(); }
     slice_init(&buf, auto size);
     read, err2 :: _io_impl.read(handle, buf.ptr, auto size);
@@ -102,7 +102,7 @@ write :: fn (handle: std.File, src: *u8, size: s64) (s64, Error) #inline {
 
 /// Write content of `str` into the file, return count of written bytes and `OK` if there is no 
 /// error, otherwise return 0 and error.
-write_string :: fn (handle: std.File, str: string) (s64, Error) #inline {
+write_string :: fn (handle: std.File, str: string_view) (s64, Error) #inline {
     written_bytes, err :: _io_impl.write(handle, str.ptr, str.len);
     if !is_ok(err) { return 0, err; }
     return auto written_bytes, ok();    
@@ -110,7 +110,7 @@ write_string :: fn (handle: std.File, str: string) (s64, Error) #inline {
 
 // @INCOMPLETE
 write_fmt :: fn {
-    fn (buf_size: s32, handle: std.File, fmt: string, args: ...) (s64, Error) #inline {
+    fn (buf_size: s32, handle: std.File, fmt: string_view, args: ...) (s64, Error) #inline {
         if buf_size <= 0 { return 0, ok(); }
         buf: []u8;
         buf.ptr = alloc(sizeof(u8) * auto buf_size);
@@ -119,7 +119,7 @@ write_fmt :: fn {
         len :: bprint(buf, fmt, args);
         return write_slice(handle, buf, len);
     };
-    fn (handle: std.File, fmt: string, args: ...) (s64, Error) #inline {
+    fn (handle: std.File, fmt: string_view, args: ...) (s64, Error) #inline {
         buf: [1024]u8 #noinit;
         len :: bprint(buf, fmt, args);
         return write_slice(handle, buf, len);
@@ -131,7 +131,7 @@ write_fmt :: fn {
 /// to be written, negative value means whole content. When passed count is greater than `v.len`, 
 /// count value is set to `v.len`.
 /// Does nothing in case the `v.len == 0` (slice is empty) and return 0 and ok.
-write_slice :: fn (handle: std.File, v: []u8, count : s64 = -1) (s64, Error) #inline {
+write_slice :: fn (handle: std.File, v: string_view, count : s64 = -1) (s64, Error) #inline {
     if count < 0 { count = v.len; } 
     if count > v.len { count = v.len; }
     if v.len == 0 { return 0, ok(); }

@@ -24,7 +24,7 @@ main :: fn () s32 {
         "-c", 
         "--count", 
         "Run count.",
-        &fn (_: std.ArgParser, in_args: []string, ctx: *std.ArgParserCtx) (s32, Error) {
+        &fn (_: std.ArgParser, in_args: []string_view, ctx: *std.ArgParserCtx) (s32, Error) {
             a: *Args = auto ctx;
             if in_args.len < 2 { return 0, error("Expected run count as number."); }
             a.rc = auto std.str_to_s64(in_args[1]);

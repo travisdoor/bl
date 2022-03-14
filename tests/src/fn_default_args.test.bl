@@ -104,7 +104,7 @@ default_args_fn_explicit_type :: fn () #test {
 }
 
 default_args_call_side_location :: fn () #test {
-    foo :: fn (expected_file: string, expected_line: s32, loc: *CodeLocation = #call_location) {
+    foo :: fn (expected_file: string_view, expected_line: s32, loc: *CodeLocation = #call_location) {
         test_eq(loc.file, expected_file);
         test_eq(loc.line, expected_line);
     };

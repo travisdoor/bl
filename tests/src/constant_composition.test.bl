@@ -1,7 +1,7 @@
 #private
 Data :: struct {
     i: s32;
-    j: string;
+    j: string_view;
 }
 
 G1 :: {:[2]s32: 999, G2};

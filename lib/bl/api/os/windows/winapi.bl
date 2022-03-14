@@ -43,8 +43,8 @@ CP_UTF8 : u32 : 65001;
 WCHAR        :: *C.ushort;
 LPWSTR       :: *C.ushort;
 LPCWSTR      :: *C.ushort;
-LPCSTR       :: *C.ushort;
-LPSTR        :: *C.uchar;
+LPCSTR       :: *C.char;
+LPSTR        :: *C.char;
 LPCTSTR      :: *C.uchar;
 HLOCAL       :: *C.uchar;
 UINT         :: C.uint;
@@ -366,10 +366,7 @@ CommandLineToArgvW  :: fn (lpCmdLine: LPCWSTR, pNumArgs: *s32) *LPWSTR #extern "
 LocalFree           :: fn (hMem: HLOCAL) HLOCAL #extern "LocalFree";
 Sleep               :: fn (dwMilliseconds: DWORD) #extern "Sleep";
 SleepEx             :: fn (dwMilliseconds: DWORD, bAlertable: BOOL) DWORD #extern "SleepEx";
-GetFullPathNameA    :: fn (lpFileName: LPCSTR,
-                                 nBufferLength: DWORD,
-                                 lpBuffer: LPSTR,
-                                 lpFilePart: *LPSTR) DWORD #extern "GetFullPathNameA";
+GetFullPathNameA    :: fn (lpFileName: LPCSTR, nBufferLength: DWORD, lpBuffer: LPSTR, lpFilePart: *LPSTR) DWORD #extern "GetFullPathNameA";
 PathFileExistsA     :: fn (pszPath: LPCSTR) BOOL #extern "PathFileExistsA";
 LoadLibraryA        :: fn (lpLibFileName: LPCSTR) HMODULE #extern "LoadLibraryA";
 FreeLibrary         :: fn (hLibModule: HMODULE) BOOL #extern "FreeLibrary";
@@ -430,7 +427,7 @@ SetCurrentDirectoryA :: fn (lpPathName: LPSTR) BOOL #extern "SetCurrentDirectory
 GetFileSizeEx :: fn (hFile: HANDLE, lpFileSize: PLARGE_INTEGER) BOOL #extern "GetFileSizeEx";
 ReadFile :: fn (hFile: HANDLE, lpBuffer: LPVOID, nNumberOfBytesToRead: DWORD, lpNumberOfBytesRead: LPDWORD, lpOverlapped: LPOVERLAPPED) BOOL #extern "ReadFile";
 WriteFile :: fn (hFile: HANDLE, lpBuffer: LPVOID, nNumberOfBytesToWrite: DWORD, lpNumberOfBytesWritten: LPDWORD, lpOverlapped: LPOVERLAPPED) BOOL #extern "WriteFile";
-CopyFileA :: fn (lpExistingFileName: LPCTSTR, lpNewFileName: LPCTSTR, bFailIfExists: BOOL) BOOL #extern "CopyFileA";
+CopyFileA :: fn (lpExistingFileName: LPCSTR, lpNewFileName: LPCSTR, bFailIfExists: BOOL) BOOL #extern "CopyFileA";
 SetEndOfFile :: fn (hFile: HANDLE) BOOL #extern "SetEndOfFile";
 SetFilePointer :: fn (hFile: HANDLE, lDistanceToMove: LONG, lpDistanceToMoveHigh: PLONG, dwMoveMethod: DWORD) DWORD #extern "SetFilePointer";
 InitializeCriticalSection :: fn (lpCriticalSection: LPCRITICAL_SECTION) #extern "InitializeCriticalSection";

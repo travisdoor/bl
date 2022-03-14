@@ -211,23 +211,23 @@ AssertMode :: enum s32 {
 ///     compile(exe);
 /// }
 /// ```
-add_executable :: fn (name: string) *Target {
+add_executable :: fn (name: string_view) *Target {
     if name.len == 0 { panic("Invalid executable name!"); }
-    return __add_target(auto name.ptr, cast(s32) TargetKind.EXECUTABLE);
+    return __add_target(std.strtoc(name), cast(s32) TargetKind.EXECUTABLE);
 }
 
 /// Add new shared library target target into the current compilation queue.
-add_library :: fn (name: string) *Target {
+add_library :: fn (name: string_view) *Target {
     if name.len == 0 { panic("Invalid library name!"); }
-    return __add_target(auto name.ptr, cast(s32) TargetKind.SHARED_LIBRARY);
+    return __add_target(std.strtoc(name), cast(s32) TargetKind.SHARED_LIBRARY);
 }
 
 /// Add new source file into the `target`. Function does nothing when `filepath` is already present 
 /// in the `target` assembly.
-add_unit :: fn (target: *Target, filepath: string) {
+add_unit :: fn (target: *Target, filepath: string_view) {
     if !target { panic("Invalid target!"); }
     if filepath.len == 0 { panic("Invalid unit path!"); }
-    __add_unit(target, auto filepath.ptr);
+    __add_unit(target, std.strtoc(filepath));
 }
 
 /// Start compilation of the `target` assembly and return `ok` or `error` in case compilation failed.
@@ -246,11 +246,11 @@ compile_all :: fn () Error {
 }
 
 /// Add path for linker library lookup.
-add_lib_path :: fn (target: *Target, path: string) {
+add_lib_path :: fn (target: *Target, path: string_view) {
     if !target { panic("Invalid target!"); }
     if path.len == 0 { panic("Invalid library path!"); }
 
-    __add_lib_path(target, auto path.ptr);
+    __add_lib_path(target, std.strtoc(path));
 }
 
 /// Add system library. Only name is required (without extension and prefix). Compiler will lookup 
@@ -286,19 +286,19 @@ add_lib_path :: fn (target: *Target, path: string) {
 ///     link_library(exe, "png");
 /// }
 /// ```
-link_library :: fn (target: *Target, name: string) {
+link_library :: fn (target: *Target, name: string_view) {
     if !target { panic("Invalid target!"); }
     if name.len == 0 { panic("Invalid library name!"); }
 
-    __link_library(target, auto name.ptr);
+    __link_library(target, std.strtoc(name));
 }
 
 /// Appends raw string data directly to linker command. Passed option is added without any 
 /// processing and compatibility validation. 
-append_linker_options :: fn (target: *Target, option: string) {
+append_linker_options :: fn (target: *Target, option: string_view) {
     if !target { panic("Invalid target!"); }
     if option.len == 0 { return; }
-    __append_linker_options(target, auto option.ptr);
+    __append_linker_options(target, std.strtoc(option));
 }
 
 /// Set build output directory. This is directory where all output files will be written. For 
@@ -308,18 +308,18 @@ append_linker_options :: fn (target: *Target, option: string) {
 /// create all missing directories in passed path.
 ///
 /// Specified directory will be used also for build temporary files.
-set_output_dir :: fn (target: *Target, dir: string) {
+set_output_dir :: fn (target: *Target, dir: string_view) {
     if !target { panic("Invalid target!"); }
     if std.str_is_empty(dir) { return; }
-    __set_output_dir(target, auto dir.ptr);
+    __set_output_dir(target, std.strtoc(dir));
 }
 
 /// Get output directory specified by [set_output_dir](#set_output_dir) or empty string.
-get_output_dir :: fn (target: *Target) string {
+get_output_dir :: fn (target: *Target) string_view {
     if !target { panic("Invalid target!"); }
     cdir :: __get_output_dir(target);    
-    if !cdir { return std.str_empty; }
-    return cstr_to_str(auto cdir);
+    if !cdir { return std.str_view_empty; }
+    return std.ctostr(cdir);
 }
 
 /// Specify import module policy in [set_module_dir](#set_module_dir) function call. Module 
@@ -346,18 +346,18 @@ ModuleImportPolicy :: enum s32 {
 /// Sets module directory `dir` for `target`. All imported modules will be copied into this 
 /// directory according to chosen [ModuleImportPolicy](#moduleimportpolicy). Module policy is set 
 /// to `SYSTEM` by default even if this function has not been called.
-set_module_dir :: fn (target: *Target, dir: string, policy := ModuleImportPolicy.SYSTEM) {
+set_module_dir :: fn (target: *Target, dir: string_view, policy := ModuleImportPolicy.SYSTEM) {
     if !target { panic("Invalid target!"); }
     if std.str_is_empty(dir) { return; }
-    __set_module_dir(target, auto dir.ptr, auto policy);
+    __set_module_dir(target, std.strtoc(dir), auto policy);
 }
 
 /// Get module directory specified by [set_module_dir](#set_module_dir) or default one.
-get_module_dir :: fn (target: *Target) string {
+get_module_dir :: fn (target: *Target) string_view {
     if !target { panic("Invalid target!"); }
     cdir :: __get_module_dir(target);    
-    if !cdir { return std.str_empty; }
-    return cstr_to_str(auto cdir);
+    if !cdir { return std.str_view_empty; }
+    return std.ctostr(cdir);
 }
 
 /// Get module import policy specified by [set_module_dir](#set_module_dir) or default one.
@@ -367,15 +367,15 @@ get_module_import_policy :: fn (target: *Target) ModuleImportPolicy {
 }
 
 #private
-__add_target :: fn (name: *u8, kind: s32) *Target #extern;
-__add_unit :: fn (target: *Target, filepath: *u8) #extern;
+__add_target :: fn (name: *C.char, kind: s32) *Target #extern;
+__add_unit :: fn (target: *Target, filepath: *C.char) #extern;
 __compile :: fn (target: *Target) s32 #extern;
 __compile_all :: fn () s32 #extern;
-__add_lib_path :: fn (target: *Target, path: *u8) #extern;
-__link_library :: fn (target: *Target, name: *u8) #extern;
-__append_linker_options :: fn (target: *Target, option: *u8) #extern;
-__set_output_dir :: fn (target: *Target, dir: *u8) #extern;
-__get_output_dir :: fn (target: *Target) *u8 #extern;
-__set_module_dir :: fn (target: *Target, dir: *u8, policy: s32) #extern;
-__get_module_dir :: fn (target: *Target) *u8 #extern;
+__add_lib_path :: fn (target: *Target, path: *C.char) #extern;
+__link_library :: fn (target: *Target, name: *C.char) #extern;
+__append_linker_options :: fn (target: *Target, option: *C.char) #extern;
+__set_output_dir :: fn (target: *Target, dir: *C.char) #extern;
+__get_output_dir :: fn (target: *Target) *C.char #extern;
+__set_module_dir :: fn (target: *Target, dir: *C.char, policy: s32) #extern;
+__get_module_dir :: fn (target: *Target) *C.char #extern;
 __get_module_import_policy :: fn (target: *Target) s32 #extern;

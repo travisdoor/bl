@@ -68,7 +68,7 @@ PRINT_MAX_LENGTH :: 4096;
 ///     return 0;
 /// }
 /// ```
-print :: fn (format: string, args: ...) s32 {
+print :: fn (format: string_view, args: ...) s32 {
     buf: [PRINT_MAX_LENGTH]u8 #noinit;
     w := _print_impl(buf, format, args);
     __os_write(OS_STDOUT, buf.ptr, auto w);
@@ -77,7 +77,7 @@ print :: fn (format: string, args: ...) s32 {
 
 /// Write string to the error output (stderr).
 /// See also [print](#print).
-eprint :: fn (format: string, args: ...) s32 {
+eprint :: fn (format: string_view, args: ...) s32 {
     buf: [PRINT_MAX_LENGTH]u8 #noinit;
     w := _print_impl(buf, format, args);
     __os_write(OS_STDERR, buf.ptr, auto w);
@@ -93,7 +93,7 @@ eprint :: fn (format: string, args: ...) s32 {
 /// **note**: String written into the buffer is always zero terminated.
 /// 
 /// See also [print](#print).
-bprint :: fn (buf: []u8, format: string, args: ...) s32 {
+bprint :: fn (buf: []u8, format: string_view, args: ...) s32 {
     w :: _print_impl(buf, format, args);
     if buf.len > 0 {
         assert(w < buf.len);
@@ -109,7 +109,7 @@ bprint :: fn (buf: []u8, format: string, args: ...) s32 {
 /// **note**: Created string is always zero terminated.
 ///
 /// See also [print](#print).
-tprint :: fn (format: string, args: ...) string #inline {
+tprint :: fn (format: string_view, args: ...) string #inline {
     buf := std.str_new(format.len, &std.tmp_allocator);
     _print_impl(&buf, format, args);
     return buf;
@@ -122,7 +122,7 @@ tprint :: fn (format: string, args: ...) string #inline {
 /// **note**: Created string is always zero terminated.
 ///
 /// See also [print](#print).
-sprint :: fn (format: string, args: ...) string {
+sprint :: fn (format: string_view, args: ...) string {
     buf := std.str_new(format.len);
     _print_impl(&buf, format, args);    
     return buf;
@@ -201,11 +201,11 @@ fmt_char :: fn (v: u8) FmtChar #inline {
 }
 
 _print_impl :: fn {
-    fn (buf: []u8, format: string, args: []Any, cur := 0) s32 {
+    fn (buf: []u8, format: string_view, args: []Any, cur := 0) s32 {
         if cur >= buf.len { return cur; }
         return __print_impl(&buf, format, args, cur);
     };
-    fn (buf: *string, format: string, args: []Any, cur := 0) s32 {
+    fn (buf: *string, format: string_view, args: []Any, cur := 0) s32 {
         return __print_impl(buf, format, args, cur);
     };
 }
@@ -213,7 +213,7 @@ _print_impl :: fn {
 #private
 DEFAULT_REAL_TRAILING :: 6;
 
-__print_impl :: fn (buf: *?T, format: string, args: []Any, cur: s32) s32 {
+__print_impl :: fn (buf: *?T, format: string_view, args: []Any, cur: s32) s32 {
     argi := 0;
     loop i := 0; i < format.len; i += 1 {
         c := format[i];
@@ -226,7 +226,7 @@ __print_impl :: fn (buf: *?T, format: string, args: []Any, cur: s32) s32 {
                 cur = print_string(buf, cur, "(null)");
             }
         } else {
-            cur = print_string(buf, cur, {:string: 1, &c});
+            cur = print_string(buf, cur, {:string_view: 1, &c});
         }
     }
     return cur;
@@ -260,8 +260,8 @@ print_any :: fn (buf: *?T, cur: s32, any: *Any) s32 {
             real = -real;
         }
         return print_f64(buf, cur, real, -1);
-    } else if any.type_info.kind == TypeKind.STRING {
-        str := @ cast(*string) any.data;
+    } else if any.type_info.kind == TypeKind.STRING || any.type_info == typeinfo(string_view) {
+        str := @ cast(*string_view) any.data; // String can be directly casted to slice.
         return print_string(buf, cur, str);
     } else if any.type_info.kind == TypeKind.ARRAY {
         info := cast(*TypeInfoArray) any.type_info;
@@ -308,57 +308,59 @@ print_any :: fn (buf: *?T, cur: s32, any: *Any) s32 {
         } else if any.type_info == typeinfo(FmtChar) {
             fmt :: cast(*FmtChar) any.data;
             char := cast(u8) u64_from_u8_ptr(&fmt.v, auto sizeof(u8) * 8);
-            return print_string(buf, cur, {:string: 1, &char});
+            return print_string(buf, cur, {:string_view: 1, &char});
         }
         
         info := cast(*TypeInfoStruct) any.type_info;
         tmp : Any;
-        if (!info.is_slice) && (!info.is_dynamic_array) {
-            cur = print_string(buf, cur, info.name);
-            cur = print_string(buf, cur, " {");
-            loop i := 0; i < info.members.len; i += 1 {
-                member := info.members[i];
-                cur = print_string(buf, cur, member.name);
-                cur = print_string(buf, cur, " = ");
-                tmp.data = cast(*u8) (cast(usize) any.data + auto member.offset_bytes);
-                tmp.type_info = member.base_type;
-                cur = print_any(buf, cur, &tmp);
+        
+        if info.is_slice || info.is_dynamic_array {
+            // Slices and dynamic arrays are printed as arrays.
+            len := u64_from_u8_ptr(cast(*u8) (cast(usize) any.data + auto info.members[0].offset_bytes), 64);
+            ptr := ptr_from_ptr(cast(*u8) (cast(usize) any.data + auto info.members[1].offset_bytes));
 
-                if i < info.members.len - 1 {
-                    cur = print_string(buf, cur, ", ");
+            if len == 0 {
+                return print_string(buf, cur, "[]");
+            }
+
+            if ptr == null {
+                return print_string(buf, cur, "[<null>]");
+            }
+
+            cur = print_string(buf, cur, "[");
+            elem_type := (cast(*TypeInfoPtr)info.members[1].base_type).pointee_type;
+            elem_size := elem_type.size_bytes;
+            tmp.type_info = elem_type;
+
+            if elem_size > 0 {
+                loop i : usize = 0; i < len; i += 1 {
+                    tmp.data = cast(*u8) (cast(usize) ptr + i * elem_size);
+                    cur = print_any(buf, cur, &tmp);
+
+                    if i < len - 1 {
+                        cur = print_string(buf, cur, ", ");
+                    }
                 }
             }
-            return print_string(buf, cur, "}");
+            return print_string(buf, cur, "]");
+            
         }
+        // Regular struct printing all members.        
+        cur = print_string(buf, cur, info.name);
+        cur = print_string(buf, cur, " {");
+        loop i := 0; i < info.members.len; i += 1 {
+            member := info.members[i];
+            cur = print_string(buf, cur, member.name);
+            cur = print_string(buf, cur, " = ");
+            tmp.data = cast(*u8) (cast(usize) any.data + auto member.offset_bytes);
+            tmp.type_info = member.base_type;
+            cur = print_any(buf, cur, &tmp);
 
-        // we are printing slice
-        len := u64_from_u8_ptr(cast(*u8) (cast(usize) any.data + auto info.members[0].offset_bytes), 64);
-        ptr := ptr_from_ptr(cast(*u8) (cast(usize) any.data + auto info.members[1].offset_bytes));
-
-        if len == 0 {
-            return print_string(buf, cur, "[]");
-        }
-
-        if ptr == null {
-            return print_string(buf, cur, "[<null>]");
-        }
-
-        cur = print_string(buf, cur, "[");
-        elem_type := (cast(*TypeInfoPtr)info.members[1].base_type).pointee_type;
-        elem_size := elem_type.size_bytes;
-        tmp.type_info = elem_type;
-
-        if elem_size > 0 {
-            loop i : usize = 0; i < len; i += 1 {
-                tmp.data = cast(*u8) (cast(usize) ptr + i * elem_size);
-                cur = print_any(buf, cur, &tmp);
-
-                if i < len - 1 {
-                    cur = print_string(buf, cur, ", ");
-                }
+            if i < info.members.len - 1 {
+                cur = print_string(buf, cur, ", ");
             }
         }
-        return print_string(buf, cur, "]");
+        return print_string(buf, cur, "}");
 
     } else if any.type_info.kind == TypeKind.PTR {
         if any.type_info == typeinfo(Error) {
@@ -525,13 +527,13 @@ print_type :: fn (buf: *?T, cur: s32, info: *TypeInfo) s32 {
 };
 
 print_string :: fn {
-    fn (buf: *[]u8, cur: s32, str: string) s32 {
+    fn (buf: *[]u8, cur: s32, str: string_view) s32 {
         if str.ptr == null { return cur; }
         written :: cast(s32) std.min(buf.len-cur-1, str.len);
         memcpy(ptr_shift_bytes(buf.ptr, cur), str.ptr, auto written);
         return cur + written;
     };
-    fn (buf: *string, cur: s32, str: string) s32 {
+    fn (buf: *string, cur: s32, str: string_view) s32 {
         if str.ptr == null { return cur; }
         return cur + std._str_append_str(buf, str);
     };
@@ -558,7 +560,7 @@ print_u64 :: fn (buf: *?T, cur: s32, v: u64, base: FmtIntBase, digits: s32, prin
     prev_cur :: cur;
     loop v > 0 {
         d :: v % b;
-        cur = print_string(buf, cur, {:string: 1, &tbl[auto d]});
+        cur = print_string(buf, cur, {:string_view: 1, &tbl[auto d]});
         v = v / b;
     }
     loop (cur - prev_cur) < digits {

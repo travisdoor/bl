@@ -2,7 +2,7 @@ BIN_DIR :: "../bin";
 
 build :: fn () #build_entry {
     target_bl_make_project();    
-    target_c2bl();
+    //target_c2bl(); // @Incomplete
     target_bench();
     compile_all();
 }
@@ -30,6 +30,6 @@ target_bench :: fn () {
     compile(exe);
 }
 
-warn_skip :: fn (name: string) #inline {
+warn_skip :: fn (name: string_view) #inline {
     print_warn("Skipping target '%' not supported on this platform!", name);
 }

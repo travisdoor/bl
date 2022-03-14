@@ -849,7 +849,7 @@ LLVMValueRef emit_fn_proto(struct context *ctx, struct mir_fn *fn, bool schedule
 
 LLVMValueRef emit_const_string(struct context *ctx, const char *str, usize len)
 {
-    struct mir_type *type     = ctx->builtin_types->t_string;
+    struct mir_type *type     = ctx->builtin_types->t_string_literal;
     LLVMValueRef     llvm_str = NULL;
     if (str) {
         const hash_t hash  = strhash(str);
@@ -2568,12 +2568,20 @@ State emit_instr_const(struct context *ctx, struct mir_instr_const *c)
         llvm_value = LLVMConstNull(llvm_type);
         break;
     }
-    case MIR_TYPE_STRING: {
-        vm_stack_ptr_t len_ptr = vm_get_struct_elem_ptr(ctx->assembly, type, c->base.value.data, 0);
-        vm_stack_ptr_t str_ptr = vm_get_struct_elem_ptr(ctx->assembly, type, c->base.value.data, 1);
-        const s64      len     = vm_read_as(s64, len_ptr);
-        const char    *str     = vm_read_as(const char *, str_ptr);
-        llvm_value             = emit_const_string(ctx, str, (u64)len);
+    case MIR_TYPE_SLICE: {
+        if (type->data.strct.is_string_literal) {
+            vm_stack_ptr_t len_ptr =
+                vm_get_struct_elem_ptr(ctx->assembly, type, c->base.value.data, 0);
+            vm_stack_ptr_t str_ptr =
+                vm_get_struct_elem_ptr(ctx->assembly, type, c->base.value.data, 1);
+            const s64   len = vm_read_as(s64, len_ptr);
+            const char *str = vm_read_as(const char *, str_ptr);
+            llvm_value      = emit_const_string(ctx, str, (u64)len);
+        } else {
+            // Only string literals can be represented as constant for now! Other slices are not
+            // handled.
+            BL_UNIMPLEMENTED;
+        }
         break;
     }
     case MIR_TYPE_FN: {
@@ -3151,5 +3159,6 @@ void ir_run(struct assembly *assembly)
     hmfree(ctx.gstring_cache);
     hmfree(ctx.llvm_fn_cache);
     assembly->stats.llvm_s = runtime_measure_end(llvm);
+
     return_zone();
 }

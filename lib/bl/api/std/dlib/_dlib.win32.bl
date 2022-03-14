@@ -4,9 +4,9 @@
 
 Library :: *u8;
 
-open :: fn (lib_name: string) (Library, Error) {
+open :: fn (lib_name: string_view) (Library, Error) {
     if lib_name.len > 0 {
-        handle :: win32.LoadLibraryA(auto lib_name.ptr); 
+        handle :: win32.LoadLibraryA(std.strtoc(lib_name));
         if !handle {
             ec, emsg :: os_get_last_error();
             return null, error(ec, emsg);
@@ -16,8 +16,8 @@ open :: fn (lib_name: string) (Library, Error) {
     return win32.GetModuleHandleA(null), ok(); 
 }
 
-sym :: fn (lib: Library, sym_name: string) (*u8, Error) {
-    handle :: win32.GetProcAddress(lib, auto sym_name.ptr);
+sym :: fn (lib: Library, sym_name: string_view) (*u8, Error) {
+    handle :: win32.GetProcAddress(lib, std.strtoc(sym_name));
     if !handle {
         ec, emsg :: os_get_last_error();
         return null, error(ec, emsg);

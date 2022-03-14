@@ -53,7 +53,7 @@ vargs_cast_to_slice :: fn () #test {
 }
 
 vargs_multipe_args_before :: fn () #test {
-    foo :: fn (i: s32, s: string, args: ...s32) {
+    foo :: fn (i: s32, s: string_view, args: ...s32) {
         test_eq(i, auto args.len);
         test_eq(s, "hello");
         loop j := 0; j < args.len; j += 1 {

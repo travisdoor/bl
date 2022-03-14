@@ -96,12 +96,12 @@ debug_print_err :: fn () #test {
 }
 
 _expected_kind: PrintLogKind;
-_expected_file: string;
+_expected_file: string_view;
 _expected_line: s32;
-_expected_format: string;
+_expected_format: string_view;
 _expected_argc: s32; 
 
-test_logger :: fn (kind: PrintLogKind, file: string, line: s32, format: string, args: ...) {
+test_logger :: fn (kind: PrintLogKind, file: string_view, line: s32, format: string_view, args: ...) {
     assert(kind == _expected_kind);
     test_eq(file, _expected_file);
     test_eq(line, _expected_line);

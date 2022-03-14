@@ -2,7 +2,7 @@
 
 Basically, every construct in bl follows the same rules of declaration syntax. We define the name of the
 entity, type and optionally some initial value. Name can usually be used to reference the entity
-later in code and type describes the layout of data represented by the entity. It could be a number, 
+later in the code and type describes layout of data represented by the entity. It could be a number, 
 text or more complex types.
 
 Possible declarations:
@@ -15,8 +15,8 @@ Possible declarations:
 
 ```c
 foo: s32;                // integer variable without initial value
-name: string = "Martin"; // string variable
-name: string : "Martin"; // string constant
+name: string_view = "Martin"; // string variable
+name: string_view : "Martin"; // string constant
 ```
 
 When we decide to explicitly specify initial value, data type can be inferred from this value. In
@@ -43,21 +43,21 @@ Comment lines will be ignored by compiler.
 
 Basic types are atomic basic types builtin into BL compiler.
 
-| Name   | Description                   |
-| ------ | ----------------------------- |
-| s8     | Signed 8-bit number.          |
-| s16    | Signed 16-bit number.         |
-| s32    | Signed 32-bit number.         |
-| s64    | Signed 64-bit number.         |
-| u8     | Unsigned 8-bit number.        |
-| u16    | Unsigned 16-bit number.       |
-| u32    | Unsigned 32-bit number.       |
-| u64    | Unsigned 64-bit number.       |
-| usize  | Unsigned 64-bit size.         |
-| bool   | Boolean. (true/false)         |
-| f32    | 32-bit floating point number. |
-| f64    | 64-bit floating point number. |
-| string | String slice.                 |
+| Name        | Description                   |
+|-------------|-------------------------------|
+| s8          | Signed 8-bit number.          |
+| s16         | Signed 16-bit number.         |
+| s32         | Signed 32-bit number.         |
+| s64         | Signed 64-bit number.         |
+| u8          | Unsigned 8-bit number.        |
+| u16         | Unsigned 16-bit number.       |
+| u32         | Unsigned 32-bit number.       |
+| u64         | Unsigned 64-bit number.       |
+| usize       | Unsigned 64-bit size.         |
+| bool        | Boolean. (true/false)         |
+| f32         | 32-bit floating point number. |
+| f64         | 64-bit floating point number. |
+| string_view | String slice.                 |
 
 ## Pointer
 
@@ -111,14 +111,15 @@ array_to_slice :: fn () #test {
 
 ## String
 
-String type in Biscuit is a slice containing a pointer to string data and string length. String literals
-are always zero terminated.
+String type in Biscuit aka `string_view` is slice containing a pointer to string data and string length. String literals
+are always zero terminated. The `string_view` represents a string of fixed length. In case you want dynamically allocated
+string use `string` type and its associated methods. Values of `string` can be implicitly converted to `string_view`.
 
 **Example:**
 
 ```c
 string_type :: fn () #test {
-    msg : string = "Hello world\n";
+    msg : string_view = "Hello world\n";
     msg.len; // character count of the string
     msg.ptr; // pointer to the string content
 };
@@ -163,7 +164,7 @@ Structure can be declared with use of struct keyword.
 ```c
 Person :: struct {
     id: s32;
-    name: string;
+    name: string_view;
     age: s32;
 }
 ```
@@ -234,7 +235,7 @@ Entity :: struct {
 // Player has base type Entity
 Player :: struct #base Entity {
     // base: Entity; is implicitly inserted as first member
-    name: string
+    name: string_view;
 };
 
 Wall :: struct #base Entity {
@@ -289,7 +290,7 @@ associated with some enum providing information about stored type.
 
 ```c
 Token :: union {
-    as_string: string;
+    as_string: string_view;
     as_int: s32;
 }
 
@@ -303,7 +304,7 @@ test_union :: fn () #test {
     token2: Token;
 
     // Token has total size of the biggest member.
-    assert(sizeof(token1 == sizeof(string));
+    assert(sizeof(token1 == sizeof(string_view));
 
     token1.as_string = "This is string";
     consumer(&token, Kind.String);
@@ -371,7 +372,7 @@ type is vargs of Any (\... is the same as \...Any). The print function can take 
 passed in args.
 
 ```c
-print :: fn (format: string, args: ...) {
+print :: fn (format: string_view, args: ...) {
     ...
 };
 ```
@@ -740,13 +741,13 @@ bar :: 10;
 
 ### #scope
 
-Creates new named scope i.e. `#scope String`. Every symbol written after the `scope` tag lives in
+Creates new named scope i.e. `#scope std`. Every symbol written after the `scope` tag lives in
 named scope (aka namespace). This prevents possible symbol collisions and makes local names shorter.
 Named scope cannot be nested in another one and can be specified only once per file unit. Scopes
 with the same name defined in multiple units are merged into one.
 
 To refer to public symbols from the outside of the named scope use the scope name followed by the
-dot operator. (i.e. `String.compare`)
+dot operator. (i.e. `std.compare`)
 
 ### #extern
 
@@ -803,7 +804,7 @@ Fetch current line in source code as s32.
 
 ### #file
 
-Fetch current source file name string.
+Fetch current source file name string_view.
 
 ### #noinit
 
@@ -1280,8 +1281,8 @@ string:
 ```c
 is_equal :: fn { // function group
     // Implementation used for strings only.
-    fn (a: string, b: string) bool {
-        return String.compare(a, b);
+    fn (a: string_view, b: string_view) bool {
+        return std.str_compare(a, b);
     };
 
     // Implementation used for all other types.
@@ -1290,9 +1291,6 @@ is_equal :: fn { // function group
     };
 }
 ```
-
-**note:** Order of function group variants is important in this case, when string specific function
-comes after generic one, compiler will always use the generic implementation.
 
 **note:** Compiler error is reported in case content of the polymorph generated for some type
 specification is not semantically valid. (i.e. we can't compare strings directly by `==` operator)
@@ -1347,7 +1345,7 @@ eventually.
 
 **Example:**
 ```c
-hash_string :: fn (s: string) u32 #comptime {
+hash_string :: fn (s: string_view) u32 #comptime {
     return std.str_hash(s);
 }
 ```

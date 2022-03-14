@@ -18,9 +18,8 @@ struct mir_type *t_string;
 struct mir_type *t_void;
 struct mir_type *t_u8_ptr;
 struct mir_type *t_string_ptr;
-struct mir_type *t_string_slice;
+struct mir_type *t_string_literal;
 struct mir_type *t_resolve_type_fn;
-struct mir_type *t_test_case_fn; // @INCOMPLETE: remove
 struct mir_type *t_Any;
 struct mir_type *t_Any_ptr;
 struct mir_type *t_TypeKind;

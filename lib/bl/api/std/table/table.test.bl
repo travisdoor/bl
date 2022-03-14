@@ -8,7 +8,7 @@ main :: fn () s32 {
 #private
 TEST_COUNT :: 100000;
 
-DATA :: {:[10]string:
+DATA :: {:[10]string_view:
          "Melisa Britt",
          "Theodor Cooper",
          "Laylah Simons",
@@ -203,7 +203,7 @@ test_use_after_erase :: fn () #test {
 test_struct :: fn () #test {
     Elem :: struct {
         a: s32;
-        b: string;
+        b: string_view;
         c: bool;
         d: s32;
     };
@@ -259,7 +259,7 @@ test_iteration_reverse :: fn () #test {
 }
 
 test_string_keys_1 :: fn () #test {
-    tbl: std.Table(string, s32);
+    tbl: std.Table(string_view, s32);
     defer std.tbl_terminate(&tbl);
 
     std.tbl_insert(&tbl, "Martin", 10);
@@ -270,7 +270,7 @@ test_string_keys_1 :: fn () #test {
 }
 
 test_string_keys_2 :: fn () #test {
-    tbl: std.Table(string, s32);
+    tbl: std.Table(string_view, s32);
     defer std.tbl_terminate(&tbl);
 
     loop i := 0; i < DATA.len; i += 1 {

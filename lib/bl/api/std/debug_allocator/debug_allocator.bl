@@ -173,11 +173,11 @@ _break_on: u64;
 Meta :: struct {
     serial: u64;
     allocated_size: usize;
-    file: string;
+    file: string_view;
     line: s32;
 }
 
-handler :: fn (_: *Allocator, operation: AllocOp, size: usize, ptr : *u8 = null, file := std.str_empty, line := 0) *u8 {
+handler :: fn (_: *Allocator, operation: AllocOp, size: usize, ptr : *u8 = null, file := std.str_view_empty, line := 0) *u8 {
     switch operation {
         AllocOp.ALLOCATE {
             return debug_malloc(size, file, line);
@@ -191,7 +191,7 @@ handler :: fn (_: *Allocator, operation: AllocOp, size: usize, ptr : *u8 = null,
     return null;
 }
 
-debug_malloc :: fn (size: usize, file: string, line: s32) *u8 {
+debug_malloc :: fn (size: usize, file: string_view, line: s32) *u8 {
     if size == 0 { panic("Zero allocation!"); }
     mem :: allocate_memory(&default_allocator, size);
 

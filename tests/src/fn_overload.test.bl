@@ -61,7 +61,7 @@ B2 :: fn (i: s32, b := true) {
     test_eq(cast(*u8) invoked, cast(*u8) typeinfo(B2));
 }
 
-C2 :: fn (i: string, b := true) {
+C2 :: fn (i: string_view, b := true) {
     test_eq(cast(*u8) invoked, cast(*u8) typeinfo(C2));
 }
 
@@ -91,16 +91,13 @@ B3 :: fn (i: s32, s: bool, b := true) {
     test_eq(cast(*u8) invoked, cast(*u8) typeinfo(B3));
 }
 
-C3 :: fn (i: string, b := true) {
+C3 :: fn (i: string_view, b := true) {
     test_eq(cast(*u8) invoked, cast(*u8) typeinfo(C3));
 }
 
 fn_overload_invoke3 :: fn () #test {
     invoked = typeinfo(A3);
     group3(10);
-
-    invoked = typeinfo(A3);
-    group3(10, true);
 
     invoked = typeinfo(B3);
     group3(10, true, false);
@@ -121,15 +118,110 @@ inline_group1 :: fn {
         return 2;
     };
 
-    fn (i: string, b := true) s32 {
+    fn (i: string_view, b := true) s32 {
         return 3;
     };
 }
 
 fn_overload_invoke4 :: fn () #test {
     test_eq(inline_group1(10), 1);
-    test_eq(inline_group1(10, true), 1);
     test_eq(inline_group1(10, true, false), 2);
     test_eq(inline_group1("hello", true), 3);
     test_eq(inline_group1("hello"), 3);
+}
+
+inline_group2 :: fn {
+    fn (i: s32) s32 {
+        return 1;
+    };
+
+    fn (i: bool) s32 {
+        return 2;
+    };
+
+    fn () s32 {
+        return 3;
+    };
+
+    fn (str: string_view) s32 {
+        return 4;
+    };
+}
+
+fn_overload_invoke5 :: fn () #test {
+    test_eq(inline_group2(10), 1);
+    test_eq(inline_group2(true), 2);
+    test_eq(inline_group2(), 3);
+    test_eq(inline_group2("hello"), 4);
+
+    str: string;
+    test_eq(inline_group2(str), 4);
+}
+
+inline_group3 :: fn {
+    fn (i: s32) s32 {
+        return 1;
+    };
+
+    fn (i: ...) s32 {
+        return 2;
+    };
+}
+
+fn_overload_invoke6 :: fn () #test {
+    test_eq(inline_group3(10), 1);
+    test_eq(inline_group3(true), 2);
+    test_eq(inline_group3("hello"), 2);
+}
+
+inline_group4 :: fn {
+    fn (i: s32, j: bool) s32 {
+        return 1;
+    };
+
+    fn (i: ...) s32 {
+        return 2;
+    };
+}
+
+fn_overload_invoke7 :: fn () #test {
+    test_eq(inline_group4(10, true), 1);
+    test_eq(inline_group4(true), 2);
+    test_eq(inline_group4("hello"), 2);
+}
+
+inline_group5 :: fn {
+    fn (i: s32, j: bool) s32 {
+        return 1;
+    };
+
+    fn (i: s32, j: ...) s32 {
+        return 2;
+    };
+}
+
+fn_overload_invoke8 :: fn () #test {
+    test_eq(inline_group5(10, true), 1);
+    test_eq(inline_group5(10), 2);
+    test_eq(inline_group5(10, "hello"), 2);
+}
+
+inline_group6 :: fn {
+    fn (i: string_view) s32 {
+        return 1;
+    };
+
+    fn (i: string) s32 {
+        return 2;
+    };
+
+    fn (i: Any) s32 {
+        return 3;
+    };
+}
+
+fn_overload_invoke9 :: fn () #test {
+    test_eq(inline_group6("hello"), 1);
+    str: string;
+    test_eq(inline_group6(str), 2);
 }

@@ -32,7 +32,7 @@
 //! 
 //! ```
 //! _Error :: struct {
-//!     msg: string;
+//!     msg: string_view;
 //!     code: s32;
 //! }
 //! 
@@ -69,7 +69,7 @@
 OK :: 0;
 
 _Error :: struct {
-    msg: string;
+    msg: string_view;
     code: s32;
 }
 
@@ -130,14 +130,14 @@ error1 :: fn (code: s32) Error #inline {
     return error3(code, std.str_empty);
 }
 
-error2 :: fn (format: string, args: ...) Error #inline {
+error2 :: fn (format: string_view, args: ...) Error #inline {
     return error3(ERR_UNKNOWN, format, args);
 }
 
-error3 :: fn (code: s32, format: string, args: ...) Error {
+error3 :: fn (code: s32, format: string_view, args: ...) Error {
     e := &_last_error;
     msg_size :: bprint(_last_error_msg_buffer, format, args);
     e.code = code;
-    e.msg = {:string: msg_size, _last_error_msg_buffer.ptr};
+    e.msg = {:string_view: msg_size, _last_error_msg_buffer.ptr};
     return e;
 }

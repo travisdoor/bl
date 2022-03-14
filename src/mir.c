@@ -27,8 +27,12 @@
 // =================================================================================================
 
 #include "mir.h"
+#include "basic_types.h"
+#include "bldebug.h"
 #include "builder.h"
+#include "common.h"
 #include "stb_ds.h"
+#include <excpt.h>
 #include <stdarg.h>
 
 #ifdef _MSC_VER
@@ -52,6 +56,7 @@
 #define IMPL_CALL_LOC ".call.loc"
 #define IMPL_RET_TMP ".ret"
 #define IMPL_UNROLL_TMP ".unroll"
+#define IMPL_TOSLICE_TMP ".toslice"
 #define NO_REF_COUNTING -1
 #define STORE_REPLACE_SIZE_BYTES 16
 
@@ -326,6 +331,7 @@ typedef struct {
     bool               is_union;
     bool               is_packed;
     bool               is_multiple_return_type;
+    bool               is_string_literal;
 } create_type_struct_args_t;
 
 static struct mir_type *create_type_struct(struct context *ctx, create_type_struct_args_t *args);
@@ -363,18 +369,20 @@ static struct mir_type *create_type_enum(struct context *ctx, create_type_enum_a
 static struct mir_type *create_type_slice(struct context    *ctx,
                                           enum mir_type_kind kind,
                                           struct id         *id,
-                                          struct mir_type   *elem_ptr_type);
-static void             type_init_llvm_int(struct context *ctx, struct mir_type *type);
-static void             type_init_llvm_real(struct context *ctx, struct mir_type *type);
-static void             type_init_llvm_ptr(struct context *ctx, struct mir_type *type);
-static void             type_init_llvm_null(struct context *ctx, struct mir_type *type);
-static void             type_init_llvm_void(struct context *ctx, struct mir_type *type);
-static void             type_init_llvm_bool(struct context *ctx, struct mir_type *type);
-static void             type_init_llvm_fn(struct context *ctx, struct mir_type *type);
-static void             type_init_llvm_array(struct context *ctx, struct mir_type *type);
-static void             type_init_llvm_struct(struct context *ctx, struct mir_type *type);
-static void             type_init_llvm_enum(struct context *ctx, struct mir_type *type);
-static void             type_init_llvm_dummy(struct context *ctx, struct mir_type *type);
+                                          struct mir_type   *elem_ptr_type,
+                                          bool               is_string_literal);
+
+static void type_init_llvm_int(struct context *ctx, struct mir_type *type);
+static void type_init_llvm_real(struct context *ctx, struct mir_type *type);
+static void type_init_llvm_ptr(struct context *ctx, struct mir_type *type);
+static void type_init_llvm_null(struct context *ctx, struct mir_type *type);
+static void type_init_llvm_void(struct context *ctx, struct mir_type *type);
+static void type_init_llvm_bool(struct context *ctx, struct mir_type *type);
+static void type_init_llvm_fn(struct context *ctx, struct mir_type *type);
+static void type_init_llvm_array(struct context *ctx, struct mir_type *type);
+static void type_init_llvm_struct(struct context *ctx, struct mir_type *type);
+static void type_init_llvm_enum(struct context *ctx, struct mir_type *type);
+static void type_init_llvm_dummy(struct context *ctx, struct mir_type *type);
 
 typedef struct {
     struct ast          *decl_node;
@@ -1087,7 +1095,7 @@ static inline void usage_check_push(struct context *ctx, struct scope_entry *ent
     arrpush(ctx->analyze.usage_check_arr, entry);
 }
 
-static inline bool can_mutate_comptime_to_const(struct mir_instr *instr)
+static inline bool can_mutate_comptime_to_const(struct context *ctx, struct mir_instr *instr)
 {
     bassert(isflag(instr->state, MIR_IS_ANALYZED) && "Non-analyzed instruction.");
     bassert(mir_is_comptime(instr));
@@ -1110,9 +1118,9 @@ static inline bool can_mutate_comptime_to_const(struct mir_instr *instr)
     case MIR_TYPE_REAL:
     case MIR_TYPE_BOOL:
     case MIR_TYPE_ENUM:
-    case MIR_TYPE_STRING:
         return true;
-        break;
+    case MIR_TYPE_SLICE:
+        return instr->value.type->data.strct.is_string_literal;
 
     default:
         return false;
@@ -1232,6 +1240,38 @@ static inline bool type_cmp(const struct mir_type *first, const struct mir_type 
 {
     bassert(first && second);
     return first->id.hash == second->id.hash;
+}
+
+static inline bool
+can_impl_convert_to(struct context *ctx, const struct mir_type *from, const struct mir_type *to)
+{
+    bassert(from && to);
+    bassert(ctx->builtin_types->t_Any && "Any type must be resolved first!");
+    // Anything can be converted to 'Any' type.
+    if (to == ctx->builtin_types->t_Any) return true;
+    // Otherwise we allow only conversions to slices.
+    if (to->kind != MIR_TYPE_SLICE) return false;
+
+    to = mir_deref_type(mir_get_struct_elem_type(to, MIR_SLICE_PTR_INDEX));
+    bassert(to);
+
+    // Check if conversion is possible for given data.
+    switch (from->kind) {
+    case MIR_TYPE_SLICE:
+    case MIR_TYPE_STRING:
+    case MIR_TYPE_DYNARR: {
+        from = mir_deref_type(mir_get_struct_elem_type(from, MIR_SLICE_PTR_INDEX));
+        return type_cmp(from, to);
+    }
+
+    case MIR_TYPE_ARRAY:
+        from = from->data.array.elem_type;
+        return type_cmp(from, to);
+    default:
+        break;
+    }
+
+    return false;
 }
 
 static inline bool can_impl_cast(const struct mir_type *from, const struct mir_type *to)
@@ -2028,22 +2068,35 @@ struct id *lookup_builtins_rtti(struct context *ctx)
     ctx->builtin_types->t_TypeInfoFn_ptr = create_type_ptr(ctx, ctx->builtin_types->t_TypeInfoFn);
 
     ctx->builtin_types->t_TypeInfo_slice =
-        create_type_slice(ctx, MIR_TYPE_SLICE, NULL, ctx->builtin_types->t_TypeInfo_ptr);
+        create_type_slice(ctx, MIR_TYPE_SLICE, NULL, ctx->builtin_types->t_TypeInfo_ptr, false);
 
     ctx->builtin_types->t_TypeInfoStructMembers_slice =
         create_type_slice(ctx,
                           MIR_TYPE_SLICE,
                           NULL,
-                          create_type_ptr(ctx, ctx->builtin_types->t_TypeInfoStructMember));
+                          create_type_ptr(ctx, ctx->builtin_types->t_TypeInfoStructMember),
+                          false);
 
-    ctx->builtin_types->t_TypeInfoEnumVariants_slice = create_type_slice(
-        ctx, MIR_TYPE_SLICE, NULL, create_type_ptr(ctx, ctx->builtin_types->t_TypeInfoEnumVariant));
+    ctx->builtin_types->t_TypeInfoEnumVariants_slice =
+        create_type_slice(ctx,
+                          MIR_TYPE_SLICE,
+                          NULL,
+                          create_type_ptr(ctx, ctx->builtin_types->t_TypeInfoEnumVariant),
+                          false);
 
-    ctx->builtin_types->t_TypeInfoFnArgs_slice = create_type_slice(
-        ctx, MIR_TYPE_SLICE, NULL, create_type_ptr(ctx, ctx->builtin_types->t_TypeInfoFnArg));
+    ctx->builtin_types->t_TypeInfoFnArgs_slice =
+        create_type_slice(ctx,
+                          MIR_TYPE_SLICE,
+                          NULL,
+                          create_type_ptr(ctx, ctx->builtin_types->t_TypeInfoFnArg),
+                          false);
 
-    ctx->builtin_types->t_TypeInfoFn_ptr_slice = create_type_slice(
-        ctx, MIR_TYPE_SLICE, NULL, create_type_ptr(ctx, ctx->builtin_types->t_TypeInfoFn_ptr));
+    ctx->builtin_types->t_TypeInfoFn_ptr_slice =
+        create_type_slice(ctx,
+                          MIR_TYPE_SLICE,
+                          NULL,
+                          create_type_ptr(ctx, ctx->builtin_types->t_TypeInfoFn_ptr),
+                          false);
 
     ctx->builtin_types->is_rtti_ready = true;
     return NULL;
@@ -2070,7 +2123,7 @@ struct id *lookup_builtins_test_cases(struct context *ctx)
         return &builtin_ids[BUILTIN_ID_TYPE_TEST_CASES];
     }
     ctx->builtin_types->t_TestCases_slice = create_type_slice(
-        ctx, MIR_TYPE_SLICE, NULL, create_type_ptr(ctx, ctx->builtin_types->t_TestCase));
+        ctx, MIR_TYPE_SLICE, NULL, create_type_ptr(ctx, ctx->builtin_types->t_TestCase), false);
     return NULL;
 }
 
@@ -2286,6 +2339,7 @@ struct mir_type *create_type_struct(struct context *ctx, create_type_struct_args
     tmp->data.strct.is_union                = args->is_union;
     tmp->data.strct.is_multiple_return_type = args->is_multiple_return_type;
     tmp->data.strct.base_type               = args->base_type;
+    tmp->data.strct.is_string_literal       = args->is_string_literal;
     type_init_id(ctx, tmp);
     type_init_llvm_struct(ctx, tmp);
     return tmp;
@@ -2338,7 +2392,8 @@ create_type_struct_incomplete(struct context *ctx, struct id *user_id, bool is_u
 struct mir_type *create_type_slice(struct context    *ctx,
                                    enum mir_type_kind kind,
                                    struct id         *id,
-                                   struct mir_type   *elem_ptr_type)
+                                   struct mir_type   *elem_ptr_type,
+                                   bool               is_string_literal)
 {
     bassert(mir_is_pointer_type(elem_ptr_type));
     bassert(kind == MIR_TYPE_STRING || kind == MIR_TYPE_VARGS || kind == MIR_TYPE_SLICE);
@@ -2359,11 +2414,12 @@ struct mir_type *create_type_slice(struct context    *ctx,
     provide_builtin_member(ctx, body_scope, tmp);
     return create_type_struct(ctx,
                               &(create_type_struct_args_t){
-                                  .kind        = kind,
-                                  .id          = id,
-                                  .scope       = body_scope,
-                                  .scope_layer = SCOPE_DEFAULT_LAYER,
-                                  .members     = members,
+                                  .kind              = kind,
+                                  .id                = id,
+                                  .scope             = body_scope,
+                                  .scope_layer       = SCOPE_DEFAULT_LAYER,
+                                  .members           = members,
+                                  .is_string_literal = is_string_literal,
                               });
 }
 
@@ -4090,11 +4146,12 @@ struct mir_instr *append_instr_const_string(struct context *ctx, struct ast *nod
     sarrput(values, ptr);
 
     struct mir_instr_compound *compound = (struct mir_instr_compound *)append_instr_compound_impl(
-        ctx, node, ctx->builtin_types->t_string, values);
+        ctx, node, ctx->builtin_types->t_string_literal, values);
 
     compound->is_naked               = false;
     compound->base.value.is_comptime = true;
     compound->base.value.addr_mode   = MIR_VAM_RVALUE;
+    compound->base.value.type        = ctx->builtin_types->t_string_literal;
 
     return &compound->base;
 }
@@ -4497,7 +4554,7 @@ enum vm_interp_state evaluate(struct context *ctx, struct mir_instr *instr)
         }
         break;
     }
-    if (can_mutate_comptime_to_const(instr)) {
+    if (can_mutate_comptime_to_const(ctx, instr)) {
         const bool is_volatile = is_instr_type_volatile(instr);
         erase_instr_tree(instr, true, true);
         mutate_instr(instr, MIR_INSTR_CONST);
@@ -5114,7 +5171,7 @@ struct result analyze_instr_vargs(struct context *ctx, struct mir_instr_vargs *v
     struct mir_type *type   = vargs->type;
     mir_instrs_t    *values = vargs->values;
     bassert(type && values);
-    type             = create_type_slice(ctx, MIR_TYPE_VARGS, NULL, create_type_ptr(ctx, type));
+    type = create_type_slice(ctx, MIR_TYPE_VARGS, NULL, create_type_ptr(ctx, type), false);
     const usize valc = sarrlen(values);
     if (valc > 0) {
         // Prepare tmp array for values
@@ -6838,7 +6895,7 @@ struct result analyze_instr_type_slice(struct context *ctx, struct mir_instr_typ
 
     MIR_CEV_WRITE_AS(struct mir_type *,
                      &type_slice->base.value,
-                     create_type_slice(ctx, MIR_TYPE_SLICE, id, elem_type));
+                     create_type_slice(ctx, MIR_TYPE_SLICE, id, elem_type, false));
 
     return_zone(PASS);
 }
@@ -6916,7 +6973,7 @@ struct result analyze_instr_type_vargs(struct context *ctx, struct mir_instr_typ
     elem_type = create_type_ptr(ctx, elem_type);
     MIR_CEV_WRITE_AS(struct mir_type *,
                      &type_vargs->base.value,
-                     create_type_slice(ctx, MIR_TYPE_VARGS, NULL, elem_type));
+                     create_type_slice(ctx, MIR_TYPE_VARGS, NULL, elem_type, false));
 
     return_zone(PASS);
 }
@@ -7711,7 +7768,20 @@ static struct result analyze_callee(struct context *ctx, struct mir_instr *calle
 // Function overloading
 // =================================================================================================
 
+struct overload_pair {
+    s32            priority;
+    struct mir_fn *fn;
+};
+
+static int overload_compar(const void *a, const void *b)
+{
+    const s32 pa = ((struct overload_pair *)a)->priority;
+    const s32 pb = ((struct overload_pair *)b)->priority;
+    return pb - pa;
+}
+
 static struct mir_fn *group_select_overload(struct context            *ctx,
+                                            struct mir_instr_call     *call,
                                             const struct mir_fn_group *group,
                                             const mir_types_t         *expected_args)
 {
@@ -7719,39 +7789,99 @@ static struct mir_fn *group_select_overload(struct context            *ctx,
     bassert(expected_args);
     const mir_fns_t *variants = group->variants;
     bassert(sarrlenu(variants));
-    struct mir_fn *selected          = sarrpeek(variants, 0);
-    s32            selected_priority = 0;
+
+    // Use the first one as fallback.
+    struct mir_fn *selected_fn            = sarrpeek(variants, 0);
+    sarr_t(struct overload_pair, 32) list = SARR_ZERO;
+
+    // Select possible candidates. We iterate over all variants and check if needed arguments are in
+    // the place.
+    //
+    // 1) No arguments are expected
+    //    - Select variants with no arguments.
+    //    - Select variants with defaulted argument at the 1st position.
+    //
+    // 2) At least one argument is excepted
+    //    - Select variants with defaulted argument at Nth position.
+    //    - Select variants with matching argument count.
     for (usize i = 0; i < sarrlenu(variants); ++i) {
-        struct mir_fn    *it_fn = sarrpeek(variants, i);
-        s32               p     = 0;
-        const mir_args_t *args  = it_fn->type->data.fn.args;
-        const usize       argc  = sarrlenu(args);
-        const usize       eargc = sarrlenu(expected_args);
-        if (argc == eargc) p += 1;
-        for (usize j = 0; j < sarrlenu(args) && j < sarrlenu(expected_args); ++j) {
-            const struct mir_type *t  = sarrpeek(args, j)->type;
-            const struct mir_type *et = sarrpeek(expected_args, j);
-            if (type_cmp(et, t)) {
-                p += 3;
-                continue;
-            }
-            if (can_impl_cast(et, t)) {
-                p += 2;
-                continue;
-            }
-            if (type_cmp(t, ctx->builtin_types->t_Any)) {
-                p += 2;
-                continue;
-            }
+        struct mir_fn    *fn   = sarrpeek(variants, i);
+        const mir_args_t *args = fn->type->data.fn.args;
+
+        bool is_selected = true;
+        bool is_vargs    = false;
+        for (usize j = 0; j < sarrlenu(args); ++j) {
+            const struct mir_arg *arg         = sarrpeek(args, j);
+            const bool            is_default  = arg->value;
+            const bool            is_provided = j < sarrlenu(expected_args);
+
+            is_vargs = arg->type->kind == MIR_TYPE_VARGS;
+            if (is_provided) continue;
+            if (is_default) break;
+            if (is_vargs) break;
+            is_selected = false;
+            break;
         }
-        // @Incomplete: report ambiguous functions?
-        if (p > selected_priority) {
-            selected          = it_fn;
-            selected_priority = p;
+        if (is_selected && (is_vargs || sarrlenu(expected_args) <= sarrlenu(args))) {
+            struct overload_pair pair = (struct overload_pair){.fn = fn};
+            sarrput(&list, pair);
         }
     }
-    bmagic_assert(selected);
-    return selected;
+
+    if (sarrlenu(&list) == 0) goto DONE;
+
+    // Find the best candidate.
+    for (usize i = 0; i < sarrlenu(&list); ++i) {
+        struct overload_pair *pair = &sarrpeek(&list, i);
+        const mir_args_t     *args = pair->fn->type->data.fn.args;
+        for (usize j = 0; j < sarrlenu(expected_args) && j < sarrlenu(args); ++j) {
+            const struct mir_type *t1 = sarrpeek(expected_args, j);
+            const struct mir_type *t2 = sarrpeek(args, j)->type;
+            bassert(t1 && t2);
+            if (type_cmp(t1, t2)) {
+                // Exact type match.
+                pair->priority += 3;
+                continue;
+            }
+            if (can_impl_cast(t1, t2) || can_impl_convert_to(ctx, t1, t2)) {
+                pair->priority += t2 == ctx->builtin_types->t_Any ? 1 : 2;
+                continue;
+            }
+            if (t2->kind == MIR_TYPE_VARGS) {
+                pair->priority += 1;
+            }
+            // TODO What about templated types?
+            break;
+        }
+    }
+
+    // Sort by priority
+    qsort(sarrdata(&list), sarrlenu(&list), sizeof(struct overload_pair), &overload_compar);
+
+    struct overload_pair *selected = &sarrpeek(&list, 0);
+    if (sarrlen(&list) > 1) {
+        struct overload_pair *other = &sarrpeek(&list, 1);
+        if (selected->priority == other->priority) {
+            report_error(
+                AMBIGUOUS,
+                call->base.node,
+                "Function overload is ambiguous. Cannot decide which implementation should be "
+                "used based on call-side argument list.");
+
+            for (usize i = 0; i < sarrlenu(&list); ++i) {
+                other = &sarrpeek(&list, i);
+                if (other->priority != selected->priority) break;
+                report_note(other->fn->decl_node, "Possible overload:");
+                blog("Priority: %d", other->priority);
+            }
+        }
+    }
+    selected_fn = selected->fn;
+
+DONE:
+    sarrfree(&list);
+    bassert(selected_fn);
+    return selected_fn;
 }
 
 struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *call)
@@ -7781,7 +7911,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
     bool is_group = type->kind == MIR_TYPE_FN_GROUP;
     if (!is_group && !is_fn) {
         report_error(
-            EXPECTED_FUNC, call->callee->node, "Expected a function of function group name.");
+            EXPECTED_FUNC, call->callee->node, "Expected a function or function group name.");
         return_zone(FAIL);
     }
 
@@ -7832,7 +7962,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
                 struct mir_type  *t     = it->value.type;
                 sarrpeek(&arg_types, i) = is_load_needed(it) ? mir_deref_type(t) : t;
             }
-            selected_overload_fn = group_select_overload(ctx, group, &arg_types);
+            selected_overload_fn = group_select_overload(ctx, call, group, &arg_types);
             sarrfree(&arg_types);
         }
         bmagic_assert(selected_overload_fn);
@@ -8285,6 +8415,22 @@ ANALYZE_STAGE_FN(toany)
     return ANALYZE_STAGE_BREAK;
 }
 
+static void analyze_make_tmp_var(struct context *ctx, struct mir_instr **input, const char *name)
+{
+    struct mir_instr *tmp_var = create_instr_decl_var_impl(ctx,
+                                                           &(create_instr_decl_var_impl_args_t){
+                                                               .name = unique_name(ctx, name),
+                                                               .init = *input,
+                                                           });
+    insert_instr_after(*input, tmp_var);
+    analyze_instr_rq(tmp_var);
+
+    struct mir_instr *tmp_ref = create_instr_decl_direct_ref(ctx, NULL, tmp_var);
+    insert_instr_after(tmp_var, tmp_ref);
+    analyze_instr_rq(tmp_ref);
+    *input = tmp_ref;
+}
+
 ANALYZE_STAGE_FN(toslice)
 {
     // Cast from dynamic array to slice can be done by bitcast from pointer to dynamic array to
@@ -8294,39 +8440,27 @@ ANALYZE_STAGE_FN(toslice)
     struct mir_type *from_type = (*input)->value.type;
     bassert(from_type);
 
-    if (!mir_is_pointer_type(from_type)) return ANALYZE_STAGE_CONTINUE;
+    const bool is_simple_cast = mir_is_pointer_type(from_type);
+    if (is_simple_cast) from_type = mir_deref_type(from_type);
 
-    from_type = mir_deref_type(from_type);
-    // Allow conversion from: dynamic array, string and another slice.
-    if ((from_type->kind != MIR_TYPE_DYNARR && from_type->kind != MIR_TYPE_STRING) ||
-        slot_type->kind != MIR_TYPE_SLICE) {
+    // Validate type.
+    if (from_type->kind != MIR_TYPE_STRING && from_type->kind != MIR_TYPE_DYNARR)
         return ANALYZE_STAGE_CONTINUE;
+    if (slot_type->kind != MIR_TYPE_SLICE) return ANALYZE_STAGE_CONTINUE;
+    if (!can_impl_convert_to(ctx, from_type, slot_type)) return ANALYZE_STAGE_CONTINUE;
+
+    if (!is_simple_cast) {
+        // To convert non-pointer stack value to different type, we need to create temporary
+        // variable.
+        analyze_make_tmp_var(ctx, input, IMPL_TOSLICE_TMP);
     }
 
-    { // Compare elem type of array and slot slice
-        struct mir_type *elem_from_type = mir_get_struct_elem_type(from_type, MIR_SLICE_PTR_INDEX);
-        struct mir_type *elem_to_type   = mir_get_struct_elem_type(slot_type, MIR_SLICE_PTR_INDEX);
-
-        bassert(mir_is_pointer_type(elem_from_type) && "Expected pointer type!");
-        bassert(mir_is_pointer_type(elem_to_type) && "Expected pointer type!");
-        elem_from_type = mir_deref_type(elem_from_type);
-        elem_to_type   = mir_deref_type(elem_to_type);
-
-        bassert(elem_from_type && "Invalid type after pointer type dereference!");
-        bassert(elem_to_type && "Invalid type after pointer type dereference!");
-
-        if (!type_cmp(elem_from_type, elem_to_type)) return ANALYZE_STAGE_CONTINUE;
-    }
-
-    { // Build bitcast
-        *input = insert_instr_cast(ctx, *input, create_type_ptr(ctx, slot_type));
-        if (analyze_instr(ctx, *input).state != ANALYZE_PASSED) return ANALYZE_STAGE_FAILED;
-    }
-
-    { // Build load
-        *input = insert_instr_load(ctx, *input);
-        if (analyze_instr(ctx, *input).state != ANALYZE_PASSED) return ANALYZE_STAGE_FAILED;
-    }
+    // Build bitcast
+    *input = insert_instr_cast(ctx, *input, create_type_ptr(ctx, slot_type));
+    if (analyze_instr(ctx, *input).state != ANALYZE_PASSED) return ANALYZE_STAGE_FAILED;
+    // Build load
+    *input = insert_instr_load(ctx, *input);
+    if (analyze_instr(ctx, *input).state != ANALYZE_PASSED) return ANALYZE_STAGE_FAILED;
 
     return ANALYZE_STAGE_BREAK;
 }
@@ -8340,54 +8474,45 @@ ANALYZE_STAGE_FN(arrtoslice)
     struct mir_type *from_type = (*input)->value.type;
     bassert(from_type);
 
-    if (!mir_is_pointer_type(from_type)) return ANALYZE_STAGE_CONTINUE;
+    const bool is_reference = mir_is_pointer_type(from_type);
+    if (is_reference) from_type = mir_deref_type(from_type);
 
-    from_type = mir_deref_type(from_type);
-    if (from_type->kind != MIR_TYPE_ARRAY || slot_type->kind != MIR_TYPE_SLICE)
-        return ANALYZE_STAGE_CONTINUE;
+    if (from_type->kind != MIR_TYPE_ARRAY) return ANALYZE_STAGE_CONTINUE;
+    if (slot_type->kind != MIR_TYPE_SLICE) return ANALYZE_STAGE_CONTINUE;
+    if (!can_impl_convert_to(ctx, from_type, slot_type)) return ANALYZE_STAGE_CONTINUE;
 
-    { // Compare elem type of array and slot slice
-        struct mir_type *elem_from_type = from_type->data.array.elem_type;
-        struct mir_type *elem_to_type   = mir_get_struct_elem_type(slot_type, MIR_SLICE_PTR_INDEX);
-        bassert(mir_is_pointer_type(elem_to_type) && "Expected pointer type!");
-        elem_to_type = mir_deref_type(elem_to_type);
-        bassert(elem_to_type && "Invalid type after pointer type dereference!");
+    const s64     len    = from_type->data.array.len;
+    mir_instrs_t *values = arena_safe_alloc(&ctx->assembly->arenas.sarr);
 
-        if (!type_cmp(elem_from_type, elem_to_type)) return ANALYZE_STAGE_CONTINUE;
+    if (!is_reference) {
+        analyze_make_tmp_var(ctx, input, IMPL_TOSLICE_TMP);
     }
 
-    { // Build slice initializer.
-        const s64         len       = from_type->data.array.len;
-        struct mir_instr *instr_arr = *input;
-        mir_instrs_t     *values    = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+    // Build array pointer
+    struct mir_instr *instr_ptr =
+        create_instr_member_ptr(ctx, NULL, *input, NULL, NULL, BUILTIN_ID_ARR_PTR);
+    insert_instr_after(*input, instr_ptr);
+    *input = instr_ptr;
+    analyze_instr_rq(instr_ptr);
 
-        // Build array pointer
-        struct mir_instr *instr_ptr =
-            create_instr_member_ptr(ctx, NULL, instr_arr, NULL, NULL, BUILTIN_ID_ARR_PTR);
-        insert_instr_after(*input, instr_ptr);
-        *input = instr_ptr;
-        analyze_instr_rq(instr_ptr);
+    // Build array len constant
+    struct mir_instr *instr_len = create_instr_const_int(ctx, NULL, ctx->builtin_types->t_s64, len);
+    insert_instr_after(*input, instr_len);
+    *input = instr_len;
+    analyze_instr_rq(instr_len);
 
-        // Build array len constant
-        struct mir_instr *instr_len =
-            create_instr_const_int(ctx, NULL, ctx->builtin_types->t_s64, len);
-        insert_instr_after(*input, instr_len);
-        *input = instr_len;
-        analyze_instr_rq(instr_len);
+    // push values
+    sarrput(values, instr_len);
+    sarrput(values, instr_ptr);
 
-        // push values
-        sarrput(values, instr_len);
-        sarrput(values, instr_ptr);
+    struct mir_instr *compound = create_instr_compound_impl(ctx, NULL, slot_type, values);
+    ((struct mir_instr_compound *)compound)->is_naked = !is_initializer;
+    ref_instr(compound);
 
-        struct mir_instr *compound = create_instr_compound_impl(ctx, NULL, slot_type, values);
-        ((struct mir_instr_compound *)compound)->is_naked = !is_initializer;
-        ref_instr(compound);
+    insert_instr_after(*input, compound);
+    *input = compound;
 
-        insert_instr_after(*input, compound);
-        *input = compound;
-
-        analyze_instr_rq(compound);
-    }
+    analyze_instr_rq(compound);
 
     return ANALYZE_STAGE_BREAK;
 }
@@ -11413,21 +11538,15 @@ void initialize_builtins(struct context *ctx)
     bt->t_bool              = create_type_bool(ctx);
     bt->t_f32               = create_type_real(ctx, BID(TYPE_F32), 32);
     bt->t_f64               = create_type_real(ctx, BID(TYPE_F64), 64);
-
-    bt->t_dummy_ptr = create_type_ptr(ctx, bt->t_u8);
-    bt->t_type      = create_type_type(ctx);
-    bt->t_scope     = create_type_named_scope(ctx);
-    bt->t_void      = create_type_void(ctx);
-
-    bt->t_u8_ptr = create_type_ptr(ctx, bt->t_u8);
-    bt->t_string = create_type_slice(ctx, MIR_TYPE_STRING, BID(TYPE_STRING), bt->t_u8_ptr);
-
-    bt->t_string_ptr = create_type_ptr(ctx, bt->t_string);
-
-    bt->t_string_slice = create_type_slice(ctx, MIR_TYPE_SLICE, NULL, bt->t_string_ptr);
-
+    bt->t_dummy_ptr         = create_type_ptr(ctx, bt->t_u8);
+    bt->t_type              = create_type_type(ctx);
+    bt->t_scope             = create_type_named_scope(ctx);
+    bt->t_void              = create_type_void(ctx);
+    bt->t_u8_ptr            = create_type_ptr(ctx, bt->t_u8);
+    bt->t_string = create_type_slice(ctx, MIR_TYPE_STRING, BID(TYPE_STRING), bt->t_u8_ptr, false);
+    bt->t_string_ptr      = create_type_ptr(ctx, bt->t_string);
+    bt->t_string_literal  = create_type_slice(ctx, MIR_TYPE_SLICE, NULL, bt->t_u8_ptr, true);
     bt->t_resolve_type_fn = create_type_fn(ctx, &(create_type_fn_args_t){.ret_type = bt->t_type});
-    bt->t_test_case_fn    = create_type_fn(ctx, &(create_type_fn_args_t){.ret_type = bt->t_void});
 
     provide_builtin_arch(ctx);
     provide_builtin_os(ctx);

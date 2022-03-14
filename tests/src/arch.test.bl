@@ -1,5 +1,5 @@
 #private
-expected_supported_archs :: {:[4]string:
+expected_supported_archs :: {:[4]string_view:
     "UNKNOWN",
     "X86_64",
     "AARCH64",
@@ -21,7 +21,7 @@ arch_current :: fn () #test {
     test_neq(ARCH, Arch.UNKNOWN);
 }
 
-expected_supported_platforms :: {:[4]string:
+expected_supported_platforms :: {:[4]string_view:
     "UNKNOWN",
     "WINDOWS",
     "DARWIN",
@@ -43,7 +43,7 @@ platform_current :: fn () #test {
     test_neq(PLATFORM, Platform.UNKNOWN);
 }
 
-expected_supported_env :: {:[4]string:
+expected_supported_env :: {:[4]string_view:
     "UNKNOWN",
     "MSVC",
     "GNU",

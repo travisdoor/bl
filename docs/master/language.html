@@ -150,8 +150,8 @@
 &lt;name&gt;: [type] = &lt;value&gt;;    // mutable declaration
 &lt;name&gt;: [type] : &lt;value&gt;;    // immutable declaration (value can be set only once)</code></pre>
 <div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>foo<span class="op">:</span> s32<span class="op">;</span>                <span class="co">// integer variable without initial value</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>name<span class="op">:</span> string <span class="op">=</span> <span class="st">&quot;Martin&quot;</span><span class="op">;</span> <span class="co">// string variable</span></span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>name<span class="op">:</span> string <span class="op">:</span> <span class="st">&quot;Martin&quot;</span><span class="op">;</span> <span class="co">// string constant</span></span></code></pre></div>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>name<span class="op">:</span> string_view <span class="op">=</span> <span class="st">&quot;Martin&quot;</span><span class="op">;</span> <span class="co">// string variable</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>name<span class="op">:</span> string_view <span class="op">:</span> <span class="st">&quot;Martin&quot;</span><span class="op">;</span> <span class="co">// string constant</span></span></code></pre></div>
 <p>When we decide to explicitly specify initial value, data type can be inferred from this value. In such case, the type is optional.</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>name <span class="op">:=</span> <span class="st">&quot;Martin&quot;</span><span class="op">;</span> <span class="co">// string variable</span></span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>name <span class="op">::</span> <span class="st">&quot;Martin&quot;</span><span class="op">;</span> <span class="co">// string constant</span></span></code></pre></div>
@@ -222,7 +222,7 @@
 <td>64-bit floating point number.</td>
 </tr>
 <tr class="odd">
-<td>string</td>
+<td>string_view</td>
 <td>String slice.</td>
 </tr>
 </tbody>
@@ -259,10 +259,10 @@
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    slice <span class="op">:</span> <span class="op">[]</span>s32 <span class="op">=</span> arr<span class="op">;</span></span>
 <span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
 <h2 id="string">String</h2>
-<p>String type in Biscuit is a slice containing a pointer to string data and string length. String literals are always zero terminated.</p>
+<p>String type in Biscuit aka <code>string_view</code> is slice containing a pointer to string data and string length. String literals are always zero terminated. The <code>string_view</code> represents a string of fixed length. In case you want dynamically allocated string use <code>string</code> type and its associated methods. Values of <code>string</code> can be implicitly converted to <code>string_view</code>.</p>
 <p><strong>Example:</strong></p>
 <div class="sourceCode" id="cb8"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>string_type <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    msg <span class="op">:</span> string <span class="op">=</span> <span class="st">&quot;Hello world</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">;</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    msg <span class="op">:</span> string_view <span class="op">=</span> <span class="st">&quot;Hello world</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">;</span></span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>    msg<span class="op">.</span>len<span class="op">;</span> <span class="co">// character count of the string</span></span>
 <span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    msg<span class="op">.</span>ptr<span class="op">;</span> <span class="co">// pointer to the string content</span></span>
 <span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
@@ -287,7 +287,7 @@
 <p>Structure can be declared with use of struct keyword.</p>
 <div class="sourceCode" id="cb11"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>Person <span class="op">::</span> <span class="kw">struct</span> <span class="op">{</span></span>
 <span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    id<span class="op">:</span> s32<span class="op">;</span></span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>    name<span class="op">:</span> string<span class="op">;</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>    name<span class="op">:</span> string_view<span class="op">;</span></span>
 <span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>    age<span class="op">:</span> s32<span class="op">;</span></span>
 <span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>Structure Person in example consists of id, name and age. Now we can create variable of this type and fill it with data. To access person’s member fields use <code>.</code> operator.</p>
@@ -327,7 +327,7 @@
 <span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a><span class="co">// Player has base type Entity</span></span>
 <span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>Player <span class="op">::</span> <span class="kw">struct</span> #base Entity <span class="op">{</span></span>
 <span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>    <span class="co">// base: Entity; is implicitly inserted as first member</span></span>
-<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>    name<span class="op">:</span> string</span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>    name<span class="op">:</span> string_view<span class="op">;</span></span>
 <span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span>
 <span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>Wall <span class="op">::</span> <span class="kw">struct</span> #base Entity <span class="op">{</span></span>
@@ -374,7 +374,7 @@
 <p>The union is a special composite type representing value of multiple types. Union size is always equal to size of the biggest member type and memory offset of all members is the same. Union is usually associated with some enum providing information about stored type.</p>
 <p><strong>Example:</strong></p>
 <div class="sourceCode" id="cb18"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>Token <span class="op">::</span> <span class="kw">union</span> <span class="op">{</span></span>
-<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>    as_string<span class="op">:</span> string<span class="op">;</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>    as_string<span class="op">:</span> string_view<span class="op">;</span></span>
 <span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>    as_int<span class="op">:</span> s32<span class="op">;</span></span>
 <span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
 <span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a></span>
@@ -388,7 +388,7 @@
 <span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a>    token2<span class="op">:</span> Token<span class="op">;</span></span>
 <span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Token has total size of the biggest member.</span></span>
-<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a>    assert<span class="op">(</span><span class="kw">sizeof</span><span class="op">(</span>token1 <span class="op">==</span> <span class="kw">sizeof</span><span class="op">(</span>string<span class="op">));</span></span>
+<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a>    assert<span class="op">(</span><span class="kw">sizeof</span><span class="op">(</span>token1 <span class="op">==</span> <span class="kw">sizeof</span><span class="op">(</span>string_view<span class="op">));</span></span>
 <span id="cb18-17"><a href="#cb18-17" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb18-18"><a href="#cb18-18" aria-hidden="true" tabindex="-1"></a>    token1<span class="op">.</span>as_string <span class="op">=</span> <span class="st">&quot;This is string&quot;</span><span class="op">;</span></span>
 <span id="cb18-19"><a href="#cb18-19" aria-hidden="true" tabindex="-1"></a>    consumer<span class="op">(&amp;</span>token<span class="op">,</span> Kind<span class="op">.</span>String<span class="op">);</span></span>
@@ -430,7 +430,7 @@
 <span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>    assert<span class="op">(</span>data_info<span class="op">.</span>kind <span class="op">==</span> TypeKind<span class="op">.</span>INT<span class="op">);</span></span>
 <span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>Any can be combined with vargs; good example of this use case is print function where args argument type is vargs of Any (... is the same as ...Any). The print function can take values of any type passed in args.</p>
-<div class="sourceCode" id="cb22"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>print <span class="op">::</span> fn <span class="op">(</span>format<span class="op">:</span> string<span class="op">,</span> args<span class="op">:</span> <span class="op">...)</span> <span class="op">{</span></span>
+<div class="sourceCode" id="cb22"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>print <span class="op">::</span> fn <span class="op">(</span>format<span class="op">:</span> string_view<span class="op">,</span> args<span class="op">:</span> <span class="op">...)</span> <span class="op">{</span></span>
 <span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">...</span></span>
 <span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
 <h2 id="enum">Enum</h2>
@@ -813,8 +813,8 @@
 <span id="cb38-13"><a href="#cb38-13" aria-hidden="true" tabindex="-1"></a><span class="co">// private constant</span></span>
 <span id="cb38-14"><a href="#cb38-14" aria-hidden="true" tabindex="-1"></a>bar <span class="op">::</span> <span class="dv">10</span><span class="op">;</span></span></code></pre></div>
 <h3 id="scope">#scope</h3>
-<p>Creates new named scope i.e. <code>#scope String</code>. Every symbol written after the <code>scope</code> tag lives in named scope (aka namespace). This prevents possible symbol collisions and makes local names shorter. Named scope cannot be nested in another one and can be specified only once per file unit. Scopes with the same name defined in multiple units are merged into one.</p>
-<p>To refer to public symbols from the outside of the named scope use the scope name followed by the dot operator. (i.e. <code>String.compare</code>)</p>
+<p>Creates new named scope i.e. <code>#scope std</code>. Every symbol written after the <code>scope</code> tag lives in named scope (aka namespace). This prevents possible symbol collisions and makes local names shorter. Named scope cannot be nested in another one and can be specified only once per file unit. Scopes with the same name defined in multiple units are merged into one.</p>
+<p>To refer to public symbols from the outside of the named scope use the scope name followed by the dot operator. (i.e. <code>std.compare</code>)</p>
 <h3 id="extern">#extern</h3>
 <p>Used for marking entities as an external (imported from dynamic library). Custom linkage name can be specified since version 0.5.2 as a string <code>#extern "malloc"</code>, when linkage name is not explicitly specified compiler will use name of the entity as linkage name.</p>
 <p><strong>Example:</strong></p>
@@ -841,7 +841,7 @@
 <h3 id="line">#line</h3>
 <p>Fetch current line in source code as s32.</p>
 <h3 id="file">#file</h3>
-<p>Fetch current source file name string.</p>
+<p>Fetch current source file name string_view.</p>
 <h3 id="noinit">#noinit</h3>
 <p>Disable variable default initialization. This directive cannot be used with global variables (those must be initialized every time).</p>
 <p><strong>Example:</strong></p>
@@ -1136,8 +1136,8 @@
 <p>In some cases we want to specify explicitly what implementation should be used for some specific type, i.e. in a function doing comparison of two values, we can provide specific handling for string:</p>
 <div class="sourceCode" id="cb62"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb62-1"><a href="#cb62-1" aria-hidden="true" tabindex="-1"></a>is_equal <span class="op">::</span> fn <span class="op">{</span> <span class="co">// function group</span></span>
 <span id="cb62-2"><a href="#cb62-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Implementation used for strings only.</span></span>
-<span id="cb62-3"><a href="#cb62-3" aria-hidden="true" tabindex="-1"></a>    fn <span class="op">(</span>a<span class="op">:</span> string<span class="op">,</span> b<span class="op">:</span> string<span class="op">)</span> <span class="dt">bool</span> <span class="op">{</span></span>
-<span id="cb62-4"><a href="#cb62-4" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> String<span class="op">.</span>compare<span class="op">(</span>a<span class="op">,</span> b<span class="op">);</span></span>
+<span id="cb62-3"><a href="#cb62-3" aria-hidden="true" tabindex="-1"></a>    fn <span class="op">(</span>a<span class="op">:</span> string_view<span class="op">,</span> b<span class="op">:</span> string_view<span class="op">)</span> <span class="dt">bool</span> <span class="op">{</span></span>
+<span id="cb62-4"><a href="#cb62-4" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> std<span class="op">.</span>str_compare<span class="op">(</span>a<span class="op">,</span> b<span class="op">);</span></span>
 <span id="cb62-5"><a href="#cb62-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">};</span></span>
 <span id="cb62-6"><a href="#cb62-6" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb62-7"><a href="#cb62-7" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Implementation used for all other types.</span></span>
@@ -1145,7 +1145,6 @@
 <span id="cb62-9"><a href="#cb62-9" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> a <span class="op">==</span> b<span class="op">;</span></span>
 <span id="cb62-10"><a href="#cb62-10" aria-hidden="true" tabindex="-1"></a>    <span class="op">};</span></span>
 <span id="cb62-11"><a href="#cb62-11" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
-<p><strong>note:</strong> Order of function group variants is important in this case, when string specific function comes after generic one, compiler will always use the generic implementation.</p>
 <p><strong>note:</strong> Compiler error is reported in case content of the polymorph generated for some type specification is not semantically valid. (i.e. we can’t compare strings directly by <code>==</code> operator)</p>
 <p><strong>warning:</strong> Getting address (by <code>&amp;</code> operator) of polymorphic function recipe is not possible, polymorphic recipe as it is does not represent any allocated memory in program binary.</p>
 <h3 id="multiple-return-values">Multiple Return Values</h3>
@@ -1175,7 +1174,7 @@
 <h3 id="comptime-function">Comptime Function</h3>
 <p>The <code>comptime</code> function is every function marked by <code>#comptime</code> hash directive in a declaration. Every call to such a function is going to be evaluated in compile-time and replaced by constant eventually.</p>
 <p><strong>Example:</strong></p>
-<div class="sourceCode" id="cb65"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb65-1"><a href="#cb65-1" aria-hidden="true" tabindex="-1"></a>hash_string <span class="op">::</span> fn <span class="op">(</span>s<span class="op">:</span> string<span class="op">)</span> u32 #comptime <span class="op">{</span></span>
+<div class="sourceCode" id="cb65"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb65-1"><a href="#cb65-1" aria-hidden="true" tabindex="-1"></a>hash_string <span class="op">::</span> fn <span class="op">(</span>s<span class="op">:</span> string_view<span class="op">)</span> u32 #comptime <span class="op">{</span></span>
 <span id="cb65-2"><a href="#cb65-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> std<span class="op">.</span>str_hash<span class="op">(</span>s<span class="op">);</span></span>
 <span id="cb65-3"><a href="#cb65-3" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>The <code>hash</code> function can be later called as any other regular function, but the call itself is replaced by constant result in the final binary.</p>

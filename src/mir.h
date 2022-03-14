@@ -391,6 +391,8 @@ struct mir_type_struct {
     bool is_incomplete;
     // Set true for struct type used as multiple return temporary.
     bool is_multiple_return_type;
+    // Set true for string literals (represented as slice of u8 values).
+    bool is_string_literal;
 };
 
 // Enum variants must be baked into enum type.

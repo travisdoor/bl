@@ -71,15 +71,14 @@ os_tick_ms :: fn () f64 #inline {
     return (s*1000.) + (n/1000000.);
 }
 
-os_execute :: fn (command: string) s32 {
-    return WEXITSTATUS(C.system(auto command.ptr));
+os_execute :: fn (command: string_view) s32 {
+    return WEXITSTATUS(C.system(std.strtoc(command)));
 }
 
-os_get_last_error :: fn () (s32, string) #inline {
+os_get_last_error :: fn () (s32, string_view) #inline {
     ec :: C.errno();
-    str := std.str_empty;
-    cstr :: cast(*u8) C.strerror(ec);
-    if cstr && ec != 0 { str = cstr_to_str(cstr); }
+    str := std.str_view_empty;
+    if ec != 0 { str = std.ctostr(C.strerror(ec)); }
     return ec, str;
 }
 
@@ -119,17 +118,17 @@ __MAX_ARGS_WITHOUT_ALLOC :: 8;
 
 __os_start :: fn (argc: s64, argv: **u8, _: **u8) s32 #entry {
     args :: {:[]*u8: argc, argv};
-    tmp: [__MAX_ARGS_WITHOUT_ALLOC]string #noinit;
+    tmp: [__MAX_ARGS_WITHOUT_ALLOC]string_view #noinit;
     is_allocated :: args.len > tmp.len;
     command_line_arguments.len = args.len;
     if is_allocated {
-        command_line_arguments.ptr = auto C.malloc(sizeof(string) * auto args.len);
+        command_line_arguments.ptr = auto C.malloc(sizeof(string_view) * auto args.len);
         if !command_line_arguments.ptr { __os_abort(); }
     } else {
         command_line_arguments.ptr = tmp.ptr;
     }
     loop i := 0; i < args.len; i += 1 {
-        command_line_arguments[i] = {:string: auto C.strlen(auto args[i]), args[i]};
+        command_line_arguments[i] = {:string_view: auto C.strlen(auto args[i]), args[i]};
     }
     mode_r :: "r";
     mode_w :: "w";

@@ -76,26 +76,26 @@ intro :: fn () {
     // What if we call the 'compare_poly' function with arguments which cannot be compared by '=='
     // operator? 
     
-    a6: string = "hello";
-    b6: string = "world";
+    a6: string_view = "hello";
+    b6: string_view = "world";
     // result6 := compare_poly(a6, b6); // Compiler error
 
     /*
 
-        polymorph.bl:30:18: error(0035): Invalid operation for string type.                 
+        polymorph.bl:30:18: error(0035): Invalid operation for string_view type.
            29 |     compare_poly :: fn (a: ?T, b: T) bool {                                 
         >  30 |         return a == b;                                                      
               |                  ^^                                                         
            31 |     };                                                                      
                                                                                             
-        polymorph.bl:29:5: In polymorph of function with substitution: T = string;          
+        polymorph.bl:29:5: In polymorph of function with substitution: T = string_view;
            28 |     // or we can use polymorphic function in this case and let the compiler do all work.                                                                        
         >  29 |     compare_poly :: fn (a: ?T, b: T) bool {                                 
               |     ^^^^^^^^^^^^                                                            
            30 |         return a == b;                                                      
                                                                                             
         polymorph.bl:79:16: First called here:                                              
-           78 |     b6: string = "world";                                                   
+           78 |     b6: string_view = "world";
         >  79 |     result6 := compare_poly(a6, b6);                                        
               |                ^^^^^^^^^^^^                                                 
            80 | }                                                                           
@@ -117,8 +117,8 @@ specialization :: fn () {
         // One important think here to know is that the condition value must be known in compile-time,
         // in this case the compiler knows that 'T' has been already replaced and does not change in
         // the function-type specialization.
-        #if T == string {
-            // Do this when 'T' is 'string'.
+        #if T == string_view {
+            // Do this when 'T' is 'string_view'.
             are_the_same = std.str_match(a, b);
         } else {
             // Do this for all other types. 
@@ -138,8 +138,8 @@ specialization :: fn () {
   
 
     // The same but now with strings.
-    a2: string = "hello";
-    b2: string = "hello";
+    a2: string_view = "hello";
+    b2: string_view = "hello";
 
     // The function is called with strings so the first branch is used when the function
     // implementation is generated.
@@ -186,7 +186,7 @@ specialization :: fn () {
     
     compare_poly_safe :: fn (a: ?T, b: T) bool {
         are_the_same := false;
-        #if T == string {
+        #if T == string_view {
             are_the_same = std.str_match(a, b);
         } else {
             is_number :: T == s32 || T == f32;
@@ -239,7 +239,7 @@ function_interface_matching :: fn () {
     // Such a function accept only pointers to dynamic arrays '*[..]' containing any type '?T'.
 
     numbers: [..]s32;
-    strings: [..]string;
+    strings: [..]string_view;
     
     // Cleanup at the end of the scope.
     defer array_terminate(&numbers);
@@ -275,7 +275,7 @@ function_interface_matching :: fn () {
 
     /*
 
-        polymorph.bl:274:31: error(0035): No implicit cast for type 'string' and 's32'.
+        polymorph.bl:274:31: error(0035): No implicit cast for type 'string_view' and 's32'.
            273 |
         >  274 |     push_anything(&numbers, "hello"); // Compiler error.
                |                              ^^^^^
@@ -290,7 +290,7 @@ function_interface_matching_with_sub_types :: fn () {
 
     Table :: struct {
         keys: [..]s32;
-        values: [..]string;
+        values: [..]string_view;
     };
 
     // In general we can do following to get type of any structure member:
@@ -364,7 +364,7 @@ function_interface_matching_with_sub_types :: fn () {
         };
     };
 
-    generic_table: GenericTable(s32, string); 
+    generic_table: GenericTable(s32, string_view);
     // The function 'GenericTable' is called during compilation and it's result is used as constant; in
     // this case it's type of out table.
 

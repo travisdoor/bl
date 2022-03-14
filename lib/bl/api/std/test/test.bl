@@ -44,6 +44,9 @@
 /// ### Overloads
 ///
 /// ```
+/// fn (got: string_view, expected: string_view, loc := #call_location)
+/// fn (got: string, expected: string_view, loc := #call_location)
+/// fn (got: string_view, expected: string, loc := #call_location)
 /// fn (got: string, expected: string, loc := #call_location)
 /// fn (got: f32, expected: f32, epsilon: f32 = std.F32_EPSILON, loc := #call_location)
 /// fn (got: f64, expected: f64, epsilon: f64 = std.F64_EPSILON, loc := #call_location)
@@ -52,21 +55,43 @@
 /// 
 /// Test whether `got` value is equal to `expected` value.
 test_eq :: fn {
+    // @Cleanup: there is probably better way how to compare strings.
+    fn (got: string_view, expected: string_view, loc := #call_location) {
+        if std.str_match(expected, got) { return; }
+        print_err("\nExpected: '%'\nGot:      '%'.", expected, got);
+        stop(loc);
+    };
+
+    fn (got: string, expected: string_view, loc := #call_location) {
+        if std.str_match(expected, got) { return; }
+        print_err("\nExpected: '%'\nGot:      '%'.", expected, got);
+        stop(loc);
+    };
+
+    fn (got: string_view, expected: string, loc := #call_location) {
+        if std.str_match(expected, got) { return; }
+        print_err("\nExpected: '%'\nGot:      '%'.", expected, got);
+        stop(loc);
+    };
+
     fn (got: string, expected: string, loc := #call_location) {
         if std.str_match(expected, got) { return; }
         print_err("\nExpected: '%'\nGot:      '%'.", expected, got);
         stop(loc);
     };
+    
     fn (got: f32, expected: f32, epsilon: f32 = std.F32_EPSILON, loc := #call_location) {
         if std.compare(got, expected, epsilon) { return; }
         print_err("\nExpected: '%'\nGot:      '%'.", expected, got);
         stop(loc);
     };
+    
     fn (got: f64, expected: f64, epsilon: f64 = std.F64_EPSILON, loc := #call_location) {
         if std.compare(got, expected, epsilon) { return; }
         print_err("\nExpected: '%'\nGot:      '%'.", expected, got);
         stop(loc);
     };
+    
     fn (got: ?T, expected: T, loc := #call_location) {
         if expected == got { return; }
         print_err("\nExpected: '%'\nGot:      '%'.", expected, got);
@@ -78,6 +103,9 @@ test_eq :: fn {
 /// 
 /// ```
 /// fn (got: string, not_expected: string, loc := #call_location)
+/// fn (got: string, expected: string_view, loc := #call_location)
+/// fn (got: string_view, expected: string, loc := #call_location)
+/// fn (got: string, expected: string, loc := #call_location)
 /// fn (got: f32, not_expected: f32, epsilon: f32 = std.F32_EPSILON, loc := #call_location)
 /// fn (got: f64, not_expected: f64, epsilon: f64 = std.F64_EPSILON, loc := #call_location)
 /// fn (got: ?T, not_expected: T, loc := #call_location)
@@ -85,11 +113,31 @@ test_eq :: fn {
 /// 
 /// Test whether `got` value is not equal to `not_expected` value.
 test_neq :: fn {
-    fn (got: string, not_expected: string, loc := #call_location) {
-        if !std.str_match(not_expected, got) { return; }
-        print_err("\nExpected not to be '%'.", not_expected);
+    // @Cleanup: there is probably better way how to compare strings.
+    fn (got: string_view, expected: string_view, loc := #call_location) {
+        if !std.str_match(expected, got) { return; }
+        print_err("\nExpected: '%'\nGot:      '%'.", expected, got);
         stop(loc);
     };
+
+    fn (got: string, expected: string_view, loc := #call_location) {
+        if !std.str_match(expected, got) { return; }
+        print_err("\nExpected: '%'\nGot:      '%'.", expected, got);
+        stop(loc);
+    };
+
+    fn (got: string_view, expected: string, loc := #call_location) {
+        if !std.str_match(expected, got) { return; }
+        print_err("\nExpected: '%'\nGot:      '%'.", expected, got);
+        stop(loc);
+    };
+
+    fn (got: string, expected: string, loc := #call_location) {
+        if !std.str_match(expected, got) { return; }
+        print_err("\nExpected: '%'\nGot:      '%'.", expected, got);
+        stop(loc);
+    };
+
     fn (got: f32, not_expected: f32, epsilon: f32 = std.F32_EPSILON, loc := #call_location) {
         if !std.compare(got, not_expected, epsilon) { return; }
         print_err("Expected not to be '%'.", not_expected);
@@ -271,7 +319,7 @@ test_run :: fn (report_memory_leaks := true) s32 {
 #private
 TestRun :: struct {
     func: *fn();
-    name: string;
+    name: string_view;
     passed: bool;
     runtime_ms: f64;
 }

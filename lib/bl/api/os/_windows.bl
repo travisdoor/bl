@@ -75,7 +75,7 @@ os_tick_ms :: fn () f64 #inline {
 
 os_get_exec_path :: fn () string {
     buf : [OS_PATH_MAX]u8 #noinit;
-    if win32.GetModuleFileNameA(null, buf.ptr, auto buf.len) > 0 {
+    if win32.GetModuleFileNameA(null, auto buf.ptr, auto buf.len) > 0 {
         result :: std.str_new(buf.ptr);
         std.str_replace_all(&result, '\\', '/');
         return result;
@@ -84,11 +84,11 @@ os_get_exec_path :: fn () string {
     return std.str_new(); 
 }
 
-os_execute :: fn (command: string) s32 {
-    return C.system(auto command.ptr);
+os_execute :: fn (command: string_view) s32 {
+    return C.system(std.strtoc(command));
 }
 
-os_get_last_error :: fn () (s32, string) #inline {
+os_get_last_error :: fn () (s32, string_view) #inline {
     ec :: cast(s32) win32.GetLastError();
     if ec == 0 { return 0, "No error."; }
 
@@ -102,8 +102,7 @@ os_get_last_error :: fn () (s32, string) #inline {
         null);
 
     if msg_len == 0 { return ec, "Unknown error."; }
-    str :: {:string: auto msg_len, _last_error_msg_buffer.ptr };
-    return ec, str;
+    return ec, std.ctostr(_last_error_msg_buffer.ptr, auto msg_len);
 }
 
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s64 {
@@ -142,7 +141,7 @@ __os_start :: fn () #entry {
     // Internal allocation to handle argument strings is done
     // in this method, so we must free memory used by return value
     // by free(args.ptr) call.
-    get_command_line_args :: fn (out_args: *[]string) #noinline {
+    get_command_line_args :: fn (out_args: *[]string_view) #noinline {
         wargs: []*u16;
         cmd_line :: win32.GetCommandLineW();
         wargs.ptr = win32.CommandLineToArgvW(cmd_line, auto &wargs.len);
@@ -151,7 +150,7 @@ __os_start :: fn () #entry {
         // Determinate size needed for all argument strings listed in one array including
         // zero terminator for each one.
         tmp_size : usize = 0;
-        result_size: usize = sizeof(string) * auto wargs.len;
+        result_size: usize = sizeof(string_view) * auto wargs.len;
 
         loop i := 0; i < wargs.len; i += 1 {
             tmp_size += auto win32.WideCharToMultiByte(win32.CP_UTF8, null, wargs[i], -1, null, 0, null, null); 
@@ -162,12 +161,12 @@ __os_start :: fn () #entry {
 
         out_args.len = wargs.len;
         out_args.ptr = auto buffer; 
-        tmp := {:[]u8: auto tmp_size, ptr_shift_bytes(buffer, auto result_size)};
+        tmp := {:string_view: auto tmp_size, ptr_shift_bytes(buffer, auto result_size)};
 
         tmp_i := 0;
         loop i := 0; i < wargs.len; i += 1 {
             len :: win32.WideCharToMultiByte(win32.CP_UTF8, null, wargs[i], -1, null, 0, null, null); 
-            win32.WideCharToMultiByte(win32.CP_UTF8, null, wargs[i], auto C.wcslen(wargs[i]), &tmp[tmp_i], len, null, null); 
+            win32.WideCharToMultiByte(win32.CP_UTF8, null, wargs[i], auto C.wcslen(wargs[i]), auto &tmp[tmp_i], len, null, null); 
 
             (@out_args)[i].len = len - 1;
             (@out_args)[i].ptr = &tmp[tmp_i];
@@ -176,7 +175,7 @@ __os_start :: fn () #entry {
         }
     };
 
-    args: []string;
+    args: []string_view;
     get_command_line_args(&args);
 
     command_line_arguments.len = args.len;
@@ -189,4 +188,4 @@ __os_start :: fn () #entry {
 
 #private
 
-_last_error_msg_buffer: [256]u8 #thread_local;
+_last_error_msg_buffer: [256]s8 #thread_local;

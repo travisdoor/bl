@@ -1,25 +1,22 @@
-main :: fn () s32 {
-    foo :: "Hello"; // []u8
-    bar: string;
+// @Incomplete: Remove builtin string type???
+// @Incomplete: Check constant conversion to slice.
 
-    l, r: []u8;
-    str_split(foo, &l, &r);
-    str_split(bar, &l, &r);
-    str_append(&bar, foo);
-    str_append(&bar, bar);
-    
+main :: fn () s32 {
+    foo(10);
+    foo("Hello");
     return 0;
 }
 
-// string -> slice OK
-// slice -> string ERROR
+foo :: fn {
+    fn (i: s32) {
+        print("FIRST\n");
+    };
 
-str_split :: fn (_: []u8, _: *[]u8, _: *[]u8) {
+    fn (i: ...) {
+        print("SECOND\n");
+    };
 }
 
-str_append :: fn (_: *string, _: []u8) {}
-
-// rename: struct mir_instr_* -> struct instr
 
 // =================================================================================================
 // Comptime function
@@ -41,7 +38,7 @@ module :: fn (bin: *Assembly) #module_entry {
     #if PLATFORM == Platform.WINDOWS {
         add_unit(bin, "_windows_impl.bl"
     } else {
-        #error "Module does not support current target platform"
+        #error "Module does not support current Arget platform"
     }
 }
 
@@ -51,7 +48,7 @@ Foo :: struct {
 }
 
 foo := Foo.{}
+foo: Foo = .{};
 foo := {:Foo: ... }
 
 */
-

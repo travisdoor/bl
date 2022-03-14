@@ -36,12 +36,12 @@
 //! @Incomplete: documentation of `debugbreak` builtin.
 
 /// Print debug log using `_context.print_log_fn` function. See also :ref:`print`.
-print_log :: fn (format: string, args: ...) #inline {
+print_log :: fn (format: string_view, args: ...) #inline {
     _context.print_log_fn(PrintLogKind.MESSAGE, "", 0, format, args);
 };
 
 /// Print debug warning using `_context.print_log_fn` function.
-print_warn :: fn (format: string, args: ...) #inline {
+print_warn :: fn (format: string_view, args: ...) #inline {
     _context.print_log_fn(PrintLogKind.WARNING, "", 0, format, args);
 };
 
@@ -94,17 +94,17 @@ PrintLogKind :: enum u8 {
     PANIC;
 };
 
-__print_log_default :: fn (kind: PrintLogKind, file: string, line: s32, format: string, args: ...) {
+__print_log_default :: fn (kind: PrintLogKind, file: string_view, line: s32, format: string_view, args: ...) {
     out := OS_STDOUT;
     buf: [PRINT_MAX_LENGTH]u8 #noinit;
-    tag: string;
+    tag: string_view;
     w: s32;
     switch kind {
         PrintLogKind.MESSAGE { tag = "log"; }
         PrintLogKind.WARNING { tag = "warning"; }
-        PrintLogKind.ERROR   { tag = "error"; out = OS_STDERR; }
+        PrintLogKind.ERROR   { tag = "error";  out = OS_STDERR; }
         PrintLogKind.ASSERT  { tag = "assert"; out = OS_STDERR; }
-        PrintLogKind.PANIC   { tag = "panic"; out = OS_STDERR; }
+        PrintLogKind.PANIC   { tag = "panic";  out = OS_STDERR; }
     }
     if file.len > 0 {
         w = bprint(slice_range(buf, w), "% [%:%]: ", tag, file, line);
@@ -157,7 +157,7 @@ panic_error :: fn (err: Error) {
     unreachable;    
 }
 
-panic_msg :: fn (format: string, args: ...) {
+panic_msg :: fn (format: string_view, args: ...) {
     _context.print_log_fn(PrintLogKind.PANIC, "", 0, format, args);
     unreachable;
 }
@@ -166,6 +166,6 @@ print_err_e :: fn (err: Error) #inline {
     _context.print_log_fn(PrintLogKind.ERROR, "", 0, "%", err);
 };
 
-print_err_msg :: fn (format: string, args: ...) #inline {
+print_err_msg :: fn (format: string_view, args: ...) #inline {
     _context.print_log_fn(PrintLogKind.ERROR, "", 0, format, args);
 };

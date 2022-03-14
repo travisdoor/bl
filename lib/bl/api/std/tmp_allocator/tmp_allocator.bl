@@ -108,7 +108,7 @@ tmp_allocated_bytes :: fn () usize #inline {
 DEFAULT_BLOCK_SIZE : usize : 1024;
 DEFAULT_ALIGNMENT : usize : 16; // @INCOMPLETE This is platform depend.
 
-tmp_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, _ : *u8 = null, _ := std.str_empty, _ := 0) *u8 {
+tmp_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, _ : *u8 = null, _ := std.str_view_empty, _ := 0) *u8 {
     switch operation {
         AllocOp.ALLOCATE {
             return allocate(size);

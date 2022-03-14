@@ -6,17 +6,17 @@
 File :: s64;
 FILE_INVALID : File : -1;
 
-exist :: fn (filepath: string) bool #inline {
+exist :: fn (filepath: string_view) bool #inline {
     if filepath.len == 0 { return false; }
     tmp: C.stat_t;
-    return C.stat(auto filepath.ptr, &tmp) == 0;
+    return C.stat(std.strtoc(filepath), &tmp) == 0;
 }
 
-open :: fn (filepath: string, mode: std.FileOpenMode) (File, Error) {
+open :: fn (filepath: string_view, mode: std.FileOpenMode) (File, Error) {
     if std.str_is_empty(filepath) { return 0, error(ERR_INVALID_HANDLE, "File path is empty!"); }
     flags := modes_to_flags(mode);
     mode_flags :: C.S_IRUSR | C.S_IWUSR | C.S_IROTH | C.S_IWOTH;
-    handle :: C.open(auto filepath.ptr, flags, mode_flags);
+    handle :: C.open(std.strtoc(filepath), flags, mode_flags);
     if handle < 0 { // error
         ec, estr :: os_get_last_error();
         return 0, error(ec, "Cannot open file '%': %.", filepath, estr);
@@ -24,16 +24,16 @@ open :: fn (filepath: string, mode: std.FileOpenMode) (File, Error) {
     return handle, ok();   
 }
 
-remove :: fn (filepath: string) Error #inline {
+remove :: fn (filepath: string_view) Error #inline {
     if std.str_is_empty(filepath) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
-    if C.unlink(auto filepath.ptr) != 0 {
+    if C.unlink(std.strtocfilepath)) != 0 {
         ec, estr :: os_get_last_error();
         return error(ec, "Cannot remove file '%': %.", filepath, estr);
     }
     return ok();
 }
 
-copy :: fn (src: string, dest: string, override: bool) Error {
+copy :: fn (src: string_view, dest: string_view, override: bool) Error {
     if std.str_is_empty(src) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
     if std.str_is_empty(dest) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
     if exist(dest) && !override { return error(ERR_ALREADY_EXIST, "Destination already exist '%'", dest); }
@@ -63,7 +63,7 @@ get_uid :: fn (handle: File) (u64, Error) {
     return auto tmp.st_ino, ok();
 }
 
-get_uid_by_name :: fn (filepath: string) (u64, Error) {
+get_uid_by_name :: fn (filepath: string_view) (u64, Error) {
     file, err1 :: open(filepath, std.FileOpenMode.READ);
     defer close(file);
     if !is_ok(err1) { return 0, err1; }
@@ -79,27 +79,27 @@ size :: fn (handle: File) (usize, Error) #inline {
     return auto tmp.st_size, ok();
 }
 
-dir_create :: fn (dirpath: string) Error {
+dir_create :: fn (dirpath: string_view) Error {
     if std.str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot create directory, dirpath is empty."); }
-    if C.mkdir(auto dirpath.ptr, C.S_IRWXU | C.S_IRWXG | C.S_IROTH | C.S_IXOTH) != 0 {
+    if C.mkdir(std.strtoc(dirpath), C.S_IRWXU | C.S_IRWXG | C.S_IROTH | C.S_IXOTH) != 0 {
         ec, estr :: os_get_last_error();
         return error(ec, "Cannot create directory '%': %.", dirpath, estr);
     }
     return ok();
 }
 
-dir_remove :: fn (dirpath: string) Error {
+dir_remove :: fn (dirpath: string_view) Error {
     if std.str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot remove directory, dirpath is empty."); }
-    if C.rmdir(auto dirpath.ptr)!= 0 {
+    if C.rmdir(std.strtoc(dirpath)) != 0 {
         ec, estr :: os_get_last_error();
         return error(ec, "Cannot remove directory '%': %.", dirpath, estr);
     }
     return ok();
 }
 
-dir_scan :: fn (dirpath: string, filter: std.DirScanFilterFn) (std.InfoList, Error) {
+dir_scan :: fn (dirpath: string_view, filter: std.DirScanFilterFn) (std.InfoList, Error) {
     invalid: std.InfoList;
-    dir := C.opendir(auto dirpath.ptr);
+    dir := C.opendir(std.strtoc(dirpath));
     if !dir {
         ec, estr :: os_get_last_error();
         return invalid, error(ec, "Cannot list directory '%': %.", dirpath, estr);
@@ -120,14 +120,12 @@ dir_scan :: fn (dirpath: string, filter: std.DirScanFilterFn) (std.InfoList, Err
         stat :: C.readdir(dir);
         if stat == null { break; }
         kind: std.InfoKind;
-        name: string;
         if stat.d_type == auto C.DT_DIR {
             kind = std.InfoKind.DIRECTORY;
-            name = std.str_new(cast(*u8) stat.d_name.ptr);
         } else {
             kind = std.InfoKind.FILE;
-            name = std.str_new(cast(*u8) stat.d_name.ptr);
         }
+        name :: std.str_new(cast(*u8) stat.d_name.ptr);
         push := true;
         info :: {:std.Info: kind, name};
         if filter { push = filter(&info); }
@@ -135,23 +133,23 @@ dir_scan :: fn (dirpath: string, filter: std.DirScanFilterFn) (std.InfoList, Err
             buf.len += 1;
             buf[buf.len-1] = info;
         } else {
-            std.str_delete(name);
+            std.str_delete(&name);
         }
     }
     return buf, ok();
 }
 
-is_directory :: fn (path: string) (bool, Error) #inline {
+is_directory :: fn (path: string_view) (bool, Error) #inline {
     if std.str_is_empty(path) { return false, error(ERR_INVALID_HANDLE, "Path is empty."); }
     stat: C.stat_t #noinit;
-    if C.stat(auto path.ptr, &stat) != 0 {
+    if C.stat(std.strtoc(path), &stat) != 0 {
         ec, estr :: os_get_last_error();
         return false, error(ec, "Cannot check directory '%': %.", path, estr);
     }
     return C.S_ISDIR(stat.st_mode), ok();
 }
 
-validate_filename :: fn (name: string) bool {
+validate_filename :: fn (name: string_view) bool {
     if name.len == 0 { return false; }
     invalid :: "/";
     loop i := 0; i < invalid.len; i += 1 {
@@ -167,9 +165,9 @@ get_cwd :: fn () string #inline {
     return remove_last_separator(path);
 }
 
-set_cwd :: fn (path: string) Error #inline {
+set_cwd :: fn (path: string_view) Error #inline {
     if std.str_is_empty(path) { return error(ERR_INVALID_HANDLE, "Path is empty!"); }
-    if C.chdir(auto path.ptr) != 0 {
+    if C.chdir(std.strtoc(path)) != 0 {
         ec, estr :: os_get_last_error();
         return error(ec, "Cannot set current directory to '%': %.", path, estr);
     }
@@ -200,7 +198,7 @@ normalize :: fn (filepath: *string) Error {
 
     if !is_path_absolute(@filepath) {
         cwd :: get_cwd();
-        defer std.str_delete(cwd);
+        defer std.str_delete(&cwd);
         bprint(in_buf, "%/%", cwd, @filepath);
     } else {
         bprint(in_buf, "%", @filepath);
@@ -212,31 +210,6 @@ normalize :: fn (filepath: *string) Error {
     std.str_clear(filepath);
     std.str_append(filepath, cstr_to_str(buf.ptr));
     return ok();
-}
-
-remove_extension :: fn (filename: string) string #inline {
-    if std.str_is_empty(filename) { return std.str_empty; }
-    tmp := filename;
-    tmp.len = 0;
-    loop i := 0; i < filename.len; i += 1 {
-        c :: filename[i];
-        if c == '.' && i > 0 { break; }
-        tmp.len += 1;
-    }
-    return tmp;
-}
-
-get_extension :: fn (filename: string) string #inline {
-    if std.str_is_empty(filename) { return std.str_empty; }
-    if filename[0] == '.' {
-        if filename.len == 1 { return std.str_empty; }
-        filename.len -= 1; filename.ptr = &filename[1]; 
-    }
-    rhs: string;
-    if std.str_split_by_first(filename, '.', null, &rhs) {
-        return rhs;
-    }
-    return std.str_empty;
 }
 
 #private

@@ -12,10 +12,9 @@ MAIN_TEST_SUITE_FILEPATH :: "tests/src/main.test.bl";
 EXAMPLES_DIR :: "docs/master/examples";
 EXPECT_FAIL_DIR :: "tests/src/expect_fail";
 
-HARDCODED_MODULES :: {:[13]string:
+HARDCODED_MODULES :: {:[12]string_view:
                       "lib/bl/api/std/arg_parser/arg_parser.test.bl",
                       "lib/bl/api/std/array/array.test.bl",
-                      "lib/bl/api/std/array_table/array_table.test.bl",
                       "lib/bl/api/std/debug_allocator/debug_allocator.test.bl",
                       "lib/bl/api/std/dlib/dlib.test.bl",
                       "lib/bl/api/std/fs/fs.test.bl",
@@ -121,7 +120,7 @@ _errc := 0;
 wdir_init :: fn () {
     using std;
     
-    lhs: string;
+    lhs: string_view;
     if str_split_by_last(#file, '/', &lhs, null) {
         _wdir = str_new(lhs, &tmp_allocator);
     } else {
@@ -129,7 +128,7 @@ wdir_init :: fn () {
     }
 }
 
-get_path :: fn (sub: string) string {
+get_path :: fn (sub: string_view) string #inline {
     return tprint("%/%", _wdir, sub);
 }
 
@@ -144,7 +143,7 @@ parse_args :: fn () bool {
         "-d",
         "--diag",
         "Diagnostic mode.",
-        &fn (_: ArgParser, _: []string, ctx: *ArgParserCtx) (s32, Error) {
+        &fn (_: ArgParser, _: []string_view, ctx: *ArgParserCtx) (s32, Error) {
             a: *Args = auto ctx;
             a.diag_mode = true;
             return 1, ok();
@@ -156,7 +155,7 @@ parse_args :: fn () bool {
         "-sf",
         "--stop-on-fail",
         "Stop testing on fail.",
-        &fn (_: ArgParser, _: []string, ctx: *ArgParserCtx) (s32, Error) {
+        &fn (_: ArgParser, _: []string_view, ctx: *ArgParserCtx) (s32, Error) {
             a: *Args = auto ctx;
             a.stop_on_fail = true;
             return 1, ok();
@@ -167,7 +166,7 @@ parse_args :: fn () bool {
         "-c",
         "--count",
         "<N> Specify test repeat count.",
-        &fn (_: ArgParser, args: []string, ctx: *ArgParserCtx) (s32, Error) {
+        &fn (_: ArgParser, args: []string_view, ctx: *ArgParserCtx) (s32, Error) {
             a: *Args = auto ctx;
             if (args.len < 2) {
                 return 0, error("Expected count of test repeat!");
@@ -190,7 +189,7 @@ parse_args :: fn () bool {
     return true;
 }
 
-get_verbosity :: fn () string #inline {
+get_verbosity :: fn () string_view #inline {
     if _args.diag_mode { return ""; } // print all
     #if PLATFORM == Platform.WINDOWS {
         return "2>nul 1>nul";
@@ -199,14 +198,14 @@ get_verbosity :: fn () string #inline {
     }
 }
 
-get_expected_error :: fn (filepath: string, out_err: *s32) bool {
+get_expected_error :: fn (filepath: string_view, out_err: *s32) bool {
     using std;
     
     file, err1 :: file_open(filepath, FileOpenMode.READ);
     defer file_close(file);
     if !is_ok(err1) { print_err("%", err1); return false; }
     content, err2 :: read_string(file);
-    defer str_delete(content);
+    defer str_delete(&content);
     if !is_ok(err2) { print_err("%", err2); return false; }
     
     tmp :: str_split_by(content, '@');
@@ -222,7 +221,7 @@ blc :: fn (file: string, args := "--no-bin --no-warning") s32 {
     using std;
     
     cmd :: str_new(64);
-    defer str_delete(cmd);
+    defer str_delete(&cmd);
     _suitec += 1;
     str_concat(&cmd, _compiler_path, " ", args, " ");   
     str_append(&cmd, file);
@@ -231,11 +230,11 @@ blc :: fn (file: string, args := "--no-bin --no-warning") s32 {
     return os_execute(cmd);
 }
 
-report_ok :: fn (msg: string, file: string, state: s32) #inline {
+report_ok :: fn (msg: string_view, file: string_view, state: s32) #inline {
     print("[   OK   ] % '%' (Process exit with state: %)\n", msg, file, state);
 }
 
-report_failed :: fn (msg: string, file: string, state: s32) #inline {
+report_failed :: fn (msg: string_view, file: string_view, state: s32) #inline {
     print("[ FAILED ] % '%' (Process exit with state: %)\n", msg, file, state);
     if _args.stop_on_fail { panic("Abort on fail!"); }
     _errc += 1;
@@ -257,7 +256,7 @@ test_file :: fn (file: string, kind := TestKind.RUNTIME, expected_state := TEST_
             }
 
             tmp := str_new();
-            defer str_delete(tmp);
+            defer str_delete(&tmp);
             #if PLATFORM == Platform.WINDOWS {
                 str_append(&tmp, "out.exe ");
             } else {
@@ -306,7 +305,7 @@ test_all_in_dir :: fn (dir: string, expect_fail := false) {
     using std;
     
     file :: str_new(64);
-    defer str_delete(file);
+    defer str_delete(&file);
     
     print("Testing files in directory '%':\n", dir);        
     list, err :: dir_scan(dir);
@@ -423,7 +422,7 @@ BlError :: enum s32 {
     ERR_USER                     = 84;
 }
 
-strtoerr :: fn (s: string) s32 {
+strtoerr :: fn (s: string_view) s32 {
     info :: cast(*TypeInfoEnum) typeinfo(BlError);
     loop i := 0; i < info.variants.len; i += 1 {
         variant :: &info.variants[i];

@@ -4,22 +4,20 @@
 
 Library :: *u8;
 
-open :: fn (lib_name: string) (Library, Error) {
+open :: fn (lib_name: string_view) (Library, Error) {
     clib: *u8 = null;
     if lib_name.len > 0 { clib = lib_name.ptr; }
     handle :: _dlopen(clib, RTLD_LAZY);
     if !handle {
-        cerr :: cast(*u8) _dlerror();
-        return null, error(cstr_to_str(cerr));
+        return null, error(std.ctostr(_dlerror()));
     }
     return handle, ok();
 }
 
-sym :: fn (lib: Library, sym_name: string) (*u8, Error) {
-    handle :: _dlsym(lib, sym_name.ptr);
+sym :: fn (lib: Library, sym_name: string_view) (*u8, Error) {
+    handle :: _dlsym(lib, std.strtoc(sym_name));
     if !handle {
-        cerr :: cast(*u8) _dlerror();
-        return null, error(cstr_to_str(cerr));
+        return null, error(std.ctostr(_dlerror()));
     }
     return handle, ok();
 }
@@ -38,5 +36,5 @@ RTLD_LAZY   :: 0x1;
 
 _dlopen :: fn (path: *u8, mode: s32) *u8 #extern "dlopen";
 _dlclose :: fn (handle: *u8) s32 #extern "dlclose";
-_dlsym :: fn (handle: *u8, symbol: *u8) *u8 #extern "dlsym";
+_dlsym :: fn (handle: *u8, symbol: *C.char) *u8 #extern "dlsym";
 _dlerror :: fn () *s8 #extern "dlerror";

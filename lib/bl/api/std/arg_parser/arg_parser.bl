@@ -12,7 +12,7 @@
 //! // Command line arguments context.
 //! Args :: struct #base std.ArgParserCtx {
 //!     my_flag: bool;
-//!     my_name: string;
+//!     my_name: string_view;
 //! }
 //! 
 //! g_args: Args;
@@ -30,7 +30,7 @@
 //!         "-f", // Short name (must start with -)
 //!         "--flag", // Long name (must start with -)
 //!         "Specify my flag.", // Help text.
-//!         &fn (parser: std.ArgParser, args: []string, ctx: *std.ArgParserCtx) (s32, Error) {
+//!         &fn (parser: std.ArgParser, args: []string_view, ctx: *std.ArgParserCtx) (s32, Error) {
 //!             a: *Args = auto ctx;
 //!             a.my_flag = true;
 //!             return 1, ok(); // Return number of parsed arguments and state.
@@ -41,7 +41,7 @@
 //!         "-n",
 //!         "--name",
 //!         "Specify my name.",
-//!         &fn (parser: std.ArgParser, args: []string, ctx: *std.ArgParserCtx) (s32, Error) {
+//!         &fn (parser: std.ArgParser, args: []string_view, ctx: *std.ArgParserCtx) (s32, Error) {
 //!             a: *Args = auto ctx;
 //!             if (args.len < 2) {
 //!                 return 0, error("Expected name!");
@@ -70,7 +70,7 @@
 /// Arguments context base type.
 ArgParserCtx :: struct {
     /// Contains other positional arguments not considered as options (i.e. input files).
-    positional: [..]string;
+    positional: [..]string_view;
     /// True when help was invoked implicitly.
     help: bool;
 }
@@ -87,11 +87,11 @@ ArgParser :: *u8;
 /// See also: [add](#argparseradd)
 ///
 /// **todo**: Is reference to parent parser needed here?
-ArgParserHandlerFn :: *fn (parser: ArgParser, args: []string, ctx: *ArgParserCtx) (s32, Error);
+ArgParserHandlerFn :: *fn (parser: ArgParser, args: []string_view, ctx: *ArgParserCtx) (s32, Error);
 
 /// Create new instance of parser with possibility to set custom help text. Use 
 /// [delete](#argparserdelete) to release parser instance.
-arg_parser_new :: fn (help_text := std.str_empty) ArgParser {
+arg_parser_new :: fn (help_text := std.str_view_empty) ArgParser {
     parser := cast(*ParserImpl) alloc(sizeof(ParserImpl));
     parser.pad = 0;
     parser.help_text = std.str_new(help_text);
@@ -101,7 +101,7 @@ arg_parser_new :: fn (help_text := std.str_empty) ArgParser {
         "-h",
         "--help",
         "Print this help.",
-        &fn (parser: ArgParser, _: []string, ctx: *ArgParserCtx) (s32, Error) {
+        &fn (parser: ArgParser, _: []string_view, ctx: *ArgParserCtx) (s32, Error) {
             if ctx { ctx.help = true; }
             arg_parser_print_help(parser);
             return 1, ok();
@@ -117,7 +117,7 @@ arg_parser_delete :: fn (_parser: ArgParser) {
         entry_delete(&parser.entries[i]);
     }
     array_terminate(&parser.entries);
-    std.str_delete(parser.help_text);
+    std.str_delete(&parser.help_text);
     free(auto parser);
 }
 
@@ -131,7 +131,7 @@ arg_parser_ctx_terminate :: fn (ctx: *ArgParserCtx) {
 /// callbacks. `start` specify first element of `args` slice considered to be an argument.
 /// See also: (command_line_arguments)[#argparsercommand_line_arguments] 
 /// (**note**: first element contains name of the executable)
-arg_parser_run :: fn (_parser: ArgParser, args: []string, ctx: *ArgParserCtx, start := 0) Error {
+arg_parser_run :: fn (_parser: ArgParser, args: []string_view, ctx: *ArgParserCtx, start := 0) Error {
     assert(ctx);
     parser: *ParserImpl = auto _parser;
     if start >= args.len {
@@ -189,7 +189,7 @@ arg_parser_run :: fn (_parser: ArgParser, args: []string, ctx: *ArgParserCtx, st
 ///     "-d", // short name.
 ///     "--debug", // long name.
 ///     "Enable debug mode.", // Help text.
-///     &fn (parser: std.ArgParser, args: []string, ctx: *std.ArgParserCtx) (s32, Error) {
+///     &fn (parser: std.ArgParser, args: []string_view, ctx: *std.ArgParserCtx) (s32, Error) {
 ///         a: *MyArgs = auto ctx;
 ///         a.is_debug = true;
 ///         return 1, ok(); // One argument parsed ('-d' or '--debug') 
@@ -197,9 +197,9 @@ arg_parser_run :: fn (_parser: ArgParser, args: []string, ctx: *ArgParserCtx, st
 /// ```
 arg_parser_add :: fn (
     _parser: ArgParser,
-    short: string,
-    long: string,
-    help: string,
+    short: string_view,
+    long: string_view,
+    help: string_view,
     handler: ArgParserHandlerFn
 ) {
     parser: *ParserImpl = auto _parser;
@@ -252,7 +252,7 @@ Entry :: struct {
 }
 
 entry_delete :: fn (entry: *Entry) {
-    std.str_delete(entry.short);
-    std.str_delete(entry.long);
-    std.str_delete(entry.help);
+    std.str_delete(&entry.short);
+    std.str_delete(&entry.long);
+    std.str_delete(&entry.help);
 }

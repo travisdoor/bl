@@ -40,7 +40,7 @@ MAIN_BODY_CLT ::
     "        \"-f\", // Short name (must start with -)\n"
     "        \"--flag\", // Long name (must start with -)\n"
     "        \"Specify my flag.\", // Help text.\n"
-    "        &fn (_: std.ArgParser, _: []string, ctx: *std.ArgParserCtx) (s32, Error) {\n"
+    "        &fn (_: std.ArgParser, _: []string_view, ctx: *std.ArgParserCtx) (s32, Error) {\n"
     "            a: *Args = auto ctx;\n"
     "            a.my_flag = true;\n"
     "            return 1, ok(); // Return number of parsed arguments and state.\n"
@@ -71,7 +71,7 @@ BUILD_FILE :: "build.bl";
 SRC_DIR :: "src";
 
 Args :: struct #base std.ArgParserCtx {
-    proj_dir: string;
+    proj_dir: string_view;
     proj_kind: ProjKind;
 }
 
@@ -93,7 +93,7 @@ main :: fn () s32 {
         "",
         "--output-dir",
         "Sets the output directory. This is directory in which root project directory will be created.",
-        &fn (_: std.ArgParser, args: []string, ctx: *std.ArgParserCtx) (s32, Error) {
+        &fn (_: std.ArgParser, args: []string_view, ctx: *std.ArgParserCtx) (s32, Error) {
             a: *Args = auto ctx;
             if (args.len < 2) {
                 return 0, error("Expected directory name!");
@@ -109,7 +109,7 @@ main :: fn () s32 {
         "",
         "--exe",
         "Generate simple executable project (default).",
-        &fn (_: std.ArgParser, _: []string, ctx: *std.ArgParserCtx) (s32, Error) {
+        &fn (_: std.ArgParser, _: []string_view, ctx: *std.ArgParserCtx) (s32, Error) {
             a: *Args = auto ctx;
             a.proj_kind = ProjKind.Executable;
             return 1, ok();
@@ -120,7 +120,7 @@ main :: fn () s32 {
         "",
         "--shared",
         "Generate shared library project.",
-        &fn (_: std.ArgParser, _: []string, ctx: *std.ArgParserCtx) (s32, Error) {
+        &fn (_: std.ArgParser, _: []string_view, ctx: *std.ArgParserCtx) (s32, Error) {
             a: *Args = auto ctx;
             a.proj_kind = ProjKind.Shared;
             return 1, ok();
@@ -131,7 +131,7 @@ main :: fn () s32 {
         "",
         "--tool",
         "Generate command line tool project.",
-        &fn (_: std.ArgParser, _: []string, ctx: *std.ArgParserCtx) (s32, Error) {
+        &fn (_: std.ArgParser, _: []string_view, ctx: *std.ArgParserCtx) (s32, Error) {
             a: *Args = auto ctx;
             a.proj_kind = ProjKind.CommandLineTool;
             return 1, ok();
@@ -158,8 +158,8 @@ main :: fn () s32 {
     
     proj_root :: sprint("%/%", g_args.proj_dir, proj_name);
     proj_src  :: sprint("%/%", proj_root, SRC_DIR);
-    defer std.str_delete(proj_src);    
-    defer std.str_delete(proj_root);
+    defer std.str_delete(&proj_src);
+    defer std.str_delete(&proj_root);
     
     // create root directory
     state = std.dir_create(proj_root);
@@ -172,32 +172,32 @@ main :: fn () s32 {
     switch g_args.proj_kind {
         ProjKind.Executable {
             proj_main :: sprint("%/%", proj_src, MAIN_FILE);
-            defer std.str_delete(proj_main);            
+            defer std.str_delete(&proj_main);
             make_file(proj_main, MAIN_BODY_EXE);
             
             proj_build :: sprint("%/%", proj_root, BUILD_FILE);
-            defer std.str_delete(proj_build);            
+            defer std.str_delete(&proj_build);
             make_file(proj_build, BUILD_BODY, "executable", proj_name, SRC_DIR, MAIN_FILE);
         }
         ProjKind.Shared {
             proj_main_filename :: sprint("%.bl", proj_name);
             proj_main :: sprint("%/%", proj_src, proj_main_filename);
-            defer std.str_delete(proj_main);            
-            defer std.str_delete(proj_main_filename);            
+            defer std.str_delete(&proj_main);
+            defer std.str_delete(&proj_main_filename);
             make_file(proj_main, MAIN_BODY_SHARED);
 
             proj_build :: sprint("%/%", proj_root, BUILD_FILE);
-            defer std.str_delete(proj_build);            
+            defer std.str_delete(&proj_build);
             make_file(proj_build, BUILD_BODY, "library", proj_name, SRC_DIR, proj_main_filename);
 
         }
         ProjKind.CommandLineTool {
             proj_main :: sprint("%/%", proj_src, MAIN_FILE);
-            defer std.str_delete(proj_main);            
+            defer std.str_delete(&proj_main);
             make_file(proj_main, MAIN_BODY_CLT);
 
             proj_build :: sprint("%/%", proj_root, BUILD_FILE);
-            defer std.str_delete(proj_build);            
+            defer std.str_delete(&proj_build);
             make_file(proj_build, BUILD_BODY, "executable", proj_name, SRC_DIR, MAIN_FILE);
         }
     }
@@ -205,7 +205,7 @@ main :: fn () s32 {
     return 0;
 }
 
-make_file :: fn (filepath: string, content: string, args: ...) Error {
+make_file :: fn (filepath: string_view, content: string_view, args: ...) Error {
     file, err :: std.file_open(filepath, make_flags(std.FileOpenMode.WRITE, std.FileOpenMode.CREATE));
     defer std.file_close(file);
     if !is_ok(err) { return err; }
@@ -214,7 +214,7 @@ make_file :: fn (filepath: string, content: string, args: ...) Error {
 }
 
 #private
-custom_logger :: fn (kind: PrintLogKind, _: string, _: s32, format: string, args: ...) {
+custom_logger :: fn (kind: PrintLogKind, _: string_view, _: s32, format: string_view, args: ...) {
     switch kind {
         PrintLogKind.MESSAGE { print("  "); }
         PrintLogKind.WARNING { print("  [W] "); }

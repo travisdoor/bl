@@ -97,7 +97,7 @@
 //! }
 //! ```
 Table :: fn (TKey: type, TValue: type) type #comptime {
-    static_assert(TKey == string || is_number(TKey) || is_pointer(TKey));
+    static_assert(TKey == string || is_number(TKey) || is_pointer(TKey) || TKey == string_view);
     TNode :: Node(TKey, TValue);
     return struct {
         buckets: [] struct { n: *TNode; c: u32; };
@@ -255,7 +255,8 @@ tbl_typeof_value :: fn (T: type) type #comptime {
 DEFAULT_BUCKET_COUNT :: 64;
 MAX_LF :: 1.0 #maybe_unused;
 Hash :: fn (TKey: type) type #comptime {
-    #if TKey == string {
+    is_string :: TKey == string || TKey == string_view;
+    #if is_string {
         return u32;
     } else {
         return number_type(sizeof(TKey), false);
@@ -311,7 +312,8 @@ bucket_alloc :: fn (tbl: *?T, bucket_count: s64) {
 }
 
 calculate_hash :: fn (key: ?T) Hash(T) #inline {
-    #if T == string {
+    is_string :: T == string || T == string_view;
+    #if is_string {
         return auto std.str_hash(key);
     } else {
         return auto key;
