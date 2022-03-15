@@ -1136,6 +1136,10 @@ More functions can be associated with one name with explicit function overloadin
 group of functions is replaced with proper function call during compilation, based on provided
 arguments.
 
+**note:** There is no additional runtime overhead caused by function overloading. 
+
+**note:** Ordering of functions inside the group is arbitrary. 
+
 **Example:**
 
 ```c
@@ -1157,9 +1161,96 @@ test_group :: fn () #test {
 }
 ```
 
-**TODO:** Inline defined function overloads.
+Functions can be declared directly inside the overload group:
 
-**TODO:**Priority handling.
+```c
+group :: fn { 
+    fn (a: s32, b: s32) s32 {
+        return a + b;
+    };
+
+    fn (a: f32, b: f32) f32 {
+        return a + b;
+    };
+}
+```
+
+**Overload Resolution**
+
+When function group is called the function overload resolution takes into account multiple options to
+sort all possible call candidates by its priority. Candidate function with the highest priority is
+used. In case there are multiple functions with the same priority found in the group, compiler complains
+about ambiguous function call. In case there is no call candidate, the first one is used. This usually
+leads to an error later if the function interface is not compatible.
+
+**The overload resolution is based on:**
+
+1. Argument count.
+2. Argument types.
+3. Type casting.
+4. Conversion to slice.
+5. Conversion to any.
+
+**note:** The return type has no effect on choosing the best call candidate.
+
+**Resolving of the best call candidate is done in two passes:**
+
+1. Pick all possible candidates based on call-side argument count when:
+   - Argument count is exactly matching the count of arguments required by the function interface. 
+   - All arguments up to the first defaulted or variadic argument in the function interface are
+     provided.
+     
+2. Iterate over previously picked functions and rank them comparing call-side arguments with the
+   each function's interface arguments one by one:
+   - Type is exactly the same. (Rank +3)
+   - Can be implicitly casted. (Rank +2) 
+   - Can be implicitly converted. (Rank +2) 
+   - Can be implicitly converted `Any`. (Rank +1) 
+   - Can be added into vargs. (Rank +1) 
+   
+3. Use function with highest rank.
+
+**Examples:**
+```c
+a :: fn (_: []u8)                {}
+b :: fn (_: string)              {}
+c :: fn (_: Any)                 {}
+d :: fn (_: s32, _: bool = true) {}
+
+group :: fn { a; b; c; d; }
+
+// a: rank = 3 <- used 
+// b: rank = 0  
+// c: rank = 1
+// d: rank = 0
+group("hello");
+
+// a: rank = 2 (can be implicitly converted to []u8)
+// b: rank = 3 <- used 
+// c: rank = 1
+// d: rank = 0
+str: string;
+group(str);
+
+// a: rank = 0 
+// b: rank = 0 
+// c: rank = 1
+// d: rank = 3 <- used
+group(10);
+
+// a: rank = 0 
+// b: rank = 0 
+// c: rank = 0
+// d: rank = 6 <- used
+group(10, false);
+
+// a: rank = 0 
+// b: rank = 0 
+// c: rank = 1
+// d: rank = 2 <- used (implicitly casted s8 to s32)
+i: s8;
+group(10);
+```
 
 ### Polymorphic functions
 
