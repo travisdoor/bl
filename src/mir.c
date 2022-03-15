@@ -32,7 +32,6 @@
 #include "builder.h"
 #include "common.h"
 #include "stb_ds.h"
-#include <excpt.h>
 #include <stdarg.h>
 
 #ifdef _MSC_VER

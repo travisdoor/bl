@@ -26,7 +26,7 @@ open :: fn (filepath: string_view, mode: std.FileOpenMode) (File, Error) {
 
 remove :: fn (filepath: string_view) Error #inline {
     if std.str_is_empty(filepath) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
-    if C.unlink(std.strtocfilepath)) != 0 {
+    if C.unlink(std.strtoc(filepath)) != 0 {
         ec, estr :: os_get_last_error();
         return error(ec, "Cannot remove file '%': %.", filepath, estr);
     }
@@ -208,7 +208,7 @@ normalize :: fn (filepath: *string) Error {
         return error(ec, "Cannot normalize '%': %.", @filepath, estr);
     }
     std.str_clear(filepath);
-    std.str_append(filepath, cstr_to_str(buf.ptr));
+    std.str_append(filepath, std.ctostr(auto buf.ptr));
     return ok();
 }
 
