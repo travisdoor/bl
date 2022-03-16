@@ -1,4 +1,4 @@
-version: 10
+version: 11
 src: "winapi.bl"
 
 x86_64-pc-windows-msvc:

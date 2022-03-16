@@ -1,4 +1,4 @@
-version: 1
+version: 2
 src: "io.bl"
 
 x86_64-pc-windows-msvc:
