@@ -440,14 +440,14 @@ str_count_of :: fn (str: string_view, c: u8) s32 #inline {
 }
 
 /// Converts input string to lower case.
-str_to_lower :: fn (str: string) #inline {
+str_to_lower :: fn (str: string_view) #inline {
     loop i := 0; i < str.len; i += 1 {
         str[i] = auto C.tolower(auto str[i]); 
     }
 }
 
 /// Converts input string to upper case.
-str_to_upper :: fn (str: string) #inline {
+str_to_upper :: fn (str: string_view) #inline {
     loop i := 0; i < str.len; i += 1 {
         str[i] = auto C.toupper(auto str[i]); 
     }
