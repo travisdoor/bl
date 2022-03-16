@@ -17,7 +17,6 @@ struct mir_type *t_f64;
 struct mir_type *t_string;
 struct mir_type *t_void;
 struct mir_type *t_u8_ptr;
-struct mir_type *t_string_ptr;
 struct mir_type *t_string_literal;
 struct mir_type *t_resolve_type_fn;
 struct mir_type *t_Any;

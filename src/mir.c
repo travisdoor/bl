@@ -11523,7 +11523,6 @@ static void provide_builtin_env(struct context *ctx)
 
 void initialize_builtins(struct context *ctx)
 {
-#define PROVIDE(N) provide_builtin_type(ctx, bt->t_##N)
     struct BuiltinTypes *bt = ctx->builtin_types;
     bt->t_s8                = create_type_int(ctx, BID(TYPE_S8), 8, true);
     bt->t_s16               = create_type_int(ctx, BID(TYPE_S16), 16, true);
@@ -11543,7 +11542,6 @@ void initialize_builtins(struct context *ctx)
     bt->t_void              = create_type_void(ctx);
     bt->t_u8_ptr            = create_type_ptr(ctx, bt->t_u8);
     bt->t_string = create_type_slice(ctx, MIR_TYPE_STRING, BID(TYPE_STRING), bt->t_u8_ptr, false);
-    bt->t_string_ptr      = create_type_ptr(ctx, bt->t_string);
     bt->t_string_literal  = create_type_slice(ctx, MIR_TYPE_SLICE, NULL, bt->t_u8_ptr, true);
     bt->t_resolve_type_fn = create_type_fn(ctx, &(create_type_fn_args_t){.ret_type = bt->t_type});
 
@@ -11552,6 +11550,7 @@ void initialize_builtins(struct context *ctx)
     provide_builtin_env(ctx);
 
     // Provide types into global scope
+#define PROVIDE(N) provide_builtin_type(ctx, bt->t_##N)
     PROVIDE(type);
     PROVIDE(s8);
     PROVIDE(s16);
@@ -11566,6 +11565,7 @@ void initialize_builtins(struct context *ctx)
     PROVIDE(f32);
     PROVIDE(f64);
     PROVIDE(string);
+#undef PROVIDE
 
     // Add IS_DEBUG immutable into the global scope to provide information about enabled
     // debug mode.
@@ -11579,34 +11579,28 @@ void initialize_builtins(struct context *ctx)
     add_global_int(ctx, BID(BLC_VER_MAJOR), false, bt->t_s32, BL_VERSION_MAJOR);
     add_global_int(ctx, BID(BLC_VER_MINOR), false, bt->t_s32, BL_VERSION_MINOR);
     add_global_int(ctx, BID(BLC_VER_PATCH), false, bt->t_s32, BL_VERSION_PATCH);
-#undef PROVIDE
 }
 
 const char *get_intrinsic(const char *name)
 {
     zone();
     if (!name) return_zone(NULL);
-    if (strcmp(name, "memset.p0i8.i64") == 0) return_zone("__intrinsic_memset_p0i8_i64");
-    if (strcmp(name, "sin.f32") == 0) return_zone("__intrinsic_sin_f32");
-    if (strcmp(name, "sin.f64") == 0) return_zone("__intrinsic_sin_f64");
-    if (strcmp(name, "cos.f32") == 0) return_zone("__intrinsic_cos_f32");
-    if (strcmp(name, "cos.f64") == 0) return_zone("__intrinsic_cos_f64");
-    if (strcmp(name, "pow.f32") == 0) return_zone("__intrinsic_pow_f32");
-    if (strcmp(name, "pow.f64") == 0) return_zone("__intrinsic_pow_f64");
-    if (strcmp(name, "log.f32") == 0) return_zone("__intrinsic_log_f32");
-    if (strcmp(name, "log.f64") == 0) return_zone("__intrinsic_log_f64");
-    if (strcmp(name, "log2.f32") == 0) return_zone("__intrinsic_log2_f32");
-    if (strcmp(name, "log2.f64") == 0) return_zone("__intrinsic_log2_f64");
-    if (strcmp(name, "sqrt.f32") == 0) return_zone("__intrinsic_sqrt_f32");
-    if (strcmp(name, "sqrt.f64") == 0) return_zone("__intrinsic_sqrt_f64");
-    if (strcmp(name, "ceil.f32") == 0) return_zone("__intrinsic_ceil_f32");
-    if (strcmp(name, "ceil.f64") == 0) return_zone("__intrinsic_ceil_f64");
-    if (strcmp(name, "round.f32") == 0) return_zone("__intrinsic_round_f32");
-    if (strcmp(name, "round.f64") == 0) return_zone("__intrinsic_round_f64");
-    if (strcmp(name, "floor.f32") == 0) return_zone("__intrinsic_floor_f32");
-    if (strcmp(name, "floor.f64") == 0) return_zone("__intrinsic_floor_f64");
-    if (strcmp(name, "log10.f32") == 0) return_zone("__intrinsic_log10_f32");
-    if (strcmp(name, "log10.f64") == 0) return_zone("__intrinsic_log10_f64");
+    const char *map[] = {
+        "memset.p0i8.i64", "__intrinsic_memset_p0i8_i64", "sin.f32",   "__intrinsic_sin_f32",
+        "sin.f64",         "__intrinsic_sin_f64",         "cos.f32",   "__intrinsic_cos_f32",
+        "cos.f64",         "__intrinsic_cos_f64",         "pow.f32",   "__intrinsic_pow_f32",
+        "pow.f64",         "__intrinsic_pow_f64",         "log.f32",   "__intrinsic_log_f32",
+        "log.f64",         "__intrinsic_log_f64",         "log2.f32",  "__intrinsic_log2_f32",
+        "log2.f64",        "__intrinsic_log2_f64",        "sqrt.f32",  "__intrinsic_sqrt_f32",
+        "sqrt.f64",        "__intrinsic_sqrt_f64",        "ceil.f32",  "__intrinsic_ceil_f32",
+        "ceil.f64",        "__intrinsic_ceil_f64",        "round.f32", "__intrinsic_round_f32",
+        "round.f64",       "__intrinsic_round_f64",       "floor.f32", "__intrinsic_floor_f32",
+        "floor.f64",       "__intrinsic_floor_f64",       "log10.f32", "__intrinsic_log10_f32",
+        "log10.f64",       "__intrinsic_log10_f64"};
+
+    for (usize i = 0; i < static_arrlenu(map); i += 2) {
+        if (strcmp(name, map[i]) == 0) return_zone(map[i + 1]);
+    }
     return_zone(NULL);
 }
 
