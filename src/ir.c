@@ -338,7 +338,8 @@ LLVMMetadataRef DI_type_init(struct context *ctx, struct mir_type *type)
                 encoding = DW_ATE_signed;
         } else {
             if (type->size_bits == 8)
-                encoding = DW_ATE_unsigned_char;
+                // Use signed char here to get readable string representations.
+                encoding = DW_ATE_signed_char;
             else
                 encoding = DW_ATE_unsigned;
         }
@@ -519,36 +520,8 @@ LLVMMetadataRef DI_complete_type(struct context *ctx, struct mir_type *type)
         if (type->user_id) {
             struct_name = type->user_id->str;
         } else {
-            // NOTE: string has buildin ID
-            switch (type->kind) {
-            case MIR_TYPE_STRUCT: {
-                if (is_union) {
-                    struct_name = "union";
-                } else {
-                    struct_name = "struct";
-                }
-                break;
-            }
-
-            case MIR_TYPE_SLICE: {
-                struct_name = "slice";
-                break;
-            }
-
-            case MIR_TYPE_DYNARR: {
-                struct_name = "dynamic_array";
-                break;
-            }
-
-            case MIR_TYPE_VARGS: {
-                struct_name = "vargs";
-                break;
-            }
-
-            default:
-                // use default implicit name
-                break;
-            }
+            // Use type signature in case there is no user type.
+            struct_name = type->id.str;
         }
 
         llvm_metas_t   llvm_elems = SARR_ZERO;
@@ -840,7 +813,6 @@ LLVMValueRef emit_fn_proto(struct context *ctx, struct mir_fn *fn, bool schedule
         LLVMAddAttributeAtIndex(fn->llvm_value, (unsigned)LLVMAttributeFunctionIndex, llvm_attr);
     }
     if (isflag(fn->flags, FLAG_EXPORT)) {
-        LLVMSetDLLStorageClass(fn->llvm_value, LLVMDLLExportStorageClass);
     } else if (isnotflag(fn->flags, FLAG_EXTERN) && isnotflag(fn->flags, FLAG_INTRINSIC)) {
         LLVMSetVisibility(fn->llvm_value, LLVMHiddenVisibility);
     }
@@ -869,8 +841,7 @@ LLVMValueRef emit_const_string(struct context *ctx, const char *str, usize len)
     } else {
         // null string content
         struct mir_type *str_type = mir_get_struct_elem_type(type, 1);
-        // @PERFORMANCE: Can we reuse same string null constant here???
-        llvm_str = LLVMConstNull(get_type(ctx, str_type));
+        llvm_str                  = LLVMConstNull(get_type(ctx, str_type));
     }
     struct mir_type *len_type     = mir_get_struct_elem_type(type, 0);
     struct mir_type *ptr_type     = mir_get_struct_elem_type(type, 1);
@@ -1483,6 +1454,7 @@ SKIP:
                                   "");
 
     rtti_var->llvm_value = llvm_rtti_var;
+
     return llvm_rtti_var;
 }
 
@@ -3091,7 +3063,6 @@ static void DI_terminate(struct context *ctx)
 
 static void DI_complete_types(struct context *ctx)
 {
-    // Use for instead foreach, DI_complete_type can push another incomplete sub types.
     for (usize i = 0; i < arrlenu(ctx->di_incomplete_types); ++i) {
         DI_complete_type(ctx, ctx->di_incomplete_types[i]);
     }
