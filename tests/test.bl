@@ -1,22 +1,20 @@
-// @Incomplete: Remove builtin string type???
-// @Incomplete: Check constant conversion to slice.
+Foo :: struct {
+    milan: s32;
+}
 
 main :: fn () s32 {
-    foo(10);
-    foo("Hello");
+    foo1: Foo;
+    foo2: MyScope.Foo;
+    print("%", foo1);
+    print("%", foo2);
     return 0;
 }
 
-foo :: fn {
-    fn (i: s32) {
-        print("FIRST\n");
-    };
-
-    fn (i: ...) {
-        print("SECOND\n");
-    };
+#scope MyScope
+Foo :: struct {
+    jan: s32;
+    pavel: s32;
 }
-
 
 // =================================================================================================
 // Comptime function
