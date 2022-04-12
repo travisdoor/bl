@@ -1,0 +1,8 @@
+MyData: struct { // variable declaration not type!
+    range: s32;
+    gather_timeout: f32;
+}
+
+main :: fn () s32 {
+    return 0;
+}

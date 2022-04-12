@@ -60,6 +60,9 @@ array_terminate :: fn (_arr: *[..]?T) #inline {
 /// Append new value at the dynamic array end. New heap allocation is done here only in cases when
 /// there is not enough memory allocated to store all values.
 /// Returns pointer to the new appended element.
+///
+/// **note:** When there is no element to push provided, function will just allocate memory for
+/// a new empty element without any initialization.
 array_push :: fn { impl_push_empty; impl_push; }
 
 /// Reserve heap memory for `n` elements in array.

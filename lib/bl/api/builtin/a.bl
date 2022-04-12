@@ -286,11 +286,11 @@ TestCase :: struct #compiler {
 /// }
 /// ```
 CodeLocation :: struct #compiler {
-    /// Full path of the source file.
+    /// Full source file path.
     file: string_view;
-    /// Line in source file. 
+    /// Line in the source file.
     line: s32;
-    /// File and line string combination hash.
+    /// File and line combination hash.
     hash: u32;
 }
 
