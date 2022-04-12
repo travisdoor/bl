@@ -30,23 +30,14 @@
 #include "tokens_inline_utils.h"
 #include <setjmp.h>
 
-#define PARSE_ERROR(kind, tok, pos, format, ...)                                                   \
-    {                                                                                              \
-        builder_msg(MSG_ERR, (kind), &(tok)->location, (pos), (format), ##__VA_ARGS__);            \
-    }                                                                                              \
-    (void)0
+#define report_error(code, tok, pos, format, ...)                                                  \
+    builder_msg(MSG_ERR, ERR_##code, &(tok)->location, (pos), (format), ##__VA_ARGS__)
 
-#define PARSE_WARNING(tok, pos, format, ...)                                                       \
-    {                                                                                              \
-        builder_msg(MSG_WARN, 0, &(tok)->location, (pos), (format), ##__VA_ARGS__);                \
-    }                                                                                              \
-    (void)0
+#define report_warning(tok, pos, format, ...)                                                      \
+    builder_msg(MSG_WARN, 0, &(tok)->location, (pos), (format), ##__VA_ARGS__)
 
-#define PARSE_NOTE(tok, pos, format, ...)                                                          \
-    {                                                                                              \
-        builder_msg(MSG_ERR_NOTE, 0, &(tok)->location, (pos), (format), ##__VA_ARGS__);            \
-    }                                                                                              \
-    (void)0
+#define report_note(tok, pos, format, ...)                                                         \
+    builder_msg(MSG_ERR_NOTE, 0, &(tok)->location, (pos), (format), ##__VA_ARGS__)
 
 #define scope_push(ctx, scope) arrput((ctx)->scope_stack, (scope))
 #define scope_pop(ctx) arrpop((ctx)->scope_stack)
@@ -164,6 +155,7 @@ static inline bool hash_directive_to_flags(enum hash_directive_flags hd, u32 *ou
 static struct ast *parse_expr_call(struct context *ctx, struct ast *prev);
 static struct ast *parse_expr_elem(struct context *ctx, struct ast *prev);
 static struct ast *parse_expr_compound(struct context *ctx);
+static struct ast *parse_expr_compound2(struct context *ctx, struct ast *prev);
 
 // impl
 #define parse_ident(ctx) (tokens_peek((ctx)->tokens)->sym == SYM_IDENT ? _parse_ident(ctx) : NULL)
@@ -371,7 +363,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     bassert(directive);
 
     if (isnotflag(expected_mask, hd_flag)) {
-        PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE, tok_directive, CARET_WORD, "Unexpected directive.");
+        report_error(UNEXPECTED_DIRECTIVE, tok_directive, CARET_WORD, "Unexpected directive.");
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
     }
     set_satisfied(hd_flag);
@@ -401,10 +393,10 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         struct token *tok_msg = tokens_consume_if(ctx->tokens, SYM_STRING);
         if (!tok_msg) {
             struct token *tok_err = tokens_peek(ctx->tokens);
-            PARSE_ERROR(ERR_INVALID_DIRECTIVE,
-                        tok_err,
-                        CARET_WORD,
-                        "Expected message after 'error' directive.");
+            report_error(INVALID_DIRECTIVE,
+                         tok_err,
+                         CARET_WORD,
+                         "Expected message after 'error' directive.");
             return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
         }
         struct ast *msg = ast_create_node(ctx->ast_arena, AST_MSG, tok_directive, scope_get(ctx));
@@ -418,10 +410,10 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         struct token *tok_msg = tokens_consume_if(ctx->tokens, SYM_STRING);
         if (!tok_msg) {
             struct token *tok_err = tokens_peek(ctx->tokens);
-            PARSE_ERROR(ERR_INVALID_DIRECTIVE,
-                        tok_err,
-                        CARET_WORD,
-                        "Expected message after 'warning' directive.");
+            report_error(INVALID_DIRECTIVE,
+                         tok_err,
+                         CARET_WORD,
+                         "Expected message after 'warning' directive.");
             return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
         }
         struct ast *msg = ast_create_node(ctx->ast_arena, AST_MSG, tok_directive, scope_get(ctx));
@@ -435,10 +427,10 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         struct token *tok_path = tokens_consume_if(ctx->tokens, SYM_STRING);
         if (!tok_path) {
             struct token *tok_err = tokens_peek(ctx->tokens);
-            PARSE_ERROR(ERR_INVALID_DIRECTIVE,
-                        tok_err,
-                        CARET_WORD,
-                        "Expected path \"some/path\" after 'load' directive.");
+            report_error(INVALID_DIRECTIVE,
+                         tok_err,
+                         CARET_WORD,
+                         "Expected path \"some/path\" after 'load' directive.");
             return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
         }
 
@@ -454,10 +446,10 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         struct token *tok_path = tokens_consume_if(ctx->tokens, SYM_STRING);
         if (!tok_path) {
             struct token *tok_err = tokens_peek(ctx->tokens);
-            PARSE_ERROR(ERR_INVALID_DIRECTIVE,
-                        tok_err,
-                        CARET_WORD,
-                        "Expected path \"some/path\" after 'import' directive.");
+            report_error(INVALID_DIRECTIVE,
+                         tok_err,
+                         CARET_WORD,
+                         "Expected path \"some/path\" after 'import' directive.");
             return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
         }
         struct ast *import =
@@ -474,10 +466,10 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         BL_TRACY_MESSAGE("HD_FLAG", "#link");
         struct token *tok_path = tokens_consume(ctx->tokens);
         if (!token_is(tok_path, SYM_STRING)) {
-            PARSE_ERROR(ERR_INVALID_DIRECTIVE,
-                        tok_path,
-                        CARET_WORD,
-                        "Expected path \"some/path\" after 'link' directive.");
+            report_error(INVALID_DIRECTIVE,
+                         tok_path,
+                         CARET_WORD,
+                         "Expected path \"some/path\" after 'link' directive.");
             return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
         }
 
@@ -486,10 +478,10 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
 
         assembly_add_native_lib_safe(ctx->assembly, tok_path->value.str.ptr, tok_path);
 
-        PARSE_WARNING(tok_directive,
-                      CARET_WORD,
-                      "Link directive is deprecated and will be removed in next release. Please "
-                      "use build system to link dependencies or module import.");
+        report_warning(tok_directive,
+                       CARET_WORD,
+                       "Link directive is deprecated and will be removed in next release. Please "
+                       "use build system to link dependencies or module import.");
         return_zone(link);
     }
 
@@ -521,7 +513,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         struct ast *expr = parse_expr(ctx);
         if (!expr) {
             struct token *tok_err = tokens_peek(ctx->tokens);
-            PARSE_ERROR(ERR_EXPECTED_NAME, tok_err, CARET_WORD, "Expected tag expression.");
+            report_error(EXPECTED_NAME, tok_err, CARET_WORD, "Expected tag expression.");
             return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
         }
         struct ast *tag = ast_create_node(ctx->ast_arena, AST_TAG, tok_directive, scope_get(ctx));
@@ -559,10 +551,10 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     case HD_PRIVATE: {
         BL_TRACY_MESSAGE("HD_FLAG", "#private");
         if (ctx->current_private_scope) {
-            PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
-                        tok_directive,
-                        CARET_WORD,
-                        "Unexpected directive. File already contains private scope block.");
+            report_error(UNEXPECTED_DIRECTIVE,
+                         tok_directive,
+                         CARET_WORD,
+                         "Unexpected directive. File already contains private scope block.");
             return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
         }
 
@@ -588,10 +580,10 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         BL_TRACY_MESSAGE("HD_FLAG", "#scope");
         struct ast *ident = parse_ident(ctx);
         if (!ident) {
-            PARSE_ERROR(ERR_INVALID_DIRECTIVE,
-                        tok_directive,
-                        CARET_AFTER,
-                        "Expected scope name after #scope directive.");
+            report_error(INVALID_DIRECTIVE,
+                         tok_directive,
+                         CARET_AFTER,
+                         "Expected scope name after #scope directive.");
             return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
         }
         struct ast *scope =
@@ -619,10 +611,10 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         }
         if (scope_get(ctx)->kind == SCOPE_GLOBAL) scope_unlock(scope_get(ctx));
         if (ctx->current_named_scope) {
-            PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE,
-                        tok_directive,
-                        CARET_WORD,
-                        "Unexpected directive. File already contains named scope block.");
+            report_error(UNEXPECTED_DIRECTIVE,
+                         tok_directive,
+                         CARET_WORD,
+                         "Unexpected directive. File already contains named scope block.");
             return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
         }
         bassert(scope_entry->data.scope);
@@ -632,7 +624,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     }
     }
 INVALID:
-    PARSE_ERROR(ERR_UNEXPECTED_DIRECTIVE, tok_directive, CARET_WORD, "Unknown directive.");
+    report_error(UNEXPECTED_DIRECTIVE, tok_directive, CARET_WORD, "Unknown directive.");
     return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
 #undef set_satisfied
 }
@@ -649,14 +641,14 @@ struct ast *parse_expr_compound(struct context *ctx)
     struct ast *type = parse_type(ctx);
     if (!type) {
         struct token *tok_err = tokens_peek(ctx->tokens);
-        PARSE_ERROR(ERR_EXPECTED_TYPE, tok_err, CARET_WORD, "Expected type.");
+        report_error(EXPECTED_TYPE, tok_err, CARET_WORD, "Expected type.");
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
 
     // eat :
     if (!tokens_consume_if(ctx->tokens, SYM_COLON)) {
         struct token *tok_err = tokens_peek(ctx->tokens);
-        PARSE_ERROR(ERR_EXPECTED_TYPE, tok_err, CARET_WORD, "Expected colon after type.");
+        report_error(EXPECTED_TYPE, tok_err, CARET_WORD, "Expected colon after type.");
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
 
@@ -684,24 +676,83 @@ NEXT:
     } else if (rq) {
         struct token *tok_err = tokens_peek(ctx->tokens);
         if (tokens_peek_2nd(ctx->tokens)->sym == SYM_RBLOCK) {
-            PARSE_ERROR(
-                ERR_EXPECTED_NAME, tok_err, CARET_WORD, "Expected expression after comma ','.");
+            report_error(
+                EXPECTED_NAME, tok_err, CARET_WORD, "Expected expression after comma ','.");
             return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
         }
     }
 
     struct token *tok = tokens_consume(ctx->tokens);
     if (tok->sym != SYM_RBLOCK) {
-        PARSE_ERROR(ERR_MISSING_BRACKET,
-                    tok,
-                    CARET_WORD,
-                    "Expected end of initialization list '}' or another expression "
-                    "separated by comma.");
+        report_error(MISSING_BRACKET,
+                     tok,
+                     CARET_WORD,
+                     "Expected end of initialization list '}' or another expression "
+                     "separated by comma.");
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
     return_zone(compound);
 }
 
+struct ast *parse_expr_compound2(struct context *ctx, struct ast *prev)
+{
+    zone();
+    if (!tokens_is_seq(ctx->tokens, 2, SYM_DOT, SYM_LBLOCK)) return_zone(NULL);
+    // eat .
+    struct token *tok_very_first = tokens_consume(ctx->tokens);
+    // eat {
+    struct token *tok_begin = tokens_consume(ctx->tokens);
+
+    struct ast *type = prev;
+    if (!type) {
+        // This can be allowed eventually if we decide to support type infer of compound expressions
+        // based on its usage.
+        report_error(
+            EXPECTED_TYPE, tok_very_first, CARET_BEFORE, "Expected type of compound value.");
+    }
+
+    struct ast *compound =
+        ast_create_node(ctx->ast_arena, AST_EXPR_COMPOUND, tok_begin, scope_get(ctx));
+    compound->data.expr_compound.type = type;
+    blog("Compound: %s:%d", tok_begin->location.unit->filename, tok_begin->location.line);
+
+    // parse values
+    bool        rq = false;
+    struct ast *tmp;
+
+NEXT:
+    tmp = parse_expr(ctx);
+    if (tmp) {
+        if (!compound->data.expr_compound.values) {
+            compound->data.expr_compound.values = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+        }
+
+        sarrput(compound->data.expr_compound.values, tmp);
+
+        if (tokens_consume_if(ctx->tokens, SYM_COMMA)) {
+            rq = true;
+            goto NEXT;
+        }
+    } else if (rq) {
+        struct token *tok_err = tokens_peek(ctx->tokens);
+        if (tokens_peek_2nd(ctx->tokens)->sym == SYM_RBLOCK) {
+            report_error(
+                EXPECTED_NAME, tok_err, CARET_WORD, "Expected expression after comma ','.");
+            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
+        }
+    }
+
+    struct token *tok = tokens_consume(ctx->tokens);
+    if (tok->sym != SYM_RBLOCK) {
+        report_error(MISSING_BRACKET,
+                     tok,
+                     CARET_WORD,
+                     "Expected end of initialization list '}' or another expression "
+                     "separated by comma.");
+        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
+    }
+    return_zone(compound);
+}
 struct ast *parse_expr_sizeof(struct context *ctx)
 {
     zone();
@@ -710,8 +761,7 @@ struct ast *parse_expr_sizeof(struct context *ctx)
 
     struct token *tok = tokens_consume(ctx->tokens);
     if (!token_is(tok, SYM_LPAREN)) {
-        PARSE_ERROR(
-            ERR_MISSING_BRACKET, tok_begin, CARET_WORD, "Expected '(' after sizeof operator.");
+        report_error(MISSING_BRACKET, tok_begin, CARET_WORD, "Expected '(' after sizeof operator.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
@@ -720,14 +770,14 @@ struct ast *parse_expr_sizeof(struct context *ctx)
     szof->data.expr_sizeof.node = parse_expr(ctx);
     if (!szof->data.expr_sizeof.node) {
         struct token *tok_err = tokens_peek(ctx->tokens);
-        PARSE_ERROR(ERR_EXPECTED_EXPR, tok_err, CARET_WORD, "Expected expression.");
+        report_error(EXPECTED_EXPR, tok_err, CARET_WORD, "Expected expression.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
 
     tok = tokens_consume(ctx->tokens);
     if (!token_is(tok, SYM_RPAREN)) {
-        PARSE_ERROR(ERR_MISSING_BRACKET, tok, CARET_WORD, "Expected ')' after sizeof operator.");
+        report_error(MISSING_BRACKET, tok, CARET_WORD, "Expected ')' after sizeof operator.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
     }
@@ -743,8 +793,7 @@ struct ast *parse_expr_type_of(struct context *ctx)
 
     struct token *tok = tokens_consume(ctx->tokens);
     if (!token_is(tok, SYM_LPAREN)) {
-        PARSE_ERROR(
-            ERR_MISSING_BRACKET, tok_begin, CARET_WORD, "Expected '(' after typeof operator.");
+        report_error(MISSING_BRACKET, tok_begin, CARET_WORD, "Expected '(' after typeof operator.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
@@ -753,14 +802,14 @@ struct ast *parse_expr_type_of(struct context *ctx)
     info->data.expr_type_of.node = parse_expr(ctx);
     if (!info->data.expr_type_of.node) {
         struct token *tok_err = tokens_peek(ctx->tokens);
-        PARSE_ERROR(ERR_EXPECTED_EXPR, tok_err, CARET_WORD, "Expected expression.");
+        report_error(EXPECTED_EXPR, tok_err, CARET_WORD, "Expected expression.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
 
     tok = tokens_consume(ctx->tokens);
     if (!token_is(tok, SYM_RPAREN)) {
-        PARSE_ERROR(ERR_MISSING_BRACKET, tok, CARET_WORD, "Expected ')' after typeof operator.");
+        report_error(MISSING_BRACKET, tok, CARET_WORD, "Expected ')' after typeof operator.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
     }
@@ -776,8 +825,8 @@ struct ast *parse_expr_type_info(struct context *ctx)
 
     struct token *tok = tokens_consume(ctx->tokens);
     if (!token_is(tok, SYM_LPAREN)) {
-        PARSE_ERROR(
-            ERR_MISSING_BRACKET, tok_begin, CARET_WORD, "Expected '(' after typeinfo operator.");
+        report_error(
+            MISSING_BRACKET, tok_begin, CARET_WORD, "Expected '(' after typeinfo operator.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
@@ -787,14 +836,14 @@ struct ast *parse_expr_type_info(struct context *ctx)
     info->data.expr_type_info.node = parse_expr(ctx);
     if (!info->data.expr_type_info.node) {
         struct token *tok_err = tokens_peek(ctx->tokens);
-        PARSE_ERROR(ERR_EXPECTED_EXPR, tok_err, CARET_WORD, "Expected expression.");
+        report_error(EXPECTED_EXPR, tok_err, CARET_WORD, "Expected expression.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
 
     tok = tokens_consume(ctx->tokens);
     if (!token_is(tok, SYM_RPAREN)) {
-        PARSE_ERROR(ERR_MISSING_BRACKET, tok, CARET_WORD, "Expected ')' after typeinfo operator.");
+        report_error(MISSING_BRACKET, tok, CARET_WORD, "Expected ')' after typeinfo operator.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
     }
@@ -810,8 +859,8 @@ struct ast *parse_expr_test_cases(struct context *ctx)
 
     struct token *tok = tokens_consume(ctx->tokens);
     if (!token_is(tok, SYM_LPAREN)) {
-        PARSE_ERROR(
-            ERR_MISSING_BRACKET, tok_begin, CARET_WORD, "Expected '(' after testcases operator.");
+        report_error(
+            MISSING_BRACKET, tok_begin, CARET_WORD, "Expected '(' after testcases operator.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
@@ -821,7 +870,7 @@ struct ast *parse_expr_test_cases(struct context *ctx)
 
     tok = tokens_consume(ctx->tokens);
     if (!token_is(tok, SYM_RPAREN)) {
-        PARSE_ERROR(ERR_MISSING_BRACKET, tok, CARET_WORD, "Expected ')' after testcases operator.");
+        report_error(MISSING_BRACKET, tok, CARET_WORD, "Expected ')' after testcases operator.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
     }
@@ -837,8 +886,7 @@ struct ast *parse_expr_alignof(struct context *ctx)
 
     struct token *tok = tokens_consume(ctx->tokens);
     if (!token_is(tok, SYM_LPAREN)) {
-        PARSE_ERROR(
-            ERR_MISSING_BRACKET, tok_begin, CARET_WORD, "Expected '(' after cast operator.");
+        report_error(MISSING_BRACKET, tok_begin, CARET_WORD, "Expected '(' after cast operator.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
@@ -847,14 +895,14 @@ struct ast *parse_expr_alignof(struct context *ctx)
     alof->data.expr_alignof.node = parse_expr(ctx);
     if (!alof->data.expr_alignof.node) {
         struct token *tok_err = tokens_peek(ctx->tokens);
-        PARSE_ERROR(ERR_EXPECTED_EXPR, tok_err, CARET_WORD, "Expected expression.");
+        report_error(EXPECTED_EXPR, tok_err, CARET_WORD, "Expected expression.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
 
     tok = tokens_consume(ctx->tokens);
     if (!token_is(tok, SYM_RPAREN)) {
-        PARSE_ERROR(ERR_MISSING_BRACKET, tok, CARET_WORD, "Expected ')' after alignof operator.");
+        report_error(MISSING_BRACKET, tok, CARET_WORD, "Expected ')' after alignof operator.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
     }
@@ -874,7 +922,7 @@ struct ast *parse_expr_cast_auto(struct context *ctx)
     cast->data.expr_cast.next = _parse_expr(ctx, token_prec(tok_begin).priority);
     if (!cast->data.expr_cast.next) {
         struct token *tok = tokens_peek(ctx->tokens);
-        PARSE_ERROR(ERR_EXPECTED_EXPR, tok, CARET_WORD, "Expected expression after auto cast.");
+        report_error(EXPECTED_EXPR, tok, CARET_WORD, "Expected expression after auto cast.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
     }
@@ -890,7 +938,7 @@ struct ast *parse_expr_cast(struct context *ctx)
 
     struct token *tok = tokens_consume(ctx->tokens);
     if (!token_is(tok, SYM_LPAREN)) {
-        PARSE_ERROR(ERR_MISSING_BRACKET, tok_begin, CARET_WORD, "Expected '(' after expression.");
+        report_error(MISSING_BRACKET, tok_begin, CARET_WORD, "Expected '(' after expression.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
@@ -899,15 +947,14 @@ struct ast *parse_expr_cast(struct context *ctx)
     cast->data.expr_cast.type = parse_type(ctx);
     if (!cast->data.expr_cast.type) {
         struct token *tok_err = tokens_peek(ctx->tokens);
-        PARSE_ERROR(
-            ERR_EXPECTED_TYPE, tok_err, CARET_WORD, "Expected type name as cast parameter.");
+        report_error(EXPECTED_TYPE, tok_err, CARET_WORD, "Expected type name as cast parameter.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
 
     tok = tokens_consume(ctx->tokens);
     if (!token_is(tok, SYM_RPAREN)) {
-        PARSE_ERROR(ERR_MISSING_BRACKET, tok, CARET_WORD, "Expected ')' after cast expression.");
+        report_error(MISSING_BRACKET, tok, CARET_WORD, "Expected ')' after cast expression.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
     }
@@ -915,7 +962,7 @@ struct ast *parse_expr_cast(struct context *ctx)
     cast->data.expr_cast.next = _parse_expr(ctx, token_prec(tok_begin).priority);
     if (!cast->data.expr_cast.next) {
         tok = tokens_peek(ctx->tokens);
-        PARSE_ERROR(ERR_EXPECTED_EXPR, tok, CARET_WORD, "Expected expression after cast.");
+        report_error(EXPECTED_EXPR, tok, CARET_WORD, "Expected expression after cast.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
     }
@@ -1066,7 +1113,7 @@ bool parse_semicolon_rq(struct context *ctx)
     struct token *tok = tokens_consume_if(ctx->tokens, SYM_SEMICOLON);
     if (!tok) {
         tok = tokens_peek_prev(ctx->tokens);
-        PARSE_ERROR(ERR_MISSING_SEMICOLON, tok, CARET_AFTER, "Expected semicolon ';'.");
+        report_error(MISSING_SEMICOLON, tok, CARET_AFTER, "Expected semicolon ';'.");
         consume_till(ctx->tokens, SYM_IDENT, SYM_RBLOCK);
         return false;
     }
@@ -1114,10 +1161,10 @@ struct ast *parse_stmt_using(struct context *ctx)
     struct ast *expr = parse_expr(ctx);
     if (!expr) {
         struct token *tok_err = tokens_consume(ctx->tokens);
-        PARSE_ERROR(ERR_EXPECTED_EXPR,
-                    tok_err,
-                    CARET_WORD,
-                    "Expected scope or enumerator name after 'using' statement.");
+        report_error(EXPECTED_EXPR,
+                     tok_err,
+                     CARET_WORD,
+                     "Expected scope or enumerator name after 'using' statement.");
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
 
@@ -1149,7 +1196,7 @@ NEXT:
         }
     } else if (rq) {
         struct token *tok_err = tokens_peek(ctx->tokens);
-        PARSE_ERROR(ERR_EXPECTED_EXPR, tok_err, CARET_WORD, "Expected expression after comma ','.");
+        report_error(EXPECTED_EXPR, tok_err, CARET_WORD, "Expected expression after comma ','.");
         consume_till(ctx->tokens, SYM_SEMICOLON, SYM_RBLOCK, SYM_IDENT);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
@@ -1167,8 +1214,8 @@ struct ast *parse_stmt_if(struct context *ctx, bool is_static)
     stmt_if->data.stmt_if.test      = parse_expr(ctx);
     if (!stmt_if->data.stmt_if.test) {
         struct token *tok_err = tokens_consume(ctx->tokens);
-        PARSE_ERROR(
-            ERR_EXPECTED_EXPR, tok_err, CARET_WORD, "Expected expression for the if statement.");
+        report_error(
+            EXPECTED_EXPR, tok_err, CARET_WORD, "Expected expression for the if statement.");
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
 
@@ -1179,10 +1226,10 @@ struct ast *parse_stmt_if(struct context *ctx, bool is_static)
     stmt_if->data.stmt_if.true_stmt = parse_block(ctx, true);
     if (!stmt_if->data.stmt_if.true_stmt) {
         struct token *tok_err = tokens_consume(ctx->tokens);
-        PARSE_ERROR(ERR_EXPECTED_STMT,
-                    tok_err,
-                    CARET_WORD,
-                    "Expected compound statement for true result of the if expression test.");
+        report_error(EXPECTED_STMT,
+                     tok_err,
+                     CARET_WORD,
+                     "Expected compound statement for true result of the if expression test.");
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
 
@@ -1193,10 +1240,10 @@ struct ast *parse_stmt_if(struct context *ctx, bool is_static)
             stmt_if->data.stmt_if.false_stmt = parse_block(ctx, true);
         if (!stmt_if->data.stmt_if.false_stmt) {
             struct token *tok_err = tokens_consume(ctx->tokens);
-            PARSE_ERROR(ERR_EXPECTED_STMT,
-                        tok_err,
-                        CARET_WORD,
-                        "Expected statement for false result of the if expression test.");
+            report_error(EXPECTED_STMT,
+                         tok_err,
+                         CARET_WORD,
+                         "Expected statement for false result of the if expression test.");
             return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
         }
     }
@@ -1213,17 +1260,15 @@ struct ast *parse_stmt_switch(struct context *ctx)
     struct ast *expr = parse_expr(ctx);
     if (!expr) {
         struct token *tok_err = tokens_consume(ctx->tokens);
-        PARSE_ERROR(ERR_EXPECTED_EXPR,
-                    tok_err,
-                    CARET_WORD,
-                    "Expected expression for the switch statement.");
+        report_error(
+            EXPECTED_EXPR, tok_err, CARET_WORD, "Expected expression for the switch statement.");
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
 
     struct token *tok = tokens_consume_if(ctx->tokens, SYM_LBLOCK);
     if (!tok) {
         struct token *tok_err = tokens_peek(ctx->tokens);
-        PARSE_ERROR(ERR_EXPECTED_BODY, tok_err, CARET_WORD, "Expected switch body block.");
+        report_error(EXPECTED_BODY, tok_err, CARET_WORD, "Expected switch body block.");
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
 
@@ -1255,7 +1300,7 @@ NEXT:
     tok = tokens_consume_if(ctx->tokens, SYM_RBLOCK);
     if (!tok) {
         struct token *tok_err = tokens_peek(ctx->tokens);
-        PARSE_ERROR(ERR_EXPECTED_BODY, tok_err, CARET_WORD, "Expected end of switch body block.");
+        report_error(EXPECTED_BODY, tok_err, CARET_WORD, "Expected end of switch body block.");
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
 
@@ -1293,7 +1338,7 @@ NEXT:
         }
     } else if (rq) {
         struct token *tok_err = tokens_peek(ctx->tokens);
-        PARSE_ERROR(ERR_EXPECTED_NAME, tok_err, CARET_WORD, "Expected expression after comma.");
+        report_error(EXPECTED_NAME, tok_err, CARET_WORD, "Expected expression after comma.");
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
 
@@ -1367,7 +1412,7 @@ struct ast *parse_stmt_loop(struct context *ctx)
     loop->data.stmt_loop.block = parse_block(ctx, false);
     if (!loop->data.stmt_loop.block) {
         struct token *tok_err = tokens_peek(ctx->tokens);
-        PARSE_ERROR(ERR_EXPECTED_BODY, tok_err, CARET_WORD, "Expected loop body block.");
+        report_error(EXPECTED_BODY, tok_err, CARET_WORD, "Expected loop body block.");
         ctx->is_inside_loop = prev_in_loop;
         scope_pop(ctx);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
@@ -1385,7 +1430,7 @@ struct ast *parse_stmt_break(struct context *ctx)
     if (!tok) return_zone(NULL);
 
     if (!ctx->is_inside_loop) {
-        PARSE_ERROR(ERR_BREAK_OUTSIDE_LOOP, tok, CARET_WORD, "Break statement outside a loop.");
+        report_error(BREAK_OUTSIDE_LOOP, tok, CARET_WORD, "Break statement outside a loop.");
     }
     return_zone(ast_create_node(ctx->ast_arena, AST_STMT_BREAK, tok, scope_get(ctx)));
 }
@@ -1397,8 +1442,7 @@ struct ast *parse_stmt_continue(struct context *ctx)
     if (!tok) return_zone(NULL);
 
     if (!ctx->is_inside_loop) {
-        PARSE_ERROR(
-            ERR_CONTINUE_OUTSIDE_LOOP, tok, CARET_WORD, "Continue statement outside a loop.");
+        report_error(CONTINUE_OUTSIDE_LOOP, tok, CARET_WORD, "Continue statement outside a loop.");
     }
 
     return_zone(ast_create_node(ctx->ast_arena, AST_STMT_CONTINUE, tok, scope_get(ctx)));
@@ -1414,9 +1458,8 @@ struct ast *parse_stmt_defer(struct context *ctx)
     expr             = parse_expr(ctx);
 
     if (!expr) {
-        PARSE_ERROR(
-            ERR_EXPECTED_EXPR, tok, CARET_WORD, "Expected expression after 'defer' statement.");
-
+        report_error(
+            EXPECTED_EXPR, tok, CARET_WORD, "Expected expression after 'defer' statement.");
         struct token *tok_err = tokens_peek(ctx->tokens);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
@@ -1440,6 +1483,7 @@ struct ast *_parse_expr(struct context *ctx, s32 p)
     do {
         tmp = parse_expr_call(ctx, lhs);
         if (!tmp) tmp = parse_expr_elem(ctx, lhs);
+        if (!tmp) tmp = parse_expr_compound2(ctx, lhs);
         if (!tmp) tmp = parse_ref_nested(ctx, lhs);
         lhs = tmp ? tmp : lhs;
     } while (tmp);
@@ -1451,7 +1495,7 @@ struct ast *_parse_expr(struct context *ctx, s32 p)
                                                                        : token_prec(op).priority;
         struct ast *rhs = _parse_expr(ctx, q);
         if (!lhs || !rhs) {
-            PARSE_ERROR(ERR_INVALID_EXPR, op, CARET_WORD, "Invalid binary operation.");
+            report_error(INVALID_EXPR, op, CARET_WORD, "Invalid binary operation.");
         }
         lhs = parse_expr_binary(ctx, lhs, rhs, op);
     }
@@ -1484,6 +1528,7 @@ struct ast *parse_expr_primary(struct context *ctx)
     if (expr) return expr;
     if ((expr = parse_expr_lit(ctx))) return expr;
     if ((expr = parse_expr_type(ctx))) return expr;
+    // @Cleanup
     if ((expr = parse_expr_compound(ctx))) return expr;
     return NULL;
 }
@@ -1501,8 +1546,8 @@ struct ast *parse_expr_unary(struct context *ctx)
 
     if (unary->data.expr_unary.next == NULL) {
         struct token *err_tok = tokens_peek(ctx->tokens);
-        PARSE_ERROR(
-            ERR_EXPECTED_EXPR, err_tok, CARET_WORD, "Expected expression after unary operator.");
+        report_error(
+            EXPECTED_EXPR, err_tok, CARET_WORD, "Expected expression after unary operator.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, op, scope_get(ctx)));
     }
@@ -1576,8 +1621,7 @@ struct ast *parse_expr_addrof(struct context *ctx)
 
     if (addrof->data.expr_addrof.next == NULL) {
         struct token *err_tok = tokens_peek(ctx->tokens);
-        PARSE_ERROR(
-            ERR_EXPECTED_EXPR, err_tok, CARET_WORD, "Expected expression after '&' operator.");
+        report_error(EXPECTED_EXPR, err_tok, CARET_WORD, "Expected expression after '&' operator.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
     }
@@ -1597,10 +1641,10 @@ struct ast *parse_expr_deref(struct context *ctx)
 
     if (deref->data.expr_deref.next == NULL) {
         struct token *err_tok = tokens_peek(ctx->tokens);
-        PARSE_ERROR(ERR_EXPECTED_EXPR,
-                    err_tok,
-                    CARET_WORD,
-                    "Expected expression after '@' pointer dereference operator.");
+        report_error(EXPECTED_EXPR,
+                     err_tok,
+                     CARET_WORD,
+                     "Expected expression after '@' pointer dereference operator.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
     }
@@ -1754,8 +1798,8 @@ NEXT:
     struct token *tok = tokens_consume_if(ctx->tokens, SYM_RBLOCK);
     if (!tok) {
         tok = tokens_peek_prev(ctx->tokens);
-        PARSE_ERROR(ERR_EXPECTED_BODY_END, tok, CARET_AFTER, "Expected end of block '}'.");
-        PARSE_NOTE(tok_begin, CARET_WORD, "Block starting here.");
+        report_error(EXPECTED_BODY_END, tok, CARET_AFTER, "Expected end of block '}'.");
+        report_note(tok_begin, CARET_WORD, "Block starting here.");
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
     return_zone(group);
@@ -1770,16 +1814,16 @@ struct ast *parse_expr_nested(struct context *ctx)
 
     expr = parse_expr(ctx);
     if (expr == NULL) {
-        PARSE_ERROR(ERR_EXPECTED_EXPR, tok_begin, CARET_WORD, "Expected expression.");
+        report_error(EXPECTED_EXPR, tok_begin, CARET_WORD, "Expected expression.");
     }
 
     // eat )
     struct token *tok_end = tokens_consume_if(ctx->tokens, SYM_RPAREN);
     if (!tok_end) {
         struct token *tok_err = tokens_peek(ctx->tokens);
-        PARSE_ERROR(
-            ERR_MISSING_BRACKET, tok_err, CARET_WORD, "Unterminated sub-expression, missing ')'.");
-        PARSE_NOTE(tok_begin, CARET_WORD, "starting here");
+        report_error(
+            MISSING_BRACKET, tok_err, CARET_WORD, "Unterminated sub-expression, missing ')'.");
+        report_note(tok_begin, CARET_WORD, "starting here");
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
 
@@ -1798,12 +1842,12 @@ struct ast *parse_expr_elem(struct context *ctx, struct ast *prev)
     elem->data.expr_elem.next  = prev;
 
     if (!elem->data.expr_elem.index) {
-        PARSE_ERROR(ERR_EXPECTED_EXPR, tok_elem, CARET_WORD, "Expected array index expression.");
+        report_error(EXPECTED_EXPR, tok_elem, CARET_WORD, "Expected array index expression.");
     }
 
     struct token *tok = tokens_consume(ctx->tokens);
     if (tok->sym != SYM_RBRACKET) {
-        PARSE_ERROR(ERR_MISSING_BRACKET, tok, CARET_WORD, "Missing bracket ']'.");
+        report_error(MISSING_BRACKET, tok, CARET_WORD, "Missing bracket ']'.");
     }
 
     return_zone(elem);
@@ -1828,7 +1872,7 @@ NEXT:
         }
     } else if (rq) {
         struct token *tok_err = tokens_peek(ctx->tokens);
-        PARSE_ERROR(ERR_EXPECTED_NAME, tok_err, CARET_WORD, "Expected name after comma ','.");
+        report_error(EXPECTED_NAME, tok_err, CARET_WORD, "Expected name after comma ','.");
         consume_till(ctx->tokens, SYM_COLON, SYM_SEMICOLON, SYM_IDENT);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
@@ -1845,10 +1889,10 @@ struct ast *parse_type_ptr(struct context *ctx)
     struct ast *sub_type = parse_type(ctx);
     if (!sub_type) {
         struct token *tok_err = tokens_peek(ctx->tokens);
-        PARSE_ERROR(ERR_EXPECTED_TYPE,
-                    tok_err,
-                    CARET_WORD,
-                    "Expected type after '*' pointer type declaration.");
+        report_error(EXPECTED_TYPE,
+                     tok_err,
+                     CARET_WORD,
+                     "Expected type after '*' pointer type declaration.");
         consume_till(ctx->tokens, SYM_COLON, SYM_SEMICOLON, SYM_IDENT);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
     }
@@ -1896,7 +1940,7 @@ struct ast *parse_type_enum(struct context *ctx)
 
     struct token *tok = tokens_consume(ctx->tokens);
     if (token_is_not(tok, SYM_LBLOCK)) {
-        PARSE_ERROR(ERR_MISSING_BRACKET, tok, CARET_WORD, "Expected enum variant list.");
+        report_error(MISSING_BRACKET, tok, CARET_WORD, "Expected enum variant list.");
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
     }
 
@@ -1924,8 +1968,7 @@ NEXT:
     } else if (rq) {
         struct token *tok_err = tokens_peek(ctx->tokens);
         if (tokens_peek_2nd(ctx->tokens)->sym == SYM_RBLOCK) {
-            PARSE_ERROR(
-                ERR_EXPECTED_NAME, tok_err, CARET_WORD, "Expected variant after semicolon.");
+            report_error(EXPECTED_NAME, tok_err, CARET_WORD, "Expected variant after semicolon.");
             scope_pop(ctx);
             return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
         }
@@ -1933,10 +1976,10 @@ NEXT:
 
     tok = tokens_consume(ctx->tokens);
     if (tok->sym != SYM_RBLOCK) {
-        PARSE_ERROR(ERR_MISSING_BRACKET,
-                    tok,
-                    CARET_WORD,
-                    "Expected end of variant list '}' or another variant separated by semicolon.");
+        report_error(MISSING_BRACKET,
+                     tok,
+                     CARET_WORD,
+                     "Expected end of variant list '}' or another variant separated by semicolon.");
         scope_pop(ctx);
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
@@ -1966,13 +2009,16 @@ struct ast *parse_ref_nested(struct context *ctx, struct ast *prev)
 {
     zone();
     if (!prev) return_zone(NULL);
+    // @Hack: This is a little hack for now, because we have .{ combination reserved for compound
+    // initializers.
+    if (tokens_peek_2nd(ctx->tokens)->sym == SYM_LBLOCK) return_zone(NULL);
     struct token *tok = tokens_consume_if(ctx->tokens, SYM_DOT);
     if (!tok) return_zone(NULL);
 
     struct ast *ident = parse_ident(ctx);
     if (!ident) {
         struct token *tok_err = tokens_peek(ctx->tokens);
-        PARSE_ERROR(ERR_EXPECTED_NAME, tok_err, CARET_WORD, "Expected name.");
+        report_error(EXPECTED_NAME, tok_err, CARET_WORD, "Expected name.");
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
     }
 
@@ -1999,10 +2045,10 @@ struct ast *parse_type_polymorph(struct context *ctx)
     if (!tok_begin) return_zone(NULL);
 
     if (!arrlenu(ctx->fn_type_stack)) {
-        PARSE_ERROR(ERR_INVALID_ARG_TYPE,
-                    tok_begin,
-                    CARET_WORD,
-                    "Polymorph type can be specified only in function argument list.");
+        report_error(INVALID_ARG_TYPE,
+                     tok_begin,
+                     CARET_WORD,
+                     "Polymorph type can be specified only in function argument list.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
@@ -2010,7 +2056,7 @@ struct ast *parse_type_polymorph(struct context *ctx)
     struct ast *ident = parse_ident(ctx);
     if (!ident) {
         struct token *tok_err = tokens_peek(ctx->tokens);
-        PARSE_ERROR(ERR_EXPECTED_NAME, tok_err, CARET_WORD, "Expected name of polymorph type.");
+        report_error(EXPECTED_NAME, tok_err, CARET_WORD, "Expected name of polymorph type.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
@@ -2029,7 +2075,7 @@ struct ast *parse_type_arr(struct context *ctx)
     arr->data.type_arr.len = parse_expr(ctx);
     if (!arr->data.type_arr.len) {
         struct token *tok_err = tokens_peek(ctx->tokens);
-        PARSE_ERROR(ERR_EXPECTED_EXPR, tok_err, CARET_WORD, "Expected array size expression.");
+        report_error(EXPECTED_EXPR, tok_err, CARET_WORD, "Expected array size expression.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
@@ -2037,10 +2083,10 @@ struct ast *parse_type_arr(struct context *ctx)
     struct token *tok_end = tokens_consume_if(ctx->tokens, SYM_RBRACKET);
     if (!tok_end) {
         struct token *tok_err = tokens_peek(ctx->tokens);
-        PARSE_ERROR(ERR_MISSING_BRACKET,
-                    tok_err,
-                    CARET_WORD,
-                    "Expected closing ']' after array size expression.");
+        report_error(MISSING_BRACKET,
+                     tok_err,
+                     CARET_WORD,
+                     "Expected closing ']' after array size expression.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
 
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
@@ -2049,7 +2095,7 @@ struct ast *parse_type_arr(struct context *ctx)
     arr->data.type_arr.elem_type = parse_type(ctx);
     if (!arr->data.type_arr.elem_type) {
         struct token *tok_err = tokens_peek(ctx->tokens);
-        PARSE_ERROR(ERR_INVALID_TYPE, tok_err, CARET_WORD, "Expected array element type.");
+        report_error(INVALID_TYPE, tok_err, CARET_WORD, "Expected array element type.");
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
 
@@ -2071,7 +2117,7 @@ struct ast *parse_type_slice(struct context *ctx)
     slice->data.type_slice.elem_type = parse_type(ctx);
 
     if (!slice->data.type_slice.elem_type) {
-        PARSE_ERROR(ERR_INVALID_TYPE, tok_begin, CARET_AFTER, "Expected slice element type.");
+        report_error(INVALID_TYPE, tok_begin, CARET_AFTER, "Expected slice element type.");
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
 
@@ -2091,10 +2137,10 @@ struct ast *parse_type_dynarr(struct context *ctx)
     struct token *tok_end = tokens_consume_if(ctx->tokens, SYM_RBRACKET);
     if (!tok_end) {
         struct token *tok_err = tokens_peek(ctx->tokens);
-        PARSE_ERROR(ERR_MISSING_BRACKET,
-                    tok_err,
-                    CARET_WORD,
-                    "Expected closing ']' after dynamic array signature.");
+        report_error(MISSING_BRACKET,
+                     tok_err,
+                     CARET_WORD,
+                     "Expected closing ']' after dynamic array signature.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
 
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
@@ -2104,8 +2150,7 @@ struct ast *parse_type_dynarr(struct context *ctx)
     slice->data.type_dynarr.elem_type = parse_type(ctx);
 
     if (!slice->data.type_dynarr.elem_type) {
-        PARSE_ERROR(ERR_INVALID_TYPE, tok_end, CARET_AFTER, "Expected dynamic array element type.");
-
+        report_error(INVALID_TYPE, tok_end, CARET_AFTER, "Expected dynamic array element type.");
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
 
@@ -2171,20 +2216,20 @@ struct ast *parse_type_fn_return(struct context *ctx)
         }
         struct token *tok = tokens_consume_if(ctx->tokens, SYM_RPAREN);
         if (!tok) {
-            PARSE_ERROR(ERR_MISSING_BRACKET,
-                        tokens_peek(ctx->tokens),
-                        CARET_WORD,
-                        "Expected end of return list or another return type separated by comma.");
+            report_error(MISSING_BRACKET,
+                         tokens_peek(ctx->tokens),
+                         CARET_WORD,
+                         "Expected end of return list or another return type separated by comma.");
             scope_pop(ctx);
             return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
         }
         scope_pop(ctx);
         if (!sarrlenu(type_struct->data.type_strct.members)) {
-            PARSE_ERROR(ERR_INVALID_TYPE,
-                        tok_begin,
-                        CARET_WORD,
-                        "Expected at least one return type inside parenthesis, if function should "
-                        "return 'void' remove parenthesis and leave return type unspecified.");
+            report_error(INVALID_TYPE,
+                         tok_begin,
+                         CARET_WORD,
+                         "Expected at least one return type inside parenthesis, if function should "
+                         "return 'void' remove parenthesis and leave return type unspecified.");
         }
         return_zone(type_struct);
     }
@@ -2199,7 +2244,7 @@ struct ast *parse_type_fn(struct context *ctx, bool named_args)
 
     struct token *tok = tokens_consume(ctx->tokens);
     if (tok->sym != SYM_LPAREN) {
-        PARSE_ERROR(ERR_MISSING_BRACKET, tok, CARET_WORD, "Expected function parameter list.");
+        report_error(MISSING_BRACKET, tok, CARET_WORD, "Expected function parameter list.");
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_fn, scope_get(ctx)));
     }
     struct ast *fn = ast_create_node(ctx->ast_arena, AST_TYPE_FN, tok_fn, scope_get(ctx));
@@ -2221,7 +2266,7 @@ NEXT:
     } else if (rq) {
         struct token *tok_err = tokens_peek(ctx->tokens);
         if (tokens_peek_2nd(ctx->tokens)->sym == SYM_RBLOCK) {
-            PARSE_ERROR(ERR_EXPECTED_NAME, tok_err, CARET_WORD, "Expected type after comma ','.");
+            report_error(EXPECTED_NAME, tok_err, CARET_WORD, "Expected type after comma ','.");
             arrpop(ctx->fn_type_stack);
             return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_fn, scope_get(ctx)));
         }
@@ -2229,11 +2274,11 @@ NEXT:
 
     tok = tokens_consume(ctx->tokens);
     if (tok->sym != SYM_RPAREN) {
-        PARSE_ERROR(ERR_MISSING_BRACKET,
-                    tok,
-                    CARET_WORD,
-                    "Expected end of argument type list ')' or another argument separated "
-                    "by comma.");
+        report_error(MISSING_BRACKET,
+                     tok,
+                     CARET_WORD,
+                     "Expected end of argument type list ')' or another argument separated "
+                     "by comma.");
         arrpop(ctx->fn_type_stack);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_fn, scope_get(ctx)));
     }
@@ -2270,8 +2315,8 @@ NEXT:
     struct token *tok = tokens_consume_if(ctx->tokens, SYM_RBLOCK);
     if (!tok) {
         tok = tokens_peek_prev(ctx->tokens);
-        PARSE_ERROR(ERR_EXPECTED_BODY_END, tok, CARET_AFTER, "Expected end of block '}'.");
-        PARSE_NOTE(tok_begin, CARET_WORD, "Block starting here.");
+        report_error(EXPECTED_BODY_END, tok, CARET_AFTER, "Expected end of block '}'.");
+        report_note(tok_begin, CARET_WORD, "Block starting here.");
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
     return_zone(group);
@@ -2310,7 +2355,7 @@ struct ast *parse_type_struct(struct context *ctx)
 
     struct token *tok = tokens_consume_if(ctx->tokens, SYM_LBLOCK);
     if (!tok) {
-        PARSE_ERROR(ERR_MISSING_BRACKET, tok_struct, CARET_AFTER, "Expected struct member list.");
+        report_error(MISSING_BRACKET, tok_struct, CARET_AFTER, "Expected struct member list.");
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_struct, scope_get(ctx)));
     }
 
@@ -2345,10 +2390,10 @@ NEXT:
     }
     tok = tokens_consume_if(ctx->tokens, SYM_RBLOCK);
     if (!tok) {
-        PARSE_ERROR(ERR_MISSING_BRACKET,
-                    tokens_peek(ctx->tokens),
-                    CARET_WORD,
-                    "Expected end of member list '}' or another member separated by semicolon.");
+        report_error(MISSING_BRACKET,
+                     tokens_peek(ctx->tokens),
+                     CARET_WORD,
+                     "Expected end of member list '}' or another member separated by semicolon.");
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         scope_pop(ctx);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_struct, scope_get(ctx)));
@@ -2404,10 +2449,10 @@ struct ast *parse_decl(struct context *ctx)
 
         if (isnotflag(decl->data.decl_entity.flags, FLAG_EXTERN)) {
             if (!decl->data.decl_entity.value) {
-                PARSE_ERROR(ERR_EXPECTED_INITIALIZATION,
-                            tok_assign,
-                            CARET_AFTER,
-                            "Expected binding of declaration to some value.");
+                report_error(EXPECTED_INITIALIZATION,
+                             tok_assign,
+                             CARET_AFTER,
+                             "Expected binding of declaration to some value.");
                 decl_pop(ctx);
                 return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
             }
@@ -2428,12 +2473,12 @@ struct ast *parse_decl(struct context *ctx)
         }
 
         if (isflag(flags, FLAG_NO_INIT) && !scope_is_local(scope_get(ctx))) {
-            PARSE_ERROR(ERR_EXPECTED_INITIALIZATION,
-                        tok_begin,
-                        CARET_AFTER,
-                        "Invalid 'noinit' directive for global variable '%s'. All globals must "
-                        "be initialized either by explicit value or implicit default value.",
-                        ident->data.ident.id.str);
+            report_error(EXPECTED_INITIALIZATION,
+                         tok_begin,
+                         CARET_AFTER,
+                         "Invalid 'noinit' directive for global variable '%s'. All globals must "
+                         "be initialized either by explicit value or implicit default value.",
+                         ident->data.ident.id.str);
         }
 
         decl->data.decl_entity.flags |= flags;
@@ -2473,20 +2518,18 @@ arg:
     } else if (rq) {
         struct token *tok_err = tokens_peek(ctx->tokens);
         if (tokens_peek_2nd(ctx->tokens)->sym == SYM_RBLOCK) {
-            PARSE_ERROR(ERR_EXPECTED_NAME,
-                        tok_err,
-                        CARET_WORD,
-                        "Expected function argument after comma ','.");
+            report_error(
+                EXPECTED_NAME, tok_err, CARET_WORD, "Expected function argument after comma ','.");
             return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
         }
     }
 
     tok = tokens_consume(ctx->tokens);
     if (tok->sym != SYM_RPAREN) {
-        PARSE_ERROR(ERR_MISSING_BRACKET,
-                    tok,
-                    CARET_WORD,
-                    "Expected end of parameter list ')' or another parameter separated by comma.");
+        report_error(MISSING_BRACKET,
+                     tok,
+                     CARET_WORD,
+                     "Expected end of parameter list ')' or another parameter separated by comma.");
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok, scope_get(ctx)));
     }
 
@@ -2560,7 +2603,7 @@ NEXT:
     switch (tokens_peek_sym(ctx->tokens)) {
     case SYM_SEMICOLON:
         tok = tokens_consume(ctx->tokens);
-        PARSE_WARNING(tok, CARET_WORD, "Extra semicolon can be removed ';'.");
+        report_warning(tok, CARET_WORD, "Extra semicolon can be removed ';'.");
         goto NEXT;
     case SYM_HASH: {
         enum hash_directive_flags satisfied;
@@ -2635,8 +2678,8 @@ NEXT:
     tok = tokens_consume_if(ctx->tokens, SYM_RBLOCK);
     if (!tok) {
         tok = tokens_peek_prev(ctx->tokens);
-        PARSE_ERROR(ERR_EXPECTED_BODY_END, tok, CARET_AFTER, "Expected end of block '}'.");
-        PARSE_NOTE(tok_begin, CARET_WORD, "Block starting here.");
+        report_error(EXPECTED_BODY_END, tok, CARET_AFTER, "Expected end of block '}'.");
+        report_note(tok_begin, CARET_WORD, "Block starting here.");
         if (create_scope) scope_pop(ctx);
         return ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx));
     }
@@ -2680,11 +2723,11 @@ NEXT:
 
     struct token *tok = tokens_peek(ctx->tokens);
     if (!token_is(tok, SYM_EOF)) {
-        PARSE_ERROR(ERR_UNEXPECTED_SYMBOL,
-                    tok,
-                    CARET_WORD,
-                    "Unexpected symbol in module body '%s'.",
-                    sym_strings[tok->sym]);
+        report_error(UNEXPECTED_SYMBOL,
+                     tok,
+                     CARET_WORD,
+                     "Unexpected symbol in module body '%s'.",
+                     sym_strings[tok->sym]);
     }
 }
 

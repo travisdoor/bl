@@ -4847,30 +4847,25 @@ struct result analyze_instr_unroll(struct context *ctx, struct mir_instr_unroll 
     return_zone(PASS);
 }
 
-struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compound *cmp)
+static struct result analyze_instr_compound_regular(struct context            *ctx,
+                                                    struct mir_instr_compound *cmp)
 {
     zone();
+
     mir_instrs_t *values = cmp->values;
     if (cmp->is_multiple_return_value) {
+        bassert(
+            cmp->base.value.type == NULL &&
+            "Multi-return compound expression is supposed to have type of the return type of the "
+            "current function, not explicitly specified one!");
         // Compound expression used as multiple return value has no type specified; function
         // return type must by used.
         struct mir_fn *fn = instr_owner_fn(&cmp->base);
         bassert(fn && fn->type);
         cmp->base.value.type = fn->type->data.fn.ret_type;
         bassert(cmp->base.value.type);
-    }
-
-    struct mir_type *type = cmp->base.value.type;
-    if (cmp->base.is_implicit) {
-        bassert(type && "Missing type for implicit compound!");
-        bassert((cmp->is_zero_initialized || sarrlen(values)) &&
-                "Missing type for implicit compound!");
-
-        goto SKIP_IMPLICIT;
-    }
-    // Setup compound type.
-    if (!type) {
-        // generate load instruction if needed
+    } else if (!cmp->base.value.type) {
+        // Generate load instruction if needed
         bassert(cmp->type->state == MIR_IS_COMPLETE);
         if (analyze_slot(ctx, &analyze_slot_conf_basic, &cmp->type, NULL) != ANALYZE_PASSED)
             return_zone(FAIL);
@@ -4881,33 +4876,32 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
                 INVALID_TYPE, instr_type->node, "Expected type before compound expression.");
             return_zone(FAIL);
         }
-        type = MIR_CEV_READ_AS(struct mir_type *, &instr_type->value);
+        struct mir_type *type = MIR_CEV_READ_AS(struct mir_type *, &instr_type->value);
         bmagic_assert(type);
+        cmp->base.value.type = type;
     }
 
+    struct mir_type *type = cmp->base.value.type;
     bassert(type);
 
-    if (!values) {
-        report_error_after(INVALID_INITIALIZER, cmp->type->node, "Expected expression.");
-        return_zone(FAIL);
-    }
-
-    cmp->base.value.type        = type;
     cmp->base.value.is_comptime = true; // can be overriden later
 
-    // Check if array is supposed to be initilialized to {0}
     if (sarrlen(values) == 1) {
+        // @Cleanup
         struct mir_instr *value = sarrpeek(values, 0);
         if (value->kind == MIR_INSTR_CONST && value->value.type->kind == MIR_TYPE_INT &&
             MIR_CEV_READ_AS(u64, &value->value) == 0) {
             cmp->is_zero_initialized = true;
         }
+    } else if (!values) {
+        // @Cleanup: Later no-values -> zero initialized
+        cmp->is_zero_initialized = true;
     }
+
+    if (cmp->is_zero_initialized) return_zone(PASS);
 
     switch (type->kind) {
     case MIR_TYPE_ARRAY: {
-        if (cmp->is_zero_initialized) break;
-
         if (sarrlenu(values) != (usize)type->data.array.len) {
             report_error(INVALID_INITIALIZER,
                          cmp->base.node,
@@ -4939,7 +4933,6 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
     case MIR_TYPE_STRING:
     case MIR_TYPE_VARGS:
     case MIR_TYPE_STRUCT: {
-        if (cmp->is_zero_initialized) break;
         const bool  is_union                = type->data.strct.is_union;
         const bool  is_multiple_return_type = type->data.strct.is_multiple_return_type;
         const usize memc                    = sarrlenu(type->data.strct.members);
@@ -5000,7 +4993,32 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
     }
     }
 
-SKIP_IMPLICIT:
+    return_zone(PASS);
+}
+
+static struct result analyze_instr_compound_implicit(struct context            *ctx,
+                                                     struct mir_instr_compound *cmp)
+{
+    zone();
+    bassert(cmp->base.value.type && "Missing type for implicit compound!");
+    bassert(cmp->is_zero_initialized || sarrlen(cmp->values));
+    return_zone(PASS);
+}
+
+struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compound *cmp)
+{
+    zone();
+    struct result result = PASS;
+    if (cmp->base.is_implicit) {
+        result = analyze_instr_compound_implicit(ctx, cmp);
+    } else {
+        result = analyze_instr_compound_regular(ctx, cmp);
+    }
+
+    if (result.state != ANALYZE_PASSED) return result;
+    struct mir_type *type = cmp->base.value.type;
+    bassert(type);
+
     if (!mir_is_global(&cmp->base) && cmp->is_naked) {
         // For naked non-compile time compounds we need to generate implicit temp storage to
         // keep all data.
@@ -5010,7 +5028,8 @@ SKIP_IMPLICIT:
                                                       .alloc_type = type,
                                                       .is_mutable = true,
                                                   });
-        cmp->tmp_var            = tmp_var;
+
+        cmp->tmp_var = tmp_var;
     }
 
     return_zone(PASS);

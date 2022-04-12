@@ -1,19 +1,41 @@
-Foo :: struct {
-    milan: s32;
+Data :: struct {
+    a: s32;
+    b: bool;
 }
 
 main :: fn () s32 {
-    foo1: Foo;
-    foo2: MyScope.Foo;
-    print("%", foo1);
-    print("%", foo2);
+    // [T].{[values]}
+    a := s32.{ 0 };
+    b := s32.{ 1 };
+    c := s32.{}; // zero initialized
+    data := Data.{ 10, true };
+    data2 := Foo.Data.{ "hello", true };
+    data3 := Foo.Data.{};
+    //data4 := Data.{ a = 10 };
+    arr := [2]s32.{};
+    result :: func();
+
+    print("%\n", a);
+    print("%\n", b);
+    print("%\n", c);
+    print("%\n", data);
+    print("%\n", data2);
+    print("%\n", data3);
+    print("%\n", arr);
+    print("%\n", result);
+
     return 0;
 }
 
-#scope MyScope
-Foo :: struct {
-    jan: s32;
-    pavel: s32;
+func :: fn () (s32, bool) {
+    return 10, true;
+}
+
+#scope Foo
+
+Data :: struct {
+    a: string_view;
+    b: bool;
 }
 
 // =================================================================================================

@@ -236,3 +236,78 @@ compound_comptime_composition6 :: fn () #test {
         test_eq(g10[i].j, 20);
     }
 }
+
+compound_zero_initialization :: fn () #test {
+    {
+        a := s32.{};
+        test_true(typeof(a) == s32);
+        test_eq(a, 0);
+    }
+
+    {
+        a := u8.{};
+        test_true(typeof(a) == u8);
+        test_eq(a, 0);
+    }
+
+    {
+        Type :: struct { a: s32; b: bool; c: string_view };
+
+        a := Type.{};
+        test_true(typeof(a) == Type);
+        test_eq(a.a, 0);
+        test_eq(a.b, false);
+        test_eq(a.c, "");
+    }
+
+    {
+        a := [10]s32.{};
+        loop i := 0; i < a.len; i += 1 {
+            test_eq(a[i], 0);
+        }
+    }
+}
+
+compound_simple :: fn () #test {
+    {
+        a := s32.{0};
+        test_true(typeof(a) == s32);
+        test_eq(a, 0);
+    }
+
+    {
+        a := u8.{0};
+        test_true(typeof(a) == u8);
+        test_eq(a, 0);
+    }
+
+    {
+        a := s32.{ 10 };
+        test_true(typeof(a) == s32);
+        test_eq(a, 10);
+    }
+
+    {
+        a := [4]s32.{ 0, 1, 2, 3 };
+        loop i := 0; i < a.len; i += 1 {
+            test_eq(a[i], i);
+        }
+    }
+}
+
+compound_simple_composition :: fn () #test {
+    A :: struct { i: s32; b: bool; };
+    B :: struct { data: A; };
+
+    {
+        a := B.{};
+        test_eq(a.data.i, 0);
+        test_eq(a.data.b, false);
+    }
+
+    {
+        a := B.{ A.{ 10, true } };
+        test_eq(a.data.i, 10);
+        test_eq(a.data.b, true);
+    }
+}
