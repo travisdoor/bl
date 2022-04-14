@@ -1,43 +1,23 @@
 Data :: struct {
     a: s32;
     b: bool;
+    c: f32;
 }
 
-main :: fn () s32 {
-    // [T].{[values]}
-    a := s32.{ 0 };
-    b := s32.{ 1 };
-    c := s32.{}; // zero initialized
-    data := Data.{ 10, true };
-    data2 := Foo.Data.{ "hello", true };
-    data3 := Foo.Data.{};
-    //data4 := Data.{ a = 10 };
-    arr := [2]s32.{};
-    result :: func();
+d :: Data.{ 10 };
 
-    print("%\n", a);
-    print("%\n", b);
-    print("%\n", c);
-    print("%\n", data);
-    print("%\n", data2);
-    print("%\n", data3);
-    print("%\n", arr);
-    print("%\n", result);
+main :: fn () s32 {
+    a := Data.{};
+    b := Data.{ 10, true, 0.f };
+    c := Data.{ 10 };
+
+    print("a %\n", a);
+    print("b %\n", b);
+    print("c %\n", c);
+    print("d %\n", d);
 
     return 0;
 }
-
-func :: fn () (s32, bool) {
-    return 10, true;
-}
-
-#scope Foo
-
-Data :: struct {
-    a: string_view;
-    b: bool;
-}
-
 // =================================================================================================
 // Comptime function
 // =================================================================================================

@@ -393,7 +393,7 @@ get_tmp :: fn () string #inline {
 }
 
 #private
-DIR_COPY_OPT_DEFAULT :: {:DirCopyOpt: 0};
+DIR_COPY_OPT_DEFAULT :: DirCopyOpt.{};
 
 _default_file_filter :: fn (item: *Info) bool {
     return str_match(item.name, ".") == false

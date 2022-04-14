@@ -714,7 +714,6 @@ struct ast *parse_expr_compound2(struct context *ctx, struct ast *prev)
     struct ast *compound =
         ast_create_node(ctx->ast_arena, AST_EXPR_COMPOUND, tok_begin, scope_get(ctx));
     compound->data.expr_compound.type = type;
-    blog("Compound: %s:%d", tok_begin->location.unit->filename, tok_begin->location.line);
 
     // parse values
     bool        rq = false;

@@ -80,6 +80,7 @@ static const usize sarr_total_size = sizeof(union {
     mir_variants_t     _6;
     mir_instrs_t       _7;
     mir_switch_cases_t _8;
+    ints_t             _9;
 });
 
 static void sarr_dtor(sarr_any_t *arr)

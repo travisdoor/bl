@@ -825,10 +825,18 @@ struct mir_instr_compound {
     struct mir_instr base;
 
     struct mir_instr *type;
-    mir_instrs_t     *values;
-    struct mir_var   *tmp_var;
-    bool              is_naked;
-    bool              is_zero_initialized;
+
+    // If there are no values explicitly specified, we assume that the compound is zero initialized,
+    // in some cases we can do some optimizations based on that.
+    mir_instrs_t *values;
+
+    // Store destination indices of all values provided based on the compound type. Initialized in
+    // analyze pass when the type is known.
+    // In case the mapping is not specified (NULL) we process values one by one as they are.
+    ints_t *value_dest_indices;
+
+    struct mir_var *tmp_var;
+    bool            is_naked;
     // Set when compound is used as multiple return value.
     bool is_multiple_return_value;
 };
@@ -984,6 +992,12 @@ static inline bool mir_type_has_llvm_representation(const struct mir_type *type)
     bassert(type);
     return type->kind != MIR_TYPE_TYPE && type->kind != MIR_TYPE_FN_GROUP &&
            type->kind != MIR_TYPE_NAMED_SCOPE && type->kind != MIR_TYPE_POLY;
+}
+
+static inline bool mir_is_zero_initialized(const struct mir_instr_compound *compound)
+{
+    bassert(compound);
+    return compound->values == NULL;
 }
 
 bool           mir_is_in_comptime_fn(struct mir_instr *instr);

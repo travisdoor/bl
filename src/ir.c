@@ -1915,8 +1915,8 @@ LLVMValueRef _emit_instr_compound_zero_initialized(struct context            *ct
 {
     struct mir_type *type = cmp->base.value.type;
     bassert(type);
-    bassert(mir_is_comptime(&cmp->base) &&
-            "Zero initialized compound expression is supposed to be compile time known!");
+    // bassert(mir_is_comptime(&cmp->base) &&
+    //"Zero initialized compound expression is supposed to be compile time known!");
     if (!llvm_dest) {
         cmp->base.llvm_value = LLVMConstNull(get_type(ctx, type));
         return cmp->base.llvm_value;
@@ -1955,7 +1955,7 @@ LLVMValueRef _emit_instr_compound_zero_initialized(struct context            *ct
 LLVMValueRef _emit_instr_compound_comptime(struct context *ctx, struct mir_instr_compound *cmp)
 {
     bassert(mir_is_comptime(&cmp->base) && "Expected comptime known compound expression!");
-    if (cmp->is_zero_initialized) {
+    if (mir_is_zero_initialized(cmp)) {
         cmp->base.llvm_value = _emit_instr_compound_zero_initialized(ctx, NULL, cmp);
         bassert(cmp->base.llvm_value);
         return cmp->base.llvm_value;
@@ -1993,17 +1993,32 @@ LLVMValueRef _emit_instr_compound_comptime(struct context *ctx, struct mir_instr
     case MIR_TYPE_SLICE:
     case MIR_TYPE_VARGS:
     case MIR_TYPE_STRUCT: {
-        llvm_values_t llvm_members = SARR_ZERO;
-        mir_instrs_t *values       = cmp->values;
-        for (usize i = 0; i < sarrlenu(values); ++i) {
-            struct mir_instr *it = sarrpeek(values, i);
-            EMIT_NESTED_COMPOUND_IF_NEEDED(ctx, it);
-            LLVMValueRef llvm_member = it->llvm_value;
-            bassert(LLVMIsConstant(llvm_member) && "Expected constant!");
+        llvm_values_t  llvm_members = SARR_ZERO;
+        mir_instrs_t  *values       = cmp->values;
+        mir_members_t *members      = type->data.strct.members;
+        bassert(members && values);
+        const usize expected_count = sarrlenu(members);
+        const usize got_count      = sarrlenu(values);
+        for (usize i = 0; i < expected_count; ++i) {
+            struct mir_instr  *it     = i < got_count ? sarrpeek(values, i) : NULL;
+            struct mir_member *member = sarrpeek(members, i);
+            bassert(member);
+            LLVMValueRef llvm_member = NULL;
+            if (it) {
+                EMIT_NESTED_COMPOUND_IF_NEEDED(ctx, it);
+                llvm_member = it->llvm_value;
+            } else {
+                // Value for this member of the struct was not provided, so we have to generate
+                // default zero initialization here to make LLVM happy.
+                blog("Provide default zero value!");
+                llvm_member = LLVMConstNull(get_type(ctx, member->type));
+            }
+            bassert(llvm_member && LLVMIsConstant(llvm_member) && "Expected constant!");
             sarrput(&llvm_members, llvm_member);
         }
+
         cmp->base.llvm_value = LLVMConstNamedStruct(
-            get_type(ctx, type), sarrdata(&llvm_members), (u32)sarrlenu(cmp->values));
+            get_type(ctx, type), sarrdata(&llvm_members), (u32)sarrlenu(&llvm_members));
         sarrfree(&llvm_members);
         break;
     }
@@ -2027,20 +2042,26 @@ void emit_instr_compound(struct context            *ctx,
                          struct mir_instr_compound *cmp)
 {
     bassert(llvm_dest && "Missing temp storage for compound value!");
-    if (cmp->is_zero_initialized) {
-        // Set tmp variable to zero.
+    if (mir_is_zero_initialized(cmp)) {
+        // Set tmp variable to zero when there are no values speficied.
         _emit_instr_compound_zero_initialized(ctx, llvm_dest, cmp);
         return;
     }
     if (mir_is_comptime(&cmp->base) && mir_is_global(&cmp->base)) {
+        // Special case for global constants. (i.e. we cannot use memset intrinsic here).
         LLVMValueRef llvm_value = _emit_instr_compound_comptime(ctx, cmp);
         bassert(llvm_value);
         LLVMBuildStore(ctx->llvm_builder, llvm_value, llvm_dest);
         return;
     }
 
+    // The rest is local, non-comptime and not zero initialized.
     struct mir_type *type = cmp->base.value.type;
     bassert(type);
+
+    // @Cleanup: This is just for testing, when we allow value mapping being out of order we
+    // probably don't need to zero initialize everything...
+    _emit_instr_compound_zero_initialized(ctx, llvm_dest, cmp);
 
     mir_instrs_t *values = cmp->values;
     LLVMValueRef  llvm_value;

@@ -3667,7 +3667,6 @@ struct mir_instr *create_default_value_for_type(struct context *ctx, struct mir_
         struct mir_instr_compound *compound =
             (struct mir_instr_compound *)create_instr_compound_impl(ctx, NULL, type, NULL);
         compound->is_naked               = false;
-        compound->is_zero_initialized    = true;
         compound->base.value.is_comptime = true;
         default_value                    = &compound->base;
         break;
@@ -4296,7 +4295,7 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
         switch (top->kind) {
         case MIR_INSTR_COMPOUND: {
             struct mir_instr_compound *compound = (struct mir_instr_compound *)top;
-            if (compound->is_zero_initialized) break;
+            if (mir_is_zero_initialized(compound)) break;
             for (usize i = 0; i < sarrlenu(compound->values); ++i) {
                 struct mir_instr *it = sarrpeek(compound->values, i);
                 sarrput(&queue, unref_instr(it));
@@ -4852,7 +4851,6 @@ static struct result analyze_instr_compound_regular(struct context            *c
 {
     zone();
 
-    mir_instrs_t *values = cmp->values;
     if (cmp->is_multiple_return_value) {
         bassert(
             cmp->base.value.type == NULL &&
@@ -4885,20 +4883,12 @@ static struct result analyze_instr_compound_regular(struct context            *c
     bassert(type);
 
     cmp->base.value.is_comptime = true; // can be overriden later
+    if (mir_is_zero_initialized(cmp)) return_zone(PASS);
 
-    if (sarrlen(values) == 1) {
-        // @Cleanup
-        struct mir_instr *value = sarrpeek(values, 0);
-        if (value->kind == MIR_INSTR_CONST && value->value.type->kind == MIR_TYPE_INT &&
-            MIR_CEV_READ_AS(u64, &value->value) == 0) {
-            cmp->is_zero_initialized = true;
-        }
-    } else if (!values) {
-        // @Cleanup: Later no-values -> zero initialized
-        cmp->is_zero_initialized = true;
-    }
-
-    if (cmp->is_zero_initialized) return_zone(PASS);
+    mir_instrs_t *values = cmp->values;
+    bassert(
+        values &&
+        "Values should be valid array in case the compound expression is not zero initialized.");
 
     switch (type->kind) {
     case MIR_TYPE_ARRAY: {
@@ -4933,9 +4923,8 @@ static struct result analyze_instr_compound_regular(struct context            *c
     case MIR_TYPE_STRING:
     case MIR_TYPE_VARGS:
     case MIR_TYPE_STRUCT: {
-        const bool  is_union                = type->data.strct.is_union;
-        const bool  is_multiple_return_type = type->data.strct.is_multiple_return_type;
-        const usize memc                    = sarrlenu(type->data.strct.members);
+        const bool  is_union = type->data.strct.is_union;
+        const usize memc     = sarrlenu(type->data.strct.members);
 
         if (is_union) {
             report_error(
@@ -4943,18 +4932,24 @@ static struct result analyze_instr_compound_regular(struct context            *c
             return_zone(FAIL);
         } else {
             if (sarrlenu(values) != memc) {
-                const char *msg =
-                    is_multiple_return_type
-                        ? "Expected %llu return values but given %llu."
-                        : "Structure initializer must explicitly set all members of the "
-                          "structure or initialize structure to 0 by zero initializer "
-                          "{0}. Expected is %llu but given %llu.";
-                report_error(INVALID_INITIALIZER,
-                             cmp->base.node,
-                             msg,
-                             (unsigned long long)memc,
-                             (unsigned long long)sarrlenu(values));
-                return_zone(FAIL);
+                if (cmp->is_multiple_return_value) {
+                    // We expect exact value count for multiple return values.
+                    report_error(INVALID_INITIALIZER,
+                                 cmp->base.node,
+                                 "Expected %llu return values but given %llu.",
+                                 (unsigned long long)memc,
+                                 (unsigned long long)sarrlenu(values));
+                    return_zone(FAIL);
+                } else if (sarrlenu(values) > memc) {
+                    // Too much values provided.
+                    report_error(INVALID_INITIALIZER,
+                                 cmp->base.node,
+                                 "Too much values provided to initialize the structure! Expected "
+                                 "%llu but given %llu.",
+                                 (unsigned long long)memc,
+                                 (unsigned long long)sarrlenu(values));
+                    return_zone(FAIL);
+                }
             }
 
             // Else iterate over values
@@ -5001,7 +4996,6 @@ static struct result analyze_instr_compound_implicit(struct context            *
 {
     zone();
     bassert(cmp->base.value.type && "Missing type for implicit compound!");
-    bassert(cmp->is_zero_initialized || sarrlen(cmp->values));
     return_zone(PASS);
 }
 

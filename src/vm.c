@@ -2122,7 +2122,7 @@ void eval_instr_compound(struct virtual_machine *vm, struct mir_instr_compound *
         value->data = stack_push_empty(vm, value->type);
     }
 
-    if (cmp->is_zero_initialized) {
+    if (mir_is_zero_initialized(cmp)) {
         memset(value->data, 0, value->type->store_size_bytes);
         return;
     }
@@ -2180,7 +2180,7 @@ void eval_instr_unroll(struct virtual_machine *vm, struct mir_instr_unroll *unro
     if (mir_is_composite_type(src_type) && src_type->data.strct.is_multiple_return_type) {
         vm_stack_ptr_t member_ptr =
             vm_get_struct_elem_ptr(vm->assembly, src_type, src->value.data, unroll->index);
-		MIR_CEV_WRITE_AS(vm_stack_ptr_t, &unroll->base.value, member_ptr);
+        MIR_CEV_WRITE_AS(vm_stack_ptr_t, &unroll->base.value, member_ptr);
         return;
     }
 

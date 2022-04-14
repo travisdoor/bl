@@ -55,6 +55,7 @@ src/config.h
 *.sln
 .suo
 /CMakeLists.txt.user
+compile_commands.json
 /lib/bl/api/gl
 /lib/bl/api/glfw3
 /lib/bl/api/sdl2
@@ -73,3 +74,4 @@ docs/api/
 /etc
 /clang/
 /gcc-linux/
+.cache
