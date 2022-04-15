@@ -2041,6 +2041,7 @@ void emit_instr_compound(struct context            *ctx,
                          LLVMValueRef               llvm_dest,
                          struct mir_instr_compound *cmp)
 {
+    bassert(cmp->value_member_mapping == NULL && "Not implemented!");
     bassert(llvm_dest && "Missing temp storage for compound value!");
     if (mir_is_zero_initialized(cmp)) {
         // Set tmp variable to zero when there are no values speficied.

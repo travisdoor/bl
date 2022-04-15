@@ -190,7 +190,7 @@ typedef sarr_t(struct mir_type *, 16) mir_types_t;
 typedef sarr_t(struct mir_member *, 16) mir_members_t;
 typedef sarr_t(struct mir_variant *, 16) mir_variants_t;
 typedef sarr_t(struct mir_instr *, 16) mir_instrs_t;
-typedef sarr_t(s32, 16) ints_t;
+typedef sarr_t(s64, 16) ints_t;
 
 // =================================================================================================
 // String cache

@@ -1608,6 +1608,7 @@ void interp_instr_compound(struct virtual_machine    *vm,
                            struct mir_instr_compound *cmp)
 {
     bassert(!mir_is_comptime(&cmp->base));
+    bassert(cmp->value_member_mapping == NULL && "Not implemented!");
     const bool will_push = tmp_ptr == NULL;
     if (will_push) {
         bassert(cmp->tmp_var && "Missing temp variable for compound.");
@@ -1974,6 +1975,7 @@ void eval_instr(struct virtual_machine *vm, struct mir_instr *instr)
     case MIR_INSTR_ALIGNOF:
     case MIR_INSTR_BR:
     case MIR_INSTR_USING:
+    case MIR_INSTR_DESIGNATOR:
         break;
 
     default:
@@ -2115,6 +2117,7 @@ void eval_instr_member_ptr(struct virtual_machine       UNUSED(*vm),
 
 void eval_instr_compound(struct virtual_machine *vm, struct mir_instr_compound *cmp)
 {
+    bassert(cmp->value_member_mapping == NULL && "Not implemented!");
     struct mir_const_expr_value *value = &cmp->base.value;
     if (needs_allocation(value)) {
         // Compound data doesn't fit into default static memory register, we need to

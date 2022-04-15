@@ -250,7 +250,7 @@ _print_const_value(struct context *ctx, struct mir_type *type, vm_stack_ptr_t va
     }
 
     case MIR_TYPE_FN: {
-        struct mir_fn *fn = vm_read_as(struct mir_fn*, value);
+        struct mir_fn *fn = vm_read_as(struct mir_fn *, value);
         bmagic_assert(fn);
         fprintf(ctx->stream, "@%s", fn->full_name);
         break;
@@ -311,6 +311,7 @@ static void print_instr_call_loc(struct context *ctx, struct mir_instr_call_loc 
 static void print_instr_unroll(struct context *ctx, struct mir_instr_unroll *unroll);
 static void print_instr_msg(struct context *ctx, struct mir_instr_msg *msg);
 static void print_instr_using(struct context *ctx, struct mir_instr_using *using);
+static void print_instr_designator(struct context *ctx, struct mir_instr_designator *cm);
 static void print_instr(struct context *ctx, struct mir_instr *instr);
 
 // impl
@@ -707,6 +708,19 @@ void print_instr_using(struct context *ctx, struct mir_instr_using *using)
 {
     print_instr_head(ctx, &using->base, "using");
     print_comptime_value_or_id(ctx, using->scope_expr);
+}
+
+void print_instr_designator(struct context *ctx, struct mir_instr_designator *cm)
+{
+    print_instr_head(ctx, &cm->base, "designator");
+    const char *designator;
+    if (cm->designator_ident && cm->designator_ident->kind == AST_IDENT) {
+        designator = cm->designator_ident->data.ident.id.str;
+    } else {
+        designator = "<INVALID>";
+    }
+    fprintf(ctx->stream, "%s = ", designator);
+    print_comptime_value_or_id(ctx, cm->value);
 }
 
 void print_instr_msg(struct context *ctx, struct mir_instr_msg *msg)
@@ -1145,6 +1159,8 @@ void print_instr(struct context *ctx, struct mir_instr *instr)
         break;
     case MIR_INSTR_USING:
         print_instr_using(ctx, (struct mir_instr_using *)instr);
+    case MIR_INSTR_DESIGNATOR:
+        print_instr_designator(ctx, (struct mir_instr_designator *)instr);
         break;
     }
 

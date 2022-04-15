@@ -115,6 +115,7 @@ struct mir_instr_test_case;
 struct mir_instr_call_loc;
 struct mir_instr_unroll;
 struct mir_instr_using;
+struct mir_instr_designator;
 
 struct mir_arenas {
     struct arena instr;
@@ -833,7 +834,7 @@ struct mir_instr_compound {
     // Store destination indices of all values provided based on the compound type. Initialized in
     // analyze pass when the type is known.
     // In case the mapping is not specified (NULL) we process values one by one as they are.
-    ints_t *value_dest_indices;
+    ints_t *value_member_mapping;
 
     struct mir_var *tmp_var;
     bool            is_naked;
@@ -893,6 +894,15 @@ struct mir_instr_using {
 
     struct scope     *scope;
     struct mir_instr *scope_expr;
+};
+
+// Used to distinguish compound initialization values with explicit name of member which should be
+// initialized.
+struct mir_instr_designator {
+    struct mir_instr base;
+
+    struct ast       *designator_ident;
+    struct mir_instr *value;
 };
 
 struct mir_instr_phi {

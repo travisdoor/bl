@@ -507,6 +507,10 @@ static struct mir_instr *insert_instr_addrof(struct context *ctx, struct mir_ins
 static struct mir_instr *insert_instr_toany(struct context *ctx, struct mir_instr *expr);
 static enum mir_cast_op  get_cast_op(struct mir_type *from, struct mir_type *to);
 static void              append_current_block(struct context *ctx, struct mir_instr *instr);
+static struct mir_instr *append_instr_designator(struct context   *ctx,
+                                                 struct ast       *node,
+                                                 struct ast       *designator_ident,
+                                                 struct mir_instr *value);
 static struct mir_instr *append_instr_arg(struct context *ctx, struct ast *node, unsigned i);
 static struct mir_instr *append_instr_using(struct context   *ctx,
                                             struct ast       *node,
@@ -882,6 +886,7 @@ analyze_resolve_type(struct context *ctx, struct mir_instr *resolver, struct mir
 static struct result analyze_instr_unroll(struct context *ctx, struct mir_instr_unroll *unroll);
 static struct result analyze_instr_using(struct context *ctx, struct mir_instr_using *using);
 static struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compound *cmp);
+static struct result analyze_instr_designator(struct context *ctx, struct mir_instr_designator *d);
 static struct result analyze_instr_set_initializer(struct context                   *ctx,
                                                    struct mir_instr_set_initializer *si);
 static struct result analyze_instr_phi(struct context *ctx, struct mir_instr_phi *phi);
@@ -3535,6 +3540,20 @@ append_instr_type_vargs(struct context *ctx, struct ast *node, struct mir_instr 
     return &tmp->base;
 }
 
+struct mir_instr *append_instr_designator(struct context   *ctx,
+                                          struct ast       *node,
+                                          struct ast       *designator_ident,
+                                          struct mir_instr *value)
+{
+    struct mir_instr_designator *tmp = create_instr(ctx, MIR_INSTR_DESIGNATOR, node);
+
+    tmp->designator_ident = designator_ident;
+    tmp->value            = ref_instr(value);
+    tmp->base.value.type  = ctx->builtin_types->t_void;
+    append_current_block(ctx, &tmp->base);
+    return &tmp->base;
+}
+
 struct mir_instr *append_instr_arg(struct context *ctx, struct ast *node, unsigned i)
 {
     struct mir_instr_arg *tmp = create_instr(ctx, MIR_INSTR_ARG, node);
@@ -4545,6 +4564,9 @@ enum vm_interp_state evaluate(struct context *ctx, struct mir_instr *instr)
         br->base.value.is_comptime = false; // ???
         return VM_INTERP_PASSED;
     }
+    case MIR_INSTR_DESIGNATOR:
+        // Nothing for now?
+        return VM_INTERP_PASSED;
     default:
         if (!vm_eval_instr(ctx->vm, ctx->assembly, instr)) {
             // Evaluation was aborted due to error.
@@ -4892,11 +4914,15 @@ static struct result analyze_instr_compound_regular(struct context            *c
 
     switch (type->kind) {
     case MIR_TYPE_ARRAY: {
+        // All array element values must be provided for now, we can eventually do something similar
+        // like in C and allow users to address individual elements explicitly by indices, but we
+        // keep it simple for now. I'm not sure if even similar feature in C is commonly used or
+        // not.
         if (sarrlenu(values) != (usize)type->data.array.len) {
             report_error(INVALID_INITIALIZER,
                          cmp->base.node,
                          "Array initializer must explicitly set all array elements or "
-                         "initialize array to 0 by zero initializer {0}. Expected is "
+                         "initialize array to 0 by zero initializer {}. Expected is "
                          "%llu but given %llu.",
                          (unsigned long long)type->data.array.len,
                          sarrlenu(values));
@@ -4906,6 +4932,15 @@ static struct result analyze_instr_compound_regular(struct context            *c
         // Else iterate over values
         for (usize i = 0; i < sarrlenu(values); ++i) {
             struct mir_instr **value_ref = &sarrpeek(values, i);
+            if ((*value_ref)->kind != MIR_INSTR_DESIGNATOR) {
+                report_error(INVALID_INITIALIZER,
+                             (*value_ref)->node,
+                             "Invalid array element initializer! Designator can be used only for "
+                             "composit types, sadly there is currently no way how to initialize "
+                             "elements addressed by index.");
+                return_zone(FAIL);
+            }
+
             if (analyze_slot(
                     ctx, &analyze_slot_conf_default, value_ref, type->data.array.elem_type) !=
                 ANALYZE_PASSED)
@@ -4923,52 +4958,99 @@ static struct result analyze_instr_compound_regular(struct context            *c
     case MIR_TYPE_STRING:
     case MIR_TYPE_VARGS:
     case MIR_TYPE_STRUCT: {
-        const bool  is_union = type->data.strct.is_union;
-        const usize memc     = sarrlenu(type->data.strct.members);
-
-        if (is_union) {
-            report_error(
-                INVALID_INITIALIZER, cmp->base.node, "Union can be zero initialized only.");
-            return_zone(FAIL);
-        } else {
-            if (sarrlenu(values) != memc) {
-                if (cmp->is_multiple_return_value) {
-                    // We expect exact value count for multiple return values.
-                    report_error(INVALID_INITIALIZER,
-                                 cmp->base.node,
-                                 "Expected %llu return values but given %llu.",
-                                 (unsigned long long)memc,
-                                 (unsigned long long)sarrlenu(values));
-                    return_zone(FAIL);
-                } else if (sarrlenu(values) > memc) {
-                    // Too much values provided.
-                    report_error(INVALID_INITIALIZER,
-                                 cmp->base.node,
-                                 "Too much values provided to initialize the structure! Expected "
-                                 "%llu but given %llu.",
-                                 (unsigned long long)memc,
-                                 (unsigned long long)sarrlenu(values));
-                    return_zone(FAIL);
-                }
-            }
-
-            // Else iterate over values
-            struct mir_instr **value_ref;
-            struct mir_type   *member_type;
-            for (usize i = 0; i < sarrlenu(values); ++i) {
-                value_ref   = &sarrpeek(values, i);
-                member_type = mir_get_struct_elem_type(type, i);
-
-                if (analyze_slot(ctx, &analyze_slot_conf_default, value_ref, member_type) !=
-                    ANALYZE_PASSED)
-                    return_zone(FAIL);
-
-                cmp->base.value.is_comptime =
-                    (*value_ref)->value.is_comptime ? cmp->base.value.is_comptime : false;
+        const usize memc = sarrlenu(type->data.strct.members);
+        if (sarrlenu(values) != memc) {
+            if (cmp->is_multiple_return_value) {
+                // We expect exact value count for multiple return values.
+                report_error(INVALID_INITIALIZER,
+                             cmp->base.node,
+                             "Expected %llu return values but given %llu.",
+                             (unsigned long long)memc,
+                             (unsigned long long)sarrlenu(values));
+                return_zone(FAIL);
+            } else if (sarrlenu(values) > memc) {
+                // Too much values provided.
+                report_error(INVALID_INITIALIZER,
+                             cmp->base.node,
+                             "Too much values provided to initialize the structure! Expected "
+                             "%llu but given %llu.",
+                             (unsigned long long)memc,
+                             (unsigned long long)sarrlenu(values));
+                return_zone(FAIL);
             }
         }
 
+        // Else iterate over values and do the mapping
+        ints_t     *value_member_mapping = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+        ast_nodes_t initialized_members  = SARR_ZERO;
+
+        struct scope    *scope = type->data.strct.scope;
+        struct mir_type *member_type;
+        s64              last_member_index = 0;
+        bool             store_mapping     = false;
+
+        struct mir_instr **value_ref;
+        for (usize i = 0; i < sarrlenu(values); ++i, ++last_member_index) {
+            value_ref = &sarrpeek(values, i);
+            if ((*value_ref)->kind == MIR_INSTR_DESIGNATOR) {
+                // @Explain
+                struct mir_instr_designator *designator = (struct mir_instr_designator *)*value_ref;
+                bassert(designator->designator_ident &&
+                        designator->designator_ident->kind == AST_IDENT);
+                struct id          *id    = &designator->designator_ident->data.ident.id;
+                struct scope_entry *found = scope_lookup(scope,
+                                                         &(scope_lookup_args_t){
+                                                             .id = id,
+                                                         });
+                if (!found) {
+                    char *type_name = mir_type2str(type, true);
+                    report_error(INVALID_INITIALIZER,
+                                 designator->designator_ident,
+                                 "Structure member designator '%s' does not refer to any member of "
+                                 "initialized structure type '%s'.",
+                                 id->str,
+                                 type_name);
+                    put_tstr(type_name);
+                    goto STRUCT_FAILED;
+                }
+                bassert(found->kind == SCOPE_ENTRY_MEMBER);
+                last_member_index = found->data.member->index;
+                *value_ref        = designator->value;
+                erase_instr(&designator->base);
+                designator    = NULL;
+                store_mapping = true;
+            }
+
+            if ((usize)last_member_index >= memc) {
+                report_error(INVALID_INITIALIZER,
+                             (*value_ref)->node,
+                             "Too much values provided to initialize the structure! Expected "
+                             "%llu but given %llu.",
+                             (unsigned long long)memc,
+                             (unsigned long long)sarrlenu(values));
+                goto STRUCT_FAILED;
+            }
+
+            sarrput(value_member_mapping, last_member_index);
+            member_type = mir_get_struct_elem_type(type, (usize)last_member_index);
+            if (analyze_slot(ctx, &analyze_slot_conf_default, value_ref, member_type) !=
+                ANALYZE_PASSED)
+                return_zone(FAIL);
+
+            cmp->base.value.is_comptime =
+                (*value_ref)->value.is_comptime ? cmp->base.value.is_comptime : false;
+        }
+
+        if (store_mapping) {
+            bassert(sarrlen(value_member_mapping) == sarrlen(values));
+            cmp->value_member_mapping = value_member_mapping;
+        }
+
         break;
+
+    STRUCT_FAILED:
+        sarrfree(&initialized_members);
+        return_zone(FAIL);
     }
 
     default: {
@@ -5026,6 +5108,14 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
         cmp->tmp_var = tmp_var;
     }
 
+    return_zone(PASS);
+}
+
+struct result analyze_instr_designator(struct context *ctx, struct mir_instr_designator *d)
+{
+    zone();
+    bassert(d->designator_ident && d->designator_ident->kind == AST_IDENT);
+    bassert(d->value);
     return_zone(PASS);
 }
 
@@ -8663,6 +8753,8 @@ struct result analyze_instr(struct context *ctx, struct mir_instr *instr)
         case MIR_INSTR_COMPOUND:
             state = analyze_instr_compound(ctx, (struct mir_instr_compound *)instr);
             break;
+        case MIR_INSTR_DESIGNATOR:
+            state = analyze_instr_designator(ctx, (struct mir_instr_designator *)instr);
         case MIR_INSTR_BR:
             state = analyze_instr_br(ctx, (struct mir_instr_br *)instr);
             break;
@@ -9802,7 +9894,30 @@ struct mir_instr *ast_expr_compound(struct context *ctx, struct ast *cmp)
     // Values must be appended in reverse order.
     for (usize i = valc; i-- > 0;) {
         ast_value = sarrpeek(ast_values, i);
-        value     = ast(ctx, ast_value);
+        if (ast_value->kind == AST_EXPR_BINOP && ast_value->data.expr_binop.kind == BINOP_ASSIGN) {
+            // @Explain
+            struct ast *ast_designator = ast_value->data.expr_binop.lhs;
+            struct ast *ast_init_value = ast_value->data.expr_binop.rhs;
+            struct ast *ast_id         = NULL;
+            // Validate designator
+            if (ast_designator->kind != AST_REF) {
+                report_error(
+                    INVALID_INITIALIZER,
+                    ast_designator,
+                    "Compound expression designator is expected to be reference to struct member.");
+            } else if (ast_designator->data.ref.next) {
+                report_error(INVALID_INITIALIZER,
+                             ast_designator,
+                             "Nested member designator is not supported.");
+            } else {
+                ast_id = ast_designator->data.ref.ident;
+                bassert(ast_id);
+            }
+
+            value = append_instr_designator(ctx, ast_value, ast_id, ast(ctx, ast_init_value));
+        } else {
+            value = ast(ctx, ast_value);
+        }
         bassert(value);
         sarrpeek(values, i) = value;
         set_compound_naked(value, false);
@@ -11274,6 +11389,8 @@ const char *mir_instr_name(const struct mir_instr *instr)
         return "InstrUnroll";
     case MIR_INSTR_USING:
         return "InstrUsing";
+    case MIR_INSTR_DESIGNATOR:
+        return "InstrDesignator";
     }
 
     return "UNKNOWN";
