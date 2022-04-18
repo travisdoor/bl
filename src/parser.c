@@ -1032,7 +1032,7 @@ struct ast *parse_decl_arg(struct context *ctx, bool named)
         name = parse_ident(ctx);
         tokens_consume(ctx->tokens); // eat :
     } else if (named) {
-        struct token *tok_err = tokens_peek(ctx->tokens);
+        struct token *tok_err = tokens_peek_prev(ctx->tokens);
         builder_msg(MSG_ERR,
                     ERR_EXPECTED_NAME,
                     &tok_err->location,
@@ -2254,6 +2254,7 @@ struct ast *parse_type_fn(struct context *ctx, bool named_args)
 NEXT:
     tmp = parse_decl_arg(ctx, named_args);
     if (tmp) {
+        if (tmp->kind == AST_BAD) return tmp;
         if (!fn->data.type_fn.args) {
             fn->data.type_fn.args = arena_safe_alloc(&ctx->assembly->arenas.sarr);
         }

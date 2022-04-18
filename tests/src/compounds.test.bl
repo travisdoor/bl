@@ -1,121 +1,11 @@
 #private
-/* OLD!!!
-compound_arrays :: fn () #test {
-    validate :: fn (v: [2]s32, i: s32, j: s32) {
-        test_eq(v[0], i);
-        test_eq(v[1], j);
-    };
-
-    // Var initializers
-    { // zero initialized
-        arr := {:[2]s32: 0};
-        validate(arr, 0, 0);
-    }
-
-    { // constant values
-        arr := {:[2]s32: 10, 20};
-        validate(arr, 10, 20);
-    }
-
-    { // variable values
-        i := 10;
-        j := 20;
-
-        arr := {:[2]s32: i, j};
-        validate(arr, i, j);
-    }
-
-    // Naked
-    { 
-        i := 10;
-        j := 20;
-
-        validate({:[2]s32: 0}, 0, 0);
-        validate({:[2]s32: 10, 20}, 10, 20);
-        validate({:[2]s32: i, j}, i, j);
-    }
-};
-
-compound_structs :: fn () #test {
-    Foo :: struct {
-        i: s32;
-        j: s32
-    };
-
-    validate :: fn (v: Foo, i: s32, j: s32) {
-        test_eq(v.i, i);
-        test_eq(v.j, j);
-    };
-
-    { // zero initialized
-        foo := {:Foo: 0};
-        validate(foo, 0, 0);
-    }
-
-    { // constant values
-        foo := {:Foo: 10, 20};
-        validate(foo, 10, 20);
-    }
-
-    { // variable values
-        i := 10;
-        j := 20;
-
-        foo := {:Foo: i, j};
-        validate(foo, i, j);
-    }
-
-    // Naked
-    { 
-        i := 10;
-        j := 20;
-
-        validate({:Foo: 0}, 0, 0);
-        validate({:Foo: 10, 20}, 10, 20);
-        validate({:Foo: i, j}, i, j);
-    }
-};
-
-compound_fundamentals :: fn () #test {
-    Days :: enum { MON; };
-    
-    i := 10;
-    test_eq({:s32: 10},  10);
-    test_eq({:s32: i}, i);
-    test_eq({:s32: 0}, 0);
-
-    b := true;
-    test_true({:bool: true});
-    test_true({:bool: b});
-
-    num     :: {:s32: 10};
-    real    :: {:f32: 0.5f};
-    boolean :: {:bool: true};
-    ptr     : *s32 : {:*s32: &num};
-    day     :: {:Days: Days.MON};
-
-    test_eq(num, 10);
-    test_eq(real, 0.5f);
-    test_true(boolean);
-    test_true(ptr == &num);
-    test_true(day == Days.MON);
-};
-
-compound_composition :: fn () #test {
-    get :: fn () s32 { return 30; };
-    T :: struct { slice: []u8; int: s32 };
-    v :: {:T: {:[]u8: 0}, get()};
-    test_eq(v.int, 30);    
-    test_eq(v.slice.len, 0);
-}
-
 T1 :: struct { i: s64; j: s64 }
 T2 :: struct { a: T1;  b: T1  }
 
-g1 :: {:T2: {:T1: 10, 20}, {:T1: 30, 40}};
-g2 :: {:T2: {:T1: 0}, {:T1: 30, 40}};
-g3 :: {:T2: {:T1: 10, 20}, {:T1: 0}};
-g4 :: {:T2: {:T1: 0}, {:T1: 0}};
+g1 :: T2.{T1.{10, 20}, T1.{30, 40}};
+g2 :: T2.{T1.{},       T1.{30, 40}};
+g3 :: T2.{T1.{10, 20}, T1.{}};
+g4 :: T2.{T1.{},       T1.{}};
 
 compound_comptime_composition :: fn () #test {
     test_eq(g1.a.i, 10);
@@ -139,10 +29,10 @@ compound_comptime_composition :: fn () #test {
     test_eq(g4.b.j, 0);
 }
 
-g5 := {:T2: {:T1: 10, 20}, {:T1: 30, 40}};
-g6 := {:T2: {:T1: 0}, {:T1: 30, 40}};
-g7 := {:T2: {:T1: 10, 20}, {:T1: 0}};
-g8 := {:T2: {:T1: 0}, {:T1: 0}};
+g5 := T2.{T1.{10, 20}, T1.{30, 40}};
+g6 := T2.{T1.{},       T1.{30, 40}};
+g7 := T2.{T1.{10, 20}, T1.{}};
+g8 := T2.{T1.{},       T1.{}};
 
 compound_comptime_composition2 :: fn () #test {
     test_eq(g5.a.i, 10);
@@ -167,10 +57,10 @@ compound_comptime_composition2 :: fn () #test {
 }
 
 compound_comptime_composition3 :: fn () #test {
-    l5 :: {:T2: {:T1: 10, 20}, {:T1: 30, 40}};
-    l6 :: {:T2: {:T1: 0}, {:T1: 30, 40}};
-    l7 :: {:T2: {:T1: 10, 20}, {:T1: 0}};
-    l8 :: {:T2: {:T1: 0}, {:T1: 0}};
+    l5 :: T2.{T1.{10, 20}, T1.{30, 40}};
+    l6 :: T2.{T1.{},       T1.{30, 40}};
+    l7 :: T2.{T1.{10, 20}, T1.{}};
+    l8 :: T2.{T1.{},       T1.{}};
 
     test_eq(l5.a.i, 10);
     test_eq(l5.a.j, 20);    
@@ -194,10 +84,10 @@ compound_comptime_composition3 :: fn () #test {
 }
 
 compound_comptime_composition4 :: fn () #test {
-    l5 := {:T2: {:T1: 10, 20}, {:T1: 30, 40}};
-    l6 := {:T2: {:T1: 0}, {:T1: 30, 40}};
-    l7 := {:T2: {:T1: 10, 20}, {:T1: 0}};
-    l8 := {:T2: {:T1: 0}, {:T1: 0}};
+    l5 := T2.{T1.{10, 20}, T1.{30, 40}};
+    l6 := T2.{T1.{},       T1.{30, 40}};
+    l7 := T2.{T1.{10, 20}, T1.{}};
+    l8 := T2.{T1.{},       T1.{}};
 
     test_eq(l5.a.i, 10);
     test_eq(l5.a.j, 20);    
@@ -220,7 +110,7 @@ compound_comptime_composition4 :: fn () #test {
     test_eq(l8.b.j, 0);
 }
 
-g9 :: {:[2]T1: {:T1: 10, 20}, {:T1: 10, 20}};
+g9 :: [2]T1.{T1.{10, 20}, T1.{10, 20}};
 
 compound_comptime_composition5 :: fn () #test {
     loop i := 0; i < g9.len; i += 1 {
@@ -229,7 +119,7 @@ compound_comptime_composition5 :: fn () #test {
     }
 }
 
-g10 := {:[2]T1: {:T1: 10, 20}, {:T1: 10, 20}};
+g10 := [2]T1.{T1.{10, 20}, T1.{10, 20}};
 
 compound_comptime_composition6 :: fn () #test {
     loop i := 0; i < g10.len; i += 1 {
@@ -237,7 +127,6 @@ compound_comptime_composition6 :: fn () #test {
         test_eq(g10[i].j, 20);
     }
 }
-*/
 
 compound_zero_initialization :: fn () #test {
     {
@@ -311,5 +200,187 @@ compound_simple_composition :: fn () #test {
         a := B.{ A.{ 10, true } };
         test_eq(a.data.i, 10);
         test_eq(a.data.b, true);
+    }
+}
+
+compound_arrays :: fn () #test {
+    validate :: fn (v: [2]s32, i: s32, j: s32) {
+        test_eq(v[0], i);
+        test_eq(v[1], j);
+    };
+
+    // Var initializers
+    { // zero initialized
+        arr := [2]s32.{};
+        validate(arr, 0, 0);
+    }
+
+    { // constant values
+        arr := [2]s32.{10, 20};
+        validate(arr, 10, 20);
+    }
+
+    { // variable values
+        i := 10;
+        j := 20;
+
+        arr := [2]s32.{i, j};
+        validate(arr, i, j);
+    }
+
+    // Naked
+    {
+        i := 10;
+        j := 20;
+
+        validate([2]s32.{}, 0, 0);
+        validate([2]s32.{10, 20}, 10, 20);
+        validate([2]s32.{i, j}, i, j);
+    }
+}
+
+compound_structs :: fn () #test {
+    Foo :: struct {
+        i: s32;
+        j: s32
+    };
+
+    validate :: fn (v: Foo, i: s32, j: s32) {
+        test_eq(v.i, i);
+        test_eq(v.j, j);
+    };
+
+    { // zero initialized
+        foo := Foo.{};
+        validate(foo, 0, 0);
+    }
+
+    { // constant values
+        foo := Foo.{ 10, 20 };
+        validate(foo, 10, 20);
+    }
+
+    { // variable values
+        i := 10;
+        j := 20;
+
+        foo := Foo.{ i, j };
+        validate(foo, i, j);
+    }
+
+    // Naked
+    {
+        i := 10;
+        j := 20;
+
+        validate(Foo.{}, 0, 0);
+        validate(Foo.{ 10, 20 }, 10, 20);
+        validate(Foo.{ i, j }, i, j);
+    }
+}
+
+compound_fundamentals :: fn () #test {
+    Days :: enum { MON; };
+
+    i := 10;
+    test_eq(s32.{10},  10);
+    test_eq(s32.{i}, i);
+    test_eq(s32.{}, 0);
+
+    b := true;
+    test_true(bool.{true});
+    test_true(bool.{b});
+
+    num     :: s32.{10};
+    real    :: f32.{0.5f};
+    boolean :: bool.{true};
+    ptr     :: *s32.{&num};
+    day     :: Days.{Days.MON};
+
+    test_eq(num, 10);
+    test_eq(real, 0.5f);
+    test_true(boolean);
+    test_true(ptr == &num);
+    test_true(day == Days.MON);
+}
+
+compound_composition :: fn () #test {
+    get :: fn () s32 {
+        return 30;
+    };
+
+    T :: struct { slice: []u8; int: s32 };
+
+    v :: T.{[]u8.{}, get()};
+    test_eq(v.int, 30);
+    test_eq(v.slice.len, 0);
+}
+
+compound_designators1 :: fn () #test {
+    T :: struct { number: s32; boolean: bool; float: f32; };
+    {
+        a := T.{ number = 10 };
+        test_eq(a.number, 10);
+        test_eq(a.boolean, false);
+        test_eq(a.float, 0.f);
+    }
+    {
+        a := T.{ boolean = true };
+        test_eq(a.number, 0);
+        test_eq(a.boolean, true);
+        test_eq(a.float, 0.f);
+    }
+    {
+        a := T.{ float = 1.f };
+        test_eq(a.number, 0);
+        test_eq(a.boolean, false);
+        test_eq(a.float, 1.f);
+    }
+    {
+        a := T.{ number = 10, true, 1.f };
+        test_eq(a.number, 10);
+        test_eq(a.boolean, true);
+        test_eq(a.float, 1.f);
+    }
+    {
+        a := T.{ boolean = true, 1.f };
+        test_eq(a.number, 0);
+        test_eq(a.boolean, true);
+        test_eq(a.float, 1.f);
+    }
+    {
+        a := T.{ boolean = true, float = 1.f, number = 10 };
+        test_eq(a.number, 10);
+        test_eq(a.boolean, true);
+        test_eq(a.float, 1.f);
+    }
+}
+
+compound_designators2 :: fn () #test {
+    T :: struct { number: s32; boolean: bool; float: f32; };
+
+    {
+        a := T.{};
+        test_eq(a.number, 0);
+        test_eq(a.boolean, false);
+        test_eq(a.float, 0.f);
+    }
+    {
+        a := T.{ 10 };
+        test_eq(a.number, 10);
+        test_eq(a.boolean, false);
+        test_eq(a.float, 0.f);
+    }
+    {
+        a := T.{ 10, true };
+        test_eq(a.number, 10);
+        test_eq(a.boolean, true);
+        test_eq(a.float, 0.f);
+    }
+    {
+        a := T.{ number = 10, float = 1.f };
+        test_eq(a.number, 10);
+        test_eq(a.boolean, false);
+        test_eq(a.float, 1.f);
     }
 }

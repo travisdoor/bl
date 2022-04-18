@@ -44,9 +44,7 @@ typedef enum tokens_lookahead_state (*token_cmp_func_t)(struct token *curr);
 #define tokens_len(tokens) arrlenu((tokens)->buf)
 #define tokens_push(tokens, t) arrput((tokens)->buf, t)
 #define tokens_peek_nth(tokens, n)                                                                 \
-    ((tokens)->iter + (n) < tokens_len(tokens)                        \
-         ? &(tokens)->buf[(tokens)->iter + (n)]                                                    \
-         : token_end)
+    ((tokens)->iter + (n) < tokens_len(tokens) ? &(tokens)->buf[(tokens)->iter + (n)] : token_end)
 #define tokens_peek(tokens) tokens_peek_nth(tokens, 0)
 #define tokens_peek_sym(tokens) ((tokens)->buf[(tokens)->iter].sym)
 #define tokens_peek_2nd(tokens) tokens_peek_nth(tokens, 1)
@@ -87,14 +85,13 @@ static inline bool tokens_is_seq(struct tokens *tokens, usize argc, ...)
 {
     bool     ret = true;
     enum sym sym = SYM_EOF;
-    argc += tokens->iter;
 
     va_list valist;
     va_start(valist, argc);
 
-    for (usize i = tokens->iter; i < argc && i < arrlenu(tokens->buf); ++i) {
+    for (usize i = 0; i < argc; ++i) {
         sym = va_arg(valist, enum sym);
-        if ((&tokens->buf[i])->sym != sym) {
+        if (!token_is(tokens_peek_nth(tokens, i), sym)) {
             ret = false;
             break;
         }

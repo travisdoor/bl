@@ -5,4 +5,4 @@ Foo :: struct {
     b: s32;
 }
 
-foo := {:Foo: 10};
+foo := Foo.{ 10, 20, 30 };
