@@ -1274,9 +1274,9 @@ main :: fn () s32 {
 }</code></pre>
 <h3 id="members-14">Members</h3>
 <ul>
-<li><code>file</code> - Full path of the source file.</li>
-<li><code>line</code> - Line in source file.</li>
-<li><code>hash</code> - File and line string combination hash.</li>
+<li><code>file</code> - Full source file path.</li>
+<li><code>line</code> - Line in the source file.</li>
+<li><code>hash</code> - File and line combination hash.</li>
 </ul>
 <p><em>File: a.bl</em></p>
 <h2 id="printlogfn">PrintLogFn</h2>
@@ -1322,11 +1322,11 @@ main :: fn () s32 {
 <p><em>File: a.bl</em></p>
 <h2 id="is_real_or_number">is_real_or_number</h2>
 <div class="sourceCode" id="cb35"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>is_real_or_number <span class="op">::</span> fn <span class="op">(</span>T<span class="op">:</span> type<span class="op">)</span> <span class="dt">bool</span></span></code></pre></div>
-<p>Return <code>true</code> if the <code>T</code> type is an integer or real type.</p>
+<p>Return <code>true</code> if the <code>T</code> type is an integer or floating point number type (f32 or f64).</p>
 <p><em>File: a.bl</em></p>
 <h2 id="is_signed_number">is_signed_number</h2>
 <div class="sourceCode" id="cb36"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a>is_signed_number <span class="op">::</span> fn <span class="op">(</span>T<span class="op">:</span> type<span class="op">)</span> <span class="dt">bool</span></span></code></pre></div>
-<p>Return true if the <code>T</code> type is a signed number type.</p>
+<p>Return true if the <code>T</code> type is a signed integer type.</p>
 <p><em>File: a.bl</em></p>
 <h2 id="is_pointer">is_pointer</h2>
 <div class="sourceCode" id="cb37"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a>is_pointer <span class="op">::</span> fn <span class="op">(</span>T<span class="op">:</span> type<span class="op">)</span> <span class="dt">bool</span></span></code></pre></div>
@@ -1503,6 +1503,7 @@ main :: fn () s32 {
 <h2 id="array_push">array_push</h2>
 <div class="sourceCode" id="cb61"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb61-1"><a href="#cb61-1" aria-hidden="true" tabindex="-1"></a>array_push <span class="op">::</span> fn <span class="op">{</span> impl_push_empty<span class="op">;</span> impl_push<span class="op">;</span> <span class="op">}</span></span></code></pre></div>
 <p>Append new value at the dynamic array end. New heap allocation is done here only in cases when there is not enough memory allocated to store all values. Returns pointer to the new appended element.</p>
+<p><strong>note:</strong> When there is no element to push provided, function will just allocate memory for a new empty element without any initialization.</p>
 <p><em>File: array.bl</em></p>
 <h2 id="array_reserve">array_reserve</h2>
 <div class="sourceCode" id="cb62"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb62-1"><a href="#cb62-1" aria-hidden="true" tabindex="-1"></a>array_reserve <span class="op">::</span> fn <span class="op">(</span>_arr<span class="op">:</span> <span class="op">*[..]?</span>T<span class="op">,</span> n<span class="op">:</span> s64<span class="op">)</span>  #inline</span></code></pre></div>
@@ -3250,7 +3251,7 @@ end &lt;= slice.len</code></pre>
         j: s32;
     };
 
-    foo := {:Foo: 10, 20};
+    foo := Foo.{10, 20};
     print(&quot;foo = &#39;%&#39;\n&quot;, foo);
 
     return 0;
@@ -3546,11 +3547,11 @@ std.set_cwd(std.str_clear_concat(&amp;path, &quot;my-dir/project-&quot;, VERSION
 <p>Counts desired character occurrence in the input string.</p>
 <p><em>File: string.bl</em></p>
 <h2 id="std.str_to_lower">std.str_to_lower</h2>
-<div class="sourceCode" id="cb483"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb483-1"><a href="#cb483-1" aria-hidden="true" tabindex="-1"></a>str_to_lower <span class="op">::</span> fn <span class="op">(</span>str<span class="op">:</span> string<span class="op">)</span>  #inline</span></code></pre></div>
+<div class="sourceCode" id="cb483"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb483-1"><a href="#cb483-1" aria-hidden="true" tabindex="-1"></a>str_to_lower <span class="op">::</span> fn <span class="op">(</span>str<span class="op">:</span> string_view<span class="op">)</span>  #inline</span></code></pre></div>
 <p>Converts input string to lower case.</p>
 <p><em>File: string.bl</em></p>
 <h2 id="std.str_to_upper">std.str_to_upper</h2>
-<div class="sourceCode" id="cb484"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb484-1"><a href="#cb484-1" aria-hidden="true" tabindex="-1"></a>str_to_upper <span class="op">::</span> fn <span class="op">(</span>str<span class="op">:</span> string<span class="op">)</span>  #inline</span></code></pre></div>
+<div class="sourceCode" id="cb484"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb484-1"><a href="#cb484-1" aria-hidden="true" tabindex="-1"></a>str_to_upper <span class="op">::</span> fn <span class="op">(</span>str<span class="op">:</span> string_view<span class="op">)</span>  #inline</span></code></pre></div>
 <p>Converts input string to upper case.</p>
 <p><em>File: string.bl</em></p>
 <h2 id="std.str_replace_all">std.str_replace_all</h2>

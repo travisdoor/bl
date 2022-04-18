@@ -37,6 +37,8 @@ Tags are now simple unsigned numbers.
 Fix evaluation of multi-return and struct comptime functions.
 Fix conversion of constants into slice.
 Change constant string representation from 'string' to 'string_view' aka []u8.
+Change syntax of compound initializers.
+Add naming of compound members for structs.
 
 0.9.0 - PRE-RELEASE
 ---------------------------------------------------------------------------------------

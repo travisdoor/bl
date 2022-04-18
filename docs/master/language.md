@@ -95,8 +95,8 @@ array_type :: fn () #test {
     arr1.ptr; // yields pointer to first element '&arr[0]'
 
     // inline initialization of array type
-    arr2 := {:[10]s32: 0 };         // initialize whole array explicitly to 0
-    arr3 := {:[4]s32: 1, 2, 3, 4 }; // initialize array to the sequence 1, 2, 3, 4
+    arr2 := [10].s32{};            // Initialize all elements to 0. 
+    arr3 := [4]s32.{ 1, 2, 3, 4 }; // Initialize array to the sequence 1, 2, 3, 4
 };
 ```
 
@@ -142,7 +142,7 @@ Slice :: struct {
 
 ```c
 array_slice :: fn () #test {
-    arr :: {:[4]s32: 1, 2, 3, 4};
+    arr :: [4]s32.{1, 2, 3, 4};
     slice : []s32 = arr;
     loop i := 0; i < slice.len; i += 1 {
         print("%\n", slice[i]);
@@ -187,9 +187,21 @@ Inline initialization is also possible. We can use compound expression to set al
 
 ```c
 main :: fn () s32 {
-    my_person1 := {:Person: 0}; // set all data in person to 0
-    my_person2 := {:Person: 1, "Martin", 20};
+    // Set all data in person to 0
+    my_person1 := Person.{};
+   
+    // Initialize all members.
+    my_person2 := Person.{ 1, "Martin", 20 };
+    
+    // We can explicitly name the members we want to initialize.
+    my_person3 := Person.{ id = 1, name = "Martin", age = 20 };
 
+    // We can change the order. 
+    my_person4 := Person.{ name = "Martin", age = 20, id = 1 };
+    
+    // Or initialize only someting. In such a case the rest is initialized to 0 by default.
+    my_person5 := Person.{ name = "Martin" };
+    
     return 0;
 }
 ```
@@ -198,7 +210,7 @@ Structure content can be printed by print function.
 
 ```c
 main :: fn () s32 {
-    my_person := {:Person: 1, "Martin", 20};
+    my_person := Person.{ 1, "Martin", 20 };
     print("%\n", my_person);
 
     return 0;
@@ -960,10 +972,10 @@ array_compound :: fn () #test {
     };
 
     // create array of 2 elements directly in call
-    print_arr({:[2]s32: 10, 20});
+    print_arr([2]s32.{10, 20});
 
     // create zero initialized array
-    print_arr({:[2]s32: 0});
+    print_arr([2]s32.{0});
 };
 
 struct_compound :: fn () #test {
@@ -978,10 +990,10 @@ struct_compound :: fn () #test {
     };
 
     // create structure in call
-    print_strct({:Foo: 10, 20});
+    print_strct(Foo.{10, 20});
 
     // create zero initialized structure
-    print_strct({:Foo: 0});
+    print_strct(Foo.{}});
 };
 ```
 
@@ -1339,7 +1351,7 @@ sum :: fn (slice: []?T) T {
 // to slice.
 
 // Use the function with static array
-arr_static := {:[3]s32: 10, 20, 30};
+arr_static := [3]s32.{10, 20, 30};
 sum(arr_static); // T = s32
 
 // Use the function with dynamic array

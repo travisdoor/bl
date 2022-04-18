@@ -250,8 +250,8 @@
 <span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    arr1<span class="op">.</span>ptr<span class="op">;</span> <span class="co">// yields pointer to first element &#39;&amp;arr[0]&#39;</span></span>
 <span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    <span class="co">// inline initialization of array type</span></span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>    arr2 <span class="op">:=</span> <span class="op">{:[</span><span class="dv">10</span><span class="op">]</span>s32<span class="op">:</span> <span class="dv">0</span> <span class="op">};</span>         <span class="co">// initialize whole array explicitly to 0</span></span>
-<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>    arr3 <span class="op">:=</span> <span class="op">{:[</span><span class="dv">4</span><span class="op">]</span>s32<span class="op">:</span> <span class="dv">1</span><span class="op">,</span> <span class="dv">2</span><span class="op">,</span> <span class="dv">3</span><span class="op">,</span> <span class="dv">4</span> <span class="op">};</span> <span class="co">// initialize array to the sequence 1, 2, 3, 4</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>    arr2 <span class="op">:=</span> <span class="op">[</span><span class="dv">10</span><span class="op">].</span>s32<span class="op">{};</span>            <span class="co">// Initialize all elements to 0. </span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>    arr3 <span class="op">:=</span> <span class="op">[</span><span class="dv">4</span><span class="op">]</span>s32<span class="op">.{</span> <span class="dv">1</span><span class="op">,</span> <span class="dv">2</span><span class="op">,</span> <span class="dv">3</span><span class="op">,</span> <span class="dv">4</span> <span class="op">};</span> <span class="co">// Initialize array to the sequence 1, 2, 3, 4</span></span>
 <span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
 <p>Arrays can be implicitly converted to slice:</p>
 <div class="sourceCode" id="cb7"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>array_to_slice <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
@@ -275,7 +275,7 @@
 <span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
 <p><strong>Example:</strong></p>
 <div class="sourceCode" id="cb10"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>array_slice <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    arr <span class="op">::</span> <span class="op">{:[</span><span class="dv">4</span><span class="op">]</span>s32<span class="op">:</span> <span class="dv">1</span><span class="op">,</span> <span class="dv">2</span><span class="op">,</span> <span class="dv">3</span><span class="op">,</span> <span class="dv">4</span><span class="op">};</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    arr <span class="op">::</span> <span class="op">[</span><span class="dv">4</span><span class="op">]</span>s32<span class="op">.{</span><span class="dv">1</span><span class="op">,</span> <span class="dv">2</span><span class="op">,</span> <span class="dv">3</span><span class="op">,</span> <span class="dv">4</span><span class="op">};</span></span>
 <span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    slice <span class="op">:</span> <span class="op">[]</span>s32 <span class="op">=</span> arr<span class="op">;</span></span>
 <span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    loop i <span class="op">:=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> slice<span class="op">.</span>len<span class="op">;</span> i <span class="op">+=</span> <span class="dv">1</span> <span class="op">{</span></span>
 <span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>        print<span class="op">(</span><span class="st">&quot;%</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">,</span> slice<span class="op">[</span>i<span class="op">]);</span></span>
@@ -301,14 +301,26 @@
 <span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>Inline initialization is also possible. We can use compound expression to set all members at once.</p>
 <div class="sourceCode" id="cb13"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>main <span class="op">::</span> fn <span class="op">()</span> s32 <span class="op">{</span></span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>    my_person1 <span class="op">:=</span> <span class="op">{:</span>Person<span class="op">:</span> <span class="dv">0</span><span class="op">};</span> <span class="co">// set all data in person to 0</span></span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>    my_person2 <span class="op">:=</span> <span class="op">{:</span>Person<span class="op">:</span> <span class="dv">1</span><span class="op">,</span> <span class="st">&quot;Martin&quot;</span><span class="op">,</span> <span class="dv">20</span><span class="op">};</span></span>
-<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Set all data in person to 0</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>    my_person1 <span class="op">:=</span> Person<span class="op">.{};</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>   </span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Initialize all members.</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>    my_person2 <span class="op">:=</span> Person<span class="op">.{</span> <span class="dv">1</span><span class="op">,</span> <span class="st">&quot;Martin&quot;</span><span class="op">,</span> <span class="dv">20</span> <span class="op">};</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>    <span class="co">// We can explicitly name the members we want to initialize.</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>    my_person3 <span class="op">:=</span> Person<span class="op">.{</span> id <span class="op">=</span> <span class="dv">1</span><span class="op">,</span> name <span class="op">=</span> <span class="st">&quot;Martin&quot;</span><span class="op">,</span> age <span class="op">=</span> <span class="dv">20</span> <span class="op">};</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>    <span class="co">// We can change the order. </span></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>    my_person4 <span class="op">:=</span> Person<span class="op">.{</span> name <span class="op">=</span> <span class="st">&quot;Martin&quot;</span><span class="op">,</span> age <span class="op">=</span> <span class="dv">20</span><span class="op">,</span> id <span class="op">=</span> <span class="dv">1</span> <span class="op">};</span></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Or initialize only someting. In such a case the rest is initialized to 0 by default.</span></span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>    my_person5 <span class="op">:=</span> Person<span class="op">.{</span> name <span class="op">=</span> <span class="st">&quot;Martin&quot;</span> <span class="op">};</span></span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>Structure content can be printed by print function.</p>
 <div class="sourceCode" id="cb14"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>main <span class="op">::</span> fn <span class="op">()</span> s32 <span class="op">{</span></span>
-<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>    my_person <span class="op">:=</span> <span class="op">{:</span>Person<span class="op">:</span> <span class="dv">1</span><span class="op">,</span> <span class="st">&quot;Martin&quot;</span><span class="op">,</span> <span class="dv">20</span><span class="op">};</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>    my_person <span class="op">:=</span> Person<span class="op">.{</span> <span class="dv">1</span><span class="op">,</span> <span class="st">&quot;Martin&quot;</span><span class="op">,</span> <span class="dv">20</span> <span class="op">};</span></span>
 <span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>    print<span class="op">(</span><span class="st">&quot;%</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">,</span> my_person<span class="op">);</span></span>
 <span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="dv">0</span><span class="op">;</span></span>
@@ -925,10 +937,10 @@
 <span id="cb48-7"><a href="#cb48-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">};</span></span>
 <span id="cb48-8"><a href="#cb48-8" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb48-9"><a href="#cb48-9" aria-hidden="true" tabindex="-1"></a>    <span class="co">// create array of 2 elements directly in call</span></span>
-<span id="cb48-10"><a href="#cb48-10" aria-hidden="true" tabindex="-1"></a>    print_arr<span class="op">({:[</span><span class="dv">2</span><span class="op">]</span>s32<span class="op">:</span> <span class="dv">10</span><span class="op">,</span> <span class="dv">20</span><span class="op">});</span></span>
+<span id="cb48-10"><a href="#cb48-10" aria-hidden="true" tabindex="-1"></a>    print_arr<span class="op">([</span><span class="dv">2</span><span class="op">]</span>s32<span class="op">.{</span><span class="dv">10</span><span class="op">,</span> <span class="dv">20</span><span class="op">});</span></span>
 <span id="cb48-11"><a href="#cb48-11" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb48-12"><a href="#cb48-12" aria-hidden="true" tabindex="-1"></a>    <span class="co">// create zero initialized array</span></span>
-<span id="cb48-13"><a href="#cb48-13" aria-hidden="true" tabindex="-1"></a>    print_arr<span class="op">({:[</span><span class="dv">2</span><span class="op">]</span>s32<span class="op">:</span> <span class="dv">0</span><span class="op">});</span></span>
+<span id="cb48-13"><a href="#cb48-13" aria-hidden="true" tabindex="-1"></a>    print_arr<span class="op">([</span><span class="dv">2</span><span class="op">]</span>s32<span class="op">.{</span><span class="dv">0</span><span class="op">});</span></span>
 <span id="cb48-14"><a href="#cb48-14" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span>
 <span id="cb48-15"><a href="#cb48-15" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb48-16"><a href="#cb48-16" aria-hidden="true" tabindex="-1"></a>struct_compound <span class="op">::</span> fn <span class="op">()</span> #test <span class="op">{</span></span>
@@ -943,10 +955,10 @@
 <span id="cb48-25"><a href="#cb48-25" aria-hidden="true" tabindex="-1"></a>    <span class="op">};</span></span>
 <span id="cb48-26"><a href="#cb48-26" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb48-27"><a href="#cb48-27" aria-hidden="true" tabindex="-1"></a>    <span class="co">// create structure in call</span></span>
-<span id="cb48-28"><a href="#cb48-28" aria-hidden="true" tabindex="-1"></a>    print_strct<span class="op">({:</span>Foo<span class="op">:</span> <span class="dv">10</span><span class="op">,</span> <span class="dv">20</span><span class="op">});</span></span>
+<span id="cb48-28"><a href="#cb48-28" aria-hidden="true" tabindex="-1"></a>    print_strct<span class="op">(</span>Foo<span class="op">.{</span><span class="dv">10</span><span class="op">,</span> <span class="dv">20</span><span class="op">});</span></span>
 <span id="cb48-29"><a href="#cb48-29" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb48-30"><a href="#cb48-30" aria-hidden="true" tabindex="-1"></a>    <span class="co">// create zero initialized structure</span></span>
-<span id="cb48-31"><a href="#cb48-31" aria-hidden="true" tabindex="-1"></a>    print_strct<span class="op">({:</span>Foo<span class="op">:</span> <span class="dv">0</span><span class="op">});</span></span>
+<span id="cb48-31"><a href="#cb48-31" aria-hidden="true" tabindex="-1"></a>    print_strct<span class="op">(</span>Foo<span class="op">.{}});</span></span>
 <span id="cb48-32"><a href="#cb48-32" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
 <h2 id="function">Function</h2>
 <p>Function is chunk of code representing specific piece of program functionality. Function can be called with call operator <code>()</code>, we can provide any number of arguments into function and get return value back on call-side.</p>
@@ -1193,7 +1205,7 @@
 <span id="cb62-10"><a href="#cb62-10" aria-hidden="true" tabindex="-1"></a><span class="co">// to slice.</span></span>
 <span id="cb62-11"><a href="#cb62-11" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb62-12"><a href="#cb62-12" aria-hidden="true" tabindex="-1"></a><span class="co">// Use the function with static array</span></span>
-<span id="cb62-13"><a href="#cb62-13" aria-hidden="true" tabindex="-1"></a>arr_static <span class="op">:=</span> <span class="op">{:[</span><span class="dv">3</span><span class="op">]</span>s32<span class="op">:</span> <span class="dv">10</span><span class="op">,</span> <span class="dv">20</span><span class="op">,</span> <span class="dv">30</span><span class="op">};</span></span>
+<span id="cb62-13"><a href="#cb62-13" aria-hidden="true" tabindex="-1"></a>arr_static <span class="op">:=</span> <span class="op">[</span><span class="dv">3</span><span class="op">]</span>s32<span class="op">.{</span><span class="dv">10</span><span class="op">,</span> <span class="dv">20</span><span class="op">,</span> <span class="dv">30</span><span class="op">};</span></span>
 <span id="cb62-14"><a href="#cb62-14" aria-hidden="true" tabindex="-1"></a>sum<span class="op">(</span>arr_static<span class="op">);</span> <span class="co">// T = s32</span></span>
 <span id="cb62-15"><a href="#cb62-15" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb62-16"><a href="#cb62-16" aria-hidden="true" tabindex="-1"></a><span class="co">// Use the function with dynamic array</span></span>
