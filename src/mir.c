@@ -4996,8 +4996,7 @@ static struct result analyze_instr_compound_regular(struct context            *c
             value_ref = &sarrpeek(values, i);
             if ((*value_ref)->kind == MIR_INSTR_DESIGNATOR) {
                 struct mir_instr_designator *designator = (struct mir_instr_designator *)*value_ref;
-                bassert(designator->designator_ident &&
-                        designator->designator_ident->kind == AST_IDENT);
+                bassert(designator->ident && designator->ident->kind == AST_IDENT);
                 struct id          *id    = &designator->ident->data.ident.id;
                 struct scope_entry *found = scope_lookup(scope,
                                                          &(scope_lookup_args_t){
@@ -5121,7 +5120,7 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
 struct result analyze_instr_designator(struct context *ctx, struct mir_instr_designator *d)
 {
     zone();
-    bassert(d->designator_ident && d->designator_ident->kind == AST_IDENT);
+    bassert(d->ident && d->ident->kind == AST_IDENT);
     bassert(d->value);
     return_zone(PASS);
 }
