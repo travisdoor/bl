@@ -4,18 +4,10 @@ Data :: struct {
     c: f32;
 }
 
-d :: Data.{ 10 };
-
 main :: fn () s32 {
-    x := Data.{ x = 10, c = 20.f };
-    a := Data.{};
-    b := Data.{ 10, true, 0.f };
-    c := Data.{ 10 };
-
-    print("a %\n", a);
-    print("b %\n", b);
-    print("c %\n", c);
-    print("d %\n", d);
+    x := Data.{ c = 20.f, a = 10 };
+    arr := [2]s32.{ 10, 20 };
+    print("x %\n", x);
 
     return 0;
 }

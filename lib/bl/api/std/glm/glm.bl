@@ -44,8 +44,8 @@ v2 :: struct {
     y: f32
 };
 
-v2_one     :: {:v2: 1.f, 1.f};
-v2_zero    :: {:v2: 0};
+v2_one     :: v2.{ 1.f, 1.f };
+v2_zero    :: v2.{};
 
 v3 :: struct {
     x: f32;
@@ -53,11 +53,11 @@ v3 :: struct {
     z: f32;
 };
 
-v3_right   :: {:v3: 1.f, 0.f, 0.f};
-v3_up      :: {:v3: 0.f, 1.f, 0.f};
-v3_forward :: {:v3: 0.f, 0.f, 1.f};
-v3_one     :: {:v3: 1.f, 1.f, 1.f};
-v3_zero    :: {:v3: 0};
+v3_right   :: v3.{ x = 1.f };
+v3_up      :: v3.{ y = 1.f };
+v3_forward :: v3.{ z = 1.f };
+v3_one     :: v3.{ 1.f, 1.f, 1.f};
+v3_zero    :: v3.{};
 
 v4 :: struct {
     x: f32;
@@ -66,15 +66,15 @@ v4 :: struct {
     w: f32;
 };
 
-v4_one  :: {:v4: 1.f, 1.f, 1.f, 1.f};
-v4_zero :: {:v4: 0};
+v4_one  :: v4.{ 1.f, 1.f, 1.f, 1.f };
+v4_zero :: v4.{};
 
-color_white  :: {:v4: 1.f, 1.f, 1.f, 1.f};
-color_black  :: {:v4: 0.f, 0.f, 0.f, 1.f};
-color_red    :: {:v4: 1.f, 0.f, 0.f, 1.f};
-color_green  :: {:v4: 0.f, 1.f, 0.f, 1.f};
-color_blue   :: {:v4: 0.f, 0.f, 1.f, 1.f};
-color_yellow :: {:v4: 1.f, 1.f, 0.f, 1.f};
+color_white  :: v4.{ 1.f, 1.f, 1.f, 1.f };
+color_black  :: v4.{ 0.f, 0.f, 0.f, 1.f };
+color_red    :: v4.{ 1.f, 0.f, 0.f, 1.f };
+color_green  :: v4.{ 0.f, 1.f, 0.f, 1.f };
+color_blue   :: v4.{ 0.f, 0.f, 1.f, 1.f };
+color_yellow :: v4.{ 1.f, 1.f, 0.f, 1.f };
 
 iv2 :: struct {
     x: s32;
@@ -99,7 +99,7 @@ mat4 :: [4][4]f32;
 // quaternion
 quat :: v4;
 
-quat_identity :: {:quat: 0.f, 0.f, 0.f, 1.f};
+quat_identity :: quat.{ w = 1.f};
 
 // =================================================================================================
 // Functions
@@ -320,19 +320,19 @@ mat4_scale :: fn (s: v3, out_mat: *mat4) #inline {
 
 mat4_get_scale :: fn (mat: *mat4) v3 {
     ret: v3 #noinit;
-    tmp_vec := {:v3: (@mat)[0][0], (@mat)[1][0], (@mat)[2][0]};
+    tmp_vec := v3.{ (@mat)[0][0], (@mat)[1][0], (@mat)[2][0] };
     ret.x = v_length(tmp_vec);
 
-    tmp_vec = {:v3: (@mat)[0][1], (@mat)[1][1], (@mat)[2][1]};
+    tmp_vec = v3.{ (@mat)[0][1], (@mat)[1][1], (@mat)[2][1] };
     ret.y = v_length(tmp_vec);
 
-    tmp_vec = {:v3: (@mat)[0][2], (@mat)[1][2], (@mat)[2][2]};
+    tmp_vec = v3.{ (@mat)[0][2], (@mat)[1][2], (@mat)[2][2] };
     ret.z = v_length(tmp_vec);
     return ret;
 };
 
 mat4_get_translation :: fn (mat: *mat4) v3 #inline {
-    return {:v3: (@mat)[3][0], (@mat)[3][1], (@mat)[3][2]};
+    return v3.{ (@mat)[3][0], (@mat)[3][1], (@mat)[3][2] };
 };
 
 mat4_get_quat :: fn (mat: *mat4) quat {
@@ -420,7 +420,7 @@ quat_to_mat4 :: fn (q: quat, out_mat: *mat4) {
 quat_look :: fn (eye: v3, ori: quat, out_mat: *mat4) {
     quat_to_mat4(ori, out_mat);
 
-    v := {:v4: eye.x, eye.y, eye.z, 1.f};
+    v := v4.{ eye.x, eye.y, eye.z, 1.f };
     v = mat4_mul_v4(out_mat, v);
 
     (@out_mat)[3][0] = -v.x;
@@ -431,7 +431,7 @@ quat_look :: fn (eye: v3, ori: quat, out_mat: *mat4) {
 quat_look_for :: fn (dir: v3, fwd: v3, up: v3) quat {
     dot :: v_dot(dir, fwd);
     if std.abs(dot + 1.0f)  < 0.000001f {
-        return {:quat: up.x, up.y, up.z, auto std.PI};
+        return quat.{ up.x, up.y, up.z, auto std.PI };
     }
 
     if std.abs(dot - 1.0f) < 0.000001f {
@@ -451,7 +451,7 @@ quat_axis_angle :: fn (axis: v3, angle_rad: f32) quat {
 
     axis = v_normalize(axis);
 
-    return {:quat:
+    return quat.{
         s * axis.x,
         s * axis.y,
         s * axis.z,
@@ -460,7 +460,7 @@ quat_axis_angle :: fn (axis: v3, angle_rad: f32) quat {
 };
 
 quat_imag :: fn (q: quat) v3 #inline {
-    return {:v3: q.x, q.y, q.z };
+    return v3.{ q.x, q.y, q.z };
 }
 
 quat_real :: fn (q: quat) f32 #inline {
@@ -468,7 +468,7 @@ quat_real :: fn (q: quat) f32 #inline {
 }
 
 quat_mul :: fn (q1: quat, q2: quat) quat {
-    return {:quat:
+    return quat.{
             q1.w * q2.x + q1.x * q2.w + q1.y * q2.z - q1.z * q2.y,
             q1.w * q2.y - q1.x * q2.z + q1.y * q2.w + q1.z * q2.x,
             q1.w * q2.z + q1.x * q2.y - q1.y * q2.x + q1.z * q2.w,
@@ -499,7 +499,7 @@ quat_forward :: fn (q: quat) v3 {
     z2x :: z2 * q.x;
     y2y :: y2 * q.y;
     z2y :: z2 * q.y;
-    return {:v3: z2x + y2w, z2y - x2w, 1.0f - (x2x + y2y)};
+    return v3.{ z2x + y2w, z2y - x2w, 1.0f - (x2x + y2y) };
 }
 
 #private
@@ -633,7 +633,7 @@ v4_mul :: fn (a: v4, b: v4) v4 #inline {
 };
 
 v4_mul_s :: fn (v: v4, s: f32) v4 #inline {
-    return {:v4: v.x * s, v.y * s, v.z * s, v.w * s};
+    return v4.{ v.x * s, v.y * s, v.z * s, v.w * s };
 }
 
 // =================================================================================================
@@ -737,15 +737,15 @@ v4_compare :: fn (a: v4, b: v4, epsilon: f32) bool {
 // negate
 // =================================================================================================
 v2_negate :: fn (v: v2) v2 #inline {
-    return {:v2: -v.x, -v.y};
+    return v2.{ -v.x, -v.y };
 };
 
 v3_negate :: fn (v: v3) v3 #inline {
-    return {:v3: -v.x, -v.y, -v.z};
+    return v3.{ -v.x, -v.y, -v.z };
 };
 
 v4_negate :: fn (v: v4) v4 #inline {
-    return {:v4: -v.x, -v.y, -v.z, -v.w};
+    return v4.{ -v.x, -v.y, -v.z, -v.w };
 };
 
 // =================================================================================================
@@ -765,24 +765,24 @@ v3_cross :: fn (a: v3, b: v3) v3 #inline {
 v2_div :: fn (a: v2, b: v2) v2 #inline {
     if b.x == 0.f { return v2_zero; }
     if b.y == 0.f { return v2_zero; }
-    return {:v2: a.x / b.x, a.y / b.y};
+    return v2.{ a.x / b.x, a.y / b.y };
 }
 
 v2_div_s :: fn (v: v2, s: f32) v2 #inline {
     if s == 0.f { return v2_zero; }
-    return {:v2: v.x / s, v.y / s};
+    return v2.{ v.x / s, v.y / s };
 }
 
 v3_div :: fn (a: v3, b: v3) v3 #inline {
     if b.x == 0.f { return v3_zero; }
     if b.y == 0.f { return v3_zero; }
     if b.z == 0.f { return v3_zero; }
-    return {:v3: a.x / b.x, a.y / b.y, a.z / b.z};
+    return v3.{ a.x / b.x, a.y / b.y, a.z / b.z };
 }
 
 v3_div_s :: fn (v: v3, s: f32) v3 #inline {
     if s == 0.f { return v3_zero; }
-    return {:v3: v.x / s, v.y / s, v.z / s};
+    return v3.{ v.x / s, v.y / s, v.z / s };
 }
 
 v4_div :: fn (a: v4, b: v4) v4 #inline {
@@ -790,46 +790,46 @@ v4_div :: fn (a: v4, b: v4) v4 #inline {
     if b.y == 0.f { return v4_zero; }
     if b.z == 0.f { return v4_zero; }
     if b.w == 0.f { return v4_zero; }
-    return {:v4: a.x / b.x, a.y / b.y, a.z / b.z, a.w / b.w};
+    return v4.{ a.x / b.x, a.y / b.y, a.z / b.z, a.w / b.w };
 }
 
 v4_div_s :: fn (v: v4, s: f32) v4 #inline {
     if s == 0.f { return v4_zero; }
-    return {:v4: v.x / s, v.y / s, v.z / s, v.w / s};
+    return v4.{ v.x / s, v.y / s, v.z / s, v.w / s };
 }
 
 v2_round :: fn (v: v2) v2 #inline {
-    return {:v2: std.round(v.x), std.round(v.y)};
+    return v2.{ std.round(v.x), std.round(v.y) };
 }
 
 v3_round :: fn (v: v3) v3 #inline {
-    return {:v3: std.round(v.x), std.round(v.y), std.round(v.z)};
+    return v3.{ std.round(v.x), std.round(v.y), std.round(v.z) };
 }
 
 v4_round :: fn (v: v4) v4 #inline {
-    return {:v4: std.round(v.x), std.round(v.y), std.round(v.z), std.round(v.w)};
+    return v4.{ std.round(v.x), std.round(v.y), std.round(v.z), std.round(v.w) };
 }
 
 v2_floor :: fn (v: v2) v2 #inline {
-    return {:v2: std.floor(v.x), std.floor(v.y)};
+    return v2.{ std.floor(v.x), std.floor(v.y) };
 }
 
 v3_floor :: fn (v: v3) v3 #inline {
-    return {:v3: std.floor(v.x), std.floor(v.y), std.floor(v.z)};
+    return v3.{ std.floor(v.x), std.floor(v.y), std.floor(v.z) };
 }
 
 v4_floor :: fn (v: v4) v4 #inline {
-    return {:v4: std.floor(v.x), std.floor(v.y), std.floor(v.z), std.floor(v.w)};
+    return v4.{ std.floor(v.x), std.floor(v.y), std.floor(v.z), std.floor(v.w) };
 }
 
 v2_ceil :: fn (v: v2) v2 #inline {
-    return {:v2: std.ceil(v.x), std.ceil(v.y)};
+    return v2.{ std.ceil(v.x), std.ceil(v.y) };
 }
 
 v3_ceil :: fn (v: v3) v3 #inline {
-    return {:v3: std.ceil(v.x), std.ceil(v.y), std.ceil(v.z)};
+    return v3.{ std.ceil(v.x), std.ceil(v.y), std.ceil(v.z) };
 }
 
 v4_ceil :: fn (v: v4) v4 #inline {
-    return {:v4: std.ceil(v.x), std.ceil(v.y), std.ceil(v.z), std.ceil(v.w)};
+    return v4.{ std.ceil(v.x), std.ceil(v.y), std.ceil(v.z), std.ceil(v.w) };
 }

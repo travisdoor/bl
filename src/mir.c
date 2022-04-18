@@ -4932,7 +4932,7 @@ static struct result analyze_instr_compound_regular(struct context            *c
         // Else iterate over values
         for (usize i = 0; i < sarrlenu(values); ++i) {
             struct mir_instr **value_ref = &sarrpeek(values, i);
-            if ((*value_ref)->kind != MIR_INSTR_DESIGNATOR) {
+            if ((*value_ref)->kind == MIR_INSTR_DESIGNATOR) {
                 report_error(INVALID_INITIALIZER,
                              (*value_ref)->node,
                              "Invalid array element initializer! Designator can be used only for "
@@ -4983,6 +4983,8 @@ static struct result analyze_instr_compound_regular(struct context            *c
         // Else iterate over values and do the mapping
         ints_t     *value_member_mapping = arena_safe_alloc(&ctx->assembly->arenas.sarr);
         ast_nodes_t initialized_members  = SARR_ZERO;
+        sarraddn(&initialized_members, memc);
+        memset(sarrdata(&initialized_members), 0, sizeof(void *) * sarrlenu(&initialized_members));
 
         struct scope    *scope = type->data.strct.scope;
         struct mir_type *member_type;
@@ -4993,7 +4995,6 @@ static struct result analyze_instr_compound_regular(struct context            *c
         for (usize i = 0; i < sarrlenu(values); ++i, ++last_member_index) {
             value_ref = &sarrpeek(values, i);
             if ((*value_ref)->kind == MIR_INSTR_DESIGNATOR) {
-                // @Explain
                 struct mir_instr_designator *designator = (struct mir_instr_designator *)*value_ref;
                 bassert(designator->designator_ident &&
                         designator->designator_ident->kind == AST_IDENT);
@@ -5024,10 +5025,7 @@ static struct result analyze_instr_compound_regular(struct context            *c
             if ((usize)last_member_index >= memc) {
                 report_error(INVALID_INITIALIZER,
                              (*value_ref)->node,
-                             "Too much values provided to initialize the structure! Expected "
-                             "%llu but given %llu.",
-                             (unsigned long long)memc,
-                             (unsigned long long)sarrlenu(values));
+                             "Too much values provided to initialize the structure!");
                 goto STRUCT_FAILED;
             }
 
@@ -5039,6 +5037,15 @@ static struct result analyze_instr_compound_regular(struct context            *c
 
             cmp->base.value.is_comptime =
                 (*value_ref)->value.is_comptime ? cmp->base.value.is_comptime : false;
+            struct ast *other_init = sarrdata(&initialized_members)[last_member_index];
+            if (other_init) {
+                report_error(INVALID_INITIALIZER,
+                             (*value_ref)->node,
+                             "Structure member is already initialized.");
+                report_note(other_init, "Previous initialization here.");
+                goto STRUCT_FAILED;
+            }
+            sarrdata(&initialized_members)[last_member_index] = (*value_ref)->node;
         }
 
         if (store_mapping) {

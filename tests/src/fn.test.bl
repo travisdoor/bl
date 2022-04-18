@@ -48,7 +48,7 @@ nested_function_pointers :: fn () #test {
 
     TestFn :: fn () {};
 
-    foo := {:Foo: 0};
+    foo := Foo.{};
     foo.v_fn = &TestFn; 
 
     foo.v_fn();

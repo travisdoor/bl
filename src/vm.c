@@ -28,6 +28,7 @@
 
 #include "vm.h"
 #include "builder.h"
+#include "common.h"
 #include "stb_ds.h"
 #include "vmdbg.h"
 
@@ -2117,7 +2118,6 @@ void eval_instr_member_ptr(struct virtual_machine       UNUSED(*vm),
 
 void eval_instr_compound(struct virtual_machine *vm, struct mir_instr_compound *cmp)
 {
-    bassert(cmp->value_member_mapping == NULL && "Not implemented!");
     struct mir_const_expr_value *value = &cmp->base.value;
     if (needs_allocation(value)) {
         // Compound data doesn't fit into default static memory register, we need to
@@ -2125,21 +2125,23 @@ void eval_instr_compound(struct virtual_machine *vm, struct mir_instr_compound *
         value->data = stack_push_empty(vm, value->type);
     }
 
-    if (mir_is_zero_initialized(cmp)) {
-        memset(value->data, 0, value->type->store_size_bytes);
-        return;
-    }
+    memset(value->data, 0, value->type->store_size_bytes);
+    if (mir_is_zero_initialized(cmp)) return;
 
-    for (usize i = 0; i < sarrlenu(cmp->values); ++i) {
+    usize   index   = 0;
+    ints_t *mapping = cmp->value_member_mapping;
+    for (usize i = 0; i < sarrlenu(cmp->values); ++i, ++index) {
         struct mir_instr *it = sarrpeek(cmp->values, i);
         bassert(mir_is_comptime(it) && "Expected compile time known value.");
         vm_stack_ptr_t dest_ptr = value->data;
         vm_stack_ptr_t src_ptr  = it->value.data;
         bassert(src_ptr && "Invalid compound element value!");
 
+        if (mapping) index = sarrpeek(mapping, i);
+
         switch (value->type->kind) {
         case MIR_TYPE_ARRAY: {
-            ptrdiff_t offset = vm_get_array_elem_offset(value->type, (u32)i);
+            ptrdiff_t offset = vm_get_array_elem_offset(value->type, (u32)index);
             dest_ptr += offset;
             memcpy(dest_ptr, src_ptr, value->type->data.array.elem_type->store_size_bytes);
             break;
@@ -2150,8 +2152,8 @@ void eval_instr_compound(struct virtual_machine *vm, struct mir_instr_compound *
         case MIR_TYPE_STRING:
         case MIR_TYPE_SLICE:
         case MIR_TYPE_VARGS: {
-            struct mir_type *member_type = mir_get_struct_elem_type(value->type, i);
-            ptrdiff_t        offset = vm_get_struct_elem_offset(vm->assembly, value->type, (u32)i);
+            struct mir_type *member_type = mir_get_struct_elem_type(value->type, index);
+            ptrdiff_t offset = vm_get_struct_elem_offset(vm->assembly, value->type, (u32)index);
             dest_ptr += offset;
             memcpy(dest_ptr, src_ptr, member_type->store_size_bytes);
             break;

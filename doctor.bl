@@ -12,7 +12,7 @@ MAIN_TEST_SUITE_FILEPATH :: "tests/src/main.test.bl";
 EXAMPLES_DIR :: "docs/master/examples";
 EXPECT_FAIL_DIR :: "tests/src/expect_fail";
 
-HARDCODED_MODULES :: {:[12]string_view:
+HARDCODED_MODULES :: [12]string_view.{
                       "lib/bl/api/std/arg_parser/arg_parser.test.bl",
                       "lib/bl/api/std/array/array.test.bl",
                       "lib/bl/api/std/debug_allocator/debug_allocator.test.bl",
