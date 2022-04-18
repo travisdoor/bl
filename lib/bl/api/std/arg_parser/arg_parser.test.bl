@@ -42,7 +42,7 @@ arg_parser_test1 :: fn () #test {
 
     {
         opt: Opt;
-        state :: std.arg_parser_run(parser, {:[]string_view: 0}, auto &opt);
+        state :: std.arg_parser_run(parser, []string_view.{}, auto &opt);
         test_ok(state);
         test_false(opt.about);
         test_false(opt.verbose);
@@ -50,7 +50,7 @@ arg_parser_test1 :: fn () #test {
 
     {
         opt: Opt;
-        args :: {:[1]string_view: "-h"};
+        args :: [1]string_view.{"-h"};
         state :: std.arg_parser_run(parser, args, auto &opt);
         test_ok(state);
         test_true(opt.help);
@@ -60,7 +60,7 @@ arg_parser_test1 :: fn () #test {
 
     {
         opt: Opt;
-        args :: {:[1]string_view: "--help"};
+        args :: [1]string_view.{"--help"};
         state :: std.arg_parser_run(parser, args, auto &opt);
         test_ok(state);
         test_true(opt.help);
@@ -70,7 +70,7 @@ arg_parser_test1 :: fn () #test {
 
     {
         opt: Opt;
-        args :: {:[1]string_view: "-a"};
+        args :: [1]string_view.{"-a"};
         state :: std.arg_parser_run(parser, args, auto &opt);
         test_ok(state);
         test_true(opt.about);
@@ -80,7 +80,7 @@ arg_parser_test1 :: fn () #test {
 
     {
         opt: Opt;
-        args :: {:[1]string_view: "--about"};
+        args :: [1]string_view.{"--about"};
         state :: std.arg_parser_run(parser, args, auto &opt);
         test_ok(state);
         test_true(opt.about);
@@ -90,7 +90,7 @@ arg_parser_test1 :: fn () #test {
 
     {
         opt: Opt;
-        args :: {:[1]string_view: "-v"};
+        args :: [1]string_view.{"-v"};
         state :: std.arg_parser_run(parser, args, auto &opt);
         test_ok(state);
         test_false(opt.about);
@@ -100,7 +100,7 @@ arg_parser_test1 :: fn () #test {
 
     {
         opt: Opt;
-        args :: {:[1]string_view: "--verbose"};
+        args :: [1]string_view.{"--verbose"};
         state :: std.arg_parser_run(parser, args, auto &opt);
         test_ok(state);
         test_false(opt.about);
@@ -110,7 +110,7 @@ arg_parser_test1 :: fn () #test {
 
     {
         opt: Opt;
-        args :: {:[2]string_view: "-a", "-v"};
+        args :: [2]string_view.{"-a", "-v"};
         state :: std.arg_parser_run(parser, args, auto &opt);
         test_ok(state);
         test_true(opt.about);
@@ -120,7 +120,7 @@ arg_parser_test1 :: fn () #test {
 
     {
         opt: Opt;
-        args :: {:[2]string_view: "--about", "--verbose"};
+        args :: [2]string_view.{"--about", "--verbose"};
         state :: std.arg_parser_run(parser, args, auto &opt);
         test_ok(state);
         test_true(opt.about);
@@ -130,7 +130,7 @@ arg_parser_test1 :: fn () #test {
 
     {
         opt: Opt;
-        args :: {:[2]string_view: "--about", "-verbose"};
+        args :: [2]string_view.{"--about", "-verbose"};
         state :: std.arg_parser_run(parser, args, auto &opt);
         test_not_ok(state);
         test_true(opt.about);

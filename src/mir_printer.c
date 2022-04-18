@@ -311,7 +311,7 @@ static void print_instr_call_loc(struct context *ctx, struct mir_instr_call_loc 
 static void print_instr_unroll(struct context *ctx, struct mir_instr_unroll *unroll);
 static void print_instr_msg(struct context *ctx, struct mir_instr_msg *msg);
 static void print_instr_using(struct context *ctx, struct mir_instr_using *using);
-static void print_instr_designator(struct context *ctx, struct mir_instr_designator *cm);
+static void print_instr_designator(struct context *ctx, struct mir_instr_designator *designator);
 static void print_instr(struct context *ctx, struct mir_instr *instr);
 
 // impl
@@ -710,17 +710,17 @@ void print_instr_using(struct context *ctx, struct mir_instr_using *using)
     print_comptime_value_or_id(ctx, using->scope_expr);
 }
 
-void print_instr_designator(struct context *ctx, struct mir_instr_designator *cm)
+void print_instr_designator(struct context *ctx, struct mir_instr_designator *designator)
 {
-    print_instr_head(ctx, &cm->base, "designator");
-    const char *designator;
-    if (cm->designator_ident && cm->designator_ident->kind == AST_IDENT) {
-        designator = cm->designator_ident->data.ident.id.str;
+    print_instr_head(ctx, &designator->base, "designator");
+    const char *name;
+    if (designator->ident && designator->ident->kind == AST_IDENT) {
+        name = designator->ident->data.ident.id.str;
     } else {
-        designator = "<INVALID>";
+        name = "<INVALID>";
     }
-    fprintf(ctx->stream, "%s = ", designator);
-    print_comptime_value_or_id(ctx, cm->value);
+    fprintf(ctx->stream, "%s = ", name);
+    print_comptime_value_or_id(ctx, designator->value);
 }
 
 void print_instr_msg(struct context *ctx, struct mir_instr_msg *msg)

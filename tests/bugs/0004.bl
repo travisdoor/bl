@@ -1,6 +1,6 @@
 bind :: fn (_: []string) {}
 
 main :: fn () s32 {
-    bind({:[1]string: cmd}); // no implicit cast produced here!!!
+    bind([1]string.{cmd}); // no implicit cast produced here!!!
     return 0;
 }

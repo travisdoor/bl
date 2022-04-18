@@ -27,7 +27,7 @@ ColliderCircle :: struct {
 union_collider :: fn () #test {
     c: Collider;
     c.kind = ColliderKind.Circle;
-    c.data.circle = {:ColliderCircle: {:glm.v2: 10.f, 20.f}, 15.f};
+    c.data.circle = ColliderCircle.{glm.v2.{10.f, 20.f}, 15.f};
 
     assert(sizeof(c.data) == sizeof(ColliderRect));
 }

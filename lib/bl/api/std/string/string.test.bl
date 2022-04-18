@@ -56,7 +56,7 @@ test_strs_init4 :: fn () #test {
 }
 
 test_strs_init5 :: fn () #test {
-    cstr := {:[6]u8: 'h', 'e', 'l', 'l', 'o', '\0'};
+    cstr := [6]u8.{'h', 'e', 'l', 'l', 'o', '\0'};
     s :: std.str_new(cstr.ptr);
     defer std.str_delete(&s);
     test_eq(s.len, 5);

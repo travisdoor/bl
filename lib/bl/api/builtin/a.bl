@@ -322,10 +322,10 @@ Context :: struct {
 /// containing basic context for whole assembly. This variable is mutable and can 
 /// be modified by user code. For example we can replace default memory allocator
 /// with custom one, this will affect all allocations made later.
-_context := {:Context: 
-                &__print_log_default, 
-                &__os_abort_default,
-                &default_allocator,
+_context := Context.{
+                print_log_fn = &__print_log_default,
+                abort_fn     = &__os_abort_default,
+                allocator    = &default_allocator,
             };
 
 /// Contains all arguments passed from command line. First argument is executable name.

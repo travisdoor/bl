@@ -127,7 +127,7 @@ dir_scan :: fn (dirpath: string_view, filter: std.DirScanFilterFn) (std.InfoList
         }
         name :: std.str_new(cast(*u8) stat.d_name.ptr);
         push := true;
-        info :: {:std.Info: kind, name};
+        info :: std.Info.{kind, name};
         if filter { push = filter(&info); }
         if push {
             buf.len += 1;

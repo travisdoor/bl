@@ -98,7 +98,7 @@ tl3: [10]s32 #thread_local;
 
 thread_local :: fn () #test {
     tl1 = 10;
-    tl2 = {:Foo: 0};
+    tl2 = Foo.{};
     tl3[0] = 10;
 }
 

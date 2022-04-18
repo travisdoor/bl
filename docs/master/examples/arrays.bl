@@ -25,7 +25,7 @@ main :: fn () s32 {
     // Arrays could be initialized in same way like other variables even in 
     // declaration by compound initializer. We can let compiler inver variable 
     // type here like we did with other variables in previous example.
-    another_array := {:[4]s32: 1, 2, 3, 4};
+    another_array := [4]s32.{1, 2, 3, 4};
 
     print("another_array is %\n", another_array);
 

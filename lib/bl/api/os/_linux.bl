@@ -117,7 +117,7 @@ __os_abort_default :: fn () {
 __MAX_ARGS_WITHOUT_ALLOC :: 8;
 
 __os_start :: fn (argc: s64, argv: **u8, _: **u8) s32 #entry {
-    args :: {:[]*u8: argc, argv};
+    args :: []*u8.{argc, argv};
     tmp: [__MAX_ARGS_WITHOUT_ALLOC]string_view #noinit;
     is_allocated :: args.len > tmp.len;
     command_line_arguments.len = args.len;
@@ -128,7 +128,7 @@ __os_start :: fn (argc: s64, argv: **u8, _: **u8) s32 #entry {
         command_line_arguments.ptr = tmp.ptr;
     }
     loop i := 0; i < args.len; i += 1 {
-        command_line_arguments[i] = {:string_view: auto C.strlen(auto args[i]), args[i]};
+        command_line_arguments[i] = string_view.{auto C.strlen(auto args[i]), args[i]};
     }
     mode_r :: "r";
     mode_w :: "w";

@@ -9,7 +9,7 @@ poly_1 :: fn (a: ?T) {}
 test_poly_1 :: fn () #test {
     poly_1(10);
     poly_1(true);
-    poly_1({:Foo: 0});
+    poly_1(Foo.{});
 }
 
 poly_2 :: fn (a: ?T, b: T) {}
@@ -17,7 +17,7 @@ poly_2 :: fn (a: ?T, b: T) {}
 test_poly_2 :: fn () #test {
     poly_2(10, 10);
     poly_2(true, false);
-    poly_2({:Foo: 0}, {:Foo: 0});
+    poly_2(Foo.{}, Foo.{});
 }
 
 poly_3 :: fn (a: T, b: ?T) {}
@@ -25,7 +25,7 @@ poly_3 :: fn (a: T, b: ?T) {}
 test_poly_3 :: fn () #test {
     poly_3(10, 10);
     poly_3(true, false);
-    poly_3({:Foo: 0}, {:Foo: 0});
+    poly_3(Foo.{}, Foo.{});
 }
 
 swap :: fn (a: *?T, b: *T) {
@@ -43,8 +43,8 @@ test_poly_swap_1 :: fn () #test {
 }
 
 test_poly_swap_2 :: fn () #test {
-    a := {:Foo: 10, 10};
-    b := {:Foo: 20, 20};    
+    a := Foo.{10, 10};
+    b := Foo.{20, 20};
     swap(&a, &b);
     test_eq(a.a, 20);
     test_eq(a.b, 20);
@@ -61,7 +61,7 @@ sum :: fn (values: []?T) T {
 }
 
 test_poly_sum_1 :: fn () #test {
-    arr :: {:[10]s32: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    arr :: [10]s32.{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     test_eq(sum(arr), 45);
 }
 

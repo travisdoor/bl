@@ -103,7 +103,7 @@ memcpy :: fn (dest: *u8, src: *u8, size: usize) {
 
 /// Set memory to desired value and return `dest` pointer. Destination size must be at least `size` bytes.
 memset :: fn (_dest: *u8, v: u8, size: usize) *u8 {
-    dest := {:[]u8: auto size, _dest};
+    dest := []u8.{auto size, _dest};
     loop i := 0; i < dest.len; i += 1 {
         dest[i] = v;
     }
@@ -228,7 +228,7 @@ slice_range :: fn (slice: []?T, start: s64, end: s64 = -1) []T #inline {
     if len < 0 || len > slice.len || start < 0 || start >= slice.len {
          panic("Invalid slice range, wanted <%, %) slice size is %.", start, end, slice.len);
     }
-    return {:[]T: len, auto ptr_shift_bytes(slice.ptr, start * cast(s64) sizeof(T))};
+    return []T.{len, auto ptr_shift_bytes(slice.ptr, start * cast(s64) sizeof(T))};
 }
 
 /// Specify allocator opratation.
@@ -275,7 +275,7 @@ release_memory :: fn (allocator: *Allocator, loc := #call_location) #inline {
 }
 
 /// Default memory allocator using libc malloc internally.
-default_allocator :: {:Allocator: &default_allocator_handler };
+default_allocator :: Allocator.{&default_allocator_handler };
 
 #private
 default_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, ptr : *u8 = null, _:= std.str_view_empty, _:= 0) *u8 {

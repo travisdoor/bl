@@ -122,7 +122,7 @@ test_cast_to_slice :: fn () #test {
 alloc_count := 0;
 free_count := 0;
 
-test_allocator :: {:Allocator: &test_allocator_handler };
+test_allocator :: Allocator.{ &test_allocator_handler };
 
 test_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, ptr : *u8 = null, _ := std.str_view_empty, _ := 0) *u8 {
     switch operation {

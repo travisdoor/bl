@@ -2,7 +2,7 @@
 _buffer: [4098]u8;
 _bi: usize;
 
-my_allocator :: {:Allocator: &my_allocator_handler };
+my_allocator :: Allocator.{ &my_allocator_handler };
 
 my_allocator_handler :: fn (
     _: *Allocator,

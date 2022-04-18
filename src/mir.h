@@ -901,7 +901,7 @@ struct mir_instr_using {
 struct mir_instr_designator {
     struct mir_instr base;
 
-    struct ast       *designator_ident;
+    struct ast       *ident;
     struct mir_instr *value;
 };
 

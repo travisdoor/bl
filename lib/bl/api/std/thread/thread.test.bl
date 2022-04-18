@@ -56,7 +56,7 @@ thread_create_test4 :: fn () #test {
         return ctx.i;
     };
  
-    ctx := {:MyContext: 10};   
+    ctx := MyContext.{10};
     t, err :: std.thread_create(&worker, auto &ctx);
     test_ok(err);
 

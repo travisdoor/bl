@@ -19,7 +19,7 @@ PANDOC ::
     "--standalone "
     "-o \"%\"";
 
-IGNORE :: {:[3]string_view:
+IGNORE :: [3]string_view.{
            "sdl2",
            "glfw3",
            "gl",

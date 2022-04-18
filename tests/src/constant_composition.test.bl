@@ -4,12 +4,12 @@ Data :: struct {
     j: string_view;
 }
 
-G1 :: {:[2]s32: 999, G2};
+G1 :: [2]s32.{999, G2};
 G2 :: 10;
-G3 :: {:Data: 10, "hello"};
-G4 :: {:Data: G2, G5};
+G3 :: Data.{10, "hello"};
+G4 :: Data.{G2, G5};
 G5 :: "foo";
-G6 :: {:Data: G1[0], G5};
+G6 :: Data.{G1[0], G5};
 
 globals :: fn () #test {
     assert(G2 == 10);
@@ -21,7 +21,7 @@ globals :: fn () #test {
 }
 
 locals :: fn () #test {
-    L1 :: {:[2]s32: 999, G2};
+    L1 :: [2]s32.{999, G2};
     assert(L1[0] == 999);
     assert(L1[1] == G2);
 }

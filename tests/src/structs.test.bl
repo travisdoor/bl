@@ -85,7 +85,7 @@ structure_initialization :: fn () #test {
     };
 
     {
-        foo := {:Foo: 0 };
+        foo := Foo.{};
         assert(foo.i == 0); 
         assert(foo.j == 0); 
     }
@@ -93,7 +93,7 @@ structure_initialization :: fn () #test {
     {
         i := 10;
         j := 20;
-        foo := {:Foo: i, j };
+        foo := Foo.{ i, j };
         assert(foo.i == i); 
         assert(foo.j == j); 
     }

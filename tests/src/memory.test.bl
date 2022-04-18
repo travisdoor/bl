@@ -11,8 +11,8 @@ swap_test_1 :: fn () #test {
 swap_test_2 :: fn () #test {
     Foo :: struct { a: s64; b: s64; c: s64; };
     
-    a := {:Foo: 10, 20, 30};
-    b := {:Foo: 30, 20, 10};
+    a := Foo.{10, 20, 30};
+    b := Foo.{30, 20, 10};
     swap(&a, &b);
     test_eq(a.a, 30);
     test_eq(a.b, 20);
@@ -47,14 +47,14 @@ range_test_2 :: fn () #test {
 }
 
 range_test_3 :: fn () #test {
-    arr :: {:[3]s32: 1, 2, 3};
+    arr :: [3]s32.{1, 2, 3};
     r :: slice_range(arr, 0, 1);
     test_eq(r.len, 1);
     test_eq(r[0], 1);
 }
 
 range_test_4 :: fn () #test {
-    arr :: {:[5]s32: 1, 2, 3, 4, 5};
+    arr :: [5]s32.{1, 2, 3, 4, 5};
     r :: slice_range(arr, 1, arr.len-1);
     test_eq(r.len, 3);
     test_eq(r[0], 2);
@@ -63,7 +63,7 @@ range_test_4 :: fn () #test {
 }
 
 range_test_5 :: fn () #test {
-    arr :: {:[5]s32: 1, 2, 3, 4, 5};
+    arr :: [5]s32.{ 1, 2, 3, 4, 5};
     r :: slice_range(arr, 0, arr.len);
     test_eq(r.len, 5);
     test_eq(r[0], 1);

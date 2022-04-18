@@ -154,8 +154,7 @@ static inline bool parse_semicolon_rq(struct context *ctx);
 static inline bool hash_directive_to_flags(enum hash_directive_flags hd, u32 *out_flags);
 static struct ast *parse_expr_call(struct context *ctx, struct ast *prev);
 static struct ast *parse_expr_elem(struct context *ctx, struct ast *prev);
-static struct ast *parse_expr_compound(struct context *ctx);
-static struct ast *parse_expr_compound2(struct context *ctx, struct ast *prev);
+static struct ast *parse_expr_compound(struct context *ctx, struct ast *prev);
 
 // impl
 #define parse_ident(ctx) (tokens_peek((ctx)->tokens)->sym == SYM_IDENT ? _parse_ident(ctx) : NULL)
@@ -629,72 +628,7 @@ INVALID:
 #undef set_satisfied
 }
 
-struct ast *parse_expr_compound(struct context *ctx)
-{
-    zone();
-    if (!tokens_is_seq(ctx->tokens, 2, SYM_LBLOCK, SYM_COLON)) return_zone(NULL);
-    // eat {
-    struct token *tok_begin = tokens_consume(ctx->tokens);
-    // eat :
-    tokens_consume(ctx->tokens);
-
-    struct ast *type = parse_type(ctx);
-    if (!type) {
-        struct token *tok_err = tokens_peek(ctx->tokens);
-        report_error(EXPECTED_TYPE, tok_err, CARET_WORD, "Expected type.");
-        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
-    }
-
-    // eat :
-    if (!tokens_consume_if(ctx->tokens, SYM_COLON)) {
-        struct token *tok_err = tokens_peek(ctx->tokens);
-        report_error(EXPECTED_TYPE, tok_err, CARET_WORD, "Expected colon after type.");
-        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
-    }
-
-    struct ast *compound =
-        ast_create_node(ctx->ast_arena, AST_EXPR_COMPOUND, tok_begin, scope_get(ctx));
-    compound->data.expr_compound.type = type;
-
-    // parse values
-    bool        rq = false;
-    struct ast *tmp;
-
-NEXT:
-    tmp = parse_expr(ctx);
-    if (tmp) {
-        if (!compound->data.expr_compound.values) {
-            compound->data.expr_compound.values = arena_safe_alloc(&ctx->assembly->arenas.sarr);
-        }
-
-        sarrput(compound->data.expr_compound.values, tmp);
-
-        if (tokens_consume_if(ctx->tokens, SYM_COMMA)) {
-            rq = true;
-            goto NEXT;
-        }
-    } else if (rq) {
-        struct token *tok_err = tokens_peek(ctx->tokens);
-        if (tokens_peek_2nd(ctx->tokens)->sym == SYM_RBLOCK) {
-            report_error(
-                EXPECTED_NAME, tok_err, CARET_WORD, "Expected expression after comma ','.");
-            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
-        }
-    }
-
-    struct token *tok = tokens_consume(ctx->tokens);
-    if (tok->sym != SYM_RBLOCK) {
-        report_error(MISSING_BRACKET,
-                     tok,
-                     CARET_WORD,
-                     "Expected end of initialization list '}' or another expression "
-                     "separated by comma.");
-        return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
-    }
-    return_zone(compound);
-}
-
-struct ast *parse_expr_compound2(struct context *ctx, struct ast *prev)
+struct ast *parse_expr_compound(struct context *ctx, struct ast *prev)
 {
     zone();
     if (!tokens_is_seq(ctx->tokens, 2, SYM_DOT, SYM_LBLOCK)) return_zone(NULL);
@@ -1482,7 +1416,7 @@ struct ast *_parse_expr(struct context *ctx, s32 p)
     do {
         tmp = parse_expr_call(ctx, lhs);
         if (!tmp) tmp = parse_expr_elem(ctx, lhs);
-        if (!tmp) tmp = parse_expr_compound2(ctx, lhs);
+        if (!tmp) tmp = parse_expr_compound(ctx, lhs);
         if (!tmp) tmp = parse_ref_nested(ctx, lhs);
         lhs = tmp ? tmp : lhs;
     } while (tmp);
@@ -1527,8 +1461,6 @@ struct ast *parse_expr_primary(struct context *ctx)
     if (expr) return expr;
     if ((expr = parse_expr_lit(ctx))) return expr;
     if ((expr = parse_expr_type(ctx))) return expr;
-    // @Cleanup
-    if ((expr = parse_expr_compound(ctx))) return expr;
     return NULL;
 }
 

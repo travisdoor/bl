@@ -37,7 +37,7 @@ main :: fn () s32 {
     // location, slice in such case acts only like an 'interface' to the original
     // array.
 
-    array := {:[4]s32: 0, 1, 2, 3};
+    array := [4]s32.{0, 1, 2, 3};
     slice_from_array : []s32 = array;
 
     print("slice_from_array = %\n", slice_from_array);

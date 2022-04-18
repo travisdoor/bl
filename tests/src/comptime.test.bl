@@ -65,7 +65,7 @@ Data :: struct {
 
 struct_value :: fn () #test {
     get :: fn () Data #comptime {
-        return {:Data: 10, 20, true, 30, 40};
+        return Data.{10, 20, true, 30, 40};
     };
 
     data := get();

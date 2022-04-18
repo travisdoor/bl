@@ -284,7 +284,7 @@ test_run :: fn (report_memory_leaks := true) s32 {
     print("%\n", TEXT_LINE);
 
     loop i := 0; i < cases.len; i += 1 {
-        array_push(&_queue, {:TestRun: cases[i].func, cases[i].name, false, 0.});
+        array_push(&_queue, TestRun.{cases[i].func, cases[i].name, false, 0.});
     }
 
     loop _ci < _queue.len {

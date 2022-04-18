@@ -62,7 +62,7 @@ PRINT_MAX_LENGTH :: 4096;
 ///         j: s32;
 ///     };
 /// 
-///     foo := {:Foo: 10, 20};
+///     foo := Foo.{10, 20};
 ///     print("foo = '%'\n", foo);
 /// 
 ///     return 0;
@@ -144,7 +144,7 @@ fmt_real :: fn (v: Any, trailing: s8) FmtReal #inline {
         panic("Invalid format input, got % but expected is Real number!", v.type_info.kind);
     }
 
-    return {:FmtReal: trailing, v};
+    return FmtReal.{trailing, v};
 }
 
 /// Number base used for formatted printing.
@@ -182,7 +182,7 @@ fmt_int :: fn (v: Any, base: FmtIntBase, print_prefix := true) FmtInt #inline {
         panic("Invalid format input, got % but expected is Integer number!", v.type_info.kind);
     }
 
-    return {:FmtInt: base, print_prefix, v};
+    return FmtInt.{base, print_prefix, v};
 }
 
 /// Simple wrapper used for format `u8` value as character.
@@ -197,7 +197,7 @@ FmtChar :: struct {
 /// print("% = %\n", 'c', fmt_char('c'));
 /// ```
 fmt_char :: fn (v: u8) FmtChar #inline {
-    return {:FmtChar: v};
+    return FmtChar.{v};
 }
 
 _print_impl :: fn {
@@ -226,7 +226,7 @@ __print_impl :: fn (buf: *?T, format: string_view, args: []Any, cur: s32) s32 {
                 cur = print_string(buf, cur, "(null)");
             }
         } else {
-            cur = print_string(buf, cur, {:string_view: 1, &c});
+            cur = print_string(buf, cur, string_view.{1, &c});
         }
     }
     return cur;
@@ -308,7 +308,7 @@ print_any :: fn (buf: *?T, cur: s32, any: *Any) s32 {
         } else if any.type_info == typeinfo(FmtChar) {
             fmt :: cast(*FmtChar) any.data;
             char := cast(u8) u64_from_u8_ptr(&fmt.v, auto sizeof(u8) * 8);
-            return print_string(buf, cur, {:string_view: 1, &char});
+            return print_string(buf, cur, string_view.{1, &char});
         }
         
         info := cast(*TypeInfoStruct) any.type_info;
@@ -560,7 +560,7 @@ print_u64 :: fn (buf: *?T, cur: s32, v: u64, base: FmtIntBase, digits: s32, prin
     prev_cur :: cur;
     loop v > 0 {
         d :: v % b;
-        cur = print_string(buf, cur, {:string_view: 1, &tbl[auto d]});
+        cur = print_string(buf, cur, string_view.{1, &tbl[auto d]});
         v = v / b;
     }
     loop (cur - prev_cur) < digits {

@@ -42,14 +42,14 @@ default_args_complex :: fn () #test {
         i: s32;
         j: s32;
     };
-    foo :: fn (i: s32, j: Foo = {:Foo: 20, 30}) {
+    foo :: fn (i: s32, j: Foo = Foo.{20, 30}) {
         test_eq(i, 10);
         test_eq(j.i, 20);
         test_eq(j.j, 30);
     };
 
     foo(10);
-    foo(10, {:Foo: 20, 30});
+    foo(10, Foo.{20, 30});
 }
 
 GLOBAL_10 :: 10;
@@ -113,7 +113,7 @@ default_args_call_side_location :: fn () #test {
 }
 
 default_args_array :: fn () #test {
-    foo :: fn (arr: [2]s32 = {:[2]s32: 1, 2}) {
+    foo :: fn (arr: [2]s32 = [2]s32.{1, 2}) {
         test_eq(arr[0], 1);
         test_eq(arr[1], 2);
     };
@@ -121,7 +121,7 @@ default_args_array :: fn () #test {
 }
 
 default_args_slice :: fn () #test {
-    foo :: fn (slice: []s32 = {:[]s32: 0}) {
+    foo :: fn (slice: []s32 = []s32.{}) {
         test_eq(slice.len, 0);
     };
     foo();
@@ -177,7 +177,7 @@ default_args_infer_type2 :: fn () #test {
         i: s32;
         j: s32;
     };
-    foo :: fn (foo := {:Foo: 10, 20}) {
+    foo :: fn (foo := Foo.{10, 20}) {
         test_eq(foo.i, 10);
         test_eq(foo.j, 20);
     };

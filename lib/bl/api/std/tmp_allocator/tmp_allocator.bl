@@ -72,7 +72,7 @@
 #scope std
 
 /// Temporary allocator instance.
-tmp_allocator :: {:Allocator: &tmp_allocator_handler };
+tmp_allocator :: Allocator.{ &tmp_allocator_handler };
 
 /// Reduce allocated memory, but keeps biggest allocated chunk for later use.
 ///

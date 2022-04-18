@@ -509,7 +509,7 @@ static enum mir_cast_op  get_cast_op(struct mir_type *from, struct mir_type *to)
 static void              append_current_block(struct context *ctx, struct mir_instr *instr);
 static struct mir_instr *append_instr_designator(struct context   *ctx,
                                                  struct ast       *node,
-                                                 struct ast       *designator_ident,
+                                                 struct ast       *ident,
                                                  struct mir_instr *value);
 static struct mir_instr *append_instr_arg(struct context *ctx, struct ast *node, unsigned i);
 static struct mir_instr *append_instr_using(struct context   *ctx,
@@ -3542,14 +3542,14 @@ append_instr_type_vargs(struct context *ctx, struct ast *node, struct mir_instr 
 
 struct mir_instr *append_instr_designator(struct context   *ctx,
                                           struct ast       *node,
-                                          struct ast       *designator_ident,
+                                          struct ast       *ident,
                                           struct mir_instr *value)
 {
     struct mir_instr_designator *tmp = create_instr(ctx, MIR_INSTR_DESIGNATOR, node);
 
-    tmp->designator_ident = designator_ident;
-    tmp->value            = ref_instr(value);
-    tmp->base.value.type  = ctx->builtin_types->t_void;
+    tmp->ident           = ident;
+    tmp->value           = ref_instr(value);
+    tmp->base.value.type = ctx->builtin_types->t_void;
     append_current_block(ctx, &tmp->base);
     return &tmp->base;
 }
@@ -4998,7 +4998,7 @@ static struct result analyze_instr_compound_regular(struct context            *c
                 struct mir_instr_designator *designator = (struct mir_instr_designator *)*value_ref;
                 bassert(designator->designator_ident &&
                         designator->designator_ident->kind == AST_IDENT);
-                struct id          *id    = &designator->designator_ident->data.ident.id;
+                struct id          *id    = &designator->ident->data.ident.id;
                 struct scope_entry *found = scope_lookup(scope,
                                                          &(scope_lookup_args_t){
                                                              .id = id,
@@ -5006,7 +5006,7 @@ static struct result analyze_instr_compound_regular(struct context            *c
                 if (!found) {
                     char *type_name = mir_type2str(type, true);
                     report_error(INVALID_INITIALIZER,
-                                 designator->designator_ident,
+                                 designator->ident,
                                  "Structure member designator '%s' does not refer to any member of "
                                  "initialized structure type '%s'.",
                                  id->str,
@@ -8333,16 +8333,6 @@ struct result analyze_instr_store(struct context *ctx, struct mir_instr_store *s
         return_zone(FAIL);
     }
 
-    // @BUG Global immutable array converted implicitly to slice cause problems when this check
-    // is enabled INDENT_AFTER :: {:[1]u8: '{'}; opt.indent_after = INDENT_AFTER;
-
-#if BL_DEBUG
-    // If store instruction source value is compound expression it should not be naked.
-    if (store->src->kind == MIR_INSTR_COMPOUND) {
-        bassert(!((struct mir_instr_compound *)store->src)->is_naked);
-    }
-#endif
-
     return_zone(PASS);
 }
 
@@ -9902,7 +9892,10 @@ struct mir_instr *ast_expr_compound(struct context *ctx, struct ast *cmp)
     for (usize i = valc; i-- > 0;) {
         ast_value = sarrpeek(ast_values, i);
         if (ast_value->kind == AST_EXPR_BINOP && ast_value->data.expr_binop.kind == BINOP_ASSIGN) {
-            // @Explain
+            // In case the compound initializer value is written as <name> = <value> we use compound
+            // initializer designator as a placeholder here. This instruction is later replaced
+            // during analyze pass when the index of initialized value is found in the type scope.
+            // Currently we support only this simple way without any access to sub-members.
             struct ast *ast_designator = ast_value->data.expr_binop.lhs;
             struct ast *ast_init_value = ast_value->data.expr_binop.rhs;
             struct ast *ast_id         = NULL;

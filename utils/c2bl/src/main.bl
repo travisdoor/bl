@@ -158,7 +158,7 @@ process_file :: fn (in_filepath: string) Error {
 
     arg_include_path :: sprint("-I%", _args.include_dir);
     defer std.str_delete(arg_include_path);
-    parser_args :: {:[1]*u8: arg_include_path.ptr};
+    parser_args :: [1]*u8.{arg_include_path.ptr};
 
     result := clang_parseTranslationUnit2(idx, in_filepath.ptr, parser_args.ptr, 1, null, 0, options, &tu);
     defer clang_disposeTranslationUnit(tu);
@@ -209,7 +209,7 @@ visitor :: fn (c: CXCursor, _: CXCursor, client_data: CXClientData) CXChildVisit
         clang_getExpansionLocation(loc, &file, null, null, null);
         spelling :: clang_getFileName(file);
         if spelling.data {
-            name :: {:string: auto C.strlen(auto spelling.data), spelling.data};
+            name :: string.{auto C.strlen(auto spelling.data), spelling.data};
             print("% ", name);
         }
     }
@@ -270,7 +270,7 @@ emit_macro :: fn (ctx: *Ctx, c: CXCursor) {
     if tokens.len < 2 { return; }
     loop i := 0; i < tokens.len; i += 1 {
         spelling :: clang_getTokenSpelling(tu, tokens[i]);
-        str :: {:string: auto C.strlen(auto spelling.data), spelling.data};
+        str :: string.{auto C.strlen(auto spelling.data), spelling.data};
         if i == 0 {
             if std.str_is_empty(str) { break; }
             std.write_fmt(ctx.out, "% :: ", str);
@@ -457,14 +457,14 @@ get_name :: fn { _get_name_cursor; _get_name_type; }
 
 _get_name_cursor :: fn (c: CXCursor) (string, bool) {
     spelling :: clang_getCursorSpelling(c);
-    name :: {:string: auto C.strlen(auto spelling.data), spelling.data};
+    name :: string.{auto C.strlen(auto spelling.data), spelling.data};
     if std.str_is_empty(name) { return "", false; }
     return name, true;
 }
 
 _get_name_type :: fn (type: CXType) (string, bool) {
     spelling :: clang_getTypeSpelling(type);
-    name :: {:string: auto C.strlen(auto spelling.data), spelling.data};
+    name :: string.{auto C.strlen(auto spelling.data), spelling.data};
     if std.str_is_empty(name) { return "", false; }
     return name, true;
 }
@@ -509,7 +509,7 @@ error_cursor :: fn (ctx: *Ctx, c: CXCursor, fmt: string, args: ...) {
     clang_getExpansionLocation(location, null, &line, null, null);
     buf: [1024]u8;
     len :: bprint(buf, fmt, args);
-    str :: {:string: auto len, buf.ptr};
+    str :: string.{auto len, buf.ptr};
     eprint("ERROR [%:%] %\n", ctx.filename, line, str);
     std.write_fmt(ctx.out, "\n// ERROR [%:%] %\n", ctx.filename, line, str);
 }

@@ -1,7 +1,7 @@
 main :: fn () s32 {
     i := 10;
     // Any directly passed as function argument is converted to Any again!
-    foo({:Any: typeinfo(s32), auto &i });
+    foo(Any.{ typeinfo(s32), auto &i });
     return 0;
 }
 

@@ -192,7 +192,7 @@ test_print_content_simple :: fn () #test {
 }
 
 test_print_array :: fn () #test {
-    arr :: {:[3]s32: 1, 2, 3};
+    arr :: [3]s32.{1, 2, 3};
     str :: sprint("%", arr);     
     defer std.str_delete(&str);
 
@@ -201,7 +201,7 @@ test_print_array :: fn () #test {
 
 test_print_slice :: fn () #test {
     slice: []s32;
-    arr :: {:[3]s32: 1, 2, 3};
+    arr :: [3]s32.{1, 2, 3};
     slice.ptr = &arr[0];
     slice.len = arr.len;
     
@@ -230,7 +230,7 @@ test_print_struct :: fn () #test {
         j: bool;
     };
 
-    foo :: {:Foo: 666, true};
+    foo :: Foo.{666, true};
     str :: sprint("%", foo);     
     defer std.str_delete(&str);
 
@@ -257,7 +257,7 @@ test_complex_type :: fn () #test {
         arr: [3]s32;
     };
 
-    foo :: {:Foo: 666, true, {:[3]s32: 1, 2, 3}};
+    foo :: Foo.{666, true, [3]s32.{1, 2, 3}};
     str :: sprint("%", foo);     
     defer std.str_delete(&str);
 

@@ -70,7 +70,7 @@
 //! 
 //! **note**: Debug allocator is thread safe. Init and terminate must be called from main thread.
 
-debug_allocator :: {:Allocator: &handler};
+debug_allocator :: Allocator.{&handler};
 
 /// Initialize Debug Allocator. This function internally swap current global context allocator to 
 /// debug one. Deinitialization must be done by [debug_allocator_terminate](#debug_allocator_terminate) call.

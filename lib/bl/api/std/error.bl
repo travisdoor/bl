@@ -138,6 +138,6 @@ error3 :: fn (code: s32, format: string_view, args: ...) Error {
     e := &_last_error;
     msg_size :: bprint(_last_error_msg_buffer, format, args);
     e.code = code;
-    e.msg = {:string_view: msg_size, _last_error_msg_buffer.ptr};
+    e.msg = string_view.{ msg_size, _last_error_msg_buffer.ptr };
     return e;
 }

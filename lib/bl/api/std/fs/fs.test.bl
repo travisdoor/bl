@@ -361,7 +361,7 @@ fs_write_slice_test :: fn () #test {
     filepath :: get_dummy_filepath();
     defer std.str_delete(&filepath);
     std.file_remove(filepath);
-    content :: {:[5]u8: 'H', 'e', 'l', 'o', 'o' };
+    content :: [5]u8.{'H', 'e', 'l', 'o', 'o' };
     
     { // write
         file :: std.file_open(filepath, make_flags(std.FileOpenMode.CREATE, std.FileOpenMode.WRITE));

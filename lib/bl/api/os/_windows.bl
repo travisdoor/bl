@@ -161,7 +161,7 @@ __os_start :: fn () #entry {
 
         out_args.len = wargs.len;
         out_args.ptr = auto buffer; 
-        tmp := {:string_view: auto tmp_size, ptr_shift_bytes(buffer, auto result_size)};
+        tmp := string_view.{ auto tmp_size, ptr_shift_bytes(buffer, auto result_size) };
 
         tmp_i := 0;
         loop i := 0; i < wargs.len; i += 1 {

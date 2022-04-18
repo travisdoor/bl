@@ -1918,8 +1918,6 @@ LLVMValueRef _emit_instr_compound_zero_initialized(struct context            *ct
 {
     struct mir_type *type = cmp->base.value.type;
     bassert(type);
-    // bassert(mir_is_comptime(&cmp->base) &&
-    //"Zero initialized compound expression is supposed to be compile time known!");
     if (!llvm_dest) {
         cmp->base.llvm_value = LLVMConstNull(get_type(ctx, type));
         return cmp->base.llvm_value;
@@ -2622,7 +2620,6 @@ State emit_instr_const(struct context *ctx, struct mir_instr_const *c)
             bassert(tmp.base.llvm_value);
             sarrput(&llvm_members, tmp.base.llvm_value);
         }
-        blog("here!");
         llvm_value =
             LLVMConstNamedStruct(llvm_type, sarrdata(&llvm_members), sarrlen(&llvm_members));
         sarrfree(&llvm_members);
