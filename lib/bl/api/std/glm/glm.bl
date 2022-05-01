@@ -105,20 +105,20 @@ quat_identity :: quat.{ w = 1.f};
 // Functions
 // =================================================================================================
 
-v_sub :: fn { v2_sub; v2_sub_s; v3_sub; v3_sub_s; v4_sub; v4_sub_s; }
-v_add :: fn { v2_add; v2_add_s; v3_add; v3_add_s; v4_add; v4_add_s; }
-v_mul :: fn { v2_mul; v2_mul_s; v3_mul; v3_mul_s; v4_mul; v4_mul_s; }
-v_div :: fn { v2_div; v2_div_s; v3_div; v3_div_s; v4_div; v4_div_s; }
-v_length :: fn { v2_length; v3_length; v4_length; }
-v_sqr_lenght :: fn { v2_sqr_lenght; v3_sqr_lenght; v4_sqr_lenght; }
-v_dot :: fn { v2_dot; v3_dot; v4_dot; }
-v_normalize :: fn { v2_normalize; v3_normalize; v4_normalize; }
-v_compare :: fn { v2_compare; v3_compare; v4_compare; }
-v_negate :: fn { v2_negate; v3_negate; v4_negate; }
-v_cross :: fn { v3_cross; }
-v_round :: fn { v2_round; v3_round; v4_round; }
-v_floor :: fn { v2_floor; v3_floor; v4_floor; }
-v_ceil :: fn { v2_ceil; v3_ceil; v4_ceil; }
+sub :: fn { v2_sub; v2_sub_s; v3_sub; v3_sub_s; v4_sub; v4_sub_s; }
+add :: fn { v2_add; v2_add_s; v3_add; v3_add_s; v4_add; v4_add_s; }
+mul :: fn { v2_mul; v2_mul_s; v3_mul; v3_mul_s; v4_mul; v4_mul_s; }
+div :: fn { v2_div; v2_div_s; v3_div; v3_div_s; v4_div; v4_div_s; }
+length :: fn { v2_length; v3_length; v4_length; }
+sqr_length :: fn { v2_sqr_length; v3_sqr_length; v4_sqr_length; }
+dot :: fn { v2_dot; v3_dot; v4_dot; }
+normalize :: fn { v2_normalize; v3_normalize; v4_normalize; }
+compare :: fn { v2_compare; v3_compare; v4_compare; }
+negate :: fn { v2_negate; v3_negate; v4_negate; }
+cross :: fn { v3_cross; }
+round :: fn { v2_round; v3_round; v4_round; }
+floor :: fn { v2_floor; v3_floor; v4_floor; }
+ceil :: fn { v2_ceil; v3_ceil; v4_ceil; }
 
 mat4_init :: fn (m00: f32, m10: f32, m20: f32, m30: f32,
                  m01: f32, m11: f32, m21: f32, m31: f32,
@@ -191,18 +191,18 @@ mat4_ortho :: fn (left: f32, right: f32, bottom: f32, top: f32, near: f32, far: 
 }
 
 mat4_look_at :: fn (eye: v3, target: v3, up: v3, out_mat: *mat4) #inline {
-    z := v_sub(target, eye);
-    z = v_normalize(z);
+    z := sub(target, eye);
+    z = normalize(z);
 
-    z = v_mul(z, -1.f);
-    x := v_cross(up, z);
-    x = v_normalize(x);
-    y := v_cross(z, x);
+    z = mul(z, -1.f);
+    x := cross(up, z);
+    x = normalize(x);
+    y := cross(z, x);
 
     mat4_init(
-        x.x, x.y, x.z, v_dot(eye, x),
-        y.x, y.y, y.z, -v_dot(eye, y),
-        z.x, z.y, z.z, -v_dot(eye, z),
+        x.x, x.y, x.z, dot(eye, x),
+        y.x, y.y, y.z, -dot(eye, y),
+        z.x, z.y, z.z, -dot(eye, z),
         0.f, 0.f, 0.f, 1.f,
         out_mat
     );
@@ -321,13 +321,13 @@ mat4_scale :: fn (s: v3, out_mat: *mat4) #inline {
 mat4_get_scale :: fn (mat: *mat4) v3 {
     ret: v3 #noinit;
     tmp_vec := v3.{ (@mat)[0][0], (@mat)[1][0], (@mat)[2][0] };
-    ret.x = v_length(tmp_vec);
+    ret.x = length(tmp_vec);
 
     tmp_vec = v3.{ (@mat)[0][1], (@mat)[1][1], (@mat)[2][1] };
-    ret.y = v_length(tmp_vec);
+    ret.y = length(tmp_vec);
 
     tmp_vec = v3.{ (@mat)[0][2], (@mat)[1][2], (@mat)[2][2] };
-    ret.z = v_length(tmp_vec);
+    ret.z = length(tmp_vec);
     return ret;
 };
 
@@ -379,11 +379,11 @@ mat4_get_quat :: fn (mat: *mat4) quat {
 };
 
 quat_normalize :: fn (q: quat) quat #inline {
-    return v_normalize(q);
+    return normalize(q);
 };
 
 quat_to_mat4 :: fn (q: quat, out_mat: *mat4) {
-    norm :: v_length(q); 
+    norm :: length(q); 
     s := 0.f;
     if norm > 0.f { s = 2.f / norm; }
 
@@ -429,18 +429,18 @@ quat_look :: fn (eye: v3, ori: quat, out_mat: *mat4) {
 }
 
 quat_look_for :: fn (dir: v3, fwd: v3, up: v3) quat {
-    dot :: v_dot(dir, fwd);
-    if std.abs(dot + 1.0f)  < 0.000001f {
+    d :: dot(dir, fwd);
+    if std.abs(d+ 1.0f)  < 0.000001f {
         return quat.{ up.x, up.y, up.z, auto std.PI };
     }
 
-    if std.abs(dot - 1.0f) < 0.000001f {
+    if std.abs(d - 1.0f) < 0.000001f {
         return quat_identity;
     }
 
-    angle :: std.acos(dot);
-    axis := v_cross(fwd, dir);
-    axis = v_normalize(axis);
+    angle :: std.acos(d);
+    axis := cross(fwd, dir);
+    axis = normalize(axis);
     return quat_axis_angle(axis, angle);
 }
 
@@ -449,7 +449,7 @@ quat_axis_angle :: fn (axis: v3, angle_rad: f32) quat {
     c :: std.cos(a);
     s :: std.sin(a);
 
-    axis = v_normalize(axis);
+    axis = normalize(axis);
 
     return quat.{
         s * axis.x,
@@ -481,12 +481,12 @@ quat_rotate_v3 :: fn (q: quat, v: v3) v3 {
     u :: quat_imag(p);
     s :: quat_real(p);
 
-    v1 := v_mul(u, 2.0f * v3_dot(u, v));
-    v2 := v_mul(v, s * s - v3_dot(u, u));
-    v1 = v_add(v1, v2);
-    v2 = v_cross(u, v);
-    v2 = v_mul(v2, 2.f * s);
-    return v_add(v1, v2);
+    v1 := mul(u, 2.0f * v3_dot(u, v));
+    v2 := mul(v, s * s - v3_dot(u, u));
+    v1 = add(v1, v2);
+    v2 = cross(u, v);
+    v2 = mul(v2, 2.f * s);
+    return add(v1, v2);
 }
 
 quat_forward :: fn (q: quat) v3 {
@@ -653,15 +653,15 @@ v4_length :: fn (v: v4) f32 #inline {
 // =================================================================================================
 // sqr_length
 // =================================================================================================
-v2_sqr_lenght :: fn (v: v2) f32 #inline {
+v2_sqr_length :: fn (v: v2) f32 #inline {
     return v.x * v.x + v.y * v.y;
 }
 
-v3_sqr_lenght :: fn (v: v3) f32 #inline {
+v3_sqr_length :: fn (v: v3) f32 #inline {
     return v.x * v.x + v.y * v.y + v.z * v.z;
 }
 
-v4_sqr_lenght :: fn (v: v4) f32 #inline {
+v4_sqr_length :: fn (v: v4) f32 #inline {
     return v.x * v.x + v.y * v.y + v.z * v.z + v.w * v.w;
 }
 
