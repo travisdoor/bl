@@ -1158,7 +1158,13 @@ static inline bool is_incomplete_struct_type(struct mir_type *type)
 // Checks whether type is complete type, checks also dependencies. In practice only composit types
 // can be incomplete, but in some cases (RTTI generation) we need to check whole dependency type
 // tree for completeness.
-static bool is_complete_type(struct context *ctx, struct mir_type *type)
+// @Performance: this function visits all nested types of structs, this can be really expensive
+// eventually.
+//
+// The incomplete_type is optional parameter set in case it's not NULL and the function returns
+// TRUE. It points to the first incomplete type found in the tree.
+static bool
+is_incomplete_type(struct context *ctx, struct mir_type *type, struct mir_type **incomplete_type)
 {
     zone();
 
@@ -1169,13 +1175,13 @@ static bool is_complete_type(struct context *ctx, struct mir_type *type)
 
     mir_types_t *stack = &ctx->analyze.complete_check_type_stack;
     sarrput(stack, type);
-    bool result = true;
+    struct mir_type *first_incomplete_type = NULL;
     while (sarrlenu(stack)) {
         struct mir_type *top = sarrpop(stack);
         bassert(top);
         if (top->checked_and_complete) continue;
         if (is_incomplete_struct_type(top)) {
-            result = false;
+            first_incomplete_type = top;
             goto DONE;
         }
         switch (top->kind) {
@@ -1217,8 +1223,9 @@ static bool is_complete_type(struct context *ctx, struct mir_type *type)
 DONE:
     sarrclear(stack);
     hmfree(visited);
-    type->checked_and_complete = result;
-    return_zone(result);
+    if (incomplete_type) *incomplete_type = first_incomplete_type;
+    type->checked_and_complete = !first_incomplete_type;
+    return_zone(first_incomplete_type);
 }
 
 // Determinate if instruction has volatile type, that means we can change type of the value during
@@ -5782,7 +5789,9 @@ struct result analyze_instr_type_info(struct context *ctx, struct mir_instr_type
         }
         type_info->rtti_type = type;
     }
-    if (!is_complete_type(ctx, type_info->rtti_type)) {
+    struct mir_type *incomplete_type;
+    if (is_incomplete_type(ctx, type_info->rtti_type, &incomplete_type)) {
+        if (incomplete_type->user_id) return_zone(WAIT(incomplete_type->user_id->hash));
         return_zone(POSTPONE);
     }
     if (type_info->rtti_type->kind == MIR_TYPE_NAMED_SCOPE) {
@@ -8041,6 +8050,10 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
     // @Performance: This is really needed only in case the function argument list contains
     // conversion to Any, there is no need to scan everything, also there is possible option do
     // this check in analyze_instr_decl_ref pass. @travis 14-Oct-2020
+    //
+    // @travis <2022-05-05> The main issue here is that we don't know in advance which function
+    // implementation will be picked in case of overloading, so we cannot check only arguments
+    // converting to Any, this is pretty uggly, we shoud get rid of it in the future.
     for (usize i = 0; i < sarrlenu(call->args); ++i) {
         struct mir_instr *it = sarrpeek(call->args, i);
         struct mir_type  *t  = it->value.type;
@@ -8048,8 +8061,9 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
             t = *MIR_CEV_READ_AS(struct mir_type **, &it->value);
             bmagic_assert(t);
         }
-        if (!is_complete_type(ctx, t)) {
-            if (t->user_id) return_zone(WAIT(t->user_id->hash));
+        struct mir_type *incomplete_type;
+        if (is_incomplete_type(ctx, t, &incomplete_type)) {
+            if (incomplete_type->user_id) return_zone(WAIT(incomplete_type->user_id->hash));
             return_zone(POSTPONE);
         }
     }
@@ -8982,6 +8996,7 @@ void analyze_report_unresolved(struct context *ctx)
                 break;
             }
             default:
+                blog("Waiting instruction: %%%llu %s", instr->id, mir_instr_name(instr));
                 continue;
             }
             bassert(sym_name && "Invalid unresolved symbol name!");
