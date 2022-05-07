@@ -339,38 +339,43 @@ enum_count :: fn (T: type) s64 #comptime {
     return (cast(*TypeInfoEnum)info).variants.len;
 }
 
-/// Return `true` if the `T` type is an integer type.
+/// Returns `true` if the `T` type is an integer type.
 is_number :: fn (T: type) bool #comptime {
     return typeinfo(T).kind == TypeKind.INT;
 }
 
-/// Return `true` if the `T` type is an integer or floating point number type (f32 or f64).
+/// Returns `true` if the `T` type is an integer or floating point number type (f32 or f64).
 is_real_or_number :: fn (T: type) bool #comptime {
     return typeinfo(T).kind == TypeKind.INT || typeinfo(T).kind == TypeKind.REAL;
 }
 
-/// Return true if the `T` type is a signed integer type.
+/// Returns true if the `T` type is a signed integer type.
 is_signed_number :: fn (T: type) bool #comptime {
     info :: cast(*TypeInfoInt)typeinfo(T);
     return info.kind == TypeKind.INT && info.is_signed;
 }
 
-/// Return true if the `T` type is a pointer type.
+/// Returns true if the `T` type is a pointer type.
 is_pointer :: fn (T: type) bool #comptime {
     return typeinfo(T).kind == TypeKind.PTR;
 }
 
-/// Return true if the `T` type is a function type.
+/// Returns true if the `T` type is a function type.
 is_function :: fn (T: type) bool #comptime {
     return typeinfo(T).kind == TypeKind.FN;
 }
 
-/// Return true if the `T` type is a struct type.
+/// Returns true if the `T` type is a struct type.
 is_struct :: fn (T: type) bool #comptime {
     return typeinfo(T).kind == TypeKind.STRUCT;
 }
 
-/// Return signed or unsigned builtin number type of the requested size.
+/// Returns unique type identificator in compile-time.
+typeid :: fn (v: type) u64 #comptime {
+    return cast(u64) typeinfo(v);
+}
+
+/// Returns signed or unsigned builtin number type of the requested size.
 /// The `size_bytes` must be 1, 2, 4 or 8 Bytes.
 number_type :: fn (size_bytes: usize, is_signed: bool) type #comptime {
     switch size_bytes {
