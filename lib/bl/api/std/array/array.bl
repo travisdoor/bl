@@ -31,7 +31,7 @@ _Array :: struct {
 }
 
 /// Sets dynamic array to default state. If array contains already allocated memory `array_terminate`
-/// must be called first. Custom `allocator` can be specified.
+/// must be called first. 
 ///
 /// Initial capacity can be specified by `n` (count of elements). If `n` is greater than 0, needed
 /// memory is preallocated using specified `allocator`; otherwise no allocation is done.
@@ -43,7 +43,11 @@ array_init :: fn (_arr: *[..]?T, n: s64 = 0, allocator: *Allocator = null) #inli
     arr.ptr = null;
     arr.len = 0;
     arr.allocated = 0;
-    arr.allocator = allocator;
+    if !allocator {
+        arr.allocator = context().allocator;
+    } else {
+        arr.allocator = allocator;
+    }
     array_reserve(_arr, n);
 }
 
@@ -117,6 +121,7 @@ ensure_space :: fn (arr: *_Array, elem_size: usize, space: usize, exact: bool) {
         space *= 2;
     }
     tmp := arr.ptr;
+    // @Incomplete: Use reallocation here!!!
     arr.ptr = allocate_memory(arr.allocator, space * elem_size);
     if tmp != null {
         memcpy(arr.ptr, tmp, arr.allocated * elem_size);

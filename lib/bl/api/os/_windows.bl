@@ -122,11 +122,7 @@ __os_debug_break :: fn () #inline #compiler {
 // Should not be called from interpreter.
 __os_abort :: fn () #compiler {
     #if IS_DEBUG { __os_debug_break(); }
-    if _context.abort_fn {
-        _context.abort_fn();
-    } else {
-        __os_abort_default();
-    }
+    context().abort_fn();
 }
 
 __os_abort_default :: fn () #inline {

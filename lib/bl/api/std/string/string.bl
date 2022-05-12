@@ -43,39 +43,21 @@
 /// ```
 str_new :: fn {
     fn (allocator: *Allocator = null) string {
-        tmp : string #noinit;
-        tmp.ptr = alloc_block(0, allocator);
-        tmp.len = 0;
-        set_terminator(tmp);
-        return tmp;
+        return make_string(string_view.{}, 0, allocator);
     };
-
     fn (size: s64, allocator: *Allocator = null) string {
         assert(size > 0);
-        tmp : string #noinit;
-        tmp.ptr = alloc_block(auto size, allocator);
-        tmp.len = 0;
-        set_terminator(tmp);
-        return tmp;
+        return make_string(string_view.{}, size, allocator);
     };
-
     fn (v: string_view, allocator: *Allocator = null) string {
-        tmp : string #noinit;
-        tmp.ptr = alloc_block(auto v.len, allocator);
-        tmp.len = v.len;
-        memcpy(tmp.ptr, v.ptr, auto v.len);
-        set_terminator(tmp);
-        return tmp;
+        return make_string(v, v.len, allocator);
     };
-
     fn (cstr: *u8, allocator: *Allocator = null) string {
         len :: C.strlen(auto cstr);
-        tmp: string #noinit;
-        tmp.ptr = alloc_block(len, allocator);
-        tmp.len = auto len;
-        memcpy(tmp.ptr, cstr, len * sizeof(u8));
-        set_terminator(tmp);
-        return tmp;
+        return make_string(string_view.{
+            len = auto len,
+            ptr = cstr
+        }, auto len, allocator);
     };
 }
 
@@ -540,6 +522,17 @@ ctostr :: fn (cstr: *C.char, len : s64 = -1) string_view #inline {
 }
 
 #private
+
+make_string :: fn (data: string_view, cap: s64, allocator: *Allocator) string {
+    if !allocator { allocator = context().allocator; }
+    tmp : string #noinit;
+    tmp.ptr = alloc_block(auto cap, allocator);
+    tmp.len = data.len;
+    memcpy(tmp.ptr, data.ptr, auto data.len);
+    set_terminator(tmp);
+    return tmp;
+}
+
 STRING_BLOCK_SIZE :: 32 - sizeof(BlockHead);
 
 BlockHead :: struct {
@@ -562,14 +555,13 @@ make_more_room_if_needed :: fn (ptr: *u8, size: usize) *u8 {
 };
 
 alloc_block :: fn (size: usize, allocator: *Allocator) *u8 {
-    if !allocator { allocator = _context.allocator; }
+    assert(allocator);
     d := size / STRING_BLOCK_SIZE + 1;
     size = d * STRING_BLOCK_SIZE;
 
     alloc_size := size + sizeof(BlockHead) + sizeof(u8);
     tmp := cast(*BlockHead) allocate_memory(allocator, alloc_size);
-    if tmp == null { panic(); }
-    tmp.allocated_size = size; 
+    tmp.allocated_size = size;
     tmp.allocator = allocator;
 
     return cast(*u8) (cast(usize) tmp + sizeof(BlockHead));

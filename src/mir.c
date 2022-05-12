@@ -336,8 +336,10 @@ typedef struct {
 static struct mir_type *create_type_struct(struct context *ctx, create_type_struct_args_t *args);
 
 // Create incomplete struct type placeholder to be filled later.
-static struct mir_type *
-create_type_struct_incomplete(struct context *ctx, struct id *user_id, bool is_union);
+static struct mir_type *create_type_struct_incomplete(struct context *ctx,
+                                                      struct id      *user_id,
+                                                      bool            is_union,
+                                                      bool            has_base);
 
 typedef struct {
     struct mir_instr *fwd_decl;
@@ -1313,8 +1315,7 @@ static inline bool can_impl_cast(const struct mir_type *from, const struct mir_t
         from = mir_deref_type(from);
         to   = mir_deref_type(to);
 
-        while (true) {
-            if (!from) return false;
+        while (from) {
             if (type_cmp(from, to)) {
                 return true;
             } else {
@@ -2389,8 +2390,12 @@ static struct mir_type *complete_type_struct(struct context *ctx, complete_type_
 }
 
 struct mir_type *
-create_type_struct_incomplete(struct context *ctx, struct id *user_id, bool is_union)
+create_type_struct_incomplete(struct context *ctx, struct id *user_id, bool is_union, bool has_base)
 {
+    // @Incomplete
+    // @Incomplete
+    // @Incomplete
+    (void)has_base;
     struct mir_type *type          = create_type(ctx, MIR_TYPE_STRUCT, user_id);
     type->data.strct.is_incomplete = true;
     type->data.strct.is_union      = is_union;
@@ -10680,9 +10685,14 @@ static void ast_decl_var_global_or_struct(struct context *ctx, struct ast *ast_g
             const struct ast *ast_next_name = ast_name->data.ident.next;
             report_error(INVALID_NAME, ast_next_name, " cannot be multi-declared.");
         }
+
+        struct ast *struct_type_value = ast_value->data.expr_type.type;
+        bassert(struct_type_value->kind == AST_TYPE_STRUCT);
+        const bool has_base_type = struct_type_value->data.type_strct.base_type;
+
         // Set to const type fwd decl
         struct mir_type *fwd_decl_type =
-            create_type_struct_incomplete(ctx, ctx->ast.current_entity_id, false);
+            create_type_struct_incomplete(ctx, ctx->ast.current_entity_id, false, has_base_type);
 
         value = create_instr_const_type(ctx, ast_value, fwd_decl_type);
         analyze_instr_rq(value);
@@ -10721,14 +10731,9 @@ static void ast_decl_var_global_or_struct(struct context *ctx, struct ast *ast_g
     // SetInitializer instruction will be used to set actual value, also
     // implicit initialization block is created into MIR (such block does not
     // have LLVM representation -> globals must be evaluated in compile time).
-    if (ast_value) {
-        // Generate implicit global initializer block.
-        ast_create_global_initializer2(ctx, ast_value, decls);
-    } else {
-        // Global has no explicit initialization in code so we must
-        // create default global initializer.
-        ast_create_global_initializer2(ctx, NULL, decls);
-    }
+    //
+    // Generate implicit global initializer block.
+    ast_create_global_initializer2(ctx, ast_value, decls);
 
     // Struct decl cleanup.
     if (is_struct_decl) {

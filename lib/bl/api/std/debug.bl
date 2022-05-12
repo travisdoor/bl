@@ -35,20 +35,20 @@
 //! Set of common debugging tools.
 //! @Incomplete: documentation of `debugbreak` builtin.
 
-/// Print debug log using `_context.print_log_fn` function. See also :ref:`print`.
+/// Print debug log using current context `print_log_fn` function.
 print_log :: fn (format: string_view, args: ...) #inline {
-    _context.print_log_fn(PrintLogKind.MESSAGE, "", 0, format, args);
+    context().print_log_fn(PrintLogKind.MESSAGE, "", 0, format, args);
 };
 
-/// Print debug warning using `_context.print_log_fn` function.
+/// Print debug warning using current context `print_log_fn` function.
 print_warn :: fn (format: string_view, args: ...) #inline {
-    _context.print_log_fn(PrintLogKind.WARNING, "", 0, format, args);
+    context().print_log_fn(PrintLogKind.WARNING, "", 0, format, args);
 };
 
 /// Print debug error using _context.print_log_fn function. 
 print_err :: fn { print_err_e; print_err_msg; }
 
-/// Interrupt execution when `cond` is false. Assert use `_context.print_log_fn` to print out error 
+/// Interrupt execution when `cond` is false. Assert use current context `print_log_fn` to print out error
 /// message containing assert location in source code.
 ///
 /// **important**: All calls to the assert function are removed from release builds by default.
@@ -56,7 +56,7 @@ print_err :: fn { print_err_e; print_err_msg; }
 /// **warning**: There is no argument validation in case the assert call is removed from compilation.
 assert :: fn (cond: bool, loc := #call_location) #compiler {
     if cond { return; }
-    _context.print_log_fn(PrintLogKind.ASSERT, loc.file, loc.line, "Assertion failed!");
+    context().print_log_fn(PrintLogKind.ASSERT, loc.file, loc.line, "Assertion failed!");
     unreachable;
 }
 
@@ -153,19 +153,19 @@ panic_empty :: fn () {
 }
 
 panic_error :: fn (err: Error) {
-    _context.print_log_fn(PrintLogKind.PANIC, "", 0, "%", err);
+    context().print_log_fn(PrintLogKind.PANIC, "", 0, "%", err);
     unreachable;    
 }
 
 panic_msg :: fn (format: string_view, args: ...) {
-    _context.print_log_fn(PrintLogKind.PANIC, "", 0, format, args);
+    context().print_log_fn(PrintLogKind.PANIC, "", 0, format, args);
     unreachable;
 }
 
 print_err_e :: fn (err: Error) #inline {
-    _context.print_log_fn(PrintLogKind.ERROR, "", 0, "%", err);
+    context().print_log_fn(PrintLogKind.ERROR, "", 0, "%", err);
 };
 
 print_err_msg :: fn (format: string_view, args: ...) #inline {
-    _context.print_log_fn(PrintLogKind.ERROR, "", 0, format, args);
+    context().print_log_fn(PrintLogKind.ERROR, "", 0, format, args);
 };

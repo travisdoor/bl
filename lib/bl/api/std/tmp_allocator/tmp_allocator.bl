@@ -93,7 +93,7 @@ tmp_reset :: fn () #inline {
 ///
 /// **hint**: Call this method before main returns.
 tmp_release :: fn () #inline {
-    tmp_allocator_handler(null, AllocOp.RELEASE, 0);
+    //tmp_allocator_handler(null, AllocOp.RELEASE, 0);
     assert(_total_capacity == 0);
     assert(_total_allocated == 0);
 }
@@ -108,7 +108,7 @@ tmp_allocated_bytes :: fn () usize #inline {
 DEFAULT_BLOCK_SIZE : usize : 1024;
 DEFAULT_ALIGNMENT : usize : 16; // @INCOMPLETE This is platform depend.
 
-tmp_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, _ : *u8 = null, _ := std.str_view_empty, _ := 0) *u8 {
+tmp_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, _ : *u8, _: s32, _: string_view, _: s32) *u8 {
     switch operation {
         AllocOp.ALLOCATE {
             return allocate(size);
@@ -166,11 +166,14 @@ allocate_block :: fn (capacity: usize) *Block {
     block: *Block;
     // @Hack: Use default allocator in case the temporary is used as global context allocator to prevent
     // looping!
+    panic();
+    /*
     if _context.allocator == &tmp_allocator {
         block = auto allocate_memory(&default_allocator, allocation_size);
     } else {
         block = auto allocate_memory(_context.allocator, allocation_size);
     }
+    */
     assert(block);
     block.capacity = capacity;
     block.size = 0;
@@ -192,14 +195,16 @@ do_release :: fn (block: *Block) {
         _total_allocated -= block.capacity+sizeof(Block);
         _total_capacity -= block.capacity;
         next_block :: block.next;
-
+        panic();
         // @Hack: Use default allocator in case the temporary is used as global context allocator to prevent
         // looping!
+        /*
         if _context.allocator == &tmp_allocator {
             free_memory(&default_allocator, auto block);
         } else {
             free_memory(_context.allocator, auto block);
         }
+        */
 
         block = next_block;
     }

@@ -592,7 +592,7 @@ LLVMMetadataRef DI_complete_type(struct context *ctx, struct mir_type *type)
     }
 
     default: {
-        babort("Missing DI completition for type %d", type->kind);
+        babort("Missing DI completion for type %d", type->kind);
     }
     }
 

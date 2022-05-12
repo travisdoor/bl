@@ -318,15 +318,35 @@ Context :: struct {
     allocator: *Allocator;
 };
 
-/// Default implicit context. Implicit context is compiler internal global variable 
-/// containing basic context for whole assembly. This variable is mutable and can 
-/// be modified by user code. For example we can replace default memory allocator
-/// with custom one, this will affect all allocations made later.
-_context := Context.{
-                print_log_fn = &__print_log_default,
-                abort_fn     = &__os_abort_default,
-                allocator    = &default_allocator,
-            };
+// @Incomplete: Document
+push_context :: fn (ctx: Context) #inline {
+    current :: context();
+    if !ctx.print_log_fn { ctx.print_log_fn = current.print_log_fn; }
+    if !ctx.abort_fn     { ctx.abort_fn     = current.abort_fn;     }
+    if !ctx.allocator    { ctx.allocator    = current.allocator;    }
+
+    max_count :: _thread_context.data.len;
+    if _thread_context.len >= max_count {
+        panic("Attempt to push more than % application contexts.", max_count);
+    }
+    _thread_context.data[_thread_context.len] = ctx;
+    _thread_context.len += 1;
+}
+
+// @Incomplete: Document
+pop_context :: fn () #inline {
+    if _thread_context.len == 0 {
+        panic("No thread local context to pop.");
+    }
+    _thread_context.len -= 1;
+}
+
+// @Incomplete: Document
+context :: fn () *Context #inline {
+    index := _thread_context.len - 1;
+    if index < 0 { return &_default_context; }
+    return &_thread_context.data[index];
+}
 
 /// Contains all arguments passed from command line. First argument is executable name.
 command_line_arguments: []string_view #compiler;
@@ -375,6 +395,11 @@ typeid :: fn (v: type) u64 #comptime {
     return cast(u64) typeinfo(v);
 }
 
+/// Returns `true` if the `T` type is an enumerator type.
+is_enum :: fn (T: type) bool #comptime {
+    return typeinfo(T).kind == TypeKind.ENUM;
+}
+
 /// Returns signed or unsigned builtin number type of the requested size.
 /// The `size_bytes` must be 1, 2, 4 or 8 Bytes.
 number_type :: fn (size_bytes: usize, is_signed: bool) type #comptime {
@@ -389,3 +414,20 @@ number_type :: fn (size_bytes: usize, is_signed: bool) type #comptime {
     unreachable;
     return s32;
 }
+
+#private
+_thread_context: struct {
+    len: s32;
+    data: [32]Context;
+} #thread_local;
+
+// @Incomplete: Document
+/// Default implicit context. Implicit context is compiler internal global variable
+/// containing basic context for whole assembly. This variable is mutable and can
+/// be modified by user code. For example we can replace default memory allocator
+/// with custom one, this will affect all allocations made later.
+_default_context := Context.{
+    print_log_fn = &__print_log_default,
+    abort_fn     = &__os_abort_default,
+    allocator    = &default_allocator
+};

@@ -70,7 +70,7 @@
 //! 
 //! **note**: Debug allocator is thread safe. Init and terminate must be called from main thread.
 
-debug_allocator :: Allocator.{&handler};
+debug_allocator :: Allocator.{ &handler };
 
 /// Initialize Debug Allocator. This function internally swap current global context allocator to 
 /// debug one. Deinitialization must be done by [debug_allocator_terminate](#debug_allocator_terminate) call.
@@ -178,14 +178,15 @@ Meta :: struct {
 }
 
 handler :: fn (_: *Allocator, operation: AllocOp, size: usize, ptr : *u8 = null, file := std.str_view_empty, line := 0) *u8 {
+    using AllocOp;
     switch operation {
-        AllocOp.ALLOCATE {
+        ALLOCATE {
             return debug_malloc(size, file, line);
         }
-        AllocOp.FREE {
+        FREE {
             debug_free(ptr);
         }
-        AllocOp.RELEASE;
+        RELEASE;
         default { panic(); }
     }
     return null;
@@ -193,7 +194,8 @@ handler :: fn (_: *Allocator, operation: AllocOp, size: usize, ptr : *u8 = null,
 
 debug_malloc :: fn (size: usize, file: string_view, line: s32) *u8 {
     if size == 0 { panic("Zero allocation!"); }
-    mem :: allocate_memory(&default_allocator, size);
+    allocator :: context(ContextMode.PARENT).allocator;
+    mem :: allocator.handler(allocator, AllocOp.ALLOCATE, size);
 
     std.mutex_lock(&_mutex);
     defer std.mutex_unlock(&_mutex);
@@ -224,5 +226,7 @@ debug_free :: fn (ptr: *u8) {
         _total_allocated -= auto meta.allocated_size;
         std.tbl_erase_it(&_alloc_table, it);
     }
-    free_memory(&default_allocator, ptr);
+
+    allocator :: context(ContextMode.PARENT).allocator;
+    allocator.handler(allocator, AllocOp.FREE, 0, ptr);
 }
