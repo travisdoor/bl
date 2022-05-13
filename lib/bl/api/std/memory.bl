@@ -60,11 +60,13 @@ AllocOp :: enum {
     ALLOCATE;
     /// Reallocate previously allocated memory.
     REALLOCATE;
-    /// Free of previously allocated memory is required.
+    /// Free of previously allocated memory. This operation is optional (i.e. for pools).
     FREE;
     /// Release of all allocated memory if required. This operation is optional and is not supported
     /// by all allocators.
-    RELEASE;
+    RELEASE; // @Cleanup
+    /// Free all allocated memory. This operation is optional.
+    // RESET
 }
 
 /// Default allocator context base.

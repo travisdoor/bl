@@ -43,6 +43,10 @@ pool_allocator_init :: fn (pool: *PoolAllocator, block_size := DEFAULT_SIZE, all
     } else {
         pool.allocator = allocator;
     }
+    // Maybe we can store all meta data inside the pool itself?
+    array_init(&pool.used_blocks, 32, pool.allocator);
+    array_init(&pool.unused_blocks, 32, pool.allocator);
+    array_init(&pool.obsolete_blocks, 32, pool.allocator);
 }
 
 pool_allocator_terminate :: fn (pool: *PoolAllocator) {
@@ -61,6 +65,7 @@ pool_allocator_terminate :: fn (pool: *PoolAllocator) {
 DEFAULT_SIZE : usize : 65536; // 64kB
 
 handler :: fn (pool: *PoolAllocator, operation: AllocOp, size: usize, _: *u8, _: s32, _: string_view, _: s32) *u8 {
+    print_log("Allocate from the pool: %B.", size);
     using AllocOp;
     switch operation {
         ALLOCATE {
@@ -106,6 +111,7 @@ ensure_space :: fn (pool: *PoolAllocator, size: usize) {
         block_size *= 2;
     }
     if block_size > pool.block_size { resize(pool, block_size); }
+
     if pool.unused_blocks.len > 0 {
         // @Cleanup: Use pop?
         pool.current_block = pool.unused_blocks[pool.unused_blocks.len - 1];

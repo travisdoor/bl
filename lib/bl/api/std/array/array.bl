@@ -121,6 +121,11 @@ ensure_space :: fn (arr: *_Array, elem_size: usize, space: usize, exact: bool) {
         space *= 2;
     }
     tmp := arr.ptr;
+    // This is little bit sad, we use current allocator implicitly when no one was specified yet
+    // (init was not called and we assume the default zero initialized array is valid state). This
+    // can cause unexpected behavior in case we push/pop application context. However the allocator
+    // stays the same since it's set once.
+    if !arr.allocator { arr.allocator = context().allocator; }
     // @Incomplete: Use reallocation here!!!
     arr.ptr = allocate_memory(arr.allocator, space * elem_size);
     if tmp != null {
