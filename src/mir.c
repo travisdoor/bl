@@ -5733,6 +5733,14 @@ struct result analyze_instr_sizeof(struct context *ctx, struct mir_instr_sizeof 
     zone();
     bassert(szof->expr);
 
+    // First check if the expression type is complete, otherwise we cannot resolve the size
+    // correctly.
+    struct mir_type *incomplete_type;
+    if (is_incomplete_type(ctx, szof->expr->value.type, &incomplete_type)) {
+        if (incomplete_type->user_id) return_zone(WAIT(incomplete_type->user_id->hash));
+        return_zone(POSTPONE);
+    }
+
     if (analyze_slot(ctx, &analyze_slot_conf_basic, &szof->expr, NULL) != ANALYZE_PASSED) {
         return_zone(FAIL);
     }
@@ -5744,13 +5752,14 @@ struct result analyze_instr_sizeof(struct context *ctx, struct mir_instr_sizeof 
         type = MIR_CEV_READ_AS(struct mir_type *, &szof->expr->value);
         bmagic_assert(type);
     }
+    const usize bytes = type->store_size_bytes;
+    bassert(bytes > 0);
 
     // sizeof operator needs only type of input expression so we can erase whole call
     // tree generated to get this expression
     unref_instr(szof->expr);
     erase_instr_tree(szof->expr, false, false);
-
-    MIR_CEV_WRITE_AS(u64, &szof->base.value, type->store_size_bytes);
+    MIR_CEV_WRITE_AS(u64, &szof->base.value, bytes);
     return_zone(PASS);
 }
 
