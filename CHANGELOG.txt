@@ -39,6 +39,7 @@ Fix conversion of constants into slice.
 Change constant string representation from 'string' to 'string_view' aka []u8.
 Change syntax of compound initializers.
 Add naming of compound members for structs.
+Fix 0 size reported from sizeof for incomplete types.
 
 0.9.0 - PRE-RELEASE
 ---------------------------------------------------------------------------------------
