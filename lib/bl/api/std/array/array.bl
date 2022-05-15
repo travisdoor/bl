@@ -43,11 +43,7 @@ array_init :: fn (_arr: *[..]?T, n: s64 = 0, allocator: *Allocator = null) #inli
     arr.ptr = null;
     arr.len = 0;
     arr.allocated = 0;
-    if !allocator {
-        arr.allocator = context().allocator;
-    } else {
-        arr.allocator = allocator;
-    }
+    arr.allocator = allocator;
     array_reserve(_arr, n);
 }
 
@@ -68,6 +64,17 @@ array_terminate :: fn (_arr: *[..]?T) #inline {
 /// **note:** When there is no element to push provided, function will just allocate memory for
 /// a new empty element without any initialization.
 array_push :: fn { impl_push_empty; impl_push; }
+
+// @Incomplete
+array_pop :: fn (_arr: *[..]?T, out: *T) bool #inline {
+    arr := cast(*_Array) _arr;
+    // Eventually assert?
+    if arr.len == 0 { return false; }
+    elem :: get_elem_ptr(arr, sizeof(T), arr.len - 1);
+    memcpy(auto out, elem, sizeof(T));
+    arr.len -= 1;
+    return true;
+}
 
 /// Reserve heap memory for `n` elements in array.
 array_reserve :: fn (_arr: *[..]?T, n: s64) #inline {
@@ -120,18 +127,7 @@ ensure_space :: fn (arr: *_Array, elem_size: usize, space: usize, exact: bool) {
     } else {
         space *= 2;
     }
-    tmp := arr.ptr;
-    // This is little bit sad, we use current allocator implicitly when no one was specified yet
-    // (init was not called and we assume the default zero initialized array is valid state). This
-    // can cause unexpected behavior in case we push/pop application context. However the allocator
-    // stays the same since it's set once.
-    if !arr.allocator { arr.allocator = context().allocator; }
-    // @Incomplete: Use reallocation here!!!
-    arr.ptr = allocate_memory(arr.allocator, space * elem_size);
-    if tmp != null {
-        memcpy(arr.ptr, tmp, arr.allocated * elem_size);
-        free_memory(arr.allocator, tmp);
-    }
+    arr.ptr = reallocate_memory(arr.allocator, arr.ptr, space * elem_size);
     arr.allocated = space;
 };
 

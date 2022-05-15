@@ -1,8 +1,8 @@
 #import "std/string"
 #import "std/test"
+#import "std/debug_allocator"
 
 /////////////////////////////////////////////////////
-#import "std/debug_allocator"
 #load "arch.test.bl"
 #load "memory.test.bl"
 #load "defer.test.bl"
@@ -44,7 +44,16 @@
 #load "using.test.bl"
 /////////////////////////////////////////////////////
 
+debug_allocator: std.DebugAllocator;
+
 main :: fn () s32 {
-    return test_run(); 
+    using std;
+    debug_allocator = debug_allocator_make(application_context.allocator);
+    old_context :: application_context;
+    application_context.allocator = &debug_allocator;
+    result :: test_run();
+    debug_allocator_terminate(&debug_allocator);
+    application_context = old_context;
+    return result;
 } 
 

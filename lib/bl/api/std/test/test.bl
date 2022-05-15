@@ -29,7 +29,6 @@
 #import "std/thread"
 #import "std/string"
 #import "std/array"
-#import "std/debug_allocator"
 
 #load "std/debug.bl"
 
@@ -230,7 +229,7 @@ test_is_error :: fn (got_err: Error, expected_code: s32, loc := #call_location) 
     stop(loc);
 }
 
-/// Execute all registered test cases in current assembly. The `test_run` function uses compiler 
+/// Execute all registered test cases in current assembly. The `test_run` function uses compiler
 /// builtin `testcases()` function returning slice of all registered test cases in the current 
 /// assembly (all functions with hash directive `#test`).
 /// 
@@ -257,22 +256,15 @@ test_is_error :: fn (got_err: Error, expected_code: s32, loc := #call_location) 
 ///     return test_run(); 
 /// } 
 /// ```
-test_run :: fn (report_memory_leaks := true) s32 {
+test_run :: fn () s32 {
     sighup :: fn (_: C.int) {};
     C.signal(C.SIGHUP, &sighup);
-
-    if report_memory_leaks { std.debug_allocator_init(); }
-    defer std.debug_allocator_terminate();
 
     cases := testcases();
     if cases.len == 0 {
         return 0;
     }
     print("\n");
-    prev_abort_handler :: _context.abort_fn;
-    defer _context.abort_fn = prev_abort_handler;
-
-    _context.abort_fn = &abort_handler;
     _ci = 0;
 
     // setup cases
@@ -287,10 +279,14 @@ test_run :: fn (report_memory_leaks := true) s32 {
         array_push(&_queue, TestRun.{cases[i].func, cases[i].name, false, 0.});
     }
 
+    old_context :: application_context;
+    application_context.abort_fn = &abort_handler;
+
     loop _ci < _queue.len {
         t :: std.thread_create(&worker);
         std.thread_join(t);
     }
+    application_context = old_context;
 
     print("\nResults:\n");
     print("%\n", TEXT_LINE);
@@ -313,6 +309,7 @@ test_run :: fn (report_memory_leaks := true) s32 {
     // @HACK: Cannot print percent, escape sequence cannot be easily detected here.
     print("Executed: %, passed %%.\n", _queue.len, perc, "%");
     print("%\n", TEXT_LINE);
+
     return auto fc;
 }
 
@@ -352,6 +349,6 @@ worker :: fn (_: *u8) s32 {
 }
 
 stop :: fn (loc: *CodeLocation) #inline {
-     _context.print_log_fn(PrintLogKind.ERROR, loc.file, loc.line, "Test failed!");   
+    application_context.print_log_fn(PrintLogKind.ERROR, loc.file, loc.line, "Test failed!");
     unreachable;
 }

@@ -524,7 +524,6 @@ ctostr :: fn (cstr: *C.char, len : s64 = -1) string_view #inline {
 #private
 
 make_string :: fn (data: string_view, cap: s64, allocator: *Allocator) string {
-    if !allocator { allocator = context().allocator; }
     tmp : string #noinit;
     tmp.ptr = alloc_block(auto cap, allocator);
     tmp.len = data.len;
@@ -555,7 +554,6 @@ make_more_room_if_needed :: fn (ptr: *u8, size: usize) *u8 {
 };
 
 alloc_block :: fn (size: usize, allocator: *Allocator) *u8 {
-    assert(allocator);
     d := size / STRING_BLOCK_SIZE + 1;
     size = d * STRING_BLOCK_SIZE;
 
@@ -570,7 +568,6 @@ alloc_block :: fn (size: usize, allocator: *Allocator) *u8 {
 free_block :: fn (ptr: *u8) {
     head :: get_block_head(ptr);
     allocator :: head.allocator;
-    assert(allocator);
     free_memory(allocator, get_allocation_ptr(ptr));
 };
 

@@ -48,7 +48,7 @@
 //! deallocations.
 //!
 //! Functions like [alloc](#alloc) and [free](#free) internally use allocator set in global executable
-//! context `_context` variable. Global context allocator is by default set to `default_allocator`
+//! context `application_context` variable. Global context allocator is by default set to `default_allocator`
 //! and can be changed as needed. Main goal of internal use of  the allocator set in the global 
 //! context (used across all modules) is to have full control over what's going on and also give
 //! some advanced options to programmer (i.e. create his/her own allocator to have truly full 
@@ -66,7 +66,7 @@ AllocOp :: enum {
     /// by all allocators.
     RELEASE; // @Cleanup
     /// Free all allocated memory. This operation is optional.
-    // RESET
+    // RESET;
 }
 
 /// Default allocator context base.
@@ -88,30 +88,26 @@ AllocFn :: *fn (
 // @Incomplete: document
 /// Allocates `size` of bytes on heap using default allocator. Use `free` to free allocated memory 
 /// when it's no longer needed. Cause panic when allocation is not possible or `size` is  zero. This 
-/// function use allocator set in `_context.allocator`
+/// function use allocator set in `application_context.allocator`
 alloc :: fn (size: usize, loc := #call_location) *u8 #inline {
-    allocator :: context().allocator;
-    return allocate_memory(allocator, size, loc);
+    return allocate_memory(application_context.allocator, size, loc);
 };
 
-// @Cleanup: Remove this
-/// Same as `alloc` but allocated memory block is set to zero.
-calloc :: fn (num: usize, size: usize, loc := #call_location) *u8 #inline {
-    mem :: alloc(size * num, loc);
-    return zeromem(mem, size * num);
+realloc :: fn (ptr: *u8, size: usize, loc := #call_location) *u8 #inline {
+    return reallocate_memory(application_context.allocator, ptr, size, loc);
 };
 
 /// Free memory using current context allocator.
 ///
 /// **note**: The `ptr` can be `null`.
-free :: fn (ptr: *u8, loc := #call_location) {
-    allocator :: context().allocator;
-    free_memory(allocator, ptr, loc);
+free :: fn (ptr: *u8, loc := #call_location) #inline {
+    free_memory(application_context.allocator, ptr, loc);
 };
 
 /// Allocate memory directly using specified `allocator`.
 allocate_memory :: fn (allocator: *Allocator, size: usize, loc := #call_location) *u8 #inline {
-    assert(allocator && allocator.handler);
+    if !allocator { allocator = application_context.allocator; }
+    assert(allocator.handler);
     if size == 0 { panic("Attempt to allocate 0 bytes."); }
     mem :: allocator.handler(allocator, AllocOp.ALLOCATE, size, null, 0, loc.file, loc.line);
     if !mem { panic("Bad allocation!"); }
@@ -120,28 +116,23 @@ allocate_memory :: fn (allocator: *Allocator, size: usize, loc := #call_location
 
 /// Free memory previously allocated by specific `allocator`. The `ptr` can be null.
 free_memory :: fn (allocator: *Allocator, ptr: *u8, loc := #call_location) #inline {
-    assert(allocator && allocator.handler);
+    if !allocator { allocator = application_context.allocator; }
+    assert(allocator.handler);
     if !ptr { return; }
     allocator.handler(allocator, AllocOp.FREE, 0, ptr, 0, loc.file, loc.line);
 }
 
 // @Incomplete
 reallocate_memory :: fn (allocator: *Allocator, ptr: *u8, size: usize, loc := #call_location) *u8 #inline {
-    assert(allocator && allocator.handler);
+    if !allocator { allocator = application_context.allocator; }
+    assert(allocator.handler);
     if size == 0 { panic("Attempt to allocate 0 bytes."); }
     mem :: allocator.handler(allocator, AllocOp.REALLOCATE, size, ptr, 0, loc.file, loc.line);
     if !mem { panic("Bad allocation!"); }
     return mem;
 }
 
-/// Release all memory allocated by `allocator`.
-///
-/// **warning**: This operation is not supported by all allocators.
-release_memory :: fn (allocator: *Allocator, loc := #call_location) #inline {
-    assert(allocator && allocator.handler);
-    allocator.handler(allocator, AllocOp.RELEASE, 0, null, 0, loc.file, loc.line);
-}
-/// Copy memory of defined `size` from `src` to `dest`. Destination and source size must be at least 
+/// Copy memory of defined `size` from `src` to `dest`. Destination and source size must be at least
 /// `size` bytes.
 memcpy :: fn (dest: *u8, src: *u8, size: usize) {
     m :: size / sizeof(u64);
@@ -245,7 +236,7 @@ align_ptr_up :: fn (p: *u8, alignment: usize) (p: *u8, adjustment: usize)
 ///     return 0;
 /// }
 /// ```
-slice_init :: fn (slice: *[]?T, n: s64, zero_initialized := true, loc := #call_location) {
+slice_init :: fn (slice: *[]?T, n: s64, zero_initialized := true, allocator: *Allocator = null, loc := #call_location) {
     if n < 0 { panic("Attempt to allocate % elements in slice!", n); }
     if n == 0  {
         slice.ptr = null;
@@ -254,15 +245,15 @@ slice_init :: fn (slice: *[]?T, n: s64, zero_initialized := true, loc := #call_l
     }
     elem_size :: sizeof(T);
     bytes :: elem_size * auto n;
-    slice.ptr = auto alloc(bytes, loc);
+    slice.ptr = auto allocate_memory(allocator, bytes, loc);
     slice.len = n;
     if zero_initialized { zeromem(auto slice.ptr, bytes); }
 }
 
 /// Release slice memory allocated by [slice_init](#slice_init) call. 
-slice_terminate :: fn (slice: *[]?T, loc := #call_location) {
+slice_terminate :: fn (slice: *[]?T, allocator: *Allocator = null, loc := #call_location) {
     if slice.ptr {
-        free(auto slice.ptr, loc);
+        free_memory(allocator, auto slice.ptr, loc);
         slice.ptr = null;
     }
     slice.len = 0;
