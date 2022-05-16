@@ -5011,6 +5011,7 @@ static struct result analyze_instr_compound_regular(struct context            *c
                 struct mir_instr_designator *designator = (struct mir_instr_designator *)*value_ref;
                 bassert(designator->ident && designator->ident->kind == AST_IDENT);
                 struct id          *id    = &designator->ident->data.ident.id;
+                // We should have to support also inherrited members from the base structures.
                 struct scope_entry *found = scope_lookup(scope,
                                                          &(scope_lookup_args_t){
                                                              .id = id,

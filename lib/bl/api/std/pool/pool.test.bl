@@ -28,6 +28,13 @@ initialization_2 :: fn () #test {
     pool_release(&pool);
 }
 
+initialization_default :: fn () #test {
+    using std;
+    pool :: pool_default;
+    test_true(pool.block_size == POOL_DEFAULT_SIZE);
+    pool_release(&pool);
+}
+
 allocation_1 :: fn () #test {
     using std;
     defer test_allocator_reset();
