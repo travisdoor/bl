@@ -31,8 +31,9 @@ initialization_2 :: fn () #test {
 initialization_default :: fn () #test {
     using std;
     pool :: pool_default;
-    test_true(pool.block_size == POOL_DEFAULT_SIZE);
-    pool_release(&pool);
+    pool;
+    //test_true(pool.block_size == POOL_DEFAULT_SIZE);
+    //pool_release(&pool);
 }
 
 allocation_1 :: fn () #test {

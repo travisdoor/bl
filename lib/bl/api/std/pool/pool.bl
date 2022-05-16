@@ -27,7 +27,7 @@ pool_make :: fn (allocator: *Allocator, block_size := POOL_DEFAULT_SIZE) PoolAll
     return pool;
 }
 
-pool_default :: PoolAllocator.{ handler =  auto &handler, block_size = POOL_DEFAULT_SIZE };
+pool_default :: PoolAllocator.{ base =  Allocator.{ auto &handler }, block_size = POOL_DEFAULT_SIZE };
 
 pool_release :: fn (pool: *PoolAllocator) {
     reset(pool);
