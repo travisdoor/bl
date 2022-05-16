@@ -1,25 +1,7 @@
-main :: fn () s32 {
-    pool: PoolAllocator #noinit;
-    pool_init(&pool);
-    defer pool_release(&pool);
+#scope std
 
-    // @Incomplete: without auto!!!
-    // @Incomplete: without auto!!!
-    // @Incomplete: without auto!!!
-    push_context(Context.{ allocator = auto &pool });
+POOL_DEFAULT_SIZE : usize : 65536; // 64kB
 
-    arr: [..]s32;
-    loop i := 0; i < 1000; i += 1 {
-        array_push(&arr, i);
-    }
-
-    pop_context();
-    pool_reset(&pool);
-
-    return 0;
-}
-
-// Allocates & never frees...
 PoolAllocator :: struct #base Allocator {
     block_size: usize;
     allocator: *Allocator;
@@ -31,29 +13,22 @@ PoolAllocator :: struct #base Allocator {
     current_block: *u8;
     top: *u8;
     space: usize;
-    is_initialized: bool;
 }
 
-pool_init :: fn (pool: *PoolAllocator, block_size := DEFAULT_SIZE, allocator: *Allocator = null) {
-    zeromem(auto pool, sizeof(@pool));
+pool_make :: fn (allocator: *Allocator, block_size := POOL_DEFAULT_SIZE) PoolAllocator {
+    pool: PoolAllocator;
     pool.handler = auto &handler;
     pool.block_size = block_size;
+    pool.allocator = allocator;
 
-    if !allocator {
-        pool.allocator = context().allocator;
-    } else {
-        pool.allocator = allocator;
-    }
-    // Maybe we can store all meta data inside the pool itself?
-    array_init(&pool.used_blocks, 32, pool.allocator);
-    array_init(&pool.unused_blocks, 32, pool.allocator);
-    array_init(&pool.obsolete_blocks, 32, pool.allocator);
-    pool.is_initialized = true;
+    array_init(&pool.used_blocks, 0, pool.allocator);
+    array_init(&pool.unused_blocks, 0, pool.allocator);
+    array_init(&pool.obsolete_blocks, 0, pool.allocator);
+    return pool;
 }
 
 pool_release :: fn (pool: *PoolAllocator) {
     reset(pool);
-    print_log("terminate");
     loop i := 0; i < pool.unused_blocks.len; i += 1 {
         free_memory(pool.allocator, pool.unused_blocks[i]);
     }
@@ -61,7 +36,6 @@ pool_release :: fn (pool: *PoolAllocator) {
     array_terminate(&pool.used_blocks);
     array_terminate(&pool.unused_blocks);
     array_terminate(&pool.obsolete_blocks);
-    pool.is_initialized = false;
 }
 
 pool_reset :: fn (pool: *PoolAllocator) #inline {
@@ -70,20 +44,15 @@ pool_reset :: fn (pool: *PoolAllocator) #inline {
 
 #private
 
-DEFAULT_SIZE : usize : 65536; // 64kB
-//DEFAULT_SIZE : usize : 512;
 HEADER_SIZE :: sizeof(usize);
 
 handler :: fn (pool: *PoolAllocator, operation: AllocOp, size: usize, ptr: *u8, _: s32, _: string_view, _: s32) *u8 {
-    assert(pool.is_initialized);
     using AllocOp;
     switch operation {
         ALLOCATE {
-            print_log("allocate %B", size);
             return allocate(pool, size);
         }
         REALLOCATE {
-            print_log("reallocate");
             mem :: allocate(pool, size);
             if ptr {
                 orig_user_size :: get_allocation_user_size(ptr);
@@ -92,10 +61,7 @@ handler :: fn (pool: *PoolAllocator, operation: AllocOp, size: usize, ptr: *u8, 
             }
             return mem;
         }
-        FREE {
-            // Nothing
-            print_log("free");
-        }
+        FREE;
 
         default { panic(); }
     }
@@ -125,7 +91,6 @@ allocate :: fn (pool: *PoolAllocator, size: usize) *u8 {
 }
 
 reset :: fn (pool: *PoolAllocator) {
-    assert(pool.is_initialized);
     if pool.current_block {
         array_push(&pool.unused_blocks, pool.current_block);
         pool.current_block = null;
@@ -141,9 +106,15 @@ reset :: fn (pool: *PoolAllocator) {
 }
 
 ensure_space :: fn (pool: *PoolAllocator, size: usize) {
+    if pool.block_size == 0 { pool.block_size = POOL_DEFAULT_SIZE; }
     block_size := pool.block_size;
     loop (block_size < size) {
         block_size *= 2;
+    }
+    if pool.current_block {
+        // The current block has not enough space.
+        array_push(&pool.used_blocks, pool.current_block);
+        pool.current_block = null;
     }
     if block_size > pool.block_size { resize(pool, block_size); }
 
@@ -156,12 +127,7 @@ ensure_space :: fn (pool: *PoolAllocator, size: usize) {
 }
 
 resize :: fn (pool: *PoolAllocator, new_block_size: usize) {
-    print_log("resize");
     pool.block_size = new_block_size;
-    if pool.current_block {
-        array_push(&pool.obsolete_blocks, pool.current_block);
-        pool.current_block = null;
-    }
     loop i := 0; i < pool.used_blocks.len; i += 1 {
         array_push(&pool.obsolete_blocks, pool.used_blocks[i]);
     }

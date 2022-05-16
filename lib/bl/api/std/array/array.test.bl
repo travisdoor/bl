@@ -119,18 +119,40 @@ test_cast_to_slice :: fn () #test {
     foo(arr);
 }
 
+test_pop :: fn () #test {
+    arr: [..]s32;
+    defer array_terminate(&arr);
+    loop i := 0; i < 1000; i += 1 {
+        array_push(&arr, i);
+    }
+
+    expected : s32 = auto arr.len - 1;
+    value := 0;
+    loop array_pop(&arr, &value) {
+        test_true(expected >= 0);
+        test_eq(value, expected);
+        expected -= 1;
+    }
+    test_eq(arr.len, 0);
+}
+
 alloc_count := 0;
 free_count := 0;
 
-test_allocator :: Allocator.{ &test_allocator_handler };
+test_allocator :: Allocator.{ handler = &handler };
 
-test_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, ptr : *u8 = null, _ := std.str_view_empty, _ := 0) *u8 {
+handler :: fn (_: *Allocator, operation: AllocOp, size: usize, ptr: *u8, _: s32, _: string_view, _: s32) *u8 {
+    using AllocOp;
     switch operation {
-        AllocOp.ALLOCATE {
+        ALLOCATE {
             alloc_count += 1;
             return C.malloc(size);
         }
-        AllocOp.FREE {
+        REALLOCATE {
+            alloc_count += 1;
+            return C.realloc(ptr, size);
+        }
+        FREE {
             free_count += 1;
             C.free(ptr);
         }
@@ -155,6 +177,6 @@ test_custom_allocator :: fn () #test {
         test_eq(arr[i], i);
     }
     array_terminate(&arr);
-    test_eq(alloc_count, 6);
-    test_eq(alloc_count, free_count);
+    test_eq(6, alloc_count);
+    test_eq(1, free_count);
 }

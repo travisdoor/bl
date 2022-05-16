@@ -3773,6 +3773,7 @@ append_instr_alignof(struct context *ctx, struct ast *node, struct mir_instr *ex
     struct mir_instr_alignof *tmp = create_instr(ctx, MIR_INSTR_ALIGNOF, node);
     tmp->base.value.type          = ctx->builtin_types->t_usize;
     tmp->base.value.is_comptime   = true;
+    tmp->base.value.addr_mode     = MIR_VAM_RVALUE;
     tmp->expr                     = ref_instr(expr);
 
     append_current_block(ctx, &tmp->base);

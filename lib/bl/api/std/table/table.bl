@@ -290,7 +290,7 @@ is_initialized :: fn (tbl: *?T) bool #inline {
 bucket_alloc :: fn (tbl: *?T, bucket_count: s64) {
     TNode :: typeof_node(T);
     if !is_initialized(tbl) {
-        slice_init(&tbl.buckets, bucket_count, tbl.allocator);
+        slice_init(&tbl.buckets, bucket_count, true, tbl.allocator);
         assert(!tbl.head);
         head := cast(*TNode) allocate_memory(tbl.allocator, sizeof(TNode));
         head.next = auto head;
