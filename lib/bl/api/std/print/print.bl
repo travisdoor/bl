@@ -27,7 +27,6 @@
 // =================================================================================================
 
 #import "std/string"
-#import "std/tmp_allocator"
 #load "std/math.bl"
 
 //! # Print
@@ -110,7 +109,7 @@ bprint :: fn (buf: []u8, format: string_view, args: ...) s32 {
 ///
 /// See also [print](#print).
 tprint :: fn (format: string_view, args: ...) string #inline {
-    buf := std.str_new(format.len, &std.tmp_allocator);
+    buf := std.str_new(format.len, &std.default_temporary_allocator);
     _print_impl(&buf, format, args);
     return buf;
 };

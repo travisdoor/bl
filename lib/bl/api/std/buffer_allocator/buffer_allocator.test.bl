@@ -7,18 +7,19 @@ main :: fn () s32 {
 
 #private
 
-g_mem: [1024]u8;
-
 test_allocation :: fn () #test {
-    alc: std.BufferAllocator;
-    std.buffer_allocator_init(&alc, g_mem);
+    using std;
+    mem: [128]s32;
+    buf :: buffer_allocator_make(mem);
 
-    m :: allocate_memory(&alc, 64);
+    m, err :: allocate_memory(&buf, sizeof(s32));
+    test_ok(err);
     test_not_null(m);
-    test_eq(alc.used_bytes, 64);
-    free_memory(&alc, m); // should be fine!
+    test_eq(buf.used_bytes, sizeof(s32));
+    free_memory(&buf, m);
 }
 
+/*
 test_free :: fn () #test {
     alc: std.BufferAllocator;
     std.buffer_allocator_init(&alc, g_mem);
@@ -32,16 +33,6 @@ test_allocation_full :: fn () #test {
     m :: allocate_memory(&alc, auto g_mem.len);
     test_not_null(m);
     test_eq(alc.used_bytes, auto g_mem.len);
-    free_memory(&alc, m); // should be fine!
-}
-
-test_allocation_over_buffer :: fn () #test {
-    alc: std.BufferAllocator;
-    std.buffer_allocator_init(&alc, g_mem);
-
-    m :: allocate_memory(&alc, auto g_mem.len + 1);
-    test_not_null(m);
-    test_eq(alc.used_bytes, 0);
     free_memory(&alc, m); // should be fine!
 }
 
@@ -61,19 +52,4 @@ test_allocation_multiple :: fn () #test {
         test_eq(arr[i], i);
     }
 }
-
-test_allocation_exact :: fn () #test {
-    prev_allocated :: std.debug_allocator_allocated();
-
-    alc: std.BufferAllocator;
-    std.buffer_allocator_init(&alc, g_mem);
-
-    arr: [..]u8;
-    array_init(&arr, g_mem.len, &alc);
-    defer array_terminate(&arr);
-
-    loop i := 0; i < g_mem.len; i += 1 {
-        array_push(&arr, auto i);
-    }
-    test_eq(prev_allocated, std.debug_allocator_allocated());
-}
+*/

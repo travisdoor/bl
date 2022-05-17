@@ -172,36 +172,38 @@ Meta :: struct {
     line: s32;
 }
 
-handler :: fn (dbgalloc: *DebugAllocator, operation: AllocOp, size: usize, ptr: *u8, _: s32, file: string_view, line: s32) *u8 {
+handler :: fn (dbgalloc: *DebugAllocator, operation: AllocOp, size: usize, old_size: usize, ptr: *u8, _: s32, file: string_view, line: s32) (mem: *u8, err: Error) {
     using AllocOp;
     switch operation {
         ALLOCATE {
             return debug_malloc(dbgalloc, size, file, line);
         }
         REALLOCATE {
-            mem :: debug_malloc(dbgalloc, size, file, line);
+            mem, err :: debug_malloc(dbgalloc, size, file, line);
+            if !is_ok(err) { return mem, err; }
             if ptr {
                 it :: std.tbl_lookup(&dbgalloc.alloc_table, ptr);
                 if it == std.tbl_end(&dbgalloc.alloc_table) {
-                    panic("Attempt to reallocate invalid address %!", ptr);
+                    return null, error("Attempt to reallocate invalid address %!", ptr);
                 }
                 meta :: &it.value;
-                assert(meta.allocated_size > 0);
-                memcpy(mem, ptr, meta.allocated_size);
+                assert(meta.allocated_size == old_size);
+                memcpy(mem, ptr, old_size);
                 debug_free(dbgalloc, ptr);
             }
-            return mem;
+            return mem, ok();
         }
         FREE {
             debug_free(dbgalloc, ptr);
         }
         default { panic(); }
     }
-    return null;
+    return null, ok();
 }
 
-debug_malloc :: fn (dbgalloc: *DebugAllocator, size: usize, file: string_view, line: s32) *u8 {
-    mem :: allocate_memory(dbgalloc.allocator, size);
+debug_malloc :: fn (dbgalloc: *DebugAllocator, size: usize, file: string_view, line: s32) (mem: *u8, err: Error) {
+    mem, err :: allocate_memory(dbgalloc.allocator, size);
+    if !is_ok(err) return mem, err;
 
     std.mutex_lock(&dbgalloc.mutex);
     defer std.mutex_unlock(&dbgalloc.mutex);
@@ -216,7 +218,7 @@ debug_malloc :: fn (dbgalloc: *DebugAllocator, size: usize, file: string_view, l
     it.value.serial = dbgalloc.serial;
 
     dbgalloc.total_allocated += auto size;
-    return mem;
+    return mem, ok();
 }
 
 debug_free :: fn (dbgalloc: *DebugAllocator, ptr: *u8) {

@@ -12,7 +12,7 @@ MAIN_TEST_SUITE_FILEPATH :: "tests/src/main.test.bl";
 EXAMPLES_DIR :: "docs/master/examples";
 EXPECT_FAIL_DIR :: "tests/src/expect_fail";
 
-HARDCODED_MODULES :: [12]string_view.{
+HARDCODED_MODULES :: [11]string_view.{
                       "lib/bl/api/std/arg_parser/arg_parser.test.bl",
                       "lib/bl/api/std/array/array.test.bl",
                       "lib/bl/api/std/debug_allocator/debug_allocator.test.bl",
@@ -23,7 +23,6 @@ HARDCODED_MODULES :: [12]string_view.{
                       "lib/bl/api/std/sync/sync.test.bl",
                       "lib/bl/api/std/table/table.test.bl",
                       "lib/bl/api/std/thread/thread.test.bl",
-                      "lib/bl/api/std/tmp_allocator/tmp_allocator.test.bl",
                       "lib/bl/api/std/buffer_allocator/buffer_allocator.test.bl",
                      };
 
@@ -31,7 +30,7 @@ main :: fn () s32 {
     using std;
     
     defer arg_parser_ctx_terminate(&_args);
-    defer tmp_release();
+    defer temporary_release();
     
     wdir_init();
     dir_create(get_path(TMP_DIR));
@@ -46,7 +45,7 @@ main :: fn () s32 {
     start_time_ms :: os_tick_ms();
 
     loop c := 0; c < _args.test_count; c += 1 {
-        defer tmp_reset();
+        defer temporary_reset();
         print("---------------------------------- BL DOCTOR -----------------------------------\n");    
 
         // general
@@ -93,6 +92,7 @@ main :: fn () s32 {
     
     // cleanup
     dir_remove_all(get_path(TMP_DIR));
+    str_delete(&_wdir);
     return _errc;
 }
 
@@ -119,12 +119,11 @@ _errc := 0;
 
 wdir_init :: fn () {
     using std;
-    
     lhs: string_view;
     if str_split_by_last(#file, '/', &lhs, null) {
-        _wdir = str_new(lhs, &tmp_allocator);
+        _wdir = str_new(lhs);
     } else {
-        _wdir = str_new(&tmp_allocator);
+        _wdir = str_new();
     }
 }
 
@@ -218,16 +217,8 @@ get_expected_error :: fn (filepath: string_view, out_err: *s32) bool {
 }
 
 blc :: fn (file: string, args := "--no-bin --no-warning") s32 {
-    using std;
-    
-    cmd :: str_new(64);
-    defer str_delete(&cmd);
     _suitec += 1;
-    str_concat(&cmd, _compiler_path, " ", args, " ");   
-    str_append(&cmd, file);
-    str_append(&cmd, " ");
-    str_append(&cmd, get_verbosity());
-    return os_execute(cmd);
+    return os_execute(tprint("% % % %", _compiler_path, args, file, get_verbosity()));
 }
 
 report_ok :: fn (msg: string_view, file: string_view, state: s32) #inline {
@@ -255,7 +246,7 @@ test_file :: fn (file: string, kind := TestKind.RUNTIME, expected_state := TEST_
                 return;
             }
 
-            tmp := str_new();
+            tmp := str_new(); // @Cleanup: use tprint
             defer str_delete(&tmp);
             #if PLATFORM == Platform.WINDOWS {
                 str_append(&tmp, "out.exe ");
@@ -304,7 +295,7 @@ test_file :: fn (file: string, kind := TestKind.RUNTIME, expected_state := TEST_
 test_all_in_dir :: fn (dir: string, expect_fail := false) {
     using std;
     
-    file :: str_new(64);
+    file :: str_new(64); // @Cleanup: use tprint
     defer str_delete(&file);
     
     print("Testing files in directory '%':\n", dir);        

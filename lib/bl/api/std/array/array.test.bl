@@ -140,31 +140,33 @@ alloc_count := 0;
 free_count := 0;
 
 test_allocator :: Allocator.{ handler = &handler };
+test_allocator_reset :: fn () {
+    alloc_count = 0;
+    free_count  = 0;
+}
 
-handler :: fn (_: *Allocator, operation: AllocOp, size: usize, ptr: *u8, _: s32, _: string_view, _: s32) *u8 {
+handler :: fn (_: *Allocator, operation: AllocOp, size: usize, old_size: usize, ptr: *u8, _: s32, _: string_view, _: s32) (mem: *u8, err: Error) {
     using AllocOp;
     switch operation {
         ALLOCATE {
             alloc_count += 1;
-            return C.malloc(size);
+            return allocate_memory(null, size);
         }
         REALLOCATE {
             alloc_count += 1;
-            return C.realloc(ptr, size);
+            return reallocate_memory(null, ptr, old_size, size);
         }
         FREE {
             free_count += 1;
-            C.free(ptr);
+            free_memory(null, ptr);
         }
-        AllocOp.RELEASE;
         default { panic(); }
     }
-    return null;
+    return null, ok();
 }
 
 test_custom_allocator :: fn () #test {
-    alloc_count = 0;
-    free_count = 0;
+    defer test_allocator_reset();
 
     arr: [..]s32;
     array_init(&arr, 0, &test_allocator);

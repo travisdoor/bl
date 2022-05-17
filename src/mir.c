@@ -1696,6 +1696,7 @@ static inline bool is_load_needed(struct mir_instr *instr)
     case MIR_INSTR_CALL_LOC:
     case MIR_INSTR_COMPOUND:
     case MIR_INSTR_SIZEOF:
+    case MIR_INSTR_DESIGNATOR:
         return false;
 
     case MIR_INSTR_LOAD: {
@@ -5010,7 +5011,7 @@ static struct result analyze_instr_compound_regular(struct context            *c
             if ((*value_ref)->kind == MIR_INSTR_DESIGNATOR) {
                 struct mir_instr_designator *designator = (struct mir_instr_designator *)*value_ref;
                 bassert(designator->ident && designator->ident->kind == AST_IDENT);
-                struct id          *id    = &designator->ident->data.ident.id;
+                struct id *id = &designator->ident->data.ident.id;
                 // We should have to support also inherrited members from the base structures.
                 struct scope_entry *found = scope_lookup(scope,
                                                          &(scope_lookup_args_t){
@@ -5118,14 +5119,12 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
     if (!mir_is_global(&cmp->base) && cmp->is_naked) {
         // For naked non-compile time compounds we need to generate implicit temp storage to
         // keep all data.
-        struct mir_var *tmp_var = create_var_impl(ctx,
-                                                  &(create_var_impl_args_t){
-                                                      .name = unique_name(ctx, IMPL_COMPOUND_TMP),
-                                                      .alloc_type = type,
-                                                      .is_mutable = true,
-                                                  });
-
-        cmp->tmp_var = tmp_var;
+        cmp->tmp_var = create_var_impl(ctx,
+                                       &(create_var_impl_args_t){
+                                           .name       = unique_name(ctx, IMPL_COMPOUND_TMP),
+                                           .alloc_type = type,
+                                           .is_mutable = true,
+                                       });
     }
 
     return_zone(PASS);
@@ -9943,14 +9942,15 @@ struct mir_instr *ast_expr_compound(struct context *ctx, struct ast *cmp)
                 ast_id = ast_designator->data.ref.ident;
                 bassert(ast_id);
             }
-
-            value = append_instr_designator(ctx, ast_value, ast_id, ast(ctx, ast_init_value));
+            value = ast(ctx, ast_init_value);
+            set_compound_naked(value, false);
+            value = append_instr_designator(ctx, ast_value, ast_id, value);
         } else {
             value = ast(ctx, ast_value);
+            set_compound_naked(value, false);
         }
         bassert(value);
         sarrpeek(values, i) = value;
-        set_compound_naked(value, false);
     }
     return append_instr_compound(ctx, cmp, type, values, false);
 }
