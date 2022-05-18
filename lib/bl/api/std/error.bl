@@ -66,8 +66,6 @@
 //! }
 //! ```
 
-OK :: 0;
-
 _Error :: struct {
     msg: string_view;
     code: s32;
@@ -77,8 +75,7 @@ Error :: *_Error;
 
 /// Check whether `err` is no-error valid state. Returns `false` when `err` is `null`.
 is_ok :: fn (err: Error) bool #inline {
-    if !err { return false; }
-    return err.code == 0;
+    return err == null;
 }
 
 /// Check whether `err` is representing error `code`. Returns `false` when `err` is `null`.
@@ -89,8 +86,11 @@ is_error :: fn (err: Error, code: s32) bool #inline {
 
 /// Creates no-error :ref:`Error`.
 ok :: fn () Error #inline {
-    return error3(0, "");
+    return null;
 }
+
+/// No error.
+//ok : Error = null;
 
 /// Overloaded function setting up error state. Error state is global variable holding :ref:`Error` 
 /// instance, `error` function sets desired values and return pointer to this global. That means

@@ -15,6 +15,11 @@ PoolAllocator :: struct #base Allocator {
     space: usize;
 }
 
+pool_default :: PoolAllocator.{
+    base = Allocator.{ handler = auto &handler },
+    block_size = POOL_DEFAULT_SIZE
+};
+
 pool_make :: fn (allocator: *Allocator, block_size := POOL_DEFAULT_SIZE) PoolAllocator #inline {
     pool: PoolAllocator;
     pool.handler = auto &handler;
@@ -26,8 +31,6 @@ pool_make :: fn (allocator: *Allocator, block_size := POOL_DEFAULT_SIZE) PoolAll
     array_init(&pool.obsolete_blocks, 0, pool.allocator);
     return pool;
 }
-
-pool_default :: PoolAllocator.{ base =  Allocator.{ auto &handler }, block_size = POOL_DEFAULT_SIZE };
 
 pool_release :: fn (pool: *PoolAllocator) {
     reset(pool);
@@ -46,50 +49,39 @@ pool_reset :: fn (pool: *PoolAllocator) #inline {
 
 #private
 
-HEADER_SIZE :: sizeof(usize);
-
-handler :: fn (pool: *PoolAllocator, operation: AllocOp, size: usize, ptr: *u8, _: s32, _: string_view, _: s32) *u8 {
+handler :: fn (pool: *PoolAllocator, operation: AllocOp, size: usize, old_size: usize, ptr: *u8, _: s32, _: string_view, _: s32) (mem: *u8, err: Error) {
     using AllocOp;
     switch operation {
         ALLOCATE {
             return allocate(pool, size);
         }
         REALLOCATE {
-            mem :: allocate(pool, size);
-            if ptr {
-                orig_user_size :: get_allocation_user_size(ptr);
-                assert(orig_user_size > 0);
-                memcpy(mem, ptr, orig_user_size);
+            mem, err :: allocate(pool, size);
+            if !is_ok(err) { return mem, err; }
+            if !ptr { return mem, ok(); }
+            if old_size == 0 {
+                return mem, error("Original data ponter for reallocation set, but original data size is zero!");
             }
-            return mem;
+            memcpy(mem, ptr, old_size);
+            return mem, ok();
         }
         FREE;
 
         default { panic(); }
     }
-    return null;
+    return null, ok();
 }
 
-new_allocation :: fn (ptr: *u8, size: usize) *u8 #inline {
-    header := cast(*usize) ptr;
-    (@header) = size;
-
-    return auto (cast(usize) ptr + HEADER_SIZE);
-}
-
-get_allocation_user_size :: fn (ptr: *u8) usize #inline {
-    return @(cast(*usize) (cast(usize) ptr - HEADER_SIZE));
-}
-
-allocate :: fn (pool: *PoolAllocator, size: usize) *u8 {
+allocate :: fn (pool: *PoolAllocator, size: usize) (mem: *u8, err: Error) {
     assert(size > 0);
-    user_size :: size;
-    size += HEADER_SIZE; // Store allocation size before the user data.
-    if pool.space < size { ensure_space(pool, size); }
+    if pool.space < size {
+        err :: ensure_space(pool, size);
+        if !is_ok(err) { return null, err; }
+    }
     mem :: pool.top;
     pool.top = auto (cast(usize) pool.top + size);
     pool.space -= size;
-    return new_allocation(mem, user_size);
+    return mem, ok();
 }
 
 reset :: fn (pool: *PoolAllocator) {
@@ -107,7 +99,7 @@ reset :: fn (pool: *PoolAllocator) {
     array_clear(&pool.obsolete_blocks);
 }
 
-ensure_space :: fn (pool: *PoolAllocator, size: usize) {
+ensure_space :: fn (pool: *PoolAllocator, size: usize) Error {
     if pool.block_size == 0 { pool.block_size = POOL_DEFAULT_SIZE; }
     block_size := pool.block_size;
     loop (block_size < size) {
@@ -121,11 +113,14 @@ ensure_space :: fn (pool: *PoolAllocator, size: usize) {
     if block_size > pool.block_size { resize(pool, block_size); }
 
     if !array_pop(&pool.unused_blocks, &pool.current_block) {
-        pool.current_block = allocate_memory(pool.allocator, pool.block_size);
+        mem, err :: allocate_memory(pool.allocator, pool.block_size);
+        if !is_ok(err) { return err; }
+        pool.current_block = mem;
     }
 
     pool.space = pool.block_size;
     pool.top = pool.current_block;
+    return ok();
 }
 
 resize :: fn (pool: *PoolAllocator, new_block_size: usize) {

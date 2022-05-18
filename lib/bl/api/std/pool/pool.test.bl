@@ -31,9 +31,31 @@ initialization_2 :: fn () #test {
 initialization_default :: fn () #test {
     using std;
     pool :: pool_default;
-    pool;
-    //test_true(pool.block_size == POOL_DEFAULT_SIZE);
-    //pool_release(&pool);
+    test_true(pool.block_size == POOL_DEFAULT_SIZE);
+    pool_release(&pool);
+}
+
+allocation_default_copy :: fn () #test {
+    using std;
+
+    pool :: pool_default;
+
+    TEST_COUNT :: 100;
+    data: [TEST_COUNT]*s32 #noinit;
+
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        mem, err :: allocate_memory(&pool, sizeof(s32));
+        test_ok(err);
+        num := cast(*s32) mem;
+        @num = i;
+        data[i] = num;
+    }
+
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        test_eq(i, @data[i]);
+    }
+
+    pool_release(&pool);
 }
 
 allocation_1 :: fn () #test {
@@ -47,7 +69,9 @@ allocation_1 :: fn () #test {
     data: [TEST_COUNT]*s32 #noinit;
 
     loop i := 0; i < TEST_COUNT; i += 1 {
-        num := cast(*s32) allocate_memory(&pool, sizeof(s32));
+        mem, err :: allocate_memory(&pool, sizeof(s32));
+        test_ok(err);
+        num := cast(*s32) mem;
         @num = i;
         data[i] = num;
     }
@@ -72,7 +96,9 @@ allocation_2 :: fn () #test {
     data: [TEST_COUNT]*s32 #noinit;
 
     loop i := 0; i < TEST_COUNT; i += 1 {
-        num := cast(*s32) allocate_memory(&pool, sizeof(s32));
+        mem, err :: allocate_memory(&pool, sizeof(s32));
+        test_ok(err);
+        num := cast(*s32) mem;
         @num = i;
         data[i] = num;
     }
@@ -86,7 +112,9 @@ allocation_2 :: fn () #test {
     test_eq(free_count, 0);
 
     loop i := 0; i < TEST_COUNT; i += 1 {
-        num := cast(*s32) allocate_memory(&pool, sizeof(s32));
+        mem, err :: allocate_memory(&pool, sizeof(s32));
+        test_ok(err);
+        num := cast(*s32) mem;
         @num = i;
         data[i] = num;
     }
@@ -157,22 +185,22 @@ test_allocator_reset :: fn () {
     free_count  = 0;
 }
 
-handler :: fn (_: *Allocator, operation: AllocOp, size: usize, ptr: *u8, _: s32, _: string_view, _: s32) *u8 {
+handler :: fn (_: *Allocator, operation: AllocOp, size: usize, old_size: usize, ptr: *u8, _: s32, _: string_view, _: s32) (mem: *u8, err: Error) {
     using AllocOp;
     switch operation {
         ALLOCATE {
             alloc_count += 1;
-            return alloc(size);
+            return allocate_memory(null, size);
         }
         REALLOCATE {
             alloc_count += 1;
-            return realloc(ptr, size);
+            return reallocate_memory(null, ptr, old_size, size);
         }
         FREE {
             free_count += 1;
-            free(ptr);
+            free_memory(null, ptr);
         }
         default { panic(); }
     }
-    return null;
+    return null, ok();
 }

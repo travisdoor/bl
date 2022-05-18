@@ -94,55 +94,45 @@ BufferAllocator :: struct #base Allocator {
 /// Use this function to initialize the `allocator` with an external preallocated `buffer`. The 
 /// allocator **does not own** the buffer resource so there is no need to terminate the `allocator` 
 /// instance when it's no longer needed.
-buffer_allocator_init :: fn (allocator: *BufferAllocator, buffer: []u8) {
+buffer_allocator_make :: fn (buffer: []?T) BufferAllocator #inline {
+    buf: BufferAllocator;
     assert(buffer.len > 0 && buffer.ptr);
-    allocator.handler = auto &handler;
-    allocator.mem = buffer;
-    allocator.used_bytes = 0;
+    buf.handler = auto &handler;
+    buf.mem.ptr = auto buffer.ptr;
+    buf.mem.len = (cast(s64) sizeof(T)) * buffer.len;
+    buf.used_bytes = 0;
+    return buf;
 }
 
-// =================================================================================================
 #private
-// =================================================================================================
-handler :: fn (ctx: *BufferAllocator, operation: AllocOp, size: usize, ptr: *u8, _ := std.str_view_empty, _ := 0) *u8 {
-    assert(ctx.mem.ptr);
+
+handler :: fn (buf: *BufferAllocator, operation: AllocOp, size: usize, old_size: usize, ptr: *u8, _ := std.str_view_empty, _ := 0) (mem: *u8, err: Error) {
+    assert(buf.mem.ptr);
+    using AllocOp;
     switch operation {
-        AllocOp.ALLOCATE {
-            if size == 0 { panic("Attempt to allocate zero bytes."); }
-            mem: *u8 #noinit;
-            if ctx.used_bytes + size > auto ctx.mem.len { 
-                // No more space left in the buffer -> we should use context allocator or default
-                // allocator as fallback.
-                if _context.allocator == ctx {
-                    mem = allocate_memory(&default_allocator, size);
-                } else {
-                    mem = allocate_memory(_context.allocator, size);
-                }
-            } else {
-                mem = &ctx.mem[auto ctx.used_bytes];
-                ctx.used_bytes += size;
+        ALLOCATE   { return allocate(buf, size); }
+        REALLOCATE {
+            mem, err :: allocate(buf, size);
+            if !is_ok(err) { return mem, err; }
+            if !ptr { return mem, ok(); }
+            if old_size == 0 {
+                return mem, error("Original data ponter for reallocation set, but original data size is zero!");
             }
-            return mem;
+            memcpy(mem, ptr, old_size);
+            return mem, ok();
         }
-        AllocOp.FREE {
-            if ptr {
-                addr :: cast(usize) ptr;
-                begin :: cast(usize) ctx.mem.ptr;
-                end :: begin + cast(usize)ctx.mem.len - 1;
-                if addr < begin || addr > end {
-                    // Memory allocated by default allocator.
-                    if _context.allocator == ctx {
-                        free_memory(&default_allocator, ptr);
-                    } else {
-                        free_memory(_context.allocator, ptr);
-                    }
-                }
-            }
-        }
-        AllocOp.RELEASE {
-            ctx.used_bytes = 0;
-        }
+        FREE; // Nothing here
         default { panic(); }
     }
-    return null;
+    return null, ok();
+}
+
+allocate :: fn (buf: *BufferAllocator, size: usize) (mem: *u8, err: Error) {
+    needed_size :: buf.used_bytes + size;
+    if needed_size > auto buf.mem.len {
+        return null, error("The buffer is full! The buffer size is %B and required size is %B.", buf.mem.len, needed_size);
+    }
+    mem :: &buf.mem[auto buf.used_bytes];
+    buf.used_bytes += size;
+    return mem, ok();
 }

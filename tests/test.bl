@@ -3,11 +3,14 @@ Foo :: struct {
 }
 
 Bar :: struct #base Foo {
-    c: bool;
+    c: s32;
 }
 
-bar := Bar.{ a = 10, c = true };
+bar := Bar.{
+    base = Foo.{ 10 },
+    666
+};
 
 main :: fn () s32 {
-    return 0;
+    return bar.c;
 }

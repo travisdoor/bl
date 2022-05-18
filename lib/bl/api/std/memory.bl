@@ -54,6 +54,8 @@
 //! some advanced options to programmer (i.e. create his/her own allocator to have truly full 
 //! control over memory management of the program).
 
+#import "std/pool"
+
 /// Specify allocator opratation.
 AllocOp :: enum {
     /// Allocation of new memory block is required.
@@ -62,16 +64,6 @@ AllocOp :: enum {
     REALLOCATE;
     /// Free of previously allocated memory. This operation is optional (i.e. for pools).
     FREE;
-    /// Release of all allocated memory if required. This operation is optional and is not supported
-    /// by all allocators.
-    RELEASE; // @Cleanup
-    /// Free all allocated memory. This operation is optional.
-    // RESET;
-}
-
-/// Default allocator context base.
-Allocator :: struct {
-    handler: AllocFn;
 }
 
 /// Allocator handle function type.
@@ -79,22 +71,33 @@ AllocFn :: *fn (
     ctx: *Allocator,
     operation: AllocOp,
     size: usize,
+    old_size: usize,
     ptr: *u8,
     alignment: s32,
     file: string_view,
     line: s32
-) *u8;
+) (mem: *u8, err: Error);
+
+/// Default allocator context base.
+Allocator :: struct {
+    handler: AllocFn;
+}
 
 // @Incomplete: document
 /// Allocates `size` of bytes on heap using default allocator. Use `free` to free allocated memory 
 /// when it's no longer needed. Cause panic when allocation is not possible or `size` is  zero. This 
 /// function use allocator set in `application_context.allocator`
 alloc :: fn (size: usize, loc := #call_location) *u8 #inline {
-    return allocate_memory(application_context.allocator, size, loc);
+    mem, err :: allocate_memory(application_context.allocator, size, loc);
+    if !is_ok(err) { panic(err); }
+    return mem;
 };
 
-realloc :: fn (ptr: *u8, size: usize, loc := #call_location) *u8 #inline {
-    return reallocate_memory(application_context.allocator, ptr, size, loc);
+// @Incomplete: document
+realloc :: fn (ptr: *u8, old_size: usize, new_size: usize, loc := #call_location) *u8 #inline {
+    mem, err :: reallocate_memory(application_context.allocator, ptr, old_size, new_size, loc);
+    if !is_ok(err) { panic(err); }
+    return mem;
 };
 
 /// Free memory using current context allocator.
@@ -105,13 +108,19 @@ free :: fn (ptr: *u8, loc := #call_location) #inline {
 };
 
 /// Allocate memory directly using specified `allocator`.
-allocate_memory :: fn (allocator: *Allocator, size: usize, loc := #call_location) *u8 #inline {
+allocate_memory :: fn (allocator: *Allocator, size: usize, loc := #call_location) (mem: *u8, err: Error) #inline {
     if !allocator { allocator = application_context.allocator; }
     assert(allocator.handler);
-    if size == 0 { panic("Attempt to allocate 0 bytes."); }
-    mem :: allocator.handler(allocator, AllocOp.ALLOCATE, size, null, 0, loc.file, loc.line);
-    if !mem { panic("Bad allocation!"); }
-    return mem;
+    if size == 0 { return null, error("Attempt to allocate 0 bytes."); }
+    return allocator.handler(allocator, AllocOp.ALLOCATE, size, 0, null, 0, loc.file, loc.line);
+}
+
+// @Incomplete
+reallocate_memory :: fn (allocator: *Allocator, ptr: *u8, old_size: usize, size: usize, loc := #call_location) (mem: *u8, err: Error) #inline {
+    if !allocator { allocator = application_context.allocator; }
+    assert(allocator.handler);
+    if size == 0 { return null, error("Attempt to allocate 0 bytes."); }
+    return allocator.handler(allocator, AllocOp.REALLOCATE, size, old_size, ptr, 0, loc.file, loc.line);
 }
 
 /// Free memory previously allocated by specific `allocator`. The `ptr` can be null.
@@ -119,17 +128,7 @@ free_memory :: fn (allocator: *Allocator, ptr: *u8, loc := #call_location) #inli
     if !allocator { allocator = application_context.allocator; }
     assert(allocator.handler);
     if !ptr { return; }
-    allocator.handler(allocator, AllocOp.FREE, 0, ptr, 0, loc.file, loc.line);
-}
-
-// @Incomplete
-reallocate_memory :: fn (allocator: *Allocator, ptr: *u8, size: usize, loc := #call_location) *u8 #inline {
-    if !allocator { allocator = application_context.allocator; }
-    assert(allocator.handler);
-    if size == 0 { panic("Attempt to allocate 0 bytes."); }
-    mem :: allocator.handler(allocator, AllocOp.REALLOCATE, size, ptr, 0, loc.file, loc.line);
-    if !mem { panic("Bad allocation!"); }
-    return mem;
+    allocator.handler(allocator, AllocOp.FREE, 0, 0, ptr, 0, loc.file, loc.line);
 }
 
 /// Copy memory of defined `size` from `src` to `dest`. Destination and source size must be at least
@@ -245,7 +244,9 @@ slice_init :: fn (slice: *[]?T, n: s64, zero_initialized := true, allocator: *Al
     }
     elem_size :: sizeof(T);
     bytes :: elem_size * auto n;
-    slice.ptr = auto allocate_memory(allocator, bytes, loc);
+    mem, err :: allocate_memory(allocator, bytes, loc);
+    if !is_ok(err) { panic(err); }
+    slice.ptr = auto mem;
     slice.len = n;
     if zero_initialized { zeromem(auto slice.ptr, bytes); }
 }
@@ -282,26 +283,57 @@ slice_range :: fn (slice: []?T, start: s64, end: s64 = -1) []T #inline {
     return []T.{len, auto ptr_shift_bytes(slice.ptr, start * cast(s64) sizeof(T))};
 }
 
+/// Reduce allocated memory, but keeps biggest allocated chunk for later use.
+///
+/// **warning**:  All resources previously allocated by this allocator became invalid after reset.
+///
+/// **hint**: Call this method i.e. in every event loop (update) iteration.
+temporary_reset :: fn () #inline {
+    std.pool_reset(&temporary_pool);
+}
+
+/// Release all memory allocated by temporary allocator, this method is supposed to be called
+/// at exit of a program or thread.
+///
+/// **warning**:  All resources previously allocated by this allocator became invalid after release.
+///
+/// **hint**: Call this method before main returns.
+temporary_release :: fn () #inline {
+    std.pool_release(&temporary_pool);
+}
+
 /// Default memory allocator using libc malloc internally.
-default_allocator :: Allocator.{ &default_allocator_handler };
+default_allocator :: Allocator.{ handler = &default_allocator_handler };
+
+/// Default temporary allocator instance using pool internally.
+default_temporary_allocator :: Allocator.{ handler = &temporary_allocator_handler };
 
 #private
 
-default_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, ptr: *u8, _: s32, _: string_view, _: s32) *u8 {
+default_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, _: usize, ptr: *u8, _: s32, _: string_view, _: s32) (mem: *u8, err: Error) {
     using AllocOp;
     switch operation {
         ALLOCATE {
-            return C.malloc(size);
+            mem :: C.malloc(size);
+            if !mem { return null, error("Bad allocation."); }
+            return mem, ok();
         }
         REALLOCATE {
-            return C.realloc(ptr, size);
+            mem :: C.realloc(ptr, size);
+            if !mem { return null, error("Bad reallocation."); }
+            return mem, ok();
         }
         FREE {
             C.free(ptr);
         }
-        RELEASE;
 
         default { panic(); }
     }
-    return null;
+    return null, ok();
+}
+
+temporary_pool := std.pool_default #thread_local;
+
+temporary_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, old_size: usize, ptr: *u8, alignment: s32, file: string_view, line: s32) (mem: *u8, err: Error) {
+    return temporary_pool.handler(&temporary_pool, operation, size, old_size, ptr, alignment, file, line);
 }
