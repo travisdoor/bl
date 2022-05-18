@@ -558,7 +558,7 @@ alloc_block :: fn (size: usize, allocator: *Allocator) *u8 {
     size = d * STRING_BLOCK_SIZE;
 
     alloc_size := size + sizeof(BlockHead) + sizeof(u8);
-    mem, err :: allocate_memory(allocator, alloc_size);
+    mem, err :: allocate_memory(allocator, alloc_size, alignof(u8));
     if !is_ok(err) { panic(err); }
     tmp := cast(*BlockHead) mem;
     tmp.allocated_size = size;

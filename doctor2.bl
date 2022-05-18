@@ -1,0 +1,104 @@
+#!/usr/local/bin/blc --silent -run
+#import "std/arg_parser"
+#import "std/fs"
+
+TEMPORARY_DIR :: "DELETEME";
+
+Args :: struct #base std.ArgParserCtx {
+    stop_on_fail: bool;
+    test_count: s32;
+}
+
+args: Args;
+working_directory: string_view;
+temporary_directory: string_view;
+compiler: string_view;
+
+main :: fn () s32 {
+    using std;
+
+    defer temporary_release();
+    defer arg_parser_ctx_terminate(&args);
+
+    // Setup all paths.
+    working_directory = get_working_directory();
+    compiler = get_compiler_path();
+    temporary_directory = get_absolute_path(TEMPORARY_DIR);
+
+    dir_remove_all(temporary_directory, true);
+    dir_create(temporary_directory);
+    defer dir_remove_all(temporary_directory, true);
+    set_cwd(temporary_directory);
+    defer set_cwd(working_directory);
+
+    if !parse_args() { return 1; }
+
+    return 0;
+}
+
+parse_args :: fn () bool {
+    using std;
+
+    parser :: arg_parser_new();
+    defer arg_parser_delete(parser);
+
+    arg_parser_add(
+        parser,
+        "-sf",
+        "--stop-on-fail",
+        "Stop testing on fail.",
+        &fn (_: ArgParser, _: []string_view, ctx: *ArgParserCtx) (s32, Error) {
+            a: *Args = auto ctx;
+            a.stop_on_fail = true;
+            return 1, ok();
+        });
+
+    arg_parser_add(
+        parser,
+        "-c",
+        "--count",
+        "<N> Specify test repeat count.",
+        &fn (_: ArgParser, args: []string_view, ctx: *ArgParserCtx) (s32, Error) {
+            a: *Args = auto ctx;
+            if (args.len < 2) {
+                return 0, error("Expected count of test repeat!");
+            }
+            c :: str_to_s64(args[1]);
+            if c < 1 {
+                return 0, error("Test count is expected to be at least 1 not %!", c);
+            }
+            a.test_count = auto c;
+            return 2, ok();
+        });
+
+    state :: arg_parser_run(parser, command_line_arguments, &args, 1);
+    if !is_ok(state) {
+        print_err("%", state);
+        arg_parser_print_help(parser);
+        return false;
+    }
+    if args.help { return false; }
+    return true;
+}
+
+get_working_directory :: fn () string_view {
+    using std;
+    lhs: string_view;
+    if str_split_by_last(#file, '/', &lhs, null) {
+        return str_new(lhs, &default_temporary_allocator);
+    } else {
+        return str_new(&default_temporary_allocator);
+    }
+}
+
+get_compiler_path :: fn () string_view #inline {
+    #if PLATFORM == Platform.WINDOWS {
+        return get_absolute_path("bin/blc.exe");
+    } else {
+        return get_absolute_path("bin/blc");
+    }
+}
+
+get_absolute_path :: fn (relative: string_view) string_view #inline {
+    return tprint("%/%", working_directory, relative);
+}

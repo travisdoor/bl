@@ -56,6 +56,9 @@
 
 #import "std/pool"
 
+// @Document
+DEFAULT_ALIGNMENT : usize : alignof(f64);
+
 /// Specify allocator opratation.
 AllocOp :: enum {
     /// Allocation of new memory block is required.
@@ -73,7 +76,7 @@ AllocFn :: *fn (
     size: usize,
     old_size: usize,
     ptr: *u8,
-    alignment: s32,
+    alignment: usize,
     file: string_view,
     line: s32
 ) (mem: *u8, err: Error);
@@ -87,15 +90,15 @@ Allocator :: struct {
 /// Allocates `size` of bytes on heap using default allocator. Use `free` to free allocated memory 
 /// when it's no longer needed. Cause panic when allocation is not possible or `size` is  zero. This 
 /// function use allocator set in `application_context.allocator`
-alloc :: fn (size: usize, loc := #call_location) *u8 #inline {
-    mem, err :: allocate_memory(application_context.allocator, size, loc);
+alloc :: fn (size: usize, alignment := DEFAULT_ALIGNMENT, loc := #call_location) *u8 #inline {
+    mem, err :: allocate_memory(application_context.allocator, size, alignment, loc);
     if !is_ok(err) { panic(err); }
     return mem;
 };
 
 // @Incomplete: document
-realloc :: fn (ptr: *u8, old_size: usize, new_size: usize, loc := #call_location) *u8 #inline {
-    mem, err :: reallocate_memory(application_context.allocator, ptr, old_size, new_size, loc);
+realloc :: fn (ptr: *u8, old_size: usize, new_size: usize, alignment := DEFAULT_ALIGNMENT, loc := #call_location) *u8 #inline {
+    mem, err :: reallocate_memory(application_context.allocator, ptr, old_size, new_size, alignment, loc);
     if !is_ok(err) { panic(err); }
     return mem;
 };
@@ -108,19 +111,33 @@ free :: fn (ptr: *u8, loc := #call_location) #inline {
 };
 
 /// Allocate memory directly using specified `allocator`.
-allocate_memory :: fn (allocator: *Allocator, size: usize, loc := #call_location) (mem: *u8, err: Error) #inline {
+allocate_memory :: fn (allocator: *Allocator, size: usize, alignment := DEFAULT_ALIGNMENT, loc := #call_location) (mem: *u8, err: Error) #inline {
     if !allocator { allocator = application_context.allocator; }
     assert(allocator.handler);
+    assert(is_power_of_two(alignment));
     if size == 0 { return null, error("Attempt to allocate 0 bytes."); }
-    return allocator.handler(allocator, AllocOp.ALLOCATE, size, 0, null, 0, loc.file, loc.line);
+    mem, err :: allocator.handler(allocator, AllocOp.ALLOCATE, size, 0, null, alignment, loc.file, loc.line);
+    if !is_ok(err) { return mem, err; }
+    assert(is_aligned(mem, alignment));
+    return mem, err;
 }
 
 // @Incomplete
-reallocate_memory :: fn (allocator: *Allocator, ptr: *u8, old_size: usize, size: usize, loc := #call_location) (mem: *u8, err: Error) #inline {
+reallocate_memory :: fn (allocator: *Allocator, ptr: *u8, old_size: usize, size: usize, alignment := DEFAULT_ALIGNMENT, loc := #call_location) (mem: *u8, err: Error) #inline {
     if !allocator { allocator = application_context.allocator; }
     assert(allocator.handler);
+    assert(is_power_of_two(alignment));
     if size == 0 { return null, error("Attempt to allocate 0 bytes."); }
-    return allocator.handler(allocator, AllocOp.REALLOCATE, size, old_size, ptr, 0, loc.file, loc.line);
+    if ptr {
+        if old_size == 0 {
+            return ptr, error("Original data ponter for reallocation is set, but original data size is zero!");
+        }
+        if old_size == size { return ptr, ok(); }
+    }
+    mem, err :: allocator.handler(allocator, AllocOp.REALLOCATE, size, old_size, ptr, alignment, loc.file, loc.line);
+    if !is_ok(err) { return mem, err; }
+    assert(is_aligned(mem, alignment));
+    return mem, err;
 }
 
 /// Free memory previously allocated by specific `allocator`. The `ptr` can be null.
@@ -211,7 +228,6 @@ align_ptr_up :: fn (p: *u8, alignment: usize) (p: *u8, adjustment: usize)
     return p, adj;
 }
 
-
 // @Incomplete: Document!
 /// Allocate heap memory for `n` elements in `_v` slice. Allocated block is set to zero default value. 
 /// Allocated memory must be released by :ref:`slice_terminate` call.
@@ -244,7 +260,7 @@ slice_init :: fn (slice: *[]?T, n: s64, zero_initialized := true, allocator: *Al
     }
     elem_size :: sizeof(T);
     bytes :: elem_size * auto n;
-    mem, err :: allocate_memory(allocator, bytes, loc);
+    mem, err :: allocate_memory(allocator, bytes, alignof(T), loc);
     if !is_ok(err) { panic(err); }
     slice.ptr = auto mem;
     slice.len = n;
@@ -310,21 +326,21 @@ default_temporary_allocator :: Allocator.{ handler = &temporary_allocator_handle
 
 #private
 
-default_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, _: usize, ptr: *u8, _: s32, _: string_view, _: s32) (mem: *u8, err: Error) {
+default_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, _: usize, ptr: *u8, alignment: usize, _: string_view, _: s32) (mem: *u8, err: Error) {
     using AllocOp;
     switch operation {
         ALLOCATE {
-            mem :: C.malloc(size);
+            mem :: C.aligned_malloc(size, alignment);
             if !mem { return null, error("Bad allocation."); }
             return mem, ok();
         }
         REALLOCATE {
-            mem :: C.realloc(ptr, size);
+            mem :: C.aligned_realloc(ptr, size, alignment);
             if !mem { return null, error("Bad reallocation."); }
             return mem, ok();
         }
         FREE {
-            C.free(ptr);
+            C.aligned_free(ptr);
         }
 
         default { panic(); }
@@ -334,6 +350,6 @@ default_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize,
 
 temporary_pool := std.pool_default #thread_local;
 
-temporary_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, old_size: usize, ptr: *u8, alignment: s32, file: string_view, line: s32) (mem: *u8, err: Error) {
+temporary_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, old_size: usize, ptr: *u8, alignment: usize, file: string_view, line: s32) (mem: *u8, err: Error) {
     return temporary_pool.handler(&temporary_pool, operation, size, old_size, ptr, alignment, file, line);
 }

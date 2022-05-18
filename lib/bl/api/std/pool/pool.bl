@@ -49,19 +49,16 @@ pool_reset :: fn (pool: *PoolAllocator) #inline {
 
 #private
 
-handler :: fn (pool: *PoolAllocator, operation: AllocOp, size: usize, old_size: usize, ptr: *u8, _: s32, _: string_view, _: s32) (mem: *u8, err: Error) {
+handler :: fn (pool: *PoolAllocator, operation: AllocOp, size: usize, old_size: usize, ptr: *u8, alignment: usize, _: string_view, _: s32) (mem: *u8, err: Error) {
     using AllocOp;
     switch operation {
         ALLOCATE {
-            return allocate(pool, size);
+            return allocate(pool, size, alignment);
         }
         REALLOCATE {
-            mem, err :: allocate(pool, size);
+            mem, err :: allocate(pool, size, alignment);
             if !is_ok(err) { return mem, err; }
             if !ptr { return mem, ok(); }
-            if old_size == 0 {
-                return mem, error("Original data ponter for reallocation set, but original data size is zero!");
-            }
             memcpy(mem, ptr, old_size);
             return mem, ok();
         }
@@ -72,15 +69,18 @@ handler :: fn (pool: *PoolAllocator, operation: AllocOp, size: usize, old_size: 
     return null, ok();
 }
 
-allocate :: fn (pool: *PoolAllocator, size: usize) (mem: *u8, err: Error) {
+allocate :: fn (pool: *PoolAllocator, size: usize, alignment: usize) (mem: *u8, err: Error) {
     assert(size > 0);
+    mask :: ~(alignment - 1);
+    size += alignment - 1;
     if pool.space < size {
         err :: ensure_space(pool, size);
         if !is_ok(err) { return null, err; }
     }
-    mem :: pool.top;
+    mem := pool.top;
     pool.top = auto (cast(usize) pool.top + size);
     pool.space -= size;
+    mem = auto ((cast(usize) mem) + alignment - 1 & mask);
     return mem, ok();
 }
 

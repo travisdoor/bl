@@ -172,68 +172,62 @@ Meta :: struct {
     line: s32;
 }
 
-handler :: fn (dbgalloc: *DebugAllocator, operation: AllocOp, size: usize, old_size: usize, ptr: *u8, _: s32, file: string_view, line: s32) (mem: *u8, err: Error) {
+handler :: fn (dbgalloc: *DebugAllocator, operation: AllocOp, size: usize, old_size: usize, ptr: *u8, alignment: usize, file: string_view, line: s32) (mem: *u8, err: Error) {
     using AllocOp;
     switch operation {
         ALLOCATE {
-            return debug_malloc(dbgalloc, size, file, line);
+            mem, err :: allocate_memory(dbgalloc.allocator, size, alignment);
+            if !is_ok(err) { return mem, err; }
+            add_allocation(dbgalloc, mem, size, file, line);
+            return mem, err;
         }
         REALLOCATE {
-            mem, err :: debug_malloc(dbgalloc, size, file, line);
-            if !is_ok(err) { return mem, err; }
             if ptr {
-                it :: std.tbl_lookup(&dbgalloc.alloc_table, ptr);
-                if it == std.tbl_end(&dbgalloc.alloc_table) {
-                    return null, error("Attempt to reallocate invalid address %!", ptr);
-                }
-                meta :: &it.value;
-                assert(meta.allocated_size == old_size);
-                memcpy(mem, ptr, old_size);
-                debug_free(dbgalloc, ptr);
+                previously_allocated_size :: remove_allocation(dbgalloc, ptr);
+                assert(previously_allocated_size == old_size);
             }
+            mem, err :: reallocate_memory(dbgalloc.allocator, ptr, old_size, size, alignment);
+            if !is_ok(err) { return mem, err; }
+            add_allocation(dbgalloc, mem, size, file, line);
             return mem, ok();
         }
         FREE {
-            debug_free(dbgalloc, ptr);
+            if ptr {
+                remove_allocation(dbgalloc, ptr);
+                free_memory(dbgalloc.allocator, ptr);
+            }
         }
         default { panic(); }
     }
     return null, ok();
 }
 
-debug_malloc :: fn (dbgalloc: *DebugAllocator, size: usize, file: string_view, line: s32) (mem: *u8, err: Error) {
-    mem, err :: allocate_memory(dbgalloc.allocator, size);
-    if !is_ok(err) return mem, err;
-
-    std.mutex_lock(&dbgalloc.mutex);
-    defer std.mutex_unlock(&dbgalloc.mutex);
+add_allocation :: fn (dbgalloc: *DebugAllocator, ptr: *u8, size: usize, file: string_view, line: s32) {
+    mutex_lock(&dbgalloc.mutex);
+    defer mutex_unlock(&dbgalloc.mutex);
 
     dbgalloc.serial += 1;
     if dbgalloc.break_on == dbgalloc.serial { debugbreak; }
 
-    it := std.tbl_insert(&dbgalloc.alloc_table, mem);
+    it := tbl_insert(&dbgalloc.alloc_table, ptr);
     it.value.allocated_size = size;
     it.value.file = file;
     it.value.line = line;
     it.value.serial = dbgalloc.serial;
 
     dbgalloc.total_allocated += auto size;
-    return mem, ok();
 }
 
-debug_free :: fn (dbgalloc: *DebugAllocator, ptr: *u8) {
-    if ptr == null { return; }
-    it :: std.tbl_lookup(&dbgalloc.alloc_table, ptr);
-    if it == std.tbl_end(&dbgalloc.alloc_table) {
-        panic("Attempt to free already freed or unallocated memory on address %!", ptr); 
+remove_allocation :: fn (dbgalloc: *DebugAllocator, ptr: *u8) usize {
+    mutex_lock(&dbgalloc.mutex);
+    defer mutex_unlock(&dbgalloc.mutex);
+    it :: tbl_lookup(&dbgalloc.alloc_table, ptr);
+    if it == tbl_end(&dbgalloc.alloc_table) {
+        panic("Attempt to free already freed or unallocated memory on address %!", ptr);
     }
     meta :: &it.value;
-    { // CRITICAL
-        std.mutex_lock(&dbgalloc.mutex);
-        defer std.mutex_unlock(&dbgalloc.mutex);
-        dbgalloc.total_allocated -= auto meta.allocated_size;
-        std.tbl_erase_it(&dbgalloc.alloc_table, it);
-    }
-
-    free_memory(dbgalloc.allocator, ptr);
+    allocated_size :: meta.allocated_size;
+    dbgalloc.total_allocated -= auto allocated_size;
+    tbl_erase_it(&dbgalloc.alloc_table, it);
+    return allocated_size;
 }

@@ -94,30 +94,30 @@ BufferAllocator :: struct #base Allocator {
 /// Use this function to initialize the `allocator` with an external preallocated `buffer`. The 
 /// allocator **does not own** the buffer resource so there is no need to terminate the `allocator` 
 /// instance when it's no longer needed.
-buffer_allocator_make :: fn (buffer: []?T) BufferAllocator #inline {
+buffer_allocator_make :: fn (buffer: []u8) BufferAllocator #inline {
     buf: BufferAllocator;
     assert(buffer.len > 0 && buffer.ptr);
     buf.handler = auto &handler;
-    buf.mem.ptr = auto buffer.ptr;
-    buf.mem.len = (cast(s64) sizeof(T)) * buffer.len;
+    buf.mem = buffer;
     buf.used_bytes = 0;
     return buf;
 }
 
+buffer_allocator_reset :: fn (buf: *BufferAllocator) {
+    buf.used_bytes = 0;
+}
+
 #private
 
-handler :: fn (buf: *BufferAllocator, operation: AllocOp, size: usize, old_size: usize, ptr: *u8, _ := std.str_view_empty, _ := 0) (mem: *u8, err: Error) {
+handler :: fn (buf: *BufferAllocator, operation: AllocOp, size: usize, old_size: usize, ptr: *u8, alignment: usize, _ := std.str_view_empty, _ := 0) (mem: *u8, err: Error) {
     assert(buf.mem.ptr);
     using AllocOp;
     switch operation {
-        ALLOCATE   { return allocate(buf, size); }
+        ALLOCATE   { return allocate(buf, size, alignment); }
         REALLOCATE {
-            mem, err :: allocate(buf, size);
+            mem, err :: allocate(buf, size, alignment);
             if !is_ok(err) { return mem, err; }
             if !ptr { return mem, ok(); }
-            if old_size == 0 {
-                return mem, error("Original data ponter for reallocation set, but original data size is zero!");
-            }
             memcpy(mem, ptr, old_size);
             return mem, ok();
         }
@@ -127,12 +127,15 @@ handler :: fn (buf: *BufferAllocator, operation: AllocOp, size: usize, old_size:
     return null, ok();
 }
 
-allocate :: fn (buf: *BufferAllocator, size: usize) (mem: *u8, err: Error) {
+allocate :: fn (buf: *BufferAllocator, size: usize, alignment: usize) (mem: *u8, err: Error) {
+    mask :: ~(alignment - 1);
+    size += alignment - 1;
     needed_size :: buf.used_bytes + size;
     if needed_size > auto buf.mem.len {
         return null, error("The buffer is full! The buffer size is %B and required size is %B.", buf.mem.len, needed_size);
     }
-    mem :: &buf.mem[auto buf.used_bytes];
+    mem := &buf.mem[auto buf.used_bytes];
     buf.used_bytes += size;
+    mem = auto ((cast(usize) mem) + alignment - 1 & mask);
     return mem, ok();
 }

@@ -185,7 +185,7 @@ test_allocator_reset :: fn () {
     free_count  = 0;
 }
 
-handler :: fn (_: *Allocator, operation: AllocOp, size: usize, old_size: usize, ptr: *u8, _: s32, _: string_view, _: s32) (mem: *u8, err: Error) {
+handler :: fn (_: *Allocator, operation: AllocOp, size: usize, old_size: usize, ptr: *u8, _: usize, _: string_view, _: s32) (mem: *u8, err: Error) {
     using AllocOp;
     switch operation {
         ALLOCATE {

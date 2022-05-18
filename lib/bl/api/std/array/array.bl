@@ -81,7 +81,7 @@ array_reserve :: fn (_arr: *[..]?T, n: s64) #inline {
     arr := cast(*_Array) _arr;
     if n == 0 { return; }
     if n < 0 { panic("Invalid array capacity!"); }
-    ensure_space(arr, sizeof(T), auto n, true);
+    ensure_space(arr, sizeof(T), auto n, true, alignof(T));
 }
 
 /// Erase element on index `i`. Call to this function can cause reorderingof an dynamic array.
@@ -119,7 +119,7 @@ get_elem_ptr :: fn (arr: *_Array, elem_size: usize, i: s64) *u8 #inline {
     return ptr_shift_bytes(arr.ptr, i * cast(s64) elem_size);
 };
 
-ensure_space :: fn (arr: *_Array, elem_size: usize, space: usize, exact: bool) {
+ensure_space :: fn (arr: *_Array, elem_size: usize, space: usize, exact: bool, alignement: usize) {
     if space == 0 { return; }
     if arr.allocated >= space { return; }
     if arr.allocated == 0 {
@@ -127,7 +127,9 @@ ensure_space :: fn (arr: *_Array, elem_size: usize, space: usize, exact: bool) {
     } else {
         space *= 2;
     }
-    mem, err :: reallocate_memory(arr.allocator, arr.ptr, arr.allocated * elem_size, space * elem_size);
+    prev_bytes :: arr.allocated * elem_size;
+    needed_bytes :: space * elem_size;
+    mem, err :: reallocate_memory(arr.allocator, arr.ptr, prev_bytes, needed_bytes, alignement);
     if !is_ok(err) { panic(err); }
     arr.ptr = mem;
     arr.allocated = space;
@@ -143,6 +145,6 @@ impl_push :: fn (arr: *[..]?T, v: T) *T #inline {
 impl_push_empty :: fn (arr: *[..]?T) *T {
     elem_size :: sizeof(T);
     arr.len += 1;
-    ensure_space(auto arr, elem_size, auto arr.len, false);
+    ensure_space(auto arr, elem_size, auto arr.len, false, alignof(T));
     return auto get_elem_ptr(auto arr, elem_size, arr.len - 1);
 }

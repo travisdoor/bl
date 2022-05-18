@@ -1,16 +1,11 @@
-Foo :: struct {
-    a: s32;
-}
-
-Bar :: struct #base Foo {
-    c: s32;
-}
-
-bar := Bar.{
-    base = Foo.{ 10 },
-    666
-};
-
 main :: fn () s32 {
-    return bar.c;
+    print("s32 = %\n", alignof(s32));
+    print("s8 = %\n", alignof(s8));
+    print("f64 = %\n", alignof(f64));
+    print("[10]usize = %\n", alignof([10]usize));
+    print("[10]u8 = %\n", alignof([10]u8));
+    print("struct = %\n", alignof(struct { i: bool; j: usize; k: s32; }));
+    print("struct = %\n", alignof(struct { i: bool; j: usize; k: s32; l: [10]u8 }));
+    print("*struct = %\n", alignof(*struct { i: bool; j: usize; k: s32; l: [10]u8 }));
+    return 0;
 }
