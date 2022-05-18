@@ -2,17 +2,31 @@
 #import "std/arg_parser"
 #import "std/fs"
 
-TEMPORARY_DIR :: "DELETEME";
+TEMPORARY_DIR :: "TEMP";
+TEST_SRC_DIR :: "tests/src";
 
 Args :: struct #base std.ArgParserCtx {
     stop_on_fail: bool;
     test_count: s32;
 }
 
+State :: enum #flags {
+    OK = 0;
+    FAILED_COMPILATION;
+    FAILED_RUNTIME;
+    FAILED_INTERP;
+}
+
+Result :: struct {
+    name: string_view;
+    state: State;
+}
+
 args: Args;
 working_directory: string_view;
 temporary_directory: string_view;
 compiler: string_view;
+main_file: string_view;
 
 main :: fn () s32 {
     using std;
@@ -20,20 +34,77 @@ main :: fn () s32 {
     defer temporary_release();
     defer arg_parser_ctx_terminate(&args);
 
-    // Setup all paths.
     working_directory = get_working_directory();
     compiler = get_compiler_path();
-    temporary_directory = get_absolute_path(TEMPORARY_DIR);
+    temporary_directory = get_full_path(TEMPORARY_DIR);
+    main_file = get_full_path("tests/main.test.bl");
 
-    dir_remove_all(temporary_directory, true);
+    dir_remove_all(temporary_directory);
     dir_create(temporary_directory);
-    defer dir_remove_all(temporary_directory, true);
+    defer dir_remove_all(temporary_directory);
     set_cwd(temporary_directory);
     defer set_cwd(working_directory);
 
     if !parse_args() { return 1; }
 
+    results: [..]Result;
+    files: [..]string_view;
+    array_init(&results, 256, &default_temporary_allocator);
+    array_init(&files, 256, &default_temporary_allocator);
+    list_dir(&files, get_full_path(TEST_SRC_DIR));
+    start_time_ms :: os_tick_ms();
+
+    loop i := 0; i < files.len; i += 1 {
+        test_file(&results, files[i], true);
+    }
+
+    // Print results
+    failed_count := 0;
+    print("\n----------------------------------- RESULTS ------------------------------------\n");
+    loop i := 0; i < results.len; i += 1 {
+        result :: &results[i];
+        if result.state != Result.state.OK {
+            print("[ FAILED ] '%' (%)\n", result.name, result.state);
+            failed_count += 1;
+        }
+    }
+    if failed_count > 0 {
+        print("--------------------------------------------------------------------------------\n");
+    }
+    duration_ms :: os_tick_ms() - start_time_ms;
+    print("Test suite count:  %\n", results.len);
+    print("Test suite failed: %\n", failed_count);
+    print("Finished in:       %s\n", fmt_real(duration_ms*0.001, 2));
+    print("--------------------------------------------------------------------------------\n\n");
+
     return 0;
+}
+
+test_file :: fn (results: *[..]Result, filepath: string_view, interp := false) {
+    using State;
+    result := array_push(results);
+    if !std.str_split_by_last(filepath, '/', null, &result.name) {
+        result.name = filepath;
+    }
+    result.state = OK;
+    state := os_execute(tprint("% % % %", compiler, "--no-warning --silent", main_file, filepath));
+    if state != 0 {
+        set_flag(&result.state, FAILED_COMPILATION);
+        return;
+    }
+
+    if interp {
+        state := os_execute(tprint("% % % %", compiler, "--no-warning --silent --no-bin --run-tests", main_file, filepath));
+        if state != 0 {
+            set_flag(&result.state, FAILED_INTERP);
+            return;
+        }
+    }
+
+    state = os_execute("out.exe");
+    if state != 0 {
+        set_flag(&result.state, FAILED_RUNTIME);
+    }
 }
 
 parse_args :: fn () bool {
@@ -81,6 +152,23 @@ parse_args :: fn () bool {
     return true;
 }
 
+list_dir :: fn (paths: *[..]string_view, dir: string_view) {
+    using std;
+
+    list, err :: dir_scan(dir);
+    if !is_ok(err) {
+        print_err("%", err);
+    }
+    defer info_list_delete(list);
+
+    loop i := 0; i < list.len; i += 1 {
+        info :: &list[i];
+        if info.kind != InfoKind.DIRECTORY {
+            array_push(paths, tprint("%/%", dir, info.name));
+        }
+    }
+}
+
 get_working_directory :: fn () string_view {
     using std;
     lhs: string_view;
@@ -93,12 +181,12 @@ get_working_directory :: fn () string_view {
 
 get_compiler_path :: fn () string_view #inline {
     #if PLATFORM == Platform.WINDOWS {
-        return get_absolute_path("bin/blc.exe");
+        return get_full_path("bin/blc.exe");
     } else {
-        return get_absolute_path("bin/blc");
+        return get_full_path("bin/blc");
     }
 }
 
-get_absolute_path :: fn (relative: string_view) string_view #inline {
+get_full_path :: fn (relative: string_view) string_view #inline {
     return tprint("%/%", working_directory, relative);
 }

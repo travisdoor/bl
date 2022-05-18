@@ -96,10 +96,7 @@ debug_allocator_make :: fn (allocator: *Allocator) DebugAllocator {
 
 /// Terminate Debug Allocator. Prints current memory report when 
 /// [print_report](#print_report) is `true`.
-debug_allocator_terminate :: fn (dbgalloc: *DebugAllocator, print_report := true) {
-    if print_report {
-        print_memory_report(dbgalloc, true);
-    }
+debug_allocator_terminate :: fn (dbgalloc: *DebugAllocator) {
     std.tbl_terminate(&dbgalloc.alloc_table);
     std.mutex_terminate(&dbgalloc.mutex);
 }
@@ -154,14 +151,18 @@ print_memory_report :: fn (dbgalloc: *DebugAllocator, dump_leaks := false) {
     print("* Count of allocations %.\n", dbgalloc.alloc_table.len);
     print("****************************************************\n");
 
-    if dump_leaks && dbgalloc.alloc_table.len > 0 {
-        print("Dump memory leaks begin:\n");
-        loop it := std.tbl_begin(&dbgalloc.alloc_table); it != std.tbl_end(&dbgalloc.alloc_table); std.tbl_iter_next(&it) {
-            meta :: &it.value;
-            print("    [%] - %:% (% bytes)\n", meta.serial, meta.file, meta.line, meta.allocated_size);
-        }
-        print("Dump memory leaks end.\n");
+    if dump_leaks && dbgalloc.alloc_table.len > 0 { dump_memory_leaks(dbgalloc); }
+}
+
+dump_memory_leaks :: fn (dbgalloc: *DebugAllocator) s64 {
+    if dbgalloc.alloc_table.len == 0 { return 0; }
+    print("Dump memory leaks begin:\n");
+    loop it := std.tbl_begin(&dbgalloc.alloc_table); it != std.tbl_end(&dbgalloc.alloc_table); std.tbl_iter_next(&it) {
+        meta :: &it.value;
+        print("    [%] - %:% (% bytes)\n", meta.serial, meta.file, meta.line, meta.allocated_size);
     }
+    print("Dump memory leaks end.\n");
+    return dbgalloc.alloc_table.len;
 }
 
 #private
