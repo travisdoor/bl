@@ -11,6 +11,8 @@ main :: fn () s32 {
     application_context.allocator = &debug_allocator;
     application_context.print_log_fn = &dummy_logger;
 
+    //debug_allocator_break(&debug_allocator, 3);
+
     result := test_run(false);
     if dump_memory_leaks(&debug_allocator) > 0 {
         result += 1;

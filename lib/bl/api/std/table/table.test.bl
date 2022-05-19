@@ -1,9 +1,4 @@
-#import "std/test"
 #import "std/table"
-
-main :: fn () s32 {
-    return test_run();
-}
 
 #private
 TEST_COUNT :: 100000;

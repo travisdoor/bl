@@ -1,9 +1,4 @@
-#import "std/test"
 #import "std/array"
-
-main :: fn () s32 {
-    return test_run();    
-}
 
 #private
 test_basic_inserting_s32 :: fn () #test {

@@ -1,9 +1,4 @@
-#import "std/test"
 #import "std/thread"
-
-main :: fn () s32 {
-    return test_run();    
-}
 
 #private
 thread_create_test :: fn () #test {

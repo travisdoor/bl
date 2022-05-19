@@ -1,9 +1,4 @@
-#import "std/test"
 #import "std/buffer_allocator"
-
-main :: fn () s32 {
-    return test_run();    
-}
 
 #private
 

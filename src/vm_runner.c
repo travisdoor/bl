@@ -34,13 +34,15 @@
 
 void vm_tests_run(struct assembly *assembly)
 {
-    struct virtual_machine *vm    = &assembly->vm;
-    struct mir_fn         **cases = assembly->testing.cases;
-    printf("\nTesting start in compile time\n");
-    printf(TEXT_LINE "\n");
-
-    const s64 tc = arrlen(cases);
-    s32       fc = 0;
+    struct virtual_machine *vm             = &assembly->vm;
+    struct mir_fn         **cases          = assembly->testing.cases;
+    const bool              minimal_output = assembly->target->tests_minimal_output;
+    if (!minimal_output) {
+        printf("\nTesting start in compile time\n");
+        printf(TEXT_LINE "\n");
+    }
+    const s64 test_count   = arrlen(cases);
+    s32       failed_count = 0;
 
     struct case_meta {
         const char *name;
@@ -49,7 +51,7 @@ void vm_tests_run(struct assembly *assembly)
 
     array(struct case_meta) failed = NULL;
 
-    for (s64 i = 0; i < tc; ++i) {
+    for (s64 i = 0; i < test_count; ++i) {
         struct mir_fn *test_fn = cases[i];
         bassert(isflag(test_fn->flags, FLAG_TEST_FN));
         const f64 start = get_tick_ms();
@@ -64,24 +66,27 @@ void vm_tests_run(struct assembly *assembly)
             printf("[      | FAIL ] %s (%f ms)\n", name, runtime_ms);
             arrput(failed, ((struct case_meta){.name = name, .runtime_ms = runtime_ms}));
             builder.errorc = 0;
-            ++fc;
+            ++failed_count;
         }
     }
 
     s32 perc = 100;
-    if (fc > 0) perc = (s32)((f32)(tc - fc) / ((f32)tc * 0.01f));
-    printf("\nResults:\n");
-    printf(TEXT_LINE "\n");
-    for (s64 i = 0; i < arrlen(failed); ++i) {
-        struct case_meta *f = &failed[i];
-        printf("[      | FAIL ] %s (%f ms)\n", f->name, f->runtime_ms);
-    }
+    if (failed_count > 0)
+        perc = (s32)((f32)(test_count - failed_count) / ((f32)test_count * 0.01f));
+    if (!minimal_output) {
+        printf("\nResults:\n");
+        printf(TEXT_LINE "\n");
+        for (s64 i = 0; i < arrlen(failed); ++i) {
+            struct case_meta *f = &failed[i];
+            printf("[      | FAIL ] %s (%f ms)\n", f->name, f->runtime_ms);
+        }
 
-    if (arrlen(failed)) printf(TEXT_LINE "\n");
-    printf("Executed: %llu, passed %d%%.\n", (unsigned long long)tc, perc);
-    printf(TEXT_LINE "\n");
+        if (arrlen(failed)) printf(TEXT_LINE "\n");
+        printf("Executed: %llu, passed %d%%.\n", (unsigned long long)test_count, perc);
+        printf(TEXT_LINE "\n");
+    }
     arrfree(failed);
-    assembly->vm_run.last_execution_status = fc;
+    assembly->vm_run.last_execution_status = failed_count;
 }
 
 void vm_build_entry_run(struct assembly *assembly)

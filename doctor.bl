@@ -1,304 +1,275 @@
 #!/usr/local/bin/blc --silent -run
+#import "std/arg_parser"
 #import "std/fs"
 #import "std/io"
-#import "std/arg_parser"
 
-BL_EXE_PATH_WIN  :: "bin/blc.exe";
-BL_EXE_PATH_UNIX :: "bin/blc";
-
-// paths
-TMP_DIR :: ".temp";
-MAIN_TEST_SUITE_FILEPATH :: "tests/src/main.test.bl";
+TEMPORARY_DIR :: "tmp-doctor";
+TEST_SRC_DIR :: "tests/src";
 EXAMPLES_DIR :: "docs/master/examples";
 EXPECT_FAIL_DIR :: "tests/src/expect_fail";
 
-HARDCODED_MODULES :: [11]string_view.{
-                      "lib/bl/api/std/arg_parser/arg_parser.test.bl",
-                      "lib/bl/api/std/array/array.test.bl",
-                      "lib/bl/api/std/debug_allocator/debug_allocator.test.bl",
-                      "lib/bl/api/std/dlib/dlib.test.bl",
-                      "lib/bl/api/std/fs/fs.test.bl",
-                      "lib/bl/api/std/print/print.test.bl",
-                      "lib/bl/api/std/string/string.test.bl",
-                      "lib/bl/api/std/sync/sync.test.bl",
-                      "lib/bl/api/std/table/table.test.bl",
-                      "lib/bl/api/std/thread/thread.test.bl",
-                      "lib/bl/api/std/buffer_allocator/buffer_allocator.test.bl",
-                     };
-
-main :: fn () s32 {
-    using std;
-    
-    defer arg_parser_ctx_terminate(&_args);
-    defer temporary_release();
-    
-    wdir_init();
-    dir_create(get_path(TMP_DIR));
-    set_cwd(get_path(TMP_DIR));
-    _args.test_count = 1;
-    if !parse_args() { return 1; }
-    #if PLATFORM == Platform.WINDOWS {
-        _compiler_path = get_path(BL_EXE_PATH_WIN);
-    } else {
-        _compiler_path = get_path(BL_EXE_PATH_UNIX);
+SKIP :: [1]Skip.{
+    Skip.{
+        name = "tmp_allocator.test.bl",
+        kind = TestKind.TEST_RUN
     }
-    start_time_ms :: os_tick_ms();
+};
 
-    loop c := 0; c < _args.test_count; c += 1 {
-        defer temporary_reset();
-        print("---------------------------------- BL DOCTOR -----------------------------------\n");    
+MODULES :: [12]string_view.{
+    "lib/bl/api/std/arg_parser/arg_parser.test.bl",
+    "lib/bl/api/std/array/array.test.bl",
+    "lib/bl/api/std/debug_allocator/debug_allocator.test.bl",
+    "lib/bl/api/std/dlib/dlib.test.bl",
+    "lib/bl/api/std/fs/fs.test.bl",
+    "lib/bl/api/std/print/print.test.bl",
+    "lib/bl/api/std/string/string.test.bl",
+    "lib/bl/api/std/sync/sync.test.bl",
+    "lib/bl/api/std/table/table.test.bl",
+    "lib/bl/api/std/thread/thread.test.bl",
+    "lib/bl/api/std/pool/pool.test.bl",
+    "lib/bl/api/std/buffer_allocator/buffer_allocator.test.bl",
+};
 
-        // general
-        print("Test general suite:\n");    
-        {
-            path :: get_path(MAIN_TEST_SUITE_FILEPATH);
-            test_file(path, TestKind.RUNTIME);
-            test_file(path, TestKind.TEST);
-        }
-
-        // modules
-        print("Test modules:\n");    
-        loop i := 0; i < HARDCODED_MODULES.len; i += 1 {
-            path :: get_path(HARDCODED_MODULES[i]);
-            test_file(path, TestKind.RUNTIME);
-            //test_file(file, TestKind.TEST);
-        }
-
-        { // examples
-
-            path :: get_path(EXAMPLES_DIR);
-            test_all_in_dir(path);
-        }
-
-        print("Test misc:\n");    
-        { // gen-docs
-            path :: get_path("docs/master/make.bl");
-            test_file(path, TestKind.ANALYZE);
-        }
-
-        // expect fail to compile
-        {
-            path :: get_path(EXPECT_FAIL_DIR);
-            test_all_in_dir(path, true);
-        }
-
-        duration_ms :: os_tick_ms() - start_time_ms;
-        print("\n----------------------------------- RESULTS ------------------------------------\n");
-        print("Test suite count:  %\n", _suitec);
-        print("Test suite failed: %\n", _errc);
-        print("Finished in:       %s\n", fmt_real(duration_ms*0.001, 2));
-        print("--------------------------------------------------------------------------------\n\n");
-    }
-    
-    // cleanup
-    dir_remove_all(get_path(TMP_DIR));
-    str_delete(&_wdir);
-    return _errc;
+TestKind :: enum {
+    EXECUTE;
+    TEST_EXECUTE;
+    TEST_RUN;
+    TEST_EXPECT_FAIL;
 }
 
-#private
-TestKind :: enum {
-    RUNTIME;
-    COMPILE_TIME;
-    TEST;
-    ANALYZE;
+State :: enum #flags {
+    OK = 0;
+    FAILED_COMPILE;
+    FAILED_EXECUTE;
+    FAILED_RUN;
+    FAILED_EXPECT_FAIL;
+}
+
+Result :: struct {
+    name: string_view;
+    state: State;
+}
+
+Skip :: struct {
+    name: string_view;
+    kind: TestKind;
 }
 
 Args :: struct #base std.ArgParserCtx {
-    diag_mode: bool;
-    stop_on_fail: bool;
-    test_count: s32;
+    keep_temporary: bool;
 }
 
-TEST_RUN_OK :: 0;
-_args: Args;
-_compiler_path: string;
-_wdir: string;
-_suitec := 0;
-_errc := 0;
+args: Args;
+working_directory: string_view;
+temporary_directory: string_view;
+compiler: string_view;
+main_file: string_view;
 
-wdir_init :: fn () {
+main :: fn () s32 {
     using std;
-    lhs: string_view;
-    if str_split_by_last(#file, '/', &lhs, null) {
-        _wdir = str_new(lhs);
+
+    defer temporary_release();
+    defer arg_parser_ctx_terminate(&args);
+
+    working_directory = get_working_directory();
+    compiler = get_compiler_path();
+    temporary_directory = get_full_path(TEMPORARY_DIR);
+    main_file = get_full_path("tests/main.test.bl");
+
+    dir_remove_all(temporary_directory);
+    dir_create(temporary_directory);
+    set_cwd(temporary_directory);
+    defer cleanup();
+
+    if !parse_args() { return 1; }
+
+    start_time_ms :: os_tick_ms();
+
+    results: [..]Result;
+    files: [..]string_view;
+    array_init(&results, 256, &default_temporary_allocator);
+    array_init(&files, 256, &default_temporary_allocator);
+
+    print_sections :: args.positional.len == 0;
+
+    using TestKind;
+
+    // Test main suite
+    if print_sections {
+        print("\nMain suite execution:\n");
     } else {
-        _wdir = str_new();
+        print("Testing: %\n", args.positional);
+    }
+    list_dir(&files, get_full_path(TEST_SRC_DIR));
+    loop i := 0; i < files.len; i += 1 {
+        test_file(&results, files[i], TEST_EXECUTE);
+    }
+    if print_sections { print("\nMain suite interpretation:\n"); }
+    loop i := 0; i < files.len; i += 1 {
+        test_file(&results, files[i], TEST_RUN);
+    }
+
+    // Test modules
+    if print_sections { print("\nModules:\n"); }
+    loop i := 0; i < MODULES.len; i += 1 {
+        test_file(&results, get_full_path(MODULES[i]), TEST_EXECUTE);
+    }
+
+    // Test examples
+    if print_sections { print("\nExamples:\n"); }
+    array_clear(&files);
+    list_dir(&files, get_full_path(EXAMPLES_DIR));
+    loop i := 0; i < files.len; i += 1 {
+        test_file(&results, files[i], EXECUTE);
+    }
+
+    // Test fail expected
+    if print_sections { print("\nExpect fail:\n"); }
+    array_clear(&files);
+    list_dir(&files, get_full_path(EXPECT_FAIL_DIR));
+    loop i := 0; i < files.len; i += 1 {
+        test_file(&results, files[i], TEST_EXPECT_FAIL);
+    }
+
+    // Print results
+    failed_count := 0;
+    print("\n----------------------------------- RESULTS ------------------------------------\n");
+    loop i := 0; i < results.len; i += 1 {
+        result :: &results[i];
+        if result.state != State.OK {
+            print("[ FAILED ] '%' (%)\n", result.name, result.state);
+            failed_count += 1;
+        }
+    }
+    if failed_count > 0 {
+        print("--------------------------------------------------------------------------------\n");
+    }
+    duration_ms :: os_tick_ms() - start_time_ms;
+    print("Test suite count:  %\n", results.len);
+    print("Test suite failed: %\n", failed_count);
+    print("Finished in:       %s\n", fmt_real(duration_ms*0.001, 2));
+    print("--------------------------------------------------------------------------------\n\n");
+
+    return 0;
+}
+
+cleanup :: fn () {
+    using std;
+    set_cwd(working_directory);
+    if !args.keep_temporary {
+        dir_remove_all(temporary_directory);
     }
 }
 
-get_path :: fn (sub: string_view) string #inline {
-    return tprint("%/%", _wdir, sub);
+test_file :: fn (results: *[..]Result, filepath: string_view, kind: TestKind) {
+    using std;
+    using State;
+    name: string_view;
+    if !str_split_by_last(filepath, '/', null, &name) {
+        name = filepath;
+    }
+    test_only : []string_view : args.positional;
+    excluded := test_only.len > 0;
+    loop i := 0; i < test_only.len; i += 1 {
+        other_name :: test_only[i];
+        if str_match(name, other_name) {
+            excluded = false;
+            break;
+        }
+    }
+    if excluded { return; }
+
+    result := array_push(results);
+    result.name  = name;
+    result.state = OK;
+
+    loop i := 0; i < SKIP.len; i += 1 {
+        skip :: &SKIP[i];
+        if str_match(skip.name, result.name) && kind == skip.kind { return; }
+    }
+
+    using TestKind;
+    switch kind {
+        EXECUTE {
+            state := os_execute(tprint("% % %", compiler, "--no-warning --silent", filepath));
+            if state != 0 {
+                set_flag(&result.state, FAILED_COMPILE);
+                return;
+            }
+            state = os_execute(tprint("% %", get_exe_name(), silent_output())); // 'out' on unix!
+            if state != 0 {
+                set_flag(&result.state, FAILED_EXECUTE);
+                print("[      | FAIL ] %\n", result.name);
+            } else {
+                print("[ PASS |      ] %\n", result.name);
+            }
+        }
+
+        TEST_EXECUTE {
+            state := os_execute(tprint("% % % %", compiler, "--no-warning --silent", main_file, filepath));
+            if state != 0 {
+                set_flag(&result.state, FAILED_COMPILE);
+                return;
+            }
+            state = os_execute(get_exe_name()); // 'out' on unix!
+            if state != 0 {
+                set_flag(&result.state, FAILED_EXECUTE);
+            }
+        }
+
+        TEST_RUN {
+            state := os_execute(tprint("% % % %", compiler, "--no-warning --silent --no-bin --run-tests --tests-minimal-output", main_file, filepath));
+            if state != 0 { set_flag(&result.state, FAILED_RUN); return; }
+        }
+
+        TEST_EXPECT_FAIL {
+            is_present, expected_code :: get_expected_error(filepath);
+            if !is_present {
+                set_flag(&result.state, FAILED_EXPECT_FAIL);
+                return;
+            }
+            state := os_execute(tprint("% % % %", compiler, "--no-warning --silent --no-bin", filepath, silent_output()));
+            if state != expected_code {
+                set_flag(&result.state, FAILED_EXPECT_FAIL);
+                print("[      | FAIL ] % Expected '%' but returned '%'\n", result.name, errtostr(expected_code), errtostr(state));
+                return;
+            } else {
+                print("[ PASS |      ] %\n", result.name);
+            }
+        }
+    }
 }
 
 parse_args :: fn () bool {
     using std;
-    
+
     parser :: arg_parser_new();
     defer arg_parser_delete(parser);
 
     arg_parser_add(
         parser,
-        "-d",
-        "--diag",
-        "Diagnostic mode.",
+        "",
+        "--keep-tmp",
+        "Keep temporary directory.",
         &fn (_: ArgParser, _: []string_view, ctx: *ArgParserCtx) (s32, Error) {
             a: *Args = auto ctx;
-            a.diag_mode = true;
+            a.keep_temporary = true;
             return 1, ok();
         });
 
-
-    arg_parser_add(
-        parser,
-        "-sf",
-        "--stop-on-fail",
-        "Stop testing on fail.",
-        &fn (_: ArgParser, _: []string_view, ctx: *ArgParserCtx) (s32, Error) {
-            a: *Args = auto ctx;
-            a.stop_on_fail = true;
-            return 1, ok();
-        });
-
-    arg_parser_add(
-        parser,
-        "-c",
-        "--count",
-        "<N> Specify test repeat count.",
-        &fn (_: ArgParser, args: []string_view, ctx: *ArgParserCtx) (s32, Error) {
-            a: *Args = auto ctx;
-            if (args.len < 2) {
-                return 0, error("Expected count of test repeat!");
-            }
-            c :: str_to_s64(args[1]);
-            if c < 1 {  
-                return 0, error("Test count is expected to be at least 1 not %!", c);
-            }
-            a.test_count = auto c;
-            return 2, ok();
-        });
-
-    state :: arg_parser_run(parser, command_line_arguments, &_args, 1);   
+    state :: arg_parser_run(parser, command_line_arguments, &args, 1);
     if !is_ok(state) {
         print_err("%", state);
         arg_parser_print_help(parser);
         return false;
     }
-    if _args.help { return false; }
+    if args.help { return false; }
     return true;
 }
 
-get_verbosity :: fn () string_view #inline {
-    if _args.diag_mode { return ""; } // print all
-    #if PLATFORM == Platform.WINDOWS {
-        return "2>nul 1>nul";
-    } else {
-        return "1>/dev/null 2>/dev/null";
-    }
-}
-
-get_expected_error :: fn (filepath: string_view, out_err: *s32) bool {
+list_dir :: fn (paths: *[..]string_view, dir: string_view) {
     using std;
-    
-    file, err1 :: file_open(filepath, FileOpenMode.READ);
-    defer file_close(file);
-    if !is_ok(err1) { print_err("%", err1); return false; }
-    content, err2 :: read_string(file);
-    defer str_delete(&content);
-    if !is_ok(err2) { print_err("%", err2); return false; }
-    
-    tmp :: str_split_by(content, '@');
-    defer slice_terminate(&tmp);
-    if tmp.len < 3 { return false; }
-    err :: strtoerr(tmp[1]);
-    if err == -1 { return false; }
-    @out_err = err;
-    return true;
-}
 
-blc :: fn (file: string, args := "--no-bin --no-warning") s32 {
-    _suitec += 1;
-    return os_execute(tprint("% % % %", _compiler_path, args, file, get_verbosity()));
-}
-
-report_ok :: fn (msg: string_view, file: string_view, state: s32) #inline {
-    print("[   OK   ] % '%' (Process exit with state: %)\n", msg, file, state);
-}
-
-report_failed :: fn (msg: string_view, file: string_view, state: s32) #inline {
-    print("[ FAILED ] % '%' (Process exit with state: %)\n", msg, file, state);
-    if _args.stop_on_fail { panic("Abort on fail!"); }
-    _errc += 1;
-}
-
-test_file :: fn (file: string, kind := TestKind.RUNTIME, expected_state := TEST_RUN_OK) {
-    using std;
-    
-    state: s32;
-    using TestKind;
-    switch kind {
-        RUNTIME {
-            state = blc(file, "--no-warning");
-            if state == expected_state {
-                report_ok("Compilation", file, state);
-            } else {
-                report_failed("Compilation", file, state);
-                return;
-            }
-
-            tmp := str_new(); // @Cleanup: use tprint
-            defer str_delete(&tmp);
-            #if PLATFORM == Platform.WINDOWS {
-                str_append(&tmp, "out.exe ");
-            } else {
-                str_append(&tmp, "./out ");
-            }
-            str_append(&tmp, get_verbosity());
-            state = os_execute(tmp);
-            if state == 0 {
-                report_ok("Execution", file, state);
-            } else {
-                report_failed("Execution", file, state);
-            } 
-        }
-
-        COMPILE_TIME {
-            state = blc(file, "--no-warning --run");
-            if state == expected_state {
-                report_ok("Interpretation", file, state);
-            } else {
-                report_failed("Interpretation", file, state);
-            }
-        }
-        
-        TEST {
-            state = blc(file, "--run-tests --no-bin --no-warning");
-            if state == expected_state {
-                report_ok("Run compile time tests", file, state);
-            } else {
-                report_failed("Run compile time tests", file, state);
-            }
-        }
-
-        ANALYZE {
-            state = blc(file, "--no-warning --no-bin");
-            if state == expected_state {
-                report_ok("Analyze", file, state);
-            } else {
-                report_failed("Analyze", file, state);
-            }
-        }
-    }
-    dir_remove_all(get_path(TMP_DIR), false);
-}
-
-test_all_in_dir :: fn (dir: string, expect_fail := false) {
-    using std;
-    
-    file :: str_new(64); // @Cleanup: use tprint
-    defer str_delete(&file);
-    
-    print("Testing files in directory '%':\n", dir);        
     list, err :: dir_scan(dir);
     if !is_ok(err) {
         print_err("%", err);
@@ -308,20 +279,65 @@ test_all_in_dir :: fn (dir: string, expect_fail := false) {
     loop i := 0; i < list.len; i += 1 {
         info :: &list[i];
         if info.kind != InfoKind.DIRECTORY {
-            str_clear(&file);
-            str_concat(&file, dir, "/", info.name);
-            if expect_fail {
-                error_code: s32 #noinit;
-                if get_expected_error(file, &error_code) {
-                    test_file(file, TestKind.ANALYZE, error_code);
-                } else {
-                    print_err("Cannot get expected error code for file '%'", file);
-                }
-            } else {
-                test_file(file);
-            }
+            array_push(paths, tprint("%/%", dir, info.name));
         }
     }
+}
+
+get_working_directory :: fn () string_view {
+    using std;
+    lhs: string_view;
+    if str_split_by_last(#file, '/', &lhs, null) {
+        return str_new(lhs, &default_temporary_allocator);
+    } else {
+        return str_new(&default_temporary_allocator);
+    }
+}
+
+get_full_path :: fn (relative: string_view) string_view #inline {
+    return tprint("%/%", working_directory, relative);
+}
+
+silent_output :: fn () string_view #comptime {
+    #if PLATFORM == Platform.WINDOWS {
+        return "2>nul 1>nul";
+    } else {
+        return "1>/dev/null 2>/dev/null";
+    }
+}
+
+get_compiler_path :: fn () string_view #inline {
+    #if PLATFORM == Platform.WINDOWS {
+        return get_full_path("bin/blc.exe");
+    } else {
+        return get_full_path("bin/blc");
+    }
+}
+
+get_exe_name :: fn () string_view #comptime {
+    #if PLATFORM == Platform.WINDOWS {
+        return "out.exe";
+    } else {
+        return "out";
+    }
+}
+
+get_expected_error :: fn (filepath: string_view) (is_present: bool, error: s32) {
+    using std;
+
+    file, err1 :: file_open(filepath, FileOpenMode.READ);
+    defer file_close(file);
+    if !is_ok(err1) { print_err("%", err1); return false, 0; }
+    content, err2 :: read_string(file);
+    defer str_delete(&content);
+    if !is_ok(err2) { print_err("%", err2); return false, 0; }
+
+    tmp :: str_split_by(content, '@');
+    defer slice_terminate(&tmp);
+    if tmp.len < 3 { return false, 0; }
+    err :: strtoerr(tmp[1]);
+    if err == -1 { return false, 0; }
+    return true, err;
 }
 
 // ERROR CODES (This must be keept in sync with src/error.h)
@@ -420,4 +436,13 @@ strtoerr :: fn (s: string_view) s32 {
         if std.str_match(variant.name, s) { return auto variant.value; }
     }
     return -1;
+}
+
+errtostr :: fn (code: s32) string_view {
+    info :: cast(*TypeInfoEnum) typeinfo(BlError);
+    loop i := 0; i < info.variants.len; i += 1 {
+        variant :: &info.variants[i];
+        if variant.value == code { return variant.name; }
+    }
+    return "UNKNOWN";
 }

@@ -294,31 +294,29 @@ test_run :: fn (print_results := true) s32 {
     application_context = old_context;
 
     failed_count: s64;
+    loop i := 0; i < _queue.len; i += 1 {
+        if !_queue[i].passed {
+            failed_count += 1;
+        }
+    }
+
     if print_results {
         print("\nResults:\n");
         print("%\n", TEXT_LINE);
-
         loop i := 0; i < _queue.len; i += 1 {
-            t :: &_queue[i];
-            if !t.passed {
-                failed_count += 1;
-                print("[      | FAIL ] % (% ms)\n", t.name, t.runtime_ms);
+            test :: &_queue[i];
+            if !test.passed {
+                print("[      | FAIL ] % (% ms)\n", test.name, test.runtime_ms);
             }
         }
-
         perc := 100;
         if failed_count > 0 {
             perc = cast(s32) (cast(f32) (_queue.len - failed_count) / ((cast(f32) _queue.len) * 0.01f));
             print("%\n", TEXT_LINE);
         }
-
         // @HACK: Cannot print percent, escape sequence cannot be easily detected here.
         print("Executed: %, passed %%.\n", _queue.len, perc, "%");
         print("%\n", TEXT_LINE);
-    } else {
-        loop i := 0; i < _queue.len; i += 1 {
-            if !_queue[i].passed { failed_count += 1; }
-        }
     }
 
     return auto failed_count;
