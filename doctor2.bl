@@ -5,21 +5,40 @@
 TEMPORARY_DIR :: "TEMP";
 TEST_SRC_DIR :: "tests/src";
 
-Args :: struct #base std.ArgParserCtx {
-    stop_on_fail: bool;
-    test_count: s32;
+TestKind :: enum {
+    EXECUTE;
+    RUN;
+    ANALYZE;
 }
 
 State :: enum #flags {
     OK = 0;
-    FAILED_COMPILATION;
-    FAILED_RUNTIME;
-    FAILED_INTERP;
+    FAILED_COMPILE;
+    FAILED_EXECUTE;
+    FAILED_RUN;
+    FAILED_ANALYZE;
 }
 
 Result :: struct {
     name: string_view;
     state: State;
+}
+
+Skip :: struct {
+    name: string_view;
+    kind: TestKind;
+}
+
+SKIP :: [1]Skip.{
+    Skip.{
+        name = "tmp_allocator.test.bl",
+        kind = TestKind.RUN
+    }
+};
+
+Args :: struct #base std.ArgParserCtx {
+    stop_on_fail: bool;
+    test_count: s32;
 }
 
 args: Args;
@@ -46,16 +65,23 @@ main :: fn () s32 {
     defer set_cwd(working_directory);
 
     if !parse_args() { return 1; }
+    start_time_ms :: os_tick_ms();
 
     results: [..]Result;
     files: [..]string_view;
     array_init(&results, 256, &default_temporary_allocator);
     array_init(&files, 256, &default_temporary_allocator);
-    list_dir(&files, get_full_path(TEST_SRC_DIR));
-    start_time_ms :: os_tick_ms();
 
+    using TestKind;
+
+    print("\nMain suite execution:\n");
+    list_dir(&files, get_full_path(TEST_SRC_DIR));
     loop i := 0; i < files.len; i += 1 {
-        test_file(&results, files[i], true);
+        test_file(&results, files[i], EXECUTE);
+    }
+    print("\nMain suite interpretation:\n");
+    loop i := 0; i < files.len; i += 1 {
+        test_file(&results, files[i], RUN);
     }
 
     // Print results
@@ -80,30 +106,38 @@ main :: fn () s32 {
     return 0;
 }
 
-test_file :: fn (results: *[..]Result, filepath: string_view, interp := false) {
+test_file :: fn (results: *[..]Result, filepath: string_view, kind: TestKind) {
+    using std;
     using State;
     result := array_push(results);
-    if !std.str_split_by_last(filepath, '/', null, &result.name) {
+    if !str_split_by_last(filepath, '/', null, &result.name) {
         result.name = filepath;
     }
     result.state = OK;
-    state := os_execute(tprint("% % % %", compiler, "--no-warning --silent", main_file, filepath));
-    if state != 0 {
-        set_flag(&result.state, FAILED_COMPILATION);
-        return;
+
+    loop i := 0; i < SKIP.len; i += 1 {
+        skip :: &SKIP[i];
+        if str_match(skip.name, result.name) && kind == skip.kind { return; }
     }
 
-    if interp {
-        state := os_execute(tprint("% % % %", compiler, "--no-warning --silent --no-bin --run-tests", main_file, filepath));
-        if state != 0 {
-            set_flag(&result.state, FAILED_INTERP);
-            return;
+    using TestKind;
+    switch kind {
+        EXECUTE {
+            state := os_execute(tprint("% % % %", compiler, "--no-warning --silent", main_file, filepath));
+            if state != 0 { set_flag(&result.state, FAILED_COMPILE); return; }
+            state = os_execute("out.exe"); // 'out' on unix!
+            if state != 0 { set_flag(&result.state, FAILED_EXECUTE); }
         }
-    }
 
-    state = os_execute("out.exe");
-    if state != 0 {
-        set_flag(&result.state, FAILED_RUNTIME);
+        RUN {
+            state := os_execute(tprint("% % % %", compiler, "--no-warning --silent --no-bin --run-tests", main_file, filepath));
+            if state != 0 { set_flag(&result.state, FAILED_RUN); return; }
+        }
+
+        ANALYZE {
+            state := os_execute(tprint("% % % %", compiler, "--no-warning --silent --no-bin", main_file, filepath));
+            if state != 0 { set_flag(&result.state, FAILED_ANALYZE); return; }
+        }
     }
 }
 

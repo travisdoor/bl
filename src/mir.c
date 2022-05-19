@@ -9076,14 +9076,23 @@ inline void testing_add_test_case(struct context *ctx, struct mir_fn *fn)
 
     struct mir_type *func_type = mir_get_struct_elem_type(elem_type, 0);
     struct mir_type *name_type = mir_get_struct_elem_type(elem_type, 1);
+    struct mir_type *file_type = mir_get_struct_elem_type(elem_type, 2);
+    struct mir_type *line_type = mir_get_struct_elem_type(elem_type, 3);
 
     vm_stack_ptr_t func_ptr = vm_get_struct_elem_ptr(ctx->assembly, elem_type, var_ptr + offset, 0);
     vm_stack_ptr_t name_ptr = vm_get_struct_elem_ptr(ctx->assembly, elem_type, var_ptr + offset, 1);
+    vm_stack_ptr_t file_ptr = vm_get_struct_elem_ptr(ctx->assembly, elem_type, var_ptr + offset, 2);
+    vm_stack_ptr_t line_ptr = vm_get_struct_elem_ptr(ctx->assembly, elem_type, var_ptr + offset, 3);
 
     bassert(fn->id);
 
+    const char *filename = fn->decl_node ? fn->decl_node->location->unit->filename : "UNKNOWN";
+    const s32   line     = fn->decl_node ? fn->decl_node->location->line : 0;
+
     vm_write_ptr(func_type, func_ptr, (vm_stack_ptr_t)fn);
     vm_write_string(ctx->vm, name_type, name_ptr, fn->id->str, strlen(fn->id->str));
+    vm_write_string(ctx->vm, file_type, file_ptr, filename, strlen(filename));
+    vm_write_int(line_type, line_ptr, line);
 }
 
 // Top-level rtti generation.

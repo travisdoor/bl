@@ -123,6 +123,7 @@ allocate_memory :: fn (allocator: *Allocator, size: usize, alignment := DEFAULT_
 }
 
 // @Incomplete
+// @Incomplete: Alignment must be the same as previous one during the reallocation!
 reallocate_memory :: fn (allocator: *Allocator, ptr: *u8, old_size: usize, size: usize, alignment := DEFAULT_ALIGNMENT, loc := #call_location) (mem: *u8, err: Error) #inline {
     if !allocator { allocator = application_context.allocator; }
     assert(allocator.handler);

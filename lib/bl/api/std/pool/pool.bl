@@ -1,9 +1,27 @@
 #scope std
 
+//! # Pool
+//!
+//! `#import "std/pool"`
+//!
+//! Pool allocator is simple growing allocator grouping all allocated memory into memory blocks
+//! of `POOL_DEFAULT_SIZE` bytes by default.
+//!
+//! - In case there is no space left in the current block new one is allocated.
+//! - Allocated data remains valid until the `reset` or `release` is called.
+//! - If required allocation size is greater then the current block size, the new block is allocated
+//!   with size `N * current_block_size` where `N` is the minimum multiplier needed to store the required
+//!   data size.
+//! - The pool allocator never frees data when `free_memory` is called, you should call `reset` instead
+//!   when all previously allocated data can be freed.
+//! - All preallocated blocks are kept (even after the `reset` is called) for later use.
 POOL_DEFAULT_SIZE : usize : 65536; // 64kB
 
+/// Pool allocator type.
 PoolAllocator :: struct #base Allocator {
+    /// Size of the current block.
     block_size: usize;
+    /// Base allocator used to allocate block memory.
     allocator: *Allocator;
 
     used_blocks: [..]*u8;
@@ -15,11 +33,15 @@ PoolAllocator :: struct #base Allocator {
     space: usize;
 }
 
+/// Default pool allocator instance using the current allocator in application context and `POOL_DEFAULT_SIZE`.
 pool_default :: PoolAllocator.{
     base = Allocator.{ handler = auto &handler },
     block_size = POOL_DEFAULT_SIZE
 };
 
+/// Make new pool allocator instance. The `allocator` is the allocator used internally to allocate
+/// block memory. The `block_size` is size of each preallocated block in Bytes (note that the block
+/// size can grow over time when bigger continuous memory allocations are required).
 pool_make :: fn (allocator: *Allocator, block_size := POOL_DEFAULT_SIZE) PoolAllocator #inline {
     pool: PoolAllocator;
     pool.handler = auto &handler;
@@ -32,6 +54,7 @@ pool_make :: fn (allocator: *Allocator, block_size := POOL_DEFAULT_SIZE) PoolAll
     return pool;
 }
 
+/// Release all allocated memory used by `pool` (allocated in `pool.allocator`).
 pool_release :: fn (pool: *PoolAllocator) {
     reset(pool);
     loop i := 0; i < pool.unused_blocks.len; i += 1 {
@@ -43,6 +66,7 @@ pool_release :: fn (pool: *PoolAllocator) {
     array_terminate(&pool.obsolete_blocks);
 }
 
+/// Invalidate all allocations but keep preallocated memory block for later use.
 pool_reset :: fn (pool: *PoolAllocator) #inline {
     reset(pool);
 }

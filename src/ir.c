@@ -1471,10 +1471,15 @@ State emit_instr_type_info(struct context *ctx, struct mir_instr_type_info *type
 LLVMValueRef testing_emit_meta_case(struct context *ctx, struct mir_fn *fn)
 {
     struct mir_type *type = ctx->builtin_types->t_TestCase;
-    LLVMValueRef     llvm_vals[2];
+    LLVMValueRef     llvm_vals[4];
+
+    const char *filename = fn->decl_node ? fn->decl_node->location->unit->filename : "UNKNOWN";
+    const s32   line     = fn->decl_node ? fn->decl_node->location->line : 0;
 
     llvm_vals[0] = emit_fn_proto(ctx, fn, true);
     llvm_vals[1] = emit_const_string(ctx, fn->id->str, strlen(fn->id->str));
+    llvm_vals[2] = emit_const_string(ctx, filename, strlen(filename));
+    llvm_vals[3] = LLVMConstInt(get_type(ctx, mir_get_struct_elem_type(type, 3)), (u64)line, true);
     return LLVMConstNamedStruct(get_type(ctx, type), llvm_vals, static_arrlenu(llvm_vals));
 }
 

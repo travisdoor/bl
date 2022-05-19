@@ -270,6 +270,10 @@ TestCase :: struct #compiler {
     func: *fn();
     /// Name of the test case. 
     name: string_view;
+    /// File where the test case is declared.
+    file: string_view;
+    /// Line in the file where the test case is declared.
+    line: s32;
 }
 
 /// Type of source code location used by `#call_location` directive.

@@ -1,6 +1,6 @@
 #private
 debug_print_log :: fn () #test {
-    _context.print_log_fn = &test_logger;
+    application_context.print_log_fn = &test_logger;
     {
         _expected_kind = PrintLogKind.MESSAGE;
         _expected_file = "";
@@ -28,11 +28,11 @@ debug_print_log :: fn () #test {
         print_log("hello", 10, true);
     }
 
-    _context.print_log_fn = &__print_log_default;
+    application_context.print_log_fn = &__print_log_default;
 }
 
 debug_print_warn :: fn () #test {
-    _context.print_log_fn = &test_logger;
+    application_context.print_log_fn = &test_logger;
     {
         _expected_kind = PrintLogKind.WARNING;
         _expected_file = "";
@@ -60,11 +60,11 @@ debug_print_warn :: fn () #test {
         print_warn("hello", 10, true);
     }
 
-    _context.print_log_fn = &__print_log_default;
+    application_context.print_log_fn = &__print_log_default;
 }
 
 debug_print_err :: fn () #test {
-    _context.print_log_fn = &test_logger;
+    application_context.print_log_fn = &test_logger;
     {
         _expected_kind = PrintLogKind.ERROR;
         _expected_file = "";
@@ -92,7 +92,7 @@ debug_print_err :: fn () #test {
         print_err("hello", 10, true);
     }
 
-    _context.print_log_fn = &__print_log_default;
+    application_context.print_log_fn = &__print_log_default;
 }
 
 _expected_kind: PrintLogKind;
@@ -121,8 +121,7 @@ static_assertion :: fn () #test {
     
     i :: 10;
     static_assert(i == 10);
-    print("%\n", i);
-    
+
     arr: [10]s32;
     static_assert(arr.len == 10);
 }
