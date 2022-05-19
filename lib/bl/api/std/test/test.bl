@@ -264,7 +264,6 @@ test_run :: fn () s32 {
     if cases.len == 0 {
         return 0;
     }
-    print("\n");
     _ci = 0;
 
     // setup cases
@@ -288,10 +287,10 @@ test_run :: fn () s32 {
     }
     application_context = old_context;
 
+    fc: s64;
     print("\nResults:\n");
     print("%\n", TEXT_LINE);
 
-    fc: s64;
     loop i := 0; i < _queue.len; i += 1 {
         t :: &_queue[i];
         if t.passed { continue; }
@@ -301,7 +300,7 @@ test_run :: fn () s32 {
     }
 
     perc := 100;
-    if fc > 0 { 
+    if fc > 0 {
         perc = cast(s32) (cast(f32) (_queue.len - fc) / ((cast(f32) _queue.len) * 0.01f));
         print("%\n", TEXT_LINE);
     }
