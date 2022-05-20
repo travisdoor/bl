@@ -7,6 +7,7 @@ TEMPORARY_DIR :: "tmp-doctor";
 TEST_SRC_DIR :: "tests/src";
 EXAMPLES_DIR :: "docs/master/examples";
 EXPECT_FAIL_DIR :: "tests/src/expect_fail";
+DOCS_MAKE :: "docs/master/make.bl";
 
 SKIP :: [1]Skip.{
     Skip.{
@@ -31,9 +32,15 @@ MODULES :: [12]string_view.{
 };
 
 TestKind :: enum {
+    // Compile and execute.
     EXECUTE;
+    // Just compile.
+    COMPILE;
+    // Compile and execute + include custom main.
     TEST_EXECUTE;
+    // Compile and execute in compile-time + include custom main.
     TEST_RUN;
+    // Compile and expect fail.
     TEST_EXPECT_FAIL;
 }
 
@@ -131,6 +138,10 @@ main :: fn () s32 {
         test_file(&results, files[i], TEST_EXPECT_FAIL);
     }
 
+    // Test docs make
+    if print_sections { print("\nMisc:\n"); }
+    test_file(&results, get_full_path(DOCS_MAKE), COMPILE);
+
     // Print results
     failed_count := 0;
     print("\n----------------------------------- RESULTS ------------------------------------\n");
@@ -191,52 +202,58 @@ test_file :: fn (results: *[..]Result, filepath: string_view, kind: TestKind) {
     using TestKind;
     switch kind {
         EXECUTE {
-            state := os_execute(tprint("% % %", compiler, "--no-warning --silent", filepath));
-            if state != 0 {
+            if os_execute(tprint("% % %", compiler, "--no-warning --silent", filepath)) != 0 {
                 set_flag(&result.state, FAILED_COMPILE);
-                return;
-            }
-            state = os_execute(tprint("% %", get_exe_name(), silent_output())); // 'out' on unix!
-            if state != 0 {
+            } else if os_execute(tprint("% %", get_exe_name(), silent_output())) != 0 {
                 set_flag(&result.state, FAILED_EXECUTE);
-                print("[      | FAIL ] %\n", result.name);
-            } else {
-                print("[ PASS |      ] %\n", result.name);
             }
+            report(result);
+        }
+
+        COMPILE {
+            if os_execute(tprint("% % %", compiler, "--no-warning --silent --no-bin", filepath)) != 0 {
+                set_flag(&result.state, FAILED_COMPILE);
+            }
+            report(result);
         }
 
         TEST_EXECUTE {
-            state := os_execute(tprint("% % % %", compiler, "--no-warning --silent", main_file, filepath));
-            if state != 0 {
+            if os_execute(tprint("% % % %", compiler, "--no-warning --silent", main_file, filepath)) != 0 {
                 set_flag(&result.state, FAILED_COMPILE);
-                return;
-            }
-            state = os_execute(get_exe_name()); // 'out' on unix!
-            if state != 0 {
+            } else if os_execute(get_exe_name()) != 0 {
                 set_flag(&result.state, FAILED_EXECUTE);
             }
         }
 
         TEST_RUN {
-            state := os_execute(tprint("% % % %", compiler, "--no-warning --silent --no-bin --run-tests --tests-minimal-output", main_file, filepath));
-            if state != 0 { set_flag(&result.state, FAILED_RUN); return; }
+            if os_execute(tprint("% % % %", compiler, "--no-warning --silent --no-bin --run-tests --tests-minimal-output", main_file, filepath)) != 0 {
+                set_flag(&result.state, FAILED_RUN);
+            }
         }
 
         TEST_EXPECT_FAIL {
+            msg := "";
             is_present, expected_code :: get_expected_error(filepath);
             if !is_present {
                 set_flag(&result.state, FAILED_EXPECT_FAIL);
-                return;
-            }
-            state := os_execute(tprint("% % % %", compiler, "--no-warning --silent --no-bin", filepath, silent_output()));
-            if state != expected_code {
-                set_flag(&result.state, FAILED_EXPECT_FAIL);
-                print("[      | FAIL ] % Expected '%' but returned '%'\n", result.name, errtostr(expected_code), errtostr(state));
-                return;
+                msg = "Expected error code not found!";
             } else {
-                print("[ PASS |      ] %\n", result.name);
+                state := os_execute(tprint("% % % %", compiler, "--no-warning --silent --no-bin", filepath, silent_output()));
+                if state != expected_code {
+                    set_flag(&result.state, FAILED_EXPECT_FAIL);
+                    msg = tprint("Expected '%' but returned '%'\n", errtostr(expected_code), errtostr(state));
+                }
             }
+            report(result, msg);
         }
+    }
+}
+
+report :: fn (result: *Result, msg := "") {
+    if result.state != State.OK {
+        print("[      | FAIL ] % %\n", result.name, msg);
+    } else {
+        print("[ PASS |      ] % %\n", result.name, msg);
     }
 }
 
@@ -271,10 +288,11 @@ list_dir :: fn (paths: *[..]string_view, dir: string_view) {
     using std;
 
     list, err :: dir_scan(dir);
+    defer info_list_delete(list);
     if !is_ok(err) {
         print_err("%", err);
+        return;
     }
-    defer info_list_delete(list);
 
     loop i := 0; i < list.len; i += 1 {
         info :: &list[i];
