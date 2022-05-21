@@ -328,20 +328,37 @@ default_temporary_allocator :: Allocator.{ handler = &temporary_allocator_handle
 #private
 
 default_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, _: usize, ptr: *u8, alignment: usize, _: string_view, _: s32) (mem: *u8, err: Error) {
+    // @Cleanup: We do properly aligned allocations only on Windows, in case there is not implementation
+    // provided on other platforms, we should implement it.
+    alignment; // May be unused...
     using AllocOp;
     switch operation {
         ALLOCATE {
-            mem :: C.aligned_malloc(size, alignment);
+            mem: *u8;
+#if PLATFORM == Platform.WINDOWS {
+            mem = C.aligned_malloc(size, alignment);
+} else {
+            mem = C.malloc(size);
+}
             if !mem { return null, error("Bad allocation."); }
             return mem, ok();
         }
         REALLOCATE {
-            mem :: C.aligned_realloc(ptr, size, alignment);
+            mem: *u8;
+#if PLATFORM == Platform.WINDOWS {
+            mem = C.aligned_realloc(ptr, size, alignment);
+} else {
+            mem = C.realloc(ptr, size);
+}
             if !mem { return null, error("Bad reallocation."); }
             return mem, ok();
         }
         FREE {
+#if PLATFORM == Platform.WINDOWS {
             C.aligned_free(ptr);
+} else {
+            C.free(ptr);
+}
         }
 
         default { panic(); }

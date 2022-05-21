@@ -336,7 +336,7 @@ get_exe_name :: fn () string_view #comptime {
     #if PLATFORM == Platform.WINDOWS {
         return "out.exe";
     } else {
-        return "out";
+        return "./out";
     }
 }
 
