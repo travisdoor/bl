@@ -131,6 +131,20 @@ test_pop :: fn () #test {
     test_eq(arr.len, 0);
 }
 
+test_pop2 :: fn () #test {
+    arr: [..]s32;
+    defer array_terminate(&arr);
+    test_false(array_pop(&arr));
+    loop i := 0; i < 1000; i += 1 {
+        array_push(&arr, i);
+    }
+
+    loop array_pop(&arr) {
+    }
+
+    test_eq(arr.len, 0);
+}
+
 alloc_count := 0;
 free_count := 0;
 

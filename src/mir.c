@@ -5117,6 +5117,7 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
     bassert(type);
 
     if (!mir_is_global(&cmp->base) && cmp->is_naked) {
+        bassert(cmp->tmp_var == NULL);
         // For naked non-compile time compounds we need to generate implicit temp storage to
         // keep all data.
         cmp->tmp_var = create_var_impl(ctx,

@@ -1609,7 +1609,6 @@ void interp_instr_compound(struct virtual_machine    *vm,
                            struct mir_instr_compound *cmp)
 {
     bassert(!mir_is_comptime(&cmp->base));
-    bassert(cmp->value_member_mapping == NULL && "Not implemented!");
     const bool will_push = tmp_ptr == NULL;
     if (will_push) {
         bassert(cmp->tmp_var && "Missing temp variable for compound.");
@@ -1622,7 +1621,8 @@ void interp_instr_compound(struct virtual_machine    *vm,
     struct mir_type *elem_type;
     vm_stack_ptr_t   elem_ptr = tmp_ptr;
 
-    mir_instrs_t *values = cmp->values;
+    ints_t       *mapping = cmp->value_member_mapping;
+    mir_instrs_t *values  = cmp->values;
     for (usize i = 0; i < sarrlenu(values); ++i) {
         struct mir_instr *value = sarrpeek(values, i);
         elem_type               = value->value.type;
@@ -1632,9 +1632,11 @@ void interp_instr_compound(struct virtual_machine    *vm,
         case MIR_TYPE_DYNARR:
         case MIR_TYPE_SLICE:
         case MIR_TYPE_VARGS:
-        case MIR_TYPE_STRUCT:
-            elem_ptr = vm_get_struct_elem_ptr(vm->assembly, type, tmp_ptr, (u32)i);
+        case MIR_TYPE_STRUCT: {
+            usize index = mapping ? sarrpeek(mapping, i) : i;
+            elem_ptr = vm_get_struct_elem_ptr(vm->assembly, type, tmp_ptr, (u32)index);
             break;
+        }
 
         case MIR_TYPE_ARRAY:
             elem_ptr = vm_get_array_elem_ptr(type, tmp_ptr, (u32)i);

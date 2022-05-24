@@ -8,8 +8,8 @@ main :: fn () s32 {
     using std;
     debug_allocator = debug_allocator_make(application_context.allocator);
     defer debug_allocator_terminate(&debug_allocator);
-    //application_context.allocator = &debug_allocator;
-    //application_context.print_log_fn = &dummy_logger;
+    application_context.allocator = &debug_allocator;
+    application_context.print_log_fn = &dummy_logger;
 
     //debug_allocator_break(&debug_allocator, 3);
 

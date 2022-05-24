@@ -1,16 +1,22 @@
 #import "std/table"
 
+Elem :: struct {
+    a: s32;
+    b: string_view;
+    c: bool;
+    d: s32;
+};
+
 main :: fn () s32 {
-    Elem :: struct {
-        a: s32;
-        b: string_view;
-        c: bool;
-        d: s32;
-    };
-
-    tbl: std.Table(s32, Elem);
-    defer std.tbl_terminate(&tbl);
-
-    std.tbl_insert(&tbl, 0, Elem.{ 666, "hello", true, 666 });
+    //foo();
+    bar(Elem.{ 666, "hello", true, 666 });
     return 0;
+}
+
+bar :: fn (_: Elem) {
+}
+
+foo :: fn () {
+    tbl: std.Table(s32, Elem);
+    std.tbl_insert(&tbl, 0, Elem.{ 666, "hello", true, 666 });
 }

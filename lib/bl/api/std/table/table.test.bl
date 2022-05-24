@@ -208,17 +208,12 @@ test_struct :: fn () #test {
     defer std.tbl_terminate(&tbl);
 
     loop i := 0; i < TEST_COUNT; i += 1 {
-        //elem :: Elem.{i, "hello", true, i};
-        //std.tbl_insert(&tbl, i, elem);
         std.tbl_insert(&tbl, i, Elem.{1, "hello", true, 1 });
     }
     test_eq(tbl.len, TEST_COUNT);
     c := 0;
     loop it := std.tbl_begin(&tbl); it != std.tbl_end(&tbl); std.tbl_iter_next(&it) {
-        print_log("it.value = %", it.value);
-        print_log("it.value.a = %", it.value.a);
-        print_log("it.value.b = %", it.value.d);
-        //test_eq(it.value.a, it.value.d);
+        test_eq(it.value.a, it.value.d);
         c += 1;
     }
     test_eq(c, TEST_COUNT);

@@ -65,18 +65,22 @@ array_terminate :: fn (_arr: *[..]?T) #inline {
 /// a new empty element without any initialization.
 array_push :: fn { impl_push_empty; impl_push; }
 
-// @Incomplete
-array_pop :: fn (_arr: *[..]?T, out: *T) bool #inline {
+/// Duplicate the last array element into `out` argument (if not null) and reduce the array length by
+/// one. Returs `true` in case the array is not empty.
+array_pop :: fn (_arr: *[..]?T, out: *T = null) bool #inline {
     arr := cast(*_Array) _arr;
     // Eventually assert?
     if arr.len == 0 { return false; }
-    elem :: get_elem_ptr(arr, sizeof(T), arr.len - 1);
-    memcpy(auto out, elem, sizeof(T));
+    if out {
+        elem :: get_elem_ptr(arr, sizeof(T), arr.len - 1);
+        memcpy(auto out, elem, sizeof(T));
+    }
     arr.len -= 1;
     return true;
 }
 
-/// Reserve heap memory for `n` elements in array.
+/// Reserve heap memory for `n` elements in array. Does nothing in case the already allocaed block is
+/// large enough to hold `n` elements.
 array_reserve :: fn (_arr: *[..]?T, n: s64) #inline {
     arr := cast(*_Array) _arr;
     if n == 0 { return; }
