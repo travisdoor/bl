@@ -88,8 +88,9 @@ maximum error code on fail.
 
 # Compile-time debugger
 
-**warning:** This feature is not complete, it's supposed to be used by compiler developers to
-simplify compiler debugging.
+!!! warning
+    This feature is not complete, it's supposed to be used by compiler developers to
+    simplify compiler debugging.
 
 Since the compile-time execution is one of the most powerful things on BL and i.e. command-line
 utility scripts are executed using the interpreter almost every time, we have to provide a proper
