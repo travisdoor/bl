@@ -83,8 +83,7 @@ DebugAllocator :: struct #base Allocator {
     break_on: u64;
 }
 
-/// Initialize Debug Allocator. This function internally swap current global context allocator to
-/// debug one. Deinitialization must be done by [debug_allocator_terminate](#debug_allocator_terminate) call.
+// Create new debug allocator instace using `allocator` to allocate memory.
 debug_allocator_make :: fn (allocator: *Allocator) DebugAllocator {
     dbgalloc: DebugAllocator;
     dbgalloc.handler = auto &handler;
@@ -94,15 +93,13 @@ debug_allocator_make :: fn (allocator: *Allocator) DebugAllocator {
     return dbgalloc;
 }
 
-/// Terminate Debug Allocator. Prints current memory report when 
-/// [print_report](#print_report) is `true`.
+// Release debug allocator resources.
 debug_allocator_terminate :: fn (dbgalloc: *DebugAllocator) {
     std.tbl_terminate(&dbgalloc.alloc_table);
     std.mutex_terminate(&dbgalloc.mutex);
 }
 
-/// Invoke [debug_break](#debug_break) before allocation with defined serial ID.
-/// **note**: See also [print_memory_report](#print_memory_report)
+/// Invoke `debug_break` before allocation with defined serial ID.
 debug_allocator_break :: fn (dbgalloc: *DebugAllocator, serial: u64) #inline {
     dbgalloc.break_on = serial;
 }

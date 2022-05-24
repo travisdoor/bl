@@ -1,9 +1,4 @@
-#import "std/test"
 #import "std/dlib"
-
-main :: fn () s32 {
-    return test_run();    
-}
 
 #private
 dl_open_test1 :: fn () #test {

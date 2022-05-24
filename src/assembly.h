@@ -137,6 +137,7 @@ struct native_lib {
     bool                  reg_split;                                                               \
     bool                  verify_llvm;                                                             \
     bool                  run_tests;                                                               \
+    bool                  tests_minimal_output;                                                    \
     bool                  no_api;                                                                  \
     bool                  copy_deps;                                                               \
     bool                  run;                                                                     \

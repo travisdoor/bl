@@ -1,9 +1,4 @@
-#import "std/test"
 #import "std/array"
-
-main :: fn () s32 {
-    return test_run();    
-}
 
 #private
 test_basic_inserting_s32 :: fn () #test {
@@ -133,6 +128,20 @@ test_pop :: fn () #test {
         test_eq(value, expected);
         expected -= 1;
     }
+    test_eq(arr.len, 0);
+}
+
+test_pop2 :: fn () #test {
+    arr: [..]s32;
+    defer array_terminate(&arr);
+    test_false(array_pop(&arr));
+    loop i := 0; i < 1000; i += 1 {
+        array_push(&arr, i);
+    }
+
+    loop array_pop(&arr) {
+    }
+
     test_eq(arr.len, 0);
 }
 

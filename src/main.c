@@ -534,6 +534,11 @@ int main(s32 argc, char *argv[])
             .help       = "Execute all unit tests in compile time.",
         },
         {
+            .name       = "--tests-minimal-output",
+            .property.b = &opt.target->tests_minimal_output,
+            .help       = "Reduce compile-time tests (--run-tests) output (remove results section).",
+        },
+        {
             .name       = "--no-api",
             .property.b = &opt.target->no_api,
             .help       = "Don't load internal API.",

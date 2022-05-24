@@ -1,9 +1,4 @@
-#import "std/test"
 #import "std/string"
-
-main :: fn () s32 {
-    return test_run();    
-}
 
 #private
 test_multiline_str_literal :: fn () #test {
@@ -15,7 +10,7 @@ test_multiline_str_literal :: fn () #test {
        "string"
        "!";
     EXPECTED :: "Hello this is multiline string!";
-    print("'%'\n'%'\n", FOO, EXPECTED);
+    print_log("'%'\n'%'\n", FOO, EXPECTED);
     test_true(std.str_is_zero_terminated(FOO));
     test_eq(FOO.len, EXPECTED.len);
     test_eq(FOO, EXPECTED);
@@ -23,6 +18,7 @@ test_multiline_str_literal :: fn () #test {
 
 test_strs_init1 :: fn () #test {
     s1 := std.str_new();
+    defer std.str_delete(&s1);
     test_not_null(s1.ptr, null);
     test_eq(s1.len, 0);
     std.str_append(&s1, "foo");
