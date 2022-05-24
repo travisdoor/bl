@@ -33,7 +33,6 @@
 //! `#load "std/debug.bl"`
 //! 
 //! Set of common debugging tools.
-//! @Incomplete: documentation of `debugbreak` builtin.
 
 /// Print debug log using current application_context `print_log_fn` function.
 print_log :: fn (format: string_view, args: ...) #inline {
@@ -51,9 +50,11 @@ print_err :: fn { print_err_e; print_err_msg; }
 /// Interrupt execution when `cond` is false. Assert use current application_context `print_log_fn` to print out error
 /// message containing assert location in source code.
 //current application/
-/// **important**: All calls to the assert function are removed from release builds by default.
+/// !!! important
+///     All calls to the assert function are removed from release builds by default.
 ///
-/// **warning**: There is no argument validation in case the assert call is removed from compilation.
+/// !!! warning
+///     There is no argument validation in case the assert call is removed from compilation.
 assert :: fn (cond: bool, loc := #call_location) #compiler {
     if cond { return; }
     application_context.print_log_fn(PrintLogKind.ASSERT, loc.file, loc.line, "Assertion failed!");
@@ -74,7 +75,7 @@ static_assert :: fn (expr: bool) #comptime {
 /// 
 /// ```
 /// panic(); // abort without any messages
-/// panic(error); // abort with :ref:`Error`.
+/// panic(error); // abort with [Error](#error).
 /// panic("oops!"); // abort with message prited out.
 /// panic("Failed with error: %", errn); // first argument passed acts like formating string
 /// ```
@@ -117,7 +118,7 @@ __print_log_default :: fn (kind: PrintLogKind, file: string_view, line: s32, for
 };
 
 /// Start measure elapsed milliseconds in the current scope. This function call will push the current
-/// time into the thread-local queue. Measurement must be ended by :ref:`measure_elapsed_ms_end` call.
+/// time into the thread-local queue. Measurement must be ended by [measure_elapsed_ms_end](#measure_elapsed_ms_end) call.
 ///
 /// ### Example
 ///
@@ -126,8 +127,9 @@ __print_log_default :: fn (kind: PrintLogKind, file: string_view, line: s32, for
 /// defer measure_elapsed_ms_end("Name");
 /// ```
 ///
-/// **warning**: Every `measure_elapsed_ms_begin` must have corresponding 
-/// [measure_elapsed_ms_end](#measure_elapsed_ms_end) call.
+/// !!! warning
+///     Every `measure_elapsed_ms_begin` must have corresponding
+///     [measure_elapsed_ms_end](#measure_elapsed_ms_end) call.
 measure_elapsed_ms_begin :: fn () #inline {
     array_push(&_elapsed_ms_stack, os_tick_ms());
 }

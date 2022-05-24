@@ -150,7 +150,8 @@ array_slice :: fn () #test {
 };
 ```
 
-**hint:** `slice_init` can be used to allocate slice on the heap using context allocator.
+!!! note
+    `slice_init` can be used to allocate slice on the heap using context allocator.
 
 ## Structure
 
@@ -452,9 +453,11 @@ left-bit-shifted value of the previous one.
 Enumerators marked as flags are also serialized as a combination of atomic flags instead of just one
 value.
 
-**note:** Flags enumerators must use unsigned number type as a base type (`u32` by default).
+!!! note
+     Flags enumerators must use unsigned number type as a base type (`u32` by default).
 
-**note:** It's possible to do implicit casting of flags enumerators to it's base type.
+!!! note
+     It's possible to do implicit casting of flags enumerators to it's base type.
 
 **Example:**
 
@@ -487,8 +490,9 @@ main :: fn () s32 {
 }
 ```
 
-**hint:** Since flags enumerators starts implicitly with value 1, you can explicitly define `NoFlag
-= 0;` variant at the beginning of the variant list.
+!!! note
+    Since flags enumerators starts implicitly with value 1, you can explicitly define `NoFlag
+    = 0;` variant at the beginning of the variant list.
 
 ## Type aliasing
 
@@ -664,7 +668,6 @@ char  :: 'i';     // u8 literal
 | sizeof(expr)   | Any                | Determinates size in bytes.          |
 | alignof(expr)  | Any                | Determinates alignment of epression. |
 | typeinfo(expr) | Any                | Determinates TypeInfo of expression. |
-| typekind(expr) | Any                | Determinates TypeKind of expression. |
 | typeof(expr)   | Any                | Determinates type of expression.     |
 
 ## Type Info
@@ -793,7 +796,8 @@ my_func :: fn () #export {
 
 Used for marking entities as an compiler internals.
 
-**warning:** This directive is compiler internal.
+!!! warning
+     This directive is compiler internal.
 
 ### #test
 
@@ -878,7 +882,8 @@ Type :: struct #base s32 {
 
 Specify executable entry function.
 
-**warning:** This directive is compiler internal.
+!!! warning
+     This directive is compiler internal.
 
 ### #build_entry
 
@@ -903,7 +908,8 @@ Type :: struct {
 
 Mark external function as compiler specific intrinsic function.
 
-**warning:** This directive is compiler internal.
+!!! warning
+     This directive is compiler internal.
 
 ### #maybe_unused
 
@@ -950,8 +956,9 @@ variable_initialization :: fn () #test {
 }
 ```
 
-**hint**: Prefer immutable variables as possible, immutable value can be effectively optimized by
-compiler and could be evaluated in compile time in some cases.
+!!! note
+    Prefer immutable variables as possible, immutable value can be effectively optimized by
+    compiler and could be evaluated in compile time in some cases.
 
 
 ## Compound expression
@@ -1148,9 +1155,11 @@ More functions can be associated with one name with explicit function overloadin
 group of functions is replaced with proper function call during compilation, based on provided
 arguments.
 
-**note:** There is no additional runtime overhead caused by function overloading. 
+!!! note
+     There is no additional runtime overhead caused by function overloading. 
 
-**note:** Ordering of functions inside the group is arbitrary. 
+!!! note
+     Ordering of functions inside the group is arbitrary. 
 
 **Example:**
 
@@ -1203,7 +1212,8 @@ leads to an error later if the function interface is not compatible.
 4. Conversion to slice.
 5. Conversion to any.
 
-**note:** The return type has no effect on choosing the best call candidate.
+!!! note
+     The return type has no effect on choosing the best call candidate.
 
 **Resolving of the best call candidate is done in two passes:**
 
@@ -1329,8 +1339,9 @@ So two functions are generated internally:
 }
 ```
 
-**note:** Content of polymorphic function is semantically analyzed only when
-function is used.
+!!! note
+    Content of polymorphic function is semantically analyzed only when
+    function is used.
 
 #### Nested master type
 
@@ -1395,11 +1406,13 @@ is_equal :: fn { // function group
 }
 ```
 
-**note:** Compiler error is reported in case content of the polymorph generated for some type
-specification is not semantically valid. (i.e. we can't compare strings directly by `==` operator)
+!!! note
+    Compiler error is reported in case content of the polymorph generated for some type
+    specification is not semantically valid. (i.e. we can't compare strings directly by `==` operator)
 
-**warning:** Getting address (by `&` operator) of polymorphic function recipe is not possible,
-polymorphic recipe as it is does not represent any allocated memory in program binary.
+!!! warning
+    Getting address (by `&` operator) of polymorphic function recipe is not possible,
+    polymorphic recipe as it is does not represent any allocated memory in program binary.
 
 ### Multiple Return Values
 
@@ -1537,8 +1550,9 @@ test_static_ifs :: fn () #test {
 };
 ```
 
-**note:** The excluded branch is removed completely from compilation, but it still has to be
-semantically valid.
+!!! note
+    The excluded branch is removed completely from compilation, but it still has to be
+    semantically valid.
 
 ## Loop
 
@@ -1729,8 +1743,9 @@ is a symbol of the same name in the used scope it's ignored and a local one is u
 * In case a symbol with the same name is found in multiple used scopes, it's reported as ambiguous.
 * In case a symbol from the used scope collides with a symbol in global/private scope, it's also reported as ambiguous.
 
-**note:** The `using` statement placement is limited to local scopes due to explicitness and readability of the
-code.
+!!! note
+    The `using` statement placement is limited to local scopes due to explicitness and readability of the
+    code.
 
 ## Main function
 
@@ -1747,8 +1762,9 @@ main :: fn () s32 {
 }
 ```
 
-**hint**: Command line arguments are not passed directly as parameter in BL. Use
-`command_line_arguments` builtin array.
+!!! note
+    Command line arguments are not passed directly as parameter in BL. Use
+    `command_line_arguments` builtin array.
 
 ## Modules and import
 
@@ -1761,8 +1777,9 @@ is used as module name during import process.
 
 See `ModuleImportPolicy` for more information about module import policy.
 
-**note:** Module root directory usually contains all source files, libraries and unit tests related
-to the module.
+!!! note
+    Module root directory usually contains all source files, libraries and unit tests related
+    to the module.
 
 **Example of the module file structure:**
 

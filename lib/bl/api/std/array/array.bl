@@ -21,7 +21,7 @@
 //! }
 //! ```
 
-// @NOTE: Not direcly used internally, when layout of this structure is changed, internal compiler
+// Not direcly used internally, when layout of this structure is changed, internal compiler
 // representation must be modified too.
 _Array :: struct {
     len: s64;
@@ -61,8 +61,9 @@ array_terminate :: fn (_arr: *[..]?T) #inline {
 /// there is not enough memory allocated to store all values.
 /// Returns pointer to the new appended element.
 ///
-/// **note:** When there is no element to push provided, function will just allocate memory for
-/// a new empty element without any initialization.
+/// !!! note
+///     When there is no element to push provided, function will just allocate memory for
+///     a new empty element without any initialization.
 array_push :: fn { impl_push_empty; impl_push; }
 
 /// Duplicate the last array element into `out` argument (if not null) and reduce the array length by

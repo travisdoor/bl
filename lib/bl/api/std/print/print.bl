@@ -89,7 +89,8 @@ eprint :: fn (format: string_view, args: ...) s32 {
 /// Returns count of characters written into buffer, this count does not include terminal character 
 /// written at the end of the result string.
 ///
-/// **note**: String written into the buffer is always zero terminated.
+/// !!! note
+///     String written into the buffer is always zero terminated.
 /// 
 /// See also [print](#print).
 bprint :: fn (buf: []u8, format: string_view, args: ...) s32 {
@@ -101,11 +102,13 @@ bprint :: fn (buf: []u8, format: string_view, args: ...) s32 {
     return w;
 };
 
-/// Write formatted input to the new string using `tmp_allocator`.
+/// Write formatted input to the new string using [default_temporary_allocator](memory.md#default_temporary_allocator).
 ///
-/// **note**: There is no need to explicitly release memory used by temporary string.
+/// !!! note
+///     There is no need to explicitly release memory used by temporary string.
 /// 
-/// **note**: Created string is always zero terminated.
+/// !!! note
+///     Created string is always zero terminated.
 ///
 /// See also [print](#print).
 tprint :: fn (format: string_view, args: ...) string #inline {
@@ -116,9 +119,11 @@ tprint :: fn (format: string_view, args: ...) string #inline {
 
 /// Write formatted input to the new heap-allocated string. 
 /// 
-/// **note**: Use `std.str_delete` to free memory used by string.
+/// !!! note
+///     Use `std.str_delete` to free memory used by string.
 ///
-/// **note**: Created string is always zero terminated.
+/// !!! note
+///     Created string is always zero terminated.
 ///
 /// See also [print](#print).
 sprint :: fn (format: string_view, args: ...) string {

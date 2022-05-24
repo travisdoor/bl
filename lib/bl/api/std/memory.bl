@@ -53,6 +53,56 @@
 /// Default memory allocation alignment.
 DEFAULT_ALIGNMENT : usize : alignof(f64);
 
+/// Default memory allocator using libc malloc internally.
+default_allocator :: Allocator.{ handler = &default_allocator_handler };
+
+/// Default temporary allocator instance using pool internally.
+///
+/// The temporary allocator (used i.e. by [tprint](print.md#tprint) function) is useful in cases we
+/// don't need to keep allocated memory for a long period of time. In general in such a case we allocate,
+/// use and free the memory.
+///
+/// Temporary allocated memory does not need to be explicitly freed (in fact temporary allocator does not
+/// free individual allocations at all even if `free` is called). A large memory block is preallocated instead
+/// and every allocation lands into this block. Later (at some safe point of execution) when
+/// [temporary_reset](#temporary_reset) is called, all previous allocations done via temporary allocator became
+/// invalid (marked as a free space in preallocated block) and can be reused lated.
+///
+/// When temporary allocator is not needed anymore, [temporary_release](temporary_release) shall be called to
+/// free all internally preallocated blocks.
+///
+/// ### Example
+///
+/// ```
+/// main :: fn () s32 {
+///     // Release allocated memory at the end of the scope.
+///     defer temporary_release();
+///
+///     loop i := 0; i < 1000; i += 1 {
+///          // Reset the allocator here (all previous alocation are invalid since now).
+///         defer temporary_reset();
+///
+///         // Allocate memory using temporary allocator.
+///         int_ptr := cast(*s32) allocate_memory(&default_temporary_allocator, sizeof(s32));
+///
+///         // Do something here with allocated memory.
+///         @int_ptr = i;
+///
+///         // There is no need to free allocated memory here.
+///     }
+///     return 0;
+/// }
+/// ```
+///
+/// !!! note
+///     The temporary allocator internally use [pool allocator](pool.md#pool_allocator), see the documentation for
+///     more details.
+///
+/// !!! important
+///     Temporary allocator instance is thread-local, [temporary_release](#temporary_release) should be called
+///     at-exit of all threads if it's used.
+default_temporary_allocator :: Allocator.{ handler = &temporary_allocator_handler };
+
 /// Specify allocator opratation.
 AllocOp :: enum {
     /// Allocation of new memory block is required.
@@ -75,21 +125,40 @@ AllocFn :: *fn (
     line: s32
 ) (mem: *u8, err: Error);
 
-/// Default allocator context base.
+/// Default allocator context base. This structure can be used as a base structure for any allocator
+/// implementation.
 Allocator :: struct {
+    /// Pointer to the main allocator handler function.
     handler: AllocFn;
 }
 
 /// Allocates `size` of bytes on heap using default allocator. Use [free](#free) to free allocated memory
-/// when it's no longer needed. Cause panic when allocation is not possible or `size` is  zero. This 
-/// function use allocator set in `application_context.allocator`
+/// when it's no longer needed.
+/// Cause panic when allocation is not possible or `size` is  zero. This function use allocator set in
+/// `application_context.allocator`
+/// The allocation `alignment` can be specified.
 alloc :: fn (size: usize, alignment := DEFAULT_ALIGNMENT, loc := #call_location) *u8 #inline {
     mem, err :: allocate_memory(application_context.allocator, size, alignment, loc);
     if !is_ok(err) { panic(err); }
     return mem;
 };
 
-// @Incomplete: document
+/// Reallocate previously allocated memory using default allocator. Caller is supposed to provide previous allocation size
+/// as the `old_size` in case the `ptr` is not null.
+///
+/// This function tries to resize previously allocated block if possible, otherwise new allocation is done and the
+/// old data (of `old_size`) are copied to the newly allocated memory.
+///
+/// Previously allocated block is freed when resize is not possible.
+///
+/// The allocation `alignment` can be specified but must be the same as previous one in case we try to reallocate.
+///
+/// !!! note
+///     When called with null `ptr`, this function behaves the same as [alloc](#alloc) and the `old_size` is ignored.
+///
+/// !!! warning
+///     The exact behaviour depends on the allocator used, in some cases reallocation is not implemented and new allocation
+///     is done everytime.
 realloc :: fn (ptr: *u8, old_size: usize, new_size: usize, alignment := DEFAULT_ALIGNMENT, loc := #call_location) *u8 #inline {
     mem, err :: reallocate_memory(application_context.allocator, ptr, old_size, new_size, alignment, loc);
     if !is_ok(err) { panic(err); }
@@ -98,12 +167,16 @@ realloc :: fn (ptr: *u8, old_size: usize, new_size: usize, alignment := DEFAULT_
 
 /// Free memory using current context allocator.
 ///
-/// **note**: The `ptr` can be `null`.
+/// !!! note
+///     The `ptr` can be `null`.
 free :: fn (ptr: *u8, loc := #call_location) #inline {
     free_memory(application_context.allocator, ptr, loc);
 };
 
-/// Allocate memory directly using specified `allocator`.
+/// Allocate memory directly using specified `allocator`. In case the `allocator` is null, default application context
+/// allocator is used.
+/// Returns pointer to the newly allocated memory or fails with `Error` in case the allocation is not possible.
+/// The allocation `size` must be at least 1 byte and the optional `alignment` must be value of power of two.
 allocate_memory :: fn (allocator: *Allocator, size: usize, alignment := DEFAULT_ALIGNMENT, loc := #call_location) (mem: *u8, err: Error) #inline {
     if !allocator { allocator = application_context.allocator; }
     assert(allocator.handler);
@@ -115,8 +188,22 @@ allocate_memory :: fn (allocator: *Allocator, size: usize, alignment := DEFAULT_
     return mem, err;
 }
 
-// @Incomplete
-// @Incomplete: Alignment must be the same as previous one during the reallocation!
+/// Reallocate previously allocated memory using the `allocator`. In case the `allocator` is null, default application context
+/// allocator is used.
+///
+/// This function tries to resize previously allocated block if possible, otherwise new allocation is done and the
+/// old data (of `old_size`) are copied to the newly allocated memory.
+///
+/// Previously allocated block is freed when resize is not possible.
+///
+/// The allocation `alignment` can be specified but must be the same as previous one in case we try to reallocate.
+///
+/// !!! note
+///     When called with null `ptr`, this function behaves the same as [allocate_memory](#allocate_memory) and the `old_size` is ignored.
+///
+/// !!! warning
+///     The exact behaviour depends on the allocator used, in some cases reallocation is not implemented and new allocation
+///     is done everytime.
 reallocate_memory :: fn (allocator: *Allocator, ptr: *u8, old_size: usize, size: usize, alignment := DEFAULT_ALIGNMENT, loc := #call_location) (mem: *u8, err: Error) #inline {
     if !allocator { allocator = application_context.allocator; }
     assert(allocator.handler);
@@ -170,6 +257,9 @@ memset :: fn (_dest: *u8, v: u8, size: usize) *u8 {
     return _dest;
 }
 
+// This is actually slower on Windows.
+// memset :: fn (dest: *u8, v: u8, size: usize) *u8 #intrinsic "memset.p0i8.i64";
+
 /// Zero out `dest` memory of `size` and return the `dest` pointer.
 zeromem :: fn (dest: *u8, size: usize) *u8 {
     ptr :: dest;
@@ -187,13 +277,6 @@ zeromem :: fn (dest: *u8, size: usize) *u8 {
     return ptr;
 }
 
-init_default :: fn (dest: *?T) *T #inline {
-    return auto memset(auto dest, 0, sizeof(T));
-}
-
-// This is actually slower on Windows.
-// memset :: fn (dest: *u8, v: u8, size: usize) *u8 #intrinsic "memset.p0i8.i64";
-
 /// Swaps content of memory at address `first` and `second`.
 swap :: fn (first: *?T, second: *T) #inline {
     tmp :: @first;
@@ -209,7 +292,8 @@ is_aligned :: fn (ptr: *?T, alignment: usize) bool #inline {
 /// Align pointer `p` to `alignment` and return adjusted pointer and number of bytes needed for 
 /// adjustment.
 ///
-/// **warning**: Cause panic when alignment is not power of two.
+/// !!! warning
+///     Cause panic when alignment is not power of two.
 align_ptr_up :: fn (p: *u8, alignment: usize) (p: *u8, adjustment: usize)
 {
     if is_aligned(p, alignment) { return p, 0; }
@@ -222,11 +306,11 @@ align_ptr_up :: fn (p: *u8, alignment: usize) (p: *u8, adjustment: usize)
     return p, adj;
 }
 
-// @Incomplete: Document!
-/// Allocate heap memory for `n` elements in `_v` slice. Allocated block is set to zero default value. 
-/// Allocated memory must be released by :ref:`slice_terminate` call.
+/// Allocate heap memory for `n` elements in the `slice`. Newly allocated slice can be zero initialized
+/// by setting `zero_init` to `true`. Custom allocator can be provided as `allocator`, the application context
+/// allocator is used in case the `allocator` is null.
 ///
-/// Zero initialization of allocated memory block can be expensive in case of large allocation.
+/// Allocated memory must be released by [slice_terminate](#slice_terminate) call.
 ///
 /// ### Example
 /// 
@@ -245,6 +329,9 @@ align_ptr_up :: fn (p: *u8, alignment: usize) (p: *u8, adjustment: usize)
 ///     return 0;
 /// }
 /// ```
+///
+/// !!! note
+///     Zero initialization of allocated memory block can be expensive in case of large number of elements.
 slice_init :: fn (slice: *[]?T, n: s64, zero_initialized := true, allocator: *Allocator = null, loc := #call_location) {
     if n < 0 { panic("Attempt to allocate % elements in slice!", n); }
     if n == 0  {
@@ -261,7 +348,9 @@ slice_init :: fn (slice: *[]?T, n: s64, zero_initialized := true, allocator: *Al
     if zero_initialized { zeromem(auto slice.ptr, bytes); }
 }
 
-/// Release slice memory allocated by [slice_init](#slice_init) call. 
+/// Release slice memory allocated by [slice_init](#slice_init) call.
+/// !!! warning
+///     The `allocator` must match the allocator used in ``slice_init``.
 slice_terminate :: fn (slice: *[]?T, allocator: *Allocator = null, loc := #call_location) {
     if slice.ptr {
         free_memory(allocator, auto slice.ptr, loc);
@@ -283,7 +372,8 @@ slice_terminate :: fn (slice: *[]?T, allocator: *Allocator = null, loc := #call_
 /// end <= slice.len
 /// ```
 ///
-/// **warning**: Function cause panic in case combination of `start` and `end` is out of `slice` range.
+/// !!! warning
+///     Function cause panic in case combination of `start` and `end` is out of `slice` range.
 slice_range :: fn (slice: []?T, start: s64, end: s64 = -1) []T #inline {
     if end < 0 { end = slice.len; }
     len :: end - start;
@@ -293,11 +383,14 @@ slice_range :: fn (slice: []?T, start: s64, end: s64 = -1) []T #inline {
     return []T.{len, auto ptr_shift_bytes(slice.ptr, start * cast(s64) sizeof(T))};
 }
 
-/// Reduce allocated memory, but keeps biggest allocated chunk for later use.
+/// Reduce allocated memory in temporary allocator storage, but keeps biggest allocated chunk
+/// for the later use.
 ///
-/// **warning**:  All resources previously allocated by this allocator became invalid after reset.
+/// !!! warning
+///     All resources previously allocated by this allocator became invalid after reset.
 ///
-/// **hint**: Call this method i.e. in every event loop (update) iteration.
+/// !!! note
+///     Call this method i.e. in every event loop (update) iteration.
 temporary_reset :: fn () #inline {
     std.pool_reset(&temporary_pool);
 }
@@ -305,18 +398,14 @@ temporary_reset :: fn () #inline {
 /// Release all memory allocated by temporary allocator, this method is supposed to be called
 /// at exit of a program or thread.
 ///
-/// **warning**:  All resources previously allocated by this allocator became invalid after release.
+/// !!! warning
+///     All resources previously allocated by this allocator became invalid after release.
 ///
-/// **hint**: Call this method before main returns.
+/// !!! note
+///     Call this method before main returns.
 temporary_release :: fn () #inline {
     std.pool_release(&temporary_pool);
 }
-
-/// Default memory allocator using libc malloc internally.
-default_allocator :: Allocator.{ handler = &default_allocator_handler };
-
-/// Default temporary allocator instance using pool internally.
-default_temporary_allocator :: Allocator.{ handler = &temporary_allocator_handler };
 
 #private
 
