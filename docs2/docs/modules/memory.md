@@ -4,33 +4,29 @@
 #load "std/memory.bl"
 ```
 
-Toolset for manipulation with system memory.
+Toolset for manipulation with the system memory.
 
-Memory allocator
-----------------
+## Memory allocator
 
 Memory allocators are used across the entire program to manage allocated memory resources used 
 in runtime. Since memory allocation can be an expensive operation in some cases, it's good to 
-provide an explicit API, giving information enough to fix  bugs, memory leaks and performance 
+provide an explicit API, giving information enough to fix bugs, memory leaks and performance
 issues.
 
-Memory allocator in BL world is just some context :ref:`Allocator` used by an allocator function, 
-and allocator function itself [AllocFn](#allocfn). The allocator context can hold some data needed by 
-allocator function and the allocator function is later used to make memory allocations and 
-deallocations.
+Memory allocator in BL world is just some context [Allocator](#allocator) structure used by an
+allocator [handler function](#allocfn).
 
 Functions like [alloc](#alloc) and [free](#free) internally use allocator set in global executable
 context `application_context` variable. Global context allocator is by default set to `default_allocator`
-and can be changed as needed. Main goal of internal use of  the allocator set in the global 
-context (used across all modules) is to have full control over what's going on and also give
-some advanced options to programmer (i.e. create his/her own allocator to have truly full 
-control over memory management of the program).
+and can be changed as needed.
 
 ## DEFAULT_ALIGNMENT
 
 ```c
 DEFAULT_ALIGNMENT : usize : 
 ```
+
+Default memory allocation alignment.
 
 
 
@@ -94,7 +90,7 @@ Default allocator context base.
 alloc :: fn (size: usize, alignment :: , loc :: ) *u8 #inline
 ```
 
-Allocates `size` of bytes on heap using default allocator. Use `free` to free allocated memory 
+Allocates `size` of bytes on heap using default allocator. Use [free](#free) to free allocated memory
 when it's no longer needed. Cause panic when allocation is not possible or `size` is  zero. This 
 function use allocator set in `application_context.allocator`
 

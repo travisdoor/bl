@@ -2,16 +2,32 @@
 #import "std/fs"
 #import "std/io"
 
-SRC_API_DIR :: "../../lib/bl/api";
-OUT_DIR :: "docs";
+SRC_API_DIR :: "../lib/bl/api";
+OUT_DIR :: "docs/modules";
 CONFIG_FILE :: "mkdocs.yml";
+IGNORE :: [3]string_view.{
+           "sdl2",
+           "glfw3",
+           "gl",
+          };
+
 working_directory: string_view;
+output_directory: string_view;
 
 main :: fn () s32 {
     defer std.temporary_release();
     working_directory = get_working_directory();
+    output_directory = get_full_path(OUT_DIR);
     print("Generate BL documentation in '%'.\n", working_directory);
+
     create_config_file();
+
+    src_files := std.str_new(&default_temporary_allocator);
+    list_files_recursive(get_full_path(SRC_API_DIR), IGNORE, &src_files);
+    err_cmd :: cmd("blc -doc --doc-out-dir=\"%\" %", output_directory, src_files);
+    if !is_ok(err_cmd) {
+        print_err(err_cmd);
+    }
     return 0;
 }
 
@@ -50,14 +66,56 @@ blc_ver :: fn () string_view #inline {
     return tprint("%.%.%", BLC_VER_MAJOR, BLC_VER_MINOR, BLC_VER_PATCH);
 }
 
+list_files_recursive :: fn (dirpath: string_view, ignore: []string_view, out: *string) {
+    using std;
+    list, err :: dir_scan(dirpath);
+    defer info_list_delete(list);
+    if !is_ok(err) {
+        print_err("%", err);
+    }
+    loop i := 0; i < list.len; i += 1 {
+        info :: &list[i];
+        if info.name[0] == '_' { continue; }
+        switch info.kind {
+            InfoKind.DIRECTORY {
+                ignored := false;
+                loop i := 0; i < ignore.len; i += 1 {
+                    if str_match(info.name, ignore[i]) {
+                        ignored = true;
+                        break;
+                    }
+                }
+                if !ignored {
+                    list_files_recursive(tprint("%/%", dirpath, info.name), ignore, out);
+                }
+            }
+            InfoKind.FILE {
+                ext: string_view;
+                if str_split_by_first(info.name, '.', null, &ext) && str_match(ext, "bl") {
+                    str_append(out, tprint("%/% ", dirpath, info.name));
+                }
+            }
+        }
+    }
+}
+
+cmd :: fn (fmt: string_view, args: ...) Error {
+    c :: tprint(fmt, args);
+    state :: os_execute(c);
+    if state != 0 {
+        return error(state, "Executed shell command failed '%'!", c);
+    }
+    return ok();
+}
+
 CONFIG ::
     "site_name: Biscuit Language\n"
     "theme:\n"
     "    name: windmill\n"
-    "\n"
+    "markdown_extensions:\n"
+    "    - admonition\n"
     "extra_css:\n"
     "    - extra.css\n"
-    "\n"
     "extra:\n"
     "    version: 0.10.0\n"
     "    article_nav_top: false\n"

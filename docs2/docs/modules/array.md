@@ -79,8 +79,12 @@ a new empty element without any initialization.
 ## array_pop
 
 ```c
-array_pop :: fn (_arr: *[..]?T, out: *T) bool #inline
+array_pop :: fn (_arr: *[..]?T, out : *T: ) bool #inline
 ```
+
+Duplicate the last array element into `out` argument (if not null) and reduce the array length by
+one. Returs `true` in case the array is not empty.
+
 
 
 
@@ -93,7 +97,9 @@ array_pop :: fn (_arr: *[..]?T, out: *T) bool #inline
 array_reserve :: fn (_arr: *[..]?T, n: s64)  #inline
 ```
 
-Reserve heap memory for `n` elements in array.
+Reserve heap memory for `n` elements in array. Does nothing in case the already allocaed block is
+large enough to hold `n` elements.
+
 
 
 

@@ -1,10 +1,10 @@
 site_name: Biscuit Language
 theme:
     name: windmill
-
+markdown_extensions:
+    - admonition
 extra_css:
     - extra.css
-
 extra:
     version: 0.10.0
     article_nav_top: false
