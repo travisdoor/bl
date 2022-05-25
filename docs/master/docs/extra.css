@@ -3,11 +3,18 @@ body {
   font-family: Roboto, "Segoe UI", sans-serif;
   background-color: white;
 }
-
+pre, .rst-content tt {
+  background: #546e7a0f;
+}
 code {
   font-family: Fira Code, Consolas, Menlo, monospace;
+  font-size: 80%;
 }
 .wm-page-content {
   margin-left: 20px;
   max-width: 1000px;
+}
+.admonition {
+  background: #ffc9c9;
+  color: #ae8787;
 }

@@ -3,6 +3,7 @@
 debug_allocator: std.DebugAllocator;
 
 main :: fn () s32 {
+    typekind(s32);
     using std;
     // Initialize debug allocator with current context allocator.
     debug_allocator = debug_allocator_make(application_context.allocator);

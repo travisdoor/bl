@@ -31,7 +31,7 @@ FileOpenMode :: enum #flags {
 }
 
 /// Open an file specified by `filepath`. Function return file handle and `OK` status when file was 
-/// opened, otherwise return invalid handle and proper error. File must be closed by [close](#close) 
+/// opened, otherwise return invalid handle and proper error. File must be closed by [file_close](#stdfile_close)
 /// call.
 ///
 /// File open `mode` is optional, any combination of `FileOpenMode` can be used. When `Create` 
@@ -73,8 +73,9 @@ file_remove :: fn (filepath: string_view) Error #inline {
 /// Copy existing file from `src` to `dest` and override existing file in destination if `override` 
 /// is true. Return `ok` or `error`.
 ///
-/// **note**: `src` and `dest` path can be relative path to current working path set by 
-/// [set_cwd](#set_cwd).
+/// !!! note
+///     `src` and `dest` path can be relative path to current working path set by
+///     [set_cwd](#stdset_cwd).
 file_copy :: fn (src: string_view, dest: string_view, override := false) Error #inline {
     return _fs_impl.copy(src, dest, override);
 }
@@ -147,8 +148,9 @@ info_list_delete :: fn (list: InfoList) #inline {
 /// an error. Root directory is removed if `remove_root` is `true`. Custom file `filter` function 
 /// can be specified as needed.
 ///
-/// **note**: This function recursively remove all nested folders and files in specified sub tree 
-/// so it can be expensive.
+/// !!! note
+///     This function recursively remove all nested folders and files in specified sub tree
+///     so it can be expensive.
 dir_remove_all :: fn (dirpath: string_view, remove_root := true, filter: DirScanFilterFn = &_default_file_filter) Error {
     if str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Dir path is empty!"); }
     if !filter { return error(ERR_INVALID_HANDLE, "Invalid list filter!"); }
@@ -324,10 +326,8 @@ path_normalize :: fn (filepath: *string) Error #inline {
 /// | /                       | /           | -            |
 /// | C:/                     | C:/         | -            |
 ///
-/// **note**: Returned components are just "views" of the original `filepath` and should not be explicitly
-/// freed.
-///
-/// **note**: Returned components may not be zero terminated.
+/// !!! note
+///     Returned components may not be zero terminated.
 path_split :: fn (filepath: string_view) (head: string_view, tail: string_view) {
     if str_is_empty(filepath) { return str_empty, str_empty; }
 
@@ -354,10 +354,8 @@ path_split :: fn (filepath: string_view) (head: string_view, tail: string_view) 
 /// | /                       | /                  | -            |
 /// | C:/                     | C:/                | -            |
 ///
-/// **note**: Returned components are just "views" of the original `filepath` and should not be explicitly
-/// freed.
-///
-/// **note**: Returned components may not be zero terminated.
+/// !!! note
+///     Returned components may not be zero terminated.
 path_splitext :: fn (filepath: string_view) (head: string_view, ext: string_view) {
     if str_is_empty(filepath) { return str_empty, str_empty; }
     head, ext: string_view;

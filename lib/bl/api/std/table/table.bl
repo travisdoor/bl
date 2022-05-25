@@ -53,10 +53,12 @@
 //! Current table implementation is not heavily optimized, this should be improved later, consider
 //! using a custom implementation in performance-critical cases.
 //!
-//! **warning:** Table elements are not sorted in any particular way so the iteration over the
-//! table does not correspond to the order in which elements were inserted.
+//! !!! warning
+//!     Table elements are not sorted in any particular way so the iteration over the
+//!     table does not correspond to the order in which elements were inserted.
 //!
-//! **warning:** The key types are limited to numbers and strings (this may change in the future).
+//! !!! warning
+//!     The key types are limited to numbers and strings (this may change in the future).
 //!
 //! ### Example
 //! ```c

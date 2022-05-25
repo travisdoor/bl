@@ -4,14 +4,15 @@
 //!
 //! Multiplatform implementation of various thread synchronization tools.
 //! 
-//! **warning**: This module is experimental and not fully supported across all platforms.
+//! !!! todo
+//!     This module is experimental and not fully supported across all platforms.
 
 #scope std
 
 /// Mutex type.
 Mutex :: _sync_impl.Mutex;
 
-/// Initialize mutex. Call :ref:`terminate` when mutex is no longer needed.
+/// Initialize mutex. Call [mutex_terminate](#mutex_terminate) when mutex is no longer needed.
 mutex_init :: fn (mutex: *Mutex) #inline {
     _sync_impl.init(mutex);
 }

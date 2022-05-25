@@ -84,7 +84,7 @@ is_error :: fn (err: Error, code: s32) bool #inline {
     return err.code == code;
 }
 
-/// Creates no-error :ref:`Error`.
+/// Creates no-error [Error](#error).
 ok :: fn () Error #inline {
     return null;
 }
@@ -92,7 +92,7 @@ ok :: fn () Error #inline {
 /// No error.
 //ok : Error = null;
 
-/// Overloaded function setting up error state. Error state is global variable holding :ref:`Error` 
+/// Overloaded function setting up error state. Error state is global variable holding [Error](#error)
 /// instance, `error` function sets desired values and return pointer to this global. That means
 /// the `Error` must be handled immediately after it's returned from failing function since every
 /// `Error` state points to the same memory.
