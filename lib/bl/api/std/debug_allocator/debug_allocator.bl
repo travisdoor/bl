@@ -37,7 +37,7 @@
 //! 
 //! Debug allocator can be used to analyze memory usage and eventually investigate possible memory leaks.
 //! Every allocation done via debug allocator is internally recorded with some meta-data included to each
-//! allocation. Debug allocator can later assert in situations like double-free, freeing of non-allocated
+//! allocation. Debug allocator can later panic in situations like double-free, freeing of non-allocated
 //! memory; or just report memory usage or memory leaks.
 //!
 //! Each allocation takes more space due to meta data beeing stored. This allocator also should not be
@@ -178,6 +178,7 @@ dump_memory_leaks :: fn (dbgalloc: *DebugAllocator) s64 {
 Meta :: struct {
     serial: u64;
     allocated_size: usize;
+    alignment: usize;
     file: string_view;
     line: s32;
 }
@@ -188,17 +189,22 @@ handler :: fn (dbgalloc: *DebugAllocator, operation: AllocOp, size: usize, old_s
         ALLOCATE {
             mem, err :: allocate_memory(dbgalloc.allocator, size, alignment);
             if !is_ok(err) { return mem, err; }
-            add_allocation(dbgalloc, mem, size, file, line);
+            add_allocation(dbgalloc, mem, size, alignment, file, line);
             return mem, err;
         }
         REALLOCATE {
             if ptr {
-                previously_allocated_size :: remove_allocation(dbgalloc, ptr);
-                assert(previously_allocated_size == old_size);
+                previously_allocated_size, previous_alignment :: remove_allocation(dbgalloc, ptr);
+                if previously_allocated_size != old_size {
+                    panic("Invalid size of previously allocated memory block during reallocation, expected is %B but current is %B. Not all original data would be copied!", previously_allocated_size, old_size);
+                }
+                if previous_alignment != alignment {
+                    panic("Alignment of reallocated memory block must be the same as previous one! Previous alignment is %B and current is %B.", previous_alignment, alignment);
+                }
             }
             mem, err :: reallocate_memory(dbgalloc.allocator, ptr, old_size, size, alignment);
             if !is_ok(err) { return mem, err; }
-            add_allocation(dbgalloc, mem, size, file, line);
+            add_allocation(dbgalloc, mem, size, alignment, file, line);
             return mem, ok();
         }
         FREE {
@@ -212,7 +218,7 @@ handler :: fn (dbgalloc: *DebugAllocator, operation: AllocOp, size: usize, old_s
     return null, ok();
 }
 
-add_allocation :: fn (dbgalloc: *DebugAllocator, ptr: *u8, size: usize, file: string_view, line: s32) {
+add_allocation :: fn (dbgalloc: *DebugAllocator, ptr: *u8, size: usize, alignment: usize, file: string_view, line: s32) {
     mutex_lock(&dbgalloc.mutex);
     defer mutex_unlock(&dbgalloc.mutex);
 
@@ -221,6 +227,7 @@ add_allocation :: fn (dbgalloc: *DebugAllocator, ptr: *u8, size: usize, file: st
 
     it := tbl_insert(&dbgalloc.alloc_table, ptr);
     it.value.allocated_size = size;
+    it.value.alignment = alignment;
     it.value.file = file;
     it.value.line = line;
     it.value.serial = dbgalloc.serial;
@@ -228,7 +235,7 @@ add_allocation :: fn (dbgalloc: *DebugAllocator, ptr: *u8, size: usize, file: st
     dbgalloc.total_allocated += auto size;
 }
 
-remove_allocation :: fn (dbgalloc: *DebugAllocator, ptr: *u8) usize {
+remove_allocation :: fn (dbgalloc: *DebugAllocator, ptr: *u8) (size: usize, alignment: usize) {
     mutex_lock(&dbgalloc.mutex);
     defer mutex_unlock(&dbgalloc.mutex);
     it :: tbl_lookup(&dbgalloc.alloc_table, ptr);
@@ -237,7 +244,8 @@ remove_allocation :: fn (dbgalloc: *DebugAllocator, ptr: *u8) usize {
     }
     meta :: &it.value;
     allocated_size :: meta.allocated_size;
+    alignment :: meta.alignment;
     dbgalloc.total_allocated -= auto allocated_size;
     tbl_erase_it(&dbgalloc.alloc_table, it);
-    return allocated_size;
+    return allocated_size, alignment;
 }
