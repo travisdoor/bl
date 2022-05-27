@@ -41,6 +41,7 @@ Change syntax of compound initializers.
 Add naming of compound members for structs.
 Fix 0 size reported from sizeof for incomplete types.
 Fix implicit conversion of alignof to Any.
+Redesign memory allocators.
 
 0.9.0 - PRE-RELEASE
 ---------------------------------------------------------------------------------------
