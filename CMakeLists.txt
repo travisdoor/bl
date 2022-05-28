@@ -69,7 +69,7 @@ if(MSVC AND NOT LLVM_DIR)
                 DOWNLOAD ${BL_LLVM_REMOTE_ZIP}
                 ${BL_LLVM_DIR_ZIP}
                 SHOW_PROGRESS
-                EXPECTED_HASH MD5=15a5aee3e0296656de7a917667a8bb94)
+                EXPECTED_HASH MD5=7aebf8cacf3388c1450148197621f17c)
         endif()
         execute_process(
             COMMAND ${CMAKE_COMMAND} -E tar -xf ${BL_LLVM_DIR_ZIP}
