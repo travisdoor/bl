@@ -1,5 +1,3 @@
-# How To
-
 ## Basics
 
 * [First Program](examples/first_program.bl)

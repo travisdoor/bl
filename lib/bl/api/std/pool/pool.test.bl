@@ -1,0 +1,193 @@
+#import "std/pool"
+
+#private
+
+initialization_1 :: fn () #test {
+    using std;
+    pool: PoolAllocator;
+    pool_release(&pool);
+}
+
+initialization_2 :: fn () #test {
+    using std;
+    pool :: pool_make(application_context.allocator, 32);
+    test_true(pool.block_size == 32);
+    pool_release(&pool);
+}
+
+initialization_default :: fn () #test {
+    using std;
+    pool :: pool_default;
+    test_true(pool.block_size == POOL_DEFAULT_SIZE);
+    pool_release(&pool);
+}
+
+allocation_default_copy :: fn () #test {
+    using std;
+
+    pool :: pool_default;
+
+    TEST_COUNT :: 100;
+    data: [TEST_COUNT]*s32 #noinit;
+
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        mem, err :: allocate_memory(&pool, sizeof(s32));
+        test_ok(err);
+        num := cast(*s32) mem;
+        @num = i;
+        data[i] = num;
+    }
+
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        test_eq(i, @data[i]);
+    }
+
+    pool_release(&pool);
+}
+
+allocation_1 :: fn () #test {
+    using std;
+    defer test_allocator_reset();
+
+    pool :: pool_make(&test_allocator, POOL_DEFAULT_SIZE);
+    test_true(pool.allocator == &test_allocator);
+
+    TEST_COUNT :: 100;
+    data: [TEST_COUNT]*s32 #noinit;
+
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        mem, err :: allocate_memory(&pool, sizeof(s32));
+        test_ok(err);
+        num := cast(*s32) mem;
+        @num = i;
+        data[i] = num;
+    }
+
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        test_eq(i, @data[i]);
+    }
+
+    pool_release(&pool);
+
+    test_eq(alloc_count, 2);
+    test_eq(free_count, 2);
+}
+
+allocation_2 :: fn () #test {
+    using std;
+    defer test_allocator_reset();
+
+    pool :: pool_make(&test_allocator, POOL_DEFAULT_SIZE);
+
+    TEST_COUNT :: 100;
+    data: [TEST_COUNT]*s32 #noinit;
+
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        mem, err :: allocate_memory(&pool, sizeof(s32));
+        test_ok(err);
+        num := cast(*s32) mem;
+        @num = i;
+        data[i] = num;
+    }
+
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        test_eq(i, @data[i]);
+    }
+
+    pool_reset(&pool);
+    test_eq(alloc_count, 2);
+    test_eq(free_count, 0);
+
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        mem, err :: allocate_memory(&pool, sizeof(s32));
+        test_ok(err);
+        num := cast(*s32) mem;
+        @num = i;
+        data[i] = num;
+    }
+
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        test_eq(i, @data[i]);
+    }
+
+    pool_release(&pool);
+    test_eq(alloc_count, 2);
+    test_eq(free_count, 2);
+
+}
+
+some_data :: [50]string_view.{
+    "ErKTrydREkVXE1MN1F2T", "gpOZtAPESOKMT4IqvdwB", "vs9Ad8uLvN7ztpuY8Gva", "JYT8bjkPgZXGTh1PayT6",
+    "D6W18sNihQfqSlJZhQ7P", "9Vnvpon3w7sCKLH94MfD", "9BNnqnhUyLxqsQ1mw4hh", "CKtyHtm8rf7B64ZMFxRx",
+    "491zHbm4KTKsqIX0IyrQ", "racAmtHeF83WEkYJ252t", "qMkgjjZRkrWb12LVZKfv", "q9fPGrzynCS3Wosrq0HI",
+    "WwbUkTIIpsoJOC9VY9Cg", "nQlmK42bbkMaUHjIAJBh", "Mrnu88mcAge1reH6Qzv9", "l03THW4NzdGkobmW00EC",
+    "vco0Cyksvjzh4P1ThQqj", "6sWXq7K9RAszFIpxcBRP", "Dpc9A1Qv9rPsmdAuRgeC", "HrqBdGEfDhA8bPYkD7AY",
+    "88CB5oxd6bO2zuSh2Jk0", "bUxvdrQg0RVFAmT4nIVX", "1wMPfj7jUQbzOiJKtMSP", "UXsHumtPjbxdU6ZjWiGN",
+    "8CVgvQYZNRL696jPovIc", "Qet5Ael6iErhrIciGDnc", "VPhiqMi3FQ5gxLosCDL6", "7MfaeQLVyDuwKP9y3Wxq",
+    "JFz0tZWduO3qm1lzOjdE", "HUgf0DVrAV6jouzFTiWg", "K9kpDJXznIxUqnJdiQQ3", "VKsnr3B7JS4g5LEjj9lY",
+    "HxSQwQhURitwohiuw6MU", "DXZ6F0ZiReN3QVg6bZWC", "u2Onv1OGPpA1J71tSayx", "GUwQpJezlbCF9wy21YYz",
+    "NVcos9oJ5xDsstUXZmiS", "XZHKs4BO2wetxRQNfJ2Y", "Tlll78VdaapNBYxroJGa", "4Qg4GB0i0LruwfpqytzE",
+    "pKfxzDV1BW3eR5dw9T0g", "8Bc47szR2jDkZcP5g6D8", "runFDlUMu2WEuEmbVXxC", "qf3paGJT9GvZd18989R4",
+    "qlEiD5VIpmlc2dylFLJk", "Shr7qCWs58mooYoT3H5p", "SHi3NJghtixHLn5XxDRK", "uMCRX3NGxtJzKrpXIihC",
+    "tsWP2GuIqAT3tbYvHlJF", "1KC1GCAU79ClHmT8bkBi",
+};
+
+allocation_real_data :: fn () #test {
+    using std;
+
+    pool :: pool_make(application_context.allocator);
+
+    TEST_COUNT :: 1000;
+    tmp: [TEST_COUNT]string #noinit;
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        tmp[i] = std.str_new(some_data[i % some_data.len], &pool);
+    }
+
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        test_eq(some_data[i % some_data.len], tmp[i]);
+    }
+
+    pool_release(&pool);
+}
+
+allocation_speed_pool :: fn () #test {
+    using std;
+
+    pool :: pool_make(application_context.allocator);
+
+    SPEED_TEST_COUNT : usize : 100000;
+    loop i : usize = 0; i < SPEED_TEST_COUNT; i += 1 {
+        allocate_memory(&pool, (i % 128) + 1);
+    }
+
+    pool_release(&pool);
+}
+
+alloc_count := 0;
+free_count := 0;
+
+test_allocator :: Allocator.{ handler = &handler };
+test_allocator_reset :: fn () {
+    alloc_count = 0;
+    free_count  = 0;
+}
+
+handler :: fn (_: *Allocator, operation: AllocOp, size: usize, old_size: usize, ptr: *u8, _: usize, _: string_view, _: s32) (mem: *u8, err: Error) {
+    using AllocOp;
+    switch operation {
+        ALLOCATE {
+            alloc_count += 1;
+            return allocate_memory(null, size);
+        }
+        REALLOCATE {
+            alloc_count += 1;
+            return reallocate_memory(null, ptr, old_size, size);
+        }
+        FREE {
+            free_count += 1;
+            free_memory(null, ptr);
+        }
+        default { panic(); }
+    }
+    return null, ok();
+}

@@ -288,6 +288,7 @@ realpath :: fn (path: *char, resolved_path: *char) *char #extern "realpath";
 raise :: fn (sig: int) int #extern "raise";
 signal :: fn (signum: int, handler: *fn (v: int)) *fn (v: int) #extern "signal";
 malloc :: fn (size: size_t) void_ptr #extern "malloc";
+realloc :: fn (ptr: void_ptr, new_size: size_t) void_ptr #extern "realloc";
 free :: fn (ptr: void_ptr) #extern "free";
 getenv :: fn (name: *char) *char #extern "getenv";
 putenv :: fn (s: *char) int #extern "putenv";

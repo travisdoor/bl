@@ -23,4 +23,4 @@ jobs:
     - name: Compile
       run: cmake --build . --config Debug
     - name: Run tests
-      run: ./bin/blc -run doctor.bl -d
+      run: ./bin/blc -run doctor.bl

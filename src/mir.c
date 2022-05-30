@@ -336,8 +336,10 @@ typedef struct {
 static struct mir_type *create_type_struct(struct context *ctx, create_type_struct_args_t *args);
 
 // Create incomplete struct type placeholder to be filled later.
-static struct mir_type *
-create_type_struct_incomplete(struct context *ctx, struct id *user_id, bool is_union);
+static struct mir_type *create_type_struct_incomplete(struct context *ctx,
+                                                      struct id      *user_id,
+                                                      bool            is_union,
+                                                      bool            has_base);
 
 typedef struct {
     struct mir_instr *fwd_decl;
@@ -1313,8 +1315,7 @@ static inline bool can_impl_cast(const struct mir_type *from, const struct mir_t
         from = mir_deref_type(from);
         to   = mir_deref_type(to);
 
-        while (true) {
-            if (!from) return false;
+        while (from) {
             if (type_cmp(from, to)) {
                 return true;
             } else {
@@ -1695,6 +1696,7 @@ static inline bool is_load_needed(struct mir_instr *instr)
     case MIR_INSTR_CALL_LOC:
     case MIR_INSTR_COMPOUND:
     case MIR_INSTR_SIZEOF:
+    case MIR_INSTR_DESIGNATOR:
         return false;
 
     case MIR_INSTR_LOAD: {
@@ -2389,8 +2391,12 @@ static struct mir_type *complete_type_struct(struct context *ctx, complete_type_
 }
 
 struct mir_type *
-create_type_struct_incomplete(struct context *ctx, struct id *user_id, bool is_union)
+create_type_struct_incomplete(struct context *ctx, struct id *user_id, bool is_union, bool has_base)
 {
+    // @Incomplete
+    // @Incomplete
+    // @Incomplete
+    (void)has_base;
     struct mir_type *type          = create_type(ctx, MIR_TYPE_STRUCT, user_id);
     type->data.strct.is_incomplete = true;
     type->data.strct.is_union      = is_union;
@@ -3768,6 +3774,7 @@ append_instr_alignof(struct context *ctx, struct ast *node, struct mir_instr *ex
     struct mir_instr_alignof *tmp = create_instr(ctx, MIR_INSTR_ALIGNOF, node);
     tmp->base.value.type          = ctx->builtin_types->t_usize;
     tmp->base.value.is_comptime   = true;
+    tmp->base.value.addr_mode     = MIR_VAM_RVALUE;
     tmp->expr                     = ref_instr(expr);
 
     append_current_block(ctx, &tmp->base);
@@ -5004,7 +5011,8 @@ static struct result analyze_instr_compound_regular(struct context            *c
             if ((*value_ref)->kind == MIR_INSTR_DESIGNATOR) {
                 struct mir_instr_designator *designator = (struct mir_instr_designator *)*value_ref;
                 bassert(designator->ident && designator->ident->kind == AST_IDENT);
-                struct id          *id    = &designator->ident->data.ident.id;
+                struct id *id = &designator->ident->data.ident.id;
+                // We should have to support also inherrited members from the base structures.
                 struct scope_entry *found = scope_lookup(scope,
                                                          &(scope_lookup_args_t){
                                                              .id = id,
@@ -5109,16 +5117,15 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
     bassert(type);
 
     if (!mir_is_global(&cmp->base) && cmp->is_naked) {
+        bassert(cmp->tmp_var == NULL);
         // For naked non-compile time compounds we need to generate implicit temp storage to
         // keep all data.
-        struct mir_var *tmp_var = create_var_impl(ctx,
-                                                  &(create_var_impl_args_t){
-                                                      .name = unique_name(ctx, IMPL_COMPOUND_TMP),
-                                                      .alloc_type = type,
-                                                      .is_mutable = true,
-                                                  });
-
-        cmp->tmp_var = tmp_var;
+        cmp->tmp_var = create_var_impl(ctx,
+                                       &(create_var_impl_args_t){
+                                           .name       = unique_name(ctx, IMPL_COMPOUND_TMP),
+                                           .alloc_type = type,
+                                           .is_mutable = true,
+                                       });
     }
 
     return_zone(PASS);
@@ -9070,14 +9077,23 @@ inline void testing_add_test_case(struct context *ctx, struct mir_fn *fn)
 
     struct mir_type *func_type = mir_get_struct_elem_type(elem_type, 0);
     struct mir_type *name_type = mir_get_struct_elem_type(elem_type, 1);
+    struct mir_type *file_type = mir_get_struct_elem_type(elem_type, 2);
+    struct mir_type *line_type = mir_get_struct_elem_type(elem_type, 3);
 
     vm_stack_ptr_t func_ptr = vm_get_struct_elem_ptr(ctx->assembly, elem_type, var_ptr + offset, 0);
     vm_stack_ptr_t name_ptr = vm_get_struct_elem_ptr(ctx->assembly, elem_type, var_ptr + offset, 1);
+    vm_stack_ptr_t file_ptr = vm_get_struct_elem_ptr(ctx->assembly, elem_type, var_ptr + offset, 2);
+    vm_stack_ptr_t line_ptr = vm_get_struct_elem_ptr(ctx->assembly, elem_type, var_ptr + offset, 3);
 
     bassert(fn->id);
 
+    const char *filename = fn->decl_node ? fn->decl_node->location->unit->filename : "UNKNOWN";
+    const s32   line     = fn->decl_node ? fn->decl_node->location->line : 0;
+
     vm_write_ptr(func_type, func_ptr, (vm_stack_ptr_t)fn);
     vm_write_string(ctx->vm, name_type, name_ptr, fn->id->str, strlen(fn->id->str));
+    vm_write_string(ctx->vm, file_type, file_ptr, filename, strlen(filename));
+    vm_write_int(line_type, line_ptr, line);
 }
 
 // Top-level rtti generation.
@@ -9936,14 +9952,15 @@ struct mir_instr *ast_expr_compound(struct context *ctx, struct ast *cmp)
                 ast_id = ast_designator->data.ref.ident;
                 bassert(ast_id);
             }
-
-            value = append_instr_designator(ctx, ast_value, ast_id, ast(ctx, ast_init_value));
+            value = ast(ctx, ast_init_value);
+            set_compound_naked(value, false);
+            value = append_instr_designator(ctx, ast_value, ast_id, value);
         } else {
             value = ast(ctx, ast_value);
+            set_compound_naked(value, false);
         }
         bassert(value);
         sarrpeek(values, i) = value;
-        set_compound_naked(value, false);
     }
     return append_instr_compound(ctx, cmp, type, values, false);
 }
@@ -10689,9 +10706,14 @@ static void ast_decl_var_global_or_struct(struct context *ctx, struct ast *ast_g
             const struct ast *ast_next_name = ast_name->data.ident.next;
             report_error(INVALID_NAME, ast_next_name, " cannot be multi-declared.");
         }
+
+        struct ast *struct_type_value = ast_value->data.expr_type.type;
+        bassert(struct_type_value->kind == AST_TYPE_STRUCT);
+        const bool has_base_type = struct_type_value->data.type_strct.base_type;
+
         // Set to const type fwd decl
         struct mir_type *fwd_decl_type =
-            create_type_struct_incomplete(ctx, ctx->ast.current_entity_id, false);
+            create_type_struct_incomplete(ctx, ctx->ast.current_entity_id, false, has_base_type);
 
         value = create_instr_const_type(ctx, ast_value, fwd_decl_type);
         analyze_instr_rq(value);
@@ -10730,14 +10752,9 @@ static void ast_decl_var_global_or_struct(struct context *ctx, struct ast *ast_g
     // SetInitializer instruction will be used to set actual value, also
     // implicit initialization block is created into MIR (such block does not
     // have LLVM representation -> globals must be evaluated in compile time).
-    if (ast_value) {
-        // Generate implicit global initializer block.
-        ast_create_global_initializer2(ctx, ast_value, decls);
-    } else {
-        // Global has no explicit initialization in code so we must
-        // create default global initializer.
-        ast_create_global_initializer2(ctx, NULL, decls);
-    }
+    //
+    // Generate implicit global initializer block.
+    ast_create_global_initializer2(ctx, ast_value, decls);
 
     // Struct decl cleanup.
     if (is_struct_decl) {

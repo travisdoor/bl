@@ -1,9 +1,4 @@
-#import "std/test"
 #import "std/arg_parser"
-
-main :: fn () s32 {
-    return test_run();    
-}
 
 #private
 

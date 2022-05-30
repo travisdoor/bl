@@ -29,7 +29,7 @@
 #import "std/thread"
 #import "std/string"
 #import "std/array"
-#import "std/debug_allocator"
+#import "std/pool"
 
 #load "std/debug.bl"
 
@@ -230,7 +230,8 @@ test_is_error :: fn (got_err: Error, expected_code: s32, loc := #call_location) 
     stop(loc);
 }
 
-/// Execute all registered test cases in current assembly. The `test_run` function uses compiler 
+// @Incomplete: Check the documentation
+/// Execute all registered test cases in current assembly. The `test_run` function uses compiler
 /// builtin `testcases()` function returning slice of all registered test cases in the current 
 /// assembly (all functions with hash directive `#test`).
 /// 
@@ -257,22 +258,15 @@ test_is_error :: fn (got_err: Error, expected_code: s32, loc := #call_location) 
 ///     return test_run(); 
 /// } 
 /// ```
-test_run :: fn (report_memory_leaks := true) s32 {
+test_run :: fn (print_results := true) s32 {
+    using std;
     sighup :: fn (_: C.int) {};
     C.signal(C.SIGHUP, &sighup);
-
-    if report_memory_leaks { std.debug_allocator_init(); }
-    defer std.debug_allocator_terminate();
 
     cases := testcases();
     if cases.len == 0 {
         return 0;
     }
-    print("\n");
-    prev_abort_handler :: _context.abort_fn;
-    defer _context.abort_fn = prev_abort_handler;
-
-    _context.abort_fn = &abort_handler;
     _ci = 0;
 
     // setup cases
@@ -280,40 +274,52 @@ test_run :: fn (report_memory_leaks := true) s32 {
     array_reserve(&_queue, cases.len);
     defer array_terminate(&_queue);
 
-    print("\nTesting start\n");
-    print("%\n", TEXT_LINE);
+    string_pool :: pool_make(application_context.allocator);
+    defer pool_release(&string_pool);
 
     loop i := 0; i < cases.len; i += 1 {
-        array_push(&_queue, TestRun.{cases[i].func, cases[i].name, false, 0.});
+        case :: &cases[i];
+        name := str_new(&string_pool);
+        str_concat(&name, case.file, ":", case.line, ": ", case.name);
+        array_push(&_queue, TestRun.{case.func, name, false, 0.});
     }
+
+    old_context :: application_context;
+    application_context.abort_fn = &abort_handler;
 
     loop _ci < _queue.len {
-        t :: std.thread_create(&worker);
-        std.thread_join(t);
+        t :: thread_create(&worker);
+        thread_join(t);
     }
+    application_context = old_context;
 
-    print("\nResults:\n");
-    print("%\n", TEXT_LINE);
-
-    fc: s64;
+    failed_count: s64;
     loop i := 0; i < _queue.len; i += 1 {
-        t :: &_queue[i];
-        if t.passed { continue; }
-
-        fc += 1;
-        print("[      | FAIL ] % (% ms)\n", t.name, t.runtime_ms);
+        if !_queue[i].passed {
+            failed_count += 1;
+        }
     }
 
-    perc := 100;
-    if fc > 0 { 
-        perc = cast(s32) (cast(f32) (_queue.len - fc) / ((cast(f32) _queue.len) * 0.01f));
+    if print_results {
+        print("\nResults:\n");
+        print("%\n", TEXT_LINE);
+        loop i := 0; i < _queue.len; i += 1 {
+            test :: &_queue[i];
+            if !test.passed {
+                print("[      | FAIL ] % (% ms)\n", test.name, test.runtime_ms);
+            }
+        }
+        perc := 100;
+        if failed_count > 0 {
+            perc = cast(s32) (cast(f32) (_queue.len - failed_count) / ((cast(f32) _queue.len) * 0.01f));
+            print("%\n", TEXT_LINE);
+        }
+        // @HACK: Cannot print percent, escape sequence cannot be easily detected here.
+        print("Executed: %, passed %%.\n", _queue.len, perc, "%");
         print("%\n", TEXT_LINE);
     }
 
-    // @HACK: Cannot print percent, escape sequence cannot be easily detected here.
-    print("Executed: %, passed %%.\n", _queue.len, perc, "%");
-    print("%\n", TEXT_LINE);
-    return auto fc;
+    return auto failed_count;
 }
 
 #private
@@ -352,6 +358,6 @@ worker :: fn (_: *u8) s32 {
 }
 
 stop :: fn (loc: *CodeLocation) #inline {
-     _context.print_log_fn(PrintLogKind.ERROR, loc.file, loc.line, "Test failed!");   
+    application_context.print_log_fn(PrintLogKind.ERROR, loc.file, loc.line, "Test failed!");
     unreachable;
 }

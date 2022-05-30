@@ -1,12 +1,8 @@
-#import "std/test"
 #import "std/table"
 
-main :: fn () s32 {
-    return test_run();
-}
-
 #private
-TEST_COUNT :: 100000;
+//TEST_COUNT :: 100000;
+TEST_COUNT :: 10;
 
 DATA :: [10]string_view.{
          "Melisa Britt",
@@ -212,7 +208,7 @@ test_struct :: fn () #test {
     defer std.tbl_terminate(&tbl);
 
     loop i := 0; i < TEST_COUNT; i += 1 {
-        std.tbl_insert(&tbl, i, Elem.{i, "hello", true, i});
+        std.tbl_insert(&tbl, i, Elem.{1, "hello", true, 1 });
     }
     test_eq(tbl.len, TEST_COUNT);
     c := 0;

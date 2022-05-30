@@ -270,6 +270,10 @@ TestCase :: struct #compiler {
     func: *fn();
     /// Name of the test case. 
     name: string_view;
+    /// File where the test case is declared.
+    file: string_view;
+    /// Line in the file where the test case is declared.
+    line: s32;
 }
 
 /// Type of source code location used by `#call_location` directive.
@@ -314,19 +318,22 @@ Context :: struct {
     print_log_fn: PrintLogFn;
     /// Pointer to abort handler function. 
     abort_fn: AbortFn;
-    /// Default memory allocator used across the binary.
+    /// Default memory allocator used across the application.
     allocator: *Allocator;
+    // @Incomplete
+    temporary_allocator: *Allocator;
 };
 
-/// Default implicit context. Implicit context is compiler internal global variable 
-/// containing basic context for whole assembly. This variable is mutable and can 
+/// Default application context. Implicit context is compiler internal global variable
+/// containing basic context for the whole assembly. This variable is mutable and can
 /// be modified by user code. For example we can replace default memory allocator
-/// with custom one, this will affect all allocations made later.
-_context := Context.{
-                print_log_fn = &__print_log_default,
-                abort_fn     = &__os_abort_default,
-                allocator    = &default_allocator,
-            };
+/// with custom one, this will affect all memory allocations made after.
+application_context := Context.{
+    print_log_fn        = &__print_log_default,
+    abort_fn            = &__os_abort_default,
+    allocator           = &default_allocator,
+    //temporary_allocator = &default_temporary_allocator,
+};
 
 /// Contains all arguments passed from command line. First argument is executable name.
 command_line_arguments: []string_view #compiler;
@@ -375,6 +382,11 @@ typeid :: fn (v: type) u64 #comptime {
     return cast(u64) typeinfo(v);
 }
 
+/// Returns `true` if the `T` type is an enumerator type.
+is_enum :: fn (T: type) bool #comptime {
+    return typeinfo(T).kind == TypeKind.ENUM;
+}
+
 /// Returns signed or unsigned builtin number type of the requested size.
 /// The `size_bytes` must be 1, 2, 4 or 8 Bytes.
 number_type :: fn (size_bytes: usize, is_signed: bool) type #comptime {
@@ -389,3 +401,5 @@ number_type :: fn (size_bytes: usize, is_signed: bool) type #comptime {
     unreachable;
     return s32;
 }
+
+#private

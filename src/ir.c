@@ -592,7 +592,7 @@ LLVMMetadataRef DI_complete_type(struct context *ctx, struct mir_type *type)
     }
 
     default: {
-        babort("Missing DI completition for type %d", type->kind);
+        babort("Missing DI completion for type %d", type->kind);
     }
     }
 
@@ -800,10 +800,11 @@ LLVMValueRef emit_fn_proto(struct context *ctx, struct mir_fn *fn, bool schedule
             struct mir_arg *arg = sarrpeek(args, i);
             if (arg->llvm_easgm != LLVM_EASGM_BYVAL) continue;
             // Setup attributes.
-            LLVMAttributeRef llvm_attr = LLVMCreateEnumAttribute(ctx->llvm_cnt, LLVM_ATTR_BYVAL, 0);
+            // LLVMAttributeRef llvm_attr = LLVMCreateEnumAttribute(ctx->llvm_cnt, LLVM_ATTR_BYVAL,
+            // 0);
 
             // NOTE: Index + 1, 0 is reserved for return value.
-            LLVMAddAttributeAtIndex(fn->llvm_value, arg->llvm_index + 1, llvm_attr);
+            // LLVMAddAttributeAtIndex(fn->llvm_value, arg->llvm_index + 1, llvm_attr);
         }
     }
     if (isflag(fn->flags, FLAG_INLINE)) {
@@ -1471,10 +1472,15 @@ State emit_instr_type_info(struct context *ctx, struct mir_instr_type_info *type
 LLVMValueRef testing_emit_meta_case(struct context *ctx, struct mir_fn *fn)
 {
     struct mir_type *type = ctx->builtin_types->t_TestCase;
-    LLVMValueRef     llvm_vals[2];
+    LLVMValueRef     llvm_vals[4];
+
+    const char *filename = fn->decl_node ? fn->decl_node->location->unit->filename : "UNKNOWN";
+    const s32   line     = fn->decl_node ? fn->decl_node->location->line : 0;
 
     llvm_vals[0] = emit_fn_proto(ctx, fn, true);
     llvm_vals[1] = emit_const_string(ctx, fn->id->str, strlen(fn->id->str));
+    llvm_vals[2] = emit_const_string(ctx, filename, strlen(filename));
+    llvm_vals[3] = LLVMConstInt(get_type(ctx, mir_get_struct_elem_type(type, 3)), (u64)line, true);
     return LLVMConstNamedStruct(get_type(ctx, type), llvm_vals, static_arrlenu(llvm_vals));
 }
 
@@ -2009,7 +2015,6 @@ LLVMValueRef _emit_instr_compound_comptime(struct context *ctx, struct mir_instr
 
             EMIT_NESTED_COMPOUND_IF_NEEDED(ctx, value);
             sarrdata(&llvm_members)[index] = value->llvm_value;
-            if (mapping) blog("map value %d to %d", i, index);
         }
 
         for (usize i = 0; i < sarrlenu(&llvm_members); ++i) {
@@ -2352,7 +2357,14 @@ State emit_instr_call(struct context *ctx, struct mir_instr_call *call)
 
             case LLVM_EASGM_BYVAL: { // Struct is too big and must be passed by value.
                 if (!has_byval_arg) has_byval_arg = true;
-                // @Performance: insert only when llvm_arg is not alloca???
+#if 0
+                // @Incomplete: Validate for all types of compound expressions and all platforms.
+                if (arg_instr->kind == MIR_INSTR_COMPOUND) {
+                    sarrput(&llvm_args,
+                            ((struct mir_instr_compound *)arg_instr)->tmp_var->llvm_value);
+                    break;
+                }
+#endif
                 INSERT_TMP(llvm_tmp, get_type(ctx, arg->type));
                 if (arg_instr->kind == MIR_INSTR_LOAD) {
                     struct mir_instr_load *load = (struct mir_instr_load *)arg_instr;
@@ -2360,6 +2372,8 @@ State emit_instr_call(struct context *ctx, struct mir_instr_call *call)
                     LLVMInstructionEraseFromParent(load->base.llvm_value);
                     build_call_memcpy(ctx, llvm_arg, llvm_tmp, arg->type->store_size_bytes);
                 } else {
+                    // @Performance: This can explode into lot of ASM instructions in some cases, we
+                    // should probably use memcpy intrinsic everytime.
                     LLVMBuildStore(ctx->llvm_builder, llvm_arg, llvm_tmp);
                 }
                 sarrput(&llvm_args, llvm_tmp);
@@ -2382,7 +2396,9 @@ State emit_instr_call(struct context *ctx, struct mir_instr_call *call)
     }
 
     // @Performance: LLVM API requires to set call side attributes after call is created.
-    if (has_byval_arg) {
+    // @Incomplete: Disabled for now, this for some reason does not work on ARM. Check if it's
+    // needed on other platforms.
+    if (has_byval_arg && false) {
         bassert(has_args);
         mir_args_t *args = callee_type->data.fn.args;
         for (usize i = 0; i < sarrlenu(args); ++i) {

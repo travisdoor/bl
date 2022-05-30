@@ -1,0 +1,24 @@
+#import "std/debug_allocator"
+#import "std/test"
+#import "std/pool"
+
+debug_allocator: std.DebugAllocator;
+
+main :: fn () s32 {
+    using std;
+    debug_allocator = debug_allocator_make(application_context.allocator);
+    defer debug_allocator_terminate(&debug_allocator);
+    application_context.allocator = &debug_allocator;
+    application_context.print_log_fn = &dummy_logger;
+
+    //debug_allocator_break(&debug_allocator, 3);
+
+    result := test_run(false);
+    if dump_memory_leaks(&debug_allocator) > 0 {
+        result += 1;
+    }
+    return result;
+}
+
+#private
+dummy_logger :: fn (_: PrintLogKind, _: string_view, _: s32, _: string_view, _: ...) {}

@@ -117,6 +117,8 @@ Target :: struct { // !!! ABI sync TargetOptions !!!
     verify_llvm: bool;
     /// Execute compile time tests.
     run_tests: bool;
+    /// Reduce compile-time tests output (remove results section).
+    tests_minimal_output: bool;
     /// Disable default API import.
     no_api: bool;
     /// Copy all known dependencies into output folder.

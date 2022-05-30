@@ -177,3 +177,8 @@ hash_combine :: fn (first: ?T, second: T, more: ...T) T #inline {
     }
     return result;
 }
+
+// @Document
+is_power_of_two :: fn (n: usize) bool #inline {
+    return (n != 0) && ((n & (n - 1)) == 0);
+}

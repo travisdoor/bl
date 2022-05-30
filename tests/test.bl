@@ -1,3 +1,20 @@
+#import "std/debug_allocator"
+
+debug_allocator: std.DebugAllocator;
+
 main :: fn () s32 {
+    typekind(s32);
+    using std;
+    // Initialize debug allocator with current context allocator.
+    debug_allocator = debug_allocator_make(application_context.allocator);
+    // Always cleanup at the end of the scope.
+    defer debug_allocator_terminate(&debug_allocator);
+
+    // Some leaking memory.
+    allocate_memory(&debug_allocator, 128);
+
+    // Do some other stuff...
+
+    dump_memory_leaks(&debug_allocator);
     return 0;
 }

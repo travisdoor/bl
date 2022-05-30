@@ -145,12 +145,12 @@ arg_parser_run :: fn (_parser: ArgParser, args: []string_view, ctx: *ArgParserCt
         arg :: &args[0];
         if arg.len > 0 && (@arg)[0] != '-' {
             array_push(&ctx.positional, @arg);
-            args.len -= 1;
-            if args.len > 0 {
+            if args.len > 1 {
                 args.ptr = &args[1];
             } else {
                 args.ptr = null;
             }
+            args.len -= 1;
             continue;
         }
         found: bool;

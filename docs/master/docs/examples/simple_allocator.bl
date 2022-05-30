@@ -1,0 +1,82 @@
+MyAllocator :: struct #base Allocator {
+    buffer: []u8;
+    used_bytes: usize;
+}
+
+allocator_make :: fn (buffer: []u8) MyAllocator {
+    allocator: MyAllocator;
+    allocator.handler = auto &my_allocator_handler;
+    allocator.buffer = buffer;
+    allocator.used_bytes = 0;
+    return allocator;
+}
+
+my_allocator_handler :: fn (
+    allocator: *MyAllocator,
+    // Operation specify whether we do allocation or free.
+    operation: AllocOp, 
+    // Count of bytes to be allocated, this value is set only when operation
+    // is allocation.
+    size: usize,
+    // Size of previous allocation (used for realloc).
+    old_size: usize,
+    // This is pointer to allocation to be freed, this value is set only when
+    // operation is free.
+    ptr: *u8,
+    // Allocation allignment,
+    alignment: usize,
+    // Source file where allocator was called.
+    file: string_view,
+    // Line in source file where allocator was called.
+    line: s32) (mem: *u8, err: Error)
+{
+    using AllocOp;
+    switch operation {
+        ALLOCATE   {
+            return allocate(allocator, size, alignment);
+        }
+        REALLOCATE {
+            mem, err :: allocate(allocator, size, alignment);
+            if !is_ok(err) { return mem, err; }
+            if !ptr { return mem, ok(); }
+            memcpy(mem, ptr, old_size);
+            return mem, ok();
+        }
+        FREE; // Nothing here
+    }
+    return null, ok();
+}
+
+allocate :: fn (allocator: *MyAllocator, size: usize, alignment: usize) (mem: *u8, err: Error) {
+    // Alignment mask.
+    mask :: ~(alignment - 1);
+    // We need some additional space to properly align the allocation.
+    size += alignment - 1;
+    // Calculate total size needed.
+    needed_size :: allocator.used_bytes + size;
+    // Check if there is space enough in out buffer.
+    if needed_size > auto allocator.buffer.len {
+        return null, error("The buffer is full! The buffer size is %B and required size is %B.", allocator.buffer.len, needed_size);
+    }
+    // Get free memory pointer.
+    mem := &allocator.buffer[auto allocator.used_bytes];
+    // Adjust used size.
+    allocator.used_bytes += size;
+    // Align memory pointer.
+    mem = auto ((cast(usize) mem) + alignment - 1 & mask);
+    return mem, ok();
+}
+
+main :: fn () s32 {
+    buffer: [2048]u8;
+    allocator :: allocator_make(buffer);
+
+    str :: std.str_new("abc", &allocator);
+    defer std.str_delete(&str);
+
+    loop i := 0; i < 100; i += 1 {
+        std.str_append(&str, i);
+    }
+
+    return 0;
+}

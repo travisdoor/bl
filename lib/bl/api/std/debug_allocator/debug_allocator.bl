@@ -35,82 +35,88 @@
 //! 
 //! `#import "std/debug_allocator"`
 //! 
-//! Debug allocator can be used to analyze memory usage of program and eventually analyze possible 
-//! memory leaks. By [init](#init) call the global `context` allocator is replaced by 
-//! debug allocator, every following allocations are recorded and analyzed in runtime since then. 
-//! Call [terminate](#terminate) to swap default context allocator back to previous 
-//! one.
-//! 
+//! Debug allocator can be used to analyze memory usage and eventually investigate possible memory leaks.
+//! Every allocation done via debug allocator is internally recorded with some meta-data included to each
+//! allocation. Debug allocator can later panic in situations like double-free, freeing of non-allocated
+//! memory; or just report memory usage or memory leaks.
+//!
+//! Each allocation takes more space due to meta data beeing stored. This allocator also should not be
+//! used in production code since it's way much slower than regular allocators.
+//!
 //! ### Example
 //! 
 //! ```
 //! #import "std/debug_allocator"
-//! 
+//!
+//! debug_allocator: std.DebugAllocator;
+//!
 //! main :: fn () s32 {
-//!     std.debug_allocator_init();
-//!     defer std.debug_allocator_terminate();
-//! 
-//!     // leaking allocation
-//!     alloc(64);
+//!     using std;
+//!     // Initialize debug allocator with current context allocator.
+//!     debug_allocator = debug_allocator_make(application_context.allocator);
+//!     // Always cleanup at the end of the scope.
+//!     defer debug_allocator_terminate(&debug_allocator);
+//!
+//!     // Some leaking memory.
+//!     allocate_memory(&debug_allocator, 128);
+//!
+//!     // Do some other stuff...
+//!
+//!     dump_memory_leaks(&debug_allocator);
 //!     return 0;
 //! }
 //! ```
 //! 
 //! 
 //! ```text
-//! $ ./out.exe
-//! ******************* MEMORY REPORT ******************
-//! * Allocated 64 Bytes.
-//! * Count of allocations 1.
-//! ****************************************************
+//! .\out.exe
 //! Dump memory leaks begin:
-//!     [1] - test.bl:10 (64 bytes)
+//!     [1] - C:/Develop/bl/tests/test.bl:13 (128 bytes)
 //! Dump memory leaks end.
 //! ```
+//!
+//! !!! note
+//!     Debug allocator can be used as global application allocator to catch all possible memory leaks
+//!     and other issues.
 //! 
-//! **note**: Debug allocator is thread safe. Init and terminate must be called from main thread.
+//! !!! note
+//!     Debug allocator is thread safe.
 
-debug_allocator :: Allocator.{&handler};
-
-/// Initialize Debug Allocator. This function internally swap current global context allocator to 
-/// debug one. Deinitialization must be done by [debug_allocator_terminate](#debug_allocator_terminate) call.
-debug_allocator_init :: fn () {
-    assert(!_prev_allocator);
-    _prev_allocator = _context.allocator;
-    _context.allocator = &debug_allocator;
-    std.tbl_init(&_alloc_table, 2048, &default_allocator);
-    std.mutex_init(&_mutex);
-    _is_initialized = true;
+DebugAllocator :: struct #base Allocator {
+    mutex: std.Mutex;
+    allocator: *Allocator;
+    total_allocated: s64;
+    alloc_table: std.Table(*u8, Meta);
+    serial: u64;
+    break_on: u64;
 }
 
-/// Terminate Debug Allocator. Prints current memory report when 
-/// [print_report](#print_report) is `true`.
-debug_allocator_terminate :: fn (print_report := true) {
-    if !_prev_allocator { return; }
-    if print_report {
-        print_memory_report(true);
-    }
-    assert(_prev_allocator);
-    _context.allocator = _prev_allocator;
-    std.tbl_terminate(&_alloc_table);
-    std.mutex_terminate(&_mutex);
-    _prev_allocator = null;
-    _is_initialized = false;
+/// Create new debug allocator instace using `allocator` to allocate memory.
+debug_allocator_make :: fn (allocator: *Allocator) DebugAllocator {
+    dbgalloc: DebugAllocator;
+    dbgalloc.handler = auto &handler;
+    dbgalloc.allocator = allocator;
+    std.tbl_init(&dbgalloc.alloc_table, 2048, dbgalloc.allocator);
+    std.mutex_init(&dbgalloc.mutex);
+    return dbgalloc;
 }
 
-/// Invoke [debug_break](#debug_break) before allocation with defined serial ID.
-/// **note**: See also [print_memory_report](#print_memory_report)
-debug_allocator_break :: fn (serial: u64) #inline {
-    if !_is_initialized { return; }
-    _break_on = serial;
+/// Release debug allocator resources.
+debug_allocator_terminate :: fn (dbgalloc: *DebugAllocator) {
+    std.tbl_terminate(&dbgalloc.alloc_table);
+    std.mutex_terminate(&dbgalloc.mutex);
+}
+
+/// Invoke `debug_break` before allocation with defined serial ID.
+debug_allocator_break :: fn (dbgalloc: *DebugAllocator, serial: u64) #inline {
+    dbgalloc.break_on = serial;
 }
 
 /// Return currently allocated memory in bytes.
-debug_allocator_allocated :: fn () usize #inline {
-    if !_is_initialized { return 0; }
-    std.mutex_lock(&_mutex);
-    defer std.mutex_unlock(&_mutex);
-    return auto _total_allocated;
+debug_allocator_allocated :: fn (dbgalloc: *DebugAllocator) usize #inline {
+    std.mutex_lock(&dbgalloc.mutex);
+    defer std.mutex_unlock(&dbgalloc.mutex);
+    return auto dbgalloc.total_allocated;
 }
 
 /// Print memory report. First block contains currently allocated bytes and current count
@@ -131,98 +137,115 @@ debug_allocator_allocated :: fn () usize #inline {
 /// Dump memory leaks end.
 /// ``` 
 /// 
-/// **note**: Printed report contains all remaining (not freed) allocations in time when function was
-/// called. Memory leaks can contain false-positives when function is called before execution end.
+/// !!! note
+///     Printed report contains all remaining (not freed) allocations in time when function was
+///     called. Memory leaks can contain false-positives when function is called before execution end.
 /// 
-/// **hint**: Allocation serail ID can be used by [debug_allocator_break](#debug_allocator_break) to interrupt 
-/// execution before memory is allocated and eventually localize allocation in debbuger.
-print_memory_report :: fn (dump_leaks := false) {
-    if !_is_initialized { return; }
-    std.mutex_lock(&_mutex);
-    defer std.mutex_unlock(&_mutex);
+/// !!! note
+///     Allocation serail ID can be used by [debug_allocator_break](#debug_allocator_break) to interrupt
+///     execution before memory is allocated and eventually localize allocation in debbuger.
+print_memory_report :: fn (dbgalloc: *DebugAllocator, dump_leaks := false) {
+    std.mutex_lock(&dbgalloc.mutex);
+    defer std.mutex_unlock(&dbgalloc.mutex);
     unit := "Bytes";
-    total := _total_allocated;
+    total := dbgalloc.total_allocated;
     if total > 1024 { total /= 1024; unit = "kB"; }
     if total > 1024 { total /= 1024; unit = "MB"; }
     if total > 1024 { total /= 1024; unit = "GB"; }
     
     print("******************* MEMORY REPORT ******************\n");
     print("* Allocated % %.\n", total, unit);
-    print("* Count of allocations %.\n", _alloc_table.len);
+    print("* Count of allocations %.\n", dbgalloc.alloc_table.len);
     print("****************************************************\n");
 
-    if dump_leaks && _alloc_table.len > 0 {
-        print("Dump memory leaks begin:\n");
-        loop it := std.tbl_begin(&_alloc_table); it != std.tbl_end(&_alloc_table); std.tbl_iter_next(&it) {
-            meta :: &it.value;
-            print("    [%] - %:% (% bytes)\n", meta.serial, meta.file, meta.line, meta.allocated_size);
-        }
-        print("Dump memory leaks end.\n");
+    if dump_leaks && dbgalloc.alloc_table.len > 0 { dump_memory_leaks(dbgalloc); }
+}
+
+/// Print only leaking memory if any and returs count of leaking allocations. Please see the
+/// [print_memory_report](debug_allocator.md#stdprint_memory_report) for further details.
+dump_memory_leaks :: fn (dbgalloc: *DebugAllocator) s64 {
+    if dbgalloc.alloc_table.len == 0 { return 0; }
+    print("Dump memory leaks begin:\n");
+    loop it := std.tbl_begin(&dbgalloc.alloc_table); it != std.tbl_end(&dbgalloc.alloc_table); std.tbl_iter_next(&it) {
+        meta :: &it.value;
+        print("    [%] - %:% (% bytes)\n", meta.serial, meta.file, meta.line, meta.allocated_size);
     }
+    print("Dump memory leaks end.\n");
+    return dbgalloc.alloc_table.len;
 }
 
 #private
-_is_initialized := false;
-_mutex: std.Mutex;
-_total_allocated: s64;
-_prev_allocator: *Allocator;
-_alloc_table: std.Table(*u8, Meta);
-_serial: u64;
-_break_on: u64;
-
 Meta :: struct {
     serial: u64;
     allocated_size: usize;
+    alignment: usize;
     file: string_view;
     line: s32;
 }
 
-handler :: fn (_: *Allocator, operation: AllocOp, size: usize, ptr : *u8 = null, file := std.str_view_empty, line := 0) *u8 {
+handler :: fn (dbgalloc: *DebugAllocator, operation: AllocOp, size: usize, old_size: usize, ptr: *u8, alignment: usize, file: string_view, line: s32) (mem: *u8, err: Error) {
+    using AllocOp;
     switch operation {
-        AllocOp.ALLOCATE {
-            return debug_malloc(size, file, line);
+        ALLOCATE {
+            mem, err :: allocate_memory(dbgalloc.allocator, size, alignment);
+            if !is_ok(err) { return mem, err; }
+            add_allocation(dbgalloc, mem, size, alignment, file, line);
+            return mem, err;
         }
-        AllocOp.FREE {
-            debug_free(ptr);
+        REALLOCATE {
+            if ptr {
+                previously_allocated_size, previous_alignment :: remove_allocation(dbgalloc, ptr);
+                if previously_allocated_size != old_size {
+                    panic("Invalid size of previously allocated memory block during reallocation, expected is %B but current is %B. Not all original data would be copied!", previously_allocated_size, old_size);
+                }
+                if previous_alignment != alignment {
+                    panic("Alignment of reallocated memory block must be the same as previous one! Previous alignment is %B and current is %B.", previous_alignment, alignment);
+                }
+            }
+            mem, err :: reallocate_memory(dbgalloc.allocator, ptr, old_size, size, alignment);
+            if !is_ok(err) { return mem, err; }
+            add_allocation(dbgalloc, mem, size, alignment, file, line);
+            return mem, ok();
         }
-        AllocOp.RELEASE;
+        FREE {
+            if ptr {
+                remove_allocation(dbgalloc, ptr);
+                free_memory(dbgalloc.allocator, ptr);
+            }
+        }
         default { panic(); }
     }
-    return null;
+    return null, ok();
 }
 
-debug_malloc :: fn (size: usize, file: string_view, line: s32) *u8 {
-    if size == 0 { panic("Zero allocation!"); }
-    mem :: allocate_memory(&default_allocator, size);
+add_allocation :: fn (dbgalloc: *DebugAllocator, ptr: *u8, size: usize, alignment: usize, file: string_view, line: s32) {
+    mutex_lock(&dbgalloc.mutex);
+    defer mutex_unlock(&dbgalloc.mutex);
 
-    std.mutex_lock(&_mutex);
-    defer std.mutex_unlock(&_mutex);
+    dbgalloc.serial += 1;
+    if dbgalloc.break_on == dbgalloc.serial { debugbreak; }
 
-    _serial += 1;
-    if _break_on == _serial { debugbreak; }
-
-    it := std.tbl_insert(&_alloc_table, mem);
+    it := tbl_insert(&dbgalloc.alloc_table, ptr);
     it.value.allocated_size = size;
+    it.value.alignment = alignment;
     it.value.file = file;
     it.value.line = line;
-    it.value.serial = _serial;
+    it.value.serial = dbgalloc.serial;
 
-    _total_allocated += auto size;
-    return mem;
+    dbgalloc.total_allocated += auto size;
 }
 
-debug_free :: fn (ptr: *u8) {
-    if ptr == null { return; }
-    it :: std.tbl_lookup(&_alloc_table, ptr);
-    if it == std.tbl_end(&_alloc_table) { 
-        panic("Attempt to free already freed or unallocated memory on address %!", ptr); 
+remove_allocation :: fn (dbgalloc: *DebugAllocator, ptr: *u8) (size: usize, alignment: usize) {
+    mutex_lock(&dbgalloc.mutex);
+    defer mutex_unlock(&dbgalloc.mutex);
+    it :: tbl_lookup(&dbgalloc.alloc_table, ptr);
+    if it == tbl_end(&dbgalloc.alloc_table) {
+        panic("Attempt to free already freed or unallocated memory on address %!", ptr);
     }
     meta :: &it.value;
-    { // CRITICAL
-        std.mutex_lock(&_mutex);
-        defer std.mutex_unlock(&_mutex);    
-        _total_allocated -= auto meta.allocated_size;
-        std.tbl_erase_it(&_alloc_table, it);
-    }
-    free_memory(&default_allocator, ptr);
+    allocated_size :: meta.allocated_size;
+    alignment :: meta.alignment;
+    dbgalloc.total_allocated -= auto allocated_size;
+    tbl_erase_it(&dbgalloc.alloc_table, it);
+    return allocated_size, alignment;
 }

@@ -1,10 +1,5 @@
-#import "std/test"
 #import "std/fs"
 #import "std/io"
-
-main :: fn () s32 {
-    return test_run();    
-}
 
 #private
 get_dummy_filepath :: fn (i := 0) string {
@@ -476,7 +471,7 @@ fs_dir_create_remove_test1 :: fn () #test {
     test_ok(state1);
 
     state2 :: std.dir_create(dir);
-    test_not_ok(state1);
+    test_not_ok(state2);
 
     state3 :: std.dir_remove(dir);
     test_ok(state3);
@@ -486,7 +481,8 @@ fs_dir_remove_all_test1 :: fn () #test {
     dir :: std.get_tmp();
     defer std.str_delete(&dir);
     std.str_append(&dir, "/__DELETE_ME__");
-    
+
+    print_log("PATH = %", dir);
     std.dir_remove_all(dir);
     {
         s :: std.dir_create(dir);

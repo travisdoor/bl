@@ -1,0 +1,40 @@
+#import "std/thread"
+
+#private
+
+allocator :: &default_temporary_allocator;
+
+contcurent_allocation :: fn () #test {
+    using std;
+    WORKER_COUNT :: 8;
+    workers: [WORKER_COUNT]Thread;
+    loop i := 0; i < workers.len; i += 1 {
+        t, err :: thread_create(&worker);
+        test_ok(err);
+        workers[i] = t;
+    }
+    loop i := 0; i < workers.len; i += 1 {
+        thread_join(workers[i]);
+    }
+}
+
+worker :: fn (_: *u8) s32 {
+    defer temporary_release();
+
+    TEST_COUNT :: 1000;
+    loop j := 0; j < TEST_COUNT; j += 1 {
+        defer temporary_reset();
+        data: [TEST_COUNT]*s32;
+        loop i := 0; i < data.len; i += 1 {
+            mem, err :: allocate_memory(allocator, sizeof(s32));
+            test_ok(err);
+            data[i] = auto mem;
+            @data[i] = i;
+        }
+        loop i := 0; i < data.len; i += 1 {
+            test_eq(@data[i], i);
+        }
+    }
+    return 0;
+}
+

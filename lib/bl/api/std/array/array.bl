@@ -21,7 +21,7 @@
 //! }
 //! ```
 
-// @NOTE: Not direcly used internally, when layout of this structure is changed, internal compiler
+// Not direcly used internally, when layout of this structure is changed, internal compiler
 // representation must be modified too.
 _Array :: struct {
     len: s64;
@@ -31,7 +31,7 @@ _Array :: struct {
 }
 
 /// Sets dynamic array to default state. If array contains already allocated memory `array_terminate`
-/// must be called first. Custom `allocator` can be specified.
+/// must be called first. 
 ///
 /// Initial capacity can be specified by `n` (count of elements). If `n` is greater than 0, needed
 /// memory is preallocated using specified `allocator`; otherwise no allocation is done.
@@ -61,16 +61,32 @@ array_terminate :: fn (_arr: *[..]?T) #inline {
 /// there is not enough memory allocated to store all values.
 /// Returns pointer to the new appended element.
 ///
-/// **note:** When there is no element to push provided, function will just allocate memory for
-/// a new empty element without any initialization.
+/// !!! note
+///     When there is no element to push provided, function will just allocate memory for
+///     a new empty element without any initialization.
 array_push :: fn { impl_push_empty; impl_push; }
 
-/// Reserve heap memory for `n` elements in array.
+/// Duplicate the last array element into `out` argument (if not null) and reduce the array length by
+/// one. Returs `true` in case the array is not empty.
+array_pop :: fn (_arr: *[..]?T, out: *T = null) bool #inline {
+    arr := cast(*_Array) _arr;
+    // Eventually assert?
+    if arr.len == 0 { return false; }
+    if out {
+        elem :: get_elem_ptr(arr, sizeof(T), arr.len - 1);
+        memcpy(auto out, elem, sizeof(T));
+    }
+    arr.len -= 1;
+    return true;
+}
+
+/// Reserve heap memory for `n` elements in array. Does nothing in case the already allocaed block is
+/// large enough to hold `n` elements.
 array_reserve :: fn (_arr: *[..]?T, n: s64) #inline {
     arr := cast(*_Array) _arr;
     if n == 0 { return; }
     if n < 0 { panic("Invalid array capacity!"); }
-    ensure_space(arr, sizeof(T), auto n, true);
+    ensure_space(arr, sizeof(T), auto n, true, alignof(T));
 }
 
 /// Erase element on index `i`. Call to this function can cause reorderingof an dynamic array.
@@ -108,7 +124,7 @@ get_elem_ptr :: fn (arr: *_Array, elem_size: usize, i: s64) *u8 #inline {
     return ptr_shift_bytes(arr.ptr, i * cast(s64) elem_size);
 };
 
-ensure_space :: fn (arr: *_Array, elem_size: usize, space: usize, exact: bool) {
+ensure_space :: fn (arr: *_Array, elem_size: usize, space: usize, exact: bool, alignement: usize) {
     if space == 0 { return; }
     if arr.allocated >= space { return; }
     if arr.allocated == 0 {
@@ -116,12 +132,11 @@ ensure_space :: fn (arr: *_Array, elem_size: usize, space: usize, exact: bool) {
     } else {
         space *= 2;
     }
-    tmp := arr.ptr;
-    arr.ptr = allocate_memory(arr.allocator, space * elem_size);
-    if tmp != null {
-        memcpy(arr.ptr, tmp, arr.allocated * elem_size);
-        free_memory(arr.allocator, tmp);
-    }
+    prev_bytes :: arr.allocated * elem_size;
+    needed_bytes :: space * elem_size;
+    mem, err :: reallocate_memory(arr.allocator, arr.ptr, prev_bytes, needed_bytes, alignement);
+    if !is_ok(err) { panic(err); }
+    arr.ptr = mem;
     arr.allocated = space;
 };
 
@@ -135,6 +150,6 @@ impl_push :: fn (arr: *[..]?T, v: T) *T #inline {
 impl_push_empty :: fn (arr: *[..]?T) *T {
     elem_size :: sizeof(T);
     arr.len += 1;
-    ensure_space(auto arr, elem_size, auto arr.len, false);
+    ensure_space(auto arr, elem_size, auto arr.len, false, alignof(T));
     return auto get_elem_ptr(auto arr, elem_size, arr.len - 1);
 }
