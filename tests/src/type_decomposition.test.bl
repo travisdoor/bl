@@ -1,0 +1,24 @@
+#private
+
+Foo :: struct {
+    i: s32;
+    ptr: *s32;
+    bar: Bar;
+}
+
+Bar :: struct {
+    n: u64;
+    arr: [2]bool;
+}
+
+decomposition :: fn () #test {
+    test_true(typeinfo(Foo.i) == typeinfo(s32));
+    test_true(typeinfo(Foo.ptr) == typeinfo(*s32));
+    test_true(typeinfo(Foo.bar) == typeinfo(Bar));
+    test_true(typeinfo(Foo.bar.n) == typeinfo(u64));
+    test_true(typeinfo(Foo.bar.arr) == typeinfo([2]bool));
+    test_true(typeinfo(Foo.bar.arr.ptr) == typeinfo(*bool));
+    test_true(typeinfo(Foo.bar.arr.len) == typeinfo(s64));
+    test_true(typeinfo(*Foo.bar.arr.len) == typeinfo(*s64));
+    test_true(typeinfo(@Foo.bar.arr.ptr) == typeinfo(bool));
+}

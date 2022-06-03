@@ -19,7 +19,7 @@ git clone https://github.com/travisdoor/bl.git
 cd bl
 mkdir build
 cd build
-cmake .. -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Release
+cmake .. -G "Visual Studio 17 2022" -Thost=x64 -DCMAKE_BUILD_TYPE=Release
 cmake --build . --config Release
 ```
 
