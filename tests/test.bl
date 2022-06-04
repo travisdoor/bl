@@ -1,10 +1,16 @@
-T :: [2]s32;
+MyContainer :: fn (TValue: type) type #comptime {
+    return struct {
+        value: TValue;
+    };
+}
+
+// Return type is type of TContainer member value.
+get_value :: fn (container: *?TContainer) *TContainer.value {
+    return &container.value;
+}
 
 main :: fn () s32 {
-    i: T.len;
-    i += 1;
-    print("%\n", i);
-    v: T.ptr;
-    print("%\n", v);
+    container: MyContainer(u64);
+    value :: get_value(&container);
     return 0;
 }

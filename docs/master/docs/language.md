@@ -588,7 +588,64 @@ type_auto_cast :: fn () #test {
 };
 ```
 
----
+## Type Decomposition
+
+Type decomposition can be used on composit types to get type of any member for later use.
+
+**Example:**
+
+```c
+Person :: struct {
+    name: string_view;
+    age: s32;
+}
+
+main :: fn () s32 {
+    name: Person.name; // string_view type
+    age: Person.age; // s32 type
+    return 0;
+}
+
+```
+
+This can be extremely useful when generic structures are used in polymorphic functions and we
+don't know internal member types in advance.
+
+**Example:**
+```c
+MyContainer :: fn (TValue: type) type #comptime {
+    return struct {
+        value: TValue;
+    };
+}
+
+// Return type is type of TContainer member value.
+get_value :: fn (container: *?TContainer) *TContainer.value {
+    return &container.value;
+}
+
+main :: fn () s32 {
+    container: MyContainer(u64);
+    value :: get_value(&container);
+    return 0;
+}
+```
+
+Pointer type dereference is also possible.
+
+**Example:**
+```c
+Person :: struct {
+    name: string_view;
+    age: s32;
+    parent: *Person;
+}
+
+main :: fn () s32 {
+    parent_by_value: @Person.parent; // Person type.
+    return 0;
+}
+```
 
 ## Simple literals
 
