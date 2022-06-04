@@ -49,6 +49,7 @@ realpath :: fn (path: *char, resolved_path: *char) *char #extern "realpath";
 exit :: fn (v: int) #extern "_exit";
 system :: fn (command: *char) int #extern "system";
 malloc :: fn (size: size_t) void_ptr #extern "malloc";
+realloc :: fn (ptr: void_ptr, new_size: size_t) void_ptr #extern "realloc";
 free :: fn (ptr: void_ptr) #extern "free";
 strlen :: fn (str: *char) size_t #extern "strlen";
 strcmp :: fn (first: *char, second: *char) int #extern "strcmp";
