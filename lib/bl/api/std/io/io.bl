@@ -33,7 +33,7 @@ read :: fn (handle: std.File, dest: *u8, size: s64) (s64, Error) #inline {
 ///     file, open_err :: std.file_open(#file, std.FileOpenMode.READ);
 /// 
 ///     // Always check for errors.
-///     if !is_ok(open_err) {
+///     if open_err {
 ///         panic("Cannot open file with error: '%'!", open_err);
 ///     }
 ///     // Close file at the end of scope.
@@ -43,7 +43,7 @@ read :: fn (handle: std.File, dest: *u8, size: s64) (s64, Error) #inline {
 ///     content, read_err :: std.read_string(file);
 /// 
 ///     // Check for errors.
-///     if !is_ok(read_err) {
+///     if read_err {
 ///         panic("Cannot read file with error: '%'!", read_err);
 ///     }
 ///     // Delete content string at the end of scope.
@@ -56,20 +56,20 @@ read :: fn (handle: std.File, dest: *u8, size: s64) (s64, Error) #inline {
 /// ```
 read_string :: fn (handle: std.File) (string, Error) {
     size, err1 := std.file_size(handle);
-    if !is_ok(err1) {
+    if err1 {
         return std.str_empty, err1;
     }
     size += 1; // To handle zero terminator.
     buf := std.str_new(cast(s64) size);
     read, err2 :: _io_impl.read(handle, buf.ptr, auto size - 1);
-    if !is_ok(err2) {
+    if err2 {
         std.str_delete(&buf);
         return std.str_empty, err2;                
     }
     buf.len = auto read + 1;
     buf[buf.len-1] = '\0';
     buf.len -= 1;
-    return buf, ok();
+    return buf, OK;
 }
 
 /// Read whole file content into slice array. Return new slice instance containting file data and 
@@ -78,19 +78,19 @@ read_string :: fn (handle: std.File) (string, Error) {
 read_slice :: fn (handle: std.File) (string_view, Error) {
     invalid: string_view;
     size, err :: std.file_size(handle);
-    if !is_ok(err) {
+    if err {
         return invalid, err;
     }
     buf: string_view;
-    if size == 0 { return buf, ok(); }
+    if size == 0 { return buf, OK; }
     slice_init(&buf, auto size);
     read, err2 :: _io_impl.read(handle, buf.ptr, auto size);
-    if !is_ok(err2) {
+    if err2 {
         slice_terminate(&buf);
         return invalid, err2;                
     }
     buf.len = read;
-    return buf, ok();
+    return buf, OK;
 }
 
 /// Write `size` bytes from raw buffer `src` into the file. Return count of bytes written into the 
@@ -104,14 +104,14 @@ write :: fn (handle: std.File, src: *u8, size: s64) (s64, Error) #inline {
 /// error, otherwise return 0 and error.
 write_string :: fn (handle: std.File, str: string_view) (s64, Error) #inline {
     written_bytes, err :: _io_impl.write(handle, str.ptr, str.len);
-    if !is_ok(err) { return 0, err; }
-    return auto written_bytes, ok();    
+    if err { return 0, err; }
+    return auto written_bytes, OK;    
 }
 
 // @INCOMPLETE
 write_fmt :: fn {
     fn (buf_size: s32, handle: std.File, fmt: string_view, args: ...) (s64, Error) #inline {
-        if buf_size <= 0 { return 0, ok(); }
+        if buf_size <= 0 { return 0, OK; }
         buf: []u8;
         buf.ptr = alloc(sizeof(u8) * auto buf_size);
         buf.len = auto buf_size;
@@ -134,9 +134,9 @@ write_fmt :: fn {
 write_slice :: fn (handle: std.File, v: string_view, count : s64 = -1) (s64, Error) #inline {
     if count < 0 { count = v.len; } 
     if count > v.len { count = v.len; }
-    if v.len == 0 { return 0, ok(); }
+    if v.len == 0 { return 0, OK; }
     written_bytes, err :: _io_impl.write(handle, v.ptr, count);
-    if !is_ok(err) { return 0, err; }
-    return auto written_bytes, ok();
+    if err { return 0, err; }
+    return auto written_bytes, OK;
 }
 

@@ -135,7 +135,7 @@ ensure_space :: fn (arr: *_Array, elem_size: usize, space: usize, exact: bool, a
     prev_bytes :: arr.allocated * elem_size;
     needed_bytes :: space * elem_size;
     mem, err :: reallocate_memory(arr.allocator, arr.ptr, prev_bytes, needed_bytes, alignement);
-    if !is_ok(err) { panic(err); }
+    if err { panic(err); }
     arr.ptr = mem;
     arr.allocated = space;
 };

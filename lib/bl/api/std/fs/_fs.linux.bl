@@ -21,7 +21,7 @@ open :: fn (filepath: string_view, mode: std.FileOpenMode) (File, Error) {
         ec, estr :: os_get_last_error();
         return 0, error(ec, "Cannot open file '%': %.", filepath, estr);
     }    
-    return handle, ok();   
+    return handle, OK;   
 }
 
 remove :: fn (filepath: string_view) Error #inline {
@@ -30,7 +30,7 @@ remove :: fn (filepath: string_view) Error #inline {
         ec, estr :: os_get_last_error();
         return error(ec, "Cannot remove file '%': %.", filepath, estr);
     }
-    return ok();
+    return OK;
 }
 
 copy :: fn (src: string_view, dest: string_view, override: bool) Error {
@@ -39,13 +39,13 @@ copy :: fn (src: string_view, dest: string_view, override: bool) Error {
     if exist(dest) && !override { return error(ERR_ALREADY_EXIST, "Destination already exist '%'", dest); }
     file_src, err1 :: open(src, std.FileOpenMode.READ);
     defer close(file_src);
-    if !is_ok(err1) { return err1; }
+    if err1 { return err1; }
     tmp, err2 :: std.read_slice(file_src);
     defer slice_terminate(&tmp);
-    if !is_ok(err2) { return err2; }
+    if err2 { return err2; }
     file_dest, err3:: open(dest, make_flags(std.FileOpenMode.WRITE, std.FileOpenMode.CREATE));
     defer close(file_dest);
-    if !is_ok(err3) { return err3; }
+    if err3 { return err3; }
     _, err4 :: std.write_slice(file_dest, tmp);
     return err4;
 }
@@ -60,13 +60,13 @@ get_uid :: fn (handle: File) (u64, Error) {
         ec, estr :: os_get_last_error();
         return 0, error(ec, "Cannot get file information.", estr);
     }
-    return auto tmp.st_ino, ok();
+    return auto tmp.st_ino, OK;
 }
 
 get_uid_by_name :: fn (filepath: string_view) (u64, Error) {
     file, err1 :: open(filepath, std.FileOpenMode.READ);
     defer close(file);
-    if !is_ok(err1) { return 0, err1; }
+    if err1 { return 0, err1; }
     return get_uid(file);
 }
 
@@ -76,7 +76,7 @@ size :: fn (handle: File) (usize, Error) #inline {
         ec, estr :: os_get_last_error();
         return 0, error(ec, "Cannot get file size: %.", estr);
     }
-    return auto tmp.st_size, ok();
+    return auto tmp.st_size, OK;
 }
 
 dir_create :: fn (dirpath: string_view) Error {
@@ -85,7 +85,7 @@ dir_create :: fn (dirpath: string_view) Error {
         ec, estr :: os_get_last_error();
         return error(ec, "Cannot create directory '%': %.", dirpath, estr);
     }
-    return ok();
+    return OK;
 }
 
 dir_remove :: fn (dirpath: string_view) Error {
@@ -94,7 +94,7 @@ dir_remove :: fn (dirpath: string_view) Error {
         ec, estr :: os_get_last_error();
         return error(ec, "Cannot remove directory '%': %.", dirpath, estr);
     }
-    return ok();
+    return OK;
 }
 
 dir_scan :: fn (dirpath: string_view, filter: std.DirScanFilterFn) (std.InfoList, Error) {
@@ -113,7 +113,7 @@ dir_scan :: fn (dirpath: string_view, filter: std.DirScanFilterFn) (std.InfoList
 
     buf: std.InfoList;
     slice_init(&buf, fc);
-    if fc == 0 { return buf, ok(); }
+    if fc == 0 { return buf, OK; }
 
     buf.len = 0;
     loop {
@@ -136,7 +136,7 @@ dir_scan :: fn (dirpath: string_view, filter: std.DirScanFilterFn) (std.InfoList
             std.str_delete(&name);
         }
     }
-    return buf, ok();
+    return buf, OK;
 }
 
 is_directory :: fn (path: string_view) (bool, Error) #inline {
@@ -146,7 +146,7 @@ is_directory :: fn (path: string_view) (bool, Error) #inline {
         ec, estr :: os_get_last_error();
         return false, error(ec, "Cannot check directory '%': %.", path, estr);
     }
-    return C.S_ISDIR(stat.st_mode), ok();
+    return C.S_ISDIR(stat.st_mode), OK;
 }
 
 validate_filename :: fn (name: string_view) bool {
@@ -171,7 +171,7 @@ set_cwd :: fn (path: string_view) Error #inline {
         ec, estr :: os_get_last_error();
         return error(ec, "Cannot set current directory to '%': %.", path, estr);
     }
-    return ok();
+    return OK;
 }
 
 get_home :: fn () string #inline {
@@ -209,7 +209,7 @@ normalize :: fn (filepath: *string) Error {
     }
     std.str_clear(filepath);
     std.str_append(filepath, std.ctostr(auto buf.ptr));
-    return ok();
+    return OK;
 }
 
 #private

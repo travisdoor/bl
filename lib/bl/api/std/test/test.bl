@@ -199,14 +199,14 @@ test_not_null :: fn (ptr: *?T, loc := #call_location) {
 
 /// Test whether `err` is OK.
 test_ok :: fn (err: Error, loc := #call_location) #inline {
-    if is_ok(err) { return; }
+    if err == null { return; }
     print_err("Expected to be OK not '%'.", err);
     stop(loc);
 }
 
 /// Test whether `err` is not OK.
 test_not_ok :: fn (err: Error, loc := #call_location) #inline {
-    if !is_ok(err) { return; }
+    if err { return; }
     print_err("Expected not to be OK not '%'.", err);
     stop(loc);
 }

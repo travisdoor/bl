@@ -1,7 +1,7 @@
 #private
 
 error_test1 :: fn () #test {
-    e := ok();
+    e := OK;
     test_ok(e);
 
     e =  error(666);

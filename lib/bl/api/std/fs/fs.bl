@@ -47,7 +47,7 @@ FileOpenMode :: enum #flags {
 /// main :: fn () s32 {
 ///     file, err :: std.file_open(#file);
 ///     defer std.file_close(file);
-///     if !is_ok(err) {
+///     if err {
 ///         print_err("%", err);
 ///         return 1;
 ///     }
@@ -101,7 +101,7 @@ dir_create :: fn (dirpath: string_view) Error #inline {
 
 dir_create_all :: fn (dirpath: string_view) Error {
     if str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Dir path is empty!"); }
-    if _fs_impl.exist(dirpath) { return ok(); } 
+    if _fs_impl.exist(dirpath) { return OK; } 
     nodes :: str_split_by(dirpath, '/');
     defer slice_terminate(&nodes);
     path :: str_new(auto dirpath.len);
@@ -112,9 +112,9 @@ dir_create_all :: fn (dirpath: string_view) Error {
         str_append(&path, "/");
         if _fs_impl.exist(path) { continue; } 
         err :: _fs_impl.dir_create(path);
-        if !is_ok(err) { return err; }
+        if err { return err; }
     }
-    return ok();
+    return OK;
 }
 
 /// Remove directory specified by `dirpath` and return `OK` on success, otherwise return an error.
@@ -157,7 +157,7 @@ dir_remove_all :: fn (dirpath: string_view, remove_root := true, filter: DirScan
     tmp :: str_new();
     defer str_delete(&tmp);
     list, err :: _fs_impl.dir_scan(dirpath, filter);
-    if !is_ok(err) { return err; }
+    if err { return err; }
     defer info_list_delete(list);
     loop i := 0; i < list.len; i += 1 {
         node :: &list[i];
@@ -165,17 +165,17 @@ dir_remove_all :: fn (dirpath: string_view, remove_root := true, filter: DirScan
         switch node.kind {
             InfoKind.DIRECTORY {
                 err :: dir_remove_all(tmp);
-                if !is_ok(err) { return err; }
+                if err { return err; }
             }            
             InfoKind.FILE {
                 err :: _fs_impl.remove(tmp);
-                if !is_ok(err) { return err; }
+                if err { return err; }
             }
         }
         str_clear(&tmp);
     }
     if remove_root { return _fs_impl.dir_remove(dirpath); }
-    return ok();
+    return OK;
 }
 
 /// Type of `dir_scan` filter function.
@@ -225,7 +225,7 @@ DirCopyOpt :: struct {
 ///         if std.str_match(ext, ".txt") { return true; } 
 ///         return false;
 ///     });
-///     if !is_ok(err) { print("%\n", err); }
+///     if err { print("%\n", err); }
 ///     else { print("Copied % files!\n", c); }
 ///     return 0;
 /// }
@@ -241,7 +241,7 @@ dir_copy :: fn (src: string_view, dest: string_view, opt: *DirCopyOpt = &DIR_COP
     if !_fs_impl.exist(dest) {
         if opt.recursive {
             err :: _fs_impl.dir_create(dest);
-            if !is_ok(err) { return 0, err; }
+            if err { return 0, err; }
         } else {
             return 0, error(ERR_NOT_FOUND, "Destination path '%' not exist!", dest);
         }
@@ -258,7 +258,7 @@ dir_copy :: fn (src: string_view, dest: string_view, opt: *DirCopyOpt = &DIR_COP
     str_clear_concat(&dest_path, dest, "/", src); 
     if _fs_impl.exist(dest_path) { return 0, error("Destination directory '%' already exist!", dest_path); }
     list, list_err :: _fs_impl.dir_scan(src, filter);
-    if !is_ok(list_err) { return 0, list_err; }
+    if list_err { return 0, list_err; }
     defer info_list_delete(list);
     loop i := 0; i < list.len; i += 1 {
         copy_err: Error;
@@ -278,10 +278,10 @@ dir_copy :: fn (src: string_view, dest: string_view, opt: *DirCopyOpt = &DIR_COP
                 _cc = c;
             }
         }
-        if !is_ok(copy_err) { return 0, copy_err; }
+        if copy_err { return 0, copy_err; }
         cc += _cc;
     }
-    return cc, ok();
+    return cc, OK;
 }
 
 /// Check whether `path` points to valid directory and return true with `OK` state, otherwise return 

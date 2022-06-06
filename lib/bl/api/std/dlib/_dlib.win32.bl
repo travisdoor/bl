@@ -11,9 +11,9 @@ open :: fn (lib_name: string_view) (Library, Error) {
             ec, emsg :: os_get_last_error();
             return null, error(ec, emsg);
         }
-        return handle, ok();
+        return handle, OK;
     }
-    return win32.GetModuleHandleA(null), ok(); 
+    return win32.GetModuleHandleA(null), OK; 
 }
 
 sym :: fn (lib: Library, sym_name: string_view) (*u8, Error) {
@@ -22,7 +22,7 @@ sym :: fn (lib: Library, sym_name: string_view) (*u8, Error) {
         ec, emsg :: os_get_last_error();
         return null, error(ec, emsg);
     }
-    return handle, ok();
+    return handle, OK;
 }
 
 close :: fn (lib: Library) {

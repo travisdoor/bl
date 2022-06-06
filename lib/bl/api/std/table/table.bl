@@ -295,7 +295,7 @@ bucket_alloc :: fn (tbl: *?T, bucket_count: s64) {
         slice_init(&tbl.buckets, bucket_count, true, tbl.allocator);
         assert(!tbl.head);
         mem, err ::  allocate_memory(tbl.allocator, sizeof(TNode), alignof(TNode));
-        if !is_ok(err) { panic(err); }
+        if err { panic(err); }
         head := cast(*TNode) mem;
         head.next = auto head;
         head.prev = auto head;
@@ -342,7 +342,7 @@ impl_insert_empty :: fn (tbl: *?T, key: tbl_typeof_key(T)) TableIter(T) {
 
     TNode :: typeof_node(T);
     mem, err :: allocate_memory(tbl.allocator, sizeof(TNode), alignof(TNode));
-    if !is_ok(err) { panic(err); }
+    if err { panic(err); }
     node := cast(*TNode) mem;
     node.key = key;
     node.hash = hash;

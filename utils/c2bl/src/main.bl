@@ -44,7 +44,7 @@ main :: fn () s32 {
         in_filepath :: _args.positional[i];
         std.str_replace_all(&in_filepath, '\\', '/');
         err :: process_file(in_filepath);
-        if !is_ok(err) {
+        if err {
             eprint("ERROR: %\n", err);
             state += 1;
         }
@@ -96,7 +96,7 @@ handle_args :: fn () bool {
             if !is_valid_directory {  
                 return 0, error("Invalid include directory path '%'!", a.include_dir);
             }
-            return 2, ok();
+            return 2, OK;
         });
         
     std.arg_parser_add(
@@ -107,7 +107,7 @@ handle_args :: fn () bool {
         &fn (_: std.ArgParser, _: []string, ctx: *std.ArgParserCtx) (s32, Error) {
             a: *Args = auto ctx;
             a.check_syntax = true;
-            return 1, ok();
+            return 1, OK;
         });
         
     std.arg_parser_add(
@@ -118,7 +118,7 @@ handle_args :: fn () bool {
         &fn (_: std.ArgParser, _: []string, ctx: *std.ArgParserCtx) (s32, Error) {
             a: *Args = auto ctx;
             a.translate_macros = true;
-            return 1, ok();
+            return 1, OK;
         });
 
     std.arg_parser_add(
@@ -133,11 +133,11 @@ handle_args :: fn () bool {
             }
             std.str_replace_all(&args[1], '\\', '/');
             a.out_filepath = args[1];
-            return 2, ok();
+            return 2, OK;
         });
         
     state :: std.arg_parser_run(parser, command_line_arguments, &_args, 1);
-    if !is_ok(state) {
+    if state {
         print_err("%", state);
         std.arg_parser_print_help(parser);
         return false;
@@ -179,7 +179,7 @@ process_file :: fn (in_filepath: string) Error {
         out_filepath = sprint("%.bl", filename);
     }
     out_file, err :: std.file_open(out_filepath, make_flags(std.FileOpenMode.CREATE, std.FileOpenMode.WRITE));
-    if !is_ok(err) {
+    if err {
         return error("Cannot create output file '%'.", out_filepath);
     }
     ctx.out = out_file;
@@ -198,7 +198,7 @@ process_file :: fn (in_filepath: string) Error {
             return error("Code validation failed.");
         }
     }
-    return ok();
+    return OK;
 }
 
 visitor :: fn (c: CXCursor, _: CXCursor, client_data: CXClientData) CXChildVisitResult {

@@ -14,7 +14,7 @@ create :: fn (entry: std.ThreadEntryFn, ctx: *u8) (Handle, Error) {
         return null, error(err, "Cannot create thread: %.", estr);
     }    
 
-    return thread, ok();
+    return thread, OK;
 }
 
 join :: fn (thread: Handle) (exit_code: s32, err: Error) {
@@ -25,7 +25,7 @@ join :: fn (thread: Handle) (exit_code: s32, err: Error) {
         estr :: cast(*u8) C.strerror(err);
         return -1, error(err, "Cannot join thread: %.", estr);
     }    
-    return auto exit_code, ok();
+    return auto exit_code, OK;
 }
 
 current :: fn () Handle #inline {
@@ -34,6 +34,6 @@ current :: fn () Handle #inline {
 
 exit :: fn (exit_code: s32) Error {
     pthread_exit(auto exit_code);
-    return ok();
+    return OK;
 }
 

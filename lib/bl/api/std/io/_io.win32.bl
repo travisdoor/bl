@@ -7,7 +7,7 @@ read :: fn (handle: std.File, dest: *u8, size: s64) (s64, Error) {
         ec, estr :: os_get_last_error();
         return 0, error(ec, "Cannot read file: %", estr);
     }
-    return auto read_bytes, ok();
+    return auto read_bytes, OK;
 }
 
 write :: fn (handle: std.File, src: *u8, size: s64) (s64, Error) {
@@ -17,5 +17,5 @@ write :: fn (handle: std.File, src: *u8, size: s64) (s64, Error) {
         ec, estr :: os_get_last_error();
         return 0, error(ec, "Cannot write to file: %", estr);
     }
-    return auto written_bytes, ok();
+    return auto written_bytes, OK;
 }

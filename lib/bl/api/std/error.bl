@@ -50,16 +50,16 @@
 //!         return 0, error("Divide by zero '%/%'!", a, b);
 //!     }
 //!     // Return result and OK state.
-//!     return a / b, ok();
+//!     return a / b, OK;
 //! }
 //! 
 //! main :: fn () s32 {
 //!     loop i := -5; i <= 5; i += 1 {
 //!         result, error :: div(10, i);
-//!         if is_ok(error) {
-//!             print("Result is %.\n", result);
-//!         } else {
+//!         if error {
 //!             print("Error: %.\n", error);
+//!         } else {
+//!             print("Result is %.\n", result);
 //!         }
 //!     }
 //!     return 0;
@@ -73,24 +73,14 @@ _Error :: struct {
 
 Error :: *_Error;
 
-/// Check whether `err` is no-error valid state. Returns `false` when `err` is `null`.
-is_ok :: fn (err: Error) bool #inline {
-    return err == null;
-}
+/// No error.
+OK : Error = null;
 
 /// Check whether `err` is representing error `code`. Returns `false` when `err` is `null`.
 is_error :: fn (err: Error, code: s32) bool #inline {
     if !err { return false; }
     return err.code == code;
 }
-
-/// Creates no-error [Error](#error).
-ok :: fn () Error #inline {
-    return null;
-}
-
-/// No error.
-//ok : Error = null;
 
 /// Overloaded function setting up error state. Error state is global variable holding [Error](#error)
 /// instance, `error` function sets desired values and return pointer to this global. That means

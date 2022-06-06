@@ -139,7 +139,7 @@ Allocator :: struct {
 /// The allocation `alignment` can be specified.
 alloc :: fn (size: usize, alignment := DEFAULT_ALIGNMENT, loc := #call_location) *u8 #inline {
     mem, err :: allocate_memory(application_context.allocator, size, alignment, loc);
-    if !is_ok(err) { panic(err); }
+    if err { panic(err); }
     return mem;
 };
 
@@ -161,7 +161,7 @@ alloc :: fn (size: usize, alignment := DEFAULT_ALIGNMENT, loc := #call_location)
 ///     is done everytime.
 realloc :: fn (ptr: *u8, old_size: usize, new_size: usize, alignment := DEFAULT_ALIGNMENT, loc := #call_location) *u8 #inline {
     mem, err :: reallocate_memory(application_context.allocator, ptr, old_size, new_size, alignment, loc);
-    if !is_ok(err) { panic(err); }
+    if err { panic(err); }
     return mem;
 };
 
@@ -183,7 +183,7 @@ allocate_memory :: fn (allocator: *Allocator, size: usize, alignment := DEFAULT_
     assert(is_power_of_two(alignment));
     if size == 0 { return null, error("Attempt to allocate 0 bytes."); }
     mem, err :: allocator.handler(allocator, AllocOp.ALLOCATE, size, 0, null, alignment, loc.file, loc.line);
-    if !is_ok(err) { return mem, err; }
+    if err { return mem, err; }
     assert(is_aligned(mem, alignment));
     return mem, err;
 }
@@ -213,10 +213,10 @@ reallocate_memory :: fn (allocator: *Allocator, ptr: *u8, old_size: usize, size:
         if old_size == 0 {
             return ptr, error("Original data ponter for reallocation is set, but original data size is zero!");
         }
-        if old_size == size { return ptr, ok(); }
+        if old_size == size { return ptr, OK; }
     }
     mem, err :: allocator.handler(allocator, AllocOp.REALLOCATE, size, old_size, ptr, alignment, loc.file, loc.line);
-    if !is_ok(err) { return mem, err; }
+    if err { return mem, err; }
     assert(is_aligned(mem, alignment));
     return mem, err;
 }
@@ -342,7 +342,7 @@ slice_init :: fn (slice: *[]?T, n: s64, zero_initialized := true, allocator: *Al
     elem_size :: sizeof(T);
     bytes :: elem_size * auto n;
     mem, err :: allocate_memory(allocator, bytes, alignof(T), loc);
-    if !is_ok(err) { panic(err); }
+    if err { panic(err); }
     slice.ptr = auto mem;
     slice.len = n;
     if zero_initialized { zeromem(auto slice.ptr, bytes); }
@@ -423,7 +423,7 @@ default_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize,
             mem = C.malloc(size);
 }
             if !mem { return null, error("Bad allocation."); }
-            return mem, ok();
+            return mem, OK;
         }
         REALLOCATE {
             mem: *u8;
@@ -433,7 +433,7 @@ default_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize,
             mem = C.realloc(ptr, size);
 }
             if !mem { return null, error("Bad reallocation."); }
-            return mem, ok();
+            return mem, OK;
         }
         FREE {
 #if PLATFORM == Platform.WINDOWS {
@@ -445,7 +445,7 @@ default_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize,
 
         default { panic(); }
     }
-    return null, ok();
+    return null, OK;
 }
 
 temporary_pool := std.pool_default #thread_local;
