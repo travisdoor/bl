@@ -188,7 +188,7 @@ handler :: fn (dbgalloc: *DebugAllocator, operation: AllocOp, size: usize, old_s
     switch operation {
         ALLOCATE {
             mem, err :: allocate_memory(dbgalloc.allocator, size, alignment);
-            if !is_ok(err) { return mem, err; }
+            if err { return mem, err; }
             add_allocation(dbgalloc, mem, size, alignment, file, line);
             return mem, err;
         }
@@ -203,9 +203,9 @@ handler :: fn (dbgalloc: *DebugAllocator, operation: AllocOp, size: usize, old_s
                 }
             }
             mem, err :: reallocate_memory(dbgalloc.allocator, ptr, old_size, size, alignment);
-            if !is_ok(err) { return mem, err; }
+            if err { return mem, err; }
             add_allocation(dbgalloc, mem, size, alignment, file, line);
-            return mem, ok();
+            return mem, OK;
         }
         FREE {
             if ptr {
@@ -215,7 +215,7 @@ handler :: fn (dbgalloc: *DebugAllocator, operation: AllocOp, size: usize, old_s
         }
         default { panic(); }
     }
-    return null, ok();
+    return null, OK;
 }
 
 add_allocation :: fn (dbgalloc: *DebugAllocator, ptr: *u8, size: usize, alignment: usize, file: string_view, line: s32) {

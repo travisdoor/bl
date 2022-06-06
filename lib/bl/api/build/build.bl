@@ -236,14 +236,14 @@ add_unit :: fn (target: *Target, filepath: string_view) {
 compile :: fn (target: *Target) Error {
     if !target { panic("Invalid target!"); }
     state :: __compile(target);
-    if state == 0 { return ok(); }
+    if state == 0 { return OK; }
     return error("Compilation failed!", state);
 }
 
 /// Compile all created targets one by one in order they were created. See also [compile](#compile).
 compile_all :: fn () Error {
     state :: __compile_all();
-    if state == 0 { return ok(); }
+    if state == 0 { return OK; }
     return error("Compilation failed!", state);
 }
 

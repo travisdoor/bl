@@ -31,9 +31,9 @@ thread_join :: fn (thread: Thread) (exit_code: s32, err: Error) #inline {
 thread_join_all :: fn (threads: []Thread) Error #inline {
     loop i := 0; i < threads.len; i += 1 {
         _, err :: _thread_impl.join(threads[i]);
-        if !is_ok(err) { return err; }
+        if err { return err; }
     }
-    return ok();
+    return OK;
 }
 
 /// Exit current thread with optional `exit_code` return value.

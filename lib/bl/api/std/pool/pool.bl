@@ -81,16 +81,16 @@ handler :: fn (pool: *PoolAllocator, operation: AllocOp, size: usize, old_size: 
         }
         REALLOCATE {
             mem, err :: allocate(pool, size, alignment);
-            if !is_ok(err) { return mem, err; }
-            if !ptr { return mem, ok(); }
+            if err { return mem, err; }
+            if !ptr { return mem, OK; }
             memcpy(mem, ptr, old_size);
-            return mem, ok();
+            return mem, OK;
         }
         FREE;
 
         default { panic(); }
     }
-    return null, ok();
+    return null, OK;
 }
 
 allocate :: fn (pool: *PoolAllocator, size: usize, alignment: usize) (mem: *u8, err: Error) {
@@ -99,13 +99,13 @@ allocate :: fn (pool: *PoolAllocator, size: usize, alignment: usize) (mem: *u8, 
     size += alignment - 1;
     if pool.space < size {
         err :: ensure_space(pool, size);
-        if !is_ok(err) { return null, err; }
+        if err { return null, err; }
     }
     mem := pool.top;
     pool.top = auto (cast(usize) pool.top + size);
     pool.space -= size;
     mem = auto ((cast(usize) mem) + alignment - 1 & mask);
-    return mem, ok();
+    return mem, OK;
 }
 
 reset :: fn (pool: *PoolAllocator) {
@@ -138,13 +138,13 @@ ensure_space :: fn (pool: *PoolAllocator, size: usize) Error {
 
     if !array_pop(&pool.unused_blocks, &pool.current_block) {
         mem, err :: allocate_memory(pool.allocator, pool.block_size);
-        if !is_ok(err) { return err; }
+        if err { return err; }
         pool.current_block = mem;
     }
 
     pool.space = pool.block_size;
     pool.top = pool.current_block;
-    return ok();
+    return OK;
 }
 
 resize :: fn (pool: *PoolAllocator, new_block_size: usize) {

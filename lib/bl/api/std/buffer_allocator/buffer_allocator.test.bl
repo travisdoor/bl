@@ -61,7 +61,7 @@ test_full_buffer :: fn () #test {
 
     loop {
         m, err :: allocate_memory(&buf, sizeof(s32), alignof(s32));
-        if !is_ok(err) {
+        if err {
             break;
         }
         test_not_null(m);

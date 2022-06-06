@@ -47,7 +47,7 @@ FileOpenMode :: enum #flags {
 /// main :: fn () s32 {
 ///     file, err :: std.file_open(#file);
 ///     defer std.file_close(file);
-///     if !is_ok(err) {
+///     if err {
 ///         print_err("%", err);
 ///         return 1;
 ///     }
@@ -101,7 +101,7 @@ dir_create :: fn (dirpath: string_view) Error #inline {
 
 dir_create_all :: fn (dirpath: string_view) Error {
     if str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Dir path is empty!"); }
-    if _fs_impl.exist(dirpath) { return ok(); } 
+    if _fs_impl.exist(dirpath) { return OK; } 
     nodes :: str_split_by(dirpath, '/');
     defer slice_terminate(&nodes);
     path :: str_new(auto dirpath.len);
@@ -112,9 +112,9 @@ dir_create_all :: fn (dirpath: string_view) Error {
         str_append(&path, "/");
         if _fs_impl.exist(path) { continue; } 
         err :: _fs_impl.dir_create(path);
-        if !is_ok(err) { return err; }
+        if err { return err; }
     }
-    return ok();
+    return OK;
 }
 
 /// Remove directory specified by `dirpath` and return `OK` on success, otherwise return an error.

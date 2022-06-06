@@ -25,7 +25,7 @@ main :: fn () s32 {
     src_files := std.str_new(&default_temporary_allocator);
     list_files_recursive(get_full_path(SRC_API_DIR), IGNORE, &src_files);
     err_cmd :: cmd("blc -doc --doc-out-dir=\"%\" %", output_directory, src_files);
-    if !is_ok(err_cmd) {
+    if err_cmd {
         print_err(err_cmd);
     }
     return 0;
@@ -36,12 +36,12 @@ create_config_file :: fn () bool {
     filepath :: get_full_path(CONFIG_FILE);
     file, err1 :: file_open(filepath, make_flags(FileOpenMode.WRITE, FileOpenMode.CREATE));
     defer file_close(file);
-    if !is_ok(err1) {
+    if err1 {
         print_err("%", err1);
         return false;
     }
     _, err2 :: write_fmt(file, CONFIG, blc_ver());
-    if !is_ok(err2) {
+    if err2 {
         print_err("%", err2);
         return false;
     }
@@ -70,7 +70,7 @@ list_files_recursive :: fn (dirpath: string_view, ignore: []string_view, out: *s
     using std;
     list, err :: dir_scan(dirpath);
     defer info_list_delete(list);
-    if !is_ok(err) {
+    if err {
         print_err("%", err);
     }
     loop i := 0; i < list.len; i += 1 {
@@ -105,7 +105,7 @@ cmd :: fn (fmt: string_view, args: ...) Error {
     if state != 0 {
         return error(state, "Executed shell command failed '%'!", c);
     }
-    return ok();
+    return OK;
 }
 
 CONFIG ::

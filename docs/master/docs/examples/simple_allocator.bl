@@ -37,14 +37,14 @@ my_allocator_handler :: fn (
         }
         REALLOCATE {
             mem, err :: allocate(allocator, size, alignment);
-            if !is_ok(err) { return mem, err; }
-            if !ptr { return mem, ok(); }
+            if err { return mem, err; }
+            if !ptr { return mem, OK; }
             memcpy(mem, ptr, old_size);
-            return mem, ok();
+            return mem, OK;
         }
         FREE; // Nothing here
     }
-    return null, ok();
+    return null, OK;
 }
 
 allocate :: fn (allocator: *MyAllocator, size: usize, alignment: usize) (mem: *u8, err: Error) {
@@ -64,7 +64,7 @@ allocate :: fn (allocator: *MyAllocator, size: usize, alignment: usize) (mem: *u
     allocator.used_bytes += size;
     // Align memory pointer.
     mem = auto ((cast(usize) mem) + alignment - 1 & mask);
-    return mem, ok();
+    return mem, OK;
 }
 
 main :: fn () s32 {

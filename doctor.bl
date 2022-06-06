@@ -45,7 +45,7 @@ TestKind :: enum {
 }
 
 State :: enum #flags {
-    OK = 0;
+    PASSED = 0;
     FAILED_COMPILE;
     FAILED_EXECUTE;
     FAILED_RUN;
@@ -147,7 +147,7 @@ main :: fn () s32 {
     print("\n----------------------------------- RESULTS ------------------------------------\n");
     loop i := 0; i < results.len; i += 1 {
         result :: &results[i];
-        if result.state != State.OK {
+        if result.state != State.PASSED {
             print("[ FAILED ] '%' (%)\n", result.name, result.state);
             failed_count += 1;
         }
@@ -192,7 +192,7 @@ test_file :: fn (results: *[..]Result, filepath: string_view, kind: TestKind) {
 
     result := array_push(results);
     result.name  = name;
-    result.state = OK;
+    result.state = PASSED;
 
     loop i := 0; i < SKIP.len; i += 1 {
         skip :: &SKIP[i];
@@ -250,7 +250,7 @@ test_file :: fn (results: *[..]Result, filepath: string_view, kind: TestKind) {
 }
 
 report :: fn (result: *Result, msg := "") {
-    if result.state != State.OK {
+    if result.state != State.PASSED {
         print("[      | FAIL ] % %\n", result.name, msg);
     } else {
         print("[ PASS |      ] % %\n", result.name, msg);
@@ -271,11 +271,11 @@ parse_args :: fn () bool {
         &fn (_: ArgParser, _: []string_view, ctx: *ArgParserCtx) (s32, Error) {
             a: *Args = auto ctx;
             a.keep_temporary = true;
-            return 1, ok();
+            return 1, OK;
         });
 
     state :: arg_parser_run(parser, command_line_arguments, &args, 1);
-    if !is_ok(state) {
+    if state {
         print_err("%", state);
         arg_parser_print_help(parser);
         return false;
@@ -296,12 +296,12 @@ list_dir :: fn (paths: *[..]string_view, dir: string_view) {
         if !info.is_directory {
             array_push(data.paths, tprint("%", info.filepath));
         }
-        return ok();
+        return OK;
     };
 
     data :: VisitData.{ paths = paths };
     err :: dir_visit_files(dir, VisitOpt.{}, &visitor, &data);
-    if !is_ok(err) {
+    if err {
         print_err("%", err);
         return;
     }
@@ -350,10 +350,10 @@ get_expected_error :: fn (filepath: string_view) (is_present: bool, error: s32) 
 
     file, err1 :: file_open(filepath, FileOpenMode.READ);
     defer file_close(file);
-    if !is_ok(err1) { print_err("%", err1); return false, 0; }
+    if err1 { print_err("%", err1); return false, 0; }
     content, err2 :: read_string(file);
     defer str_delete(&content);
-    if !is_ok(err2) { print_err("%", err2); return false, 0; }
+    if err2 { print_err("%", err2); return false, 0; }
 
     tmp :: str_split_by(content, '@');
     defer slice_terminate(&tmp);

@@ -1,7 +1,3 @@
-#import "std/fs"
-
 main :: fn () s32 {
-    c, e :: std.dir_copy2("C:\Develop\deleteme\foo", "C:\Develop\deleteme\bar");
-    print(e);
     return 0;
 }

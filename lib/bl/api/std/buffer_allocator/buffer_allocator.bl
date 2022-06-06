@@ -116,15 +116,15 @@ handler :: fn (buf: *BufferAllocator, operation: AllocOp, size: usize, old_size:
         ALLOCATE   { return allocate(buf, size, alignment); }
         REALLOCATE {
             mem, err :: allocate(buf, size, alignment);
-            if !is_ok(err) { return mem, err; }
-            if !ptr { return mem, ok(); }
+            if err { return mem, err; }
+            if !ptr { return mem, OK; }
             memcpy(mem, ptr, old_size);
-            return mem, ok();
+            return mem, OK;
         }
         FREE; // Nothing here
         default { panic(); }
     }
-    return null, ok();
+    return null, OK;
 }
 
 allocate :: fn (buf: *BufferAllocator, size: usize, alignment: usize) (mem: *u8, err: Error) {
@@ -137,5 +137,5 @@ allocate :: fn (buf: *BufferAllocator, size: usize, alignment: usize) (mem: *u8,
     mem := &buf.mem[auto buf.used_bytes];
     buf.used_bytes += size;
     mem = auto ((cast(usize) mem) + alignment - 1 & mask);
-    return mem, ok();
+    return mem, OK;
 }

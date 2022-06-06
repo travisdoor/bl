@@ -28,13 +28,13 @@ main :: fn () s32 {
             a: *Args = auto ctx;
             if in_args.len < 2 { return 0, error("Expected run count as number."); }
             a.rc = auto std.str_to_s64(in_args[1]);
-            return 2, ok();
+            return 2, OK;
         });
 
     g_args.rc = 100;
 
     state :: std.arg_parser_run(parser, command_line_arguments, &g_args, 1);
-    if !is_ok(state) {
+    if state {
         print_err(state);
         std.arg_parser_print_help(parser);
         return 1;

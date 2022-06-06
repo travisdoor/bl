@@ -43,12 +43,12 @@ MAIN_BODY_CLT ::
     "        &fn (_: std.ArgParser, _: []string_view, ctx: *std.ArgParserCtx) (s32, Error) {\n"
     "            a: *Args = auto ctx;\n"
     "            a.my_flag = true;\n"
-    "            return 1, ok(); // Return number of parsed arguments and state.\n"
+    "            return 1, OK; // Return number of parsed arguments and state.\n"
     "        });\n"
     "\n"
     "    // Start parsing.\n"
     "    state :: std.arg_parser_run(parser, command_line_arguments, &g_args, 1);\n"
-    "    if !is_ok(state) {\n"
+    "    if state {\n"
     "        print_err(\"%\", state);\n"
     "        std.arg_parser_print_help(parser);\n"
     "        return 1;\n"
@@ -100,8 +100,8 @@ main :: fn () s32 {
             }
             a.proj_dir = args[1];
             is_dir, err :: std.is_directory(a.proj_dir);
-            if (!is_ok(err)) || (!is_dir) { return 0, error("Invalid directory '%'.", a.proj_dir); }
-            return 2, ok();
+            if err || (!is_dir) { return 0, error("Invalid directory '%'.", a.proj_dir); }
+            return 2, OK;
         });
      
      std.arg_parser_add(
@@ -112,7 +112,7 @@ main :: fn () s32 {
         &fn (_: std.ArgParser, _: []string_view, ctx: *std.ArgParserCtx) (s32, Error) {
             a: *Args = auto ctx;
             a.proj_kind = ProjKind.Executable;
-            return 1, ok();
+            return 1, OK;
         });
         
      std.arg_parser_add(
@@ -123,7 +123,7 @@ main :: fn () s32 {
         &fn (_: std.ArgParser, _: []string_view, ctx: *std.ArgParserCtx) (s32, Error) {
             a: *Args = auto ctx;
             a.proj_kind = ProjKind.Shared;
-            return 1, ok();
+            return 1, OK;
         });        
      
      std.arg_parser_add(
@@ -134,7 +134,7 @@ main :: fn () s32 {
         &fn (_: std.ArgParser, _: []string_view, ctx: *std.ArgParserCtx) (s32, Error) {
             a: *Args = auto ctx;
             a.proj_kind = ProjKind.CommandLineTool;
-            return 1, ok();
+            return 1, OK;
         });        
         
     g_args.proj_dir = ".";
@@ -142,7 +142,7 @@ main :: fn () s32 {
     
     // Start parsing.
     state = std.arg_parser_run(parser, command_line_arguments, &g_args, 1);
-    if !is_ok(state) {
+    if state {
         print_err("%", state);
         std.arg_parser_print_help(parser);
         return 1;
@@ -163,11 +163,11 @@ main :: fn () s32 {
     
     // create root directory
     state = std.dir_create(proj_root);
-    if !is_ok(state) { print_err("%", state); return 1; }
+    if state { print_err("%", state); return 1; }
 
     // create src directory
     state = std.dir_create(proj_src);
-    if !is_ok(state) { print_err("%", state); return 1; }
+    if state { print_err("%", state); return 1; }
 
     switch g_args.proj_kind {
         ProjKind.Executable {
@@ -208,9 +208,9 @@ main :: fn () s32 {
 make_file :: fn (filepath: string_view, content: string_view, args: ...) Error {
     file, err :: std.file_open(filepath, make_flags(std.FileOpenMode.WRITE, std.FileOpenMode.CREATE));
     defer std.file_close(file);
-    if !is_ok(err) { return err; }
+    if err { return err; }
     std.write_fmt(file, content, args);
-    return ok();
+    return OK;
 }
 
 #private

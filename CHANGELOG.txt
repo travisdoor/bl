@@ -43,6 +43,7 @@ Fix 0 size reported from sizeof for incomplete types.
 Fix implicit conversion of alignof to Any.
 Redesign memory allocators.
 Fix array type decomposition.
+Simplify error handling API.
 
 0.9.0 - PRE-RELEASE
 ---------------------------------------------------------------------------------------

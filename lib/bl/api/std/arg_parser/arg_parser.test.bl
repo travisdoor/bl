@@ -19,7 +19,7 @@ arg_parser_test1 :: fn () #test {
         &fn (_: std.ArgParser, _: []string_view, ctx: *std.ArgParserCtx) (s32, Error) {
             opt: *Opt = auto ctx;
             opt.about = true;
-            return 1, ok();
+            return 1, OK;
         });
 
     std.arg_parser_add(
@@ -30,7 +30,7 @@ arg_parser_test1 :: fn () #test {
         &fn (_: std.ArgParser, _: []string_view, ctx: *std.ArgParserCtx) (s32, Error) {
             opt: *Opt = auto ctx;
             opt.verbose = true;
-            return 1, ok();
+            return 1, OK;
         });
 
     std.arg_parser_print_help(parser);

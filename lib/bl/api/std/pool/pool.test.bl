@@ -189,5 +189,5 @@ handler :: fn (_: *Allocator, operation: AllocOp, size: usize, old_size: usize, 
         }
         default { panic(); }
     }
-    return null, ok();
+    return null, OK;
 }

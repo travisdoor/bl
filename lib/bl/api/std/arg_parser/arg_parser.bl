@@ -33,7 +33,7 @@
 //!         &fn (parser: std.ArgParser, args: []string_view, ctx: *std.ArgParserCtx) (s32, Error) {
 //!             a: *Args = auto ctx;
 //!             a.my_flag = true;
-//!             return 1, ok(); // Return number of parsed arguments and state.
+//!             return 1, OK; // Return number of parsed arguments and state.
 //!         });
 //! 
 //!     std.arg_parser_add(
@@ -47,12 +47,12 @@
 //!                 return 0, error("Expected name!");
 //!             }
 //!             a.my_name = args[1];
-//!             return 2, ok();
+//!             return 2, OK;
 //!         });
 //! 
 //!     // Start parsing.
 //!     state :: std.arg_parser_run(parser, command_line_arguments, &g_args, 1);
-//!     if !is_ok(state) {
+//!     if state {
 //!         print_err("%", state);
 //!         std.arg_parser_print_help(parser);
 //!         return 1;
@@ -104,7 +104,7 @@ arg_parser_new :: fn (help_text := std.str_view_empty) ArgParser {
         &fn (parser: ArgParser, _: []string_view, ctx: *ArgParserCtx) (s32, Error) {
             if ctx { ctx.help = true; }
             arg_parser_print_help(parser);
-            return 1, ok();
+            return 1, OK;
         });
 
     return auto parser;
@@ -135,7 +135,7 @@ arg_parser_run :: fn (_parser: ArgParser, args: []string_view, ctx: *ArgParserCt
     assert(ctx);
     parser: *ParserImpl = auto _parser;
     if start >= args.len {
-        return ok();
+        return OK;
     } else {
         args.ptr = &args[start];
         args.len -= start;
@@ -159,7 +159,7 @@ arg_parser_run :: fn (_parser: ArgParser, args: []string_view, ctx: *ArgParserCt
             if std.str_match(@arg, entry.short) || std.str_match(@arg, entry.long) {
                 found = true;
                 parsed, err :: entry.handler(_parser, args, ctx);
-                if !is_ok(err) {
+                if err {
                     return err;
                 }
                 if parsed == 0 {
@@ -174,7 +174,7 @@ arg_parser_run :: fn (_parser: ArgParser, args: []string_view, ctx: *ArgParserCt
             return error("Invalid argument '%'.", @arg);
         }
     }
-    return ok();
+    return OK;
 }
 
 /// Add new argument specified by `short` and `long` name to be recognised by parser. The argument 
@@ -192,7 +192,7 @@ arg_parser_run :: fn (_parser: ArgParser, args: []string_view, ctx: *ArgParserCt
 ///     &fn (parser: std.ArgParser, args: []string_view, ctx: *std.ArgParserCtx) (s32, Error) {
 ///         a: *MyArgs = auto ctx;
 ///         a.is_debug = true;
-///         return 1, ok(); // One argument parsed ('-d' or '--debug') 
+///         return 1, OK; // One argument parsed ('-d' or '--debug') 
 ///     });
 /// ```
 arg_parser_add :: fn (

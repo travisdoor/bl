@@ -11,7 +11,7 @@ open :: fn (lib_name: string_view) (Library, Error) {
     if !handle {
         return null, error(std.ctostr(_dlerror()));
     }
-    return handle, ok();
+    return handle, OK;
 }
 
 sym :: fn (lib: Library, sym_name: string_view) (*u8, Error) {
@@ -19,7 +19,7 @@ sym :: fn (lib: Library, sym_name: string_view) (*u8, Error) {
     if !handle {
         return null, error(std.ctostr(_dlerror()));
     }
-    return handle, ok();
+    return handle, OK;
 }
 
 close :: fn (lib: Library) {
