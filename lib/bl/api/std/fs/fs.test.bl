@@ -18,6 +18,7 @@ make_test_files :: fn (root_name: string_view) string {
 
     remove_all_dir(root);
     create_all_dir(root);
+
     create_all_dir(str_clear_concat(&tmp, root, "/A"));
     create_all_dir(str_clear_concat(&tmp, root, "/B"));
     create_all_dir(str_clear_concat(&tmp, root, "/C"));

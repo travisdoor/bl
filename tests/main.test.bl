@@ -9,7 +9,7 @@ main :: fn () s32 {
     debug_allocator = debug_allocator_make(application_context.allocator);
     defer debug_allocator_terminate(&debug_allocator);
     application_context.allocator = &debug_allocator;
-    application_context.print_log_fn = &dummy_logger;
+    application_context.print_log_fn = &my_logger;
 
     //debug_allocator_break(&debug_allocator, 3);
 
@@ -21,4 +21,24 @@ main :: fn () s32 {
 }
 
 #private
-dummy_logger :: fn (_: PrintLogKind, _: string_view, _: s32, _: string_view, _: ...) {}
+my_logger :: fn (kind: PrintLogKind, file: string_view, line: s32, format: string_view, args: ...) {
+    out := OS_STDOUT;
+    buf: [PRINT_MAX_LENGTH]u8 #noinit;
+    tag: string_view;
+    w: s32;
+    switch kind {
+        PrintLogKind.MESSAGE { return; }
+        PrintLogKind.WARNING { return; }
+        PrintLogKind.ERROR   { tag = "error";  out = OS_STDERR; }
+        PrintLogKind.ASSERT  { tag = "assert"; out = OS_STDERR; }
+        PrintLogKind.PANIC   { tag = "panic";  out = OS_STDERR; }
+    }
+    if file.len > 0 {
+        w = bprint(slice_range(buf, w), "% [%:%]: ", tag, file, line);
+    } else {
+        w = bprint(buf, "%: ", tag);
+    }
+    w += bprint(slice_range(buf, w), format, args);
+    w += bprint(slice_range(buf, w), "\n");
+    __os_write(out, buf.ptr, auto w);
+};

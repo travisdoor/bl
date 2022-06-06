@@ -80,6 +80,7 @@ size :: fn (handle: File) (usize, Error) #inline {
 }
 
 create_dir :: fn (dirpath: string_view) Error {
+    print("dirpath = %\n", dirpath);
     if std.str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot create directory, dirpath is empty."); }
     if C.mkdir(std.strtoc(dirpath), C.S_IRWXU | C.S_IRWXG | C.S_IROTH | C.S_IXOTH) != 0 {
         ec, estr :: os_get_last_error();
@@ -97,46 +98,46 @@ remove_dir :: fn (dirpath: string_view) Error {
     return OK;
 }
 
-dir_scan :: fn (dirpath: string_view, filter: std.DirScanFilterFn) (std.InfoList, Error) {
-    invalid: std.InfoList;
-    dir := C.opendir(std.strtoc(dirpath));
+visit_files :: fn (dirpath: string_view, is_recursive: bool, leaf_first: bool, visitor: *fn(info: *std.Info, ctx: *u8) Error, ctx: *u8 = null) Error #inline {
+    using std;
+    directory := str_new(dirpath);
+    defer str_delete(&directory);
+    err :: normalize(&directory);
+    if err { return err; }
+
+    dir := C.opendir(strtoc(directory));
     if !dir {
         ec, estr :: os_get_last_error();
-        return invalid, error(ec, "Cannot list directory '%': %.", dirpath, estr);
+        return error(ec, "Cannot list directory '%': %.", dirpath, estr);
     }
     defer C.closedir(dir);
 
-    fc := 0;
-    loop C.readdir(dir) != null { fc += 1; }
-    C.rewinddir(dir);
-    defer C.rewinddir(dir);
-
-    buf: std.InfoList;
-    slice_init(&buf, fc);
-    if fc == 0 { return buf, OK; }
-
-    buf.len = 0;
+    filepath :: str_new();
+    defer str_delete(&filepath);
     loop {
         stat :: C.readdir(dir);
         if stat == null { break; }
-        kind: std.InfoKind;
-        if stat.d_type == auto C.DT_DIR {
-            kind = std.InfoKind.DIRECTORY;
-        } else {
-            kind = std.InfoKind.FILE;
-        }
-        name :: std.str_new(cast(*u8) stat.d_name.ptr);
-        push := true;
-        info :: std.Info.{kind, name};
-        if filter { push = filter(&info); }
-        if push {
-            buf.len += 1;
-            buf[buf.len-1] = info;
-        } else {
-            std.str_delete(&name);
+        info: Info;
+        info.is_directory = stat.d_type == auto C.DT_DIR;
+        info.filename = ctostr(stat.d_name.ptr);
+        if (!str_match(info.filename, ".")) && (!str_match(info.filename, "..")) {
+            str_clear_concat(&filepath, directory, "/", info.filename);
+            info.filepath = filepath;
+            if !leaf_first {
+                visit_err :: visitor(&info, ctx);
+                if visit_err { return visit_err; }
+            }
+            if is_recursive && info.is_directory {
+                err :: _fs_impl.visit_files(filepath, is_recursive, leaf_first, visitor, ctx);
+                if err { return err; }
+            }
+            if leaf_first {
+                visit_err :: visitor(&info, ctx);
+                if visit_err { return visit_err; }
+            }
         }
     }
-    return buf, OK;
+    return OK;
 }
 
 is_directory :: fn (path: string_view) (bool, Error) #inline {

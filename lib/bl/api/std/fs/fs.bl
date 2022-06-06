@@ -100,19 +100,39 @@ create_dir :: fn (dirpath: string_view) Error #inline {
 }
 
 create_all_dir :: fn (dirpath: string_view) Error {
-    if str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Dir path is empty!"); }
-    if _fs_impl.exist(dirpath) { return OK; } 
-    nodes :: str_split_by(dirpath, '/');
-    defer slice_terminate(&nodes);
-    path :: str_new(auto dirpath.len);
+    if str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Directory path is empty!"); }
+
+    is_existing_directory :: fn (path: string_view) (bool, Error) {
+        if _fs_impl.exist(path) {
+            is_valid, err :: _fs_impl.is_directory(path);
+            if err { return false, err; }
+            if !is_valid { return false, error("Not a directory '%'.", path); }
+            return true, OK;
+        }
+        return false, OK;
+    };
+
+    is_valid, err :: is_existing_directory(dirpath);
+    if err      { return err; }
+    if is_valid { return OK;  }
+
+    path := str_new();
     defer str_delete(&path);
-    loop i := 0; i < nodes.len; i += 1 {
-        if nodes[i].len == 0 { continue; }
-        str_append(&path, nodes[i]);
+    assert(dirpath.len > 0);
+    // Handle unix root.
+    if dirpath[0] == '/' { str_append(&path, "/"); }
+    lhs: string_view;
+    rhs := dirpath;
+    loop str_split_by_first(rhs, '/', &lhs, &rhs) {
+        if lhs.len == 0 { continue; }
+        str_append(&path, lhs);
         str_append(&path, "/");
-        if _fs_impl.exist(path) { continue; } 
-        err :: _fs_impl.create_dir(path);
-        if err { return err; }
+        existing, err :: is_existing_directory(path);
+        if err      { return err; }
+        if existing { continue;  }
+        print("CREATE: %\n", path);
+        create_err :: _fs_impl.create_dir(path);
+        if create_err { return create_err; }
     }
     return OK;
 }
@@ -204,8 +224,7 @@ visit_files :: fn (dirpath: string_view, opt: VisitOpt, visitor: *fn(info: *Info
     return _fs_impl.visit_files(dirpath, opt.recursive, opt.leaf_first, auto visitor, auto ctx);
 }
 
-/// Check whether `path` points to valid directory and return true with `OK` state, otherwise return
-/// `false` and error.
+/// Check whether `path` points to valid directory. Returns error in case the check failed.
 is_directory :: fn (path: string_view) (bool, Error) #inline {
     return _fs_impl.is_directory(path);
 }

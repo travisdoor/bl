@@ -3,25 +3,12 @@
 main :: fn () s32 {
     using std;
 
-    visitor :: fn (info: *Info, list: *[..]string) Error {
-        using std;
-        if info.is_directory { return OK; }
-        _, ext :: path_splitext(info.filename);
-        if str_match(ext, ".bl") {
-            array_push(list, str_new(info.filepath));
+    path := "/home/travis/develop/foo";
+    loop i := 0; i < path.len; i += 1 {
+        if (i+1 == path.len) || (path[i] == '/' && i > 0) {
+            sub_path := string_view.{ i, path.ptr };
+            print("%: %\n", i, sub_path);
         }
-        return OK;
-    };
-
-    list: [..]string;
-    defer array_terminate(&list);
-    err :: visit_files("C:/Develop/bl/lib", VisitOpt.{ recursive = true }, &visitor, &list);
-    if err { panic(err); }
-
-    loop i := 0; i < list.len; i += 1 {
-        print("FILE: %\n", list[i]);
-        str_delete(&list[i]);
     }
-
     return 0;
 }
