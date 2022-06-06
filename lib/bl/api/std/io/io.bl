@@ -30,14 +30,14 @@ read :: fn (handle: std.File, dest: *u8, size: s64) (s64, Error) #inline {
 /// 
 /// main :: fn () s32 {
 ///     // Open this file.
-///     file, open_err :: std.file_open(#file, std.FileOpenMode.READ);
+///     file, open_err :: std.open_file(#file, std.OpenFileMode.READ);
 /// 
 ///     // Always check for errors.
 ///     if open_err {
 ///         panic("Cannot open file with error: '%'!", open_err);
 ///     }
 ///     // Close file at the end of scope.
-///     defer std.file_close(file);
+///     defer std.close_file(file);
 /// 
 ///     // Read it's content.
 ///     content, read_err :: std.read_string(file);

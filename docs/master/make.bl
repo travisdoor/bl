@@ -34,8 +34,8 @@ main :: fn () s32 {
 create_config_file :: fn () bool {
     using std;
     filepath :: get_full_path(CONFIG_FILE);
-    file, err1 :: file_open(filepath, make_flags(FileOpenMode.WRITE, FileOpenMode.CREATE));
-    defer file_close(file);
+    file, err1 :: open_file(filepath, make_flags(OpenFileMode.WRITE, OpenFileMode.CREATE));
+    defer close_file(file);
     if err1 {
         print_err("%", err1);
         return false;
@@ -68,34 +68,20 @@ blc_ver :: fn () string_view #inline {
 
 list_files_recursive :: fn (dirpath: string_view, ignore: []string_view, out: *string) {
     using std;
-    list, err :: dir_scan(dirpath);
-    defer info_list_delete(list);
-    if err {
-        print_err("%", err);
-    }
-    loop i := 0; i < list.len; i += 1 {
-        info :: &list[i];
-        if info.name[0] == '_' { continue; }
-        switch info.kind {
-            InfoKind.DIRECTORY {
-                ignored := false;
-                loop i := 0; i < ignore.len; i += 1 {
-                    if str_match(info.name, ignore[i]) {
-                        ignored = true;
-                        break;
-                    }
-                }
-                if !ignored {
-                    list_files_recursive(tprint("%/%", dirpath, info.name), ignore, out);
-                }
-            }
-            InfoKind.FILE {
-                ext: string_view;
-                if str_split_by_first(info.name, '.', null, &ext) && str_match(ext, "bl") {
-                    str_append(out, tprint("\"%/%\" ", dirpath, info.name));
-                }
-            }
+
+    visitor :: fn (info: *std.Info, data: *string) Error {
+        using std;
+        if info.is_directory { return OK; }
+        _, ext :: path_splitext(info.filename);
+        if str_match(ext, ".bl") {
+            str_append(data, tprint("\"%\" ", info.filepath));
         }
+        return OK;
+    };
+
+    err :: visit_files(dirpath, VisitOpt.{ recursive = true }, &visitor, out);
+    if err {
+        panic(err);
     }
 }
 

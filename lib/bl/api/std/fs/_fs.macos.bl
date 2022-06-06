@@ -13,7 +13,7 @@ exist :: fn (filepath: string_view) bool #inline {
     return C.stat(std.strtoc(filepath), &tmp) == 0;
 }
 
-open :: fn (filepath: string_view, mode: std.FileOpenMode) (File, Error) {
+open :: fn (filepath: string_view, mode: std.OpenFileMode) (File, Error) {
     if std.str_is_empty(filepath) { return 0, error(ERR_INVALID_HANDLE, "File path is empty!"); }
     flags :: modes_to_flags(mode);
     mode_flags : C.mode_t : 0x1A4; // 0644
@@ -49,7 +49,7 @@ get_uid :: fn (handle: File) (u64, Error) {
 }
 
 get_uid_by_name :: fn (filepath: string_view) (u64, Error) {
-    file, err1 :: open(filepath, std.FileOpenMode.READ);
+    file, err1 :: open(filepath, std.OpenFileMode.READ);
     defer close(file);
     if err1 { return 0, err1; }
     return get_uid(file);
@@ -59,13 +59,13 @@ copy :: fn (src: string_view, dest: string_view, override: bool) Error {
     if std.str_is_empty(src) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
     if std.str_is_empty(dest) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
     if exist(dest) && !override { return error(ERR_ALREADY_EXIST, "Destination already exist '%'", dest); }
-    file_src, err1 :: open(src, std.FileOpenMode.READ);
+    file_src, err1 :: open(src, std.OpenFileMode.READ);
     defer close(file_src);
     if err1 { return err1; }
     tmp, err2 :: std.read_slice(file_src);
     defer slice_terminate(&tmp);
     if err2 { return err2; }
-    file_dest, err3:: open(dest, make_flags(std.FileOpenMode.WRITE, std.FileOpenMode.CREATE));
+    file_dest, err3:: open(dest, make_flags(std.OpenFileMode.WRITE, std.OpenFileMode.CREATE));
     defer close(file_dest);
     if err3 { return err3; }
     _, err4 :: std.write_slice(file_dest, tmp);
@@ -85,7 +85,7 @@ size :: fn (handle: File) (usize, Error) #inline {
     return auto tmp.st_size, OK;
 }
 
-dir_create :: fn (dirpath: string_view) Error {
+create_dir :: fn (dirpath: string_view) Error {
     if std.str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot create directory, dirpath is empty."); }
     mode : C.mode_t : 0x1ED; // 0755
     if C.mkdir(std.strtoc(dirpath), mode) != 0 {
@@ -95,7 +95,7 @@ dir_create :: fn (dirpath: string_view) Error {
     return OK;
 }
 
-dir_remove :: fn (dirpath: string_view) Error {
+remove_dir :: fn (dirpath: string_view) Error {
     if std.str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot remove directory, dirpath is empty."); }
     if C.rmdir(auto dirpath.ptr)!= 0 {
         ec, estr :: os_get_last_error();
@@ -220,12 +220,12 @@ normalize :: fn (filepath: *string) Error {
 }
 
 #private
-modes_to_flags :: fn (modes: std.FileOpenMode) s32 #inline {
+modes_to_flags :: fn (modes: std.OpenFileMode) s32 #inline {
     r, w, create, append := false;
-    if is_flag(modes, std.FileOpenMode.READ) { r = true; }
-    if is_flag(modes, std.FileOpenMode.WRITE) { w = true; }
-    if is_flag(modes, std.FileOpenMode.APPEND) { w = true; append = true; }
-    if is_flag(modes, std.FileOpenMode.CREATE) { create = true; }
+    if is_flag(modes, std.OpenFileMode.READ) { r = true; }
+    if is_flag(modes, std.OpenFileMode.WRITE) { w = true; }
+    if is_flag(modes, std.OpenFileMode.APPEND) { w = true; append = true; }
+    if is_flag(modes, std.OpenFileMode.CREATE) { create = true; }
     flags: s32;
     if ((!w) && (!r)) { flags = C.O_RDONLY; }
     else if (w && r) { flags = C.O_RDWR; }

@@ -178,7 +178,7 @@ process_file :: fn (in_filepath: string) Error {
         filename :: std.path_splitext(ctx.filename);
         out_filepath = sprint("%.bl", filename);
     }
-    out_file, err :: std.file_open(out_filepath, make_flags(std.FileOpenMode.CREATE, std.FileOpenMode.WRITE));
+    out_file, err :: std.open_file(out_filepath, make_flags(std.OpenFileMode.CREATE, std.OpenFileMode.WRITE));
     if err {
         return error("Cannot create output file '%'.", out_filepath);
     }
@@ -187,7 +187,7 @@ process_file :: fn (in_filepath: string) Error {
     print("Converting file '%' to '%'.\n", in_filepath, out_filepath);
     std.write_fmt(ctx.out, "// Generated from '%'.\n// c2bl version: %\n", ctx.filename, VERSION);    
     clang_visitChildren(cursor, &visitor, auto &ctx);
-    std.file_close(out_file);
+    std.close_file(out_file);
     array_terminate(&ctx.type_cache);
     array_terminate(&ctx.sym_cache);
 

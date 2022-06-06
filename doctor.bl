@@ -83,8 +83,8 @@ main :: fn () s32 {
     temporary_directory = get_full_path(TEMPORARY_DIR);
     main_file = get_full_path("tests/main.test.bl");
 
-    dir_remove_all(temporary_directory);
-    dir_create(temporary_directory);
+    remove_all_dir(temporary_directory);
+    create_dir(temporary_directory);
     set_cwd(temporary_directory);
     defer cleanup();
 
@@ -168,7 +168,7 @@ cleanup :: fn () {
     using std;
     set_cwd(working_directory);
     if !args.keep_temporary {
-        dir_remove_all(temporary_directory);
+        remove_all_dir(temporary_directory);
     }
 }
 
@@ -300,7 +300,7 @@ list_dir :: fn (paths: *[..]string_view, dir: string_view) {
     };
 
     data :: VisitData.{ paths = paths };
-    err :: dir_visit_files(dir, VisitOpt.{}, &visitor, &data);
+    err :: visit_files(dir, VisitOpt.{}, &visitor, &data);
     if err {
         print_err("%", err);
         return;
@@ -348,8 +348,8 @@ get_exe_name :: fn () string_view #comptime {
 get_expected_error :: fn (filepath: string_view) (is_present: bool, error: s32) {
     using std;
 
-    file, err1 :: file_open(filepath, FileOpenMode.READ);
-    defer file_close(file);
+    file, err1 :: open_file(filepath, OpenFileMode.READ);
+    defer close_file(file);
     if err1 { print_err("%", err1); return false, 0; }
     content, err2 :: read_string(file);
     defer str_delete(&content);
