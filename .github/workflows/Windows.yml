@@ -7,7 +7,7 @@ on:
     branches: [ master ]
 
 jobs:
-  build:
+  build-debug:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
@@ -15,8 +15,37 @@ jobs:
       with:
           winsdk-build-version: 22000
     - name: Setup
-      run: cmake . -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_VERSION="10.0.22000.0"
+      run: cmake . -G "Visual Studio 17 2022" -Thost=x64 -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_VERSION="10.0.22000.0"
     - name: Compile
       run: cmake --build . --config Debug
     - name: Run tests
       run: bin\blc.exe -run doctor.bl
+
+  build-release:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: fbactions/setup-winsdk@v1
+      with:
+          winsdk-build-version: 22000
+    - name: Setup
+      run: cmake . -G "Visual Studio 17 2022" -Thost=x64 -DCMAKE_BUILD_TYPE=Release -DCMAKE_SYSTEM_VERSION="10.0.22000.0"
+    - name: Compile
+      run: cmake --build . --config Release
+    - name: Run tests
+      run: bin\blc.exe -run doctor.bl
+    - name: Prepare package
+      shell: powershell
+      run: |
+        mkdir dist
+        cp -r lib dist
+        cp -r bin dist
+        cp -r syntax dist
+        cp CHANGELOG.txt dist
+        cp LEGAL dist
+        cp LICENSE dist
+        cp README.md dist
+    - uses: actions/upload-artifact@v1
+      with:
+        name: windows-artifacts
+        path: dist

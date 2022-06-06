@@ -1,20 +1,16 @@
-#import "std/debug_allocator"
+MyContainer :: fn (TValue: type) type #comptime {
+    return struct {
+        value: TValue;
+    };
+}
 
-debug_allocator: std.DebugAllocator;
+// Return type is type of TContainer member value.
+get_value :: fn (container: *?TContainer) *TContainer.value {
+    return &container.value;
+}
 
 main :: fn () s32 {
-    typekind(s32);
-    using std;
-    // Initialize debug allocator with current context allocator.
-    debug_allocator = debug_allocator_make(application_context.allocator);
-    // Always cleanup at the end of the scope.
-    defer debug_allocator_terminate(&debug_allocator);
-
-    // Some leaking memory.
-    allocate_memory(&debug_allocator, 128);
-
-    // Do some other stuff...
-
-    dump_memory_leaks(&debug_allocator);
+    container: MyContainer(u64);
+    value :: get_value(&container);
     return 0;
 }

@@ -5529,6 +5529,44 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
             member_ptr->base.value.addr_mode   = target_addr_mode;
             member_ptr->base.value.is_comptime = true;
             return_zone(PASS);
+
+        } else if (sub_type->kind == MIR_TYPE_ARRAY) {
+            // check array builtin members
+            if (member_ptr->builtin_id == BUILTIN_ID_ARR_LEN ||
+                is_builtin(ast_member_ident, BUILTIN_ID_ARR_LEN)) {
+                // .len
+                // mutate instruction into constant
+                unref_instr(member_ptr->target_ptr);
+                erase_instr_tree(member_ptr->target_ptr, false, false);
+                struct mir_instr_const *len =
+                    (struct mir_instr_const *)mutate_instr(&member_ptr->base, MIR_INSTR_CONST);
+                len->base.value.type        = ctx->builtin_types->t_type;
+                len->base.value.addr_mode   = target_addr_mode;
+                len->base.value.is_comptime = true;
+                MIR_CEV_WRITE_AS(struct mir_type *, &len->base.value, ctx->builtin_types->t_s64);
+                return_zone(PASS);
+            } else if (member_ptr->builtin_id == BUILTIN_ID_ARR_PTR ||
+                       is_builtin(ast_member_ident, BUILTIN_ID_ARR_PTR)) {
+                // .ptr -> This will be replaced by:
+                // mutate instruction into constant
+                unref_instr(member_ptr->target_ptr);
+                erase_instr_tree(member_ptr->target_ptr, false, false);
+                struct mir_instr_const *len =
+                    (struct mir_instr_const *)mutate_instr(&member_ptr->base, MIR_INSTR_CONST);
+                len->base.value.type        = ctx->builtin_types->t_type;
+                len->base.value.addr_mode   = target_addr_mode;
+                len->base.value.is_comptime = true;
+                struct mir_type *elem_ptr_type =
+                    create_type_ptr(ctx, sub_type->data.array.elem_type);
+                MIR_CEV_WRITE_AS(struct mir_type *, &len->base.value, elem_ptr_type);
+                return_zone(PASS);
+            } else {
+                report_error(INVALID_MEMBER_ACCESS, ast_member_ident, "Unknown member.");
+                return_zone(FAIL);
+            }
+
+            member_ptr->base.value.addr_mode = target_addr_mode;
+            return_zone(PASS);
         } else if (sub_type->kind == MIR_TYPE_POLY) {
             // @Hack
             member_ptr->scope_entry            = ctx->analyze.unnamed_entry;
