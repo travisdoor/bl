@@ -1,16 +1,7 @@
-MyContainer :: fn (TValue: type) type #comptime {
-    return struct {
-        value: TValue;
-    };
-}
-
-// Return type is type of TContainer member value.
-get_value :: fn (container: *?TContainer) *TContainer.value {
-    return &container.value;
-}
+#import "std/fs"
 
 main :: fn () s32 {
-    container: MyContainer(u64);
-    value :: get_value(&container);
+    c, e :: std.dir_copy2("C:\Develop\deleteme\foo", "C:\Develop\deleteme\bar");
+    print(e);
     return 0;
 }

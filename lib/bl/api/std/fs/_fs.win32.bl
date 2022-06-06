@@ -108,63 +108,55 @@ is_directory :: fn (path: string_view) (bool, Error) #inline {
     return is_flag(attributes, auto win32.FILE_ATTRIBUTE_DIRECTORY), ok();
 }
 
-dir_scan :: fn (dirpath: string_view, filter: std.DirScanFilterFn) (std.InfoList, Error) {
-    invalid: std.InfoList;
-    if dirpath.len > (win32.MAX_PATH-3) { return invalid, error("Path too long!"); }
-    tmp := std.str_new(dirpath);
-    defer std.str_delete(&tmp);
-    std.str_append(&tmp, "\\*");
+dir_visit_files :: fn (dirpath: string_view, is_recursive: bool, leaf_first: bool, visitor: *fn(info: *std.Info, ctx: *u8) Error, ctx: *u8 = null) Error #inline {
+    using std;
+    if dirpath.len > (win32.MAX_PATH-3) { return error("Path too long!"); }
+    directory := str_new(dirpath);
+    defer str_delete(&directory);
+    err :: normalize(&directory);
+    if !is_ok(err) { return err; }
 
-    ffd: win32.FIND_DATA;
-    h_find := win32.FindFirstFile(std.strtoc(tmp), &ffd);
-    if h_find == win32.INVALID_HANDLE_VALUE {
+    tmp :: str_new(directory);
+    defer str_delete(&tmp);
+    str_append(&tmp, "\\*");
+
+    find_data: win32.FIND_DATA;
+    handle :: win32.FindFirstFile(strtoc(tmp), &find_data);
+    if handle == win32.INVALID_HANDLE_VALUE {
         ec, estr :: os_get_last_error();
-        return invalid, error(ec, "Cannot list directory '%': %", dirpath, estr);
+        return error(ec, "Cannot list directory '%': %", dirpath, estr);
     }
+    defer win32.FindClose(handle);
 
-    fc := 0;
+    filepath :: str_new();
+    defer str_delete(&filepath);
     loop {
-        fc += 1;
-        if win32.FindNextFile(h_find, &ffd) == 0 { break; }
-    }
-
-    if win32.FindClose(h_find) == 0 {
-        ec, estr :: os_get_last_error();
-        return invalid, error(ec, "Cannot list directory '%': %", dirpath, estr);
-    }
-    buf: std.InfoList;
-    slice_init(&buf, fc);
-    if fc == 0 { return buf, ok(); }
-
-    h_find = win32.FindFirstFile(std.strtoc(tmp), &ffd);
-    if h_find == win32.INVALID_HANDLE_VALUE { 
-        slice_terminate(&buf);
-        ec, estr :: os_get_last_error();
-        return invalid, error(ec, "Cannot list directory '%': %", dirpath, estr);
-    }
-    defer win32.FindClose(h_find);
-
-    buf.len = 0;
-    loop {
-        kind: std.InfoKind #noinit;
-        if is_flag(ffd.dwFileAttributes, auto win32.FILE_ATTRIBUTE_DIRECTORY) {
-            kind = std.InfoKind.DIRECTORY;
-        } else {
-            kind = std.InfoKind.FILE;
+        info: Info;
+        if is_flag(find_data.dwFileAttributes, auto win32.FILE_ATTRIBUTE_DIRECTORY) {
+            info.is_directory = true;
         }
-        name :: std.str_new(ffd.cFileName.ptr);
-        push := true;
-        info :: std.Info.{kind, name};
-        if filter { push = filter(&info); }
-        if push {
-            buf.len += 1;
-            buf[buf.len-1] = info;
-        } else {
-            std.str_delete(&name);
+        filename :: ctostr(auto find_data.cFileName.ptr);
+        // We skip these, but maybe in some cases we need them???
+        if (!str_match(filename, ".")) && (!str_match(filename, "..")) {
+            str_clear_concat(&filepath, directory, "/", filename);
+            info.filename = filename;
+            info.filepath = filepath;
+            if !leaf_first {
+                visit_err :: visitor(&info, ctx);
+                if !is_ok(visit_err) { return visit_err; }
+            }
+            if is_recursive && info.is_directory {
+                err :: _fs_impl.dir_visit_files(filepath, is_recursive, leaf_first, visitor, ctx);
+                if !is_ok(err) { return err; }
+            }
+            if leaf_first {
+                visit_err :: visitor(&info, ctx);
+                if !is_ok(visit_err) { return visit_err; }
+            }
         }
-        if win32.FindNextFile(h_find, &ffd) == 0 { break; }
+        if win32.FindNextFile(handle, &find_data) == 0 { break; }
     }
-    return buf, ok();
+    return ok();
 }
 
 validate_filename :: fn (name: string_view) bool {

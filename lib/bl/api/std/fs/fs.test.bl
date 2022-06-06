@@ -2,6 +2,46 @@
 #import "std/io"
 
 #private
+make_test_files :: fn (root_name: string_view) string {
+    make_file :: fn (filepath: string_view) {
+        using std;
+        file :: file_open(filepath, FileOpenMode.CREATE);
+        file_close(file);
+    };
+
+    using std;
+    root :: get_cwd();
+    str_concat(&root, "/", root_name);
+
+    tmp :: str_new();
+    defer str_delete(&tmp);
+
+    dir_remove_all(root);
+    dir_create_all(root);
+    dir_create_all(str_clear_concat(&tmp, root, "/A"));
+    dir_create_all(str_clear_concat(&tmp, root, "/B"));
+    dir_create_all(str_clear_concat(&tmp, root, "/C"));
+    dir_create_all(str_clear_concat(&tmp, root, "/A/A"));
+    dir_create_all(str_clear_concat(&tmp, root, "/A/B"));
+
+    make_file(str_clear_concat(&tmp, root, "/a.txt"));
+    make_file(str_clear_concat(&tmp, root, "/b.jpg"));
+    make_file(str_clear_concat(&tmp, root, "/c.txt"));
+    make_file(str_clear_concat(&tmp, root, "/A/a.txt"));
+    make_file(str_clear_concat(&tmp, root, "/A/b.jpg"));
+    make_file(str_clear_concat(&tmp, root, "/A/c.txt"));
+    make_file(str_clear_concat(&tmp, root, "/B/a.txt"));
+    make_file(str_clear_concat(&tmp, root, "/B/b.jpg"));
+    make_file(str_clear_concat(&tmp, root, "/B/c.txt"));
+    make_file(str_clear_concat(&tmp, root, "/C/a.txt"));
+    make_file(str_clear_concat(&tmp, root, "/C/b.jpg"));
+    make_file(str_clear_concat(&tmp, root, "/C/c.txt"));
+    make_file(str_clear_concat(&tmp, root, "/A/A/a.txt"));
+    make_file(str_clear_concat(&tmp, root, "/A/B/b.jpg"));
+    make_file(str_clear_concat(&tmp, root, "/A/B/c.txt"));
+    return root;
+}
+
 get_dummy_filepath :: fn (i := 0) string {
     tmp :: std.get_tmp();
     std.str_concat(&tmp, "/deleteme_", i);
@@ -9,15 +49,15 @@ get_dummy_filepath :: fn (i := 0) string {
 }
 
 fs_exist_test :: fn () #test {
-    test_true(std.path_exist(#file));
-    test_false(std.path_exist("foobar"));
+    test_true(std.file_exist(#file));
+    test_false(std.file_exist("foobar"));
 }
 
 fs_get_home_test :: fn () #test {
     tmp :: std.get_home();
     defer std.str_delete(&tmp);
     test_neq(tmp, std.str_empty);
-    test_true(std.path_exist(tmp));
+    test_true(std.file_exist(tmp));
     test_true(tmp[tmp.len-1] != '/');
 
     state, err :: std.is_directory(tmp);
@@ -29,7 +69,7 @@ fs_get_tmp_test :: fn () #test {
     tmp :: std.get_tmp();
     defer std.str_delete(&tmp);
     test_neq(tmp, std.str_empty);
-    test_true(std.path_exist(tmp));    
+    test_true(std.file_exist(tmp));
     test_true(tmp[tmp.len-1] != '/');
 
     state, err :: std.is_directory(tmp);
@@ -41,7 +81,7 @@ fs_get_cwd_test :: fn () #test {
     tmp :: std.get_cwd();
     defer std.str_delete(&tmp);
     test_neq(tmp, std.str_empty);
-    test_true(std.path_exist(tmp));    
+    test_true(std.file_exist(tmp));
     test_true(tmp[tmp.len-1] != '/');
 
     state, err :: std.is_directory(tmp);
@@ -391,60 +431,82 @@ fs_copy_test :: fn () #test {
     { // copy
         err :: std.file_copy(filepath1, filepath2);
         test_ok(err);
-        test_true(std.path_exist(filepath1));
-        test_true(std.path_exist(filepath2));
+        test_true(std.file_exist(filepath1));
+        test_true(std.file_exist(filepath2));
     }
     { // copy 2
         err :: std.file_copy(filepath1, filepath2, false);
         test_not_ok(err);
-        test_true(std.path_exist(filepath1));
-        test_true(std.path_exist(filepath2));
+        test_true(std.file_exist(filepath1));
+        test_true(std.file_exist(filepath2));
     }
 
     std.file_remove(filepath1);
     std.file_remove(filepath2);
 }
 
-fs_list_dir_test1 :: fn () #test {
-    dir :: std.get_cwd();
-    defer std.str_delete(&dir);
-    list, err :: std.dir_scan(dir);
-    defer std.info_list_delete(list);
-    test_ok(err);
-    test_true(list.len > 0);
-    loop i := 0; i < list.len; i += 1 {
-        test_neq(list[i].name, std.str_empty);
-    }
+VisitData :: struct {
+    directory_count: s32;
+    file_count: s32;
+    include_ext: string_view;
 }
 
-fs_list_dir_test2 :: fn () #test {
-    dir :: std.get_cwd();
-    defer std.str_delete(&dir);
-    list, err :: std.dir_scan(dir, &fn (info: *std.Info) bool {
-        return info.kind == std.InfoKind.DIRECTORY;
-    });
-    defer std.info_list_delete(list);
-    test_ok(err);
-    test_true(list.len > 0);
-    loop i := 0; i < list.len; i += 1 {
-        test_neq(list[i].name, std.str_empty);
-        test_true(list[i].kind == std.InfoKind.DIRECTORY);
+visitor :: fn (info: *std.Info, data: *VisitData) Error {
+    using std;
+    test_neq(info.filename, ".");
+    test_neq(info.filename, "..");
+    if info.is_directory {
+        data.directory_count += 1;
+    } else if str_is_empty(data.include_ext) {
+        data.file_count += 1;
+    } else {
+        _, ext :: path_splitext(info.filename);
+        if str_match(ext, data.include_ext) {
+            data.file_count += 1;
+        }
     }
+    test_true(file_exist(info.filepath));
+    return ok();
 }
 
-fs_list_dir_test3 :: fn () #test {
-    dir :: std.get_cwd();
-    defer std.str_delete(&dir);
-    list, err :: std.dir_scan(dir, &fn (info: *std.Info) bool {
-        return info.kind == std.InfoKind.FILE;
-    });
-    defer std.info_list_delete(list);
+fs_dir_visit1 :: fn () #test {
+    using std;
+    root :: make_test_files("root");
+    defer str_delete(&root);
+
+    data: VisitData;
+    err :: dir_visit_files(root, VisitOpt.{}, &visitor, &data);
     test_ok(err);
-    test_true(list.len > 0);
-    loop i := 0; i < list.len; i += 1 {
-        test_neq(list[i].name, std.str_empty);
-        test_true(list[i].kind == std.InfoKind.FILE);
-    }
+    test_eq(data.file_count, 3);
+    test_eq(data.directory_count, 3);
+    dir_remove_all(root);
+}
+
+fs_dir_visit2 :: fn () #test {
+    using std;
+    root :: make_test_files("root");
+    defer str_delete(&root);
+
+    data: VisitData;
+    err :: dir_visit_files(root, VisitOpt.{ recursive = true }, &visitor, &data);
+    test_ok(err);
+    test_eq(data.file_count, 15);
+    test_eq(data.directory_count, 5);
+    dir_remove_all(root);
+}
+
+fs_dir_visit_only_txt :: fn () #test {
+    using std;
+    root :: make_test_files("root");
+    defer str_delete(&root);
+
+    data :: VisitData.{ include_ext = ".txt" };
+    err :: dir_visit_files(root, VisitOpt.{ recursive = true }, &visitor, &data);
+    test_ok(err);
+    print("%\n", data);
+    test_eq(data.file_count, 10);
+    test_eq(data.directory_count, 5);
+    dir_remove_all(root);
 }
 
 fs_is_directory_test1 :: fn () #test {
@@ -500,7 +562,7 @@ fs_dir_remove_all_test1 :: fn () #test {
 
     state :: std.dir_remove_all(dir);
     test_ok(state);
-    test_false(std.path_exist(dir));
+    test_false(std.file_exist(dir));
 }
 
 fs_dir_create_all_test1 :: fn () #test {
@@ -511,6 +573,12 @@ fs_dir_create_all_test1 :: fn () #test {
     std.str_append(&dir, "/bar/bazz");
     err :: std.dir_create_all(dir);
     test_ok(err);
+}
+
+fs_dir_remove_all :: fn () #test {
+    using std;
+    root :: make_test_files("root");
+    defer str_delete(&root);
 }
 
 fs_path_split :: fn () #test {

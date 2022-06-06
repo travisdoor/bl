@@ -287,18 +287,23 @@ parse_args :: fn () bool {
 list_dir :: fn (paths: *[..]string_view, dir: string_view) {
     using std;
 
-    list, err :: dir_scan(dir);
-    defer info_list_delete(list);
+    VisitData :: struct {
+        paths: *[..]string_view;
+    };
+
+    visitor :: fn (info: *Info, data: *VisitData) Error {
+        using std;
+        if !info.is_directory {
+            array_push(data.paths, tprint("%", info.filepath));
+        }
+        return ok();
+    };
+
+    data :: VisitData.{ paths = paths };
+    err :: dir_visit_files(dir, VisitOpt.{}, &visitor, &data);
     if !is_ok(err) {
         print_err("%", err);
         return;
-    }
-
-    loop i := 0; i < list.len; i += 1 {
-        info :: &list[i];
-        if info.kind != InfoKind.DIRECTORY {
-            array_push(paths, tprint("%/%", dir, info.name));
-        }
     }
 }
 
