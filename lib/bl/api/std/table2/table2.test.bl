@@ -1,0 +1,53 @@
+#import "std/table2"
+
+#private
+TEST_COUNT :: 100000;
+//TEST_COUNT :: 10;
+
+DATA :: [10]string_view.{
+         "Melisa Britt",
+         "Theodor Cooper",
+         "Laylah Simons",
+         "Romeo Walls",
+         "Carlo Daniel",
+         "Maggie Munoz",
+         "Tina Hawes",
+         "Raiden Garrison",
+         "Ikrah Alston",
+         "Adela Cornish"};
+
+// =================================================================================================
+// Global
+// =================================================================================================
+g_tbl: std_experimental.Table(s32, s32);
+
+test_insert :: fn () #test {
+    using std_experimental;
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        it :: tbl_insert(&g_tbl, i, i);
+        test_eq(it.value, i);
+    }
+}
+
+test_lookup :: fn () #test {
+    using std_experimental;
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        it :: tbl_lookup(&g_tbl, i);
+        test_eq(it.key, i);
+        test_eq(it.value, i);
+    }
+}
+
+test_contains :: fn () #test {
+    using std_experimental;
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        test_true(tbl_contains(&g_tbl, i));
+    }
+    test_false(tbl_contains(&g_tbl, -1));
+    test_false(tbl_contains(&g_tbl, -2));
+}
+
+test_terminate :: fn () #test {
+    using std_experimental;
+    tbl_terminate(&g_tbl);
+}

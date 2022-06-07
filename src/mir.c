@@ -1259,9 +1259,11 @@ static inline bool
 can_impl_convert_to(struct context *ctx, const struct mir_type *from, const struct mir_type *to)
 {
     bassert(from && to);
-    bassert(ctx->builtin_types->t_Any && "Any type must be resolved first!");
     // Anything can be converted to 'Any' type.
-    if (to == ctx->builtin_types->t_Any) return true;
+    if (to == ctx->builtin_types->t_Any) {
+        bassert(ctx->builtin_types->t_Any && "Any type must be resolved first!");
+        return true;
+    }
     // Otherwise we allow only conversions to slices.
     if (to->kind != MIR_TYPE_SLICE) return false;
 
