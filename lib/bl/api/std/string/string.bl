@@ -415,6 +415,41 @@ str_split_by :: fn (str: string_view, delimiter: u8) []string_view {
     return ret;
 }
 
+/// Call the `visitor` callback for each token in the `str` input split by `delimiter`. When the `visitor`
+/// callback returns `false` parsing is stopped.
+///
+/// ### Example
+///
+/// ```c
+/// main :: fn () s32 {
+///     using std;
+///     path := "/home/travis/develop/foo";
+///     str_tokenize(path, '/', &fn (token: string_view, _: *u8) bool {
+///         print("TOKEN: %\n", token);
+///         return true;
+///     });
+///
+///     return 0;
+/// }
+/// ```
+///
+/// !!! note
+///     Callback is not called for empty tokens.
+str_tokenize :: fn (str: string_view, delimiter: u8, visitor: *fn(token: string_view, ctx: *?T) bool, ctx: *T = null) {
+    assert(visitor);
+    lhs: string_view;
+    rhs: string_view;
+    loop str_split_by_first(str, delimiter, &lhs, &rhs) {
+        if lhs.len > 0 {
+            if !visitor(lhs, ctx) { return; }
+        }
+        str = rhs;
+    }
+    if rhs.len > 0 {
+        visitor(rhs, ctx);
+    }
+}
+
 /// Counts desired character occurrence in the input string.
 str_count_of :: fn (str: string_view, c: u8) s32 #inline {
     count := 0;

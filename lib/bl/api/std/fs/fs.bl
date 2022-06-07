@@ -101,40 +101,40 @@ create_dir :: fn (dirpath: string_view) Error #inline {
 
 create_all_dir :: fn (dirpath: string_view) Error {
     if str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Directory path is empty!"); }
-
-    is_existing_directory :: fn (path: string_view) (bool, Error) {
-        if _fs_impl.exist(path) {
-            is_valid, err :: _fs_impl.is_directory(path);
-            if err { return false, err; }
-            if !is_valid { return false, error("Not a directory '%'.", path); }
-            return true, OK;
-        }
-        return false, OK;
-    };
-
     is_valid, err :: is_existing_directory(dirpath);
     if err      { return err; }
     if is_valid { return OK;  }
 
-    path := str_new();
-    defer str_delete(&path);
-    assert(dirpath.len > 0);
+    Data :: struct {
+        path: string;
+        last_error: Error;
+    };
+
+    data: Data;
+    data.path = str_new();
+    defer str_delete(&data.path);
     // Handle unix root.
-    if dirpath[0] == '/' { str_append(&path, "/"); }
-    lhs: string_view;
-    rhs := dirpath;
-    loop str_split_by_first(rhs, '/', &lhs, &rhs) {
-        if lhs.len == 0 { continue; }
-        str_append(&path, lhs);
-        str_append(&path, "/");
-        existing, err :: is_existing_directory(path);
-        if err      { return err; }
-        if existing { continue;  }
-        print("CREATE: %\n", path);
-        create_err :: _fs_impl.create_dir(path);
-        if create_err { return create_err; }
-    }
-    return OK;
+    assert(dirpath.len > 0);
+    if dirpath[0] == '/' { str_append(&data.path, "/"); }
+
+    str_tokenize(dirpath, '/', &fn (sub_path: string_view, data: *Data) bool {
+        if data.path.len > 0 && data.path[data.path.len] != '/' { str_append(&data.path, "/"); }
+        str_append(&data.path, sub_path);
+        existing, err :: is_existing_directory(data.path);
+        if err {
+            data.last_error = err;
+            return false;
+        }
+        if !existing {
+            create_err :: _fs_impl.create_dir(data.path);
+            if create_err {
+                data.last_error = create_err;
+                return false;
+            }
+        }
+        return true;
+    }, &data);
+    return data.last_error;
 }
 
 /// Remove directory specified by `dirpath` and return `OK` on success, otherwise return an error.
@@ -360,3 +360,14 @@ impl_remove_all_dir_with_filter :: fn (dirpath: string_view, remove_root: bool, 
     if remove_root { return _fs_impl.remove_dir(dirpath); }
     return OK;
 }
+
+// Checks if the path points to an existing filesystem entry + checks if it's a directory.
+is_existing_directory :: fn (path: string_view) (bool, Error) {
+    if _fs_impl.exist(path) {
+        is_valid, err :: _fs_impl.is_directory(path);
+        if err { return false, err; }
+        if !is_valid { return false, error("Not a directory '%'.", path); }
+        return true, OK;
+    }
+    return false, OK;
+};

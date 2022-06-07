@@ -1,14 +1,12 @@
-#import "std/fs"
-
 main :: fn () s32 {
     using std;
 
     path := "/home/travis/develop/foo";
-    loop i := 0; i < path.len; i += 1 {
-        if (i+1 == path.len) || (path[i] == '/' && i > 0) {
-            sub_path := string_view.{ i, path.ptr };
-            print("%: %\n", i, sub_path);
-        }
-    }
+    print("INPUT: %\n", path);
+
+    str_tokenize(path, '/', &fn (token: string_view, _: *u8){
+        print("TOKEN: %\n", token);
+    });
+
     return 0;
 }
