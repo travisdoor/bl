@@ -80,7 +80,6 @@ size :: fn (handle: File) (usize, Error) #inline {
 }
 
 create_dir :: fn (dirpath: string_view) Error {
-    print("dirpath = %\n", dirpath);
     if std.str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot create directory, dirpath is empty."); }
     if C.mkdir(std.strtoc(dirpath), C.S_IRWXU | C.S_IRWXG | C.S_IROTH | C.S_IXOTH) != 0 {
         ec, estr :: os_get_last_error();

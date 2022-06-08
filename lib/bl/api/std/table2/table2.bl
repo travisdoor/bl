@@ -45,6 +45,30 @@ tbl_lookup :: fn (tbl: *?T, key: tbl_typeof_key(T)) TableIter(T) #inline {
     return lookup_entry(tbl, calculate_hash(key));
 }
 
+/// Clears the table.
+tbl_clear :: fn (tbl: *?T) #inline {
+    assert(tbl);
+    if !is_initialized(tbl) { return; }
+    loop it := tbl_begin(tbl); it != tbl_end(tbl); {
+        node := it;
+        tbl_iter_next(&it);
+        free_memory(tbl.allocator, auto node);
+    }
+    buckets_size :: cast(usize)tbl.buckets.len * sizeof(@tbl.buckets.ptr);
+    zeromem(auto tbl.buckets.ptr, buckets_size);
+    assert(tbl.head);
+    tbl.head.next = auto tbl.head;
+    tbl.head.prev = auto tbl.head;
+    tbl.len = 0;
+}
+
+/// Return an iterator pointing to the table beginning.
+tbl_begin :: fn (tbl: *?T) TableIter(T) #inline {
+    assert(tbl);
+    if tbl.len == 0 { return tbl_end(); }
+    return auto tbl.head.next;
+}
+
 /// Return an iterator pointing to the table ending.
 tbl_end :: fn (tbl: *?T) TableIter(T) #inline {
     assert(tbl);
