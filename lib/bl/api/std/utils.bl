@@ -178,7 +178,16 @@ hash_combine :: fn (first: ?T, second: T, more: ...T) T #inline {
     return result;
 }
 
-// @Document
+/// Check whether the number `n` is power of 2.
 is_power_of_two :: fn (n: usize) bool #inline {
     return (n != 0) && ((n & (n - 1)) == 0);
+}
+
+/// Finds next power of 2.
+next_pow_2 :: fn (n: s64) s64 #inline {
+    value : s64 = 1;
+    loop (value <= n) {
+        value = value << 1;
+    }
+    return value;
 }

@@ -27,7 +27,7 @@
 // =================================================================================================
 
 #import "std/sync"
-#import "std/table"
+#import "std/table2"
 
 #scope std 
 
@@ -86,7 +86,7 @@ DebugAllocator :: struct #base Allocator {
     mutex: std.Mutex;
     allocator: *Allocator;
     total_allocated: s64;
-    alloc_table: std.Table(*u8, Meta);
+    alloc_table: std_experimental.Table(*u8, Meta);
     serial: u64;
     break_on: u64;
 }
@@ -96,14 +96,14 @@ debug_allocator_make :: fn (allocator: *Allocator) DebugAllocator {
     dbgalloc: DebugAllocator;
     dbgalloc.handler = auto &handler;
     dbgalloc.allocator = allocator;
-    std.tbl_init(&dbgalloc.alloc_table, 2048, dbgalloc.allocator);
+    std_experimental.tbl_init(&dbgalloc.alloc_table, 2048, dbgalloc.allocator);
     std.mutex_init(&dbgalloc.mutex);
     return dbgalloc;
 }
 
 /// Release debug allocator resources.
 debug_allocator_terminate :: fn (dbgalloc: *DebugAllocator) {
-    std.tbl_terminate(&dbgalloc.alloc_table);
+    std_experimental.tbl_terminate(&dbgalloc.alloc_table);
     std.mutex_terminate(&dbgalloc.mutex);
 }
 
@@ -166,7 +166,7 @@ print_memory_report :: fn (dbgalloc: *DebugAllocator, dump_leaks := false) {
 dump_memory_leaks :: fn (dbgalloc: *DebugAllocator) s64 {
     if dbgalloc.alloc_table.len == 0 { return 0; }
     print("Dump memory leaks begin:\n");
-    loop it := std.tbl_begin(&dbgalloc.alloc_table); it != std.tbl_end(&dbgalloc.alloc_table); std.tbl_iter_next(&it) {
+    loop it := std_experimental.tbl_begin(&dbgalloc.alloc_table); it != std_experimental.tbl_end(&dbgalloc.alloc_table); std_experimental.tbl_iter_next(&dbgalloc.alloc_table, &it) {
         meta :: &it.value;
         print("    [%] - %:% (% bytes)\n", meta.serial, meta.file, meta.line, meta.allocated_size);
     }
@@ -225,7 +225,7 @@ add_allocation :: fn (dbgalloc: *DebugAllocator, ptr: *u8, size: usize, alignmen
     dbgalloc.serial += 1;
     if dbgalloc.break_on == dbgalloc.serial { debugbreak; }
 
-    it := tbl_insert(&dbgalloc.alloc_table, ptr);
+    it := std_experimental.tbl_insert(&dbgalloc.alloc_table, ptr);
     it.value.allocated_size = size;
     it.value.alignment = alignment;
     it.value.file = file;
@@ -238,14 +238,14 @@ add_allocation :: fn (dbgalloc: *DebugAllocator, ptr: *u8, size: usize, alignmen
 remove_allocation :: fn (dbgalloc: *DebugAllocator, ptr: *u8) (size: usize, alignment: usize) {
     mutex_lock(&dbgalloc.mutex);
     defer mutex_unlock(&dbgalloc.mutex);
-    it :: tbl_lookup(&dbgalloc.alloc_table, ptr);
-    if it == tbl_end(&dbgalloc.alloc_table) {
+    it :: std_experimental.tbl_lookup(&dbgalloc.alloc_table, ptr);
+    if it == std_experimental.tbl_end(&dbgalloc.alloc_table) {
         panic("Attempt to free already freed or unallocated memory on address %!", ptr);
     }
     meta :: &it.value;
     allocated_size :: meta.allocated_size;
     alignment :: meta.alignment;
     dbgalloc.total_allocated -= auto allocated_size;
-    tbl_erase_it(&dbgalloc.alloc_table, it);
+    std_experimental.tbl_erase_iter(&dbgalloc.alloc_table, it);
     return allocated_size, alignment;
 }

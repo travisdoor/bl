@@ -1,8 +1,8 @@
 #import "std/table"
 
 #private
-//TEST_COUNT :: 100000;
-TEST_COUNT :: 10;
+TEST_COUNT :: 100000;
+//TEST_COUNT :: 10;
 
 DATA :: [10]string_view.{
          "Melisa Britt",
