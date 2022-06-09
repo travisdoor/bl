@@ -141,7 +141,7 @@ test_struct :: fn () #test {
     defer tbl_terminate(&tbl);
 
     loop i := 0; i < TEST_COUNT; i += 1 {
-        tbl_insert(&tbl, i, Elem.{1, "hello", true, 1 });
+        tbl_insert(&tbl, i, Elem.{ i, "hello", true, i });
     }
     test_eq(tbl.len, TEST_COUNT);
     c := 0;
@@ -150,6 +150,47 @@ test_struct :: fn () #test {
         c += 1;
     }
     test_eq(c, TEST_COUNT);
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        it :: tbl_lookup(&tbl, i);
+        test_eq(it.value.a, i);
+        test_eq(it.value.a, it.value.d);
+    }
+}
+
+test_hashing_1 :: fn () #test {
+    using std;
+    index :: fn (i: u64) u64 {
+        if i % 2 == 0 { return i * -1; }
+        return i;
+    };
+
+    tbl: Table(u64, s32);
+    defer tbl_terminate(&tbl);
+
+    loop i : u64 = 0; i < auto TEST_COUNT; i += 1 {
+        tbl_insert(&tbl, index(i), auto i);
+    }
+    test_eq(tbl.len, TEST_COUNT);
+
+    loop i : u64 = 0; i < auto TEST_COUNT; i += 1 {
+        test_true(tbl_contains(&tbl, index(i)));
+    }
+}
+
+test_hashing_2 :: fn () #test {
+    using std;
+
+    tbl: Table(string_view, s32);
+    defer tbl_terminate(&tbl);
+
+    loop i : s32 = 0; i < auto DATA.len; i += 1 {
+        tbl_insert(&tbl, DATA[i], auto i);
+    }
+
+    loop i := 0; i < DATA.len; i += 1 {
+        it :: tbl_lookup(&tbl, DATA[i]);
+        test_eq(it.value, i);
+    }
 }
 
 test_iteration :: fn () #test {
