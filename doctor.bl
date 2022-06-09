@@ -16,7 +16,7 @@ SKIP :: [1]Skip.{
     }
 };
 
-MODULES :: [13]string_view.{
+MODULES :: [12]string_view.{
     "lib/bl/api/std/arg_parser/arg_parser.test.bl",
     "lib/bl/api/std/array/array.test.bl",
     "lib/bl/api/std/debug_allocator/debug_allocator.test.bl",
@@ -29,7 +29,6 @@ MODULES :: [13]string_view.{
     "lib/bl/api/std/thread/thread.test.bl",
     "lib/bl/api/std/pool/pool.test.bl",
     "lib/bl/api/std/buffer_allocator/buffer_allocator.test.bl",
-    "lib/bl/api/std/table2/table2.test.bl",
 };
 
 TestKind :: enum {

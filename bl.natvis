@@ -33,7 +33,7 @@ SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
     <Type Name="s.{sl.{s64,p.s.{u8,*,*},usize,p.u8},p.u8,s64,p.s21.Allocator}">
         <DisplayString>[{len}/{entries.len}] Hash Table</DisplayString>
         <Expand>
-            <Item Name="[buckets]">entries.len</Item>
+            <Item Name="[entries.len]">entries.len</Item>
             <CustomListItems MaxItemsPerView="5000">
                 <Variable Name="i" InitialValue="0" />
                 <Size>len</Size>

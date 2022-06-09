@@ -1,4 +1,4 @@
-#import "std/table2"
+#import "std/table"
 
 main :: fn () s32 {
     using std;
@@ -19,8 +19,6 @@ main :: fn () s32 {
     arr: [..]string_view;
     array_push(&arr, "Hello");
     array_push(&arr, "World");
-
-    using std_experimental;
 
     tbl: Table(s32, string_view);
     tbl_insert(&tbl, 10, "Hello");
