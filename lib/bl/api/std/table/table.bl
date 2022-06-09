@@ -314,6 +314,7 @@ insert :: fn (tbl: *?T, hash: u64, key: tbl_typeof_key(T)) TableIter(T) {
     entry: *typeof_entry(T);
     loop {
         entry = &tbl.entries[index];
+        assert(entry.hash != hash);
         if entry.hash == EMPTY_HASH || entry.hash == DELETED_HASH {
             break;
         }
