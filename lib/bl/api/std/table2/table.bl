@@ -1,0 +1,192 @@
+#scope std_experimental
+
+// The implementation is partially based on Jonathan Blow's hash table https://www.youtube.com/watch?v=k9MBMvR2IvI.
+
+/// Create a new **Table** type. The `TKey` must be a number or string type.
+///
+/// ```c
+/// Table :: struct {
+///     len: s64;
+/// }
+/// ```
+Table :: fn (TKey: type, TValue: type) type #comptime {
+    static_assert(TKey == string || is_number(TKey) || is_pointer(TKey) || TKey == string_view);
+    TEntry :: Entry(TKey, TValue);
+    return struct {
+        slots: []s64;
+        data: [..]TEntry;
+        allocator: *Allocator;
+    };
+}
+
+tbl_init :: fn (tbl: *?T, expected_size := DEFAULT_ENTRIES_COUNT, allocator: *Allocator = null) {
+    assert(tbl);
+    tbl.allocator = allocator;
+    array_init(&tbl.data, expected_size, allocator);
+    resize(tbl, expected_size);
+}
+
+/// Release all memory resources used by the table and set the `tbl` instance to the default state.
+tbl_terminate :: fn (tbl: *?T) {
+    assert(tbl);
+    array_terminate(&tbl.data);
+    slice_terminate(&tbl.slots, tbl.allocator);
+    zeromem(auto tbl, sizeof(T));
+}
+
+/// Resolve type of key from table type in compiletime.
+tbl_typeof_key :: fn (TTable: type) type #comptime {
+    return (@TTable.data.ptr).key;
+}
+
+/// Resolve type of value from table type in compiletime.
+tbl_typeof_value :: fn (TTable: type) type #comptime {
+    return (@TTable.data.ptr).value;
+}
+
+tbl_insert :: fn { impl_insert_empty; impl_insert; }
+
+tbl_lookup :: fn (tbl: *?T, key: tbl_typeof_key(T)) *tbl_typeof_value(T) #inline {
+    assert(tbl);
+    if !tbl.slots.ptr { return null; }
+    index :: lookup_entry_index(tbl, calculate_hash(key), key);
+    if index >= 0 { return &tbl.data[index].value; }
+    return null;
+}
+
+tbl_lookup_index :: fn (tbl: *?T, key: tbl_typeof_key(T)) s64 #inline {
+    assert(tbl);
+    if !tbl.slots.ptr { return -1; }
+    return lookup_entry_index(tbl, calculate_hash(key), key);
+}
+
+tbl_contains :: fn (tbl: *?T, key: tbl_typeof_key(T)) bool #inline {
+    assert(tbl);
+    return lookup_entry_index(tbl, calculate_hash(key), key) != -1;
+}
+
+tbl_clear :: fn (tbl: *?T) #inline {
+    assert(tbl);
+    zeromem(auto tbl.slots.ptr, sizeof(@tbl.slots.ptr) * tbl.slots.len);
+    array_clear(&tbl.data);
+}
+
+#private
+DEFAULT_ENTRIES_COUNT :: 64;
+LOAD_FACTOR :: 70 #maybe_unused;
+EMPTY_INDEX : s64 : 0 #maybe_unused;
+DELETED_INDEX : s64 : -1 #maybe_unused;
+
+Entry :: fn (TKey: type, TValue: type) type #comptime {
+    return struct {
+        hash: u64;
+        key: TKey;
+        value: TValue;
+    };
+}
+
+calculate_hash :: fn (key: ?T) u64 #inline {
+    is_string :: T == string || T == string_view;
+    hash: u64;
+    #if is_string {
+        hash = auto std.str_hash(key);
+    } else {
+        // copy-paste from stack overflow, is it good or not???
+        // https://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key
+        x: u64 = auto key;
+        //if x == 0 { x = 1; }
+        x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9;
+        x = (x ^ (x >> 27)) * 0x94d049bb133111eb;
+        x = x ^ (x >> 31);
+        hash = x;
+    }
+    return hash;
+}
+
+impl_insert :: fn (tbl: *?T, key: tbl_typeof_key(T), value: tbl_typeof_value(T)) *tbl_typeof_value(T) #inline {
+    assert(tbl);
+    entry_value := insert(tbl, calculate_hash(key), key);
+    memcpy(auto entry_value, auto &value, sizeof(value));
+    return entry_value;
+}
+
+impl_insert_empty :: fn (tbl: *?T, key: tbl_typeof_key(T)) *tbl_typeof_value(T) #inline {
+    assert(tbl);
+    return insert(tbl, calculate_hash(key), key);
+}
+
+initial_increment :: fn (tbl: *?T, hash: u64) s64 #inline {
+    return auto 1 + hash % (cast(u64) tbl.slots.len - 1);
+}
+
+insert :: fn (tbl: *?T, hash: u64, key: tbl_typeof_key(T)) *tbl_typeof_value(T) #inline {
+    if !tbl.slots.ptr { resize(tbl); }
+    #if IS_DEBUG {
+        if lookup_entry_index(tbl, hash, key) >= 0 { panic("Duplicate key entry '%' in table!", key); }
+    }
+    slot_index :: free_slot_index(tbl, hash);
+    entry := array_push(&tbl.data);
+    entry.hash = hash;
+    entry.key = key;
+    tbl.slots[slot_index] = tbl.data.len; // NO -1 (0 is free slot)
+    return &entry.value;
+}
+
+free_slot_index :: fn (tbl: *?T, hash: u64) s64 {
+    assert(tbl);
+    assert(tbl.slots.ptr);
+    if (tbl.data.len + 1)*100 >= tbl.slots.len*LOAD_FACTOR {
+        resize(tbl, auto next_pow_2(auto tbl.slots.len));
+    }
+    index := cast(s64) (hash % auto tbl.slots.len);
+    increment := initial_increment(tbl, hash);
+    loop {
+        entry_index :: tbl.slots[index];
+        if entry_index == EMPTY_INDEX || entry_index == DELETED_INDEX {
+            break;
+        }
+        //insert_collision_count += 1;
+        index += increment;
+        increment += 1;
+        if index >= tbl.slots.len { index -= tbl.slots.len; }
+    }
+    return index;
+}
+
+lookup_entry_index :: fn (tbl: *?T, hash: u64, key: tbl_typeof_key(T)) s64 {
+    if !tbl.slots.ptr { return -1; }
+    is_string_key :: tbl_typeof_key(T) == string || tbl_typeof_key(T) == string_view;
+    data :: tbl.data;
+    index := cast(s64) (hash % auto tbl.slots.len);
+    increment := initial_increment(tbl, hash);
+    loop {
+        entry_index := tbl.slots[index];
+        if entry_index == 0 { break; }
+        entry_index -= 1;
+        match: bool #noinit;
+        #if is_string_key {
+            match = data[entry_index].hash == hash;
+            if match { match == std.str_match(data[entry_index].key, key); }
+        } else {
+            match = data[entry_index].key == key;
+        }
+        if match { return entry_index; }
+        //lookup_collision_count += 1;
+        index += increment;
+        increment += 1;
+        if index >= tbl.slots.len { index -= tbl.slots.len; }
+    }
+    return -1;
+}
+
+resize :: fn (tbl: *?T, new_size : s64 = DEFAULT_ENTRIES_COUNT) {
+    assert(new_size > 32);
+    slice_terminate(&tbl.slots, tbl.allocator);
+    slice_init(&tbl.slots, new_size, true, tbl.allocator);
+
+    loop i := 0; i < tbl.data.len; i += 1 {
+        entry :: &tbl.data[i];
+        slot_index :: free_slot_index(tbl, entry.hash);
+        tbl.slots[slot_index] = i + 1; // +1 (0 is free slot)
+    }
+}
