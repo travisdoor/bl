@@ -16,19 +16,21 @@ SKIP :: [1]Skip.{
     }
 };
 
-MODULES :: [12]string_view.{
+MODULES :: [14]string_view.{
     "lib/bl/api/std/arg_parser/arg_parser.test.bl",
     "lib/bl/api/std/array/array.test.bl",
+    "lib/bl/api/std/bucket_array/bucket_array.test.bl",
     "lib/bl/api/std/debug_allocator/debug_allocator.test.bl",
     "lib/bl/api/std/dlib/dlib.test.bl",
     "lib/bl/api/std/fs/fs.test.bl",
     "lib/bl/api/std/print/print.test.bl",
     "lib/bl/api/std/string/string.test.bl",
     "lib/bl/api/std/sync/sync.test.bl",
-    "lib/bl/api/std/table/table.test.bl",
     "lib/bl/api/std/thread/thread.test.bl",
     "lib/bl/api/std/pool/pool.test.bl",
     "lib/bl/api/std/buffer_allocator/buffer_allocator.test.bl",
+    "lib/bl/api/std/table/table.test.bl",
+    "lib/bl/api/std/static_array/static_array.test.bl",
 };
 
 TestKind :: enum {

@@ -65,17 +65,17 @@ g_tbl: std.Table(s32, s32);
 test_insert :: fn () #test {
     using std;
     loop i := 0; i < TEST_COUNT; i += 1 {
-        it :: tbl_insert(&g_tbl, i, i);
-        test_eq(it.value, i);
+        value :: tbl_insert(&g_tbl, i, i);
+        test_eq(@value, i);
     }
 }
 
 test_lookup :: fn () #test {
     using std;
     loop i := 0; i < TEST_COUNT; i += 1 {
-        it :: tbl_lookup(&g_tbl, i);
-        test_eq(it.key, i);
-        test_eq(it.value, i);
+        value, found :: tbl_lookup(&g_tbl, i);
+        test_true(found);
+        test_eq(value, auto i);
     }
 }
 
@@ -97,17 +97,6 @@ test_terminate :: fn () #test {
 // Single tests
 // =================================================================================================
 
-test_simple_begin_end :: fn () #test {
-    using std;
-    tbl: Table(s32, s32);
-    defer tbl_terminate(&tbl);
-
-    tbl_insert(&tbl, 10, 20);
-
-    test_eq(tbl.len, 1);
-    test_neq(tbl_begin(&tbl), tbl_end(&tbl));
-}
-
 test_clear :: fn () #test {
     using std;
     tbl: Table(s32, s32);
@@ -120,7 +109,8 @@ test_clear :: fn () #test {
 
     tbl_clear(&tbl);
     test_eq(tbl.len, 0);
-    test_eq(tbl_begin(&tbl), tbl_end(&tbl));
+    test_eq(tbl.keys.len, 0);
+    test_eq(tbl.values.len, 0);
 
     loop i := 0; i < TEST_COUNT; i += 1 {
         tbl_insert(&tbl, i, i);
@@ -144,16 +134,16 @@ test_struct :: fn () #test {
         tbl_insert(&tbl, i, Elem.{ i, "hello", true, i });
     }
     test_eq(tbl.len, TEST_COUNT);
-    c := 0;
-    loop it := tbl_begin(&tbl); it != tbl_end(&tbl); tbl_iter_next(&tbl, &it) {
-        test_eq(it.value.a, it.value.d);
-        c += 1;
+    loop i := 0; i != tbl.len; i += 1 {
+        value :: &tbl.values[i];
+        test_eq(value.a, value.d);
+        test_eq(tbl.keys[i], i);
     }
-    test_eq(c, TEST_COUNT);
     loop i := 0; i < TEST_COUNT; i += 1 {
-        it :: tbl_lookup(&tbl, i);
-        test_eq(it.value.a, i);
-        test_eq(it.value.a, it.value.d);
+        value_ptr :: tbl_lookup_ptr(&tbl, i);
+        test_not_null(value_ptr);
+        test_eq(value_ptr.a, auto i);
+        test_eq(value_ptr.a, value_ptr.d);
     }
 }
 
@@ -188,25 +178,10 @@ test_hashing_2 :: fn () #test {
     }
 
     loop i := 0; i < DATA.len; i += 1 {
-        it :: tbl_lookup(&tbl, DATA[i]);
-        test_eq(it.value, i);
+        value, found :: tbl_lookup(&tbl, DATA[i]);
+        test_true(found);
+        test_eq(value, i);
     }
-}
-
-test_iteration :: fn () #test {
-    using std;
-    tbl: Table(s32, s32);
-    defer tbl_terminate(&tbl);
-
-    loop i := 0; i < TEST_COUNT; i += 1 {
-        tbl_insert(&tbl, i, i);
-    }
-
-    c := 0;
-    loop it := tbl_begin(&tbl); it != tbl_end(&tbl); tbl_iter_next(&tbl, &it) {
-        c += 1;
-    }
-    test_eq(c, TEST_COUNT);
 }
 
 test_string_keys_1 :: fn () #test {
@@ -216,9 +191,9 @@ test_string_keys_1 :: fn () #test {
 
     tbl_insert(&tbl, "Martin", 10);
 
-    it :: tbl_lookup(&tbl, "Martin");
-    test_eq(it.key, "Martin");
-    test_eq(it.value, 10);
+    value, found :: tbl_lookup(&tbl, "Martin");
+    test_true(found);
+    test_eq(value, 10);
 }
 
 test_string_keys_2 :: fn () #test {
@@ -231,10 +206,9 @@ test_string_keys_2 :: fn () #test {
     }
 
     loop i := 0; i < DATA.len; i += 1 {
-        it :: tbl_lookup(&tbl, DATA[i]);
-        test_neq(it, tbl_end(&tbl));
-        test_eq(it.key, DATA[i]);
-        test_eq(it.value, i);
+        value, found :: tbl_lookup(&tbl, DATA[i]);
+        test_true(found);
+        test_eq(value, i);
     }
 }
 
@@ -242,65 +216,11 @@ test_insert_empty :: fn () #test {
     using std;
     tbl: Table(s32, s32);
     defer tbl_terminate(&tbl);
-
     loop i := 0; i < TEST_COUNT; i += 1 {
-        it := tbl_insert(&tbl, i);
-        it.value = i;
-    }
-
-    c := 0;
-    loop it := tbl_begin(&tbl); it != tbl_end(&tbl); tbl_iter_next(&tbl, &it) {
-        c += 1;
-        test_eq(it.key, it.value);
-    }
-    test_eq(c, TEST_COUNT);
-}
-
-test_erase_iterator :: fn () #test {
-    using std;
-    tbl: Table(s32, s32);
-    defer tbl_terminate(&tbl);
-
-    loop i := 0; i < TEST_COUNT; i += 1 {
-        tbl_insert(&tbl, i, i);
+        value := tbl_insert(&tbl, i);
+        @value = i;
     }
     test_eq(tbl.len, TEST_COUNT);
-
-    it := tbl_begin(&tbl);
-    loop {
-        it = tbl_erase_iter(&tbl, it);
-        if it == tbl_end(&tbl) { break; }
-    }
-
-    test_eq(tbl.len, 0);
-    test_eq(tbl_begin(&tbl), tbl_end(&tbl));
-}
-
-test_erase_iterator_reuse :: fn () #test {
-    using std;
-    tbl: Table(s32, s32);
-    defer tbl_terminate(&tbl);
-
-    loop i := 0; i < TEST_COUNT; i += 1 {
-        tbl_insert(&tbl, i, i);
-    }
-    test_eq(tbl.len, TEST_COUNT);
-
-    it := tbl_begin(&tbl);
-    loop {
-        it = tbl_erase_iter(&tbl, it);
-        if it == tbl_end(&tbl) { break; }
-    }
-
-    test_eq(tbl.len, 0);
-    test_eq(tbl_begin(&tbl), tbl_end(&tbl));
-    orig_allocated :: tbl.entries.len;
-
-    loop i := 0; i < TEST_COUNT; i += 1 {
-        tbl_insert(&tbl, i, i);
-    }
-    test_eq(tbl.len, TEST_COUNT);
-    test_eq(tbl.entries.len, orig_allocated);
 }
 
 test_erase :: fn () #test {
@@ -314,10 +234,9 @@ test_erase :: fn () #test {
     test_eq(tbl.len, TEST_COUNT);
 
     loop i := 0; i < TEST_COUNT; i += 1 {
-        tbl_erase(&tbl, i);
+        test_true(tbl_erase(&tbl, i));
     }
     test_eq(tbl.len, 0);
-    test_eq(tbl_begin(&tbl), tbl_end(&tbl));
 }
 
 test_erase2 :: fn () #test {
@@ -331,8 +250,27 @@ test_erase2 :: fn () #test {
     test_eq(tbl.len, TEST_COUNT);
 
     loop i : u64 = 0; i < auto TEST_COUNT; i += 1 {
-        tbl_erase(&tbl, std.U64_MAX - i);
+        test_true(tbl_erase(&tbl, std.U64_MAX - i));
     }
     test_eq(tbl.len, 0);
-    test_eq(tbl_begin(&tbl), tbl_end(&tbl));
+}
+
+test_erase3 :: fn () #test {
+    using std;
+    tbl: Table(string_view, s32);
+    defer tbl_terminate(&tbl);
+
+    loop i := 0; i < DATA.len; i += 1 {
+        tbl_insert(&tbl, DATA[i], i);
+    }
+    test_eq(tbl.len, DATA.len);
+
+    loop i := 0; i < DATA.len/2; i += 1 {
+        test_true(tbl_erase(&tbl, DATA[i]));
+    }
+    test_eq(tbl.len, DATA.len/2);
+
+    loop i := (DATA.len/2); i < DATA.len; i += 1 {
+        test_true(tbl_contains(&tbl, DATA[i]));
+    }
 }

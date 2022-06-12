@@ -166,9 +166,9 @@ print_memory_report :: fn (dbgalloc: *DebugAllocator, dump_leaks := false) {
 dump_memory_leaks :: fn (dbgalloc: *DebugAllocator) s64 {
     if dbgalloc.alloc_table.len == 0 { return 0; }
     print("Dump memory leaks begin:\n");
-    loop it := std.tbl_begin(&dbgalloc.alloc_table); it != std.tbl_end(&dbgalloc.alloc_table); std.tbl_iter_next(&dbgalloc.alloc_table, &it) {
-        meta :: &it.value;
-        print("    [%] - %:% (% bytes)\n", meta.serial, meta.file, meta.line, meta.allocated_size);
+    loop i := 0; i < dbgalloc.alloc_table.len; i += 1 {
+        value :: &dbgalloc.alloc_table.values[i];
+        print("    [%] - %:% (% bytes)\n", value.serial, value.file, value.line, value.allocated_size);
     }
     print("Dump memory leaks end.\n");
     return dbgalloc.alloc_table.len;
@@ -225,12 +225,12 @@ add_allocation :: fn (dbgalloc: *DebugAllocator, ptr: *u8, size: usize, alignmen
     dbgalloc.serial += 1;
     if dbgalloc.break_on == dbgalloc.serial { debugbreak; }
 
-    it := std.tbl_insert(&dbgalloc.alloc_table, ptr);
-    it.value.allocated_size = size;
-    it.value.alignment = alignment;
-    it.value.file = file;
-    it.value.line = line;
-    it.value.serial = dbgalloc.serial;
+    meta := std.tbl_insert(&dbgalloc.alloc_table, ptr);
+    meta.allocated_size = size;
+    meta.alignment = alignment;
+    meta.file = file;
+    meta.line = line;
+    meta.serial = dbgalloc.serial;
 
     dbgalloc.total_allocated += auto size;
 }
@@ -238,14 +238,13 @@ add_allocation :: fn (dbgalloc: *DebugAllocator, ptr: *u8, size: usize, alignmen
 remove_allocation :: fn (dbgalloc: *DebugAllocator, ptr: *u8) (size: usize, alignment: usize) {
     mutex_lock(&dbgalloc.mutex);
     defer mutex_unlock(&dbgalloc.mutex);
-    it :: std.tbl_lookup(&dbgalloc.alloc_table, ptr);
-    if it == std.tbl_end(&dbgalloc.alloc_table) {
+    value :: std.tbl_lookup_ptr(&dbgalloc.alloc_table, ptr);
+    if !value {
         panic("Attempt to free already freed or unallocated memory on address %!", ptr);
     }
-    meta :: &it.value;
-    allocated_size :: meta.allocated_size;
-    alignment :: meta.alignment;
+    allocated_size :: value.allocated_size;
+    alignment :: value.alignment;
     dbgalloc.total_allocated -= auto allocated_size;
-    std.tbl_erase_iter(&dbgalloc.alloc_table, it);
+    std.tbl_erase(&dbgalloc.alloc_table, ptr);
     return allocated_size, alignment;
 }

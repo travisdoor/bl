@@ -762,9 +762,12 @@ struct mir_instr_type_poly {
 struct mir_instr_call {
     struct mir_instr base;
 
+    // Generally any callable instruction.
     struct mir_instr *callee;
-    mir_instrs_t     *args; // Optional
-    bool              callee_analyzed;
+    // Pointer to called function resolved after overload resolution.
+    struct mir_fn *called_function;
+    mir_instrs_t  *args; // Optional
+    bool           callee_analyzed;
 
     // Optional temporary variable for unroll multi-return struct type.
     struct mir_instr *unroll_tmp_var;
