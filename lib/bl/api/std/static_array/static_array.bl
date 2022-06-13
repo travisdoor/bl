@@ -1,6 +1,6 @@
 //! # Static Array
 //!
-//! Simple API over static array buffer allocated on heap.
+//! Simple API over static array buffer allocated on stack.
 //!
 //! ### Example
 //! ```c
