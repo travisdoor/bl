@@ -44,6 +44,9 @@ Fix implicit conversion of alignof to Any.
 Redesign memory allocators.
 Fix array type decomposition.
 Simplify error handling API.
+Add Static Array and Bucket Array
+Redesign hash table implementation.
+Fix bug related to unresolved types waiting for self.
 
 0.9.0 - PRE-RELEASE
 ---------------------------------------------------------------------------------------

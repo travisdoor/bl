@@ -1259,9 +1259,11 @@ static inline bool
 can_impl_convert_to(struct context *ctx, const struct mir_type *from, const struct mir_type *to)
 {
     bassert(from && to);
-    bassert(ctx->builtin_types->t_Any && "Any type must be resolved first!");
     // Anything can be converted to 'Any' type.
-    if (to == ctx->builtin_types->t_Any) return true;
+    if (to == ctx->builtin_types->t_Any) {
+        bassert(ctx->builtin_types->t_Any && "Any type must be resolved first!");
+        return true;
+    }
     // Otherwise we allow only conversions to slices.
     if (to->kind != MIR_TYPE_SLICE) return false;
 
@@ -8096,33 +8098,8 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
     optional_fn_or_group.any =
         mir_is_comptime(call->callee) ? MIR_CEV_READ_AS(void *, &call->callee->value) : NULL;
 
-    // Pre-scan of all arguments passed to function call is needed in case we want to convert
-    // some arguments to Any type, because to Any conversion requires generation of rtti
-    // metadata about argument value type, we must check all argument types for it's
-    // completeness.
-
-    // @Performance: This is really needed only in case the function argument list contains
-    // conversion to Any, there is no need to scan everything, also there is possible option do
-    // this check in analyze_instr_decl_ref pass. @travis 14-Oct-2020
-    //
-    // @travis <2022-05-05> The main issue here is that we don't know in advance which function
-    // implementation will be picked in case of overloading, so we cannot check only arguments
-    // converting to Any, this is pretty uggly, we shoud get rid of it in the future.
-    for (usize i = 0; i < sarrlenu(call->args); ++i) {
-        struct mir_instr *it = sarrpeek(call->args, i);
-        struct mir_type  *t  = it->value.type;
-        if (t->kind == MIR_TYPE_PTR && mir_deref_type(t)->kind == MIR_TYPE_TYPE) {
-            t = *MIR_CEV_READ_AS(struct mir_type **, &it->value);
-            bmagic_assert(t);
-        }
-        struct mir_type *incomplete_type;
-        if (is_incomplete_type(ctx, t, &incomplete_type)) {
-            if (incomplete_type->user_id) return_zone(WAIT(incomplete_type->user_id->hash));
-            return_zone(POSTPONE);
-        }
-    }
-
-    if (is_group) {
+    // Overload resolution.
+    if (is_group && !call->called_function) {
         // Function group will be replaced with constant function reference. Best callee
         // candidate selection is based on call arguments not on return type! The best
         // function is selected but it could be still invalid so we have to validate it as
@@ -8152,12 +8129,51 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         callee_replacement->base.node       = selected_overload_fn->decl_node;
         type = callee_replacement->base.value.type = selected_overload_fn->type;
         MIR_CEV_WRITE_AS(struct mir_fn *, &callee_replacement->base.value, selected_overload_fn);
+        call->called_function   = selected_overload_fn;
         optional_fn_or_group.fn = selected_overload_fn;
         is_fn                   = true;
         is_group                = false;
+    } else if (is_group) {
+        bassert(call->called_function);
+        optional_fn_or_group.fn = call->called_function;
+        is_fn                   = true;
+        is_group                = false;
+        blog("Re-visit after postpone!");
+    }
+    bassert(is_fn && !is_group);
+
+    if (optional_fn_or_group.fn) {
+        struct mir_fn *fn = optional_fn_or_group.fn;
+        bmagic_assert(fn);
+
+        for (usize i = 0; i < sarrlenu(call->args) && i < sarrlenu(fn->type->data.fn.args); ++i) {
+            struct mir_instr *call_arg        = sarrpeek(call->args, i);
+            struct mir_type  *call_arg_type   = call_arg->value.type;
+            struct mir_type  *callee_arg_type = sarrpeek(fn->type->data.fn.args, i)->type;
+
+            // Pre-scan of all arguments passed to function call is needed in case we want to
+            // convert some arguments to Any type, because to Any conversion requires generation of
+            // rtti metadata about argument value type, we must check all argument types for it's
+            // completeness.
+            if (!type_cmp(callee_arg_type, ctx->builtin_types->t_Any)) {
+                continue;
+            }
+            if (call_arg_type->kind == MIR_TYPE_PTR &&
+                mir_deref_type(call_arg_type)->kind == MIR_TYPE_TYPE) {
+                call_arg_type = *MIR_CEV_READ_AS(struct mir_type **, &call_arg->value);
+                bmagic_assert(call_arg_type);
+            }
+            struct mir_type *incomplete_type;
+            if (is_incomplete_type(ctx, call_arg_type, &incomplete_type)) {
+                blog("Incomplete conversion to Any!");
+                if (incomplete_type->user_id) {
+                    return_zone(WAIT(incomplete_type->user_id->hash));
+                }
+                return_zone(POSTPONE);
+            }
+        }
     }
 
-    bassert(is_fn && !is_group);
     const bool is_polymorph = type->data.fn.is_polymorph;
     if (is_polymorph) {
         struct mir_fn *fn = optional_fn_or_group.fn;

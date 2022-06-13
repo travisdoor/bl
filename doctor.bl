@@ -16,19 +16,21 @@ SKIP :: [1]Skip.{
     }
 };
 
-MODULES :: [12]string_view.{
+MODULES :: [14]string_view.{
     "lib/bl/api/std/arg_parser/arg_parser.test.bl",
     "lib/bl/api/std/array/array.test.bl",
+    "lib/bl/api/std/bucket_array/bucket_array.test.bl",
     "lib/bl/api/std/debug_allocator/debug_allocator.test.bl",
     "lib/bl/api/std/dlib/dlib.test.bl",
     "lib/bl/api/std/fs/fs.test.bl",
     "lib/bl/api/std/print/print.test.bl",
     "lib/bl/api/std/string/string.test.bl",
     "lib/bl/api/std/sync/sync.test.bl",
-    "lib/bl/api/std/table/table.test.bl",
     "lib/bl/api/std/thread/thread.test.bl",
     "lib/bl/api/std/pool/pool.test.bl",
     "lib/bl/api/std/buffer_allocator/buffer_allocator.test.bl",
+    "lib/bl/api/std/table/table.test.bl",
+    "lib/bl/api/std/static_array/static_array.test.bl",
 };
 
 TestKind :: enum {
@@ -83,8 +85,8 @@ main :: fn () s32 {
     temporary_directory = get_full_path(TEMPORARY_DIR);
     main_file = get_full_path("tests/main.test.bl");
 
-    dir_remove_all(temporary_directory);
-    dir_create(temporary_directory);
+    remove_all_dir(temporary_directory);
+    create_dir(temporary_directory);
     set_cwd(temporary_directory);
     defer cleanup();
 
@@ -168,7 +170,7 @@ cleanup :: fn () {
     using std;
     set_cwd(working_directory);
     if !args.keep_temporary {
-        dir_remove_all(temporary_directory);
+        remove_all_dir(temporary_directory);
     }
 }
 
@@ -287,18 +289,23 @@ parse_args :: fn () bool {
 list_dir :: fn (paths: *[..]string_view, dir: string_view) {
     using std;
 
-    list, err :: dir_scan(dir);
-    defer info_list_delete(list);
+    VisitData :: struct {
+        paths: *[..]string_view;
+    };
+
+    visitor :: fn (info: *Info, data: *VisitData) Error {
+        using std;
+        if !info.is_directory {
+            array_push(data.paths, tprint("%", info.filepath));
+        }
+        return OK;
+    };
+
+    data :: VisitData.{ paths = paths };
+    err :: visit_files(dir, VisitOpt.{}, &visitor, &data);
     if err {
         print_err("%", err);
         return;
-    }
-
-    loop i := 0; i < list.len; i += 1 {
-        info :: &list[i];
-        if info.kind != InfoKind.DIRECTORY {
-            array_push(paths, tprint("%/%", dir, info.name));
-        }
     }
 }
 
@@ -343,8 +350,8 @@ get_exe_name :: fn () string_view #comptime {
 get_expected_error :: fn (filepath: string_view) (is_present: bool, error: s32) {
     using std;
 
-    file, err1 :: file_open(filepath, FileOpenMode.READ);
-    defer file_close(file);
+    file, err1 :: open_file(filepath, OpenFileMode.READ);
+    defer close_file(file);
     if err1 { print_err("%", err1); return false, 0; }
     content, err2 :: read_string(file);
     defer str_delete(&content);

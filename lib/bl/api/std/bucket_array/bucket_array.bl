@@ -1,0 +1,108 @@
+// @Incomplete: This module is experimental.
+
+#scope std
+
+BucketArray :: fn (TElem: type) type #comptime {
+    TBucket :: Bucket(TElem);
+    return struct {
+        buckets: [..]TBucket;
+        free_buckets: [..]s32;
+
+        len: s64;
+        allocator: *Allocator;
+    };
+}
+
+bucket_array_init :: fn (arr: *?TArr, expected_elem_count: s32, allocator: *Allocator = null) {
+    assert(arr);
+    assert(expected_elem_count >= 0);
+    arr.allocator = allocator;
+    expected_bucket_count :: min(expected_elem_count / BUCKET_ELEM_COUNT, 1);
+    array_init(&arr.buckets, expected_bucket_count, arr.allocator);
+    array_init(&arr.free_buckets, expected_bucket_count, arr.allocator);
+
+    loop i := 0; i < expected_bucket_count; i += 1 {
+        add_bucket(arr);
+    }
+}
+
+bucket_array_terminate :: fn (arr: *?TArr) {
+    assert(arr);
+    loop i := 0; i < arr.buckets.len; i += 1 {
+        bucket := &arr.buckets[i];
+        slice_terminate(&bucket.elems, arr.allocator);
+    }
+    array_terminate(&arr.buckets);
+    array_terminate(&arr.free_buckets);
+}
+
+bucket_array_push :: fn (arr: *?TArr) *bucket_array_typeof_elem(TArr) {
+    assert(arr);
+    if arr.free_buckets.len == 0 { add_bucket(arr); }
+    assert(arr.free_buckets.len > 0);
+    free_bucket_index :: arr.free_buckets.len - 1;
+    bucket_index := arr.free_buckets[free_bucket_index];
+    bucket := &arr.buckets[bucket_index];
+    loop i := 0; i < BUCKET_ELEM_COUNT; i += 1 {
+        mask :: MASK << auto i;
+        if (bucket.mask & mask) == 0 {
+            bucket.mask |= mask;
+            if bucket.mask == FULL {
+                array_erase(&arr.free_buckets, free_bucket_index);
+            }
+            bucket.elems[i].bucket_index = bucket_index;
+            bucket.elems[i].elem_index = i;
+            arr.len += 1;
+            return &bucket.elems[i].value;
+        }
+    }
+    panic();
+    return null;
+}
+
+bucket_array_erase :: fn (arr: *?TArr, value: *bucket_array_typeof_elem(TArr)) {
+    assert(arr);
+    if !value { return; }
+    elem_with_meta :: cast(*ElemWithMeta(typeof(@value))) value;
+    bucket_index :: elem_with_meta.bucket_index;
+    elem_index :: elem_with_meta.elem_index;
+    bucket := &arr.buckets[bucket_index];
+    if bucket.mask == FULL {
+        array_push(&arr.free_buckets, auto bucket_index);
+    }
+    mask :: ~(MASK << auto elem_index);
+    bucket.mask &= mask;
+    arr.len -= 1;
+}
+
+bucket_array_typeof_elem :: fn (TArr: type) type #comptime {
+    return (@(@TArr.buckets.ptr).elems.ptr).value;
+}
+
+#private
+BUCKET_ELEM_COUNT :: cast(s64) sizeof(u64) * 8 #maybe_unused;
+FULL : u64 : 0xffffffff #maybe_unused;
+MASK : u64 : 0x00000001 #maybe_unused;
+
+Bucket :: fn (TElem: type) type #comptime {
+    TElemWithMeta :: ElemWithMeta(TElem);
+    return struct {
+        mask: u64;
+        elems: []TElemWithMeta;
+    };
+}
+
+ElemWithMeta :: fn (TElem: type) type #comptime {
+    return struct {
+        value: TElem;
+        bucket_index: s32;
+        elem_index: s32;
+    };
+}
+
+add_bucket :: fn (arr: *?TArr) {
+    bucket := array_push(&arr.buckets);
+    slice_init(&bucket.elems, BUCKET_ELEM_COUNT, false, arr.allocator);
+    bucket.mask = 0;
+    array_push(&arr.free_buckets, auto arr.buckets.len - 1);
+}

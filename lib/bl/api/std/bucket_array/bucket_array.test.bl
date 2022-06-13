@@ -1,0 +1,32 @@
+#import "std/bucket_array"
+
+#private
+
+TEST_COUNT :: 1000;
+
+Data :: struct {
+    mem: [64]u8;
+    i: s32;
+}
+
+push_and_erase :: fn () #test {
+    using std;
+    arr: BucketArray(Data);
+    defer bucket_array_terminate(&arr);
+
+    tmp: [..]*Data;
+    defer array_terminate(&tmp);
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        data := bucket_array_push(&arr);
+        data.i = i;
+        array_push(&tmp, data);
+    }
+    test_eq(arr.len, TEST_COUNT);
+
+    loop i := 0; i < tmp.len; i += 1 {
+        data :: tmp[i];
+        test_eq(data.i, i);
+        bucket_array_erase(&arr, data);
+    }
+    test_eq(arr.len, 0);
+}

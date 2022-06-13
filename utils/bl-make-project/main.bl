@@ -162,11 +162,11 @@ main :: fn () s32 {
     defer std.str_delete(&proj_root);
     
     // create root directory
-    state = std.dir_create(proj_root);
+    state = std.create_dir(proj_root);
     if state { print_err("%", state); return 1; }
 
     // create src directory
-    state = std.dir_create(proj_src);
+    state = std.create_dir(proj_src);
     if state { print_err("%", state); return 1; }
 
     switch g_args.proj_kind {
@@ -206,8 +206,8 @@ main :: fn () s32 {
 }
 
 make_file :: fn (filepath: string_view, content: string_view, args: ...) Error {
-    file, err :: std.file_open(filepath, make_flags(std.FileOpenMode.WRITE, std.FileOpenMode.CREATE));
-    defer std.file_close(file);
+    file, err :: std.open_file(filepath, make_flags(std.OpenFileMode.WRITE, std.OpenFileMode.CREATE));
+    defer std.close_file(file);
     if err { return err; }
     std.write_fmt(file, content, args);
     return OK;
