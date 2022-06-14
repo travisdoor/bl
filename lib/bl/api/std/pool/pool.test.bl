@@ -163,6 +163,37 @@ allocation_speed_pool :: fn () #test {
     pool_release(&pool);
 }
 
+Data :: struct {
+    mem: [128]u8;
+    i: s32;
+}
+
+used_as_allocator :: fn () #test {
+    using std;
+
+    pool :: pool_make(application_context.allocator);
+    defer pool_release(&pool);
+
+    arr: [..]Data;
+    array_init(&arr, 0, &pool);
+
+    TEST_COUNT :: 100;
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        defer pool_reset(&pool);
+        loop j : usize = 0; j < auto i; j += 1 {
+            // allocate some random memory from the pool
+            allocate_memory(&pool, (j % 128) + 1);
+        }
+        loop j := 0; j < TEST_COUNT; j += 1 {
+            array_push(&arr, Data.{ i = j });
+        }
+        loop j := 0; j < arr.len; j += 1 {
+            test_eq(arr[j].i, j);
+        }
+        array_clear(&arr);
+    }
+}
+
 alloc_count := 0;
 free_count := 0;
 

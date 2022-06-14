@@ -1,21 +1,12 @@
-MyType :: fn (TElem: type) type #comptime {
-    return struct {
-        v: TElem;
-    };
-}
-
-Foo :: struct {
-    data: MyType(Bar);
-    i: s32;
-}
-
-Bar :: struct {
-    foo: *Foo;
-}
-
 main :: fn () s32 {
-    foo: Foo;
-    print("DONE\n");
+    using std;
+    pool :: pool_make(application_context.allocator);
+    defer pool_release(&pool);
+
+    loop i := 0; i < 1000; i += 1 {
+		allocate_memory(&pool, sizeof(s32), alignof(s32));
+    }
+
     return 0;
 }
 
