@@ -332,7 +332,7 @@ application_context := Context.{
     print_log_fn        = &__print_log_default,
     abort_fn            = &__os_abort_default,
     allocator           = &default_allocator,
-    //temporary_allocator = &default_temporary_allocator,
+    temporary_allocator = &default_temporary_allocator,
 };
 
 /// Contains all arguments passed from command line. First argument is executable name.
