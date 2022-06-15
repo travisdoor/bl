@@ -154,20 +154,20 @@ test_allocator_reset :: fn () {
     free_count  = 0;
 }
 
-handler :: fn (_: *Allocator, operation: AllocOp, size: usize, old_size: usize, ptr: *u8, _: usize, _: string_view, _: s32) (mem: *u8, err: Error) {
+handler :: fn (_: *Allocator, operation: AllocOp, old_ptr: *u8, old_size: usize, new_size: usize, _: usize, _: string_view, _: s32) (mem: *u8, err: Error) {
     using AllocOp;
     switch operation {
         ALLOCATE {
             alloc_count += 1;
-            return allocate_memory(null, size);
+            return allocate_memory(null, new_size);
         }
         REALLOCATE {
             alloc_count += 1;
-            return reallocate_memory(null, ptr, old_size, size);
+            return reallocate_memory(null, old_ptr, old_size, new_size);
         }
         FREE {
             free_count += 1;
-            free_memory(null, ptr);
+            free_memory(null, old_ptr);
         }
         default { panic(); }
     }

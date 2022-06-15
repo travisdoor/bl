@@ -14,15 +14,15 @@ allocator_make :: fn (buffer: []u8) MyAllocator {
 my_allocator_handler :: fn (
     allocator: *MyAllocator,
     // Operation specify whether we do allocation or free.
-    operation: AllocOp, 
-    // Count of bytes to be allocated, this value is set only when operation
-    // is allocation.
-    size: usize,
-    // Size of previous allocation (used for realloc).
-    old_size: usize,
+    operation: AllocOp,
     // This is pointer to allocation to be freed, this value is set only when
     // operation is free.
-    ptr: *u8,
+    old_ptr: *u8,
+    // Size of previous allocation (used for realloc).
+    old_size: usize,
+    // Count of bytes to be allocated, this value is set only when operation
+    // is allocation.
+    new_size: usize,
     // Allocation allignment,
     alignment: usize,
     // Source file where allocator was called.
@@ -33,13 +33,13 @@ my_allocator_handler :: fn (
     using AllocOp;
     switch operation {
         ALLOCATE   {
-            return allocate(allocator, size, alignment);
+            return allocate(allocator, new_size, alignment);
         }
         REALLOCATE {
-            mem, err :: allocate(allocator, size, alignment);
+            mem, err :: allocate(allocator, new_size, alignment);
             if err { return mem, err; }
-            if !ptr { return mem, OK; }
-            memcpy(mem, ptr, old_size);
+            if !old_ptr { return mem, OK; }
+            memcpy(mem, old_ptr, old_size);
             return mem, OK;
         }
         FREE; // Nothing here

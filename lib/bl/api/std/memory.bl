@@ -117,9 +117,9 @@ AllocOp :: enum {
 AllocFn :: *fn (
     ctx: *Allocator,
     operation: AllocOp,
-    size: usize,
+    old_ptr: *u8,
     old_size: usize,
-    ptr: *u8,
+    new_size: usize,
     alignment: usize,
     file: string_view,
     line: s32
@@ -182,7 +182,7 @@ allocate_memory :: fn (allocator: *Allocator, size: usize, alignment := DEFAULT_
     assert(allocator.handler);
     assert(is_power_of_two(alignment));
     if size == 0 { return null, error("Attempt to allocate 0 bytes."); }
-    mem, err :: allocator.handler(allocator, AllocOp.ALLOCATE, size, 0, null, alignment, loc.file, loc.line);
+    mem, err :: allocator.handler(allocator, AllocOp.ALLOCATE, null /* old_ptr */, 0 /* old_size */, size, alignment, loc.file, loc.line);
     if err { return mem, err; }
     assert(is_aligned(mem, alignment));
     return mem, err;
@@ -199,23 +199,23 @@ allocate_memory :: fn (allocator: *Allocator, size: usize, alignment := DEFAULT_
 /// The allocation `alignment` can be specified but must be the same as previous one in case we try to reallocate.
 ///
 /// !!! note
-///     When called with null `ptr`, this function behaves the same as [allocate_memory](#allocate_memory) and the `old_size` is ignored.
+///     When called with null `old_ptr`, this function behaves the same as [allocate_memory](#allocate_memory) and the `old_size` is ignored.
 ///
 /// !!! warning
 ///     The exact behaviour depends on the allocator used, in some cases reallocation is not implemented and new allocation
 ///     is done everytime.
-reallocate_memory :: fn (allocator: *Allocator, ptr: *u8, old_size: usize, size: usize, alignment := DEFAULT_ALIGNMENT, loc := #call_location) (mem: *u8, err: Error) #inline {
+reallocate_memory :: fn (allocator: *Allocator, old_ptr: *u8, old_size: usize, size: usize, alignment := DEFAULT_ALIGNMENT, loc := #call_location) (mem: *u8, err: Error) #inline {
     if !allocator { allocator = application_context.allocator; }
     assert(allocator.handler);
     assert(is_power_of_two(alignment));
     if size == 0 { return null, error("Attempt to allocate 0 bytes."); }
-    if ptr {
+    if old_ptr {
         if old_size == 0 {
-            return ptr, error("Original data ponter for reallocation is set, but original data size is zero!");
+            return old_ptr, error("Original data ponter for reallocation is set, but original data size is zero!");
         }
-        if old_size == size { return ptr, OK; }
+        if old_size == size { return old_ptr, OK; }
     }
-    mem, err :: allocator.handler(allocator, AllocOp.REALLOCATE, size, old_size, ptr, alignment, loc.file, loc.line);
+    mem, err :: allocator.handler(allocator, AllocOp.REALLOCATE, old_ptr, old_size, size, alignment, loc.file, loc.line);
     if err { return mem, err; }
     assert(is_aligned(mem, alignment));
     return mem, err;
@@ -226,7 +226,7 @@ free_memory :: fn (allocator: *Allocator, ptr: *u8, loc := #call_location) #inli
     if !allocator { allocator = application_context.allocator; }
     assert(allocator.handler);
     if !ptr { return; }
-    allocator.handler(allocator, AllocOp.FREE, 0, 0, ptr, 0, loc.file, loc.line);
+    allocator.handler(allocator, AllocOp.FREE, ptr, 0 /* old_size */, 0 /* new_size */, 0 /* alignment */, loc.file, loc.line);
 }
 
 /// Copy memory of defined `size` from `src` to `dest`. Destination and source size must be at least
@@ -408,8 +408,16 @@ temporary_release :: fn () #inline {
 }
 
 #private
-
-default_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, _: usize, ptr: *u8, alignment: usize, _: string_view, _: s32) (mem: *u8, err: Error) {
+default_allocator_handler :: fn (
+    _: *Allocator,
+    operation: AllocOp,
+    old_ptr: *u8,
+    _: usize, // old_size
+    new_size: usize,
+    alignment: usize,
+    _: string_view,
+    _: s32)
+(mem: *u8, err: Error) {
     // @Cleanup: We do properly aligned allocations only on Windows, in case there is not implementation
     // provided on other platforms, we should implement it.
     alignment; // May be unused...
@@ -418,9 +426,9 @@ default_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize,
         ALLOCATE {
             mem: *u8;
 #if PLATFORM == Platform.WINDOWS {
-            mem = C.aligned_malloc(size, alignment);
+            mem = C.aligned_malloc(new_size, alignment);
 } else {
-            mem = C.malloc(size);
+            mem = C.malloc(new_size);
 }
             if !mem { return null, error("Bad allocation."); }
             return mem, OK;
@@ -428,18 +436,18 @@ default_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize,
         REALLOCATE {
             mem: *u8;
 #if PLATFORM == Platform.WINDOWS {
-            mem = C.aligned_realloc(ptr, size, alignment);
+            mem = C.aligned_realloc(old_ptr, new_size, alignment);
 } else {
-            mem = C.realloc(ptr, size);
+            mem = C.realloc(old_ptr, new_size);
 }
             if !mem { return null, error("Bad reallocation."); }
             return mem, OK;
         }
         FREE {
 #if PLATFORM == Platform.WINDOWS {
-            C.aligned_free(ptr);
+            C.aligned_free(old_ptr);
 } else {
-            C.free(ptr);
+            C.free(old_ptr);
 }
         }
 
@@ -450,6 +458,15 @@ default_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize,
 
 temporary_pool := std.pool_default #thread_local;
 
-temporary_allocator_handler :: fn (_: *Allocator, operation: AllocOp, size: usize, old_size: usize, ptr: *u8, alignment: usize, file: string_view, line: s32) (mem: *u8, err: Error) {
-    return temporary_pool.handler(&temporary_pool, operation, size, old_size, ptr, alignment, file, line);
+temporary_allocator_handler :: fn (
+    _: *Allocator,
+    operation: AllocOp,
+    old_ptr: *u8,
+    old_size: usize,
+    new_size: usize,
+    alignment: usize,
+    file: string_view,
+    line: s32)
+(mem: *u8, err: Error) #inline {
+    return temporary_pool.handler(&temporary_pool, operation, old_ptr, old_size, new_size, alignment, file, line);
 }

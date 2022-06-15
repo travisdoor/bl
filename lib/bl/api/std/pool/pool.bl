@@ -73,17 +73,17 @@ pool_reset :: fn (pool: *PoolAllocator) #inline {
 
 #private
 
-handler :: fn (pool: *PoolAllocator, operation: AllocOp, size: usize, old_size: usize, ptr: *u8, alignment: usize, _: string_view, _: s32) (mem: *u8, err: Error) {
+handler :: fn (pool: *PoolAllocator, operation: AllocOp, old_ptr: *u8, old_size: usize, new_size: usize, alignment: usize, _: string_view, _: s32) (mem: *u8, err: Error) {
     using AllocOp;
     switch operation {
         ALLOCATE {
-            return allocate(pool, size, alignment);
+            return allocate(pool, new_size, alignment);
         }
         REALLOCATE {
-            mem, err :: allocate(pool, size, alignment);
+            mem, err :: allocate(pool, new_size, alignment);
             if err { return mem, err; }
-            if !ptr { return mem, OK; }
-            memcpy(mem, ptr, old_size);
+            if !old_ptr { return mem, OK; }
+            memcpy(mem, old_ptr, old_size);
             return mem, OK;
         }
         FREE;

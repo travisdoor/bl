@@ -109,16 +109,16 @@ buffer_allocator_reset :: fn (buf: *BufferAllocator) {
 
 #private
 
-handler :: fn (buf: *BufferAllocator, operation: AllocOp, size: usize, old_size: usize, ptr: *u8, alignment: usize, _ := std.str_view_empty, _ := 0) (mem: *u8, err: Error) {
+handler :: fn (buf: *BufferAllocator, operation: AllocOp, old_ptr: *u8, old_size: usize, new_size: usize, alignment: usize, _ := std.str_view_empty, _ := 0) (mem: *u8, err: Error) {
     assert(buf.mem.ptr);
     using AllocOp;
     switch operation {
-        ALLOCATE   { return allocate(buf, size, alignment); }
+        ALLOCATE   { return allocate(buf, new_size, alignment); }
         REALLOCATE {
-            mem, err :: allocate(buf, size, alignment);
+            mem, err :: allocate(buf, new_size, alignment);
             if err { return mem, err; }
-            if !ptr { return mem, OK; }
-            memcpy(mem, ptr, old_size);
+            if !old_ptr { return mem, OK; }
+            memcpy(mem, old_ptr, old_size);
             return mem, OK;
         }
         FREE; // Nothing here

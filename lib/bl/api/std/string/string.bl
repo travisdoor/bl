@@ -563,7 +563,7 @@ ctostr :: fn (cstr: *C.char, len : s64 = -1) string_view #inline {
 
 make_string :: fn (data: string_view, cap: s64, allocator: *Allocator) string {
     tmp : string #noinit;
-    tmp.ptr = alloc_block(auto cap, allocator);
+    tmp.ptr = realloc_block(null, 0, auto cap, allocator);
     tmp.len = data.len;
     memcpy(tmp.ptr, data.ptr, auto data.len);
     set_terminator(tmp);
@@ -577,26 +577,43 @@ BlockHead :: struct {
     allocator: *Allocator;
 };
 
+// Get size needed for allocation.
+get_allocation_size :: fn (size: usize) usize #inline {
+    if size == 0 { return size; }
+    return size + sizeof(BlockHead) + sizeof(u8); // + terminator
+}
+
+// Get address of real allocated memory.
+get_allocation_ptr :: fn (ptr: *u8) *u8 {
+    if !ptr { return ptr; }
+    return cast(*u8) ((cast(usize) ptr) - sizeof(BlockHead));
+};
+
+// Get allocation header.
+get_block_head :: fn (ptr: *u8) *BlockHead #inline {
+    return cast(*BlockHead) get_allocation_ptr(ptr);
+};
+
+
 make_more_room_if_needed :: fn (ptr: *u8, size: usize) *u8 {
     head :: get_block_head(ptr);
     allocated :: head.allocated_size;
     allocator :: head.allocator;
-    if size > allocated {
-        new_ptr := alloc_block(size, allocator);
-        memcpy(new_ptr, ptr, allocated);
-        free_block(ptr);
-        ptr = new_ptr;
-    }
-
+    if size > allocated { ptr = realloc_block(ptr, allocated, size, allocator); }
     return ptr;
 };
 
-alloc_block :: fn (size: usize, allocator: *Allocator) *u8 {
+realloc_block :: fn (old_ptr: *u8, old_size: usize, size: usize, allocator: *Allocator) *u8 {
     d := size / STRING_BLOCK_SIZE + 1;
     size = d * STRING_BLOCK_SIZE;
 
-    alloc_size := size + sizeof(BlockHead) + sizeof(u8);
-    mem, err :: allocate_memory(allocator, alloc_size, alignof(u8));
+    mem, err :: reallocate_memory(
+        allocator,
+        get_allocation_ptr(old_ptr),
+        get_allocation_size(old_size),
+        get_allocation_size(size),
+        alignof(u8));
+
     if err { panic(err); }
     tmp := cast(*BlockHead) mem;
     tmp.allocated_size = size;
@@ -609,14 +626,6 @@ free_block :: fn (ptr: *u8) {
     head :: get_block_head(ptr);
     allocator :: head.allocator;
     free_memory(allocator, get_allocation_ptr(ptr));
-};
-
-get_allocation_ptr :: fn (ptr: *u8) *u8 {
-    return cast(*u8) ((cast(usize) ptr) - sizeof(BlockHead));
-};
-
-get_block_head :: fn (ptr: *u8) *BlockHead #inline {
-    return cast(*BlockHead) get_allocation_ptr(ptr);
 };
 
 set_terminator :: fn (v: string) {
