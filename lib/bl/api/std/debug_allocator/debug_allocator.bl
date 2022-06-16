@@ -183,18 +183,18 @@ Meta :: struct {
     line: s32;
 }
 
-handler :: fn (dbgalloc: *DebugAllocator, operation: AllocOp, size: usize, old_size: usize, ptr: *u8, alignment: usize, file: string_view, line: s32) (mem: *u8, err: Error) {
+handler :: fn (dbgalloc: *DebugAllocator, operation: AllocOp, old_ptr: *u8, old_size: usize, new_size: usize, alignment: usize, file: string_view, line: s32) (mem: *u8, err: Error) {
     using AllocOp;
     switch operation {
         ALLOCATE {
-            mem, err :: allocate_memory(dbgalloc.allocator, size, alignment);
+            mem, err :: allocate_memory(dbgalloc.allocator, new_size, alignment);
             if err { return mem, err; }
-            add_allocation(dbgalloc, mem, size, alignment, file, line);
+            add_allocation(dbgalloc, mem, new_size, alignment, file, line);
             return mem, err;
         }
         REALLOCATE {
-            if ptr {
-                previously_allocated_size, previous_alignment :: remove_allocation(dbgalloc, ptr);
+            if old_ptr {
+                previously_allocated_size, previous_alignment :: remove_allocation(dbgalloc, old_ptr);
                 if previously_allocated_size != old_size {
                     panic("Invalid size of previously allocated memory block during reallocation, expected is %B but current is %B. Not all original data would be copied!", previously_allocated_size, old_size);
                 }
@@ -202,15 +202,15 @@ handler :: fn (dbgalloc: *DebugAllocator, operation: AllocOp, size: usize, old_s
                     panic("Alignment of reallocated memory block must be the same as previous one! Previous alignment is %B and current is %B.", previous_alignment, alignment);
                 }
             }
-            mem, err :: reallocate_memory(dbgalloc.allocator, ptr, old_size, size, alignment);
+            mem, err :: reallocate_memory(dbgalloc.allocator, old_ptr, old_size, new_size, alignment);
             if err { return mem, err; }
-            add_allocation(dbgalloc, mem, size, alignment, file, line);
+            add_allocation(dbgalloc, mem, new_size, alignment, file, line);
             return mem, OK;
         }
         FREE {
-            if ptr {
-                remove_allocation(dbgalloc, ptr);
-                free_memory(dbgalloc.allocator, ptr);
+            if old_ptr {
+                remove_allocation(dbgalloc, old_ptr);
+                free_memory(dbgalloc.allocator, old_ptr);
             }
         }
         default { panic(); }

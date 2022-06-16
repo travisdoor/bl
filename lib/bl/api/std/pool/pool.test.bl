@@ -174,12 +174,13 @@ used_as_allocator :: fn () #test {
     pool :: pool_make(application_context.allocator);
     defer pool_release(&pool);
 
-    arr: [..]Data;
-    array_init(&arr, 0, &pool);
-
     TEST_COUNT :: 100;
     loop i := 0; i < TEST_COUNT; i += 1 {
         defer pool_reset(&pool);
+        arr: [..]Data;
+        array_init(&arr, 0, &pool);
+        str :: str_new(&pool);
+
         loop j : usize = 0; j < auto i; j += 1 {
             // allocate some random memory from the pool
             allocate_memory(&pool, (j % 128) + 1);
@@ -187,12 +188,16 @@ used_as_allocator :: fn () #test {
         loop j := 0; j < TEST_COUNT; j += 1 {
             array_push(&arr, Data.{ i = j });
         }
+        loop j := 0; j < TEST_COUNT; j += 1 {
+            str_append(&str, "Test");
+        }
         loop j := 0; j < arr.len; j += 1 {
             test_eq(arr[j].i, j);
         }
         array_clear(&arr);
     }
 }
+
 
 alloc_count := 0;
 free_count := 0;
@@ -203,20 +208,20 @@ test_allocator_reset :: fn () {
     free_count  = 0;
 }
 
-handler :: fn (_: *Allocator, operation: AllocOp, size: usize, old_size: usize, ptr: *u8, _: usize, _: string_view, _: s32) (mem: *u8, err: Error) {
+handler :: fn (_: *Allocator, operation: AllocOp, old_ptr: *u8, old_size: usize, new_size: usize, _: usize, _: string_view, _: s32) (mem: *u8, err: Error) {
     using AllocOp;
     switch operation {
         ALLOCATE {
             alloc_count += 1;
-            return allocate_memory(null, size);
+            return allocate_memory(null, new_size);
         }
         REALLOCATE {
             alloc_count += 1;
-            return reallocate_memory(null, ptr, old_size, size);
+            return reallocate_memory(null, old_ptr, old_size, new_size);
         }
         FREE {
             free_count += 1;
-            free_memory(null, ptr);
+            free_memory(null, old_ptr);
         }
         default { panic(); }
     }
