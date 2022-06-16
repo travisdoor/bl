@@ -31,7 +31,7 @@ allocation_default_copy :: fn () #test {
     data: [TEST_COUNT]*s32 #noinit;
 
     loop i := 0; i < TEST_COUNT; i += 1 {
-        mem, err :: allocate_memory(&pool, sizeof(s32));
+        mem, err :: alloc(sizeof(s32), alignof(s32), &pool);
         test_ok(err);
         num := cast(*s32) mem;
         @num = i;
@@ -56,7 +56,7 @@ allocation_1 :: fn () #test {
     data: [TEST_COUNT]*s32 #noinit;
 
     loop i := 0; i < TEST_COUNT; i += 1 {
-        mem, err :: allocate_memory(&pool, sizeof(s32));
+        mem, err :: alloc(sizeof(s32), alignof(s32), &pool);
         test_ok(err);
         num := cast(*s32) mem;
         @num = i;
@@ -83,7 +83,7 @@ allocation_2 :: fn () #test {
     data: [TEST_COUNT]*s32 #noinit;
 
     loop i := 0; i < TEST_COUNT; i += 1 {
-        mem, err :: allocate_memory(&pool, sizeof(s32));
+        mem, err :: alloc(sizeof(s32), alignof(s32), &pool);
         test_ok(err);
         num := cast(*s32) mem;
         @num = i;
@@ -99,7 +99,7 @@ allocation_2 :: fn () #test {
     test_eq(free_count, 0);
 
     loop i := 0; i < TEST_COUNT; i += 1 {
-        mem, err :: allocate_memory(&pool, sizeof(s32));
+        mem, err :: alloc(sizeof(s32), alignof(s32), &pool);
         test_ok(err);
         num := cast(*s32) mem;
         @num = i;
@@ -157,7 +157,7 @@ allocation_speed_pool :: fn () #test {
 
     SPEED_TEST_COUNT : usize : 100000;
     loop i : usize = 0; i < SPEED_TEST_COUNT; i += 1 {
-        allocate_memory(&pool, (i % 128) + 1);
+        alloc((i % 128) + 1, DEFAULT_ALIGNMENT, &pool);
     }
 
     pool_release(&pool);
@@ -183,7 +183,7 @@ used_as_allocator :: fn () #test {
 
         loop j : usize = 0; j < auto i; j += 1 {
             // allocate some random memory from the pool
-            allocate_memory(&pool, (j % 128) + 1);
+            alloc((j % 128) + 1, DEFAULT_ALIGNMENT, &pool);
         }
         loop j := 0; j < TEST_COUNT; j += 1 {
             array_push(&arr, Data.{ i = j });
@@ -213,15 +213,15 @@ handler :: fn (_: *Allocator, operation: AllocOp, old_ptr: *u8, old_size: usize,
     switch operation {
         ALLOCATE {
             alloc_count += 1;
-            return allocate_memory(null, new_size);
+            return alloc(new_size);
         }
         REALLOCATE {
             alloc_count += 1;
-            return reallocate_memory(null, old_ptr, old_size, new_size);
+            return realloc(old_ptr, old_size, new_size);
         }
         FREE {
             free_count += 1;
-            free_memory(null, old_ptr);
+            free(old_ptr);
         }
         default { panic(); }
     }

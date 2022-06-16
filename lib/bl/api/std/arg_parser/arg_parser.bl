@@ -92,7 +92,9 @@ ArgParserHandlerFn :: *fn (parser: ArgParser, args: []string_view, ctx: *ArgPars
 /// Create new instance of parser with possibility to set custom help text. Use 
 /// [delete](#argparserdelete) to release parser instance.
 arg_parser_new :: fn (help_text := std.str_view_empty) ArgParser {
-    parser := cast(*ParserImpl) alloc(sizeof(ParserImpl));
+    mem, err :: alloc(sizeof(ParserImpl));
+    if err { panic(err); }
+    parser := cast(*ParserImpl) mem;
     parser.pad = 0;
     parser.help_text = std.str_new(help_text);
     array_init(&parser.entries);

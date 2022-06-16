@@ -51,7 +51,7 @@ array_init :: fn (_arr: *[..]?T, n: s64 = 0, allocator: *Allocator = null) #inli
 /// array is no longer needed. Passed dynamic array is set to default state also.
 array_terminate :: fn (_arr: *[..]?T) #inline {
     arr := cast(*_Array) _arr;
-    free_memory(arr.allocator, arr.ptr);
+    free(arr.ptr, arr.allocator);
     arr.ptr = null;
     arr.len = 0;
     arr.allocated = 0;
@@ -134,7 +134,7 @@ ensure_space :: fn (arr: *_Array, elem_size: usize, space: usize, exact: bool, a
     }
     prev_bytes :: arr.allocated * elem_size;
     needed_bytes :: space * elem_size;
-    mem, err :: reallocate_memory(arr.allocator, arr.ptr, prev_bytes, needed_bytes, alignement);
+    mem, err :: realloc(arr.ptr, prev_bytes, needed_bytes, alignement, arr.allocator);
     if err { panic(err); }
     arr.ptr = mem;
     arr.allocated = space;

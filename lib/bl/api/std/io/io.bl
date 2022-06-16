@@ -113,7 +113,9 @@ write_fmt :: fn {
     fn (buf_size: s32, handle: std.File, fmt: string_view, args: ...) (s64, Error) #inline {
         if buf_size <= 0 { return 0, OK; }
         buf: []u8;
-        buf.ptr = alloc(sizeof(u8) * auto buf_size);
+        mem, err :: alloc(sizeof(u8) * auto buf_size);
+        if err { return 0, err; }
+        buf.ptr = mem;
         buf.len = auto buf_size;
         defer free(buf.ptr);
         len :: bprint(buf, fmt, args);

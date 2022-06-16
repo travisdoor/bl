@@ -607,12 +607,13 @@ realloc_block :: fn (old_ptr: *u8, old_size: usize, size: usize, allocator: *All
     d := size / STRING_BLOCK_SIZE + 1;
     size = d * STRING_BLOCK_SIZE;
 
-    mem, err :: reallocate_memory(
-        allocator,
+    mem, err :: realloc(
         get_allocation_ptr(old_ptr),
         get_allocation_size(old_size),
         get_allocation_size(size),
-        alignof(u8));
+        alignof(u8),
+        allocator
+    );
 
     if err { panic(err); }
     tmp := cast(*BlockHead) mem;
@@ -625,7 +626,7 @@ realloc_block :: fn (old_ptr: *u8, old_size: usize, size: usize, allocator: *All
 free_block :: fn (ptr: *u8) {
     head :: get_block_head(ptr);
     allocator :: head.allocator;
-    free_memory(allocator, get_allocation_ptr(ptr));
+    free(get_allocation_ptr(ptr), allocator);
 };
 
 set_terminator :: fn (v: string) {

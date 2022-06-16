@@ -47,6 +47,7 @@ Simplify error handling API.
 Add Static Array and Bucket Array
 Redesign hash table implementation.
 Fix bug related to unresolved types waiting for self.
+Simplified memory allocation API.
 
 0.9.0 - PRE-RELEASE
 ---------------------------------------------------------------------------------------

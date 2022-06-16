@@ -4,7 +4,7 @@ main :: fn () s32 {
     defer pool_release(&pool);
 
     loop i := 0; i < 1000; i += 1 {
-		allocate_memory(&pool, sizeof(s32), alignof(s32));
+		alloc(sizeof(s32), alignof(s32), &pool);
     }
 
     return 0;

@@ -10,7 +10,7 @@ test_allocation :: fn () #test {
     TEST_COUNT :: 10;
     data: [TEST_COUNT]*s32;
     loop i := 0; i < TEST_COUNT; i += 1 {
-        m, err :: allocate_memory(&buf, sizeof(s32), alignof(s32));
+        m, err :: alloc(sizeof(s32), alignof(s32), &buf);
         test_ok(err);
         test_not_null(m);
         data[i] = auto m;
@@ -26,13 +26,13 @@ test_reallocation :: fn () #test {
     mem: [512]u8;
     buf :: buffer_allocator_make(mem);
 
-    m1, err1 :: reallocate_memory(&buf, null, 0, sizeof(s32));
+    m1, err1 :: realloc(null, 0, sizeof(s32), alignof(s32), &buf);
     test_ok(err1);
     test_not_null(m1);
     first := cast(*s32) m1;
     @first = 10;
 
-    m2, err2 :: reallocate_memory(&buf, m1, sizeof(s32), sizeof(s32));
+    m2, err2 :: realloc(m1, sizeof(s32), sizeof(s32), alignof(s32), &buf);
     test_ok(err2);
     test_not_null(m2);
     second := cast(*s32) m2;
@@ -44,11 +44,11 @@ test_reallocation2 :: fn () #test {
     mem: [512]u8;
     buf :: buffer_allocator_make(mem);
 
-    m1, err1 :: reallocate_memory(&buf, null, 0, sizeof(s32), alignof(s32));
+    m1, err1 :: realloc(null, 0, sizeof(s32), alignof(s32), &buf);
     test_ok(err1);
     test_not_null(m1);
 
-    m2, err2 :: reallocate_memory(&buf, m1, sizeof(s32), sizeof(s64), alignof(s32));
+    m2, err2 :: realloc(m1, sizeof(s32), sizeof(s64), alignof(s32), &buf);
     test_ok(err2);
     test_not_null(m2);
 }
@@ -60,7 +60,7 @@ test_full_buffer :: fn () #test {
 
 
     loop {
-        m, err :: allocate_memory(&buf, sizeof(s32), alignof(s32));
+        m, err :: alloc(sizeof(s32), alignof(s32), &buf);
         if err {
             break;
         }
@@ -75,7 +75,7 @@ test_reset :: fn () #test {
 
     loop j := 0; j < 4; j += 1 {
         loop i := 0; i < 50; i += 1 {
-            m, err :: allocate_memory(&buf, sizeof(s32), alignof(s32));
+            m, err :: alloc(sizeof(s32), alignof(s32), &buf);
             test_ok(err);
             test_not_null(m);
         }

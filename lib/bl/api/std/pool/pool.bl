@@ -12,7 +12,7 @@
 //! - If required allocation size is greater then the current block size, the new block is allocated
 //!   with size `N * current_block_size` where `N` is the minimum multiplier needed to store the required
 //!   data size.
-//! - The pool allocator never frees data when `free_memory` is called, you should call `reset` instead
+//! - The pool allocator never frees data when `free` is called, you should call `reset` instead
 //!   when all previously allocated data can be freed.
 //! - All preallocated blocks are kept (even after the `reset` is called) for later use.
 POOL_DEFAULT_SIZE : usize : 65536; // 64kB
@@ -58,7 +58,7 @@ pool_make :: fn (allocator: *Allocator, block_size := POOL_DEFAULT_SIZE) PoolAll
 pool_release :: fn (pool: *PoolAllocator) {
     reset(pool);
     loop i := 0; i < pool.unused_blocks.len; i += 1 {
-        free_memory(pool.allocator, pool.unused_blocks[i]);
+        free(pool.unused_blocks[i], pool.allocator);
     }
     array_clear(&pool.unused_blocks);
     array_terminate(&pool.used_blocks);
@@ -118,7 +118,7 @@ reset :: fn (pool: *PoolAllocator) {
     }
     array_clear(&pool.used_blocks);
     loop i := 0; i < pool.obsolete_blocks.len; i += 1 {
-        free_memory(pool.allocator, pool.obsolete_blocks[i]);
+        free(pool.obsolete_blocks[i], pool.allocator);
     }
     array_clear(&pool.obsolete_blocks);
 }
@@ -137,7 +137,7 @@ ensure_space :: fn (pool: *PoolAllocator, size: usize) Error {
     if block_size > pool.block_size { resize(pool, block_size); }
 
     if !array_pop(&pool.unused_blocks, &pool.current_block) {
-        mem, err :: allocate_memory(pool.allocator, pool.block_size);
+        mem, err :: alloc(pool.block_size, DEFAULT_ALIGNMENT, pool.allocator);
         if err { return err; }
         pool.current_block = mem;
     }

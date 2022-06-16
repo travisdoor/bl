@@ -83,7 +83,7 @@ default_allocator :: Allocator.{ handler = &default_allocator_handler };
 ///         defer temporary_reset();
 ///
 ///         // Allocate memory using temporary allocator.
-///         int_ptr := cast(*s32) allocate_memory(&default_temporary_allocator, sizeof(s32));
+///         int_ptr := cast(*s32) alloc(sizeof(s32), alignof(s32), &default_temporary_allocator);
 ///
 ///         // Do something here with allocated memory.
 ///         @int_ptr = i;
@@ -132,52 +132,11 @@ Allocator :: struct {
     handler: AllocFn;
 }
 
-/// Allocates `size` of bytes on heap using default allocator. Use [free](#free) to free allocated memory
-/// when it's no longer needed.
-/// Cause panic when allocation is not possible or `size` is  zero. This function use allocator set in
-/// `application_context.allocator`
-/// The allocation `alignment` can be specified.
-alloc :: fn (size: usize, alignment := DEFAULT_ALIGNMENT, loc := #call_location) *u8 #inline {
-    mem, err :: allocate_memory(application_context.allocator, size, alignment, loc);
-    if err { panic(err); }
-    return mem;
-};
-
-/// Reallocate previously allocated memory using default allocator. Caller is supposed to provide previous allocation size
-/// as the `old_size` in case the `ptr` is not null.
-///
-/// This function tries to resize previously allocated block if possible, otherwise new allocation is done and the
-/// old data (of `old_size`) are copied to the newly allocated memory.
-///
-/// Previously allocated block is freed when resize is not possible.
-///
-/// The allocation `alignment` can be specified but must be the same as previous one in case we try to reallocate.
-///
-/// !!! note
-///     When called with null `ptr`, this function behaves the same as [alloc](#alloc) and the `old_size` is ignored.
-///
-/// !!! warning
-///     The exact behaviour depends on the allocator used, in some cases reallocation is not implemented and new allocation
-///     is done everytime.
-realloc :: fn (ptr: *u8, old_size: usize, new_size: usize, alignment := DEFAULT_ALIGNMENT, loc := #call_location) *u8 #inline {
-    mem, err :: reallocate_memory(application_context.allocator, ptr, old_size, new_size, alignment, loc);
-    if err { panic(err); }
-    return mem;
-};
-
-/// Free memory using current context allocator.
-///
-/// !!! note
-///     The `ptr` can be `null`.
-free :: fn (ptr: *u8, loc := #call_location) #inline {
-    free_memory(application_context.allocator, ptr, loc);
-};
-
-/// Allocate memory directly using specified `allocator`. In case the `allocator` is null, default application context
+/// Allocate memory using specified `allocator`. In case the `allocator` is null, default application context
 /// allocator is used.
 /// Returns pointer to the newly allocated memory or fails with `Error` in case the allocation is not possible.
 /// The allocation `size` must be at least 1 byte and the optional `alignment` must be value of power of two.
-allocate_memory :: fn (allocator: *Allocator, size: usize, alignment := DEFAULT_ALIGNMENT, loc := #call_location) (mem: *u8, err: Error) #inline {
+alloc :: fn (size: usize, alignment := DEFAULT_ALIGNMENT, allocator: *Allocator = null, loc := #call_location) (mem: *u8, err: Error) #inline {
     if !allocator { allocator = application_context.allocator; }
     assert(allocator.handler);
     assert(is_power_of_two(alignment));
@@ -192,19 +151,20 @@ allocate_memory :: fn (allocator: *Allocator, size: usize, alignment := DEFAULT_
 /// allocator is used.
 ///
 /// This function tries to resize previously allocated block if possible, otherwise new allocation is done and the
-/// old data (of `old_size`) are copied to the newly allocated memory.
+/// old data (of `old_size`) are copied to the newly allocated memory. No allocation and copying is done in case the
+/// `old_size` is the same as `size`.
 ///
 /// Previously allocated block is freed when resize is not possible.
 ///
 /// The allocation `alignment` can be specified but must be the same as previous one in case we try to reallocate.
 ///
 /// !!! note
-///     When called with null `old_ptr`, this function behaves the same as [allocate_memory](#allocate_memory) and the `old_size` is ignored.
+///     When called with null `old_ptr`, this function behaves the same as [alloc](#alloc) and the `old_size` is ignored.
 ///
 /// !!! warning
 ///     The exact behaviour depends on the allocator used, in some cases reallocation is not implemented and new allocation
 ///     is done everytime.
-reallocate_memory :: fn (allocator: *Allocator, old_ptr: *u8, old_size: usize, size: usize, alignment := DEFAULT_ALIGNMENT, loc := #call_location) (mem: *u8, err: Error) #inline {
+realloc :: fn (old_ptr: *u8, old_size: usize, size: usize, alignment := DEFAULT_ALIGNMENT, allocator: *Allocator = null, loc := #call_location) (mem: *u8, err: Error) #inline {
     if !allocator { allocator = application_context.allocator; }
     assert(allocator.handler);
     assert(is_power_of_two(alignment));
@@ -221,8 +181,9 @@ reallocate_memory :: fn (allocator: *Allocator, old_ptr: *u8, old_size: usize, s
     return mem, err;
 }
 
-/// Free memory previously allocated by specific `allocator`. The `ptr` can be null.
-free_memory :: fn (allocator: *Allocator, ptr: *u8, loc := #call_location) #inline {
+/// Free memory previously allocated by specific `allocator`. In case the `allocator` is null, the defautl application context
+/// allocator is used. The `ptr` can be null.
+free :: fn (ptr: *u8, allocator: *Allocator = null, loc := #call_location) #inline {
     if !allocator { allocator = application_context.allocator; }
     assert(allocator.handler);
     if !ptr { return; }
@@ -341,7 +302,7 @@ slice_init :: fn (slice: *[]?T, n: s64, zero_initialized := true, allocator: *Al
     }
     elem_size :: sizeof(T);
     bytes :: elem_size * auto n;
-    mem, err :: allocate_memory(allocator, bytes, alignof(T), loc);
+    mem, err :: alloc(bytes, alignof(T), allocator, loc);
     if err { panic(err); }
     slice.ptr = auto mem;
     slice.len = n;
@@ -353,7 +314,7 @@ slice_init :: fn (slice: *[]?T, n: s64, zero_initialized := true, allocator: *Al
 ///     The `allocator` must match the allocator used in ``slice_init``.
 slice_terminate :: fn (slice: *[]?T, allocator: *Allocator = null, loc := #call_location) {
     if slice.ptr {
-        free_memory(allocator, auto slice.ptr, loc);
+        free(auto slice.ptr, allocator, loc);
         slice.ptr = null;
     }
     slice.len = 0;

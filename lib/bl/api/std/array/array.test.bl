@@ -159,15 +159,15 @@ handler :: fn (_: *Allocator, operation: AllocOp, old_ptr: *u8, old_size: usize,
     switch operation {
         ALLOCATE {
             alloc_count += 1;
-            return allocate_memory(null, new_size);
+            return alloc(new_size);
         }
         REALLOCATE {
             alloc_count += 1;
-            return reallocate_memory(null, old_ptr, old_size, new_size);
+            return realloc(old_ptr, old_size, new_size);
         }
         FREE {
             free_count += 1;
-            free_memory(null, old_ptr);
+            free(old_ptr);
         }
         default { panic(); }
     }
