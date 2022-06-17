@@ -3,9 +3,21 @@
 //! `#import "std/io"`
 //! 
 
-#import "std/fs"
+#import "std/fs" // @Incomplete: remove
 
 #scope std
+
+IoMode :: enum #flags { READ; WRITE; }
+
+Stream :: struct {
+    vtable: *StreamVTable;
+}
+
+StreamVTable :: struct {
+    read: *fn(stream: *Stream, dest: *u8, dest_size: s64) (bytes: s64, err: Error);
+    write: *fn(stream: *Stream, src: *u8, src_size: s64) (bytes: s64, err: Error);
+    size: *fn(stream: *Stream) s64;
+}
 
 // =================================================================================================
 // File IO

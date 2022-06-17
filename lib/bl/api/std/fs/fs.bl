@@ -6,11 +6,17 @@
 //! abstraction over operating system APIs such as creating files and directories, reading and 
 //! writing, and scanning the filesystem.
 
+#import "std/io"
+
 #scope std
 
 // =================================================================================================
 // File utils
 // =================================================================================================
+
+FileStream :: struct #base Stream {
+    handle: _fs_impl.File;
+}
 
 /// File handle type.
 File :: _fs_impl.File;
@@ -58,6 +64,12 @@ OpenFileMode :: enum #flags {
 /// **todo*: Mode should be passed as flags in the future.
 open_file :: fn (filepath: string_view, mode: OpenFileMode = OpenFileMode.READ) (File, Error) #inline {
     return _fs_impl.open(filepath, mode);
+}
+
+open_file2 :: fn (filepath: string_view, mode: OpenFileMode = OpenFileMode.READ) (FileStream, Error) #inline {
+    stream: FileStream #noinit;
+
+    return FileStream.{}, OK;
 }
 
 /// Close previously openned file. Does nothing when `handle` is not valid.
@@ -330,6 +342,12 @@ get_tmp :: fn () string #inline {
 }
 
 #private
+FILE_STREAM_VTABLE :: StreamVTable.{
+    read = auto &read_file;
+    write = auto &write_file;
+    size = auto &file_size;
+};
+
 default_filter : *fn (_: *Info, _: *u8) bool : null;
 
 impl_remove_all_dir :: fn (dirpath: string_view, remove_root := true) Error #inline {
@@ -371,3 +389,7 @@ is_existing_directory :: fn (path: string_view) (bool, Error) {
     }
     return false, OK;
 };
+
+read_file :: fn () {}
+write_file :: fn () {}
+file_size :: fn () {}
