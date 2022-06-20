@@ -145,6 +145,35 @@ test_pop2 :: fn () #test {
     test_eq(arr.len, 0);
 }
 
+test_push_all_1 :: fn () #test {
+    arr: [..]s32;
+    defer array_terminate(&arr);
+    empty: []s32;
+    array_push_all(&arr, empty);
+}
+
+test_push_all_2 :: fn () #test {
+    arr: [..]s32;
+    defer array_terminate(&arr);
+    data :: [1]s32.{ 666 };
+    array_push_all(&arr, data);
+
+    test_eq(arr.len, 1);
+    test_eq(arr[0], 666);
+}
+
+test_push_all_3 :: fn () #test {
+    arr: [..]s32;
+    defer array_terminate(&arr);
+    data :: [8]s32.{ 0, 1, 2, 3, 4, 5, 6, 7 };
+    array_push_all(&arr, data);
+
+    test_eq(arr.len, 8);
+    loop i := 0; i < arr.len; i += 1 {
+        test_eq(arr[i], i);
+    }
+}
+
 alloc_count := 0;
 free_count := 0;
 

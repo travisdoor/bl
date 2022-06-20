@@ -72,7 +72,7 @@ asin      :: fn { C.asinf; C.asin; }
 acos      :: fn { C.acosf; C.acos; }
 tan       :: fn { C.tanf; C.tan; }
 
-abs :: fn { f32_abs; f64_abs; }
+abs :: fn { f32_abs; f64_abs; s64_abs; }
 compare :: fn { f32_compare; f64_compare; }
 degtorad :: fn { f32_degtorad; f64_degtorad; }
 radtodeg :: fn { f32_radtodeg; f64_radtodeg; }
@@ -124,6 +124,11 @@ f32_sqrt  :: fn (n: f32) f32 #intrinsic "sqrt.f32";
 f64_sqrt  :: fn (n: f64) f64 #intrinsic "sqrt.f64";
 f32_ceil  :: fn (x: f32) f32 #intrinsic "ceil.f32";
 f64_ceil  :: fn (x: f64) f64 #intrinsic "ceil.f64";
+
+s64_abs :: fn (v: s64) s64 {
+    if v < 0 { return -v; }
+    return v;
+}
 
 f32_abs :: fn (v: f32) f32 #inline {
     if v < 0.f { return -v; }

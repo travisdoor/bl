@@ -70,6 +70,7 @@ get_uid_by_name :: fn (filepath: string_view) (u64, Error) {
     return get_uid(file);
 }
 
+/* Not used.
 size :: fn (handle: File) (usize, Error) #inline {
     tmp: C.stat_t;
     if C.fstat(auto handle, &tmp) != 0 {
@@ -78,6 +79,7 @@ size :: fn (handle: File) (usize, Error) #inline {
     }
     return auto tmp.st_size, OK;
 }
+*/
 
 create_dir :: fn (dirpath: string_view) Error {
     if std.str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot create directory, dirpath is empty."); }

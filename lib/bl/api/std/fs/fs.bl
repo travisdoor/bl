@@ -19,7 +19,7 @@ FileStream :: struct #base Stream {
 }
 
 /// File handle type.
-File :: _fs_impl.File;
+//File :: _fs_impl.File;
 
 /// Invalid file handle. This can be used for file handle validation.
 FILE_INVALID :: _fs_impl.FILE_INVALID;
@@ -61,20 +61,26 @@ OpenFileMode :: enum #flags {
 /// }
 /// ```
 ///
-/// **todo*: Mode should be passed as flags in the future.
-open_file :: fn (filepath: string_view, mode: OpenFileMode = OpenFileMode.READ) (File, Error) #inline {
-    return _fs_impl.open(filepath, mode);
-}
-
-open_file2 :: fn (filepath: string_view, mode: OpenFileMode = OpenFileMode.READ) (FileStream, Error) #inline {
+open_file :: fn (filepath: string_view, mode: OpenFileMode = OpenFileMode.READ) (FileStream, Error) #inline {
     stream: FileStream #noinit;
-
-    return FileStream.{}, OK;
+    stream.vtable = &FILE_STREAM_VTABLE;
+    file, open_err :: _fs_impl.open(filepath, mode);
+    if open_err { return stream, open_err; }
+    stream.handle = file;
+    return stream, OK;
 }
 
-/// Close previously openned file. Does nothing when `handle` is not valid.
-close_file :: fn (handle: File) #inline {
-    _fs_impl.close(handle);
+/// Close previously openned file stream.
+close_file :: fn (stream: *FileStream) #inline {
+    _fs_impl.close(stream.handle);
+    stream.handle = FILE_INVALID;
+}
+
+/// @Incomplete
+create_file :: fn (filepath: string_view) Error {
+    stream, create_err :: std.open_file(filepath, OpenFileMode.CREATE);
+    close_file(&stream);
+    return create_err;
 }
 
 /// Try to remove file specified by `filepath` and return `OK` on success, otherwise return error.
@@ -92,14 +98,14 @@ copy_file :: fn (src: string_view, dest: string_view, override := false) Error #
     return _fs_impl.copy(src, dest, override);
 }
 
-/// Return file content size in bytes and `OK` status on success, otherwise return zero and proper 
-/// error.
-file_size :: fn (handle: File) (usize, Error) #inline {
-    return _fs_impl.size(handle);
-}
-
 /// Return file id.
-file_uid :: fn { _fs_impl.get_uid; _fs_impl.get_uid_by_name; }
+file_uid :: fn {
+    fn (stream: *FileStream) (u64, Error) {
+        assert(stream);
+        return _fs_impl.get_uid(stream.handle);
+    };
+    _fs_impl.get_uid_by_name;
+};
 
 // =================================================================================================
 // Directory utils
@@ -318,6 +324,7 @@ path_splitext :: fn (filepath: string_view) (head: string_view, ext: string_view
     return head, ext;
 }
 
+// @Incomplete: use temporary allocator
 /// Try to obtain current working directory, result must be released by `std.str_delete`. Path does 
 /// not contain last path separator.
 get_cwd :: fn () string #inline {
@@ -329,12 +336,14 @@ set_cwd :: fn (path: string_view) Error #inline {
     return _fs_impl.set_cwd(path);
 }
 
+// @Incomplete: use temporary allocator
 /// Try to obtain system home directory, result must be released by `std.str_delete`. Path does not 
 /// contain last path separator.
 get_home :: fn () string #inline {
     return _fs_impl.get_home();
 }
 
+// @Incomplete: use temporary allocator
 /// Try to obtain system temporary directory, result must be released by `std.str_delete`. Path does 
 /// not contain last path separator.
 get_tmp :: fn () string #inline {
@@ -343,9 +352,8 @@ get_tmp :: fn () string #inline {
 
 #private
 FILE_STREAM_VTABLE :: StreamVTable.{
-    read = auto &read_file;
-    write = auto &write_file;
-    size = auto &file_size;
+    read = auto &_fs_impl.read,
+    write = auto &_fs_impl.write,
 };
 
 default_filter : *fn (_: *Info, _: *u8) bool : null;
@@ -388,8 +396,4 @@ is_existing_directory :: fn (path: string_view) (bool, Error) {
         return true, OK;
     }
     return false, OK;
-};
-
-read_file :: fn () {}
-write_file :: fn () {}
-file_size :: fn () {}
+}

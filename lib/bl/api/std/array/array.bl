@@ -66,6 +66,20 @@ array_terminate :: fn (_arr: *[..]?T) #inline {
 ///     a new empty element without any initialization.
 array_push :: fn { impl_push_empty; impl_push; }
 
+/// Append all `data` at the dynamic array end. New heap allocation is done here only in cases when
+/// there is not enough memory allocated to store all values.
+/// All `data` are copied into the array data block.
+/// Does nothing when `data.len < 1`.
+array_push_all :: fn (_arr: *[..]?T, data: []T) {
+    arr := cast(*_Array) _arr;
+    if data.len < 1 { return; }
+    elem_size :: sizeof(T);
+    arr.len += data.len;
+    ensure_space(auto arr, elem_size, auto arr.len, false, alignof(T));
+    dest_ptr :: get_elem_ptr(auto arr, elem_size, arr.len - data.len);
+    memcpy(dest_ptr, auto data.ptr, elem_size * auto data.len);
+}
+
 /// Duplicate the last array element into `out` argument (if not null) and reduce the array length by
 /// one. Returs `true` in case the array is not empty.
 array_pop :: fn (_arr: *[..]?T, out: *T = null) bool #inline {
