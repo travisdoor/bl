@@ -320,7 +320,7 @@ Context :: struct {
     abort_fn: AbortFn;
     /// Default memory allocator used across the application.
     allocator: *Allocator;
-    // @Incomplete
+    // Default temporary allocator.
     temporary_allocator: *Allocator;
 };
 

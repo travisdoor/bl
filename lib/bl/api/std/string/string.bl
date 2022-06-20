@@ -246,7 +246,7 @@ str_to_s64 :: fn (str: string_view, count := -1) s64 {
 ///
 /// ### Example
 ///
-/// ```
+/// ```c
 /// main :: fn () s32 {
 ///     lhs: string_view;
 ///     rhs: string_view;

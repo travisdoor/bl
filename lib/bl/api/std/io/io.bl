@@ -1,16 +1,94 @@
 //! # Input/Ouput
 //! 
 //! `#import "std/io"`
-//! 
+//!
+//! Input and output is handled by generic [Stream](#stdstream) interface containing callbacks
+//! for read and write operations.
 
 #scope std
 
-IoMode :: enum #flags { READ; WRITE; }
-
+/// The stream base type.
+///
+/// This struct is supposed to be base of all data streams providing abstraction over read
+/// and write operations. Each stream contains virtual table pointing to implementation depend
+/// read and write callbacks.
+/// 
+/// The stream can hold any other data; i.e. array of bytes.
+///
+/// ### Example
+///
+/// ```c
+/// #import "std/io"
+///
+/// // Custom LIFO stream with stack allocated static buffer.
+/// MyStream :: struct #base std.Stream {
+///     // Internal buffer used to hold data.
+///     buf: [64]u8;
+///     // Current index in the buffer array.
+///     index: s64;
+/// }
+///
+/// // Custom stream virtual table.
+/// MY_STREAM_VTABLE :: std.StreamVTable.{
+///     read = auto &my_stream_read,
+///     write = auto &my_stream_write,
+/// };
+///
+/// my_stream_read :: fn (stream: *MyStream, dest: *u8, bytes_to_read: s64) (s64, Error) {
+///     using std;
+///     size := min(stream.index, bytes_to_read);
+///     stream.index -= size;
+///     // We can eventually handle underflow, the stream can return an error or read just
+///     // possible rest of the data.
+///     assert(stream.index >= 0);
+///     if size > 0 { memcpy(dest, &stream.buf[stream.index], auto size); }
+///     return size, OK;
+/// }
+///
+/// my_stream_write :: fn (stream: *MyStream, src: *u8, bytes_to_write: s64) (s64, Error) {
+///     size :: std.min(stream.buf.len - stream.index, bytes_to_write);
+///     if size > 0 { memcpy(&stream.buf[stream.index], src, auto size); }
+///     stream.index += size;
+///     // We can eventually handle overflow, the stream can return an error or write just
+///     // possible rest of the data.
+///     assert(stream.index <= stream.buf.len);
+///     return size, OK;
+/// }
+///
+/// make_my_stream :: fn () MyStream #inline {
+///     stream: MyStream #noinit;
+///     stream.vtable = &MY_STREAM_VTABLE;
+///     stream.index = 0;
+///     return stream;
+/// }
+///
+/// main :: fn () s32 {
+///     using std;
+///     stream :: make_my_stream();
+///
+///     // Write some data into the stream.
+///     write(&stream, "Hello");
+///     write(&stream, "world!");
+///
+///     str := str_new();
+///     defer str_delete(&str);
+///
+///     // Read everything and left the stream empty.
+///     read(&stream, &str);
+///     print(str);
+///
+///     return 0;
+/// }
+/// ```
+///
+/// !!! note
+///     Streams can be read or write only, to make such a stream it's enough to set read or write callback
+///     to `null`.
 Stream :: struct {
     vtable: *StreamVTable;
 }
 
+/// Stream virtual table.
 StreamVTable :: struct {
     read: *fn(stream: *Stream, dest: *u8, bytes_to_read: s64) (bytes_read: s64, err: Error);
     write: *fn(stream: *Stream, src: *u8, src_size: s64) (bytes: s64, err: Error);
@@ -20,30 +98,55 @@ StreamVTable :: struct {
 // Stream API
 // =================================================================================================
 
+/// Writes data into the `stream` and returns count of actually written bytes or error.
+///
+/// **Overloads:**
+/// ```c
+/// fn (stream: *Stream, src: *u8, bytes_to_write: s64) (s64, Error) #inline
+/// fn (stream: *Stream, data: []u8) (s64, Error) #inline
+/// ```
+///
+/// !!! note
+///     Cause panic in case the stream is read-only.
 write :: fn {
     fn (stream: *Stream, src: *u8, bytes_to_write: s64) (s64, Error) #inline {
         assert(stream);
         assert(stream.vtable);
+        if !stream.vtable.write { panic("Stream does not support writing!"); }
         if bytes_to_write < 1 { return 0, OK; }
         return stream.vtable.write(stream, src, bytes_to_write);
     };
     fn (stream: *Stream, data: []u8) (s64, Error) #inline {
         assert(stream);
         assert(stream.vtable);
+        if !stream.vtable.write { panic("Stream does not support writing!"); }
         return stream.vtable.write(stream, data.ptr, data.len);
     };
 };
 
+/// Reads data from the `stream` and return count of read bytes or error.
+///
+/// **Overloads:**
+/// ```c
+/// fn (stream: *Stream, dest: *u8, bytes_to_read: s64) (s64, Error) #inline
+/// fn (stream: *Stream, dest: *[..]u8, bytes_to_read: s64 = std.S64_MAX) (s64, Error) #inline
+/// fn (stream: *Stream, dest: *string, bytes_to_read: s64 = std.S64_MAX) (s64, Error) #inline
+/// ```
+///
+/// !!! note
+///     Cause panic in case the stream is write-only.
 read :: fn {
     fn (stream: *Stream, dest: *u8, bytes_to_read: s64) (s64, Error) #inline {
         assert(stream);
         assert(stream.vtable);
+        if !stream.vtable.read { panic("Stream does not support reading!"); }
         if bytes_to_read < 1 { return 0, OK; }
         return stream.vtable.read(stream, dest, bytes_to_read);
     };
     fn (stream: *Stream, dest: *[..]u8, bytes_to_read: s64 = std.S64_MAX) (s64, Error) #inline {
         assert(stream);
         assert(stream.vtable);
+        if !stream.vtable.read { panic("Stream does not support reading!"); }
         tmp: [512]u8 #noinit;
         read_bytes: s64;
         loop bytes_to_read > 0 {
@@ -59,6 +162,7 @@ read :: fn {
     fn (stream: *Stream, dest: *string, bytes_to_read: s64 = std.S64_MAX) (s64, Error) #inline {
         assert(stream);
         assert(stream.vtable);
+        if !stream.vtable.read { panic("Stream does not support reading!"); }
         tmp: [512]u8 #noinit;
         read_bytes: s64;
         loop bytes_to_read > 0 {

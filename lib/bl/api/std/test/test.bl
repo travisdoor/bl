@@ -230,7 +230,6 @@ test_is_error :: fn (got_err: Error, expected_code: s32, loc := #call_location) 
     stop(loc);
 }
 
-// @Incomplete: Check the documentation
 /// Execute all registered test cases in current assembly. The `test_run` function uses compiler
 /// builtin `testcases()` function returning slice of all registered test cases in the current 
 /// assembly (all functions with hash directive `#test`).

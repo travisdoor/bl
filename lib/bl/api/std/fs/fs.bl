@@ -36,8 +36,8 @@ OpenFileMode :: enum #flags {
     CREATE;
 }
 
-/// Open an file specified by `filepath`. Function return file handle and `OK` status when file was 
-/// opened, otherwise return invalid handle and proper error. File must be closed by [close_file](#stdclose_file)
+/// Open an file specified by `filepath`. Function return file stream and `OK` status when file was
+/// opened, otherwise return invalid stream and proper error. Stream must be closed by [close_file](#stdclose_file)
 /// call.
 ///
 /// File open `mode` is optional, any combination of `OpenFileMode` can be used. When `Create` 
@@ -47,16 +47,21 @@ OpenFileMode :: enum #flags {
 ///
 /// ### Example
 ///
-/// ```
+/// ```c
 /// #import "std/fs"
-/// 
+///
 /// main :: fn () s32 {
-///     file, err :: std.open_file(#file);
-///     defer std.close_file(file);
-///     if err {
-///         print_err("%", err);
-///         return 1;
-///     }
+///     using std;
+///
+///     stream, open_err :: open_file(#file);
+///     if open_err { panic(open_err); }
+///
+///     str := str_new();
+///     defer str_delete(&str);
+///     read_bytes, read_err :: read(&stream, &str);
+///     if read_err { panic(read_err); }
+///     print("read % bytes\n", read_bytes);
+///     print("%\n", str);
 ///     return 0;
 /// }
 /// ```
@@ -64,6 +69,7 @@ OpenFileMode :: enum #flags {
 open_file :: fn (filepath: string_view, mode: OpenFileMode = OpenFileMode.READ) (FileStream, Error) #inline {
     stream: FileStream #noinit;
     stream.vtable = &FILE_STREAM_VTABLE;
+    stream.handle = FILE_INVALID;
     file, open_err :: _fs_impl.open(filepath, mode);
     if open_err { return stream, open_err; }
     stream.handle = file;
@@ -76,9 +82,9 @@ close_file :: fn (stream: *FileStream) #inline {
     stream.handle = FILE_INVALID;
 }
 
-/// @Incomplete
+/// Create new file if it does not exists. Otherwise does nothing.
 create_file :: fn (filepath: string_view) Error {
-    stream, create_err :: std.open_file(filepath, OpenFileMode.CREATE);
+    stream, create_err :: open_file(filepath, OpenFileMode.CREATE);
     close_file(&stream);
     return create_err;
 }
