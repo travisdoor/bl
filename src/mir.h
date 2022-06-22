@@ -106,7 +106,7 @@ struct mir_instr_alignof;
 struct mir_instr_compound;
 struct mir_instr_vargs;
 struct mir_instr_type_info;
-struct mir_instr_type_of;
+struct mir_instr_typeof;
 struct mir_instr_phi;
 struct mir_instr_to_any;
 struct mir_instr_switch;
@@ -512,15 +512,13 @@ struct mir_instr {
 // in:  -
 // out: -
 struct mir_instr_msg {
-    struct mir_instr base;
-
+    struct mir_instr  base;
     enum ast_msg_kind kind;
     const char       *text;
 };
 
 struct mir_instr_block {
-    struct mir_instr base;
-
+    struct mir_instr  base;
     const char       *name;
     struct mir_instr *entry_instr;
     struct mir_instr *last_instr;
@@ -530,16 +528,14 @@ struct mir_instr_block {
 };
 
 struct mir_instr_decl_var {
-    struct mir_instr base;
-
+    struct mir_instr  base;
     struct mir_var   *var;
     struct mir_instr *type;
     struct mir_instr *init;
 };
 
 struct mir_instr_decl_member {
-    struct mir_instr base;
-
+    struct mir_instr   base;
     struct mir_member *member;
     struct mir_instr  *type;
 
@@ -547,8 +543,7 @@ struct mir_instr_decl_member {
 };
 
 struct mir_instr_decl_variant {
-    struct mir_instr base;
-
+    struct mir_instr    base;
     struct mir_variant *variant;
     struct mir_variant *prev_variant; // Optional.
     struct mir_instr   *value;        // Optional.
@@ -557,23 +552,20 @@ struct mir_instr_decl_variant {
 };
 
 struct mir_instr_decl_arg {
-    struct mir_instr base;
-
+    struct mir_instr  base;
     struct mir_arg   *arg;
     struct mir_instr *type;
     bool              llvm_byval;
 };
 
 struct mir_instr_elem_ptr {
-    struct mir_instr base;
-
+    struct mir_instr  base;
     struct mir_instr *arr_ptr;
     struct mir_instr *index;
 };
 
 struct mir_instr_member_ptr {
-    struct mir_instr base;
-
+    struct mir_instr     base;
     struct ast          *member_ident;
     struct mir_instr    *target_ptr;
     struct scope_entry  *scope_entry;
@@ -581,8 +573,7 @@ struct mir_instr_member_ptr {
 };
 
 struct mir_instr_cast {
-    struct mir_instr base;
-
+    struct mir_instr  base;
     enum mir_cast_op  op;
     struct mir_instr *type;
     struct mir_instr *expr;
@@ -590,14 +581,20 @@ struct mir_instr_cast {
 };
 
 struct mir_instr_sizeof {
-    struct mir_instr base;
-
+    struct mir_instr  base;
+    mir_instrs_t     *args; // Used only as temporary for analyze.
     struct mir_instr *expr;
 };
 
 struct mir_instr_alignof {
-    struct mir_instr base;
+    struct mir_instr  base;
+    mir_instrs_t     *args; // Used only as temporary for analyze.
+    struct mir_instr *expr;
+};
 
+struct mir_instr_typeof {
+    struct mir_instr  base;
+    mir_instrs_t     *args; // Used only as temporary for analyze.
     struct mir_instr *expr;
 };
 
@@ -613,43 +610,37 @@ struct mir_instr_const {
 };
 
 struct mir_instr_load {
-    struct mir_instr base;
-
+    struct mir_instr  base;
     struct mir_instr *src;
     // This flag is set when load is user-level dereference.
     bool is_deref;
 };
 
 struct mir_instr_store {
-    struct mir_instr base;
-
+    struct mir_instr  base;
     struct mir_instr *src;
     struct mir_instr *dest;
 };
 
 struct mir_instr_addrof {
-    struct mir_instr base;
-
+    struct mir_instr  base;
     struct mir_instr *src;
 };
 
 struct mir_instr_ret {
-    struct mir_instr base;
-
+    struct mir_instr  base;
     struct mir_instr *value;
 };
 
 struct mir_instr_set_initializer {
-    struct mir_instr base;
-
+    struct mir_instr  base;
     struct mir_instr *dest;
     mir_instrs_t     *dests;
     struct mir_instr *src;
 };
 
 struct mir_instr_binop {
-    struct mir_instr base;
-
+    struct mir_instr  base;
     enum binop_kind   op;
     struct mir_instr *lhs;
     struct mir_instr *rhs;
@@ -657,16 +648,14 @@ struct mir_instr_binop {
 };
 
 struct mir_instr_unop {
-    struct mir_instr base;
-
+    struct mir_instr  base;
     enum unop_kind    op;
     struct mir_instr *expr;
     bool              volatile_type;
 };
 
 struct mir_instr_fn_proto {
-    struct mir_instr base;
-
+    struct mir_instr  base;
     struct mir_instr *type;
     struct mir_instr *user_type;
     bool              pushed_for_analyze;
@@ -674,13 +663,11 @@ struct mir_instr_fn_proto {
 
 struct mir_instr_fn_group {
     struct mir_instr base;
-
-    mir_instrs_t *variants;
+    mir_instrs_t    *variants;
 };
 
 struct mir_instr_type_fn {
-    struct mir_instr base;
-
+    struct mir_instr     base;
     struct mir_instr    *ret_type;
     mir_instrs_t        *args;
     enum builtin_id_kind builtin_id;
@@ -689,14 +676,12 @@ struct mir_instr_type_fn {
 
 struct mir_instr_type_fn_group {
     struct mir_instr base;
-
-    struct id    *id;
-    mir_instrs_t *variants;
+    struct id       *id;
+    mir_instrs_t    *variants;
 };
 
 struct mir_instr_type_struct {
     struct mir_instr base;
-
     // fwd_decl is optional pointer to forward declaration of this structure type.
     struct mir_instr *fwd_decl;
     struct id        *id;
@@ -710,8 +695,7 @@ struct mir_instr_type_struct {
 };
 
 struct mir_instr_type_enum {
-    struct mir_instr base;
-
+    struct mir_instr  base;
     struct id        *id;
     struct scope     *scope;
     mir_instrs_t     *variants;
@@ -720,48 +704,41 @@ struct mir_instr_type_enum {
 };
 
 struct mir_instr_type_ptr {
-    struct mir_instr base;
-
+    struct mir_instr  base;
     struct mir_instr *type;
 };
 
 struct mir_instr_type_array {
-    struct mir_instr base;
-
+    struct mir_instr  base;
     struct mir_instr *elem_type;
     struct mir_instr *len;
     struct id        *id;
 };
 
 struct mir_instr_type_slice {
-    struct mir_instr base;
-
+    struct mir_instr  base;
     struct mir_instr *elem_type;
 };
 
 struct mir_instr_type_dyn_arr {
-    struct mir_instr base;
-
+    struct mir_instr  base;
     struct mir_instr *elem_type;
 };
 
 struct mir_instr_type_vargs {
-    struct mir_instr base;
-
+    struct mir_instr  base;
     struct mir_instr *elem_type;
 };
 
 struct mir_instr_type_poly {
     struct mir_instr base;
-
-    struct id *T_id;
+    struct id       *T_id;
 };
 
 // @Note: Call instruction with set base.value.is_comptime will be automatically executed during
 // analyze process.
 struct mir_instr_call {
     struct mir_instr base;
-
     // Generally any callable instruction.
     struct mir_instr *callee;
     // Pointer to called function resolved after overload resolution.
@@ -774,8 +751,7 @@ struct mir_instr_call {
 };
 
 struct mir_instr_decl_ref {
-    struct mir_instr base;
-
+    struct mir_instr    base;
     struct unit        *parent_unit;
     struct id          *rid;
     struct scope       *scope;
@@ -787,26 +763,22 @@ struct mir_instr_decl_ref {
 };
 
 struct mir_instr_decl_direct_ref {
-    struct mir_instr base;
-
+    struct mir_instr  base;
     struct mir_instr *ref;
 };
 
 struct mir_instr_unreachable {
     struct mir_instr base;
-
-    struct mir_fn *abort_fn;
+    struct mir_fn   *abort_fn;
 };
 
 struct mir_instr_debugbreak {
     struct mir_instr base;
-
-    struct mir_fn *break_fn;
+    struct mir_fn   *break_fn;
 };
 
 struct mir_instr_cond_br {
-    struct mir_instr base;
-
+    struct mir_instr        base;
     struct mir_instr       *cond;
     struct mir_instr_block *then_block;
     struct mir_instr_block *else_block;
@@ -820,14 +792,12 @@ struct mir_instr_cond_br {
 };
 
 struct mir_instr_br {
-    struct mir_instr base;
-
+    struct mir_instr        base;
     struct mir_instr_block *then_block;
 };
 
 struct mir_instr_compound {
-    struct mir_instr base;
-
+    struct mir_instr  base;
     struct mir_instr *type;
 
     // If there are no values explicitly specified, we assume that the compound is zero initialized,
@@ -847,7 +817,6 @@ struct mir_instr_compound {
 
 struct mir_instr_vargs {
     struct mir_instr base;
-
     struct mir_var  *arr_tmp;
     struct mir_var  *vargs_tmp;
     struct mir_type *type;
@@ -855,16 +824,10 @@ struct mir_instr_vargs {
 };
 
 struct mir_instr_type_info {
-    struct mir_instr base;
-
+    struct mir_instr  base;
+    mir_instrs_t     *args; // Temporary
     struct mir_instr *expr;
     struct mir_type  *rtti_type;
-};
-
-struct mir_instr_type_of {
-    struct mir_instr base;
-
-    struct mir_instr *expr;
 };
 
 struct mir_instr_test_case {
@@ -873,15 +836,13 @@ struct mir_instr_test_case {
 
 struct mir_instr_call_loc {
     struct mir_instr base;
-
     struct location *call_location; // Optional call location
     struct mir_var  *meta_var;      // Optional meta var.
     hash_t           hash;
 };
 
 struct mir_instr_unroll {
-    struct mir_instr base;
-
+    struct mir_instr  base;
     struct mir_instr *src;
     // Previous destination is optional reference to the previous variable in case we initialize
     // multiple variables at once by function call. i.e.: a, b, c := foo(); when 'foo' returns one
@@ -893,8 +854,7 @@ struct mir_instr_unroll {
 };
 
 struct mir_instr_using {
-    struct mir_instr base;
-
+    struct mir_instr  base;
     struct scope     *scope;
     struct mir_instr *scope_expr;
 };
@@ -902,22 +862,19 @@ struct mir_instr_using {
 // Used to distinguish compound initialization values with explicit name of member which should be
 // initialized.
 struct mir_instr_designator {
-    struct mir_instr base;
-
+    struct mir_instr  base;
     struct ast       *ident;
     struct mir_instr *value;
 };
 
 struct mir_instr_phi {
     struct mir_instr base;
-
-    mir_instrs_t *incoming_values;
-    mir_instrs_t *incoming_blocks;
+    mir_instrs_t    *incoming_values;
+    mir_instrs_t    *incoming_blocks;
 };
 
 struct mir_instr_to_any {
-    struct mir_instr base;
-
+    struct mir_instr  base;
     struct mir_instr *expr;
     struct mir_type  *rtti_type;
     struct mir_type  *rtti_data; // optional
@@ -926,8 +883,7 @@ struct mir_instr_to_any {
 };
 
 struct mir_instr_switch {
-    struct mir_instr base;
-
+    struct mir_instr        base;
     struct mir_instr       *value;
     struct mir_instr_block *default_block;
     mir_switch_cases_t     *cases;

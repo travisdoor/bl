@@ -25,21 +25,16 @@ my_static_assert :: fn (expr: bool, msg := "") #comptime {
     unreachable;
 }
 
-sizeof(<comptime-expr>)
-alignof(<comptime-expr>)
-typeof(<comptime-expr>)
-typeinfo(<comptime-expr>)
 compiler_error(<comptime-expr>)
 compiler_warning(<comptime-expr>)
 symbol_exist(<comptime-expr)
-test_cases()
 debugbreak()
 unreachable()
 
 */
 
-
 main :: fn () s32 {
+    print(">> %\n", sizeof(s32));
     return 0;
 }
 

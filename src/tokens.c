@@ -79,9 +79,6 @@ struct token_precedence token_prec(struct token *token)
 
         // cast sizeof alignof typeinfo
     case SYM_CAST:
-    case SYM_SIZEOF:
-    case SYM_ALIGNOF:
-    case SYM_TYPEINFO:
     case SYM_TESTCASES:
         return (struct token_precedence){.priority = 50, .associativity = TOKEN_ASSOC_RIGHT};
 

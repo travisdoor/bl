@@ -43,11 +43,6 @@
     AST_EXPR_BINOP,
     AST_EXPR_CALL,
     AST_EXPR_ELEM,
-    AST_EXPR_SIZEOF,
-    AST_EXPR_ALIGNOF,
-    AST_EXPR_TYPEOF,
-    AST_EXPR_TYPE_INFO,
-    AST_EXPR_TYPE_OF,
     AST_EXPR_TEST_CASES,
     AST_EXPR_UNARY,
     AST_EXPR_NULL,
@@ -112,10 +107,6 @@
     struct ast_expr_binop      expr_binop;
     struct ast_expr_call       expr_call;
     struct ast_expr_elem       expr_elem;
-    struct ast_expr_sizeof     expr_sizeof;
-    struct ast_expr_type_info  expr_type_info;
-    struct ast_expr_type_of    expr_type_of;
-    struct ast_expr_alignof    expr_alignof;
     struct ast_expr_unary      expr_unary;
     struct ast_expr_addrof     expr_addrof;
     struct ast_expr_deref      expr_deref;

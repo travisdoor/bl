@@ -139,8 +139,6 @@ const char *ast_get_name(const struct ast *n)
         return "TypeFnGroup";
     case AST_TYPE_POLY:
         return "TypePoly";
-    case AST_EXPR_TYPEOF:
-        return "TypeOf";
     case AST_EXPR_CAST:
         return "ExprCast";
     case AST_EXPR_BINOP:
@@ -149,18 +147,10 @@ const char *ast_get_name(const struct ast *n)
         return "ExprCall";
     case AST_EXPR_ELEM:
         return "ExprElem";
-    case AST_EXPR_SIZEOF:
-        return "ExprSizeof";
-    case AST_EXPR_TYPE_INFO:
-        return "ExprTypeInfo";
-    case AST_EXPR_TYPE_OF:
-        return "ExprTypeOf";
     case AST_EXPR_TEST_CASES:
         return "ExprTestCases";
     case AST_EXPR_TYPE:
         return "ExprType";
-    case AST_EXPR_ALIGNOF:
-        return "ExprAlignof";
     case AST_EXPR_UNARY:
         return "ExprUnary";
     case AST_EXPR_NULL:

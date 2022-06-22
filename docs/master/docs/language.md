@@ -860,8 +860,7 @@ Used for marking entities as an compiler internals.
 
 Introduce test case function. The test case function is supposed not to take any arguments and
 return always `void`. All function with `test` hash directive are automatically stored into builtin
-implicit array and can be acquired by `testcases()` function call. Every test case is stored as
-`TestCase` type.
+implicit array called `TEST_CASES`. Every test case is stored as `TestCase` type.
 
 **Example:**
 

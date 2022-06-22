@@ -60,6 +60,10 @@
     BUILTIN_ID_BLC_VER_MAJOR,
     BUILTIN_ID_BLC_VER_MINOR,
     BUILTIN_ID_BLC_VER_PATCH,
+    BUILTIN_ID_SIZEOF, /* first reserved */
+    BUILTIN_ID_ALIGNOF,
+    BUILTIN_ID_TYPEOF,
+    BUILTIN_ID_TYPEINFO,
 #endif
 
 #ifdef GEN_BUILTIN_IDS
@@ -124,4 +128,8 @@
     {.str = "BLC_VER_MAJOR",         .hash = 0},
     {.str = "BLC_VER_MINOR",         .hash = 0},
     {.str = "BLC_VER_PATCH",         .hash = 0},
+    {.str = "sizeof",                .hash = 0},
+    {.str = "alignof",               .hash = 0},
+    {.str = "typeof",                .hash = 0},
+    {.str = "typeinfo",              .hash = 0},
 #endif

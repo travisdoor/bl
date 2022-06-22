@@ -41,7 +41,7 @@ test_reserve :: fn () #test {
     array_reserve(&arr, 1000);
     test_eq(arr.len, 0);
     test_not_null(arr.ptr);
-    test_eq(arr.allocated, 1000);
+    test_eq(arr.allocated_elems, 1000);
 }
 
 test_reserve_init :: fn () #test {
@@ -51,7 +51,7 @@ test_reserve_init :: fn () #test {
     array_init(&arr, 1000);
     test_eq(arr.len, 0);
     test_not_null(arr.ptr);
-    test_eq(arr.allocated, 1000);
+    test_eq(arr.allocated_elems, 1000);
 }
 
 test_clear :: fn () #test {
