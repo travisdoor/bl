@@ -2,13 +2,15 @@
 #private
 
 MockStream :: struct #base std.Stream {
-    buf: [1024]u8;
+    buf: [64]u8;
     index: s64;
 }
 
 MOCK_VTABLE :: std.StreamVTable.{
     read = auto &mock_read,
     write = auto &mock_write,
+    set_position = auto &mock_set_position,
+    get_position = auto &mock_get_position,
 };
 
 mock_read :: fn (stream: *MockStream, dest: *u8, bytes_to_read: s64) (s64, Error) {
@@ -26,6 +28,20 @@ mock_write :: fn (stream: *MockStream, src: *u8, bytes_to_write: s64) (s64, Erro
     stream.index += size;
     assert(stream.index <= stream.buf.len);
     return size, OK;
+}
+
+mock_set_position :: fn (stream: *MockStream, locator: std.StreamLocator, offset: s64) Error {
+    using std.StreamLocator;
+    switch locator {
+        CURRENT { stream.index += offset; }
+        BEGIN   { stream.index = offset;  }
+        END     { stream.index = stream.buf.len - 1; }
+    }
+    return OK;
+}
+
+mock_get_position :: fn (stream: *MockStream) s64 {
+    return stream.index;
 }
 
 write_read_0 :: fn () #test {
@@ -175,4 +191,24 @@ write_read_bytes_part :: fn () #test {
     test_ok(read_err2);
     test_eq(read_bytes2, 0);
     test_eq(data.len, 15);
+}
+
+location_after_write :: fn () #test {
+    using std;
+    stream :: MockStream.{ base = std.Stream.{ &MOCK_VTABLE }};
+    written, write_err :: write(&stream, "HelloHelloHello");
+    test_ok(write_err);
+    test_eq(written, 15);
+    test_eq(get_position(&stream), written);
+}
+
+location_reset :: fn () #test {
+    using std;
+    stream :: MockStream.{ base = std.Stream.{ &MOCK_VTABLE }};
+    written, write_err :: write(&stream, "HelloHelloHello");
+    test_ok(write_err);
+    test_eq(written, 15);
+    test_eq(get_position(&stream), written);
+    test_ok(set_position(&stream, StreamLocator.BEGIN));
+    test_eq(get_position(&stream), 0);
 }

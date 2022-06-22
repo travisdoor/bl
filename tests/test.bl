@@ -1,129 +1,104 @@
-main :: fn () s32 {
-    using std;
-    pool :: pool_make(application_context.allocator);
-    defer pool_release(&pool);
-
-    loop i := 0; i < 1000; i += 1 {
-		alloc(sizeof(s32), alignof(s32), &pool);
-    }
-
-    return 0;
-}
-
 /*
-#import "std/table"
-
-TEST_COUNT :: 1000000;
-SAMPLES :: 100;
-//TEST_COUNT :: 100;
-
-main :: fn () s32 {
-    insert: f64;
-    lookup: f64;
-    loop s := 0; s < SAMPLES; s += 1 {
-        i, l :: A();
-        insert += i;
-        lookup += l;
-    }
-    print("\nInsert: %\nLookup: %\n", insert / auto SAMPLES, lookup / auto SAMPLES);
-    insert = 0.;
-    lookup = 0.;
-
-    return 0;
+MyStream1 :: struct {
+    read: s32;
 }
 
-A :: fn () (f64, f64) {
-    using std;
-    tbl: Table(s32, *s32);
-    defer tbl_terminate(&tbl);
-
-    measure_elapsed_ms_begin();
-    loop i := 0; i < TEST_COUNT; i += 1 {
-        tbl_insert(&tbl, i, null);
-    }
-    insert_time :: measure_elapsed_ms_end();
-
-    measure_elapsed_ms_begin();
-    loop i := 0; i < TEST_COUNT; i += 1 {
-        value :: tbl_lookup(&tbl, i);
-        if (@value != null) { panic(); }
-    }
-    lookup_time :: measure_elapsed_ms_end();
-    print(".");
-    return insert_time, lookup_time;
+MyStream2 :: struct {
+    write: s32;
 }
+
+foo :: fn {
+    fn (v: *?T) {
+#if !symbol_exists(v.read) {
+    #error "Stream is read only.";
+}
+        print("A\n");
+    };
+    fn (v: *?T, a: s32) { print("B\n"); };
+};
 */
 
 /*
-#import "std/table"
+my_static_assert :: fn (expr: bool, msg := "") #comptime {
+    if expr { return; }
+    #error msg;
+    unreachable;
+}
+
+sizeof(<comptime-expr>)
+alignof(<comptime-expr>)
+typeof(<comptime-expr>)
+typeinfo(<comptime-expr>)
+compiler_error(<comptime-expr>)
+compiler_warning(<comptime-expr>)
+symbol_exist(<comptime-expr)
+test_cases()
+debugbreak()
+unreachable()
+
+*/
+
 
 main :: fn () s32 {
-    using std;
-    buf := str_new();
-    buf2 := str_new();
-    buf3 := str_new();
-    defer str_delete(&buf);
-    defer str_delete(&buf2);
-    defer str_delete(&buf3);
-
-    str_append(&buf, "Count, Insert, Lookup\n");
-    str_append(&buf2, "Count, Insert Time, Lookup Time\n");
-    str_append(&buf3, "Count, Insert Ratio, Lookup Ratio\n");
-    count := 1000;
-    loop i := 0; i < 14; i += 1 {
-        count *= 2;
-        A(count, &buf, &buf2, &buf3);
-    }
-    print("%", buf);
-    print("%", buf2);
-    print("%", buf3);
     return 0;
 }
 
-A :: fn (count: s64, result: *string, time: *string, ratio: *string) {
-    using std;
-    tbl: Table(s32, s32);
-    defer tbl_terminate(&tbl);
-
-    measure_elapsed_ms_begin();
-    loop i := 0; i < count; i += 1 {
-        tbl_insert(&tbl, i, i);
-    }
-    insert_time :: measure_elapsed_ms_end("INSERT");
-
-    measure_elapsed_ms_begin();
-    loop i := 0; i < count; i += 1 {
-        it :: tbl_lookup(&tbl, i);
-        if (it.value != i) { panic(); }
-    }
-    lookup_time :: measure_elapsed_ms_end("LOOKUP");
-    str_concat(result, count, ", ", insert_collision_count, ", ",lookup_collision_count, "\n");
-    str_concat(time, count, ", ", insert_time, ", ",lookup_time, "\n");
-    str_concat(ratio, count, ", ", cast(f32)insert_collision_count / cast(f32)count, ", ", cast(f32)lookup_collision_count / cast(f32)count, "\n");
-    insert_collision_count = 0;
-    lookup_collision_count = 0;
-    print("***\n");
-}
-*/
 
 /*
-B :: fn () {
-    using std_experimental;
-    tbl: Table(s32, s32);
-    defer tbl_terminate(&tbl);
+#import "std/io"
 
-    measure_elapsed_ms_begin();
-    loop i := 0; i < TEST_COUNT; i += 1 {
-        tbl_insert(&tbl, i, i);
-    }
-    measure_elapsed_ms_end("INSERT");
+MyStream :: struct #base std.Stream {
+    // Internal buffer used to hold data.
+    buf: [64]u8;
+    // Current index in the buffer array.
+    index: s64;
+}
 
-    measure_elapsed_ms_begin();
-    loop i := 0; i < TEST_COUNT; i += 1 {
-        value :: tbl_lookup(&tbl, i);
-        if (@value != i) { panic(); }
-    }
-    measure_elapsed_ms_end("LOOKUP");
-    print("***\n");
+// Custom stream virtual table.
+MY_STREAM_VTABLE :: std.StreamVTable.{
+    read = auto &my_stream_read,
+    write = auto &my_stream_write,
+};
+
+my_stream_read :: fn (stream: *MyStream, dest: *u8, bytes_to_read: s64) (s64, Error) {
+    using std;
+    size := min(stream.index, bytes_to_read);
+    stream.index -= size;
+    assert(stream.index >= 0);
+    if size > 0 { memcpy(dest, &stream.buf[stream.index], auto size); }
+    return size, OK;
+}
+
+my_stream_write :: fn (stream: *MyStream, src: *u8, bytes_to_write: s64) (s64, Error) {
+    size :: std.min(stream.buf.len - stream.index, bytes_to_write);
+    if size > 0 { memcpy(&stream.buf[stream.index], src, auto size); }
+    stream.index += size;
+    assert(stream.index <= stream.buf.len);
+    return size, OK;
+}
+
+make_my_stream :: fn () MyStream #inline {
+    stream: MyStream #noinit;
+    stream.vtable = &MY_STREAM_VTABLE;
+    stream.index = 0;
+    return stream;
+}
+
+main :: fn () s32 {
+    using std;
+    stream :: make_my_stream();
+
+    // Write some data into the stream.
+    write(&stream, "Hello");
+    write(&stream, "world!");
+
+    str := str_new();
+    defer str_delete(&str);
+
+    // Read everything.
+    read(&stream, &str);
+    print(str);
+
+    return 0;
 }
 */
