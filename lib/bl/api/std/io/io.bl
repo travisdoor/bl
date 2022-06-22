@@ -88,10 +88,18 @@ Stream :: struct {
     vtable: *StreamVTable;
 }
 
+StreamLocator :: enum {
+    CURRENT;
+    BEGIN;
+    END;
+}
+
 /// Stream virtual table.
 StreamVTable :: struct {
     read: *fn(stream: *Stream, dest: *u8, bytes_to_read: s64) (bytes_read: s64, err: Error);
     write: *fn(stream: *Stream, src: *u8, src_size: s64) (bytes: s64, err: Error);
+    set_position: *fn(stream: *Stream, locator: StreamLocator, offset: s64) Error;
+    get_position: *fn(stream: *Stream) s64;
 }
 
 // =================================================================================================
@@ -176,4 +184,18 @@ read :: fn {
         }
         return read_bytes, OK;
     };
+}
+
+get_position :: fn (stream: *Stream) s64 {
+    assert(stream);
+    assert(stream.vtable);
+    assert(stream.vtable.get_position);
+    return stream.vtable.get_position(stream);
+}
+
+set_position :: fn (stream: *Stream, locator: StreamLocator, offset: s64 = 0) Error {
+    assert(stream);
+    assert(stream.vtable);
+    assert(stream.vtable.set_position);
+    return stream.vtable.set_position(stream, locator, offset);
 }

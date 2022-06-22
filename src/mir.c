@@ -2468,8 +2468,11 @@ create_type_struct_dynarr(struct context *ctx, struct id *id, struct mir_type *e
     }
 
     { // .allocated
-        tmp = create_member(
-            ctx, NULL, &builtin_ids[BUILTIN_ID_ARR_ALLOCATED], 2, ctx->builtin_types->t_usize);
+        tmp = create_member(ctx,
+                            NULL,
+                            &builtin_ids[BUILTIN_ID_ARR_ALLOCATED_ELEMS],
+                            2,
+                            ctx->builtin_types->t_usize);
 
         sarrput(members, tmp);
         provide_builtin_member(ctx, body_scope, tmp);
@@ -5452,6 +5455,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
         // check array builtin members
         if (member_ptr->builtin_id == BUILTIN_ID_ARR_LEN ||
             is_builtin(ast_member_ident, BUILTIN_ID_ARR_LEN)) {
+            // @Incomplete <2022-06-21 Tue> I don't remember why we need both checks here.
             // .len
             // mutate instruction into constant
             unref_instr(member_ptr->target_ptr);
@@ -5464,6 +5468,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
             MIR_CEV_WRITE_AS(s64, &len->base.value, target_type->data.array.len);
         } else if (member_ptr->builtin_id == BUILTIN_ID_ARR_PTR ||
                    is_builtin(ast_member_ident, BUILTIN_ID_ARR_PTR)) {
+            // @Incomplete <2022-06-21 Tue> I don't remember why we need both checks here.
             // .ptr -> This will be replaced by:
             //     elemptr
             //     addrof
@@ -5536,6 +5541,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
             // check array builtin members
             if (member_ptr->builtin_id == BUILTIN_ID_ARR_LEN ||
                 is_builtin(ast_member_ident, BUILTIN_ID_ARR_LEN)) {
+                // @Incomplete <2022-06-21 Tue> I don't remember why we need both checks here.
                 // .len
                 // mutate instruction into constant
                 unref_instr(member_ptr->target_ptr);
@@ -5549,6 +5555,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
                 return_zone(PASS);
             } else if (member_ptr->builtin_id == BUILTIN_ID_ARR_PTR ||
                        is_builtin(ast_member_ident, BUILTIN_ID_ARR_PTR)) {
+                // @Incomplete <2022-06-21 Tue> I don't remember why we need both checks here.
                 // .ptr -> This will be replaced by:
                 // mutate instruction into constant
                 unref_instr(member_ptr->target_ptr);
@@ -10162,6 +10169,7 @@ struct mir_instr *ast_expr_call(struct context *ctx, struct ast *call)
     ast_nodes_t *ast_args   = call->data.expr_call.args;
     bassert(ast_callee);
 
+    // Remove assert calls eventually based on the assembly configuration.
     if (ast_callee->kind == AST_REF &&
         is_builtin(ast_callee->data.ref.ident, BUILTIN_ID_ASSERT_FN)) {
         bool                   remove_assert = false;

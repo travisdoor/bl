@@ -111,7 +111,7 @@ file_uid :: fn {
         return _fs_impl.get_uid(stream.handle);
     };
     _fs_impl.get_uid_by_name;
-};
+}
 
 // =================================================================================================
 // Directory utils
