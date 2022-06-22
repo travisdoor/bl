@@ -402,4 +402,17 @@ number_type :: fn (size_bytes: usize, is_signed: bool) type #comptime {
     return s32;
 }
 
+/// Check in compile-time whether structure type `TStruct` contains member called `name`.
+has_member :: fn (TStruct: type, name: string_view) bool #comptime {
+    info :: cast(*TypeInfoStruct) typeinfo(TStruct);
+    if info.kind != TypeKind.STRUCT { return false; }
+    loop i := 0; i < info.members.len; i += 1 {
+        if std.str_match(info.members[i].name, name) {
+            return true;
+        }
+    }
+    return false;
+}
+
+
 #private

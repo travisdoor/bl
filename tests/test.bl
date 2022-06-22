@@ -28,13 +28,17 @@ my_static_assert :: fn (expr: bool, msg := "") #comptime {
 compiler_error(<comptime-expr>)
 compiler_warning(<comptime-expr>)
 symbol_exist(<comptime-expr)
-debugbreak()
-unreachable()
 
 */
 
+Foo :: struct {
+    my_member: s32;
+    other: s32;
+}
+
 main :: fn () s32 {
-    print(">> %\n", sizeof(s32));
+    print(">> %\n", has_member(s32, "foo"));
+    print(">> %\n", has_member(Foo, "my_member"));
     return 0;
 }
 
