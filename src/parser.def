@@ -25,6 +25,4 @@
     HD_GEN(HD_FLAGS, "flags", 1 << 23)
     HD_GEN(HD_COMPTIME, "comptime", 1 << 25)
     HD_GEN(HD_MAYBE_UNUSED, "maybe_unused", 1 << 24)
-    HD_GEN(HD_ERROR, "error", 1 << 26)
-    HD_GEN(HD_WARNING, "warning", 1 << 27)
 #endif

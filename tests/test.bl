@@ -18,27 +18,38 @@ foo :: fn {
 };
 */
 
-/*
-my_static_assert :: fn (expr: bool, msg := "") #comptime {
-    if expr { return; }
-    #error msg;
-    unreachable;
+Foo :: struct {
+    write: s32;
 }
 
-compiler_error(<comptime-expr>)
-compiler_warning(<comptime-expr>)
-symbol_exist(<comptime-expr)
+Bar :: struct {
+    read: s32;
+}
 
-*/
+FooBar :: struct {
+    write: s32;
+    read: s32;
+}
 
-Foo :: struct {
-    my_member: s32;
-    other: s32;
+do_read :: fn (v: *?T) {
+#if !has_member(T, "read") {
+    compiler_error("Stream is write-only!");
+}
+    v;
+}
+
+do_write :: fn (v: *?T) {
+#if !has_member(T, "write") {
+    compiler_error("Stream is read-only!");
+}
+    v;
 }
 
 main :: fn () s32 {
-    print(">> %\n", has_member(s32, "foo"));
-    print(">> %\n", has_member(Foo, "my_member"));
+    foo: Foo;
+    bar: Bar;
+
+    do_read(&foo);
     return 0;
 }
 

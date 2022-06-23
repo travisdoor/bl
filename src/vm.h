@@ -164,6 +164,7 @@ void vm_abort(struct virtual_machine *vm);
 /// Return pointer to constant or stack allocated variable.
 vm_stack_ptr_t vm_read_var(struct virtual_machine *vm, const struct mir_var *var);
 
+// @Incomplete <2022-06-23 Thu> Duplicate with MIR_CEV_READ/WRITE...?
 #define vm_read_as(T, src) (*((T *)(src)))
 #define vm_write_as(T, dest, src) (*((T *)(dest)) = (T)(src))
 
@@ -171,20 +172,21 @@ u64            vm_read_int(const struct mir_type *type, vm_stack_ptr_t src);
 f64            vm_read_double(const struct mir_type *type, vm_stack_ptr_t src);
 f32            vm_read_float(const struct mir_type *type, vm_stack_ptr_t src);
 vm_stack_ptr_t vm_read_ptr(const struct mir_type *type, vm_stack_ptr_t src);
-void           vm_write_int(const struct mir_type *type, vm_stack_ptr_t dest, u64 i);
-void           vm_write_double(const struct mir_type *type, vm_stack_ptr_t dest, f64 i);
-void           vm_write_float(const struct mir_type *type, vm_stack_ptr_t dest, f32 i);
-void           vm_write_ptr(const struct mir_type *type, vm_stack_ptr_t dest, vm_stack_ptr_t ptr);
-void           vm_write_string(struct virtual_machine *vm,
-                               const struct mir_type  *type,
-                               vm_stack_ptr_t          dest,
-                               const char             *str,
-                               s64                     len);
-void           vm_write_slice(struct virtual_machine *vm,
-                              const struct mir_type  *type,
-                              vm_stack_ptr_t          dest,
-                              void                   *ptr,
-                              s64                     len);
+str_t vm_read_string(struct virtual_machine *vm, const struct mir_type *type, vm_stack_ptr_t src);
+
+void      vm_write_int(const struct mir_type *type, vm_stack_ptr_t dest, u64 i);
+void      vm_write_double(const struct mir_type *type, vm_stack_ptr_t dest, f64 i);
+void      vm_write_float(const struct mir_type *type, vm_stack_ptr_t dest, f32 i);
+void      vm_write_ptr(const struct mir_type *type, vm_stack_ptr_t dest, vm_stack_ptr_t ptr);
+void      vm_write_string(struct virtual_machine *vm,
+                          const struct mir_type  *type,
+                          vm_stack_ptr_t          dest,
+                          str_t                   str);
+void      vm_write_slice(struct virtual_machine *vm,
+                         const struct mir_type  *type,
+                         vm_stack_ptr_t          dest,
+                         void                   *ptr,
+                         s64                     len);
 ptrdiff_t vm_get_struct_elem_offset(struct assembly *assembly, const struct mir_type *type, u32 i);
 ptrdiff_t vm_get_array_elem_offset(const struct mir_type *type, u32 i);
 vm_stack_ptr_t vm_get_struct_elem_ptr(struct assembly       *assembly,

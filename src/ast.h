@@ -105,16 +105,6 @@ enum unop_kind {
     UNOP_BIT_NOT,
 };
 
-enum ast_msg_kind {
-    AST_MSG_WARNING,
-    AST_MSG_ERROR,
-};
-
-struct ast_msg {
-    enum ast_msg_kind kind;
-    const char       *text;
-};
-
 struct ast_docs {
     const char *text;
 };

@@ -561,6 +561,11 @@ append_instr_typeof(struct context *ctx, struct ast *node, mir_instrs_t *args);
 static struct mir_instr *
 append_instr_type_info(struct context *ctx, struct ast *node, mir_instrs_t *args);
 
+static struct mir_instr *append_instr_msg(struct context        *ctx,
+                                          struct ast            *node,
+                                          mir_instrs_t          *args,
+                                          enum mir_user_msg_kind kind);
+
 static struct mir_instr *append_instr_test_cases(struct context *ctx, struct ast *node);
 
 static struct mir_instr *append_instr_elem_ptr(struct context   *ctx,
@@ -752,7 +757,6 @@ append_instr_addrof(struct context *ctx, struct ast *node, struct mir_instr *src
 // ref_count is ignored.
 static void              erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force);
 static struct mir_instr *append_instr_call_loc(struct context *ctx, struct ast *node);
-static struct mir_instr *append_instr_msg(struct context *ctx, struct ast *node);
 
 // struct ast
 static struct mir_instr *
@@ -822,7 +826,6 @@ static struct mir_instr *ast_expr_binop(struct context *ctx, struct ast *binop);
 static struct mir_instr *ast_expr_unary(struct context *ctx, struct ast *unop);
 static struct mir_instr *ast_expr_compound(struct context *ctx, struct ast *cmp);
 static struct mir_instr *ast_call_loc(struct context *ctx, struct ast *loc);
-static struct mir_instr *ast_msg(struct context *ctx, struct ast *msg);
 static struct mir_instr *ast_tag(struct context *ctx, struct ast *tag);
 
 // analyze
@@ -1536,17 +1539,10 @@ static inline const char *unique_name(struct context *ctx, const char *prefix)
     return scprint(&ctx->assembly->string_cache, "%s.%llu", prefix, ui++);
 }
 
-static inline bool is_builtin2(struct id *id, enum builtin_id_kind kind)
-{
-    if (!id) return false;
-    return id->hash == builtin_ids[kind].hash;
-}
-
 static inline bool is_builtin(struct ast *ident, enum builtin_id_kind kind)
 {
     if (!ident) return false;
-    bassert(ident->kind == AST_IDENT);
-    return is_builtin2(&ident->data.ident.id, kind);
+    return ident->data.ident.id.hash == builtin_ids[kind].hash;
 }
 
 static enum builtin_id_kind get_builtin_kind(struct ast *ident)
@@ -3792,6 +3788,21 @@ struct mir_instr *append_instr_type_info(struct context *ctx, struct ast *node, 
     return &tmp->base;
 }
 
+struct mir_instr *append_instr_msg(struct context        *ctx,
+                                   struct ast            *node,
+                                   mir_instrs_t          *args,
+                                   enum mir_user_msg_kind kind)
+{
+    struct mir_instr_msg *tmp = create_instr(ctx, MIR_INSTR_MSG, node);
+    tmp->message_kind         = kind;
+    for (usize i = 0; i < sarrlenu(args); ++i) {
+        ref_instr(sarrpeek(args, i));
+    }
+    tmp->args = args;
+    append_current_block(ctx, &tmp->base);
+    return &tmp->base;
+}
+
 struct mir_instr *append_instr_test_cases(struct context *ctx, struct ast *node)
 {
     struct mir_instr *tmp  = create_instr(ctx, MIR_INSTR_TEST_CASES, node);
@@ -4317,15 +4328,6 @@ struct mir_instr *append_instr_call_loc(struct context *ctx, struct ast *node)
     struct mir_instr *tmp = create_instr_call_loc(ctx, node, NULL);
     append_current_block(ctx, tmp);
     return tmp;
-}
-
-struct mir_instr *append_instr_msg(struct context *ctx, struct ast *node)
-{
-    struct mir_instr_msg *tmp = create_instr(ctx, MIR_INSTR_MSG, node);
-    tmp->kind                 = node->data.msg.kind;
-    tmp->text                 = node->data.msg.text;
-    append_current_block(ctx, &tmp->base);
-    return &tmp->base;
 }
 
 // analyze
@@ -7147,7 +7149,12 @@ struct result analyze_instr_type_dynarr(struct context                *ctx,
         return_zone(FAIL);
     }
 
-    bassert(mir_is_comptime(type_dynarr->elem_type) && "This should be an error");
+    if (!mir_is_comptime(type_dynarr->elem_type)) {
+        report_error(EXPECTED_COMPTIME,
+                     type_dynarr->elem_type->node,
+                     "Dynamic array element type is supposed to be compile-time known.");
+        return_zone(FAIL);
+    }
     struct mir_type *elem_type = MIR_CEV_READ_AS(struct mir_type *, &type_dynarr->elem_type->value);
     bmagic_assert(elem_type);
 
@@ -7467,7 +7474,7 @@ struct result analyze_instr_call_loc(struct context *ctx, struct mir_instr_call_
     const hash_t hash = strhash(str_hash);
     put_tstr(str_hash);
 
-    vm_write_string(ctx->vm, dest_file_type, dest_file, filepath, (s64)strlen(filepath));
+    vm_write_string(ctx->vm, dest_file_type, dest_file, make_str_from_c(filepath));
     vm_write_int(dest_line_type, dest_line, (u64)loc->call_location->line);
     vm_write_int(dest_hash_type, dest_hash, (u64)hash);
 
@@ -7478,13 +7485,35 @@ struct result analyze_instr_call_loc(struct context *ctx, struct mir_instr_call_
 
 struct result analyze_instr_msg(struct context *ctx, struct mir_instr_msg *msg)
 {
-    switch (msg->kind) {
-    case AST_MSG_WARNING:
-        report_warning(msg->base.node, "%s", msg->text);
-        return PASS;
-    case AST_MSG_ERROR:
-        report_error(USER, msg->base.node, "%s", msg->text);
+    if (!msg->expr) {
+        if (sarrlenu(msg->args) != 1) {
+            report_invalid_call_argument_count(ctx, msg->base.node, 1, sarrlenu(msg->args));
+            return_zone(FAIL);
+        }
+        msg->expr = sarrpeek(msg->args, 0);
+    }
+    if (analyze_slot(
+            ctx, &analyze_slot_conf_basic, &msg->expr, ctx->builtin_types->t_string_literal) !=
+        ANALYZE_PASSED) {
+        return_zone(FAIL);
+    }
+    if (!mir_is_comptime(msg->expr)) {
+        report_error(EXPECTED_COMPTIME,
+                     msg->expr->node,
+                     "Compiler error message is supposed to be compile-time known.");
+        return_zone(FAIL);
+    }
+    vm_stack_ptr_t message_ptr = _mir_cev_read(&msg->expr->value);
+    const str_t    message     = vm_read_string(ctx->vm, msg->expr->value.type, message_ptr);
+    unref_instr(msg->expr);
+    erase_instr_tree(msg->expr, false, false);
+    switch (msg->message_kind) {
+    case MIR_USER_MSG_ERROR:
+        report_error(USER, msg->base.node, "%.*s", message.len, message.ptr);
         return FAIL;
+    case MIR_USER_MSG_WARNING:
+        report_warning(msg->base.node, "%.*s", message.len, message.ptr);
+        return PASS;
     }
     BL_UNREACHABLE;
 }
@@ -9182,8 +9211,8 @@ inline void testing_add_test_case(struct context *ctx, struct mir_fn *fn)
     const s32   line     = fn->decl_node ? fn->decl_node->location->line : 0;
 
     vm_write_ptr(func_type, func_ptr, (vm_stack_ptr_t)fn);
-    vm_write_string(ctx->vm, name_type, name_ptr, fn->id->str, strlen(fn->id->str));
-    vm_write_string(ctx->vm, file_type, file_ptr, filename, strlen(filename));
+    vm_write_string(ctx->vm, name_type, name_ptr, make_str_from_c(fn->id->str));
+    vm_write_string(ctx->vm, file_type, file_ptr, make_str_from_c(filename));
     vm_write_int(line_type, line_ptr, line);
 }
 
@@ -9381,7 +9410,7 @@ struct mir_var *rtti_gen_array(struct context *ctx, struct mir_type *type)
     vm_stack_ptr_t   dest_name      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
     const char      *name           = type->user_id ? type->user_id->str : type->id.str;
 
-    vm_write_string(ctx->vm, dest_name_type, dest_name, name, strlen(name));
+    vm_write_string(ctx->vm, dest_name_type, dest_name, make_str_from_c(name));
 
     // elem_type
     struct mir_type *dest_elem_type = mir_get_struct_elem_type(rtti_type, 2);
@@ -9417,7 +9446,7 @@ void rtti_gen_enum_variant(struct context *ctx, vm_stack_ptr_t dest, struct mir_
     struct mir_type *dest_value_type = mir_get_struct_elem_type(rtti_type, 1);
     vm_stack_ptr_t   dest_value      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
 
-    vm_write_string(ctx->vm, dest_name_type, dest_name, variant->id->str, strlen(variant->id->str));
+    vm_write_string(ctx->vm, dest_name_type, dest_name, make_str_from_c(variant->id->str));
     vm_write_int(dest_value_type, dest_value, variant->value);
 }
 
@@ -9460,7 +9489,7 @@ struct mir_var *rtti_gen_enum(struct context *ctx, struct mir_type *type)
     struct mir_type *dest_name_type = mir_get_struct_elem_type(rtti_type, 1);
     vm_stack_ptr_t   dest_name      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
     const char      *name           = type->user_id ? type->user_id->str : type->id.str;
-    vm_write_string(ctx->vm, dest_name_type, dest_name, name, strlen(name));
+    vm_write_string(ctx->vm, dest_name_type, dest_name, make_str_from_c(name));
 
     // base_type
     struct mir_type *dest_base_type_type = mir_get_struct_elem_type(rtti_type, 2);
@@ -9487,7 +9516,7 @@ void rtti_gen_struct_member(struct context *ctx, vm_stack_ptr_t dest, struct mir
     // name
     struct mir_type *dest_name_type = mir_get_struct_elem_type(rtti_type, 0);
     vm_stack_ptr_t   dest_name      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 0);
-    vm_write_string(ctx->vm, dest_name_type, dest_name, member->id->str, strlen(member->id->str));
+    vm_write_string(ctx->vm, dest_name_type, dest_name, make_str_from_c(member->id->str));
 
     // base_type
     struct mir_type *dest_base_type_type = mir_get_struct_elem_type(rtti_type, 1);
@@ -9558,7 +9587,7 @@ struct mir_var *rtti_gen_struct(struct context *ctx, struct mir_type *type)
     struct mir_type *dest_name_type = mir_get_struct_elem_type(rtti_type, 1);
     vm_stack_ptr_t   dest_name      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
     const char      *name           = type->user_id ? type->user_id->str : type->id.str;
-    vm_write_string(ctx->vm, dest_name_type, dest_name, name, strlen(name));
+    vm_write_string(ctx->vm, dest_name_type, dest_name, make_str_from_c(name));
 
     // members
     vm_stack_ptr_t dest_members = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 2);
@@ -9592,7 +9621,7 @@ void rtti_gen_fn_arg(struct context *ctx, vm_stack_ptr_t dest, struct mir_arg *a
     struct mir_type *dest_name_type = mir_get_struct_elem_type(rtti_type, 0);
     vm_stack_ptr_t   dest_name      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 0);
     const char      *arg_name       = arg->id ? arg->id->str : "";
-    vm_write_string(ctx->vm, dest_name_type, dest_name, arg_name, strlen(arg_name));
+    vm_write_string(ctx->vm, dest_name_type, dest_name, make_str_from_c(arg_name));
 
     // base_type
     struct mir_type *dest_base_type_type = mir_get_struct_elem_type(rtti_type, 1);
@@ -9992,11 +10021,6 @@ struct mir_instr *ast_call_loc(struct context *ctx, struct ast *loc)
     return append_instr_call_loc(ctx, loc);
 }
 
-struct mir_instr *ast_msg(struct context *ctx, struct ast *msg)
-{
-    return append_instr_msg(ctx, msg);
-}
-
 struct mir_instr *ast_tag(struct context *ctx, struct ast *tag)
 {
     bassert(tag->data.tag.expr);
@@ -10214,6 +10238,10 @@ struct mir_instr *ast_expr_call(struct context *ctx, struct ast *call)
             return append_instr_typeof(ctx, call, args);
         } else if (is_builtin(ident, BUILTIN_ID_TYPEINFO)) {
             return append_instr_type_info(ctx, call, args);
+        } else if (is_builtin(ident, BUILTIN_ID_COMPILER_ERROR)) {
+            return append_instr_msg(ctx, call, args, MIR_USER_MSG_ERROR);
+        } else if (is_builtin(ident, BUILTIN_ID_COMPILER_WARNING)) {
+            return append_instr_msg(ctx, call, args, MIR_USER_MSG_WARNING);
         }
     }
 
@@ -11380,8 +11408,6 @@ struct mir_instr *ast(struct context *ctx, struct ast *node)
         return ast_expr_test_cases(ctx, node);
     case AST_CALL_LOC:
         return ast_call_loc(ctx, node);
-    case AST_MSG:
-        return ast_msg(ctx, node);
     case AST_TAG:
         return ast_tag(ctx, node);
 
@@ -11826,6 +11852,11 @@ void initialize_builtins(struct context *ctx)
     add_global_int(ctx, BID(BLC_VER_MAJOR), false, bt->t_s32, BL_VERSION_MAJOR);
     add_global_int(ctx, BID(BLC_VER_MINOR), false, bt->t_s32, BL_VERSION_MINOR);
     add_global_int(ctx, BID(BLC_VER_PATCH), false, bt->t_s32, BL_VERSION_PATCH);
+
+    // Register all compiler builtin helper functions to report eventuall collisions with user code.
+    for (u32 i = BUILTIN_ID_SIZEOF; i < static_arrlenu(builtin_ids); ++i) {
+        register_symbol(ctx, NULL, &builtin_ids[i], ctx->assembly->gscope, true);
+    }
 }
 
 const char *get_intrinsic(const char *name)

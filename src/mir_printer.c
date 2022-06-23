@@ -726,7 +726,7 @@ void print_instr_designator(struct context *ctx, struct mir_instr_designator *de
 void print_instr_msg(struct context *ctx, struct mir_instr_msg *msg)
 {
     print_instr_head(ctx, &msg->base, "msg");
-    fprintf(ctx->stream, "'%s'", msg->text);
+    print_comptime_value_or_id(ctx, msg->expr);
 }
 
 void print_instr_br(struct context *ctx, struct mir_instr_br *br)

@@ -273,3 +273,15 @@ number_type_1 :: fn () #test {
     test_eq(typeinfo(number_type(4, false)), typeinfo(u32));
     test_eq(typeinfo(number_type(8, false)), typeinfo(u64));
 }
+
+has_member_1 :: fn () #test {
+    Foo :: struct {
+        first: s32;
+        second: s32;
+    };
+
+    test_false(has_member(s32, "foo"));
+    test_false(has_member(Foo, "foo"));
+    test_true(has_member(Foo, "first"));
+    test_true(has_member(Foo, "second"));
+}

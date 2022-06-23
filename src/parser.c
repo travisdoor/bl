@@ -383,40 +383,6 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         return_zone(NULL);
     }
 
-    case HD_ERROR: {
-        BL_TRACY_MESSAGE("HD_FLAG", "#error");
-        struct token *tok_msg = tokens_consume_if(ctx->tokens, SYM_STRING);
-        if (!tok_msg) {
-            struct token *tok_err = tokens_peek(ctx->tokens);
-            report_error(INVALID_DIRECTIVE,
-                         tok_err,
-                         CARET_WORD,
-                         "Expected message after 'error' directive.");
-            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
-        }
-        struct ast *msg = ast_create_node(ctx->ast_arena, AST_MSG, tok_directive, scope_get(ctx));
-        msg->data.msg.text = tok_msg->value.str.ptr;
-        msg->data.msg.kind = AST_MSG_ERROR;
-        return_zone(msg);
-    }
-
-    case HD_WARNING: {
-        BL_TRACY_MESSAGE("HD_FLAG", "#warning");
-        struct token *tok_msg = tokens_consume_if(ctx->tokens, SYM_STRING);
-        if (!tok_msg) {
-            struct token *tok_err = tokens_peek(ctx->tokens);
-            report_error(INVALID_DIRECTIVE,
-                         tok_err,
-                         CARET_WORD,
-                         "Expected message after 'warning' directive.");
-            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
-        }
-        struct ast *msg = ast_create_node(ctx->ast_arena, AST_MSG, tok_directive, scope_get(ctx));
-        msg->data.msg.text = tok_msg->value.str.ptr;
-        msg->data.msg.kind = AST_MSG_WARNING;
-        return_zone(msg);
-    }
-
     case HD_LOAD: {
         BL_TRACY_MESSAGE("HD_FLAG", "#load");
         struct token *tok_path = tokens_consume_if(ctx->tokens, SYM_STRING);
@@ -485,7 +451,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         struct ast *file =
             ast_create_node(ctx->ast_arena, AST_EXPR_LIT_STRING, tok_directive, scope_get(ctx));
         char *filepath             = tok_directive->location.unit->filepath;
-        file->data.expr_string.val = make_str(filepath, strlen(filepath));
+        file->data.expr_string.val = make_str_from_c(filepath);
         return_zone(file);
     }
 
@@ -2376,7 +2342,7 @@ NEXT:
         goto NEXT;
     case SYM_HASH: {
         enum hash_directive_flags satisfied;
-        tmp = parse_hash_directive(ctx, HD_STATIC_IF | HD_ERROR | HD_WARNING, &satisfied);
+        tmp = parse_hash_directive(ctx, HD_STATIC_IF, &satisfied);
         break;
     }
     case SYM_RETURN:

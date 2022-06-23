@@ -42,12 +42,14 @@
 #define MIR_SLICE_LEN_INDEX 0
 #define MIR_SLICE_PTR_INDEX 1
 
-// Helper macro for reading Const Expression Values of fundamental types.
 #if BL_DEBUG
-#define MIR_CEV_READ_AS(T, src) (*((T *)_mir_cev_read(src)))
+vm_stack_ptr_t _mir_cev_read(struct mir_const_expr_value *value);
 #else
-#define MIR_CEV_READ_AS(T, src) (*((T *)(src)->data))
+#define _mir_cev_read(expr) (expr)->data
 #endif
+
+// Helper macro for reading Const Expression Values of fundamental types.
+#define MIR_CEV_READ_AS(T, src) (*((T *)_mir_cev_read(src)))
 #define MIR_CEV_WRITE_AS(T, dest, src) (*((T *)(dest)->data) = (src))
 
 struct assembly;
@@ -508,15 +510,6 @@ struct mir_instr {
     bmagic_member
 };
 
-// Contains user defined compile time message.
-// in:  -
-// out: -
-struct mir_instr_msg {
-    struct mir_instr  base;
-    enum ast_msg_kind kind;
-    const char       *text;
-};
-
 struct mir_instr_block {
     struct mir_instr  base;
     const char       *name;
@@ -596,6 +589,19 @@ struct mir_instr_typeof {
     struct mir_instr  base;
     mir_instrs_t     *args; // Used only as temporary for analyze.
     struct mir_instr *expr;
+};
+
+enum mir_user_msg_kind {
+    MIR_USER_MSG_WARNING,
+    MIR_USER_MSG_ERROR,
+};
+
+// Contains user defined compile time message.
+struct mir_instr_msg {
+    struct mir_instr       base;
+    mir_instrs_t          *args; // Used only as temporary for analyze.
+    enum mir_user_msg_kind message_kind;
+    struct mir_instr      *expr;
 };
 
 struct mir_instr_arg {
@@ -977,9 +983,5 @@ const char    *mir_instr_name(const struct mir_instr *instr);
 void           mir_run(struct assembly *assembly);
 struct mir_fn *mir_get_callee(const struct mir_instr_call *call);
 const char    *mir_get_fn_readable_name(struct mir_fn *fn);
-
-#if BL_DEBUG
-vm_stack_ptr_t _mir_cev_read(struct mir_const_expr_value *value);
-#endif
 
 #endif

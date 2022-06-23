@@ -193,7 +193,7 @@ specialization :: fn () {
             #if is_number {
                 are_the_same = a == b;
             } else {
-                #error "The compare_poly_safe function works only with numbers and strings!"
+                compiler_error("The compare_poly_safe function works only with numbers and strings!");
             }
         }
         return are_the_same;
@@ -209,7 +209,7 @@ specialization :: fn () {
 
         polymorph.bl:194:18: error(0084): The compare_poly_safe function works only with numbers and strings!
            193 |             } else {
-        >  194 |                 #error "The compare_poly_safe function works only with numbers and strings!"
+        >  194 |                 compiler_error("The compare_poly_safe function works only with numbers and strings!");
                |                  ^^^^^
            195 |             }
 
