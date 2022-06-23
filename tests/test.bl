@@ -1,55 +1,36 @@
-/*
-MyStream1 :: struct {
-    read: s32;
+#import "std/io"
+
+MyStream :: struct {
+    vtable: *MyStreamVTable;
 }
 
-MyStream2 :: struct {
-    write: s32;
+MyStreamVTable :: struct {
+    using std;
+    read: StreamReadFn(MyStream);
+    write: StreamWriteFn(MyStream);
 }
 
-foo :: fn {
-    fn (v: *?T) {
-#if !symbol_exists(v.read) {
-    #error "Stream is read only.";
-}
-        print("A\n");
-    };
-    fn (v: *?T, a: s32) { print("B\n"); };
+MY_STRAM_VTABLE :: MyStreamVTable.{
+    read = &my_read,
+    write = &my_write
 };
-*/
 
-Foo :: struct {
-    write: s32;
-}
-
-Bar :: struct {
-    read: s32;
+my_read :: fn (stream: *MyStream, dest: *u8, bytes_to_read: s64) (bytes_read: s64, err: Error) {
+    stream; dest; bytes_to_read;
+    print("Reading!!!");
+    return 0, OK;
 }
 
-FooBar :: struct {
-    write: s32;
-    read: s32;
-}
-
-do_read :: fn (v: *?T) {
-#if !has_member(T, "read") {
-    compiler_error("Stream is write-only!");
-}
-    v;
-}
-
-do_write :: fn (v: *?T) {
-#if !has_member(T, "write") {
-    compiler_error("Stream is read-only!");
-}
-    v;
+my_write :: fn(stream: *MyStream, src: *u8, bytes_to_write: s64) (bytes: s64, err: Error) {
+    stream; src; bytes_to_write;
+    print("Writing!!!");
+    return 0, OK;
 }
 
 main :: fn () s32 {
-    foo: Foo;
-    bar: Bar;
-
-    do_read(&foo);
+    stream := MyStream.{ vtable = &MY_STRAM_VTABLE };
+    i: u8;
+    std.write2(&stream, &i, 10);
     return 0;
 }
 
