@@ -4,102 +4,90 @@
 //!
 //! Input and output is handled by generic [Stream](#stdstream) interface containing callbacks
 //! for read and write operations.
+//! The stream base type.
+//!
+//! This struct is supposed to be base of all data streams providing abstraction over read
+//! and write operations. Each stream contains virtual table pointing to implementation depend
+//! read and write callbacks.
+//!
+//! The stream can hold any other data; i.e. array of bytes.
+//!
+//! ### Example
+//!
+//! ```c
+//! #import "std/io"
+//!
+//! // Custom LIFO stream with stack allocated static buffer.
+//! MyStream :: struct #base std.Stream {
+//!     // Internal buffer used to hold data.
+//!     buf: [64]u8;
+//!     // Current index in the buffer array.
+//!     index: s64;
+//! }
+//!
+//! // Custom stream virtual table.
+//! MY_STREAM_VTABLE :: std.StreamVTable.{
+//!     read = auto &my_stream_read,
+//!     write = auto &my_stream_write,
+//! };
+//!
+//! my_stream_read :: fn (stream: *MyStream, dest: *u8, bytes_to_read: s64) (s64, Error) {
+//!     using std;
+//!     size := min(stream.index, bytes_to_read);
+//!     stream.index -= size;
+//!     // We can eventually handle underflow, the stream can return an error or read just
+//!     // possible rest of the data.
+//!     assert(stream.index >= 0);
+//!     if size > 0 { memcpy(dest, &stream.buf[stream.index], auto size); }
+//!     return size, OK;
+//! }
+//!
+//! my_stream_write :: fn (stream: *MyStream, src: *u8, bytes_to_write: s64) (s64, Error) {
+//!     size :: std.min(stream.buf.len - stream.index, bytes_to_write);
+//!     if size > 0 { memcpy(&stream.buf[stream.index], src, auto size); }
+//!     stream.index += size;
+//!     // We can eventually handle overflow, the stream can return an error or write just
+//!     // possible rest of the data.
+//!     assert(stream.index <= stream.buf.len);
+//!     return size, OK;
+//! }
+//!
+//! make_my_stream :: fn () MyStream #inline {
+//!     stream: MyStream #noinit;
+//!     stream.vtable = &MY_STREAM_VTABLE;
+//!     stream.index = 0;
+//!     return stream;
+//! }
+//!
+//! main :: fn () s32 {
+//!     using std;
+//!     stream :: make_my_stream();
+//!
+//!     // Write some data into the stream.
+//!     write(&stream, "Hello");
+//!     write(&stream, "world!");
+//!
+//!     str := str_new();
+//!     defer str_delete(&str);
+//!
+//!     // Read everything and left the stream empty.
+//!     read(&stream, &str);
+//!     print(str);
+//!
+//!     return 0;
+//! }
+//! ```
+//!
+//! !!! note
+//!     Streams can be read or write only, to make such a stream it's enough to set read or write callback
+//!     to `null`.
 
 #scope std
-
-/// The stream base type.
-///
-/// This struct is supposed to be base of all data streams providing abstraction over read
-/// and write operations. Each stream contains virtual table pointing to implementation depend
-/// read and write callbacks.
-/// 
-/// The stream can hold any other data; i.e. array of bytes.
-///
-/// ### Example
-///
-/// ```c
-/// #import "std/io"
-///
-/// // Custom LIFO stream with stack allocated static buffer.
-/// MyStream :: struct #base std.Stream {
-///     // Internal buffer used to hold data.
-///     buf: [64]u8;
-///     // Current index in the buffer array.
-///     index: s64;
-/// }
-///
-/// // Custom stream virtual table.
-/// MY_STREAM_VTABLE :: std.StreamVTable.{
-///     read = auto &my_stream_read,
-///     write = auto &my_stream_write,
-/// };
-///
-/// my_stream_read :: fn (stream: *MyStream, dest: *u8, bytes_to_read: s64) (s64, Error) {
-///     using std;
-///     size := min(stream.index, bytes_to_read);
-///     stream.index -= size;
-///     // We can eventually handle underflow, the stream can return an error or read just
-///     // possible rest of the data.
-///     assert(stream.index >= 0);
-///     if size > 0 { memcpy(dest, &stream.buf[stream.index], auto size); }
-///     return size, OK;
-/// }
-///
-/// my_stream_write :: fn (stream: *MyStream, src: *u8, bytes_to_write: s64) (s64, Error) {
-///     size :: std.min(stream.buf.len - stream.index, bytes_to_write);
-///     if size > 0 { memcpy(&stream.buf[stream.index], src, auto size); }
-///     stream.index += size;
-///     // We can eventually handle overflow, the stream can return an error or write just
-///     // possible rest of the data.
-///     assert(stream.index <= stream.buf.len);
-///     return size, OK;
-/// }
-///
-/// make_my_stream :: fn () MyStream #inline {
-///     stream: MyStream #noinit;
-///     stream.vtable = &MY_STREAM_VTABLE;
-///     stream.index = 0;
-///     return stream;
-/// }
-///
-/// main :: fn () s32 {
-///     using std;
-///     stream :: make_my_stream();
-///
-///     // Write some data into the stream.
-///     write(&stream, "Hello");
-///     write(&stream, "world!");
-///
-///     str := str_new();
-///     defer str_delete(&str);
-///
-///     // Read everything and left the stream empty.
-///     read(&stream, &str);
-///     print(str);
-///
-///     return 0;
-/// }
-/// ```
-///
-/// !!! note
-///     Streams can be read or write only, to make such a stream it's enough to set read or write callback
-///     to `null`.
-Stream :: struct {
-    vtable: *StreamVTable;
-}
 
 StreamLocator :: enum {
     CURRENT;
     BEGIN;
     END;
-}
-
-/// Stream virtual table.
-StreamVTable :: struct {
-    read: *fn(stream: *Stream, dest: *u8, bytes_to_read: s64) (bytes_read: s64, err: Error);
-    write: *fn(stream: *Stream, src: *u8, src_size: s64) (bytes: s64, err: Error);
-    set_position: *fn(stream: *Stream, locator: StreamLocator, offset: s64) Error;
-    get_position: *fn(stream: *Stream) s64;
 }
 
 StreamReadFn :: fn (TStream: type) type #comptime {
@@ -110,118 +98,93 @@ StreamWriteFn :: fn (TStream: type) type #comptime {
     return *fn(stream: *TStream, src: *u8, bytes_to_read: s64) (bytes: s64, err: Error);
 }
 
-// =================================================================================================
-// Stream API
-// =================================================================================================
-
-/// Writes data into the `stream` and returns count of actually written bytes or error.
-///
-/// **Overloads:**
-/// ```c
-/// fn (stream: *Stream, src: *u8, bytes_to_write: s64) (s64, Error) #inline
-/// fn (stream: *Stream, data: []u8) (s64, Error) #inline
-/// ```
-///
-/// !!! note
-///     Cause panic in case the stream is read-only.
-write :: fn {
-    fn (stream: *Stream, src: *u8, bytes_to_write: s64) (s64, Error) #inline {
-        assert(stream);
-        assert(stream.vtable);
-        if !stream.vtable.write { panic("Stream does not support writing!"); }
-        if bytes_to_write < 1 { return 0, OK; }
-        return stream.vtable.write(stream, src, bytes_to_write);
-    };
-    fn (stream: *Stream, data: []u8) (s64, Error) #inline {
-        assert(stream);
-        assert(stream.vtable);
-        if !stream.vtable.write { panic("Stream does not support writing!"); }
-        return stream.vtable.write(stream, data.ptr, data.len);
-    };
-};
-
-write2 :: fn {
-    fn (stream: *?TStream, src: *u8, bytes_to_write: s64) (s64, Error) #inline {
-#if !has_member(@TStream.vtable, "write") {
-        compiler_error("Stream does not support writing.");
+StreamGetPositionFn :: fn (TStream: type) type #comptime {
+    return *fn(stream: *TStream) s64;
 }
-        assert(stream && stream.vtable && stream.vtable.write);
-        if bytes_to_write < 1 { return 0, OK; }
-        return stream.vtable.write(stream, src, bytes_to_write);
-    };
-    fn (stream: *?TStream, data: []u8) (s64, Error) #inline {
-#if !has_member(@TStream.vtable, "write") {
-        compiler_error("Stream does not support writing.");
-}
-        assert(stream && stream.vtable && stream.vtable.write);
-        return stream.vtable.write(stream, data.ptr, data.len);
-    };
-};
 
-/// Reads data from the `stream` and return count of read bytes or error.
-///
-/// **Overloads:**
-/// ```c
-/// fn (stream: *Stream, dest: *u8, bytes_to_read: s64) (s64, Error) #inline
-/// fn (stream: *Stream, dest: *[..]u8, bytes_to_read: s64 = std.S64_MAX) (s64, Error) #inline
-/// fn (stream: *Stream, dest: *string, bytes_to_read: s64 = std.S64_MAX) (s64, Error) #inline
-/// ```
-///
-/// !!! note
-///     Cause panic in case the stream is write-only.
-read :: fn {
-    fn (stream: *Stream, dest: *u8, bytes_to_read: s64) (s64, Error) #inline {
-        assert(stream);
-        assert(stream.vtable);
-        if !stream.vtable.read { panic("Stream does not support reading!"); }
+StreamSetPositionFn :: fn (TStream: type) type #comptime {
+    return *fn(stream: *TStream, locator: StreamLocator, offset: s64) Error;
+}
+
+// =================================================================================================
+// Writing
+// =================================================================================================
+
+write :: fn (stream: *?TStream, src: *u8, bytes_to_write: s64) (s64, Error) #inline {
+#if !has_member(@TStream.vtable, "write") {
+    compiler_error("Stream does not support writing.");
+}
+    assert(stream && stream.vtable && stream.vtable.write);
+    if bytes_to_write < 1 { return 0, OK; }
+    return stream.vtable.write(stream, src, bytes_to_write);
+}
+
+write_slice :: fn (stream: *?TStream, data: []u8, bytes_to_write := std.S64_MAX) (s64, Error) #inline {
+    return write(stream, data.ptr, min(data.len, bytes_to_write));
+}
+
+write_string :: fn (stream: *?TStream, str: string_view, bytes_to_write := std.S64_MAX) (s64, Error) #inline {
+    return write(stream, str.ptr, min(str.len, bytes_to_write));
+}
+
+// =================================================================================================
+// Reading
+// =================================================================================================
+
+read :: fn (stream: *?TStream, dest: *u8, bytes_to_read: s64) (s64, Error) #inline {
+#if !has_member(@TStream.vtable, "read") {
+        compiler_error("Stream does not support reading.");
+}
+        assert(stream && stream.vtable && stream.vtable.read);
         if bytes_to_read < 1 { return 0, OK; }
         return stream.vtable.read(stream, dest, bytes_to_read);
-    };
-    fn (stream: *Stream, dest: *[..]u8, bytes_to_read: s64 = std.S64_MAX) (s64, Error) #inline {
-        assert(stream);
-        assert(stream.vtable);
-        if !stream.vtable.read { panic("Stream does not support reading!"); }
-        tmp: [512]u8 #noinit;
-        read_bytes: s64;
-        loop bytes_to_read > 0 {
-            read, err :: stream.vtable.read(stream, tmp.ptr, min(tmp.len, bytes_to_read));
-            if err { return read_bytes, err; }
-            if read == 0 { break; }
-            read_bytes += read;
-            bytes_to_read -= read;
-            array_push_all(dest, []u8.{ ptr = tmp.ptr, len = read});
-        }
-        return read_bytes, OK;
-    };
-    fn (stream: *Stream, dest: *string, bytes_to_read: s64 = std.S64_MAX) (s64, Error) #inline {
-        assert(stream);
-        assert(stream.vtable);
-        if !stream.vtable.read { panic("Stream does not support reading!"); }
-        tmp: [512]u8 #noinit;
-        read_bytes: s64;
-        loop bytes_to_read > 0 {
-            read, err :: stream.vtable.read(stream, tmp.ptr, min(tmp.len, bytes_to_read));
-            if err { return read_bytes, err; }
-            if read == 0 { break; }
-            read_bytes += read;
-            bytes_to_read -= read;
-            str :: string_view.{ ptr = tmp.ptr, len = read };
-            str_append(dest, str);
-        }
-        return read_bytes, OK;
-    };
 }
 
-get_position :: fn (stream: *Stream) s64 {
-    assert(stream);
-    assert(stream.vtable);
-    assert(stream.vtable.get_position);
+read_data :: fn (stream: *?TStream, dest: *[..]u8, bytes_to_read: s64 = std.S64_MAX) (s64, Error) {
+    tmp: [512]u8 #noinit;
+    read_bytes: s64;
+    loop bytes_to_read > 0 {
+        bytes, err :: read(stream, tmp.ptr, min(tmp.len, bytes_to_read));
+        if err { return read_bytes, err; }
+        if bytes == 0 { break; }
+        read_bytes += bytes;
+        bytes_to_read -= bytes;
+        array_push_all(dest, []u8.{ ptr = tmp.ptr, len = bytes });
+    }
+    return read_bytes, OK;
+}
+
+read_string :: fn (stream: *?TStream, dest: *string, bytes_to_read: s64 = std.S64_MAX) (s64, Error) {
+    tmp: [512]u8 #noinit;
+    read_bytes: s64;
+    loop bytes_to_read > 0 {
+        bytes, err :: read(stream, tmp.ptr, min(tmp.len, bytes_to_read));
+        if err { return read_bytes, err; }
+        if bytes == 0 { break; }
+        read_bytes += bytes;
+        bytes_to_read -= bytes;
+        str :: string_view.{ ptr = tmp.ptr, len = bytes };
+        str_append(dest, str);
+    }
+    return read_bytes, OK;
+}
+
+// =================================================================================================
+// Other
+// =================================================================================================
+
+get_position :: fn (stream: *?TStream) s64 #inline {
+#if !has_member(@TStream.vtable, "get_position") {
+    compiler_error("Stream does not support reading of index location, 'get_position' function is missing.");
+}
+    assert(stream && stream.vtable && stream.vtable.get_position);
     return stream.vtable.get_position(stream);
 }
 
-set_position :: fn (stream: *Stream, locator: StreamLocator, offset: s64 = 0) Error {
-    assert(stream);
-    assert(stream.vtable);
-    assert(stream.vtable.set_position);
+set_position :: fn (stream: *?TStream, locator: StreamLocator, offset: s64 = 0) Error {
+#if !has_member(@TStream.vtable, "set_position") {
+    compiler_error("Stream does not support setting of index location, 'set_position' function is missing.");
+}
+    assert(stream && stream.vtable && stream.vtable.set_position);
     return stream.vtable.set_position(stream, locator, offset);
 }

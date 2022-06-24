@@ -43,7 +43,7 @@ create_config_file :: fn () bool {
 
     content :: sprint(CONFIG, blc_ver());
     defer str_delete(&content);
-    _, err2 :: write(&stream, content);
+    _, err2 :: write_string(&stream, content);
     if err2 {
         print_err("%", err2);
         return false;

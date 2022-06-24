@@ -244,6 +244,15 @@ write :: fn (stream: *std.FileStream, src: *u8, size: s64) (s64, Error) {
     return auto written_bytes, OK;
 }
 
+tell :: fn (stream: *std.FileStream) s64 {
+    result :: win32.SetFilePointer(hFile, 0, 0, win32.FILE_CURRENT);
+    if result == win32.INVALID_SET_FILE_POINTER {
+        ec, estr :: os_get_last_error();
+        return 0, error(ec, "Cannot get file pointer: %", estr);
+    }
+    return auto result;
+}
+
 #private
 modes_to_flags :: fn (modes: std.OpenFileMode) (access: u32, create: u32, append: bool) #inline {
     access: u32;

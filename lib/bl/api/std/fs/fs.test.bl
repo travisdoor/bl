@@ -112,7 +112,7 @@ fs_open_stream_test3 :: fn () #test {
     test_ok(err);
 
     // Cannot write to file when Write or Append is not specified.
-    written, err2 :: std.write(&stream, "Hello!");
+    written, err2 :: std.write_string(&stream, "Hello!");
     test_not_ok(err2);
     test_eq(written, 0);
 }
@@ -124,7 +124,7 @@ fs_read_string_test :: fn () #test {
     test_ok(err1);
     tmp := str_new();
     defer str_delete(&tmp);
-    read_bytes, err2 := read(&stream, &tmp);
+    read_bytes, err2 := read_string(&stream, &tmp);
     test_ok(err2);
     test_eq(tmp.len, read_bytes);
     test_true(tmp.len > 0);
@@ -137,7 +137,7 @@ fs_read_bytes_test :: fn () #test {
     test_ok(err1);
     data: [..]u8;
     defer array_terminate(&data);
-    read_bytes, err2 := read(&stream, &data);
+    read_bytes, err2 := read_data(&stream, &data);
     test_ok(err2);
     test_not_null(data.ptr);
     test_eq(data.len, read_bytes);
@@ -159,7 +159,7 @@ fs_file_stream_create_invalid_write :: fn () #test {
     defer close_file(&stream);
     test_ok(err);
     // Cannot write to file when Write or Append is not specified.
-    written, err2 :: write(&stream, "Hello!");
+    written, err2 :: write_string(&stream, "Hello!");
     test_not_ok(err2);
     test_eq(written, 0);
 }
@@ -172,7 +172,7 @@ fs_file_stream_create_and_write :: fn () #test {
     stream, err :: open_file(filepath, make_flags(OpenFileMode.CREATE, OpenFileMode.WRITE));
     defer close_file(&stream);
     test_ok(err);
-    written, err2 :: write(&stream, "Hello!");
+    written, err2 :: write_string(&stream, "Hello!");
     test_ok(err2);
     test_eq(written, 6);
 }
@@ -187,7 +187,7 @@ fs_file_stream_create_and_reuse :: fn () #test {
         stream, err :: open_file(filepath, make_flags(OpenFileMode.CREATE, OpenFileMode.WRITE));
         defer close_file(&stream);
         test_ok(err);
-        written, err2 :: write(&stream, "Hello!");
+        written, err2 :: write_string(&stream, "Hello!");
         test_ok(err2);
         test_eq(written, 6);
     }
@@ -195,7 +195,7 @@ fs_file_stream_create_and_reuse :: fn () #test {
         stream, err :: open_file(filepath, make_flags(OpenFileMode.CREATE, OpenFileMode.APPEND));
         defer close_file(&stream);
         test_ok(err);
-        written, err2 :: write(&stream, "Hello!");
+        written, err2 :: write_string(&stream, "Hello!");
         test_ok(err2);
         test_eq(written, 6);
     }
@@ -205,7 +205,7 @@ fs_file_stream_create_and_reuse :: fn () #test {
         test_ok(err);
         tmp := str_new();
         defer str_delete(&tmp);
-        read_bytes, err2 :: read(&stream, &tmp);
+        read_bytes, err2 :: read_string(&stream, &tmp);
         test_ok(err2);
         test_eq(read_bytes, tmp.len);
         test_eq(tmp, "Hello!Hello!");
@@ -224,7 +224,7 @@ fs_file_read_empty :: fn () #test {
     test_ok(err);
     tmp := str_new();
     defer str_delete(&tmp);
-    read_bytes, err2 :: read(&stream, &tmp);
+    read_bytes, err2 :: read_string(&stream, &tmp);
     test_ok(err2);
     test_eq(read_bytes, 0);
     test_eq(read_bytes, tmp.len);
@@ -241,7 +241,7 @@ fs_file_stream_create_twice_and_override :: fn () #test {
         stream, err :: open_file(filepath, make_flags(OpenFileMode.CREATE, OpenFileMode.WRITE));
         defer close_file(&stream);
         test_ok(err);
-        written, err2 :: write(&stream, "Hello!");
+        written, err2 :: write_string(&stream, "Hello!");
         test_ok(err2);
         test_eq(written, 6);
     }
@@ -249,7 +249,7 @@ fs_file_stream_create_twice_and_override :: fn () #test {
         stream, err :: open_file(filepath, make_flags(OpenFileMode.CREATE, OpenFileMode.WRITE));
         defer close_file(&stream);
         test_ok(err);
-        written, err2 :: write(&stream, "Hello!");
+        written, err2 :: write_string(&stream, "Hello!");
         test_ok(err2);
         test_eq(written, 6);
     }
@@ -259,7 +259,7 @@ fs_file_stream_create_twice_and_override :: fn () #test {
         test_ok(err);
         tmp := str_new();
         defer str_delete(&tmp);
-        read_bytes, err2 :: read(&stream, &tmp);
+        read_bytes, err2 :: read_string(&stream, &tmp);
         test_ok(err2);
         test_eq(read_bytes, tmp.len);
         test_eq(tmp, "Hello!");
@@ -296,7 +296,7 @@ fs_write_raw :: fn () #test {
         defer close_file(&stream);
         tmp := str_new();
         defer str_delete(&tmp);
-        _, err :: read(&stream, &tmp);
+        _, err :: read_string(&stream, &tmp);
         test_ok(err);
         test_eq(tmp, content);
     }
@@ -312,7 +312,7 @@ fs_write_string :: fn () #test {
     { // write
         stream :: open_file(filepath, make_flags(std.OpenFileMode.CREATE, std.OpenFileMode.WRITE));
         defer close_file(&stream);
-        written, err :: write(&stream, content);
+        written, err :: write_string(&stream, content);
         test_ok(err);
         test_eq(written, content.len);
     }
@@ -321,37 +321,11 @@ fs_write_string :: fn () #test {
         defer close_file(&stream);
         tmp := str_new();
         defer str_delete(&tmp);
-        len, err :: read(&stream, &tmp);
+        len, err :: read_string(&stream, &tmp);
         test_ok(err);
         test_eq(tmp, content);
         test_eq(len, tmp.len);
     }
-}
-
-fs_write_slice :: fn () #test {
-    using std;
-    filepath :: get_dummy_filepath();
-    defer str_delete(&filepath);
-    remove_file(filepath);
-    content :: [5]u8.{'H', 'e', 'l', 'l', 'o' };
-
-    { // write
-        stream :: open_file(filepath, make_flags(std.OpenFileMode.CREATE, std.OpenFileMode.WRITE));
-        defer close_file(&stream);
-        written, err :: write(&stream, content);
-        test_ok(err);
-        test_eq(written, content.len);
-    }
-    { // read
-        stream :: open_file(filepath);
-        defer close_file(&stream);
-        tmp := str_new();
-        defer str_delete(&tmp);
-        _, err :: read(&stream, &tmp);
-        test_ok(err);
-        test_eq(tmp.len, content.len);
-    }
-    remove_file(filepath);
 }
 
 fs_get_uid_test_from_filename :: fn () #test {

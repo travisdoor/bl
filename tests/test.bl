@@ -1,3 +1,6 @@
+// TODO:
+// - Add unroll for variable settings.
+
 #import "std/io"
 
 MyStream :: struct {

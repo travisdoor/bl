@@ -356,7 +356,7 @@ get_expected_error :: fn (filepath: string_view) (is_present: bool, error: s32) 
     if err_open { print_err("%", err_open); return false, 0; }
     content := str_new();
     defer str_delete(&content);
-    _, err_read :: read(&stream, &content);
+    _, err_read :: read_string(&stream, &content);
     if err_read { print_err("%", err_read); return false, 0; }
 
     tmp :: str_split_by(content, '@');
