@@ -229,7 +229,7 @@ normalize :: fn (filepath: *string) Error {
     return OK;
 }
 
-read :: fn (stream: *std.FileStream, dest: *u8, bytes_to_read: s64) (bytes_read: s64, err: Error) {
+read :: fn (stream: *std.FileStream, dest: *u8, bytes_to_read: s64) (s64, Error) {
     if !dest { return 0, error(ERR_INVALID_HANDLE, "Cannot read, destination is invalid."); }
     read :: C.read(auto stream.handle, auto dest, auto bytes_to_read);
     if read < 0 {
@@ -247,6 +247,30 @@ write :: fn (stream: *std.FileStream, src: *u8, bytes_to_write: s64) (s64, Error
         return 0, error(ec, "Cannot write to file: %.", estr);
     }
     return auto written, OK;
+}
+
+tell :: fn (stream: *std.FileStream) (index: s64, err: Error) {
+    result :: C.ftell(stream.handle);
+    if result < 0 {
+        ec, estr :: os_get_last_error();
+        return 0, error(ec, "Cannot get file pointer: %", estr);
+    }
+    return auto result, OK;
+}
+
+seek :: fn (stream: *std.FileStream, locator: std.StreamLocator, offset: s64) Error {
+    move_method := win32.FILE_CURRENT;
+    using std.StreamLocator;
+    switch locator {
+        CURRENT;
+        BEGIN { move_method = win32.FILE_BEGIN; }
+        END { move_method = win32.FILE_END; }
+    }
+    if win32.SetFilePointer(stream.handle, auto offset, null, move_method) == win32.INVALID_SET_FILE_POINTER {
+        ec, estr :: os_get_last_error();
+        return error(ec, "Cannot get file pointer: %", estr);
+    }
+    return OK;
 }
 
 #private
