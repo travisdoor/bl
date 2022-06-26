@@ -959,7 +959,7 @@ analyze_instr_cast(struct context *ctx, struct mir_instr_cast *cast, bool analyz
 static struct result analyze_instr_sizeof(struct context *ctx, struct mir_instr_sizeof *szof);
 static struct result analyze_instr_type_info(struct context             *ctx,
                                              struct mir_instr_type_info *type_info);
-static struct result analyze_instr_typeof(struct context *ctx, struct mir_instr_typeof *typeof);
+static struct result analyze_instr_typeof(struct context *ctx, struct mir_instr_typeof *type_of);
 static struct result analyze_instr_alignof(struct context *ctx, struct mir_instr_alignof *alof);
 static struct result analyze_instr_binop(struct context *ctx, struct mir_instr_binop *binop);
 static struct result analyze_instr_call_loc(struct context *ctx, struct mir_instr_call_loc *loc);
@@ -4403,8 +4403,8 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
         }
 
         case MIR_INSTR_TYPEOF: {
-            struct mir_instr_typeof *typeof = (struct mir_instr_typeof *)top;
-            sarrput(&queue, unref_instr(typeof->expr));
+            struct mir_instr_typeof *type_of = (struct mir_instr_typeof *)top;
+            sarrput(&queue, unref_instr(type_of->expr));
             break;
         }
 
@@ -5862,25 +5862,25 @@ struct result analyze_instr_alignof(struct context *ctx, struct mir_instr_aligno
     return_zone(PASS);
 }
 
-struct result analyze_instr_typeof(struct context *ctx, struct mir_instr_typeof *typeof)
+struct result analyze_instr_typeof(struct context *ctx, struct mir_instr_typeof *type_of)
 {
     zone();
-    if (!typeof->expr) {
-        if (sarrlenu(typeof->args) != 1) {
-            report_invalid_call_argument_count(ctx, typeof->base.node, 1, sarrlenu(typeof->args));
+    if (!type_of->expr) {
+        if (sarrlenu(type_of->args) != 1) {
+            report_invalid_call_argument_count(ctx, type_of->base.node, 1, sarrlenu(type_of->args));
             return_zone(FAIL);
         }
-        typeof->expr = sarrpeek(typeof->args, 0);
+        type_of->expr = sarrpeek(type_of->args, 0);
     }
-    bassert(typeof->base.value.type == ctx->builtin_types->t_type);
-    if (analyze_slot(ctx, &analyze_slot_conf_basic, &typeof->expr, NULL) != ANALYZE_PASSED) {
+    bassert(type_of->base.value.type == ctx->builtin_types->t_type);
+    if (analyze_slot(ctx, &analyze_slot_conf_basic, &type_of->expr, NULL) != ANALYZE_PASSED) {
         return_zone(FAIL);
     }
-    const struct mir_type *expr_type = typeof->expr->value.type;
+    const struct mir_type *expr_type = type_of->expr->value.type;
     bassert(expr_type);
     switch (expr_type->kind) {
     case MIR_TYPE_NAMED_SCOPE:
-        report_error(INVALID_TYPE, typeof->expr->node, "Invalid expression for typeof operator.");
+        report_error(INVALID_TYPE, type_of->expr->node, "Invalid expression for typeof operator.");
         return_zone(FAIL);
     default:
         break;

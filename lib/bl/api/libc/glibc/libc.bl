@@ -86,6 +86,8 @@ usleep :: fn (us: uint) int #extern "usleep";
 rmdir :: fn (path: *char) int #extern "rmdir";
 chdir :: fn (path: *char) int #extern "chdir";
 qsort :: fn (base: void_ptr, nitems: size_t, size: size_t, compar: *fn (void_ptr, void_ptr) int) #extern "qsort";
+ftell :: fn (stream: void_ptr) long #extern "ftell";
+fseek :: fn (stream: void_ptr, offset: long, whence: int) int #extern "fseek";
 
 DIR :: u8;
 dirent_t :: struct {

@@ -250,7 +250,7 @@ write :: fn (stream: *std.FileStream, src: *u8, bytes_to_write: s64) (s64, Error
 }
 
 tell :: fn (stream: *std.FileStream) (index: s64, err: Error) {
-    result :: C.ftell(stream.handle);
+    result :: C.ftell(auto stream.handle);
     if result < 0 {
         ec, estr :: os_get_last_error();
         return 0, error(ec, "Cannot get file pointer: %", estr);
@@ -259,14 +259,14 @@ tell :: fn (stream: *std.FileStream) (index: s64, err: Error) {
 }
 
 seek :: fn (stream: *std.FileStream, locator: std.StreamLocator, offset: s64) Error {
-    move_method := win32.FILE_CURRENT;
+    move_method := C.SEEK_CUR;
     using std.StreamLocator;
     switch locator {
         CURRENT;
-        BEGIN { move_method = win32.FILE_BEGIN; }
-        END { move_method = win32.FILE_END; }
+        BEGIN { move_method = C.SEEK_SET; }
+        END { move_method = C.SEEK_END; }
     }
-    if win32.SetFilePointer(stream.handle, auto offset, null, move_method) == win32.INVALID_SET_FILE_POINTER {
+    if C.fseek(auto stream.handle, offset, move_method) != 0 {
         ec, estr :: os_get_last_error();
         return error(ec, "Cannot get file pointer: %", estr);
     }

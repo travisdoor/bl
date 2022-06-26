@@ -267,7 +267,7 @@ static void print_instr_phi(struct context *ctx, struct mir_instr_phi *phi);
 static void print_instr_cast(struct context *ctx, struct mir_instr_cast *cast);
 static void print_instr_sizeof(struct context *ctx, struct mir_instr_sizeof *szof);
 static void print_instr_type_info(struct context *ctx, struct mir_instr_type_info *type_info);
-static void print_instr_typeof(struct context *ctx, struct mir_instr_typeof *typeof);
+static void print_instr_typeof(struct context *ctx, struct mir_instr_typeof *type_of);
 static void print_instr_alignof(struct context *ctx, struct mir_instr_alignof *szof);
 static void print_instr_load(struct context *ctx, struct mir_instr_load *load);
 static void print_instr_addrof(struct context *ctx, struct mir_instr_addrof *addrof);
@@ -597,10 +597,10 @@ void print_instr_type_info(struct context *ctx, struct mir_instr_type_info *type
     print_comptime_value_or_id(ctx, type_info->expr);
 }
 
-void print_instr_typeof(struct context *ctx, struct mir_instr_typeof *typeof)
+void print_instr_typeof(struct context *ctx, struct mir_instr_typeof *type_of)
 {
-    print_instr_head(ctx, &typeof->base, "typeof");
-    print_comptime_value_or_id(ctx, typeof->expr);
+    print_instr_head(ctx, &type_of->base, "typeof");
+    print_comptime_value_or_id(ctx, type_of->expr);
 }
 
 void print_instr_alignof(struct context *ctx, struct mir_instr_alignof *szof)

@@ -214,6 +214,50 @@ normalize :: fn (filepath: *string) Error {
     return OK;
 }
 
+read :: fn (stream: *std.FileStream, dest: *u8, bytes_to_read: s64) (s64, Error) {
+    if !dest { return 0, error(ERR_INVALID_HANDLE, "Cannot read, destination is invalid."); }
+    read :: C.read(auto stream.handle, auto dest, auto bytes_to_read);
+    if read < 0 {
+        ec, estr :: os_get_last_error();
+        return 0, error(ec, "Cannot read file: %", estr);
+    }
+    return auto read, OK;
+}
+
+write :: fn (stream: *std.FileStream, src: *u8, bytes_to_write: s64) (s64, Error) {
+    if !src { return 0, error(ERR_INVALID_HANDLE, "Cannot write, source is invalid."); }
+    written :: C.write(auto stream.handle, auto src, auto bytes_to_write);
+    if written < 0 {
+        ec, estr :: os_get_last_error();
+        return 0, error(ec, "Cannot write to file: %.", estr);
+    }
+    return auto written, OK;
+}
+
+tell :: fn (stream: *std.FileStream) (index: s64, err: Error) {
+    result :: C.ftell(auto stream.handle);
+    if result < 0 {
+        ec, estr :: os_get_last_error();
+        return 0, error(ec, "Cannot get file pointer: %", estr);
+    }
+    return auto result, OK;
+}
+
+seek :: fn (stream: *std.FileStream, locator: std.StreamLocator, offset: s64) Error {
+    move_method := C.SEEK_CUR;
+    using std.StreamLocator;
+    switch locator {
+        CURRENT;
+        BEGIN { move_method = C.SEEK_SET; }
+        END { move_method = C.SEEK_END; }
+    }
+    if C.fseek(auto stream.handle, offset, move_method) != 0 {
+        ec, estr :: os_get_last_error();
+        return error(ec, "Cannot get file pointer: %", estr);
+    }
+    return OK;
+}
+
 #private
 modes_to_flags :: fn (modes: std.OpenFileMode) s32 #inline {
     r, w, create, append := false;

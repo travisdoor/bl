@@ -95,7 +95,7 @@ static void interp_instr_decl_direct_ref(struct virtual_machine           *vm,
                                          struct mir_instr_decl_direct_ref *ref);
 static void eval_instr(struct virtual_machine *vm, struct mir_instr *instr);
 static void eval_instr_type_info(struct virtual_machine *vm, struct mir_instr_type_info *type_info);
-static void eval_instr_typeof(struct virtual_machine *vm, struct mir_instr_typeof *typeof);
+static void eval_instr_typeof(struct virtual_machine *vm, struct mir_instr_typeof *type_of);
 static void eval_instr_call_loc(struct virtual_machine *vm, struct mir_instr_call_loc *loc);
 static void eval_instr_test_cases(struct virtual_machine *vm, struct mir_instr_test_case *tc);
 static void eval_instr_member_ptr(struct virtual_machine      *vm,
@@ -1994,9 +1994,9 @@ void eval_instr_type_info(struct virtual_machine *vm, struct mir_instr_type_info
     MIR_CEV_WRITE_AS(vm_stack_ptr_t, &type_info->base.value, rtti_var->value.data);
 }
 
-void eval_instr_typeof(struct virtual_machine *vm, struct mir_instr_typeof *typeof)
+void eval_instr_typeof(struct virtual_machine *vm, struct mir_instr_typeof *type_of)
 {
-    MIR_CEV_WRITE_AS(struct mir_type *, &typeof->base.value, typeof->expr->value.type);
+    MIR_CEV_WRITE_AS(struct mir_type *, &type_of->base.value, type_of->expr->value.type);
 }
 
 void eval_instr_call_loc(struct virtual_machine UNUSED(*vm), struct mir_instr_call_loc *loc)
