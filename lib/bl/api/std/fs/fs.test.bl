@@ -328,6 +328,39 @@ fs_write_string :: fn () #test {
     }
 }
 
+fs_seek_begin_end :: fn () #test {
+    using std;
+    stream :: open_file(#file);
+    defer close_file(&stream);
+
+    {
+        p, e :: tell(&stream);
+        test_ok(e);
+        test_eq(p, 0);
+    }
+    {
+        e1 :: seek(&stream, StreamLocator.BEGIN);
+        test_ok(e1);
+        p, e2 :: tell(&stream);
+        test_ok(e2);
+        test_eq(p, 0);
+    }
+    {
+        e1 :: seek(&stream, StreamLocator.CURRENT);
+        test_ok(e1);
+        p, e2 :: tell(&stream);
+        test_ok(e2);
+        test_eq(p, 0);
+    }
+    {
+        e1 :: seek(&stream, StreamLocator.END);
+        test_ok(e1);
+        p, e2 :: tell(&stream);
+        test_ok(e2);
+        test_true(p > 0);
+    }
+}
+
 fs_get_uid_test_from_filename :: fn () #test {
     using std;
     filepath :: get_dummy_filepath();
