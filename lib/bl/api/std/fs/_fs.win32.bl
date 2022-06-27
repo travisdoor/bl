@@ -244,13 +244,28 @@ write :: fn (stream: *std.FileStream, src: *u8, size: s64) (s64, Error) {
     return auto written_bytes, OK;
 }
 
-tell :: fn (stream: *std.FileStream) s64 {
-    result :: win32.SetFilePointer(hFile, 0, 0, win32.FILE_CURRENT);
+tell :: fn (stream: *std.FileStream) (index: s64, err: Error) {
+    result :: win32.SetFilePointer(stream.handle, 0, null, win32.FILE_CURRENT);
     if result == win32.INVALID_SET_FILE_POINTER {
         ec, estr :: os_get_last_error();
         return 0, error(ec, "Cannot get file pointer: %", estr);
     }
-    return auto result;
+    return auto result, OK;
+}
+
+seek :: fn (stream: *std.FileStream, locator: std.StreamLocator, offset: s64) Error {
+    move_method := win32.FILE_CURRENT;
+    using std.StreamLocator;
+    switch locator {
+        CURRENT;
+        BEGIN { move_method = win32.FILE_BEGIN; }
+        END { move_method = win32.FILE_END; }
+    }
+    if win32.SetFilePointer(stream.handle, auto offset, null, move_method) == win32.INVALID_SET_FILE_POINTER {
+        ec, estr :: os_get_last_error();
+        return error(ec, "Cannot get file pointer: %", estr);
+    }
+    return OK;
 }
 
 #private
