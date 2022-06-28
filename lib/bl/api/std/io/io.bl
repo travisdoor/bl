@@ -83,14 +83,9 @@ StreamWriteFn :: fn (TStream: type) type #comptime {
     return *fn(stream: *TStream, src: *u8, bytes_to_read: s64) (bytes: s64, err: Error);
 }
 
-/// Returns type of the stream tell function for the stream of `TStream` type.
-StreamTellFn :: fn (TStream: type) type #comptime {
-    return *fn(stream: *TStream) (index: s64, err: Error);
-}
-
 /// Returns type of the stream seek function for the stream of `TStream` type.
 StreamSeekFn :: fn (TStream: type) type #comptime {
-    return *fn(stream: *TStream, locator: StreamLocator, offset: s64) Error;
+    return *fn(stream: *TStream, locator: StreamLocator, offset: s64) (position: s64, err: Error);
 }
 
 // =================================================================================================
@@ -172,17 +167,9 @@ read_string :: fn (stream: *?TStream, dest: *string, bytes_to_read: s64 = std.S6
 // Other
 // =================================================================================================
 
-/// Return the actuall pointer position in the stream memory or an error.
-tell :: fn (stream: *?TStream) (position: s64, err: Error) #inline {
-#if !has_member(@TStream.vtable, "tell") {
-    compiler_error("Stream does not support position reading, 'tell' function is missing.");
-}
-    assert(stream && stream.vtable && stream.vtable.tell);
-    return stream.vtable.tell(stream);
-}
-
-/// Set the stream pointer position to the `offset` value relative to the stream `locator`.
-seek :: fn (stream: *?TStream, locator: StreamLocator, offset: s64 = 0) Error {
+/// Set the stream pointer position to the `offset` value relative to the stream `locator`. Returns
+/// the pointer position or an error.
+seek :: fn (stream: *?TStream, locator := StreamLocator.CURRENT, offset: s64 = 0) (position: s64, err: Error) {
 #if !has_member(@TStream.vtable, "seek") {
     compiler_error("Stream does not support position seeking, 'seek' function is missing.");
 }

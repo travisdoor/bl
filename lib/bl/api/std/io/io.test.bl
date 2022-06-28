@@ -12,7 +12,6 @@ MyStreamVTable :: struct {
 
     read: StreamReadFn(MyStream);
     write: StreamWriteFn(MyStream);
-    tell: StreamTellFn(MyStream);
     seek: StreamSeekFn(MyStream);
 }
 
@@ -20,7 +19,6 @@ MY_STREAM_VTABLE :: MyStreamVTable.{
     read = &my_read,
     write = &my_write,
     seek = &my_seek,
-    tell = &my_tell,
 };
 
 my_read :: fn (stream: *MyStream, dest: *u8, bytes_to_read: s64) (s64, Error) {
@@ -40,17 +38,13 @@ my_write :: fn (stream: *MyStream, src: *u8, bytes_to_write: s64) (s64, Error) {
     return size, OK;
 }
 
-my_seek :: fn (stream: *MyStream, locator: std.StreamLocator, offset: s64) Error {
+my_seek :: fn (stream: *MyStream, locator: std.StreamLocator, offset: s64) (s64, Error) {
     using std.StreamLocator;
     switch locator {
         CURRENT { stream.index += offset; }
         BEGIN   { stream.index = offset;  }
         END     { stream.index = stream.buffer.len; }
     }
-    return OK;
-}
-
-my_tell :: fn (stream: *MyStream) (position: s64, err: Error) {
     return stream.index, OK;
 }
 
@@ -83,7 +77,7 @@ write_read_string :: fn () #test {
         test_ok(write_err);
         test_eq(written, 6);
     }
-    p1, e1 :: tell(&stream);
+    p1, e1 :: seek(&stream);
     test_ok(e1);
     test_eq(p1, 18);
 
@@ -92,7 +86,7 @@ write_read_string :: fn () #test {
     read, read_err :: std.read_string(&stream, &dest);
     test_ok(read_err);
     test_eq(read, 18);
-    p2, e2 :: tell(&stream);
+    p2, e2 :: seek(&stream);
     test_ok(e2);
     test_eq(p2, 0);
 }
@@ -103,12 +97,12 @@ positions :: fn () #test {
     init_stream(&stream);
 
     seek(&stream, StreamLocator.END);
-    p1, e1 :: tell(&stream);
+    p1, e1 :: seek(&stream);
     test_ok(e1);
     test_eq(p1, stream.buffer.len);
 
     seek(&stream, StreamLocator.BEGIN);
-    p2, e2 :: tell(&stream);
+    p2, e2 :: seek(&stream);
     test_ok(e2);
     test_eq(p2, 0);
 }
