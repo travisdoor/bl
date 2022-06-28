@@ -73,6 +73,7 @@ PLARGE_INTEGER :: *LARGE_INTEGER;
 HGLOBAL      :: C.void_ptr;
 HWND         :: C.void_ptr;
 LONG         :: C.long;
+LONGLONG     :: C.longlong;
 PLONG        :: *LONG;
 WORD         :: C.ushort;
 LPARAM       :: LONG_PTR;

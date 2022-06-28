@@ -233,16 +233,7 @@ write :: fn (stream: *std.FileStream, src: *u8, size: s64) (s64, Error) {
     return auto written_bytes, OK;
 }
 
-tell :: fn (stream: *std.FileStream) (index: s64, err: Error) {
-    result :: win32.SetFilePointer(stream.handle, 0, null, win32.FILE_CURRENT);
-    if result == win32.INVALID_SET_FILE_POINTER {
-        ec, estr :: os_get_last_error();
-        return 0, error(ec, "Cannot get file pointer: %", estr);
-    }
-    return auto result, OK;
-}
-
-seek :: fn (stream: *std.FileStream, locator: std.StreamLocator, offset: s64) Error {
+seek :: fn (stream: *std.FileStream, locator: std.StreamLocator, offset: s64) (s64, Error) {
     move_method := win32.FILE_CURRENT;
     using std.StreamLocator;
     switch locator {
@@ -250,11 +241,15 @@ seek :: fn (stream: *std.FileStream, locator: std.StreamLocator, offset: s64) Er
         BEGIN { move_method = win32.FILE_BEGIN; }
         END { move_method = win32.FILE_END; }
     }
-    if win32.SetFilePointer(stream.handle, auto offset, null, move_method) == win32.INVALID_SET_FILE_POINTER {
+    of: struct { part: struct { low: win32.LONG; high: win32.LONG }; size: win32.LONGLONG };
+    of.size = offset;
+    result :: win32.SetFilePointer(stream.handle, of.part.low, &of.part.high, move_method);
+    if result == win32.INVALID_SET_FILE_POINTER {
         ec, estr :: os_get_last_error();
-        return error(ec, "Cannot get file pointer: %", estr);
+        return 0, error(ec, "Cannot get file pointer: %", estr);
     }
-    return OK;
+    of.part.low = auto result;
+    return of.size, OK;
 }
 
 #private
