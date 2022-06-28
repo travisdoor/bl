@@ -3,7 +3,9 @@
 //! `#import "std/io"`
 //!
 //! Input and output is handled by generic stream interface containing callbacks for read, write and
-//! seek operations.
+//! seek operations. The stream itself can contain any data needed (i.e. memory buffer, handle to file,
+//! etc.), generic functionality is handled via virtual table containing pointers to the implementation
+//! of all needed (supported) stream API functions.
 //!
 //! ### Example
 //!
