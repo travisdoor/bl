@@ -718,15 +718,6 @@ char  :: 'i';     // u8 literal
 | !      | Logical not.         |
 | ~      | Bit flip.            |
 
-## Special Operators
-
-| Symbol         | Relevant for types | Description                          |
-| -------------- | ------------------ | -------------------------------      |
-| sizeof(expr)   | Any                | Determinates size in bytes.          |
-| alignof(expr)  | Any                | Determinates alignment of epression. |
-| typeinfo(expr) | Any                | Determinates TypeInfo of expression. |
-| typeof(expr)   | Any                | Determinates type of expression.     |
-
 ## Type Info
 
 Biscuit language provides type reflection allowing access to the type structure of the code. Pointer
@@ -2008,23 +1999,50 @@ time.
 
 ## Builtin functions
 
+### `sizeof`
+
 ```
 sizeof(<expr>)
 ```
 
-```
-alignof(<expr>)
-```
+Returns size of any expression or type in bytes.
+
+### `alignof`
 
 ```
-typeinfo(<expr>)
+alignof(<expr>) #comptime
 ```
 
-```
-typeof(<expr>)
-```
+Returns alignment of any expression or type.
+
+### `typeinfo`
 
 ```
-compiler_error(<expr>)
-compiler_warning(<expr>)
+typeinfo(<expr>) #comptime
 ```
+
+Returns pointer to type information structure allocated on stack.
+
+### `typeof`
+
+```
+typeof(<expr>) #comptime
+```
+
+Returns type of any expression.
+
+### `compiler_error`
+
+```
+compiler_error(message: string_view) #comptime
+```
+
+Report error in compile-time.
+
+### `compiler_warning`
+
+```
+compiler_warning(message: string_view) #comptime
+```
+
+Report warning in compile-time.

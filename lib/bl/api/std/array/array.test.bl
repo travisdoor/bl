@@ -1,6 +1,13 @@
 #import "std/array"
 
 #private
+test_members :: fn () #test {
+    test_true(has_member(_Array, "len"));
+    test_true(has_member(_Array, "ptr"));
+    test_true(has_member(_Array, "allocated_elems"));
+    test_true(has_member(_Array, "allocator"));
+}
+
 test_basic_inserting_s32 :: fn () #test {
     arr: [..]s32;
     defer array_terminate(&arr);
