@@ -241,15 +241,15 @@ seek :: fn (stream: *std.FileStream, locator: std.StreamLocator, offset: s64) (s
         BEGIN { move_method = win32.FILE_BEGIN; }
         END { move_method = win32.FILE_END; }
     }
-    of: struct { part: struct { low: win32.LONG; high: win32.LONG }; size: win32.LONGLONG };
-    of.size = offset;
+    of: union { part: struct { low: s32; high: s32; }; offset: s64 };
+    of.offset = offset;
     result :: win32.SetFilePointer(stream.handle, of.part.low, &of.part.high, move_method);
     if result == win32.INVALID_SET_FILE_POINTER {
         ec, estr :: os_get_last_error();
         return 0, error(ec, "Cannot get file pointer: %", estr);
     }
     of.part.low = auto result;
-    return of.size, OK;
+    return of.offset, OK;
 }
 
 #private

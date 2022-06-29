@@ -352,6 +352,9 @@ fs_seek_begin_end :: fn () #test {
         p, e1 :: seek(&stream, StreamLocator.END);
         test_ok(e1);
         test_true(p > 0);
+        size, e2 :: file_size(&stream);
+        test_ok(e2);
+        test_eq(p, size);
     }
     {
         size1, e1 :: seek(&stream, StreamLocator.END);

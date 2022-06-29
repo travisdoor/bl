@@ -4,7 +4,7 @@
 #scope _fs_impl
 
 /// File handle type.
-File :: s64;
+File :: C.int;
 FILE_INVALID : File : -1;
 
 exist :: fn (filepath: string_view) bool #inline {
@@ -238,16 +238,7 @@ write :: fn (stream: *std.FileStream, src: *u8, bytes_to_write: s64) (s64, Error
     return auto written, OK;
 }
 
-tell :: fn (stream: *std.FileStream) (index: s64, err: Error) {
-    result :: C.ftell(auto stream.handle);
-    if result < 0 {
-        ec, estr :: os_get_last_error();
-        return 0, error(ec, "Cannot get file pointer: %", estr);
-    }
-    return auto result, OK;
-}
-
-seek :: fn (stream: *std.FileStream, locator: std.StreamLocator, offset: s64) Error {
+seek :: fn (stream: *std.FileStream, locator: std.StreamLocator, offset: s64) (s64, Error) {
     move_method := C.SEEK_CUR;
     using std.StreamLocator;
     switch locator {
@@ -255,11 +246,13 @@ seek :: fn (stream: *std.FileStream, locator: std.StreamLocator, offset: s64) Er
         BEGIN { move_method = C.SEEK_SET; }
         END { move_method = C.SEEK_END; }
     }
-    if C.fseek(auto stream.handle, offset, move_method) != 0 {
+    // @Incomplete: This does not work on mac yet!
+    position :: C.lseek64(auto stream.handle, offset, move_method);
+    if position < 0 {
         ec, estr :: os_get_last_error();
-        return error(ec, "Cannot get file pointer: %", estr);
+        return 0, error(ec, "Cannot get file pointer: %", estr);
     }
-    return OK;
+    return position, OK;
 }
 
 #private
