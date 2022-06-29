@@ -71,17 +71,6 @@ get_uid_by_name :: fn (filepath: string_view) (u64, Error) {
     return get_uid(file);
 }
 
-/* Not used right now
-size :: fn (handle: File) (usize, Error) #inline {
-    size: win32.LARGE_INTEGER #noinit;
-    if win32.GetFileSizeEx(auto handle, &size) == 0 {
-        ec, estr :: os_get_last_error();
-        return 0, error(ec, "Cannot get file size: %", estr);
-    }
-    return auto size, OK;
-}
-*/
-
 create_dir :: fn (dirpath: string_view) Error {
     if std.str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot create directory, dirpath is empty."); }
     if win32.CreateDirectoryA(std.strtoc(dirpath), null) == 0 {

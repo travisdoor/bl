@@ -98,6 +98,8 @@ remove_file :: fn (filepath: string_view) Error #inline {
 /// Copy existing file from `src` to `dest` and override existing file in destination if `override` 
 /// is true. Return `ok` or `error`.
 ///
+/// The destination file is created if it does not exist.
+///
 /// !!! note
 ///     `src` and `dest` path can be relative path to current working path set by
 ///     [set_cwd](#stdset_cwd).
@@ -361,14 +363,12 @@ get_tmp :: fn () string #inline {
 FileStreamVTable :: struct {
     read: StreamReadFn(FileStream);
     write: StreamWriteFn(FileStream);
-    tell: StreamTellFn(FileStream);
     seek: StreamSeekFn(FileStream);
 };
 
 FILE_STREAM_VTABLE :: FileStreamVTable.{
     read = &_fs_impl.read,
     write = &_fs_impl.write,
-    tell = &_fs_impl.tell,
     seek = &_fs_impl.seek,
 };
 
