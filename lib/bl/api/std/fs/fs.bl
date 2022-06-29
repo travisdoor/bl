@@ -107,13 +107,24 @@ copy_file :: fn (src: string_view, dest: string_view, override := false) Error #
     return _fs_impl.copy(src, dest, override);
 }
 
-/// Return file id.
+/// Returns file id.
 file_uid :: fn {
     fn (stream: *FileStream) (u64, Error) {
         assert(stream);
         return _fs_impl.get_uid(stream.handle);
     };
     _fs_impl.get_uid_by_name;
+}
+
+/// Returns size in bytes of `stream` file or an error.
+file_size :: fn (stream: *FileStream) (s64, Error) {
+    original_position, e1 :: seek(stream);
+    if e1 { return 0, e1; }
+    size, e2 :: seek(stream, StreamLocator.END);
+    if e2 { return 0, e2; }
+    _, e3 :: seek(stream, StreamLocator.BEGIN, original_position);
+    if e3 { return 0, e3; }
+    return size, OK;
 }
 
 // =================================================================================================

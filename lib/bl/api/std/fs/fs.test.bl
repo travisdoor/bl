@@ -339,25 +339,22 @@ fs_seek_begin_end :: fn () #test {
         test_eq(p, 0);
     }
     {
-        _, e1 :: seek(&stream, StreamLocator.BEGIN);
+        p, e1 :: seek(&stream, StreamLocator.BEGIN);
         test_ok(e1);
-        p, e2 :: seek(&stream);
-        test_ok(e2);
         test_eq(p, 0);
     }
     {
-        _, e1 :: seek(&stream, StreamLocator.CURRENT);
+        p, e1 :: seek(&stream, StreamLocator.CURRENT);
         test_ok(e1);
-        p, e2 :: seek(&stream);
-        test_ok(e2);
         test_eq(p, 0);
     }
     {
-        _, e1 :: seek(&stream, StreamLocator.END);
+        p, e1 :: seek(&stream, StreamLocator.END);
         test_ok(e1);
-        p, e2 :: seek(&stream);
-        test_ok(e2);
         test_true(p > 0);
+        size, e2 :: file_size(&stream);
+        test_ok(e2);
+        test_eq(p, size);
     }
 }
 
