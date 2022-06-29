@@ -330,6 +330,7 @@ chdir :: fn (path: *char) int #extern "chdir";
 gettimeofday :: fn (tv: *timeval, tz: *timezone) int #extern "gettimeofday";
 ftell :: fn (stream: void_ptr) long #extern "ftell";
 fseek :: fn (stream: void_ptr, offset: long, whence: int) int #extern "fseek";
+lseek :: fn (fd: int, offset: int, whence: int) int #extern "lseek";
 
 errno :: fn () s32 #inline {
     _errno_location :: fn () *int #extern "__error";
