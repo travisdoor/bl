@@ -656,7 +656,7 @@ ptr : *s32 = null; // *s32 null pointer literal
 ```
 
 ## Integer literals
-
+
 Biscuit language provides constant integer literals written in various formats showed in example
 section. Integer literals has volatile type, when desired type is not specified compiler will choose
 best type to hold the value. Numbers requiring less space than 32 bits will be implicitly set to
@@ -2006,3 +2006,25 @@ List of builtin variables set by compiler.
 - `IS_COMPTIME_RUN` Is bool immutable variable set to true when assembly is executed in compile
 time.
 
+## Builtin functions
+
+```
+sizeof(<expr>)
+```
+
+```
+alignof(<expr>)
+```
+
+```
+typeinfo(<expr>)
+```
+
+```
+typeof(<expr>)
+```
+
+```
+compiler_error(<expr>)
+compiler_warning(<expr>)
+```
