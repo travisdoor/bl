@@ -105,7 +105,7 @@ write :: fn (stream: *?TStream, src: *u8, bytes_to_write: s64) (s64, Error) #inl
 
 /// Write the data slice into the stream, the `bytes_to_write` can be specified to limit count
 /// of written bytes. Returns count of actually written bytes or an error.
-write_slice :: fn (stream: *?TStream, data: []u8, bytes_to_write := std.S64_MAX) (s64, Error) #inline {
+write_data :: fn (stream: *?TStream, data: []u8, bytes_to_write := std.S64_MAX) (s64, Error) #inline {
     return write(stream, data.ptr, min(data.len, bytes_to_write));
 }
 
