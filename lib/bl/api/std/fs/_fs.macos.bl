@@ -246,13 +246,13 @@ seek :: fn (stream: *std.FileStream, locator: std.StreamLocator, offset: s64) (s
         BEGIN { move_method = C.SEEK_SET; }
         END { move_method = C.SEEK_END; }
     }
-    // @Incomplete: This does not work on mac yet!
-    position :: C.lseek64(auto stream.handle, offset, move_method);
+    if offset > std.S32_MAX || offset < std.S32_MIN { panic("Only 32 bit offset is currently suported on this platform."); }
+    position :: C.lseek(auto stream.handle, auto offset, move_method);
     if position < 0 {
         ec, estr :: os_get_last_error();
         return 0, error(ec, "Cannot get file pointer: %", estr);
     }
-    return position, OK;
+    return auto position, OK;
 }
 
 #private
