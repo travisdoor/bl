@@ -73,6 +73,7 @@ PLARGE_INTEGER :: *LARGE_INTEGER;
 HGLOBAL      :: C.void_ptr;
 HWND         :: C.void_ptr;
 LONG         :: C.long;
+LONGLONG     :: C.longlong;
 PLONG        :: *LONG;
 WORD         :: C.ushort;
 LPARAM       :: LONG_PTR;
@@ -259,7 +260,10 @@ FIND_DATAA :: FIND_DATA;
 P_FIND_DATAA :: *FIND_DATA;
 LP_FIND_DATAA :: *FIND_DATA;
 INVALID_HANDLE :: cast(*u8) -1;
+INVALID_FILE_SIZE :: cast(DWORD) 0xFFFFFFFF;
+INVALID_SET_FILE_POINTER :: cast(DWORD) -1;
 INVALID_FILE_ATTRIBUTES :: cast(DWORD) -1;
+
 WAIT_TIMEOUT :: 258;
 WAIT_FAILED : DWORD : 0xFFFFFFFF;
 WAIT_OBJECT_0 :: 0;

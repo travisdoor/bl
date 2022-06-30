@@ -41,6 +41,10 @@ SIGILL  :: 4;
 SIGTRAP :: 5;
 SIGABRT :: 6;
 
+SEEK_SET :: 0;
+SEEK_CUR :: 1;
+SEEK_END :: 2;
+
 signal :: fn (signum: int, handler: *fn (v: int)) *fn (v: int) #extern "signal";
 raise :: fn (sig: int) int #extern "raise";
 getenv :: fn (name: *char) *char #extern "getenv";
@@ -86,6 +90,9 @@ usleep :: fn (us: uint) int #extern "usleep";
 rmdir :: fn (path: *char) int #extern "rmdir";
 chdir :: fn (path: *char) int #extern "chdir";
 qsort :: fn (base: void_ptr, nitems: size_t, size: size_t, compar: *fn (void_ptr, void_ptr) int) #extern "qsort";
+ftell :: fn (stream: void_ptr) long #extern "ftell";
+fseek :: fn (stream: void_ptr, offset: long, whence: int) int #extern "fseek";
+lseek64 :: fn (fd: int, offset: longlong, whence: longlong) longlong #extern "lseek64";
 
 DIR :: u8;
 dirent_t :: struct {

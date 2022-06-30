@@ -1,5 +1,9 @@
 #scope C
 
+SEEK_SET :: 0;
+SEEK_CUR :: 1;
+SEEK_END :: 2;
+
 char      :: s8;
 uchar     :: u8;
 short     :: s16;
@@ -324,6 +328,9 @@ usleep :: fn (us: uint) int #extern "usleep";
 rmdir :: fn (path: *char) int #extern "rmdir";
 chdir :: fn (path: *char) int #extern "chdir";
 gettimeofday :: fn (tv: *timeval, tz: *timezone) int #extern "gettimeofday";
+ftell :: fn (stream: void_ptr) long #extern "ftell";
+fseek :: fn (stream: void_ptr, offset: long, whence: int) int #extern "fseek";
+lseek :: fn (fd: int, offset: int, whence: int) int #extern "lseek";
 
 errno :: fn () s32 #inline {
     _errno_location :: fn () *int #extern "__error";

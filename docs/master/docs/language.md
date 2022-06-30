@@ -656,7 +656,7 @@ ptr : *s32 = null; // *s32 null pointer literal
 ```
 
 ## Integer literals
-
+
 Biscuit language provides constant integer literals written in various formats showed in example
 section. Integer literals has volatile type, when desired type is not specified compiler will choose
 best type to hold the value. Numbers requiring less space than 32 bits will be implicitly set to
@@ -717,15 +717,6 @@ char  :: 'i';     // u8 literal
 | &      | Address of.          |
 | !      | Logical not.         |
 | ~      | Bit flip.            |
-
-## Special Operators
-
-| Symbol         | Relevant for types | Description                          |
-| -------------- | ------------------ | -------------------------------      |
-| sizeof(expr)   | Any                | Determinates size in bytes.          |
-| alignof(expr)  | Any                | Determinates alignment of epression. |
-| typeinfo(expr) | Any                | Determinates TypeInfo of expression. |
-| typeof(expr)   | Any                | Determinates type of expression.     |
 
 ## Type Info
 
@@ -860,8 +851,7 @@ Used for marking entities as an compiler internals.
 
 Introduce test case function. The test case function is supposed not to take any arguments and
 return always `void`. All function with `test` hash directive are automatically stored into builtin
-implicit array and can be acquired by `testcases()` function call. Every test case is stored as
-`TestCase` type.
+implicit array called `TEST_CASES`. Every test case is stored as `TestCase` type.
 
 **Example:**
 
@@ -2007,3 +1997,52 @@ List of builtin variables set by compiler.
 - `IS_COMPTIME_RUN` Is bool immutable variable set to true when assembly is executed in compile
 time.
 
+## Builtin functions
+
+### `sizeof`
+
+```
+sizeof(<expr>)
+```
+
+Returns size of any expression or type in bytes.
+
+### `alignof`
+
+```
+alignof(<expr>) #comptime
+```
+
+Returns alignment of any expression or type.
+
+### `typeinfo`
+
+```
+typeinfo(<expr>) #comptime
+```
+
+Returns pointer to type information structure allocated on stack.
+
+### `typeof`
+
+```
+typeof(<expr>) #comptime
+```
+
+Returns type of any expression.
+
+### `compiler_error`
+
+```
+compiler_error(message: string_view) #comptime
+```
+
+Report error in compile-time.
+
+### `compiler_warning`
+
+```
+compiler_warning(message: string_view) #comptime
+```
+
+Report warning in compile-time.

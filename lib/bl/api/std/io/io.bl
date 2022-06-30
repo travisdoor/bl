@@ -1,144 +1,178 @@
 //! # Input/Ouput
 //! 
 //! `#import "std/io"`
-//! 
-
-#import "std/fs"
+//!
+//! Input and output is handled by generic stream interface containing callbacks for read, write and
+//! seek operations. The stream itself can contain any data needed (i.e. memory buffer, handle to file,
+//! etc.), generic functionality is handled via virtual table containing pointers to the implementation
+//! of all needed (supported) stream API functions.
+//!
+//! ### Example
+//!
+//! ```c
+//! #import "std/io"
+//!
+//! MyStream :: struct {
+//!     vtable: *MyStreamVTable;
+//!     buffer: [64]u8;
+//!     position: s64;
+//! }
+//!
+//! MyStreamVTable :: struct {
+//!     using std;
+//!     read: StreamReadFn(MyStream);
+//!     write: StreamWriteFn(MyStream);
+//! }
+//!
+//! MY_STRAM_VTABLE :: MyStreamVTable.{
+//!     read = &my_read,
+//!     write = &my_write
+//! };
+//!
+//! my_read :: fn (stream: *MyStream, dest: *u8, bytes_to_read: s64) (s64, Error) {
+//!     using std;
+//!     size := min(stream.position, bytes_to_read);
+//!     stream.position -= size;
+//!     assert(stream.position >= 0);
+//!     if size > 0 { memcpy(dest, &stream.buffer[stream.position], auto size); }
+//!     return size, OK;
+//! }
+//!
+//! my_write :: fn (stream: *MyStream, src: *u8, bytes_to_write: s64) (s64, Error) {
+//!     size :: std.min(stream.buffer.len - stream.position, bytes_to_write);
+//!     if size > 0 { memcpy(&stream.buffer[stream.position], src, auto size); }
+//!     stream.position += size;
+//!     assert(stream.position <= stream.buffer.len);
+//!     return size, OK;
+//! }
+//!
+//! main :: fn () s32 {
+//!     using std;
+//!
+//!     stream := MyStream.{ vtable = &MY_STRAM_VTABLE };
+//!
+//!     write_string(&stream, "Hello");
+//!     write_string(&stream, "World");
+//!
+//!     str := str_new();
+//!     defer str_delete(&str);
+//!
+//!     read_string(&stream, &str);
+//!
+//!     print("%\n", str);
+//!     return 0;
+//! }
+//! ```
 
 #scope std
 
+/// Stream seek offset locator.
+StreamLocator :: enum {
+    CURRENT;
+    BEGIN;
+    END;
+}
+
+/// Returns type of the stream read function for the stream of `TStream` type.
+StreamReadFn :: fn (TStream: type) type #comptime {
+    return *fn(stream: *TStream, dest: *u8, bytes_to_write: s64) (bytes_read: s64, err: Error);
+}
+
+/// Returns type of the stream write function for the stream of `TStream` type.
+StreamWriteFn :: fn (TStream: type) type #comptime {
+    return *fn(stream: *TStream, src: *u8, bytes_to_read: s64) (bytes: s64, err: Error);
+}
+
+/// Returns type of the stream seek function for the stream of `TStream` type.
+StreamSeekFn :: fn (TStream: type) type #comptime {
+    return *fn(stream: *TStream, locator: StreamLocator, offset: s64) (position: s64, err: Error);
+}
+
 // =================================================================================================
-// File IO
+// Writing
 // =================================================================================================
 
-/// Read `size` bytes from file into raw `dest` buffer. Return count of bytes written into buffer 
-/// and `OK` status when there was no error. `dest` buffer must be allocated to handle at least 
-/// `size` bytes. There is no overflow check.
-read :: fn (handle: std.File, dest: *u8, size: s64) (s64, Error) #inline {
-    return _io_impl.read(handle, dest, size);
+/// Write `bytes_to_write` count of bytes from the `str` into the stream. Returns
+/// count of actually written bytes or an error.
+write :: fn (stream: *?TStream, src: *u8, bytes_to_write: s64) (s64, Error) #inline {
+#if !has_member(@TStream.vtable, "write") {
+    compiler_error("Stream does not support writing.");
+}
+    assert(stream && stream.vtable && stream.vtable.write);
+    if bytes_to_write < 1 { return 0, OK; }
+    return stream.vtable.write(stream, src, bytes_to_write);
 }
 
-/// Read whole file content into string. Return new string instance containing file data and `OK` 
-/// status on success, otherwise return empty string and error. Returned string is expected to be 
-/// released by `std.str_delete` call if there was no error reported by function. Result string is 
-/// zero terminated even if file is empty.
-///
-/// ### Example
-/// 
-/// ```
-/// #import "std/fs"
-/// 
-/// main :: fn () s32 {
-///     // Open this file.
-///     file, open_err :: std.open_file(#file, std.OpenFileMode.READ);
-/// 
-///     // Always check for errors.
-///     if open_err {
-///         panic("Cannot open file with error: '%'!", open_err);
-///     }
-///     // Close file at the end of scope.
-///     defer std.close_file(file);
-/// 
-///     // Read it's content.
-///     content, read_err :: std.read_string(file);
-/// 
-///     // Check for errors.
-///     if read_err {
-///         panic("Cannot read file with error: '%'!", read_err);
-///     }
-///     // Delete content string at the end of scope.
-///     defer std.str_delete(&content);
-/// 
-///     // Print file content to stdout.
-///     print("%\n", content);
-///     return 0;
-/// }
-/// ```
-read_string :: fn (handle: std.File) (string, Error) {
-    size, err1 := std.file_size(handle);
-    if err1 {
-        return std.str_empty, err1;
+/// Write the data slice into the stream, the `bytes_to_write` can be specified to limit count
+/// of written bytes. Returns count of actually written bytes or an error.
+write_data :: fn (stream: *?TStream, data: []u8, bytes_to_write := std.S64_MAX) (s64, Error) #inline {
+    return write(stream, data.ptr, min(data.len, bytes_to_write));
+}
+
+/// Write the data string into the stream, the `bytes_to_write` can be specified to limit count
+/// of written bytes. Returns count of actually written bytes or an error.
+write_string :: fn (stream: *?TStream, str: string_view, bytes_to_write := std.S64_MAX) (s64, Error) #inline {
+    return write(stream, str.ptr, min(str.len, bytes_to_write));
+}
+
+// =================================================================================================
+// Reading
+// =================================================================================================
+
+/// Read `bytes_to_read` count of bytes from the stream into `dest` memory. Returns count of actually
+/// read bytes or an error.
+read :: fn (stream: *?TStream, dest: *u8, bytes_to_read: s64) (s64, Error) #inline {
+#if !has_member(@TStream.vtable, "read") {
+        compiler_error("Stream does not support reading.");
+}
+        assert(stream && stream.vtable && stream.vtable.read);
+        if bytes_to_read < 1 { return 0, OK; }
+        return stream.vtable.read(stream, dest, bytes_to_read);
+}
+
+/// Read `bytes_to_read` count of bytes from the stream into `dest` dynamic array. Returns count of actually
+/// read bytes or an error.
+read_data :: fn (stream: *?TStream, dest: *[..]u8, bytes_to_read: s64 = std.S64_MAX) (s64, Error) {
+    tmp: [512]u8 #noinit;
+    read_bytes: s64;
+    loop bytes_to_read > 0 {
+        bytes, err :: read(stream, tmp.ptr, min(tmp.len, bytes_to_read));
+        if err { return read_bytes, err; }
+        if bytes == 0 { break; }
+        read_bytes += bytes;
+        bytes_to_read -= bytes;
+        array_push_all(dest, []u8.{ ptr = tmp.ptr, len = bytes });
     }
-    size += 1; // To handle zero terminator.
-    buf := std.str_new(cast(s64) size);
-    read, err2 :: _io_impl.read(handle, buf.ptr, auto size - 1);
-    if err2 {
-        std.str_delete(&buf);
-        return std.str_empty, err2;                
+    return read_bytes, OK;
+}
+
+/// Read `bytes_to_read` count of bytes from the stream into `dest` stream. Returns count of actually
+/// read bytes or an error.
+read_string :: fn (stream: *?TStream, dest: *string, bytes_to_read: s64 = std.S64_MAX) (s64, Error) {
+    tmp: [512]u8 #noinit;
+    read_bytes: s64;
+    loop bytes_to_read > 0 {
+        bytes, err :: read(stream, tmp.ptr, min(tmp.len, bytes_to_read));
+        if err { return read_bytes, err; }
+        if bytes == 0 { break; }
+        read_bytes += bytes;
+        bytes_to_read -= bytes;
+        str :: string_view.{ ptr = tmp.ptr, len = bytes };
+        str_append(dest, str);
     }
-    buf.len = auto read + 1;
-    buf[buf.len-1] = '\0';
-    buf.len -= 1;
-    return buf, OK;
+    return read_bytes, OK;
 }
 
-/// Read whole file content into slice array. Return new slice instance containting file data and 
-/// `OK` status on success, otherwise return empty slice and error. Returned slice is expected to 
-/// be released by :ref:`slice_terminate` call if there was no error reported by function.
-read_slice :: fn (handle: std.File) (string_view, Error) {
-    invalid: string_view;
-    size, err :: std.file_size(handle);
-    if err {
-        return invalid, err;
-    }
-    buf: string_view;
-    if size == 0 { return buf, OK; }
-    slice_init(&buf, auto size);
-    read, err2 :: _io_impl.read(handle, buf.ptr, auto size);
-    if err2 {
-        slice_terminate(&buf);
-        return invalid, err2;                
-    }
-    buf.len = read;
-    return buf, OK;
-}
+// =================================================================================================
+// Other
+// =================================================================================================
 
-/// Write `size` bytes from raw buffer `src` into the file. Return count of bytes written into the 
-/// buffer and `OK` on success, otherwise return error. The `src` buffer size must be at least 
-/// `size` bytes. No overflow checking is done.
-write :: fn (handle: std.File, src: *u8, size: s64) (s64, Error) #inline {
-    return _io_impl.write(handle, src, size);
+/// Set the stream pointer position to the `offset` value relative to the stream `locator`. Returns
+/// the pointer position or an error.
+seek :: fn (stream: *?TStream, locator := StreamLocator.CURRENT, offset: s64 = 0) (position: s64, err: Error) {
+#if !has_member(@TStream.vtable, "seek") {
+    compiler_error("Stream does not support position seeking, 'seek' function is missing.");
 }
-
-/// Write content of `str` into the file, return count of written bytes and `OK` if there is no 
-/// error, otherwise return 0 and error.
-write_string :: fn (handle: std.File, str: string_view) (s64, Error) #inline {
-    written_bytes, err :: _io_impl.write(handle, str.ptr, str.len);
-    if err { return 0, err; }
-    return auto written_bytes, OK;    
+    assert(stream && stream.vtable && stream.vtable.seek);
+    return stream.vtable.seek(stream, locator, offset);
 }
-
-// @INCOMPLETE
-write_fmt :: fn {
-    fn (buf_size: s32, handle: std.File, fmt: string_view, args: ...) (s64, Error) #inline {
-        if buf_size <= 0 { return 0, OK; }
-        buf: []u8;
-        mem, err :: alloc(sizeof(u8) * auto buf_size);
-        if err { return 0, err; }
-        buf.ptr = mem;
-        buf.len = auto buf_size;
-        defer free(buf.ptr);
-        len :: bprint(buf, fmt, args);
-        return write_slice(handle, buf, len);
-    };
-    fn (handle: std.File, fmt: string_view, args: ...) (s64, Error) #inline {
-        buf: [1024]u8 #noinit;
-        len :: bprint(buf, fmt, args);
-        return write_slice(handle, buf, len);
-    };
-}
-
-/// Write content of `v` slice into the file, return count of written bytes and `OK` if there is no 
-/// error, otherwise return 0 and error. Optional argument `count` specify count of bytes from `v`
-/// to be written, negative value means whole content. When passed count is greater than `v.len`, 
-/// count value is set to `v.len`.
-/// Does nothing in case the `v.len == 0` (slice is empty) and return 0 and ok.
-write_slice :: fn (handle: std.File, v: string_view, count : s64 = -1) (s64, Error) #inline {
-    if count < 0 { count = v.len; } 
-    if count > v.len { count = v.len; }
-    if v.len == 0 { return 0, OK; }
-    written_bytes, err :: _io_impl.write(handle, v.ptr, count);
-    if err { return 0, err; }
-    return auto written_bytes, OK;
-}
-

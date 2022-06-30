@@ -1,129 +1,53 @@
-main :: fn () s32 {
+#import "std/io"
+
+MyStream :: struct {
+    vtable: *MyStreamVTable;
+    buffer: [64]u8;
+    position: s64;
+}
+
+MyStreamVTable :: struct {
     using std;
-    pool :: pool_make(application_context.allocator);
-    defer pool_release(&pool);
-
-    loop i := 0; i < 1000; i += 1 {
-		alloc(sizeof(s32), alignof(s32), &pool);
-    }
-
-    return 0;
+    read: StreamReadFn(MyStream);
+    write: StreamWriteFn(MyStream);
 }
 
-/*
-#import "std/table"
+MY_STRAM_VTABLE :: MyStreamVTable.{
+    read = &my_read,
+    write = &my_write
+};
 
-TEST_COUNT :: 1000000;
-SAMPLES :: 100;
-//TEST_COUNT :: 100;
-
-main :: fn () s32 {
-    insert: f64;
-    lookup: f64;
-    loop s := 0; s < SAMPLES; s += 1 {
-        i, l :: A();
-        insert += i;
-        lookup += l;
-    }
-    print("\nInsert: %\nLookup: %\n", insert / auto SAMPLES, lookup / auto SAMPLES);
-    insert = 0.;
-    lookup = 0.;
-
-    return 0;
-}
-
-A :: fn () (f64, f64) {
+my_read :: fn (stream: *MyStream, dest: *u8, bytes_to_read: s64) (s64, Error) {
     using std;
-    tbl: Table(s32, *s32);
-    defer tbl_terminate(&tbl);
-
-    measure_elapsed_ms_begin();
-    loop i := 0; i < TEST_COUNT; i += 1 {
-        tbl_insert(&tbl, i, null);
-    }
-    insert_time :: measure_elapsed_ms_end();
-
-    measure_elapsed_ms_begin();
-    loop i := 0; i < TEST_COUNT; i += 1 {
-        value :: tbl_lookup(&tbl, i);
-        if (@value != null) { panic(); }
-    }
-    lookup_time :: measure_elapsed_ms_end();
-    print(".");
-    return insert_time, lookup_time;
+    size := min(stream.position, bytes_to_read);
+    stream.position -= size;
+    assert(stream.position >= 0);
+    if size > 0 { memcpy(dest, &stream.buffer[stream.position], auto size); }
+    return size, OK;
 }
-*/
 
-/*
-#import "std/table"
+my_write :: fn (stream: *MyStream, src: *u8, bytes_to_write: s64) (s64, Error) {
+    size :: std.min(stream.buffer.len - stream.position, bytes_to_write);
+    if size > 0 { memcpy(&stream.buffer[stream.position], src, auto size); }
+    stream.position += size;
+    assert(stream.position <= stream.buffer.len);
+    return size, OK;
+}
 
 main :: fn () s32 {
     using std;
-    buf := str_new();
-    buf2 := str_new();
-    buf3 := str_new();
-    defer str_delete(&buf);
-    defer str_delete(&buf2);
-    defer str_delete(&buf3);
 
-    str_append(&buf, "Count, Insert, Lookup\n");
-    str_append(&buf2, "Count, Insert Time, Lookup Time\n");
-    str_append(&buf3, "Count, Insert Ratio, Lookup Ratio\n");
-    count := 1000;
-    loop i := 0; i < 14; i += 1 {
-        count *= 2;
-        A(count, &buf, &buf2, &buf3);
-    }
-    print("%", buf);
-    print("%", buf2);
-    print("%", buf3);
+    stream := MyStream.{ vtable = &MY_STRAM_VTABLE };
+
+    write_string(&stream, "Hello");
+    write_string(&stream, "World");
+
+    str := str_new();
+    defer str_delete(&str);
+
+    read_string(&stream, &str);
+
+    print("%\n", str);
     return 0;
 }
 
-A :: fn (count: s64, result: *string, time: *string, ratio: *string) {
-    using std;
-    tbl: Table(s32, s32);
-    defer tbl_terminate(&tbl);
-
-    measure_elapsed_ms_begin();
-    loop i := 0; i < count; i += 1 {
-        tbl_insert(&tbl, i, i);
-    }
-    insert_time :: measure_elapsed_ms_end("INSERT");
-
-    measure_elapsed_ms_begin();
-    loop i := 0; i < count; i += 1 {
-        it :: tbl_lookup(&tbl, i);
-        if (it.value != i) { panic(); }
-    }
-    lookup_time :: measure_elapsed_ms_end("LOOKUP");
-    str_concat(result, count, ", ", insert_collision_count, ", ",lookup_collision_count, "\n");
-    str_concat(time, count, ", ", insert_time, ", ",lookup_time, "\n");
-    str_concat(ratio, count, ", ", cast(f32)insert_collision_count / cast(f32)count, ", ", cast(f32)lookup_collision_count / cast(f32)count, "\n");
-    insert_collision_count = 0;
-    lookup_collision_count = 0;
-    print("***\n");
-}
-*/
-
-/*
-B :: fn () {
-    using std_experimental;
-    tbl: Table(s32, s32);
-    defer tbl_terminate(&tbl);
-
-    measure_elapsed_ms_begin();
-    loop i := 0; i < TEST_COUNT; i += 1 {
-        tbl_insert(&tbl, i, i);
-    }
-    measure_elapsed_ms_end("INSERT");
-
-    measure_elapsed_ms_begin();
-    loop i := 0; i < TEST_COUNT; i += 1 {
-        value :: tbl_lookup(&tbl, i);
-        if (@value != i) { panic(); }
-    }
-    measure_elapsed_ms_end("LOOKUP");
-    print("***\n");
-}
-*/

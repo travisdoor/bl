@@ -19,7 +19,7 @@
     BUILTIN_ID_MAIN,
     BUILTIN_ID_ARR_LEN,
     BUILTIN_ID_ARR_PTR,
-    BUILTIN_ID_ARR_ALLOCATED,
+    BUILTIN_ID_ARR_ALLOCATED_ELEMS,
     BUILTIN_ID_ARR_ALLOCATOR,
     BUILTIN_ID_STRUCT_BASE,
     BUILTIN_ID_ANY,
@@ -60,6 +60,12 @@
     BUILTIN_ID_BLC_VER_MAJOR,
     BUILTIN_ID_BLC_VER_MINOR,
     BUILTIN_ID_BLC_VER_PATCH,
+    BUILTIN_ID_SIZEOF, /* first reserved */
+    BUILTIN_ID_ALIGNOF,
+    BUILTIN_ID_TYPEOF,
+    BUILTIN_ID_TYPEINFO,
+    BUILTIN_ID_COMPILER_ERROR,
+    BUILTIN_ID_COMPILER_WARNING,
 #endif
 
 #ifdef GEN_BUILTIN_IDS
@@ -83,7 +89,7 @@
     {.str = "main",                  .hash = 0},
     {.str = "len",                   .hash = 0},
     {.str = "ptr",                   .hash = 0},
-    {.str = "allocated",             .hash = 0},
+    {.str = "allocated_elems",       .hash = 0},
     {.str = "allocator",             .hash = 0},
     {.str = "base",                  .hash = 0},
     {.str = "Any",                   .hash = 0},
@@ -124,4 +130,10 @@
     {.str = "BLC_VER_MAJOR",         .hash = 0},
     {.str = "BLC_VER_MINOR",         .hash = 0},
     {.str = "BLC_VER_PATCH",         .hash = 0},
+    {.str = "sizeof",                .hash = 0},
+    {.str = "alignof",               .hash = 0},
+    {.str = "typeof",                .hash = 0},
+    {.str = "typeinfo",              .hash = 0},
+    {.str = "compiler_error",        .hash = 0},
+    {.str = "compiler_warning",      .hash = 0},
 #endif

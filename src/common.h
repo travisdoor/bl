@@ -216,6 +216,12 @@ char *scprint(struct string_cache **cache, const char *fmt, ...);
         .ptr = (p), .len = (l)                                                                     \
     }
 
+#define make_str_from_c(p)                                                                         \
+    (str_t)                                                                                        \
+    {                                                                                              \
+        .ptr = (p), .len = strlen(p)                                                               \
+    }
+
 typedef struct {
     const char *ptr;
     s64         len;

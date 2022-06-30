@@ -95,7 +95,7 @@ static void interp_instr_decl_direct_ref(struct virtual_machine           *vm,
                                          struct mir_instr_decl_direct_ref *ref);
 static void eval_instr(struct virtual_machine *vm, struct mir_instr *instr);
 static void eval_instr_type_info(struct virtual_machine *vm, struct mir_instr_type_info *type_info);
-static void eval_instr_type_of(struct virtual_machine *vm, struct mir_instr_type_of *type_of);
+static void eval_instr_typeof(struct virtual_machine *vm, struct mir_instr_typeof *type_of);
 static void eval_instr_call_loc(struct virtual_machine *vm, struct mir_instr_call_loc *loc);
 static void eval_instr_test_cases(struct virtual_machine *vm, struct mir_instr_test_case *tc);
 static void eval_instr_member_ptr(struct virtual_machine      *vm,
@@ -1634,7 +1634,7 @@ void interp_instr_compound(struct virtual_machine    *vm,
         case MIR_TYPE_VARGS:
         case MIR_TYPE_STRUCT: {
             usize index = mapping ? sarrpeek(mapping, i) : i;
-            elem_ptr = vm_get_struct_elem_ptr(vm->assembly, type, tmp_ptr, (u32)index);
+            elem_ptr    = vm_get_struct_elem_ptr(vm->assembly, type, tmp_ptr, (u32)index);
             break;
         }
 
@@ -1934,8 +1934,8 @@ void eval_instr(struct virtual_machine *vm, struct mir_instr *instr)
         eval_instr_type_info(vm, (struct mir_instr_type_info *)instr);
         break;
 
-    case MIR_INSTR_TYPE_OF:
-        eval_instr_type_of(vm, (struct mir_instr_type_of *)instr);
+    case MIR_INSTR_TYPEOF:
+        eval_instr_typeof(vm, (struct mir_instr_typeof *)instr);
         break;
 
     case MIR_INSTR_TEST_CASES:
@@ -1994,7 +1994,7 @@ void eval_instr_type_info(struct virtual_machine *vm, struct mir_instr_type_info
     MIR_CEV_WRITE_AS(vm_stack_ptr_t, &type_info->base.value, rtti_var->value.data);
 }
 
-void eval_instr_type_of(struct virtual_machine *vm, struct mir_instr_type_of *type_of)
+void eval_instr_typeof(struct virtual_machine *vm, struct mir_instr_typeof *type_of)
 {
     MIR_CEV_WRITE_AS(struct mir_type *, &type_of->base.value, type_of->expr->value.type);
 }
@@ -2441,7 +2441,7 @@ void vm_provide_command_line_arguments(struct virtual_machine *vm, const s32 arg
         args_dest                         = stack_alloc(vm, total_array_size);
         for (s32 i = 0; i < argc; ++i) {
             vm_stack_ptr_t dest_elem = args_dest + string_size * i;
-            vm_write_string(vm, string_type, dest_elem, argv[i], strlen(argv[i]));
+            vm_write_string(vm, string_type, dest_elem, make_str_from_c(argv[i]));
         }
     }
 
@@ -2620,6 +2620,17 @@ f32 vm_read_float(const struct mir_type *type, vm_stack_ptr_t src)
     return result;
 }
 
+str_t vm_read_string(struct virtual_machine *vm, const struct mir_type *type, vm_stack_ptr_t src)
+{
+    bassert((type->kind == MIR_TYPE_SLICE || type->kind == MIR_TYPE_STRING) &&
+            "Expected slice or string type!");
+    struct mir_type *len_type = mir_get_struct_elem_type(type, MIR_SLICE_LEN_INDEX);
+    struct mir_type *ptr_type = mir_get_struct_elem_type(type, MIR_SLICE_PTR_INDEX);
+    vm_stack_ptr_t   len = vm_get_struct_elem_ptr(vm->assembly, type, src, MIR_SLICE_LEN_INDEX);
+    vm_stack_ptr_t   ptr = vm_get_struct_elem_ptr(vm->assembly, type, src, MIR_SLICE_PTR_INDEX);
+    return make_str((const char *)vm_read_ptr(ptr_type, ptr), vm_read_int(len_type, len));
+}
+
 void vm_write_int(const struct mir_type *type, vm_stack_ptr_t dest, u64 i)
 {
     bassert(dest && "Attempt to write to the null destination!");
@@ -2657,13 +2668,12 @@ void _vm_write_value(usize dest_size, vm_stack_ptr_t dest, vm_stack_ptr_t src)
 void vm_write_string(struct virtual_machine *vm,
                      const struct mir_type  *type,
                      vm_stack_ptr_t          dest,
-                     const char             *str,
-                     s64                     len)
+                     str_t                   str)
 {
-    bassert(str && "Invalid string constant!");
-    bassert(len >= 0 && "Invalid string constant length.");
+    bassert(str.ptr && "Invalid string constant!");
+    bassert(str.len >= 0 && "Invalid string constant length.");
     bassert(type->kind == MIR_TYPE_SLICE && "Expected slice type!");
-    vm_write_slice(vm, type, dest, (void *)str, len);
+    vm_write_slice(vm, type, dest, (void *)str.ptr, str.len);
 }
 
 void vm_write_slice(struct virtual_machine *vm,

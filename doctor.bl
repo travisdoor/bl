@@ -16,13 +16,14 @@ SKIP :: [1]Skip.{
     }
 };
 
-MODULES :: [14]string_view.{
+MODULES :: [15]string_view.{
     "lib/bl/api/std/arg_parser/arg_parser.test.bl",
     "lib/bl/api/std/array/array.test.bl",
     "lib/bl/api/std/bucket_array/bucket_array.test.bl",
     "lib/bl/api/std/debug_allocator/debug_allocator.test.bl",
     "lib/bl/api/std/dlib/dlib.test.bl",
     "lib/bl/api/std/fs/fs.test.bl",
+    "lib/bl/api/std/io/io.test.bl",
     "lib/bl/api/std/print/print.test.bl",
     "lib/bl/api/std/string/string.test.bl",
     "lib/bl/api/std/sync/sync.test.bl",
@@ -350,12 +351,13 @@ get_exe_name :: fn () string_view #comptime {
 get_expected_error :: fn (filepath: string_view) (is_present: bool, error: s32) {
     using std;
 
-    file, err1 :: open_file(filepath, OpenFileMode.READ);
-    defer close_file(file);
-    if err1 { print_err("%", err1); return false, 0; }
-    content, err2 :: read_string(file);
+    stream, err_open :: open_file(filepath, OpenFileMode.READ);
+    defer close_file(&stream);
+    if err_open { print_err("%", err_open); return false, 0; }
+    content := str_new();
     defer str_delete(&content);
-    if err2 { print_err("%", err2); return false, 0; }
+    _, err_read :: read_string(&stream, &content);
+    if err_read { print_err("%", err_read); return false, 0; }
 
     tmp :: str_split_by(content, '@');
     defer slice_terminate(&tmp);

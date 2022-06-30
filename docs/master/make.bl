@@ -34,13 +34,16 @@ main :: fn () s32 {
 create_config_file :: fn () bool {
     using std;
     filepath :: get_full_path(CONFIG_FILE);
-    file, err1 :: open_file(filepath, make_flags(OpenFileMode.WRITE, OpenFileMode.CREATE));
-    defer close_file(file);
+    stream, err1 :: open_file(filepath, make_flags(OpenFileMode.WRITE, OpenFileMode.CREATE));
+    defer close_file(&stream);
     if err1 {
         print_err("%", err1);
         return false;
     }
-    _, err2 :: write_fmt(file, CONFIG, blc_ver());
+
+    content :: sprint(CONFIG, blc_ver());
+    defer str_delete(&content);
+    _, err2 :: write_string(&stream, content);
     if err2 {
         print_err("%", err2);
         return false;

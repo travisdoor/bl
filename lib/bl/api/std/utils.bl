@@ -44,11 +44,11 @@ set_flag :: fn (flags: *?T, flag: T) T #inline {
         else if sizeof(T) == 2 { f := cast(*u16)flags; @f |= cast(u16) flag; }
         else if sizeof(T) == 4 { f := cast(*u32)flags; @f |= cast(u32) flag; }
         else if sizeof(T) == 8 { f := cast(*u64)flags; @f |= cast(u64) flag; }
-        else { #error "Unsupported type in 'set_flag'" }
+        else { compiler_error("Unsupported type in 'set_flag'"); }
     } else if typeinfo(T).kind == TypeKind.INT {
         @flags |= flag;
     } else {
-        #error "Expected number or enumerator type."
+        compiler_error("Expected number or enumerator type.");
     }
     return @flags;
 }
@@ -67,7 +67,7 @@ clr_flag :: fn (flags: *?T, flag: T) T #inline {
     } else if typeinfo(T).kind == TypeKind.INT {
         @flags &= ~flag;
     } else {
-        #error "Expected number or enumerator type."
+        compiler_error("Expected number or enumerator type.");
     }
     return @flags;
 }
@@ -87,7 +87,7 @@ is_flag :: fn (flags: ?T, flag: T) bool #inline {
     } else if typeinfo(T).kind == TypeKind.INT {
         result = (flags & flag) == flag;        
     } else {
-        #error "Expected number or enumerator type."
+        compiler_error("Expected number or enumerator type.");
     }        
     return result;
 }

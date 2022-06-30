@@ -26,7 +26,7 @@
 _Array :: struct {
     len: s64;
     ptr: *u8;
-    allocated: usize;
+    allocated_elems: usize;
     allocator: *Allocator;
 }
 
@@ -42,7 +42,7 @@ array_init :: fn (_arr: *[..]?T, n: s64 = 0, allocator: *Allocator = null) #inli
     arr := cast(*_Array) _arr;
     arr.ptr = null;
     arr.len = 0;
-    arr.allocated = 0;
+    arr.allocated_elems = 0;
     arr.allocator = allocator;
     array_reserve(_arr, n);
 }
@@ -54,7 +54,7 @@ array_terminate :: fn (_arr: *[..]?T) #inline {
     free(arr.ptr, arr.allocator);
     arr.ptr = null;
     arr.len = 0;
-    arr.allocated = 0;
+    arr.allocated_elems = 0;
 }
 
 /// Append new value at the dynamic array end. New heap allocation is done here only in cases when
@@ -65,6 +65,19 @@ array_terminate :: fn (_arr: *[..]?T) #inline {
 ///     When there is no element to push provided, function will just allocate memory for
 ///     a new empty element without any initialization.
 array_push :: fn { impl_push_empty; impl_push; }
+
+/// Append all `data` at the dynamic array end. New heap allocation is done here only in cases when
+/// there is not enough memory allocated to store all values.
+/// Does nothing when `data.len < 1`.
+array_push_all :: fn (_arr: *[..]?T, data: []T) {
+    arr := cast(*_Array) _arr;
+    if data.len < 1 { return; }
+    elem_size :: sizeof(T);
+    arr.len += data.len;
+    ensure_space(auto arr, elem_size, auto arr.len, false, alignof(T));
+    dest_ptr :: get_elem_ptr(auto arr, elem_size, arr.len - data.len);
+    memcpy(dest_ptr, auto data.ptr, elem_size * auto data.len);
+}
 
 /// Duplicate the last array element into `out` argument (if not null) and reduce the array length by
 /// one. Returs `true` in case the array is not empty.
@@ -124,20 +137,21 @@ get_elem_ptr :: fn (arr: *_Array, elem_size: usize, i: s64) *u8 #inline {
     return ptr_shift_bytes(arr.ptr, i * cast(s64) elem_size);
 };
 
-ensure_space :: fn (arr: *_Array, elem_size: usize, space: usize, exact: bool, alignement: usize) {
-    if space == 0 { return; }
-    if arr.allocated >= space { return; }
-    if arr.allocated == 0 {
-        if !exact { space = ALLOC_BLOCK_SIZE; }
+ensure_space :: fn (arr: *_Array, elem_size: usize, needed_elems: usize, exact: bool, alignement: usize) {
+    if needed_elems == 0 { return; }
+    if arr.allocated_elems >= needed_elems { return; }
+    if arr.allocated_elems == 0 {
+        if !exact { needed_elems = std.max(ALLOC_BLOCK_SIZE, needed_elems); }
     } else {
-        space *= 2;
+        needed_elems *= 2;
     }
-    prev_bytes :: arr.allocated * elem_size;
-    needed_bytes :: space * elem_size;
+    assert(needed_elems > 0);
+    prev_bytes :: arr.allocated_elems * elem_size;
+    needed_bytes :: needed_elems * elem_size;
     mem, err :: realloc(arr.ptr, prev_bytes, needed_bytes, alignement, arr.allocator);
     if err { panic(err); }
     arr.ptr = mem;
-    arr.allocated = space;
+    arr.allocated_elems = needed_elems;
 };
 
 impl_push :: fn (arr: *[..]?T, v: T) *T #inline {

@@ -4,7 +4,7 @@
 #scope _fs_impl
 
 /// File handle type.
-File :: s64;
+File :: C.int;
 FILE_INVALID : File : -1;
 
 exist :: fn (filepath: string_view) bool #inline {
@@ -59,30 +59,29 @@ copy :: fn (src: string_view, dest: string_view, override: bool) Error {
     if std.str_is_empty(src) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
     if std.str_is_empty(dest) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
     if exist(dest) && !override { return error(ERR_ALREADY_EXIST, "Destination already exist '%'", dest); }
-    file_src, err1 :: open(src, std.OpenFileMode.READ);
-    defer close(file_src);
-    if err1 { return err1; }
-    tmp, err2 :: std.read_slice(file_src);
-    defer slice_terminate(&tmp);
-    if err2 { return err2; }
-    file_dest, err3:: open(dest, make_flags(std.OpenFileMode.WRITE, std.OpenFileMode.CREATE));
-    defer close(file_dest);
-    if err3 { return err3; }
-    _, err4 :: std.write_slice(file_dest, tmp);
-    return err4;
+
+    src_stream, err_src :: std.open_file(src, std.OpenFileMode.READ);
+    defer std.close_file(&src_stream);
+    if err_src { return err_src; }
+
+    dest_stream, err_dest :: std.open_file(dest, make_flags(std.OpenFileMode.READ, std.OpenFileMode.CREATE));
+    defer std.close_file(&dest_stream);
+    if err_dest { return err_dest; }
+
+    tmp: [1024 * 64]u8 #noinit;
+    loop {
+        read_bytes, read_err :: std.read(&src_stream, tmp.ptr, tmp.len);
+        if read_err { return read_err; }
+        if read_bytes == 0 { break; }
+        write_bytes, write_err :: std.write(&dest_stream, tmp.ptr, read_bytes);
+        if write_err { return write_err; }
+        if read_bytes != write_bytes { return error("Failed to copy '%' to '%'", src, dest); }
+    }
+    return OK;
 }
 
 close :: fn (handle: File) #inline {
     C.close(auto handle);
-}
-
-size :: fn (handle: File) (usize, Error) #inline {
-    tmp: C.stat_t;
-    if C.fstat(auto handle, &tmp) != 0 {
-        ec, estr :: os_get_last_error();
-        return 0, error(ec, "Cannot get file size: %.", estr);
-    }
-    return auto tmp.st_size, OK;
 }
 
 create_dir :: fn (dirpath: string_view) Error {
@@ -217,6 +216,43 @@ normalize :: fn (filepath: *string) Error {
     std.str_clear(filepath);
     std.str_append(filepath, std.ctostr(auto buf.ptr));
     return OK;
+}
+
+read :: fn (stream: *std.FileStream, dest: *u8, bytes_to_read: s64) (s64, Error) {
+    if !dest { return 0, error(ERR_INVALID_HANDLE, "Cannot read, destination is invalid."); }
+    read :: C.read(auto stream.handle, auto dest, auto bytes_to_read);
+    if read < 0 {
+        ec, estr :: os_get_last_error();
+        return 0, error(ec, "Cannot read file: %", estr);
+    }
+    return auto read, OK;
+}
+
+write :: fn (stream: *std.FileStream, src: *u8, bytes_to_write: s64) (s64, Error) {
+    if !src { return 0, error(ERR_INVALID_HANDLE, "Cannot write, source is invalid."); }
+    written :: C.write(auto stream.handle, auto src, auto bytes_to_write);
+    if written < 0 {
+        ec, estr :: os_get_last_error();
+        return 0, error(ec, "Cannot write to file: %.", estr);
+    }
+    return auto written, OK;
+}
+
+seek :: fn (stream: *std.FileStream, locator: std.StreamLocator, offset: s64) (s64, Error) {
+    move_method := C.SEEK_CUR;
+    using std.StreamLocator;
+    switch locator {
+        CURRENT;
+        BEGIN { move_method = C.SEEK_SET; }
+        END { move_method = C.SEEK_END; }
+    }
+    if offset > std.S32_MAX || offset < std.S32_MIN { panic("Only 32 bit offset is currently suported on this platform."); }
+    position :: C.lseek(auto stream.handle, auto offset, move_method);
+    if position < 0 {
+        ec, estr :: os_get_last_error();
+        return 0, error(ec, "Cannot get file pointer: %", estr);
+    }
+    return auto position, OK;
 }
 
 #private

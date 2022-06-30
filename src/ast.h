@@ -105,16 +105,6 @@ enum unop_kind {
     UNOP_BIT_NOT,
 };
 
-enum ast_msg_kind {
-    AST_MSG_WARNING,
-    AST_MSG_ERROR,
-};
-
-struct ast_msg {
-    enum ast_msg_kind kind;
-    const char       *text;
-};
-
 struct ast_docs {
     const char *text;
 };
@@ -348,22 +338,6 @@ struct ast_expr_call {
 struct ast_expr_elem {
     struct ast *next;
     struct ast *index;
-};
-
-struct ast_expr_sizeof {
-    struct ast *node;
-};
-
-struct ast_expr_type_info {
-    struct ast *node;
-};
-
-struct ast_expr_type_of {
-    struct ast *node;
-};
-
-struct ast_expr_alignof {
-    struct ast *node;
 };
 
 struct ast_expr_unary {

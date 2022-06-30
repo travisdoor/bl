@@ -71,15 +71,6 @@ get_uid_by_name :: fn (filepath: string_view) (u64, Error) {
     return get_uid(file);
 }
 
-size :: fn (handle: File) (usize, Error) #inline {
-    size: win32.LARGE_INTEGER #noinit;
-    if win32.GetFileSizeEx(auto handle, &size) == 0 {
-        ec, estr :: os_get_last_error();
-        return 0, error(ec, "Cannot get file size: %", estr);
-    }
-    return auto size, OK;
-}
-
 create_dir :: fn (dirpath: string_view) Error {
     if std.str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot create directory, dirpath is empty."); }
     if win32.CreateDirectoryA(std.strtoc(dirpath), null) == 0 {
@@ -220,6 +211,45 @@ normalize :: fn (filepath: *string) Error {
     std.str_append(filepath, std.ctostr(buf.ptr));
     std.str_replace_all(filepath, '\\', '/'); // Fix to unix
     return OK;
+}
+
+read :: fn (stream: *std.FileStream, dest: *u8, size: s64) (s64, Error) {
+    if !dest { return 0, error(ERR_INVALID_HANDLE, "Cannot read, destination is invalid."); }
+    read_bytes: win32.DWORD #noinit;
+    if win32.ReadFile(stream.handle, dest, auto size, &read_bytes, null) == 0 {
+        ec, estr :: os_get_last_error();
+        return 0, error(ec, "Cannot read file: %", estr);
+    }
+    return auto read_bytes, OK;
+}
+
+write :: fn (stream: *std.FileStream, src: *u8, size: s64) (s64, Error) {
+    if !src { return 0, error(ERR_INVALID_HANDLE, "Cannot write, source is invalid."); }
+    written_bytes: win32.DWORD #noinit;
+    if win32.WriteFile(stream.handle, src, auto size, &written_bytes, null) == 0 {
+        ec, estr :: os_get_last_error();
+        return 0, error(ec, "Cannot write: %", estr);
+    }
+    return auto written_bytes, OK;
+}
+
+seek :: fn (stream: *std.FileStream, locator: std.StreamLocator, offset: s64) (s64, Error) {
+    move_method := win32.FILE_CURRENT;
+    using std.StreamLocator;
+    switch locator {
+        CURRENT;
+        BEGIN { move_method = win32.FILE_BEGIN; }
+        END { move_method = win32.FILE_END; }
+    }
+    of: union { part: struct { low: s32; high: s32; }; offset: s64 };
+    of.offset = offset;
+    result :: win32.SetFilePointer(stream.handle, of.part.low, &of.part.high, move_method);
+    if result == win32.INVALID_SET_FILE_POINTER {
+        ec, estr :: os_get_last_error();
+        return 0, error(ec, "Cannot get file pointer: %", estr);
+    }
+    of.part.low = auto result;
+    return of.offset, OK;
 }
 
 #private
