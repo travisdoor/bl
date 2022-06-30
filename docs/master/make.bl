@@ -101,6 +101,8 @@ CONFIG ::
     "site_name: Biscuit Language\n"
     "theme:\n"
     "    name: windmill\n"
+    "plugins:\n"
+    "    - include-markdown\n"
     "markdown_extensions:\n"
     "    - admonition\n"
     "extra_css:\n"

@@ -14,8 +14,7 @@
 // File utils
 // =================================================================================================
 
-FileStream :: struct {
-    vtable: *FileStreamVTable;
+FileStream :: struct #base Stream {
     handle: _fs_impl.File;
 }
 
@@ -371,16 +370,10 @@ get_tmp :: fn () string #inline {
 }
 
 #private
-FileStreamVTable :: struct {
-    read: StreamReadFn(FileStream);
-    write: StreamWriteFn(FileStream);
-    seek: StreamSeekFn(FileStream);
-};
-
-FILE_STREAM_VTABLE :: FileStreamVTable.{
-    read = &_fs_impl.read,
-    write = &_fs_impl.write,
-    seek = &_fs_impl.seek,
+FILE_STREAM_VTABLE :: StreamVTable.{
+    read  = auto &_fs_impl.read,
+    write = auto &_fs_impl.write,
+    seek  = auto &_fs_impl.seek,
 };
 
 default_filter : *fn (_: *Info, _: *u8) bool : null;

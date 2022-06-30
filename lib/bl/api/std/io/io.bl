@@ -10,61 +10,20 @@
 //! ### Example
 //!
 //! ```c
-//! #import "std/io"
-//!
-//! MyStream :: struct {
-//!     vtable: *MyStreamVTable;
-//!     buffer: [64]u8;
-//!     position: s64;
-//! }
-//!
-//! MyStreamVTable :: struct {
-//!     using std;
-//!     read: StreamReadFn(MyStream);
-//!     write: StreamWriteFn(MyStream);
-//! }
-//!
-//! MY_STRAM_VTABLE :: MyStreamVTable.{
-//!     read = &my_read,
-//!     write = &my_write
-//! };
-//!
-//! my_read :: fn (stream: *MyStream, dest: *u8, bytes_to_read: s64) (s64, Error) {
-//!     using std;
-//!     size := min(stream.position, bytes_to_read);
-//!     stream.position -= size;
-//!     assert(stream.position >= 0);
-//!     if size > 0 { memcpy(dest, &stream.buffer[stream.position], auto size); }
-//!     return size, OK;
-//! }
-//!
-//! my_write :: fn (stream: *MyStream, src: *u8, bytes_to_write: s64) (s64, Error) {
-//!     size :: std.min(stream.buffer.len - stream.position, bytes_to_write);
-//!     if size > 0 { memcpy(&stream.buffer[stream.position], src, auto size); }
-//!     stream.position += size;
-//!     assert(stream.position <= stream.buffer.len);
-//!     return size, OK;
-//! }
-//!
-//! main :: fn () s32 {
-//!     using std;
-//!
-//!     stream := MyStream.{ vtable = &MY_STRAM_VTABLE };
-//!
-//!     write_string(&stream, "Hello");
-//!     write_string(&stream, "World");
-//!
-//!     str := str_new();
-//!     defer str_delete(&str);
-//!
-//!     read_string(&stream, &str);
-//!
-//!     print("%\n", str);
-//!     return 0;
-//! }
+//! {% include "../examples/arrays.bl" %}
 //! ```
 
 #scope std
+
+Stream :: struct {
+    vtable: *StreamVTable;
+}
+
+StreamVTable :: struct {
+    read:  *fn(stream: *Stream, dest: *u8, bytes_to_write: s64) (bytes_read: s64, err: Error);
+    write: *fn(stream: *Stream, src: *u8, bytes_to_read: s64) (bytes: s64, err: Error);
+    seek:  *fn(stream: *Stream, locator: StreamLocator, offset: s64) (position: s64, err: Error);
+}
 
 /// Stream seek offset locator.
 StreamLocator :: enum {
@@ -73,45 +32,29 @@ StreamLocator :: enum {
     END;
 }
 
-/// Returns type of the stream read function for the stream of `TStream` type.
-StreamReadFn :: fn (TStream: type) type #comptime {
-    return *fn(stream: *TStream, dest: *u8, bytes_to_write: s64) (bytes_read: s64, err: Error);
-}
-
-/// Returns type of the stream write function for the stream of `TStream` type.
-StreamWriteFn :: fn (TStream: type) type #comptime {
-    return *fn(stream: *TStream, src: *u8, bytes_to_read: s64) (bytes: s64, err: Error);
-}
-
-/// Returns type of the stream seek function for the stream of `TStream` type.
-StreamSeekFn :: fn (TStream: type) type #comptime {
-    return *fn(stream: *TStream, locator: StreamLocator, offset: s64) (position: s64, err: Error);
-}
-
 // =================================================================================================
 // Writing
 // =================================================================================================
 
 /// Write `bytes_to_write` count of bytes from the `str` into the stream. Returns
 /// count of actually written bytes or an error.
-write :: fn (stream: *?TStream, src: *u8, bytes_to_write: s64) (s64, Error) #inline {
-#if !has_member(@TStream.vtable, "write") {
-    compiler_error("Stream does not support writing.");
-}
-    assert(stream && stream.vtable && stream.vtable.write);
+write :: fn (stream: *Stream, src: *u8, bytes_to_write: s64) (s64, Error) #inline {
+    assert(stream);
+    assert(stream.vtable);
+    if !stream.vtable.write { panic("Stream does not support writing."); }
     if bytes_to_write < 1 { return 0, OK; }
     return stream.vtable.write(stream, src, bytes_to_write);
 }
 
 /// Write the data slice into the stream, the `bytes_to_write` can be specified to limit count
 /// of written bytes. Returns count of actually written bytes or an error.
-write_data :: fn (stream: *?TStream, data: []u8, bytes_to_write := std.S64_MAX) (s64, Error) #inline {
+write_data :: fn (stream: *Stream, data: []u8, bytes_to_write := std.S64_MAX) (s64, Error) #inline {
     return write(stream, data.ptr, min(data.len, bytes_to_write));
 }
 
 /// Write the data string into the stream, the `bytes_to_write` can be specified to limit count
 /// of written bytes. Returns count of actually written bytes or an error.
-write_string :: fn (stream: *?TStream, str: string_view, bytes_to_write := std.S64_MAX) (s64, Error) #inline {
+write_string :: fn (stream: *Stream, str: string_view, bytes_to_write := std.S64_MAX) (s64, Error) #inline {
     return write(stream, str.ptr, min(str.len, bytes_to_write));
 }
 
@@ -121,18 +64,17 @@ write_string :: fn (stream: *?TStream, str: string_view, bytes_to_write := std.S
 
 /// Read `bytes_to_read` count of bytes from the stream into `dest` memory. Returns count of actually
 /// read bytes or an error.
-read :: fn (stream: *?TStream, dest: *u8, bytes_to_read: s64) (s64, Error) #inline {
-#if !has_member(@TStream.vtable, "read") {
-        compiler_error("Stream does not support reading.");
-}
-        assert(stream && stream.vtable && stream.vtable.read);
-        if bytes_to_read < 1 { return 0, OK; }
-        return stream.vtable.read(stream, dest, bytes_to_read);
+read :: fn (stream: *Stream, dest: *u8, bytes_to_read: s64) (s64, Error) #inline {
+    assert(stream);
+    assert(stream.vtable);
+    if !stream.vtable.read { panic("Stream does not support reading."); }
+    if bytes_to_read < 1 { return 0, OK; }
+    return stream.vtable.read(stream, dest, bytes_to_read);
 }
 
 /// Read `bytes_to_read` count of bytes from the stream into `dest` dynamic array. Returns count of actually
 /// read bytes or an error.
-read_data :: fn (stream: *?TStream, dest: *[..]u8, bytes_to_read: s64 = std.S64_MAX) (s64, Error) {
+read_data :: fn (stream: *Stream, dest: *[..]u8, bytes_to_read: s64 = std.S64_MAX) (s64, Error) {
     tmp: [512]u8 #noinit;
     read_bytes: s64;
     loop bytes_to_read > 0 {
@@ -148,7 +90,7 @@ read_data :: fn (stream: *?TStream, dest: *[..]u8, bytes_to_read: s64 = std.S64_
 
 /// Read `bytes_to_read` count of bytes from the stream into `dest` stream. Returns count of actually
 /// read bytes or an error.
-read_string :: fn (stream: *?TStream, dest: *string, bytes_to_read: s64 = std.S64_MAX) (s64, Error) {
+read_string :: fn (stream: *Stream, dest: *string, bytes_to_read: s64 = std.S64_MAX) (s64, Error) {
     tmp: [512]u8 #noinit;
     read_bytes: s64;
     loop bytes_to_read > 0 {
@@ -169,10 +111,9 @@ read_string :: fn (stream: *?TStream, dest: *string, bytes_to_read: s64 = std.S6
 
 /// Set the stream pointer position to the `offset` value relative to the stream `locator`. Returns
 /// the pointer position or an error.
-seek :: fn (stream: *?TStream, locator := StreamLocator.CURRENT, offset: s64 = 0) (position: s64, err: Error) {
-#if !has_member(@TStream.vtable, "seek") {
-    compiler_error("Stream does not support position seeking, 'seek' function is missing.");
-}
-    assert(stream && stream.vtable && stream.vtable.seek);
+seek :: fn (stream: *Stream, locator := StreamLocator.CURRENT, offset: s64 = 0) (position: s64, err: Error) {
+    assert(stream);
+    assert(stream.vtable);
+    if !stream.vtable.seek { panic("Stream does not support position seeking, 'seek' function is missing."); }
     return stream.vtable.seek(stream, locator, offset);
 }

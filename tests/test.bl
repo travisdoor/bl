@@ -1,5 +1,8 @@
 #import "std/io"
 
+Stream :: struct {
+}
+
 MyStream :: struct {
     vtable: *MyStreamVTable;
     buffer: [64]u8;
