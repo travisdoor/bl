@@ -1,0 +1,16 @@
+#import "std/fs"
+
+main :: fn () s32 {
+    using std;
+
+    stream, open_err :: open_file(#file);
+    if open_err { panic(open_err); }
+
+    str := str_new();
+    defer str_delete(&str);
+    read_bytes, read_err :: read_string(&stream, &str);
+    if read_err { panic(read_err); }
+    print("read % bytes\n", read_bytes);
+    print("%\n", str);
+    return 0;
+}

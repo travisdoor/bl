@@ -1,0 +1,20 @@
+div :: fn (a: s32, b: s32) (s32, Error) {
+    if b == 0 {
+        // Return error with message.
+        return 0, error("Divide by zero '%/%'!", a, b);
+    }
+    // Return result and OK state.
+    return a / b, OK;
+}
+
+main :: fn () s32 {
+    loop i := -5; i <= 5; i += 1 {
+        result, error :: div(10, i);
+        if error {
+            print("Error: %.\n", error);
+        } else {
+            print("Result is %.\n", result);
+        }
+    }
+    return 0;
+}

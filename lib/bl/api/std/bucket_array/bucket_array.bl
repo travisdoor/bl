@@ -17,41 +17,13 @@
 //! special API is provided for iteration over the array.
 //!
 //! ### Example
+//!
 //! ```c
-//! #import "std/bucket_array"
-//!
-//! Entity :: struct {
-//!     id: s32;
-//!     name: string_view;
-//!     health: s32;
-//! }
-//!
-//! main :: fn () s32 {
-//!     using std;
-//!     arr: BucketArray(Entity);
-//!     // Release all allocated memory
-//!     defer bucket_array_terminate(&arr);
-//!
-//!     loop i := 0; i < 10; i += 1 {
-//!         // Get the adress of the newly pushed entity element.
-//!         entity_ptr := bucket_array_push(&arr);
-//!         // Initialize with some dummy values.
-//!         entity_ptr.id = i;
-//!         entity_ptr.name = "Martin";
-//!         entity_ptr.health = i * 2;
-//!     }
-//!
-//!     // Iterate over all entities
-//!     loop it := bucket_array_begin(&arr); it; it = bucket_array_iter_next(&arr, it) {
-//!         print("%\n", it.value);
-//!     }
-//!
-//!     return 0;
-//! }
+//! {% include "../examples/bucket_array.bl" %}
 //! ```
-///
-/// !!! note
-///     Organizing data into buckets leads to less allocations, faster free and better memory locality.
+//!
+//! !!! note
+//!     Organizing data into buckets leads to less allocations, faster free and better memory locality.
 
 #scope std
 

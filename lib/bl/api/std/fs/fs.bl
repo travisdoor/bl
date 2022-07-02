@@ -47,24 +47,9 @@ OpenFileMode :: enum #flags {
 ///
 /// ### Example
 ///
-/// ```c
-/// #import "std/fs"
-///
-/// main :: fn () s32 {
-///     using std;
-///
-///     stream, open_err :: open_file(#file);
-///     if open_err { panic(open_err); }
-///
-///     str := str_new();
-///     defer str_delete(&str);
-///     read_bytes, read_err :: read(&stream, &str);
-///     if read_err { panic(read_err); }
-///     print("read % bytes\n", read_bytes);
-///     print("%\n", str);
-///     return 0;
-/// }
-/// ```
+//! ```c
+//! {% include "../examples/open_file.bl" %}
+//! ```
 ///
 open_file :: fn (filepath: string_view, mode: OpenFileMode = OpenFileMode.READ) (FileStream, Error) #inline {
     stream: FileStream #noinit;
@@ -226,35 +211,10 @@ VisitOpt :: struct {
 /// Visit all files and directories in `dirpath` with specified `visitor` callback called for each found
 /// file entry. Optional context `ctx` pointer can be passed into the function.
 ///
-/// **Example:**
+/// ### Example
+///
 /// ```c
-/// #import "std/fs"
-///
-/// main :: fn () s32 {
-///     using std;
-///
-///     visitor :: fn (info: *Info, list: *[..]string) Error {
-///         using std;
-///         if info.is_directory { return OK; }
-///         _, ext :: path_splitext(info.filename);
-///         if str_match(ext, ".bl") {
-///             array_push(list, str_new(info.filepath));
-///         }
-///         return OK;
-///     };
-///
-///     list: [..]string;
-///     defer array_terminate(&list);
-///     err :: visit_files("/path/bl/lib", VisitOpt.{ recursive = true }, &visitor, &list);
-///     if err { panic(err); }
-///
-///     loop i := 0; i < list.len; i += 1 {
-///         print("FILE: %\n", list[i]);
-///         str_delete(&list[i]);
-///     }
-///
-///     return 0;
-/// }
+/// {% include "../examples/visit_files.bl" %}
 /// ```
 visit_files :: fn (dirpath: string_view, opt: VisitOpt, visitor: *fn(info: *Info, ctx: *?T) Error, ctx: *T = null) Error #inline {
     assert(visitor);

@@ -1,0 +1,31 @@
+#import "std/buffer_allocator"
+
+buffer: [64]u8;
+
+main :: fn () s32 {
+    allocator := std.buffer_allocator_make(buffer);
+
+    arr: [..]u8;
+    // Initialize the array with our custom allocator.
+    array_init(&arr, buffer.len, &allocator);
+
+    loop i := 0; i < 10; i += 1 {
+        // We're appending the array using our allocator.
+        array_push(&arr, auto i);
+    }
+
+    // Print out the array content;
+    print("arr = %\n", arr);
+
+    // All allocations are done on stack inside the 'buffer'. To test it, we can
+    // print out the buffer content. Keep in mind that the array preallocates
+    // slightly more memory than needed on the first 'array_push` call (for i.e.
+    // 32 elements).
+    print("buf = %\n", buffer);
+
+    // Also the address of the first element in the array should point to the first
+    // element of the buffer.
+    print("%\n", buffer.ptr == arr.ptr);
+
+    return 0;
+}
