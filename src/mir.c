@@ -863,8 +863,9 @@ static const struct slot_config analyze_slot_conf_basic = {
     .count  = 2,
     .stages = {analyze_stage_unroll, analyze_stage_load}};
 
-static const struct slot_config analyze_slot_conf_default = {.count  = 8,
+static const struct slot_config analyze_slot_conf_default = {.count  = 9,
                                                              .stages = {
+                                                                 analyze_stage_unroll,
                                                                  analyze_stage_set_volatile_expr,
                                                                  analyze_stage_set_null,
                                                                  analyze_stage_set_auto,
