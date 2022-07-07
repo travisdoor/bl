@@ -13,3 +13,17 @@ fundametal_types :: fn () #test {
     _f32:   f32; 
     _f64:   f64; 
 };
+
+Foo :: struct { i: s32; }
+
+get_foo_ptr :: fn () *Foo { return null;   }
+get_foo_val :: fn ()  Foo { return Foo.{}; }
+get_1 :: fn () *s32 { return null; }
+get_2 :: fn ()  s32 { return 0;    }
+
+decl_var :: fn () #test {
+    a: *Foo = get_foo_ptr();
+    b:  Foo = get_foo_val();
+    c: *s32 = get_1();
+    d:  s32 = get_2();
+}

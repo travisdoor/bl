@@ -1,0 +1,54 @@
+#import "std/arg_parser"
+
+// Command line arguments context.
+Args :: struct #base std.ArgParserCtx {
+    my_flag: bool;
+    my_name: string_view;
+}
+
+g_args: Args;
+
+main :: fn () s32 {
+    parser :: std.arg_parser_new();
+    defer std.arg_parser_delete(parser);
+    // After this all positional arguments stored inside the argument parser
+    // context are invalid.
+    defer std.arg_parser_ctx_terminate(&g_args);
+
+    // Add new argument.
+    std.arg_parser_add(
+        parser,
+        "-f", // Short name (must start with -)
+        "--flag", // Long name (must start with -)
+        "Specify my flag.", // Help text.
+        &fn (parser: std.ArgParser, args: []string_view, ctx: *std.ArgParserCtx) (s32, Error) {
+            a: *Args = auto ctx;
+            a.my_flag = true;
+            return 1, OK; // Return number of parsed arguments and state.
+        });
+
+    std.arg_parser_add(
+        parser,
+        "-n",
+        "--name",
+        "Specify my name.",
+        &fn (parser: std.ArgParser, args: []string_view, ctx: *std.ArgParserCtx) (s32, Error) {
+            a: *Args = auto ctx;
+            if (args.len < 2) {
+                return 0, error("Expected name!");
+            }
+            a.my_name = args[1];
+            return 2, OK;
+        });
+
+    // Start parsing.
+    state :: std.arg_parser_run(parser, command_line_arguments, &g_args, 1);
+    if state {
+        print_err("%", state);
+        std.arg_parser_print_help(parser);
+        return 1;
+    }
+
+    print("%\n", g_args);
+    return 0;
+}

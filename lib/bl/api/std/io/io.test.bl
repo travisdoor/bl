@@ -1,24 +1,15 @@
 #import "std/io"
 #private
 
-MyStream :: struct {
-    vtable: *MyStreamVTable;
+MyStream :: struct #base std.Stream {
     buffer: [64]u8;
     index: s64;
 }
 
-MyStreamVTable :: struct {
-    using std;
-
-    read: StreamReadFn(MyStream);
-    write: StreamWriteFn(MyStream);
-    seek: StreamSeekFn(MyStream);
-}
-
-MY_STREAM_VTABLE :: MyStreamVTable.{
-    read = &my_read,
-    write = &my_write,
-    seek = &my_seek,
+MY_STREAM_VTABLE :: std.StreamVTable.{
+    read  = auto &my_read,
+    write = auto &my_write,
+    seek  = auto &my_seek,
 };
 
 my_read :: fn (stream: *MyStream, dest: *u8, bytes_to_read: s64) (s64, Error) {

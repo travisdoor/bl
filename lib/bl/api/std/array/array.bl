@@ -10,15 +10,8 @@
 //!
 //! ### Example
 //!
-//! ```
-//! main :: fn () s32 {
-//!     arr: [..]s32; // dynamic array
-//!     loop i := 0; i < 10; i += 1 {
-//!         array_push(&arr, i);
-//!     }
-//!     print("arr = %\n", arr);
-//!     return 0;
-//! }
+//! ```c
+//! {% include "../examples/dynamic_arrays.bl" %}
 //! ```
 
 // Not direcly used internally, when layout of this structure is changed, internal compiler

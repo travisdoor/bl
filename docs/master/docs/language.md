@@ -1994,8 +1994,10 @@ $ export LD_LIBRARY_PATH=. && ./test
 List of builtin variables set by compiler.
 
 - `IS_DEBUG` Is bool immutable variable set to true when assembly is running in debug mode.
-- `IS_COMPTIME_RUN` Is bool immutable variable set to true when assembly is executed in compile
-time.
+- `IS_COMPTIME_RUN` Is bool immutable variable set to true when assembly is executed in compile time.
+- `BLC_VER_MAJOR` Compiler major version number.
+- `BLC_VER_MINOR` Compiler minor version number.
+- `BLC_VER_PATCH` Compiler patch version number.
 
 ## Builtin functions
 

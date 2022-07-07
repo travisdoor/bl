@@ -25,32 +25,9 @@
 //!     The key types are limited to numbers, strings and pointers (this may change in the future).
 //!
 //! ### Example
+//!
 //! ```c
-//! #import "std/table"
-//!
-//! main :: fn () s32 {
-//!     using std;
-//!     table: Table(string_view, s32);
-//!     defer tbl_terminate(&table);
-//!
-//!     // Insert some data into the table.
-//!     tbl_insert(&table, "Martin", 32);
-//!     tbl_insert(&table, "Lisa", 29);
-//!     tbl_insert(&table, "John", 40);
-//!
-//!     // Lookup data by key.
-//!     value, found :: tbl_lookup(&table, "Martin");
-//!     if found {
-//!         print("%\n", value);
-//!     }
-//!
-//!     // Iterate over the table
-//!     loop i := 0; i < table.len; i += 1 {
-//!         print("[%] %\n", table.keys[i], table.values[i]);
-//!     }
-//!
-//!     return 0;
-//! }
+//! {% include "../examples/table.bl" %}
 //! ```
 //!
 

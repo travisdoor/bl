@@ -1,53 +1,14 @@
-#import "std/io"
-
-MyStream :: struct {
-    vtable: *MyStreamVTable;
-    buffer: [64]u8;
-    position: s64;
+Foo :: struct {
+    i: s32;
 }
 
-MyStreamVTable :: struct {
-    using std;
-    read: StreamReadFn(MyStream);
-    write: StreamWriteFn(MyStream);
-}
-
-MY_STRAM_VTABLE :: MyStreamVTable.{
-    read = &my_read,
-    write = &my_write
-};
-
-my_read :: fn (stream: *MyStream, dest: *u8, bytes_to_read: s64) (s64, Error) {
-    using std;
-    size := min(stream.position, bytes_to_read);
-    stream.position -= size;
-    assert(stream.position >= 0);
-    if size > 0 { memcpy(dest, &stream.buffer[stream.position], auto size); }
-    return size, OK;
-}
-
-my_write :: fn (stream: *MyStream, src: *u8, bytes_to_write: s64) (s64, Error) {
-    size :: std.min(stream.buffer.len - stream.position, bytes_to_write);
-    if size > 0 { memcpy(&stream.buffer[stream.position], src, auto size); }
-    stream.position += size;
-    assert(stream.position <= stream.buffer.len);
-    return size, OK;
-}
+get_foo_ptr :: fn () *Foo { return null; }
+get_foo_val :: fn () Foo { return Foo.{ 10 }; }
 
 main :: fn () s32 {
-    using std;
-
-    stream := MyStream.{ vtable = &MY_STRAM_VTABLE };
-
-    write_string(&stream, "Hello");
-    write_string(&stream, "World");
-
-    str := str_new();
-    defer str_delete(&str);
-
-    read_string(&stream, &str);
-
-    print("%\n", str);
+    //v1: *Foo = get_foo_ptr();
+    v2: Foo = get_foo_val();
+    print("%\n", v2);
     return 0;
 }
 
