@@ -497,7 +497,7 @@ int main(s32 argc, char *argv[])
             .name       = "-opt",
             .kind       = ENUM,
             .property.n = (s32 *)&opt.target->opt,
-            .variants   = "debug|release-fast|release-small",
+            .variants   = "debug|release-fast|release-small|release-with-debug-info",
             .help       = "Specify binary optimization mode (use 'debug' by default).",
         },
         {

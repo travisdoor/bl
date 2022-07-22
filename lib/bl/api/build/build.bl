@@ -160,7 +160,8 @@ TargetKind :: enum {
 /// Specify target build mode. Every [Target](#target) can be compiled with various configuration 
 /// options. The `BuildMode` can specify which set of options compiler should use.
 BuildMode :: enum s32 {
-    /// Generates debug symbols and produce binary without any optimizations.
+    /// Generates debug symbols and produce binary without any optimizations. `IS_DEBUG` global variable is
+    /// set to `true` in this mode. (`false` in all other modes)
     DEBUG = 0;
     /// Fast release mode; no debug symbols are produced, all possible optimizations
     /// are applied to produce binary as fast as possible.
@@ -170,6 +171,10 @@ BuildMode :: enum s32 {
     /// to produce binary reasonably fast and as small as possible.
     /// The `assert` is disabled unless `Target.assert_mode` is `ALWAYS_ENABLED`.
     RELEASE_SMALL = 2;
+    /// Small release mode; with debug symbols produced, optimizations are applied
+    /// to produce binary reasonably fast and as small as possible.
+    /// The `assert` is disabled unless `Target.assert_mode` is `ALWAYS_ENABLED`.
+    RELEASE_WITH_DEBUG_INFO = 3;
 }
 
 /// Debug information format.

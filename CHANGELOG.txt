@@ -48,6 +48,7 @@ Add Static Array and Bucket Array
 Redesign hash table implementation.
 Fix bug related to unresolved types waiting for self.
 Simplified memory allocation API.
+Add release-with-debug-info target.
 
 0.9.0 - PRE-RELEASE
 ---------------------------------------------------------------------------------------
