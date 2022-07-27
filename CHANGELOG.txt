@@ -51,6 +51,7 @@ Simplified memory allocation API.
 Add release-with-debug-info target.
 Rename slice_init and slice_terminate to alloc_slice and free_slice.
 Add realloc_slice.
+Add type alignment into the type info.
 
 0.9.0 - PRE-RELEASE
 ---------------------------------------------------------------------------------------

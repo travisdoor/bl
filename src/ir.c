@@ -119,8 +119,11 @@ build_call_memcpy(struct context *ctx, LLVMValueRef src, LLVMValueRef dest, cons
 static LLVMValueRef rtti_emit(struct context *ctx, struct mir_type *type);
 static void         rtti_satisfy_incomplete(struct context *ctx, struct rtti_incomplete incomplete);
 static LLVMValueRef _rtti_emit(struct context *ctx, struct mir_type *type);
-static LLVMValueRef
-rtti_emit_base(struct context *ctx, struct mir_type *type, enum mir_type_kind kind, usize size);
+static LLVMValueRef rtti_emit_base(struct context    *ctx,
+                                   struct mir_type   *type,
+                                   enum mir_type_kind kind,
+                                   usize              size,
+                                   s8                 alignment);
 static LLVMValueRef rtti_emit_integer(struct context *ctx, struct mir_type *type);
 static LLVMValueRef rtti_emit_real(struct context *ctx, struct mir_type *type);
 static LLVMValueRef rtti_emit_array(struct context *ctx, struct mir_type *type);
@@ -942,21 +945,28 @@ State emit_instr_unreachable(struct context *ctx, struct mir_instr_unreachable *
     return STATE_PASSED;
 }
 
-LLVMValueRef
-rtti_emit_base(struct context *ctx, struct mir_type *type, enum mir_type_kind kind, usize size)
+// @Cleanup: we can eventually pass the whole type here instead of size and alignment.
+LLVMValueRef rtti_emit_base(struct context    *ctx,
+                            struct mir_type   *type,
+                            enum mir_type_kind kind,
+                            usize              size,
+                            s8                 alignment)
 {
-    LLVMValueRef     llvm_vals[2];
-    struct mir_type *kind_type = mir_get_struct_elem_type(type, 0);
-    llvm_vals[0]               = LLVMConstInt(get_type(ctx, kind_type), (u64)kind, false);
-    struct mir_type *size_type = mir_get_struct_elem_type(type, 1);
-    llvm_vals[1]               = LLVMConstInt(get_type(ctx, size_type), size, false);
+    LLVMValueRef     llvm_vals[3];
+    struct mir_type *kind_type      = mir_get_struct_elem_type(type, 0);
+    llvm_vals[0]                    = LLVMConstInt(get_type(ctx, kind_type), (u64)kind, false);
+    struct mir_type *size_type      = mir_get_struct_elem_type(type, 1);
+    llvm_vals[1]                    = LLVMConstInt(get_type(ctx, size_type), size, false);
+    struct mir_type *alignment_type = mir_get_struct_elem_type(type, 2);
+    llvm_vals[2] = LLVMConstInt(get_type(ctx, alignment_type), (u64)alignment, false);
     return LLVMConstNamedStruct(get_type(ctx, type), llvm_vals, static_arrlenu(llvm_vals));
 }
 
 LLVMValueRef rtti_emit_empty(struct context *ctx, struct mir_type *type, struct mir_type *rtti_type)
 {
     struct mir_type *base_type = mir_get_struct_elem_type(rtti_type, 0);
-    LLVMValueRef     llvm_val  = rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes);
+    LLVMValueRef     llvm_val =
+        rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes, type->alignment);
     return LLVMConstNamedStruct(get_type(ctx, rtti_type), &llvm_val, 1);
 }
 
@@ -967,7 +977,8 @@ LLVMValueRef rtti_emit_enum(struct context *ctx, struct mir_type *type)
 
     // base
     struct mir_type *base_type = mir_get_struct_elem_type(rtti_type, 0);
-    llvm_vals[0]               = rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes);
+    llvm_vals[0] =
+        rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes, type->alignment);
 
     // name
     const char *name = type->user_id ? type->user_id->str : type->id.str;
@@ -1042,7 +1053,8 @@ LLVMValueRef rtti_emit_struct(struct context *ctx, struct mir_type *type)
 
     // base
     struct mir_type *base_type = mir_get_struct_elem_type(rtti_type, 0);
-    llvm_vals[0] = rtti_emit_base(ctx, base_type, MIR_TYPE_STRUCT, type->store_size_bytes);
+    llvm_vals[0] =
+        rtti_emit_base(ctx, base_type, MIR_TYPE_STRUCT, type->store_size_bytes, type->alignment);
 
     // name
     const char *name = type->user_id ? type->user_id->str : type->id.str;
@@ -1150,7 +1162,8 @@ LLVMValueRef rtti_emit_fn(struct context *ctx, struct mir_type *type)
 
     // base
     struct mir_type *base_type = mir_get_struct_elem_type(rtti_type, 0);
-    llvm_vals[0]               = rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes);
+    llvm_vals[0] =
+        rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes, type->alignment);
 
     // args
     llvm_vals[1] = rtti_emit_fn_args_slice(ctx, type->data.fn.args);
@@ -1172,7 +1185,8 @@ LLVMValueRef rtti_emit_fn_group(struct context *ctx, struct mir_type *type)
     LLVMValueRef     llvm_vals[2];
     // base
     struct mir_type *base_type = mir_get_struct_elem_type(rtti_type, 0);
-    llvm_vals[0]               = rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes);
+    llvm_vals[0] =
+        rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes, type->alignment);
 
     // variants
     llvm_vals[1] = rtti_emit_fn_slice(ctx, type->data.fn_group.variants);
@@ -1279,7 +1293,8 @@ LLVMValueRef rtti_emit_integer(struct context *ctx, struct mir_type *type)
     LLVMValueRef     llvm_vals[3];
 
     struct mir_type *base_type = mir_get_struct_elem_type(rtti_type, 0);
-    llvm_vals[0]               = rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes);
+    llvm_vals[0] =
+        rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes, type->alignment);
 
     struct mir_type *bitcount_type = mir_get_struct_elem_type(rtti_type, 1);
     llvm_vals[1] =
@@ -1297,7 +1312,8 @@ LLVMValueRef rtti_emit_real(struct context *ctx, struct mir_type *type)
     LLVMValueRef     llvm_vals[2];
 
     struct mir_type *base_type = mir_get_struct_elem_type(rtti_type, 0);
-    llvm_vals[0]               = rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes);
+    llvm_vals[0] =
+        rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes, type->alignment);
 
     struct mir_type *bitcount_type = mir_get_struct_elem_type(rtti_type, 1);
     llvm_vals[1] =
@@ -1311,7 +1327,8 @@ LLVMValueRef rtti_emit_ptr(struct context *ctx, struct mir_type *type)
     LLVMValueRef     llvm_vals[2];
 
     struct mir_type *base_type = mir_get_struct_elem_type(rtti_type, 0);
-    llvm_vals[0]               = rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes);
+    llvm_vals[0] =
+        rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes, type->alignment);
 
     // pointee
     llvm_vals[1] = _rtti_emit(ctx, type->data.ptr.expr);
@@ -1325,7 +1342,8 @@ LLVMValueRef rtti_emit_array(struct context *ctx, struct mir_type *type)
     LLVMValueRef     llvm_vals[4];
 
     struct mir_type *base_type = mir_get_struct_elem_type(rtti_type, 0);
-    llvm_vals[0]               = rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes);
+    llvm_vals[0] =
+        rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes, type->alignment);
 
     // name
     const char *name = type->user_id ? type->user_id->str : type->id.str;
