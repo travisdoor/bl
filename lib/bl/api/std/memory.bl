@@ -319,6 +319,10 @@ realloc_slice :: fn (slice: *[]?T, n: s64, zero_initialized := true, allocator: 
     original_elem_count :: slice.len;
     old_size :: elem_size * auto slice.len;
     new_size :: elem_size * auto n;
+    if old_size == 0 {
+        free(auto slice.ptr);
+        slice.ptr = null;
+    }
     mem, err :: realloc(auto slice.ptr, old_size, new_size, alignof(T), allocator, loc);
     if err { panic(err); }
     slice.ptr = auto mem;
