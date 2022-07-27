@@ -171,7 +171,7 @@ realloc :: fn (old_ptr: *u8, old_size: usize, size: usize, alignment := DEFAULT_
     if size == 0 { return null, error("Attempt to allocate 0 bytes."); }
     if old_ptr {
         if old_size == 0 {
-            return old_ptr, error("Original data ponter for reallocation is set, but original data size is zero!");
+            return old_ptr, error("Original data pointer for reallocation is set, but original data size is zero!");
         }
         if old_size == size { return old_ptr, OK; }
     }
@@ -181,7 +181,7 @@ realloc :: fn (old_ptr: *u8, old_size: usize, size: usize, alignment := DEFAULT_
     return mem, err;
 }
 
-/// Free memory previously allocated by specific `allocator`. In case the `allocator` is null, the defautl application context
+/// Free memory previously allocated by specific `allocator`. In case the `allocator` is null, the default application context
 /// allocator is used. The `ptr` can be null.
 free :: fn (ptr: *u8, allocator: *Allocator = null, loc := #call_location) #inline {
     if !allocator { allocator = application_context.allocator; }
@@ -309,26 +309,6 @@ alloc_slice :: fn (slice: *[]?T, n: s64, zero_initialized := true, allocator: *A
     slice.ptr = auto mem;
     slice.len = n;
     if zero_initialized { zeromem(auto slice.ptr, bytes); }
-}
-
-/// Rellocate previously allocated slice with different length. In case `zero_initialized` is `true`, only newly allocated
-/// elements are zero initialized.
-realloc_slice :: fn (slice: *[]?T, n: s64, zero_initialized := true, allocator: *Allocator = null, loc := #call_location) {
-    if n < 0 { panic("Attempt to allocate % elements in slice!", n); }
-    elem_size :: sizeof(T);
-    original_elem_count :: slice.len;
-    old_size :: elem_size * auto slice.len;
-    new_size :: elem_size * auto n;
-    if old_size == 0 {
-        free(auto slice.ptr);
-        slice.ptr = null;
-    }
-    mem, err :: realloc(auto slice.ptr, old_size, new_size, alignof(T), allocator, loc);
-    if err { panic(err); }
-    slice.ptr = auto mem;
-    slice.len = n;
-    newly_added : s64 : auto (new_size - old_size);
-    if newly_added > 0 && zero_initialized { zeromem(auto &(@slice)[original_elem_count], auto newly_added); }
 }
 
 /// Release slice memory allocated by [alloc_slice](#alloc_slice) call.
