@@ -79,7 +79,7 @@ bucket_array_terminate :: fn (arr: *?TArr) {
     assert(arr);
     loop i := 0; i < arr.buckets.len; i += 1 {
         bucket := &arr.buckets[i];
-        slice_terminate(&bucket.elems, arr.allocator);
+        free_slice(&bucket.elems, arr.allocator);
     }
     array_terminate(&arr.buckets);
     array_terminate(&arr.free_buckets);
@@ -195,7 +195,7 @@ ElemWithMeta :: fn (TElem: type) type #comptime {
 
 add_bucket :: fn (arr: *?TArr) {
     bucket := array_push(&arr.buckets);
-    slice_init(&bucket.elems, BUCKET_ELEM_COUNT, false, arr.allocator);
+    alloc_slice(&bucket.elems, BUCKET_ELEM_COUNT, false, arr.allocator);
     bucket.mask = 0;
     array_push(&arr.free_buckets, auto arr.buckets.len - 1);
 }

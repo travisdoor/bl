@@ -49,6 +49,8 @@ Redesign hash table implementation.
 Fix bug related to unresolved types waiting for self.
 Simplified memory allocation API.
 Add release-with-debug-info target.
+Rename slice_init and slice_terminate to alloc_slice and free_slice.
+Add realloc_slice.
 
 0.9.0 - PRE-RELEASE
 ---------------------------------------------------------------------------------------

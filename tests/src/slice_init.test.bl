@@ -1,12 +1,12 @@
 #private
 test_slice_init :: fn () #test {
     ptr: []s32;
-    slice_init(&ptr, 10);
+    alloc_slice(&ptr, 10);
 
     test_not_null(ptr.ptr);
     test_eq(ptr.len, 10);
 
-    slice_terminate(&ptr);
+    free_slice(&ptr);
     //test_not_null(ptr.ptr, null);
     test_null(ptr.ptr, null);
     test_eq(ptr.len, 0);
