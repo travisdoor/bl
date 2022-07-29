@@ -13,7 +13,7 @@ help ::
     "  bench [options] <executable>\n";
 
 main :: fn () s32 {
-	defer std.tmp_release();
+	defer std.temporary_release();
     defer std.arg_parser_ctx_terminate(&g_args);
     parser :: std.arg_parser_new(help);
     defer std.arg_parser_delete(parser);

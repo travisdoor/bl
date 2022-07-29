@@ -84,7 +84,8 @@ ProjKind :: enum {
 }
 
 main :: fn () s32 {
-    _context.print_log_fn = &custom_logger;
+	defer std.temporary_release();
+    application_context.print_log_fn = &custom_logger;
     parser :: std.arg_parser_new(HELP);
     defer std.arg_parser_delete(parser);
     
@@ -207,9 +208,9 @@ main :: fn () s32 {
 
 make_file :: fn (filepath: string_view, content: string_view, args: ...) Error {
     file, err :: std.open_file(filepath, make_flags(std.OpenFileMode.WRITE, std.OpenFileMode.CREATE));
-    defer std.close_file(file);
+    defer std.close_file(&file);
     if err { return err; }
-    std.write_fmt(file, content, args);
+    std.write_string(&file, tprint(content, args));
     return OK;
 }
 
