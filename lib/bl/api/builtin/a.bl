@@ -116,7 +116,9 @@ TypeInfo :: struct #compiler {
     /// Type info kind.
     kind: TypeKind;
     /// Size of type in bytes.
-    size_bytes: usize
+    size_bytes: usize;
+    /// Alignment of type.
+    alignment: usize;
 };
 
 /// Detailed information about integer types: `s8`, `s16`, `s32`, `s64`, `u8`, `u16`, `u32`, `u64`, `usize`.

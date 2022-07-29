@@ -171,7 +171,7 @@ realloc :: fn (old_ptr: *u8, old_size: usize, size: usize, alignment := DEFAULT_
     if size == 0 { return null, error("Attempt to allocate 0 bytes."); }
     if old_ptr {
         if old_size == 0 {
-            return old_ptr, error("Original data ponter for reallocation is set, but original data size is zero!");
+            return old_ptr, error("Original data pointer for reallocation is set, but original data size is zero!");
         }
         if old_size == size { return old_ptr, OK; }
     }
@@ -181,7 +181,7 @@ realloc :: fn (old_ptr: *u8, old_size: usize, size: usize, alignment := DEFAULT_
     return mem, err;
 }
 
-/// Free memory previously allocated by specific `allocator`. In case the `allocator` is null, the defautl application context
+/// Free memory previously allocated by specific `allocator`. In case the `allocator` is null, the default application context
 /// allocator is used. The `ptr` can be null.
 free :: fn (ptr: *u8, allocator: *Allocator = null, loc := #call_location) #inline {
     if !allocator { allocator = application_context.allocator; }
@@ -267,11 +267,13 @@ align_ptr_up :: fn (p: *u8, alignment: usize) (p: *u8, adjustment: usize)
     return p, adj;
 }
 
+// @Incomplete: Slice allocs should return error and do not implicitly panic!
+
 /// Allocate heap memory for `n` elements in the `slice`. Newly allocated slice can be zero initialized
 /// by setting `zero_init` to `true`. Custom allocator can be provided as `allocator`, the application context
 /// allocator is used in case the `allocator` is null.
 ///
-/// Allocated memory must be released by [slice_terminate](#slice_terminate) call.
+/// Allocated memory must be released by [free_slice](#free_slice) call.
 ///
 /// ### Example
 /// 
@@ -279,21 +281,21 @@ align_ptr_up :: fn (p: *u8, alignment: usize) (p: *u8, adjustment: usize)
 /// main :: fn () s32 {
 ///     // Allocate slice of 10 numbers
 ///     sl: []s32;
-///     slice_init(&sl, 10);
+///     alloc_slice(&sl, 10);
 /// 
 ///     loop i := 0; i < sl.len; i += 1 {
 ///         sl[i] = i;
 ///     }
 /// 
 ///     // release memory allocated by init
-///     slice_terminate(&sl);
+///     free_slice(&sl);
 ///     return 0;
 /// }
 /// ```
 ///
 /// !!! note
 ///     Zero initialization of allocated memory block can be expensive in case of large number of elements.
-slice_init :: fn (slice: *[]?T, n: s64, zero_initialized := true, allocator: *Allocator = null, loc := #call_location) {
+alloc_slice :: fn (slice: *[]?T, n: s64, zero_initialized := true, allocator: *Allocator = null, loc := #call_location) {
     if n < 0 { panic("Attempt to allocate % elements in slice!", n); }
     if n == 0  {
         slice.ptr = null;
@@ -309,10 +311,10 @@ slice_init :: fn (slice: *[]?T, n: s64, zero_initialized := true, allocator: *Al
     if zero_initialized { zeromem(auto slice.ptr, bytes); }
 }
 
-/// Release slice memory allocated by [slice_init](#slice_init) call.
+/// Release slice memory allocated by [alloc_slice](#alloc_slice) call.
 /// !!! warning
-///     The `allocator` must match the allocator used in ``slice_init``.
-slice_terminate :: fn (slice: *[]?T, allocator: *Allocator = null, loc := #call_location) {
+///     The `allocator` must match the allocator used in ``alloc_slice``.
+free_slice :: fn (slice: *[]?T, allocator: *Allocator = null, loc := #call_location) {
     if slice.ptr {
         free(auto slice.ptr, allocator, loc);
         slice.ptr = null;

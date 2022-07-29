@@ -716,6 +716,7 @@ v4_normalize :: fn (v: v4) v4 #inline {
 // =================================================================================================
 // compare 
 // =================================================================================================
+// @Incomplete: epsilon with default value?
 v2_compare :: fn (a: v2, b: v2, epsilon: f32) bool #inline {
     return std.compare(a.x, b.x, epsilon) && std.compare(a.y, b.y, epsilon);
 }

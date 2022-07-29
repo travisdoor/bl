@@ -75,7 +75,8 @@ static void append_libs(struct assembly *assembly, char **buf)
 
 static void append_default_opt(struct assembly *assembly, char **buf)
 {
-    const bool is_debug = assembly->target->opt == ASSEMBLY_OPT_DEBUG;
+    const bool is_debug = assembly->target->opt == ASSEMBLY_OPT_DEBUG ||
+                          assembly->target->opt == ASSEMBLY_OPT_RELEASE_WITH_DEBUG_INFO;
     if (is_debug) strappend(*buf, "%s ", FLAG_DEBUG);
     const char *default_opt = "";
     switch (assembly->target->kind) {

@@ -1,79 +1,89 @@
 #private
 typeinfo_s8 :: fn () #test {
     info := cast(*TypeInfoInt) typeinfo(s8);
-    assert(info.base.kind == TypeKind.INT);
-    assert(info.base.size_bytes == sizeof(s8));
+    assert(info.kind == TypeKind.INT);
+    assert(info.size_bytes == sizeof(s8));
+    assert(info.alignment == alignof(s8));
     assert(info.bit_count == auto sizeof(s8) * 8);
     assert(info.is_signed);
 }
 
 typeinfo_s16 :: fn () #test {
     info := cast(*TypeInfoInt) typeinfo(s16);
-    assert(info.base.kind == TypeKind.INT);
-    assert(info.base.size_bytes == sizeof(s16));
+    assert(info.kind == TypeKind.INT);
+    assert(info.size_bytes == sizeof(s16));
+    assert(info.alignment == alignof(s16));
     assert(info.bit_count == auto sizeof(s16) * 8);
     assert(info.is_signed);
 }
 
 typeinfo_s32 :: fn () #test {
     info := cast(*TypeInfoInt) typeinfo(s32);
-    assert(info.base.kind == TypeKind.INT);
-    assert(info.base.size_bytes == sizeof(s32));
+    assert(info.kind == TypeKind.INT);
+    assert(info.size_bytes == sizeof(s32));
+    assert(info.alignment == alignof(s32));
     assert(info.bit_count == auto sizeof(s32) * 8);
     assert(info.is_signed);
 }
 
 typeinfo_s64 :: fn () #test {
     info := cast(*TypeInfoInt) typeinfo(s64);
-    assert(info.base.kind == TypeKind.INT);
-    assert(info.base.size_bytes == sizeof(s64));
+    assert(info.kind == TypeKind.INT);
+    assert(info.size_bytes == sizeof(s64));
+    assert(info.alignment == alignof(s64));
     assert(info.bit_count == auto sizeof(s64) * 8);
     assert(info.is_signed);
 }
 
 typeinfo_u8 :: fn () #test {
     info := cast(*TypeInfoInt) typeinfo(u8);
-    assert(info.base.kind == TypeKind.INT);
-    assert(info.base.size_bytes == sizeof(u8));
+    assert(info.kind == TypeKind.INT);
+    assert(info.size_bytes == sizeof(u8));
+    assert(info.alignment == alignof(u8));
     assert(info.bit_count == auto sizeof(u8) * 8);
     assert(!info.is_signed);
 }
 
 typeinfo_u16 :: fn () #test {
     info := cast(*TypeInfoInt) typeinfo(u16);
-    assert(info.base.kind == TypeKind.INT);
-    assert(info.base.size_bytes == sizeof(u16));
+    assert(info.kind == TypeKind.INT);
+    assert(info.size_bytes == sizeof(u16));
+    assert(info.alignment == alignof(u16));
     assert(info.bit_count == auto sizeof(u16) * 8);
     assert(!info.is_signed);
 }
 
 typeinfo_u32 :: fn () #test {
     info := cast(*TypeInfoInt) typeinfo(u32);
-    assert(info.base.kind == TypeKind.INT);
-    assert(info.base.size_bytes == sizeof(u32));
+    assert(info.kind == TypeKind.INT);
+    assert(info.size_bytes == sizeof(u32));
+    assert(info.alignment == alignof(u32));
     assert(info.bit_count == auto sizeof(u32) * 8);
     assert(!info.is_signed);
 }
 
 typeinfo_u64 :: fn () #test {
     info := cast(*TypeInfoInt) typeinfo(u64);
-    assert(info.base.kind == TypeKind.INT);
-    assert(info.base.size_bytes == sizeof(u64));
+    assert(info.kind == TypeKind.INT);
+    assert(info.size_bytes == sizeof(u64));
+    assert(info.alignment == alignof(u64));
     assert(info.bit_count == auto sizeof(u64) * 8);
     assert(!info.is_signed);
 }
 
 typeinfo_f32 :: fn () #test {
     info := cast(*TypeInfoReal) typeinfo(f32);
-    assert(info.base.kind == TypeKind.REAL);
-    assert(info.base.size_bytes == sizeof(f32));
+    assert(info.kind == TypeKind.REAL);
+    assert(info.size_bytes == sizeof(f32));
+    assert(info.alignment == sizeof(f32));
     assert(info.bit_count == auto sizeof(f32) * 8);
 };
 
 typeinfo_f64 :: fn () #test {
     info := cast(*TypeInfoReal) typeinfo(f64);
-    assert(info.base.kind == TypeKind.REAL);
-    assert(info.base.size_bytes == sizeof(f64));
+    assert(info.kind == TypeKind.REAL);
+    assert(info.size_bytes == sizeof(f64));
+    assert(info.alignment == sizeof(f64));
     assert(info.bit_count == auto sizeof(f64) * 8);
 };
 

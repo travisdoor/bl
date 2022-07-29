@@ -75,7 +75,7 @@ tbl_terminate :: fn (tbl: *?T) {
     assert(tbl);
     array_terminate(&tbl.keys);
     array_terminate(&tbl.values);
-    slice_terminate(&tbl.slots, tbl.allocator);
+    free_slice(&tbl.slots, tbl.allocator);
     zeromem(auto tbl, sizeof(T));
 }
 
@@ -300,7 +300,7 @@ lookup_indices :: fn (tbl: *?T, hash: u32, key: tbl_typeof_key(T)) (slot_index: 
 resize :: fn (tbl: *?T, new_size : s32 = DEFAULT_ENTRIES_COUNT) {
     assert(new_size > 32);
     old_slots :: tbl.slots;
-    slice_init(&tbl.slots, new_size, false, tbl.allocator);
+    alloc_slice(&tbl.slots, new_size, false, tbl.allocator);
     loop i := 0; i < tbl.slots.len; i += 1 {
         tbl.slots[i].index = EMPTY_INDEX;
     }
@@ -315,5 +315,5 @@ resize :: fn (tbl: *?T, new_size : s32 = DEFAULT_ENTRIES_COUNT) {
         used_count -= 1;
     }
 
-    slice_terminate(&old_slots, tbl.allocator);
+    free_slice(&old_slots, tbl.allocator);
 }

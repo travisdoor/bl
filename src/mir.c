@@ -9334,7 +9334,7 @@ inline struct mir_var *rtti_create_and_alloc_var(struct context *ctx, struct mir
 }
 
 static inline void
-rtti_gen_base(struct context *ctx, vm_stack_ptr_t dest, u8 kind, usize size_bytes)
+rtti_gen_base(struct context *ctx, vm_stack_ptr_t dest, u8 kind, usize size_bytes, s8 alignment)
 {
     struct mir_type *rtti_type      = ctx->builtin_types->t_TypeInfo;
     struct mir_type *dest_kind_type = mir_get_struct_elem_type(rtti_type, 0);
@@ -9343,8 +9343,12 @@ rtti_gen_base(struct context *ctx, vm_stack_ptr_t dest, u8 kind, usize size_byte
     struct mir_type *dest_size_bytes_type = mir_get_struct_elem_type(rtti_type, 1);
     vm_stack_ptr_t   dest_size_bytes = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
 
+    struct mir_type *dest_alignment_type = mir_get_struct_elem_type(rtti_type, 2);
+    vm_stack_ptr_t   dest_alignment = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 2);
+
     vm_write_int(dest_kind_type, dest_kind, (u64)kind);
     vm_write_int(dest_size_bytes_type, dest_size_bytes, (u64)size_bytes);
+    vm_write_int(dest_alignment_type, dest_alignment, (u64)alignment);
 }
 
 struct mir_var *rtti_gen_integer(struct context *ctx, struct mir_type *type)
@@ -9352,7 +9356,7 @@ struct mir_var *rtti_gen_integer(struct context *ctx, struct mir_type *type)
     struct mir_type *rtti_type = ctx->builtin_types->t_TypeInfoInt;
     struct mir_var  *rtti_var  = rtti_create_and_alloc_var(ctx, rtti_type);
     vm_stack_ptr_t   dest      = vm_read_var(ctx->vm, rtti_var);
-    rtti_gen_base(ctx, dest, type->kind, type->store_size_bytes);
+    rtti_gen_base(ctx, dest, type->kind, type->store_size_bytes, type->alignment);
 
     struct mir_type *dest_bit_count_type = mir_get_struct_elem_type(rtti_type, 1);
     vm_stack_ptr_t   dest_bit_count = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
@@ -9371,7 +9375,7 @@ struct mir_var *rtti_gen_real(struct context *ctx, struct mir_type *type)
     struct mir_type *rtti_type = ctx->builtin_types->t_TypeInfoReal;
     struct mir_var  *rtti_var  = rtti_create_and_alloc_var(ctx, rtti_type);
     vm_stack_ptr_t   dest      = vm_read_var(ctx->vm, rtti_var);
-    rtti_gen_base(ctx, dest, type->kind, type->store_size_bytes);
+    rtti_gen_base(ctx, dest, type->kind, type->store_size_bytes, type->alignment);
 
     struct mir_type *dest_bit_count_type = mir_get_struct_elem_type(rtti_type, 1);
     vm_stack_ptr_t   dest_bit_count = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
@@ -9386,7 +9390,7 @@ struct mir_var *rtti_gen_ptr(struct context *ctx, struct mir_type *type, struct 
         incomplete ? incomplete : rtti_create_and_alloc_var(ctx, ctx->builtin_types->t_TypeInfoPtr);
 
     vm_stack_ptr_t dest = vm_read_var(ctx->vm, rtti_var);
-    rtti_gen_base(ctx, dest, type->kind, type->store_size_bytes);
+    rtti_gen_base(ctx, dest, type->kind, type->store_size_bytes, type->alignment);
 
     struct mir_type *dest_pointee_type =
         mir_get_struct_elem_type(ctx->builtin_types->t_TypeInfoPtr, 1);
@@ -9404,7 +9408,7 @@ struct mir_var *rtti_gen_array(struct context *ctx, struct mir_type *type)
     struct mir_type *rtti_type = ctx->builtin_types->t_TypeInfoArray;
     struct mir_var  *rtti_var  = rtti_create_and_alloc_var(ctx, rtti_type);
     vm_stack_ptr_t   dest      = vm_read_var(ctx->vm, rtti_var);
-    rtti_gen_base(ctx, dest, type->kind, type->store_size_bytes);
+    rtti_gen_base(ctx, dest, type->kind, type->store_size_bytes, type->alignment);
 
     // name
     struct mir_type *dest_name_type = mir_get_struct_elem_type(rtti_type, 1);
@@ -9434,7 +9438,7 @@ rtti_gen_empty(struct context *ctx, struct mir_type *type, struct mir_type *rtti
 {
     struct mir_var *rtti_var = rtti_create_and_alloc_var(ctx, rtti_type);
     vm_stack_ptr_t  dest     = vm_read_var(ctx->vm, rtti_var);
-    rtti_gen_base(ctx, dest, type->kind, type->store_size_bytes);
+    rtti_gen_base(ctx, dest, type->kind, type->store_size_bytes, type->alignment);
     return rtti_var;
 }
 
@@ -9484,7 +9488,7 @@ struct mir_var *rtti_gen_enum(struct context *ctx, struct mir_type *type)
     struct mir_type *rtti_type = ctx->builtin_types->t_TypeInfoEnum;
     struct mir_var  *rtti_var  = rtti_create_and_alloc_var(ctx, rtti_type);
     vm_stack_ptr_t   dest      = vm_read_var(ctx->vm, rtti_var);
-    rtti_gen_base(ctx, dest, type->kind, type->store_size_bytes);
+    rtti_gen_base(ctx, dest, type->kind, type->store_size_bytes, type->alignment);
 
     // name
     struct mir_type *dest_name_type = mir_get_struct_elem_type(rtti_type, 1);
@@ -9582,7 +9586,7 @@ struct mir_var *rtti_gen_struct(struct context *ctx, struct mir_type *type)
     struct mir_type *rtti_type = ctx->builtin_types->t_TypeInfoStruct;
     struct mir_var  *rtti_var  = rtti_create_and_alloc_var(ctx, rtti_type);
     vm_stack_ptr_t   dest      = vm_read_var(ctx->vm, rtti_var);
-    rtti_gen_base(ctx, dest, MIR_TYPE_STRUCT, type->store_size_bytes);
+    rtti_gen_base(ctx, dest, MIR_TYPE_STRUCT, type->store_size_bytes, type->alignment);
 
     // name
     struct mir_type *dest_name_type = mir_get_struct_elem_type(rtti_type, 1);
@@ -9700,7 +9704,7 @@ struct mir_var *rtti_gen_fn(struct context *ctx, struct mir_type *type)
     struct mir_type *rtti_type = ctx->builtin_types->t_TypeInfoFn;
     struct mir_var  *rtti_var  = rtti_create_and_alloc_var(ctx, rtti_type);
     vm_stack_ptr_t   dest      = vm_read_var(ctx->vm, rtti_var);
-    rtti_gen_base(ctx, dest, type->kind, type->store_size_bytes);
+    rtti_gen_base(ctx, dest, type->kind, type->store_size_bytes, type->alignment);
 
     // args
     vm_stack_ptr_t dest_args = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
@@ -9726,7 +9730,7 @@ struct mir_var *rtti_gen_fn_group(struct context *ctx, struct mir_type *type)
     struct mir_type *rtti_type = ctx->builtin_types->t_TypeInfoFnGroup;
     struct mir_var  *rtti_var  = rtti_create_and_alloc_var(ctx, rtti_type);
     vm_stack_ptr_t   dest      = vm_read_var(ctx->vm, rtti_var);
-    rtti_gen_base(ctx, dest, type->kind, type->store_size_bytes);
+    rtti_gen_base(ctx, dest, type->kind, type->store_size_bytes, type->alignment);
 
     // variants
     vm_stack_ptr_t dest_args = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);

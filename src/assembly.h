@@ -47,9 +47,10 @@ enum assembly_kind {
 };
 
 enum assembly_opt {
-    ASSEMBLY_OPT_DEBUG         = 0, // Standard debug mode. Opt: NONE
-    ASSEMBLY_OPT_RELEASE_FAST  = 1, // Standard release mode. Opt: Aggressive
-    ASSEMBLY_OPT_RELEASE_SMALL = 2, // Standard release mode. Opt: Default
+    ASSEMBLY_OPT_DEBUG                   = 0, // Standard debug mode. Opt: NONE
+    ASSEMBLY_OPT_RELEASE_FAST            = 1, // Standard release mode. Opt: Aggressive
+    ASSEMBLY_OPT_RELEASE_SMALL           = 2, // Standard release mode. Opt: Default
+    ASSEMBLY_OPT_RELEASE_WITH_DEBUG_INFO = 3, // Release mode. Opt: Default with debug info.
 };
 
 enum assembly_di_kind {
@@ -301,6 +302,8 @@ static inline const char *opt_to_str(enum assembly_opt opt)
         return "RELEASE-FAST";
     case ASSEMBLY_OPT_RELEASE_SMALL:
         return "RELEASE-SMALL";
+    case ASSEMBLY_OPT_RELEASE_WITH_DEBUG_INFO:
+        return "RELEASE-WITH-DEBUG-INFO";
     }
     babort("Invalid build mode");
 }
@@ -314,6 +317,7 @@ static inline LLVMCodeGenOptLevel opt_to_LLVM(enum assembly_opt opt)
     case ASSEMBLY_OPT_RELEASE_FAST:
         return LLVMCodeGenLevelAggressive;
     case ASSEMBLY_OPT_RELEASE_SMALL:
+    case ASSEMBLY_OPT_RELEASE_WITH_DEBUG_INFO:
         return LLVMCodeGenLevelDefault;
     }
     babort("Invalid build mode");

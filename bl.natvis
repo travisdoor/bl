@@ -20,10 +20,10 @@ SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
         </Expand>
     </Type>
     <Type Name="da.*">
-        <DisplayString>[{len}/{allocated}] {ptr,[len]na}</DisplayString>
+        <DisplayString>[{len}/{allocated_elems}] {ptr,[len]na}</DisplayString>
         <Expand>
             <Item Name="[len]">len</Item>
-            <Item Name="[allocated]">allocated</Item>
+            <Item Name="[allocated_elems]">allocated_elems</Item>
             <ArrayItems>
                 <Size>len</Size>
                 <ValuePointer>ptr,na</ValuePointer>

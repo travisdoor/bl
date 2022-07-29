@@ -77,8 +77,8 @@ test_poly_sum_2 :: fn () #test {
 
 test_poly_sum_3 :: fn () #test {
     slice: []s32;
-    slice_init(&slice, 10);
-    defer slice_terminate(&slice);
+    alloc_slice(&slice, 10);
+    defer free_slice(&slice);
     loop i := 0; i < slice.len; i += 1 {
         slice[i] = i;
     }    

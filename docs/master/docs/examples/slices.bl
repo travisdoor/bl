@@ -3,13 +3,13 @@ main :: fn () s32 {
     // and my_slice.ptr is null.
     my_slice: []s32;
 
-    // Use of the 'slice_init' function to allocate memory block for 10 numbers.
-    slice_init(&my_slice, 10);
+    // Use of the 'alloc_slice' function to allocate memory block for 10 numbers.
+    alloc_slice(&my_slice, 10);
 
-    // Release memory allocated by 'slice_init' when it's no longer needed. Defer
-    // statement will execute 'slice_terminate' function at the end of current 
+    // Release memory allocated by 'alloc_slice' when it's no longer needed. Defer
+    // statement will execute 'free_slice' function at the end of current 
     // scope.
-    defer slice_terminate(&my_slice);
+    defer free_slice(&my_slice);
 
 
     // Len is now set to 10.
@@ -18,7 +18,7 @@ main :: fn () s32 {
     // Ptr is pointer to the allocated memory.
     print("my_slice.ptr = %\n", my_slice.ptr);
 
-    // The 'slice_init' will set allocated elements to 0.
+    // The 'alloc_slice' will set allocated elements to 0.
     print("my_slice: %\n", my_slice);
 
 
@@ -32,8 +32,8 @@ main :: fn () s32 {
     print("my_slice: %\n", my_slice);
 
 
-    // Array can be implicitly converted to slice, in such case no 'slice_init'
-    // or 'slice_terminate' is needed. Actual data will stay in original array
+    // Array can be implicitly converted to slice, in such case no 'alloc_slice'
+    // or 'free_slice' is needed. Actual data will stay in original array
     // location, slice in such case acts only like an 'interface' to the original
     // array.
 

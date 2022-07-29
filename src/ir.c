@@ -41,13 +41,13 @@
 
 #define STORE_MAX_SIZE_BYTES 16
 #define DI_LOCATION_SET(instr)                                                                     \
-    if (ctx->is_debug_mode && (instr)->node) {                                                     \
+    if (ctx->generate_debug_info && (instr)->node) {                                               \
         emit_DI_instr_loc(ctx, (instr));                                                           \
     }                                                                                              \
     (void)0
 
 #define DI_LOCATION_RESET()                                                                        \
-    if (ctx->is_debug_mode) {                                                                      \
+    if (ctx->generate_debug_info) {                                                                \
         LLVMSetCurrentDebugLocation2(ctx->llvm_builder, NULL);                                     \
     }                                                                                              \
     (void)0
@@ -90,7 +90,7 @@ struct context {
     array(struct rtti_incomplete) incomplete_rtti;
 
     struct BuiltinTypes *builtin_types;
-    bool                 is_debug_mode;
+    bool                 generate_debug_info;
     array(struct mir_type *) di_incomplete_types;
 
     // intrinsics
@@ -119,8 +119,11 @@ build_call_memcpy(struct context *ctx, LLVMValueRef src, LLVMValueRef dest, cons
 static LLVMValueRef rtti_emit(struct context *ctx, struct mir_type *type);
 static void         rtti_satisfy_incomplete(struct context *ctx, struct rtti_incomplete incomplete);
 static LLVMValueRef _rtti_emit(struct context *ctx, struct mir_type *type);
-static LLVMValueRef
-rtti_emit_base(struct context *ctx, struct mir_type *type, enum mir_type_kind kind, usize size);
+static LLVMValueRef rtti_emit_base(struct context    *ctx,
+                                   struct mir_type   *type,
+                                   enum mir_type_kind kind,
+                                   usize              size,
+                                   s8                 alignment);
 static LLVMValueRef rtti_emit_integer(struct context *ctx, struct mir_type *type);
 static LLVMValueRef rtti_emit_real(struct context *ctx, struct mir_type *type);
 static LLVMValueRef rtti_emit_array(struct context *ctx, struct mir_type *type);
@@ -259,7 +262,7 @@ llvm_cache_fn(struct context *ctx, const char *name, LLVMValueRef llvm_fn)
 static inline LLVMTypeRef get_type(struct context *ctx, struct mir_type *t)
 {
     bassert(t->llvm_type && "Invalid type reference for LLVM!");
-    if (ctx->is_debug_mode && !t->llvm_meta) {
+    if (ctx->generate_debug_info && !t->llvm_meta) {
         DI_type_init(ctx, t);
     }
 
@@ -751,7 +754,7 @@ LLVMValueRef emit_global_var_proto(struct context *ctx, struct mir_var *var)
     if (isflag(var->flags, FLAG_THREAD_LOCAL)) {
         LLVMSetThreadLocalMode(var->llvm_value, LLVMGeneralDynamicTLSModel);
     }
-    const bool emit_DI = ctx->is_debug_mode && !var->is_implicit && var->decl_node;
+    const bool emit_DI = ctx->generate_debug_info && !var->is_implicit && var->decl_node;
     if (emit_DI) emit_DI_var(ctx, var);
     return var->llvm_value;
 }
@@ -942,21 +945,28 @@ State emit_instr_unreachable(struct context *ctx, struct mir_instr_unreachable *
     return STATE_PASSED;
 }
 
-LLVMValueRef
-rtti_emit_base(struct context *ctx, struct mir_type *type, enum mir_type_kind kind, usize size)
+// @Cleanup: we can eventually pass the whole type here instead of size and alignment.
+LLVMValueRef rtti_emit_base(struct context    *ctx,
+                            struct mir_type   *type,
+                            enum mir_type_kind kind,
+                            usize              size,
+                            s8                 alignment)
 {
-    LLVMValueRef     llvm_vals[2];
-    struct mir_type *kind_type = mir_get_struct_elem_type(type, 0);
-    llvm_vals[0]               = LLVMConstInt(get_type(ctx, kind_type), (u64)kind, false);
-    struct mir_type *size_type = mir_get_struct_elem_type(type, 1);
-    llvm_vals[1]               = LLVMConstInt(get_type(ctx, size_type), size, false);
+    LLVMValueRef     llvm_vals[3];
+    struct mir_type *kind_type      = mir_get_struct_elem_type(type, 0);
+    llvm_vals[0]                    = LLVMConstInt(get_type(ctx, kind_type), (u64)kind, false);
+    struct mir_type *size_type      = mir_get_struct_elem_type(type, 1);
+    llvm_vals[1]                    = LLVMConstInt(get_type(ctx, size_type), size, false);
+    struct mir_type *alignment_type = mir_get_struct_elem_type(type, 2);
+    llvm_vals[2] = LLVMConstInt(get_type(ctx, alignment_type), (u64)alignment, false);
     return LLVMConstNamedStruct(get_type(ctx, type), llvm_vals, static_arrlenu(llvm_vals));
 }
 
 LLVMValueRef rtti_emit_empty(struct context *ctx, struct mir_type *type, struct mir_type *rtti_type)
 {
     struct mir_type *base_type = mir_get_struct_elem_type(rtti_type, 0);
-    LLVMValueRef     llvm_val  = rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes);
+    LLVMValueRef     llvm_val =
+        rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes, type->alignment);
     return LLVMConstNamedStruct(get_type(ctx, rtti_type), &llvm_val, 1);
 }
 
@@ -967,7 +977,8 @@ LLVMValueRef rtti_emit_enum(struct context *ctx, struct mir_type *type)
 
     // base
     struct mir_type *base_type = mir_get_struct_elem_type(rtti_type, 0);
-    llvm_vals[0]               = rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes);
+    llvm_vals[0] =
+        rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes, type->alignment);
 
     // name
     const char *name = type->user_id ? type->user_id->str : type->id.str;
@@ -1042,7 +1053,8 @@ LLVMValueRef rtti_emit_struct(struct context *ctx, struct mir_type *type)
 
     // base
     struct mir_type *base_type = mir_get_struct_elem_type(rtti_type, 0);
-    llvm_vals[0] = rtti_emit_base(ctx, base_type, MIR_TYPE_STRUCT, type->store_size_bytes);
+    llvm_vals[0] =
+        rtti_emit_base(ctx, base_type, MIR_TYPE_STRUCT, type->store_size_bytes, type->alignment);
 
     // name
     const char *name = type->user_id ? type->user_id->str : type->id.str;
@@ -1150,7 +1162,8 @@ LLVMValueRef rtti_emit_fn(struct context *ctx, struct mir_type *type)
 
     // base
     struct mir_type *base_type = mir_get_struct_elem_type(rtti_type, 0);
-    llvm_vals[0]               = rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes);
+    llvm_vals[0] =
+        rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes, type->alignment);
 
     // args
     llvm_vals[1] = rtti_emit_fn_args_slice(ctx, type->data.fn.args);
@@ -1172,7 +1185,8 @@ LLVMValueRef rtti_emit_fn_group(struct context *ctx, struct mir_type *type)
     LLVMValueRef     llvm_vals[2];
     // base
     struct mir_type *base_type = mir_get_struct_elem_type(rtti_type, 0);
-    llvm_vals[0]               = rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes);
+    llvm_vals[0] =
+        rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes, type->alignment);
 
     // variants
     llvm_vals[1] = rtti_emit_fn_slice(ctx, type->data.fn_group.variants);
@@ -1279,7 +1293,8 @@ LLVMValueRef rtti_emit_integer(struct context *ctx, struct mir_type *type)
     LLVMValueRef     llvm_vals[3];
 
     struct mir_type *base_type = mir_get_struct_elem_type(rtti_type, 0);
-    llvm_vals[0]               = rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes);
+    llvm_vals[0] =
+        rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes, type->alignment);
 
     struct mir_type *bitcount_type = mir_get_struct_elem_type(rtti_type, 1);
     llvm_vals[1] =
@@ -1297,7 +1312,8 @@ LLVMValueRef rtti_emit_real(struct context *ctx, struct mir_type *type)
     LLVMValueRef     llvm_vals[2];
 
     struct mir_type *base_type = mir_get_struct_elem_type(rtti_type, 0);
-    llvm_vals[0]               = rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes);
+    llvm_vals[0] =
+        rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes, type->alignment);
 
     struct mir_type *bitcount_type = mir_get_struct_elem_type(rtti_type, 1);
     llvm_vals[1] =
@@ -1311,7 +1327,8 @@ LLVMValueRef rtti_emit_ptr(struct context *ctx, struct mir_type *type)
     LLVMValueRef     llvm_vals[2];
 
     struct mir_type *base_type = mir_get_struct_elem_type(rtti_type, 0);
-    llvm_vals[0]               = rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes);
+    llvm_vals[0] =
+        rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes, type->alignment);
 
     // pointee
     llvm_vals[1] = _rtti_emit(ctx, type->data.ptr.expr);
@@ -1325,7 +1342,8 @@ LLVMValueRef rtti_emit_array(struct context *ctx, struct mir_type *type)
     LLVMValueRef     llvm_vals[4];
 
     struct mir_type *base_type = mir_get_struct_elem_type(rtti_type, 0);
-    llvm_vals[0]               = rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes);
+    llvm_vals[0] =
+        rtti_emit_base(ctx, base_type, type->kind, type->store_size_bytes, type->alignment);
 
     // name
     const char *name = type->user_id ? type->user_id->str : type->id.str;
@@ -2447,7 +2465,7 @@ State emit_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl)
     // but non-implicit variable can be i.e. variable generated by compiler (IS_DEBUG) which has no
     // user definition in code. @CLEANUP This is little bit confusing, we should unify meaning of
     // `implicit` across the compiler.
-    const bool emit_DI = ctx->is_debug_mode && !var->is_implicit && var->decl_node;
+    const bool emit_DI = ctx->generate_debug_info && !var->is_implicit && var->decl_node;
 
     // Skip when we should not generate LLVM representation
     if (!mir_type_has_llvm_representation(var->value.type)) return STATE_PASSED;
@@ -2871,7 +2889,7 @@ State emit_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_pro
 
     // External functions does not have any body block.
     if (isnotflag(fn->flags, FLAG_EXTERN) && isnotflag(fn->flags, FLAG_INTRINSIC)) {
-        if (ctx->is_debug_mode) emit_DI_fn(ctx, fn);
+        if (ctx->generate_debug_info) emit_DI_fn(ctx, fn);
         // Generate all blocks in the function body.
         struct mir_instr *block = (struct mir_instr *)fn->first_block;
         while (block) {
@@ -3124,19 +3142,20 @@ void ir_run(struct assembly *assembly)
     runtime_measure_begin(llvm);
     struct context ctx;
     memset(&ctx, 0, sizeof(struct context));
-    ctx.assembly      = assembly;
-    ctx.builtin_types = &assembly->builtin_types;
-    ctx.is_debug_mode = assembly->target->opt == ASSEMBLY_OPT_DEBUG;
-    ctx.llvm_cnt      = assembly->llvm.ctx;
-    ctx.llvm_td       = assembly->llvm.TD;
-    ctx.llvm_builder  = LLVMCreateBuilderInContext(assembly->llvm.ctx);
+    ctx.assembly            = assembly;
+    ctx.builtin_types       = &assembly->builtin_types;
+    ctx.generate_debug_info = assembly->target->opt == ASSEMBLY_OPT_DEBUG ||
+                              assembly->target->opt == ASSEMBLY_OPT_RELEASE_WITH_DEBUG_INFO;
+    ctx.llvm_cnt     = assembly->llvm.ctx;
+    ctx.llvm_td      = assembly->llvm.TD;
+    ctx.llvm_builder = LLVMCreateBuilderInContext(assembly->llvm.ctx);
 
     qsetcap(&ctx.incomplete_queue, 256);
     qsetcap(&ctx.queue, 256);
 
     init_llvm_modules(&ctx);
 
-    if (ctx.is_debug_mode) {
+    if (ctx.generate_debug_info) {
         DI_init(&ctx);
     }
 
@@ -3150,7 +3169,7 @@ void ir_run(struct assembly *assembly)
     process_queue(&ctx);
     emit_incomplete(&ctx);
 
-    if (ctx.is_debug_mode) {
+    if (ctx.generate_debug_info) {
         DI_complete_types(&ctx);
 
         blog("DI finalize!");
@@ -3168,7 +3187,7 @@ void ir_run(struct assembly *assembly)
     }
 
     LLVMDisposeBuilder(ctx.llvm_builder);
-    if (ctx.is_debug_mode) {
+    if (ctx.generate_debug_info) {
         DI_terminate(&ctx);
     }
 

@@ -118,3 +118,24 @@ zeromem_test_4 :: fn () #test {
     }
     test_eq(data.i, 0);
 }
+
+slice_on_heap :: fn () #test {
+    Data :: struct {
+        arr1: [100]u32;
+        i: s32;
+        arr2: [100]u16;
+    };
+
+    slice: []Data;
+    alloc_slice(&slice, 10);
+    defer free_slice(&slice);
+    test_eq(slice.len, 10);
+    test_neq(slice.ptr, null);
+    loop i := 0; i < slice.len; i += 1 {
+        test_eq(slice[i].i, 0);
+    }
+
+    loop i := 0; i < slice.len; i += 1 {
+        slice[i].i = i;
+    }
+}
