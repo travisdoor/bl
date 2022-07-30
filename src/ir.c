@@ -1005,10 +1005,23 @@ LLVMValueRef rtti_emit_enum_variant(struct context *ctx, struct mir_variant *var
     LLVMValueRef     llvm_vals[2];
     // name
     llvm_vals[0] = emit_const_string(ctx, variant->id->str, strlen(variant->id->str));
+
     // value
     struct mir_type *value_type = mir_get_struct_elem_type(rtti_type, 1);
-    llvm_vals[1] =
-        LLVMConstInt(get_type(ctx, value_type), variant->value, value_type->data.integer.is_signed);
+
+    bassert(variant->value_type);
+    bassert(variant->value_type->kind == MIR_TYPE_ENUM);
+    struct mir_type *base_enum_type = variant->value_type->data.enm.base_type;
+
+    // The variant value is stored in the type info structure as an unsigned integer, but an
+    // enumerator base type can be a signed integer, so we have to do propper casting here to keep
+    // negative values negative!
+    LLVMValueRef llvm_temporary_value = LLVMConstInt(
+        get_type(ctx, base_enum_type), variant->value, base_enum_type->data.integer.is_signed);
+
+    llvm_vals[1] = LLVMBuildCast(
+        ctx->llvm_builder, LLVMSExt, llvm_temporary_value, get_type(ctx, value_type), "");
+
     return LLVMConstNamedStruct(get_type(ctx, rtti_type), llvm_vals, static_arrlenu(llvm_vals));
 }
 
