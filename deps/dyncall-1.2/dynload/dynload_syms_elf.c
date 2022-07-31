@@ -47,7 +47,7 @@
 #  include <elf.h>
 #endif
 
-#if defined(__GLIBC__)
+#if defined(__GLIBC__) && !defined(_GNU_SOURCE)
 #  define _GNU_SOURCE
 #  define __USE_GNU
 #endif
