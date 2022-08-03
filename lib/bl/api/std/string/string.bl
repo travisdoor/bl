@@ -209,7 +209,7 @@ str_to_f32 :: fn (str: string_view, count := -1) f32 {
 }
 
 /// Convert first `count` characters from `str` to `s64`.
-str_to_s64 :: fn (str: string_view, count := -1) s64 {
+str_to_s64 :: fn (str: string_view, count := -1) s64  #obsolete "Use strtos64 instead." {
     if count < 0 { count = auto str.len; }
     else if count > str.len { count = auto str.len; }
     n: s64;
@@ -229,6 +229,40 @@ str_to_s64 :: fn (str: string_view, count := -1) s64 {
     }
     if is_negative { n = -n; } 
     return n;
+}
+
+/// Converts the first `count` of characters from `str` to `s64` and return OK on success.
+///
+/// Returns error when:
+///     - The input string is empty and `count` is not zero.
+///     - Converted number cause overflow of s64.
+///     - The input string contains invalid characters.
+strtos64 :: fn (str: string_view, count := -1) (s64, Error) {
+    if count == 0 { return 0, OK; }
+    if count < 0 { count = auto str.len; }
+    else if count > str.len { count = auto str.len; }
+    if count == 0 { return 0, error("Cannot convert string to number, the input string is empty."); }
+    n: s64;
+    is_negative := false;
+    loop count > 0 {
+        c :: str[0];
+        if c == '-' && is_negative == false {
+            is_negative = true;
+        } else if c >= '0' && c <= '9' {
+            prev_n :: n;
+            n = n * 10 + (auto c - '0');
+            if n < prev_n {
+                return n, error("Cannot convert string to number, the input number is out of s64 range.");
+            }
+        } else {
+            return n, error("Cannot convert string to number, the input string contains invalid characters.");
+        }
+
+        consume_char(&str);
+        count -= 1;
+    }
+    if is_negative { n = -n; }
+    return n, OK;
 }
 
 /// Split input string `str` into two tokens based on the last occurrence of `delimiter`. Delimiter 

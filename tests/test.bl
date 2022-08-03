@@ -1,14 +1,191 @@
-Foo :: struct {
-    i: s32;
-}
-
-get_foo_ptr :: fn () *Foo { return null; }
-get_foo_val :: fn () Foo { return Foo.{ 10 }; }
-
 main :: fn () s32 {
-    //v1: *Foo = get_foo_ptr();
-    v2: Foo = get_foo_val();
-    print("%\n", v2);
     return 0;
 }
 
+// TESTS
+#import "std/test"
+
+empty_args :: fn () #test {
+    using argparse;
+    parser: Parser;
+    init(&parser);
+    defer terminate(&parser);
+
+    c, err :: parse(&parser, []string_view.{});
+    test_ok(err);
+    test_eq(c, 0);
+}
+
+no_args :: fn () #test {
+    using argparse;
+    parser: Parser;
+    init(&parser);
+    defer terminate(&parser);
+
+    c, err :: parse(&parser, [1]string_view.{ "test-application" });
+    test_ok(err);
+    test_eq(c, 0);
+}
+
+print_help :: fn () #test {
+    using argparse;
+    parser: Parser;
+    init(&parser);
+    defer terminate(&parser);
+
+    c, err :: parse(&parser, [2]string_view.{ "test-application", "--help" });
+    test_ok(err);
+    test_eq(c, 1);
+
+    test_true(parser.help);
+}
+
+invalid_flag :: fn () #test {
+    using argparse;
+    parser: Parser;
+    init(&parser);
+    defer terminate(&parser);
+
+    c, err :: parse(&parser, [2]string_view.{ "test-application", "--help=10" });
+    test_not_ok(err);
+    test_eq(c, 0);
+
+    test_false(parser.help);
+}
+
+number_arg :: fn () #test {
+    using argparse;
+    parser: Parser;
+    init(&parser);
+    defer terminate(&parser);
+
+    number: s32;
+    add(&parser, &number, "-n", "--number", "Test number.");
+
+    { // OK
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--number=10" });
+        test_ok(err);
+        test_eq(c, 1);
+        test_eq(number, 10);
+    }
+
+    { // missing value
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--number=" });
+        test_not_ok(err);
+        test_eq(c, 0);
+    }
+
+    { // missing value
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--number" });
+        test_not_ok(err);
+        test_eq(c, 0);
+    }
+
+    { // not a number
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--number=fdas" });
+        test_not_ok(err);
+        test_eq(c, 0);
+    }
+}
+
+#scope argparse
+
+// -f --foo                 bool flag
+// -b=10 --bar=10           number
+// -b=1.2 --bar=1.2         float number
+// -b="Hello" --bar="Hello" string
+// -b=FOO --bar=foo         enum value
+
+// positional argument
+
+Parser :: struct {
+    argument_list: [..]Argument;
+    help: bool;
+}
+
+init :: fn (parser: *Parser, allocator : *Allocator = null) {
+    array_init(&parser.argument_list, 32, allocator);
+
+    add(parser, &parser.help, "-h", "--help", "Print this help.");
+}
+
+terminate :: fn (parser: *Parser) {
+    array_terminate(&parser.argument_list);
+}
+
+add :: fn (parser: *Parser, target: *?T, short: string_view, long: string_view, help := "") {
+    argument := array_push(&parser.argument_list);
+    argument.long     = long;
+    argument.short    = short;
+    argument.help     = help;
+    argument.id       = typeid(T);
+    argument.data.any = auto target;
+}
+
+parse :: fn (parser: *Parser, args: []string_view) (parsed_arguments_count: s32, result: Error) {
+    using std;
+    parsed_count := 0;
+    loop i := 1; i < args.len; i += 1 {
+        arg :: args[i];
+        // identify the name first
+        if arg.len == 0 { continue; }
+
+        name, value: string_view;
+        name = arg;
+        str_split_by_first(arg, '=', &name, &value);
+        //print("name  = '%'\n", name);
+        //print("value = '%'\n\n", value);
+
+        found_argument := lookup_argument(parser, name);
+        if !found_argument {
+            // TODO: handle positional
+            return parsed_count, error("Invalid argument '%'.", name);
+        }
+        switch found_argument.id {
+            typeid(bool) {
+                if value.len > 0 { return parsed_count, error("Invalid value for the flag argument '%'.", name); }
+                (@found_argument.data.boolean) = true;
+            }
+            typeid(s8),
+            typeid(s16),
+            typeid(s32),
+            typeid(s64) {
+                if value.len == 0 { return parsed_count, error("Expected value for argument '%'.", name); }
+                n, err :: strtos64(value);
+                if err { return parsed_count, err; }
+                // @Incomplete: validate overflows!
+                (@found_argument.data.signed) = n;
+            }
+
+            default;
+        }
+
+        parsed_count += 1;
+    }
+
+    return parsed_count, OK;
+}
+
+#private
+Argument :: struct {
+    long: string_view;
+    short: string_view;
+    help: string_view;
+
+    id: u64;
+    data: union {
+        any: *u8;
+        boolean: *bool;
+        signed:  *s64;
+    };
+}
+
+lookup_argument :: fn (parser: *Parser, name: string_view) *Argument #inline {
+    using std;
+    loop i := 0; i < parser.argument_list.len; i += 1 {
+        arg :: &parser.argument_list[i];
+        if str_match(arg.short, name) { return arg; }
+        if str_match(arg.long, name)  { return arg; }
+    }
+    return null;
+}

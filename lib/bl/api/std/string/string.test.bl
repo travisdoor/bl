@@ -152,6 +152,46 @@ test_str_to_s64 :: fn () #test {
     test_eq(std.str_to_s64("-654132"), -654132);
 }
 
+test_strtos64 :: fn () #test {
+    using std;
+    {
+        v, err :: strtos64("");
+        test_not_ok(err);
+    }
+    {
+        v, err :: strtos64("", 0);
+        test_ok(err);
+        test_eq(v, 0);
+    }
+    {
+        v, err :: strtos64("1");
+        test_ok(err);
+        test_eq(v, 1);
+    }
+    {
+        v, err :: strtos64("654132");
+        test_ok(err);
+        test_eq(v, 654132);
+    }
+    {
+        v, err :: strtos64("-654132");
+        test_ok(err);
+        test_eq(v, -654132);
+    }
+    {
+        v, err :: strtos64("-654132.1");
+        test_not_ok(err);
+    }
+    {
+        v, err :: strtos64("-654132-2");
+        test_not_ok(err);
+    }
+    {
+        v, err :: strtos64("99999999999999999999999999999999999999999999");
+        test_not_ok(err);
+    }
+}
+
 test_str_to_f32 :: fn () #test {
     test_eq(std.str_to_f32(""), 0.f);
     test_eq(std.str_to_f32("1.1"), 1.1f);

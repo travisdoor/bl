@@ -207,7 +207,7 @@ test_ok :: fn (err: Error, loc := #call_location) #inline {
 /// Test whether `err` is not OK.
 test_not_ok :: fn (err: Error, loc := #call_location) #inline {
     if err { return; }
-    print_err("Expected not to be OK not '%'.", err);
+    print_err("Expected not to be OK.");
     stop(loc);
 }
 

@@ -6026,6 +6026,14 @@ struct result analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_
         // reference count, main goal is not to have zero ref count for function
         // which are used.
         ++fn->ref_count;
+
+        // Report if the referenced function is obsolete.
+        if (isflag(fn->flags, FLAG_OBSOLETE)) {
+            report_warning(ref->base.node,
+                           "Function is marked as obsolete. %.*s",
+                           fn->obsolete_message.len,
+                           fn->obsolete_message.ptr);
+        }
         break;
     }
 
@@ -10325,6 +10333,14 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
                                   fn_proto,
                                   is_global,
                                   builtin_id);
+
+    if (isflag(flags, FLAG_OBSOLETE)) {
+        struct ast *ast_optional_message = lit_fn->data.expr_fn.obsolete_warning_message;
+        if (ast_optional_message) {
+            bassert(ast_optional_message->kind == AST_EXPR_LIT_STRING);
+            fn->obsolete_message = ast_optional_message->data.expr_string.val;
+        }
+    }
 
     MIR_CEV_WRITE_AS(struct mir_fn *, &fn_proto->base.value, fn);
 

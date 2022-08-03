@@ -237,67 +237,55 @@ struct mir_fn {
     struct id          *id;
     struct ast         *decl_node;
     struct scope_entry *scope_entry;
-
     // Optional, set only for polymorphic functions.
     // @CLEANUP we can use this type directly without function to save some memory.
     struct mir_fn_poly_recipe *poly;
-
     // Optional, in case the function is marked as #comptime, we assume that all input arguments are
     // compile-time known; also new function specification is generated for every call to allow
     // passing types and compile-time values inside the function. These values are used directly
     // inside the function and evaluated by arg instruction. All call-side arguments must be
     // compile-time known!
     mir_instrs_t *comptime_call_args;
-
     // Optional, this is set to first call location used for generation of this function from
     // polymorph recipe.
     struct ast *first_poly_call_node;
     const char *debug_poly_replacement;
-
     // function body scope if there is one (optional)
     struct scope    *body_scope;
     struct mir_type *type;
     array(struct mir_var *) variables;
-
     // Linkage name of the function, this name is used during linking to identify function,
     // actual implementation can be external, internal or intrinsic embedded in compiler,
     // depending on function flags.
     const char *linkage_name;
     // Full name contains full function name with parent scopes.
-    const char *full_name;
-
+    const char  *full_name;
     LLVMValueRef llvm_value;
     bool         is_fully_analyzed;
     bool         is_global;
     s32          ref_count;
-
     // Module index specify in which LLVM module the function is supposed to be generated, think
     // about this number as it was thread ID, because every module is generated from MIR in
     // parallel.
-    u32 llvm_module_index;
-
+    u32                  llvm_module_index;
     u32                  flags;
     enum builtin_id_kind builtin_id;
-
     // pointer to the first block inside function body
     struct mir_instr_block *first_block;
     struct mir_instr_block *last_block;
     struct mir_instr_block *exit_block;
-
     // Temporary variable used for return value.
     struct mir_instr *ret_tmp;
-
     // Return instruction of function.
     struct mir_instr_ret *terminal_instr;
     struct location      *first_unreachable_loc;
-
     // @Performance: This is needed only for external functions!
     struct {
         DCpointer                 extern_entry;
         DCCallback               *extern_callback_handle;
         struct dyncall_cb_context context;
-    } dyncall; // dyncall external context
-
+    } dyncall;              // dyncall external context
+    str_t obsolete_message; // Optional, check len!
     bmagic_member
 };
 

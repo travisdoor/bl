@@ -63,6 +63,7 @@ enum ast_flag {
     FLAG_FLAGS        = 1 << 13, // enum flags
     FLAG_COMPTIME     = 1 << 14, // compile-time execution
     FLAG_MAYBE_UNUSED = 1 << 15, // to markup unused declarations
+    FLAG_OBSOLETE     = 1 << 16, // obsolete functions
 };
 
 // map symbols to binary operation kind
@@ -285,6 +286,7 @@ struct ast_expr_compound {
 struct ast_expr_lit_fn {
     struct ast *type;
     struct ast *block;
+    struct ast *obsolete_warning_message; // Optional
 };
 
 struct ast_expr_lit_fn_group {
