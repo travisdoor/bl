@@ -1,4 +1,4 @@
-version: 2
+version: 3
 
 x86_64-pc-windows-msvc:
   src: "msvc/libc.bl"

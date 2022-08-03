@@ -100,6 +100,16 @@ debug_allocator_allocated :: fn (dbgalloc: *DebugAllocator) usize #inline {
     return auto dbgalloc.total_allocated;
 }
 
+/// Lookup size in bytes of previously allocated memory. Returns `true` and size in bytes if allocation
+/// was found, otherwise returns `false` and zero size.
+debug_allocator_get_allocation_size :: fn (dbgalloc: *DebugAllocator, ptr: *u8) (found: bool, size: usize) #inline {
+    value :: std.tbl_lookup_ptr(&dbgalloc.alloc_table, ptr);
+    if !value {
+        return false, 0;
+    }
+    return true, value.allocated_size;
+}
+
 /// Print memory report. First block contains currently allocated bytes and current count
 /// of allocations. Optional memory leak dump block (enabled by `dump_leaks` argument) contains:
 /// 

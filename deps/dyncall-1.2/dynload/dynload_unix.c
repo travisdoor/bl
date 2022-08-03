@@ -44,8 +44,10 @@
 #    define DL_USE_GLIBC_ITER_PHDR
 #  endif
 /* to access dl_iterate_phdr(), and related w/ glibc */
+#  ifndef _GNU_SOURCE
 #  define _GNU_SOURCE
 #  define __USE_GNU
+#  endif
 #endif
 
 #include <dlfcn.h>

@@ -9451,8 +9451,20 @@ void rtti_gen_enum_variant(struct context *ctx, vm_stack_ptr_t dest, struct mir_
     struct mir_type *dest_value_type = mir_get_struct_elem_type(rtti_type, 1);
     vm_stack_ptr_t   dest_value      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
 
+    bassert(variant->value_type);
+    bassert(variant->value_type->kind == MIR_TYPE_ENUM);
+    struct mir_type *base_enum_type = variant->value_type->data.enm.base_type;
+
     vm_write_string(ctx->vm, dest_name_type, dest_name, make_str_from_c(variant->id->str));
-    vm_write_int(dest_value_type, dest_value, variant->value);
+    if (type_cmp(dest_value_type, base_enum_type)) {
+        vm_write_int(dest_value_type, dest_value, variant->value);
+    } else {
+        vm_do_cast(dest_value,
+                   (vm_stack_ptr_t)&variant->value,
+                   dest_value_type,
+                   base_enum_type,
+                   MIR_CAST_SEXT);
+    }
 }
 
 vm_stack_ptr_t rtti_gen_enum_variants_array(struct context *ctx, mir_variants_t *variants)

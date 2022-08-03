@@ -1,0 +1,2 @@
+- STDIN and STDOUT should use the same API as file IO.
+- Add support of #maybe_unused for function arguments.

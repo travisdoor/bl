@@ -1,203 +1,260 @@
 #private
 typeinfo_s8 :: fn () #test {
     info := cast(*TypeInfoInt) typeinfo(s8);
-    assert(info.kind == TypeKind.INT);
-    assert(info.size_bytes == sizeof(s8));
-    assert(info.alignment == alignof(s8));
-    assert(info.bit_count == auto sizeof(s8) * 8);
-    assert(info.is_signed);
+    test_eq(info.kind, TypeKind.INT);
+    test_eq(info.size_bytes, sizeof(s8));
+    test_eq(info.alignment, alignof(s8));
+    test_eq(info.bit_count, auto sizeof(s8) * 8);
+    test_true(info.is_signed);
 }
 
 typeinfo_s16 :: fn () #test {
     info := cast(*TypeInfoInt) typeinfo(s16);
-    assert(info.kind == TypeKind.INT);
-    assert(info.size_bytes == sizeof(s16));
-    assert(info.alignment == alignof(s16));
-    assert(info.bit_count == auto sizeof(s16) * 8);
-    assert(info.is_signed);
+    test_eq(info.kind, TypeKind.INT);
+    test_eq(info.size_bytes, sizeof(s16));
+    test_eq(info.alignment, alignof(s16));
+    test_eq(info.bit_count, auto sizeof(s16) * 8);
+    test_true(info.is_signed);
 }
 
 typeinfo_s32 :: fn () #test {
     info := cast(*TypeInfoInt) typeinfo(s32);
-    assert(info.kind == TypeKind.INT);
-    assert(info.size_bytes == sizeof(s32));
-    assert(info.alignment == alignof(s32));
-    assert(info.bit_count == auto sizeof(s32) * 8);
-    assert(info.is_signed);
+    test_eq(info.kind, TypeKind.INT);
+    test_eq(info.size_bytes, sizeof(s32));
+    test_eq(info.alignment, alignof(s32));
+    test_eq(info.bit_count, auto sizeof(s32) * 8);
+    test_true(info.is_signed);
 }
 
 typeinfo_s64 :: fn () #test {
     info := cast(*TypeInfoInt) typeinfo(s64);
-    assert(info.kind == TypeKind.INT);
-    assert(info.size_bytes == sizeof(s64));
-    assert(info.alignment == alignof(s64));
-    assert(info.bit_count == auto sizeof(s64) * 8);
-    assert(info.is_signed);
+    test_eq(info.kind, TypeKind.INT);
+    test_eq(info.size_bytes, sizeof(s64));
+    test_eq(info.alignment, alignof(s64));
+    test_eq(info.bit_count, auto sizeof(s64) * 8);
+    test_true(info.is_signed);
 }
 
 typeinfo_u8 :: fn () #test {
     info := cast(*TypeInfoInt) typeinfo(u8);
-    assert(info.kind == TypeKind.INT);
-    assert(info.size_bytes == sizeof(u8));
-    assert(info.alignment == alignof(u8));
-    assert(info.bit_count == auto sizeof(u8) * 8);
-    assert(!info.is_signed);
+    test_eq(info.kind, TypeKind.INT);
+    test_eq(info.size_bytes, sizeof(u8));
+    test_eq(info.alignment, alignof(u8));
+    test_eq(info.bit_count, auto sizeof(u8) * 8);
+    test_false(info.is_signed);
 }
 
 typeinfo_u16 :: fn () #test {
     info := cast(*TypeInfoInt) typeinfo(u16);
-    assert(info.kind == TypeKind.INT);
-    assert(info.size_bytes == sizeof(u16));
-    assert(info.alignment == alignof(u16));
-    assert(info.bit_count == auto sizeof(u16) * 8);
-    assert(!info.is_signed);
+    test_eq(info.kind, TypeKind.INT);
+    test_eq(info.size_bytes, sizeof(u16));
+    test_eq(info.alignment, alignof(u16));
+    test_eq(info.bit_count, auto sizeof(u16) * 8);
+    test_false(info.is_signed);
 }
 
 typeinfo_u32 :: fn () #test {
     info := cast(*TypeInfoInt) typeinfo(u32);
-    assert(info.kind == TypeKind.INT);
-    assert(info.size_bytes == sizeof(u32));
-    assert(info.alignment == alignof(u32));
-    assert(info.bit_count == auto sizeof(u32) * 8);
-    assert(!info.is_signed);
+    test_eq(info.kind, TypeKind.INT);
+    test_eq(info.size_bytes, sizeof(u32));
+    test_eq(info.alignment, alignof(u32));
+    test_eq(info.bit_count, auto sizeof(u32) * 8);
+    test_false(info.is_signed);
 }
 
 typeinfo_u64 :: fn () #test {
     info := cast(*TypeInfoInt) typeinfo(u64);
-    assert(info.kind == TypeKind.INT);
-    assert(info.size_bytes == sizeof(u64));
-    assert(info.alignment == alignof(u64));
-    assert(info.bit_count == auto sizeof(u64) * 8);
-    assert(!info.is_signed);
+    test_eq(info.kind, TypeKind.INT);
+    test_eq(info.size_bytes, sizeof(u64));
+    test_eq(info.alignment, alignof(u64));
+    test_eq(info.bit_count, auto sizeof(u64) * 8);
+    test_false(info.is_signed);
 }
 
 typeinfo_f32 :: fn () #test {
     info := cast(*TypeInfoReal) typeinfo(f32);
-    assert(info.kind == TypeKind.REAL);
-    assert(info.size_bytes == sizeof(f32));
-    assert(info.alignment == sizeof(f32));
-    assert(info.bit_count == auto sizeof(f32) * 8);
-};
+    test_eq(info.kind, TypeKind.REAL);
+    test_eq(info.size_bytes, sizeof(f32));
+    test_eq(info.alignment, sizeof(f32));
+    test_eq(info.bit_count, auto sizeof(f32) * 8);
+}
 
 typeinfo_f64 :: fn () #test {
     info := cast(*TypeInfoReal) typeinfo(f64);
-    assert(info.kind == TypeKind.REAL);
-    assert(info.size_bytes == sizeof(f64));
-    assert(info.alignment == sizeof(f64));
-    assert(info.bit_count == auto sizeof(f64) * 8);
-};
+    test_eq(info.kind, TypeKind.REAL);
+    test_eq(info.size_bytes, sizeof(f64));
+    test_eq(info.alignment, sizeof(f64));
+    test_eq(info.bit_count, auto sizeof(f64) * 8);
+}
 
 typeinfo_fn1 :: fn () #test {
     T :: fn (i: s32, j: bool) s32 { return 0; };
     info := cast(*TypeInfoFn) typeinfo(T);
 
-    assert(info.base.kind == TypeKind.FN);
-    assert(info.args.len == 2);
-    assert(!info.is_vargs);
-    assert(info.ret_type == typeinfo(s32));
+    test_eq(info.base.kind, TypeKind.FN);
+    test_eq(info.args.len, 2);
+    test_eq(info.ret_type, typeinfo(s32));
+    test_false(info.is_vargs);
 
     { // arg1
         ai :: &info.args[0];
         test_eq(ai.name, "i");
-        assert(ai.base_type == typeinfo(s32));
+        test_eq(ai.base_type, typeinfo(s32));
     }
 
     { // arg2
         ai :: &info.args[1];
         test_eq(ai.name, "j");
-        assert(ai.base_type == typeinfo(bool));
+        test_eq(ai.base_type, typeinfo(bool));
     }
-};
+}
 
 typeinfo_fn2 :: fn () #test {
     T : fn (s32, bool) s32 : fn (i: s32, j: bool) s32 { return 0; };
     info := cast(*TypeInfoFn) typeinfo(T);
 
-    assert(info.base.kind == TypeKind.FN);
-    assert(info.args.len == 2);
-    assert(!info.is_vargs);
-    assert(info.ret_type == typeinfo(s32));
+    test_eq(info.base.kind, TypeKind.FN);
+    test_eq(info.args.len, 2);
+    test_eq(info.ret_type, typeinfo(s32));
+    test_false(info.is_vargs);
 
     { // arg1
         ai :: &info.args[0];
         test_eq(ai.name, "i");
-        assert(ai.base_type == typeinfo(s32));
+        test_eq(ai.base_type, typeinfo(s32));
     }
 
     { // arg2
         ai :: &info.args[1];
         test_eq(ai.name, "j");
-        assert(ai.base_type == typeinfo(bool));
+        test_eq(ai.base_type, typeinfo(bool));
     }
-};
+}
 
 typeinfo_fn3 :: fn () #test {
     ptr := &fn (i: s32, j: bool) s32 { return 0; };
     info_ptr := cast(*TypeInfoPtr) typeinfo(ptr);
-    assert(info_ptr.base.kind == TypeKind.PTR);
+    test_eq(info_ptr.base.kind, TypeKind.PTR);
     info := cast(*TypeInfoFn) info_ptr.pointee_type;
-    assert(info.base.kind == TypeKind.FN);
+    test_eq(info.base.kind, TypeKind.FN);
     test_eq(info.args.len, 2);
+    test_eq(info.ret_type, typeinfo(s32));
     test_false(info.is_vargs);
-    assert(info.ret_type == typeinfo(s32));
 
     { // arg1
         ai :: &info.args[0];
         test_eq(ai.name, "i");
-        assert(ai.base_type == typeinfo(s32));
+        test_eq(ai.base_type, typeinfo(s32));
     }
 
     { // arg2
         ai :: &info.args[1];
         test_eq(ai.name, "j");
-        assert(ai.base_type == typeinfo(bool));
+        test_eq(ai.base_type, typeinfo(bool));
     }
-};
+}
 
 typeinfo_ptr :: fn () #test {
     T :: *s32;
     info := cast(*TypeInfoPtr) typeinfo(T);
 
-    assert(info.base.kind == TypeKind.PTR);
-    assert(info.pointee_type == typeinfo(s32));
-};
+    test_eq(info.base.kind, TypeKind.PTR);
+    test_eq(info.pointee_type, typeinfo(s32));
+}
 
 typeinfo_array :: fn () #test {
     T :: [10]s32;
     info := cast(*TypeInfoArray) typeinfo(T);
 
-    assert(info.base.kind == TypeKind.ARRAY);
+    test_eq(info.base.kind, TypeKind.ARRAY);
     test_eq(info.name, "T");
-    assert(info.base.size_bytes == sizeof(T));
-    assert(info.elem_type == typeinfo(s32));
-    assert(info.len == 10);
-};
+    test_eq(info.base.size_bytes, sizeof(T));
+    test_eq(info.elem_type, typeinfo(s32));
+    test_eq(info.len, 10);
+}
 
-typeinfo_enum :: fn () #test {
+typeinfo_enum_1 :: fn () #test {
     T :: enum s32 { A; B; C };
     info := cast(*TypeInfoEnum) typeinfo(T);
 
-    assert(info.base.kind == TypeKind.ENUM);
-    assert(info.base_type != null);
-    assert(info.variants.len == 3);
-    assert(info.variants[0].value == 0);
-    assert(info.variants[1].value == 1);
-    assert(info.variants[2].value == 2);
-};
+    test_eq(info.base.kind, TypeKind.ENUM);
+    test_not_null(info.base_type);
+    test_eq(info.variants.len, 3);
+    test_eq(info.variants[0].value, 0);
+    test_eq(info.variants[1].value, 1);
+    test_eq(info.variants[2].value, 2);
+}
 
-typeinfo_struct1 :: fn () #test {
+
+typeinfo_enum_negative_values :: fn () #test {
+    T :: enum { A = -2; B = -1; C = 0; D = 1; E = 2 };
+    info := cast(*TypeInfoEnum) typeinfo(T);
+
+    test_eq(info.base.kind, TypeKind.ENUM);
+    test_not_null(info.base_type);
+    test_eq(info.variants.len, 5);
+    test_eq(info.variants[0].value, -2);
+    test_eq(info.variants[1].value, -1);
+    test_eq(info.variants[2].value,  0);
+    test_eq(info.variants[3].value,  1);
+    test_eq(info.variants[4].value,  2);
+}
+
+typeinfo_enum_s64 :: fn () #test {
+    T :: enum s64 { A = -2; B = -1; C = 0; D = 1; E = 2 };
+    info := cast(*TypeInfoEnum) typeinfo(T);
+
+    test_eq(info.base.kind, TypeKind.ENUM);
+    test_not_null(info.base_type);
+    test_eq(info.variants.len, 5);
+    test_eq(info.variants[0].value, -2);
+    test_eq(info.variants[1].value, -1);
+    test_eq(info.variants[2].value,  0);
+    test_eq(info.variants[3].value,  1);
+    test_eq(info.variants[4].value,  2);
+}
+
+typeinfo_enum_s8 :: fn () #test {
+    T :: enum s8 { A = -2; B = -1; C = 0; D = 1; E = 2 };
+    info := cast(*TypeInfoEnum) typeinfo(T);
+
+    test_eq(info.base.kind, TypeKind.ENUM);
+    test_not_null(info.base_type);
+    test_eq(info.variants.len, 5);
+    test_eq(info.variants[0].value, -2);
+    test_eq(info.variants[1].value, -1);
+    test_eq(info.variants[2].value,  0);
+    test_eq(info.variants[3].value,  1);
+    test_eq(info.variants[4].value,  2);
+}
+
+typeinfo_enum_u32 :: fn () #test {
+    T :: enum u32 { A = -2; B = -1; C = 0; D = 1; E = 2 };
+    info := cast(*TypeInfoEnum) typeinfo(T);
+
+    test_eq(info.base.kind, TypeKind.ENUM);
+    test_not_null(info.base_type);
+    test_eq(info.variants.len, 5);
+    test_eq(info.variants[0].value, auto (cast(u32) -2));
+    test_eq(info.variants[1].value, auto (cast(u32) -1));
+    test_eq(info.variants[2].value,  0);
+    test_eq(info.variants[3].value,  1);
+    test_eq(info.variants[4].value,  2);
+}
+
+typeinfo_struct_1 :: fn () #test {
     T1 :: struct { A: s32; B: bool; C: f32 };
     info := cast(*TypeInfoStruct) typeinfo(T1);
 
-    assert(info.base.kind == TypeKind.STRUCT);
-    assert(info.base.size_bytes == sizeof(T1));
-    assert(info.members.len == 3);
-    assert(info.members[0].index == 0);
-    assert(info.members[1].index == 1);
-    assert(info.members[2].index == 2);
-};
+    test_eq(info.base.kind, TypeKind.STRUCT);
+    test_eq(info.base.size_bytes, sizeof(T1));
+    test_eq(info.members.len, 3);
+    test_eq(info.members[0].index, 0);
+    test_eq(info.members[1].index, 1);
+    test_eq(info.members[2].index, 2);
+}
 
-typeinfo_struct2 :: fn () #test {
+typeinfo_struct_2 :: fn () #test {
     T2 :: struct { A: s32; B: bool; C: f32 };
     Alias :: T2;
     info := cast(*TypeInfoStruct) typeinfo(Alias);
@@ -208,7 +265,7 @@ typeinfo_struct2 :: fn () #test {
     test_eq(info.members[0].index, 0);
     test_eq(info.members[1].index, 1);
     test_eq(info.members[2].index, 2);
-};
+}
 
 typeinfo_group :: fn () #test {
     F1 :: fn (i: s32) {};
