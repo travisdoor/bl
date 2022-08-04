@@ -119,7 +119,7 @@ CONFIG ::
     "    - how-to.md\n"
     "    - Modules:\n"
     "      - modules/a.md\n"
-    "      - modules/arg_parser.md\n"
+    "      - modules/argparse.md\n"
     "      - modules/array.md\n"
     "      - modules/static_array.md\n"
     "      - modules/bucket_array.md\n"

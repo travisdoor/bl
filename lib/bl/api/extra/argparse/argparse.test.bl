@@ -1,0 +1,493 @@
+#private
+
+#import "extra/argparse"
+
+empty_args :: fn () #test {
+    using argparse;
+    parser: Parser;
+    init(&parser);
+    defer terminate(&parser);
+
+    c, err :: parse(&parser, []string_view.{});
+    test_ok(err);
+    test_eq(c, 0);
+}
+
+no_args :: fn () #test {
+    using argparse;
+    parser: Parser;
+    init(&parser);
+    defer terminate(&parser);
+
+    c, err :: parse(&parser, [1]string_view.{ "test-application" });
+    test_ok(err);
+    test_eq(c, 0);
+}
+
+help :: fn () #test {
+    using argparse;
+    parser: Parser;
+    init(&parser);
+    defer terminate(&parser);
+
+    c, err :: parse(&parser, [2]string_view.{ "test-application", "--help" });
+    test_ok(err);
+    test_eq(c, 1);
+
+    test_true(parser.help);
+}
+
+invalid_flag :: fn () #test {
+    using argparse;
+    parser: Parser;
+    init(&parser);
+    defer terminate(&parser);
+
+    c, err :: parse(&parser, [2]string_view.{ "test-application", "--help=10" });
+    test_not_ok(err);
+    test_eq(c, 0);
+
+    test_false(parser.help);
+}
+
+custom_flag :: fn () #test {
+    using argparse;
+    parser: Parser;
+    init(&parser);
+    defer terminate(&parser);
+
+    is_debug: bool;
+    add(&parser, &is_debug, "--debug", "-d", "Test flag.");
+
+    c, err :: parse(&parser, [2]string_view.{ "test-application", "--debug" });
+    test_ok(err);
+    test_eq(c, 1);
+    test_true(is_debug);
+}
+
+number_arg :: fn () #test {
+    using argparse;
+    parser: Parser;
+    init(&parser);
+    defer terminate(&parser);
+
+    number: s32;
+    add(&parser, &number, "--number", "-n", "Test number.");
+
+    { // OK
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--number=10" });
+        test_ok(err);
+        test_eq(c, 1);
+        test_eq(number, 10);
+    }
+
+    { // missing value
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--number=" });
+        test_not_ok(err);
+        test_eq(c, 0);
+    }
+
+    { // missing value
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--number" });
+        test_not_ok(err);
+        test_eq(c, 0);
+    }
+
+    { // not a number
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--number=fdas" });
+        test_not_ok(err);
+        test_eq(c, 0);
+    }
+
+    { // negative
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--number=-10" });
+        test_ok(err);
+        test_eq(c, 1);
+        test_eq(number, -10);
+    }
+}
+
+number_arg_u8 :: fn () #test {
+    using argparse;
+    parser: Parser;
+    init(&parser);
+    defer terminate(&parser);
+
+    number: u8;
+    add(&parser, &number, "--number", "-n", "Test number.");
+
+    { // OK
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--number=255" });
+        test_ok(err);
+        test_eq(c, 1);
+        test_eq(number, 255);
+    }
+    { // OK
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--number=256" });
+        test_ok(err);
+        test_eq(c, 1);
+        test_eq(number, 0);
+    }
+    { // OK
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--number=-1" });
+        test_ok(err);
+        test_eq(c, 1);
+        test_eq(number, 255);
+    }
+}
+
+float_arg :: fn () #test {
+    using argparse;
+    parser: Parser;
+    init(&parser);
+    defer terminate(&parser);
+
+    number: f32;
+    add(&parser, &number, "--number", "-n", "Test number.");
+
+    { // OK
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--number=0" });
+        test_ok(err);
+        test_eq(c, 1);
+        test_eq(number, 0.f);
+    }
+    { // OK
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--number=0.123" });
+        test_ok(err);
+        test_eq(c, 1);
+        test_eq(number, 0.123f);
+    }
+    { // OK
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--number=-0.123" });
+        test_ok(err);
+        test_eq(c, 1);
+        test_eq(number, -0.123f);
+    }
+    { // OK
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--number=.123" });
+        test_ok(err);
+        test_eq(c, 1);
+        test_eq(number, 0.123f);
+    }
+    { // OK
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--number=123.321" });
+        test_ok(err);
+        test_eq(c, 1);
+        test_eq(number, 123.321f);
+    }
+}
+
+double_arg :: fn () #test {
+    using argparse;
+    parser: Parser;
+    init(&parser);
+    defer terminate(&parser);
+
+    number: f64;
+    add(&parser, &number, "--number", "-n", "Test number.");
+
+    { // OK
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--number=0" });
+        test_ok(err);
+        test_eq(c, 1);
+        test_eq(number, 0.);
+    }
+    { // OK
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--number=0.123" });
+        test_ok(err);
+        test_eq(c, 1);
+        test_eq(number, 0.123);
+    }
+    { // OK
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--number=-0.123" });
+        test_ok(err);
+        test_eq(c, 1);
+        test_eq(number, -0.123);
+    }
+    { // OK
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--number=.123" });
+        test_ok(err);
+        test_eq(c, 1);
+        test_eq(number, 0.123);
+    }
+    { // OK
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--number=123.321" });
+        test_ok(err);
+        test_eq(c, 1);
+        test_eq(number, 123.321);
+    }
+}
+
+string_arg :: fn () #test {
+    using argparse;
+    parser: Parser;
+    init(&parser);
+    defer terminate(&parser);
+
+    str := std.str_new();
+    defer std.str_delete(&str);
+    add(&parser, &str, "--str", "-s", "Test string.");
+
+    { // OK
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--str=\"hello world\"" });
+        test_ok(err);
+        test_eq(c, 1);
+        test_eq(str, "hello world");
+    }
+    { // missing
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--str" });
+        test_not_ok(err);
+        test_eq(c, 0);
+    }
+    { // missing
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--str=" });
+        test_not_ok(err);
+        test_eq(c, 0);
+    }
+    { // empty
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--str=\"\"" });
+        test_ok(err);
+        test_eq(c, 1);
+        test_eq(str, "");
+    }
+    { // invalid
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--str=hoo" });
+        test_not_ok(err);
+        test_eq(c, 0);
+    }
+    { // unterminated
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--str=\"hoo" });
+        test_not_ok(err);
+        test_eq(c, 0);
+    }
+    { // malmformed
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--str=\"h\"oo" });
+        test_not_ok(err);
+        test_eq(c, 0);
+    }
+}
+
+string_view_arg :: fn () #test {
+    using argparse;
+    parser: Parser;
+    init(&parser);
+    defer terminate(&parser);
+
+    str: string_view;
+    add(&parser, &str, "--str", "-s", "Test string.");
+
+    { // OK
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--str=\"hello world\"" });
+        test_ok(err);
+        test_eq(c, 1);
+        test_eq(str, "hello world");
+    }
+    { // missing
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--str" });
+        test_not_ok(err);
+        test_eq(c, 0);
+    }
+    { // missing
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--str=" });
+        test_not_ok(err);
+        test_eq(c, 0);
+    }
+    { // empty
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--str=\"\"" });
+        test_ok(err);
+        test_eq(c, 1);
+        test_eq(str, "");
+    }
+    { // invalid
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--str=hoo" });
+        test_not_ok(err);
+        test_eq(c, 0);
+    }
+    { // unterminated
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--str=\"hoo" });
+        test_not_ok(err);
+        test_eq(c, 0);
+    }
+    { // malmformed
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--str=\"h\"oo" });
+        test_not_ok(err);
+        test_eq(c, 0);
+    }
+}
+
+TestEnum :: enum {
+    FIRST;
+    Second;
+    Third_Value;
+}
+
+enum_arg :: fn () #test {
+    using argparse;
+    parser: Parser;
+    init(&parser);
+    defer terminate(&parser);
+
+    enm: TestEnum;
+    add(&parser, &enm, "--enum", "-e", "Test enum.");
+
+    { // OK
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--enum=FIRST" });
+        test_ok(err);
+        test_eq(c, 1);
+        test_eq(enm, TestEnum.FIRST);
+    }
+
+    { // OK
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--enum=First" });
+        test_ok(err);
+        test_eq(c, 1);
+        test_eq(enm, TestEnum.FIRST);
+    }
+
+    { // OK
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--enum=fIrSt" });
+        test_ok(err);
+        test_eq(c, 1);
+        test_eq(enm, TestEnum.FIRST);
+    }
+
+    { // OK
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--enum=second" });
+        test_ok(err);
+        test_eq(c, 1);
+        test_eq(enm, TestEnum.Second);
+    }
+
+    { // OK
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--enum=THIRD_VALUE" });
+        test_ok(err);
+        test_eq(c, 1);
+        test_eq(enm, TestEnum.Third_Value);
+    }
+
+    { // Unknown
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--enum=foo" });
+        test_not_ok(err);
+        test_eq(c, 0);
+    }
+}
+
+required_arg :: fn () #test {
+    using argparse;
+    parser: Parser;
+    init(&parser);
+    defer terminate(&parser);
+
+    number: s32;
+    add(&parser, &number, "--number", "-n", "Test number.", true);
+
+    { // OK
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--number=10" });
+        test_ok(err);
+        test_eq(c, 1);
+        test_eq(number, 10);
+    }
+    { // missing
+        c, err :: parse(&parser, [1]string_view.{ "test-application" });
+        test_not_ok(err);
+        test_eq(c, 0);
+    }
+}
+
+positional_arg_forward :: fn () #test {
+    using argparse;
+    parser: Parser;
+    init(&parser);
+    defer terminate(&parser);
+
+    forwarded: []string_view;
+    add_positional(&parser, &forwarded, "--args", "--");
+
+    { // OK
+        c, err :: parse(&parser, [5]string_view.{ "test-application", "--", "foo.txt", "bar.txt", "main.bl" });
+        test_ok(err);
+        test_eq(c, 1);
+        test_eq(forwarded.len, 3);
+        test_eq(forwarded[0], "foo.txt");
+        test_eq(forwarded[1], "bar.txt");
+        test_eq(forwarded[2], "main.bl");
+    }
+}
+
+positional_arg_forward_multiple :: fn () #test {
+    using argparse;
+    parser: Parser;
+    init(&parser);
+    defer terminate(&parser);
+
+    outputs: []string_view;
+    add_positional(&parser, &outputs, "--output", "-o");
+
+    inputs: []string_view;
+    add_positional(&parser, &inputs, "--input", "-i");
+
+    { // OK
+        c, err :: parse(&parser, [8]string_view.{ "test-application", "-o", "foo.txt", "bar.txt", "main.bl", "-i", "bar.foo", "main.c" });
+        test_ok(err);
+        test_eq(c, 2);
+        test_eq(outputs.len, 3);
+        test_eq(outputs[0], "foo.txt");
+        test_eq(outputs[1], "bar.txt");
+        test_eq(outputs[2], "main.bl");
+        test_eq(inputs.len, 2);
+        test_eq(inputs[0], "bar.foo");
+        test_eq(inputs[1], "main.c");
+    }
+}
+
+MyOptLevel :: enum {
+    DEBUG;
+    RELEASE_SMALL;
+    RELEASE_FAST;
+}
+
+MyArgs :: struct {
+    is_debug: bool;
+    emit_llvm: bool;
+    worker_count: s32;
+    name: string_view;
+    inputs: []string_view;
+    outputs: []string_view;
+    opt: MyOptLevel;
+}
+
+combination :: fn () #test {
+    using argparse;
+    parser: Parser;
+    init(&parser, "This is cool testing application with command line arguments, enjoy!");
+    defer terminate(&parser);
+
+    args: MyArgs;
+
+    add_usage(&parser, "test-application [options]");
+    add_positional(&parser, &args.inputs, "--input", "-i", "List of input files.");
+    add_positional(&parser, &args.outputs, "--output", "-o", "List of output files.");
+    add(&parser, &args.is_debug, "--debug", "-d", "Enable debug mode");
+    add(&parser, &args.emit_llvm, "--emit-llvm-with-cool-long-argument-name", "", "Emit LLVM.");
+    add(&parser, &args.worker_count, "--worker-count", "", "Count of worker threads.");
+    add(&parser, &args.name, "--name", "", "The name.");
+    add(&parser, &args.opt, "--opt", "", "Optimization level.");
+
+    { // OK
+        c, err :: parse(&parser, [11]string_view.{ "test-application", "-o", "foo.txt", "bar.txt", "main.bl", "--input", "bar.foo", "main.c", "-d", "--emit-llvm-with-cool-long-argument-name", "--worker-count=10" });
+        test_ok(err);
+        test_eq(c, 5);
+        test_eq(args.outputs.len, 3);
+        test_eq(args.outputs[0], "foo.txt");
+        test_eq(args.outputs[1], "bar.txt");
+        test_eq(args.outputs[2], "main.bl");
+        test_eq(args.inputs.len, 2);
+        test_eq(args.inputs[0], "bar.foo");
+        test_eq(args.inputs[1], "main.c");
+        test_eq(args.is_debug, true);
+        test_eq(args.emit_llvm, true);
+        test_eq(args.worker_count, 10);
+    }
+
+    print_help(&parser);
+}

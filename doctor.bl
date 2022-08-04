@@ -1,5 +1,5 @@
 #!/usr/local/bin/blc --silent -run
-#import "std/arg_parser"
+#import "extra/argparse"
 #import "std/fs"
 #import "std/io"
 
@@ -16,7 +16,7 @@ SKIP :: [1]Skip.{
     }
 };
 
-MODULES :: [15]string_view.{
+MODULES :: [16]string_view.{
     "lib/bl/api/std/arg_parser/arg_parser.test.bl",
     "lib/bl/api/std/array/array.test.bl",
     "lib/bl/api/std/bucket_array/bucket_array.test.bl",
@@ -32,6 +32,7 @@ MODULES :: [15]string_view.{
     "lib/bl/api/std/buffer_allocator/buffer_allocator.test.bl",
     "lib/bl/api/std/table/table.test.bl",
     "lib/bl/api/std/static_array/static_array.test.bl",
+    "lib/bl/api/extra/argparse/argparse.test.bl",
 };
 
 TestKind :: enum {
@@ -65,8 +66,9 @@ Skip :: struct {
     kind: TestKind;
 }
 
-Args :: struct #base std.ArgParserCtx {
+Args :: struct {
     keep_temporary: bool;
+    cases: []string_view;
 }
 
 args: Args;
@@ -79,7 +81,6 @@ main :: fn () s32 {
     using std;
 
     defer temporary_release();
-    defer arg_parser_ctx_terminate(&args);
 
     working_directory = get_working_directory();
     compiler = get_compiler_path();
@@ -91,7 +92,25 @@ main :: fn () s32 {
     set_cwd(temporary_directory);
     defer cleanup();
 
-    if !parse_args() { return 1; }
+    {
+        using argparse;
+        parser: Parser #noinit;
+        init(&parser, "Biscuit Language auto-testing tool.");
+        defer terminate(&parser);
+        set_executable_name(&parser, command_line_arguments[0]);
+        add_usage(&parser, "[options]");
+        add_positional(&parser, &args.cases, "--test-cases", "-tc", "List of test cases to execute.");
+        add(&parser, &args.keep_temporary, "--keep-temporary", "", "Keep created temporary directory.");
+        _, parse_error :: parse(&parser, command_line_arguments);
+        if parse_error {
+            print_err(parse_error);
+            print_help(&parser);
+            return 1;
+        }
+        if parser.help {
+            return 0;
+        }
+    }
 
     start_time_ms :: os_tick_ms();
 
@@ -100,7 +119,7 @@ main :: fn () s32 {
     array_init(&results, 256, &default_temporary_allocator);
     array_init(&files, 256, &default_temporary_allocator);
 
-    print_sections :: args.positional.len == 0;
+    print_sections :: args.cases.len == 0;
 
     using TestKind;
 
@@ -108,7 +127,7 @@ main :: fn () s32 {
     if print_sections {
         print("\nMain suite execution:\n");
     } else {
-        print("Testing: %\n", args.positional);
+        print("Testing: %\n", args.cases);
     }
     list_dir(&files, get_full_path(TEST_SRC_DIR));
     loop i := 0; i < files.len; i += 1 {
@@ -182,7 +201,7 @@ test_file :: fn (results: *[..]Result, filepath: string_view, kind: TestKind) {
     if !str_split_by_last(filepath, '/', null, &name) {
         name = filepath;
     }
-    test_only : []string_view : args.positional;
+    test_only : []string_view : args.cases;
     excluded := test_only.len > 0;
     loop i := 0; i < test_only.len; i += 1 {
         other_name :: test_only[i];
@@ -258,33 +277,6 @@ report :: fn (result: *Result, msg := "") {
     } else {
         print("[ PASS |      ] % %\n", result.name, msg);
     }
-}
-
-parse_args :: fn () bool {
-    using std;
-
-    parser :: arg_parser_new();
-    defer arg_parser_delete(parser);
-
-    arg_parser_add(
-        parser,
-        "",
-        "--keep-tmp",
-        "Keep temporary directory.",
-        &fn (_: ArgParser, _: []string_view, ctx: *ArgParserCtx) (s32, Error) {
-            a: *Args = auto ctx;
-            a.keep_temporary = true;
-            return 1, OK;
-        });
-
-    state :: arg_parser_run(parser, command_line_arguments, &args, 1);
-    if state {
-        print_err("%", state);
-        arg_parser_print_help(parser);
-        return false;
-    }
-    if args.help { return false; }
-    return true;
 }
 
 list_dir :: fn (paths: *[..]string_view, dir: string_view) {

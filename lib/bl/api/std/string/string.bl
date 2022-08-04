@@ -175,7 +175,7 @@ str_compare :: fn (first: string_view, second: string_view) s32 {
 }
 
 /// Convert first `count` characters of `str` to `f32`.
-str_to_f32 :: fn (str: string_view, count := -1) f32 {
+str_to_f32 :: fn (str: string_view, count := -1) f32 #obsolete {
     if count < 0 { count = auto str.len; }
     else if count > str.len { count = auto str.len; }
     n := 0;
@@ -231,10 +231,11 @@ str_to_s64 :: fn (str: string_view, count := -1) s64  #obsolete "Use strtos64 in
     return n;
 }
 
-/// Converts the first `count` of characters from `str` to `s64` and return OK on success.
+/// Converts the first `count` of characters from `str` to `s64` and return OK on success. Use the whole
+/// string in case the `count` is not specified.
 ///
 /// Returns error when:
-///     - The input string is empty and `count` is not zero.
+///     - The input string is empty and `count` greater than zero.
 ///     - Converted number cause overflow of s64.
 ///     - The input string contains invalid characters.
 strtos64 :: fn (str: string_view, count := -1) (s64, Error) {
@@ -244,11 +245,13 @@ strtos64 :: fn (str: string_view, count := -1) (s64, Error) {
     if count == 0 { return 0, error("Cannot convert string to number, the input string is empty."); }
     n: s64;
     is_negative := false;
+    got_numbers := false;
     loop count > 0 {
         c :: str[0];
         if c == '-' && is_negative == false {
             is_negative = true;
         } else if c >= '0' && c <= '9' {
+            got_numbers = true;
             prev_n :: n;
             n = n * 10 + (auto c - '0');
             if n < prev_n {
@@ -262,7 +265,57 @@ strtos64 :: fn (str: string_view, count := -1) (s64, Error) {
         count -= 1;
     }
     if is_negative { n = -n; }
+    if got_numbers == false {
+        return n, error("Cannot convert string to number, the input string is invalid.");
+    }
     return n, OK;
+}
+
+/// Converts the first `count` of characters from `str` to `f64` and return OK on success. Use the whole
+/// string in case the `count` is not specified.
+///
+/// Returns error when:
+///     - The input string is empty and `count` greater than zero.
+///     - The input string contains invalid characters.
+strtof64 :: fn (str: string_view, count := -1) (f64, Error) {
+    if count == 0 { return 0., OK; }
+    if count < 0 { count = auto str.len; }
+    else if count > str.len { count = auto str.len; }
+    if count == 0 { return 0., error("Cannot convert string to floating point number, the input string is empty."); }
+    n := 0;
+    e := 1;
+    is_negative := false;
+    is_after_comma := false;
+    is_invalid := false;
+    got_numbers := false;
+
+    loop count > 0 {
+        c :: str[0];
+        if c == '-' {
+            is_negative = true;
+        } else if c == '.' && is_after_comma == false {
+            is_after_comma = true;
+        } else if c >= '0' && c <= '9' {
+            got_numbers = true;
+            n = n * 10 + (auto c - '0');
+            if is_after_comma {
+                e *= 10;
+            }
+        } else {
+            is_invalid = true;
+            break;
+        }
+
+        consume_char(&str);
+        count -= 1;
+    }
+
+    v := cast(f64) n / cast(f64) e;
+    if is_negative { v = -v; }
+    if is_invalid || got_numbers == false {
+        return v, error("Cannot convert string to floating point number, the input string is invalid.");
+    }
+    return v, OK;
 }
 
 /// Split input string `str` into two tokens based on the last occurrence of `delimiter`. Delimiter 
@@ -494,16 +547,32 @@ str_count_of :: fn (str: string_view, c: u8) s32 #inline {
 }
 
 /// Converts input string to lower case.
-str_to_lower :: fn (str: string_view) #inline {
+str_to_lower :: fn (str: string_view) #inline #obsolete "Use str_lower" {
     loop i := 0; i < str.len; i += 1 {
-        str[i] = auto C.tolower(auto str[i]); 
+        str[i] = auto C.tolower(auto str[i]);
+    }
+}
+
+/// Converts input string to lower case.
+str_lower :: fn (str: *string) #inline {
+    assert(str);
+    loop i := 0; i < (@str).len; i += 1 {
+        (@str)[i] = auto C.tolower(auto (@str)[i]);
     }
 }
 
 /// Converts input string to upper case.
-str_to_upper :: fn (str: string_view) #inline {
+str_to_upper :: fn (str: string_view) #inline #obsolete "Use str_upper" {
     loop i := 0; i < str.len; i += 1 {
-        str[i] = auto C.toupper(auto str[i]); 
+        str[i] = auto C.toupper(auto str[i]);
+    }
+}
+
+/// Converts input string to upper case.
+str_upper :: fn (str: *string) #inline {
+    assert(str);
+    loop i := 0; i < (@str).len; i += 1 {
+        (@str)[i] = auto C.toupper(auto (@str)[i]);
     }
 }
 

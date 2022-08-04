@@ -190,6 +190,68 @@ test_strtos64 :: fn () #test {
         v, err :: strtos64("99999999999999999999999999999999999999999999");
         test_not_ok(err);
     }
+    {
+        v, err :: strtos64("-");
+        test_not_ok(err);
+    }
+}
+
+test_strtof64 :: fn () #test {
+    using std;
+    {
+        v, err :: strtof64("");
+        test_not_ok(err);
+    }
+    {
+        v, err :: strtof64("", 0);
+        test_ok(err);
+        test_eq(v, 0.);
+    }
+    {
+        v, err :: strtof64("1");
+        test_ok(err);
+        test_eq(v, 1.);
+    }
+    {
+        v, err :: strtof64(".1");
+        test_ok(err);
+        test_eq(v, 0.1);
+    }
+    {
+        v, err :: strtof64("654132");
+        test_ok(err);
+        test_eq(v, 654132.);
+    }
+    {
+        v, err :: strtof64("-654132");
+        test_ok(err);
+        test_eq(v, -654132.);
+    }
+    {
+        v, err :: strtof64("-654132.1");
+        test_ok(err);
+        test_eq(v, -654132.1);
+    }
+    {
+        v, err :: strtos64("-654132-2");
+        test_not_ok(err);
+    }
+    {
+        v, err :: strtof64("-654132.2.");
+        test_not_ok(err);
+    }
+    {
+        v, err :: strtof64(".");
+        test_not_ok(err);
+    }
+    {
+        v, err :: strtof64("-");
+        test_not_ok(err);
+    }
+    {
+        v, err :: strtof64("-.");
+        test_not_ok(err);
+    }
 }
 
 test_str_to_f32 :: fn () #test {
