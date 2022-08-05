@@ -52,4 +52,4 @@ main :: fn () s32 {
 }
 ```
 
-See more examples [here](http://biscuitlang.org/master/how-to.html).
+See more examples [here](http://biscuitlang.org/#how-to/).
