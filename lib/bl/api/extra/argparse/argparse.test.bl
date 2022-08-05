@@ -229,10 +229,16 @@ string_arg :: fn () #test {
     add(&parser, &str, "--str", "-s", "Test string.");
 
     { // OK
-        c, err :: parse(&parser, [2]string_view.{ "test-application", "--str=\"hello world\"" });
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--str=hello world" });
         test_ok(err);
         test_eq(c, 1);
         test_eq(str, "hello world");
+    }
+    {
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--str=hello" });
+        test_ok(err);
+        test_eq(c, 1);
+        test_eq(str, "hello");
     }
     { // missing
         c, err :: parse(&parser, [2]string_view.{ "test-application", "--str" });
@@ -241,27 +247,6 @@ string_arg :: fn () #test {
     }
     { // missing
         c, err :: parse(&parser, [2]string_view.{ "test-application", "--str=" });
-        test_not_ok(err);
-        test_eq(c, 0);
-    }
-    { // empty
-        c, err :: parse(&parser, [2]string_view.{ "test-application", "--str=\"\"" });
-        test_ok(err);
-        test_eq(c, 1);
-        test_eq(str, "");
-    }
-    { // invalid
-        c, err :: parse(&parser, [2]string_view.{ "test-application", "--str=hoo" });
-        test_not_ok(err);
-        test_eq(c, 0);
-    }
-    { // unterminated
-        c, err :: parse(&parser, [2]string_view.{ "test-application", "--str=\"hoo" });
-        test_not_ok(err);
-        test_eq(c, 0);
-    }
-    { // malmformed
-        c, err :: parse(&parser, [2]string_view.{ "test-application", "--str=\"h\"oo" });
         test_not_ok(err);
         test_eq(c, 0);
     }
@@ -277,10 +262,16 @@ string_view_arg :: fn () #test {
     add(&parser, &str, "--str", "-s", "Test string.");
 
     { // OK
-        c, err :: parse(&parser, [2]string_view.{ "test-application", "--str=\"hello world\"" });
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--str=hello world" });
         test_ok(err);
         test_eq(c, 1);
         test_eq(str, "hello world");
+    }
+    {
+        c, err :: parse(&parser, [2]string_view.{ "test-application", "--str=hello" });
+        test_ok(err);
+        test_eq(c, 1);
+        test_eq(str, "hello");
     }
     { // missing
         c, err :: parse(&parser, [2]string_view.{ "test-application", "--str" });
@@ -289,27 +280,6 @@ string_view_arg :: fn () #test {
     }
     { // missing
         c, err :: parse(&parser, [2]string_view.{ "test-application", "--str=" });
-        test_not_ok(err);
-        test_eq(c, 0);
-    }
-    { // empty
-        c, err :: parse(&parser, [2]string_view.{ "test-application", "--str=\"\"" });
-        test_ok(err);
-        test_eq(c, 1);
-        test_eq(str, "");
-    }
-    { // invalid
-        c, err :: parse(&parser, [2]string_view.{ "test-application", "--str=hoo" });
-        test_not_ok(err);
-        test_eq(c, 0);
-    }
-    { // unterminated
-        c, err :: parse(&parser, [2]string_view.{ "test-application", "--str=\"hoo" });
-        test_not_ok(err);
-        test_eq(c, 0);
-    }
-    { // malmformed
-        c, err :: parse(&parser, [2]string_view.{ "test-application", "--str=\"h\"oo" });
         test_not_ok(err);
         test_eq(c, 0);
     }
