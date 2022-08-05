@@ -1,4 +1,4 @@
-<div style="text-align:center"><img src="http://biscuitlang.org/versions/0.9.0/_static/header.png" /></div>
+<div style="text-align:center"><img src="https://biscuitlang.org/versions/0.9.0/_static/header.png" /></div>
 
 # About
 ![Windows](https://github.com/travisdoor/bl/workflows/Windows/badge.svg?branch=master)
@@ -10,7 +10,7 @@
 The Biscuit Language (BL) is simple imperative programming language using LLVM backend implemented in C. 
 Language syntax and all it's features are still in development. Biscuit is designed to be simple, fast and explicit.
 
-Project homepage: [biscuitlang.org](http://biscuitlang.org)  
+Project homepage: [biscuitlang.org](https://biscuitlang.org) 
 Contact email: [biscuitlang@gmail.com](mailto:biscuitlang@gmail.com)
 
 # Features & descriptions
@@ -31,7 +31,7 @@ Contact email: [biscuitlang@gmail.com](mailto:biscuitlang@gmail.com)
 * Integrated tools for automatic documentation.
 
 # Installation
-See installation guide [here](http://biscuitlang.org/#installation).
+See installation guide [here](https://biscuitlang.org/#installation).
 
 # Example
 ```rust
@@ -52,4 +52,4 @@ main :: fn () s32 {
 }
 ```
 
-See more examples [here](http://biscuitlang.org/#how-to/).
+See more examples [here](https://biscuitlang.org/#how-to/).
