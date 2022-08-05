@@ -1,4 +1,5 @@
 main :: fn () s32 {
-    return test_run();
+    print("%\n", command_line_arguments);
+    return 0;
 }
 

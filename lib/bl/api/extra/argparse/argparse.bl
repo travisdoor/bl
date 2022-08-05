@@ -25,7 +25,7 @@
 //!   -h, --help                    Print this help.
 //!   -i, --input                   List of input files.
 //!   -o, --output                  List of output files.
-//!   --dir="STRING"                Root directory path.
+//!   --dir=<STR>                   Root directory path.
 //!   --opt=<DEBUG|RELEASE_SMALL|RELEASE_FAST>
 //!                                 Optimization level.
 //!   --worker-count=<N>            Count of worker threads.
@@ -197,14 +197,15 @@ parse :: fn (parser: *Parser, args: []string_view, first_arg_index := 1) (parsed
         found_argument.was_found = true;
         parsed_count += 1;
     }
-    loop i := 0; i < parser.argument_list.len; i += 1 {
-        arg := &parser.argument_list[i];
-        if arg.is_required && arg.was_found == false {
-            return parsed_count, error("Argument '%' is required.", arg.long);
-        }
-    }
     if parser.help {
         print_help(parser);
+    } else {
+        loop i := 0; i < parser.argument_list.len; i += 1 {
+            arg := &parser.argument_list[i];
+            if arg.is_required && arg.was_found == false {
+                return parsed_count, error("Argument '%' is required.", arg.long);
+            }
+        }
     }
     return parsed_count, OK;
 }
@@ -229,10 +230,10 @@ print_help :: fn (parser: *Parser) {
         using TypeKind;
         switch info.kind {
             INT, REAL { str_append(line, "=<N>"); }
-            STRING    { str_append(line, "=\"STRING\""); }
+            STRING    { str_append(line, "=<STR>"); }
             STRUCT {
                 if info == typeinfo(string_view) {
-                    str_append(line, "=\"STRING\"");
+                    str_append(line, "=<STR>");
                 }
             }
             ENUM {
@@ -352,9 +353,8 @@ is_string_view :: fn (info: *TypeInfo) bool #inline {
 }
 
 string_from_value :: fn (name: string_view, value: string_view) (string_view, Error) #inline {
-    if value.len == 0 || value[0] != '\"' { return value, error("Expected string value for argument '%'.", name); }
-    if value[value.len - 1] != '\"' { return value, error("Unterminated string argument '%'.", name); }
-    return slice_range(value, 1, value.len - 1), OK;
+    if value.len == 0  { return value, error("Expected string value for argument '%'.", name); }
+    return value, OK;
 }
 
 enum_variant_from_value :: fn (parser: *Parser, info: *TypeInfoEnum, name: string_view, value: string_view) (u64, Error) {

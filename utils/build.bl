@@ -27,7 +27,6 @@ target_bench :: fn () {
     exe :: add_executable("bench");
     set_output_dir(exe, BIN_DIR);
     add_unit(exe, "bench/main.bl");
-    compile(exe);
 }
 
 warn_skip :: fn (name: string_view) #inline {

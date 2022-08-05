@@ -289,7 +289,10 @@ list_dir :: fn (paths: *[..]string_view, dir: string_view) {
     visitor :: fn (info: *Info, data: *VisitData) Error {
         using std;
         if !info.is_directory {
-            array_push(data.paths, tprint("%", info.filepath));
+            _, ext :: path_splitext(info.filepath);
+            if str_match(ext, ".bl") {
+                array_push(data.paths, tprint("%", info.filepath));
+            }
         }
         return OK;
     };
