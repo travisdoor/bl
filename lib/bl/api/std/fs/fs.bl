@@ -18,9 +18,6 @@ FileStream :: struct #base Stream {
     handle: _fs_impl.File;
 }
 
-/// File handle type.
-//File :: _fs_impl.File;
-
 /// Invalid file handle. This can be used for file handle validation.
 FILE_INVALID :: _fs_impl.FILE_INVALID;
 
@@ -47,9 +44,9 @@ OpenFileMode :: enum #flags {
 ///
 /// ### Example
 ///
-//! ```c
-//! {% include "../examples/open_file.bl" %}
-//! ```
+/// ```c
+/// {% include "../examples/open_file.bl" %}
+/// ```
 ///
 open_file :: fn (filepath: string_view, mode: OpenFileMode = OpenFileMode.READ) (FileStream, Error) #inline {
     stream: FileStream #noinit;

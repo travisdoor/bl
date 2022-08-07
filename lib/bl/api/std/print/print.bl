@@ -70,7 +70,7 @@ PRINT_MAX_LENGTH :: 4096;
 print :: fn (format: string_view, args: ...) s32 {
     buf: [PRINT_MAX_LENGTH]u8 #noinit;
     w := _print_impl(buf, format, args);
-    __os_write(OS_STDOUT, buf.ptr, auto w);
+    std.write(os_stdout(), buf.ptr, auto w);
     return w;
 };
 
@@ -79,7 +79,7 @@ print :: fn (format: string_view, args: ...) s32 {
 eprint :: fn (format: string_view, args: ...) s32 {
     buf: [PRINT_MAX_LENGTH]u8 #noinit;
     w := _print_impl(buf, format, args);
-    __os_write(OS_STDERR, buf.ptr, auto w);
+    std.write(os_stderr(), buf.ptr, auto w);
     return w;
 };
 

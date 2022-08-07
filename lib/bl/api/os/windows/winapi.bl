@@ -34,6 +34,10 @@ MAX_PATH :: 260;
 INVALID_HANDLE_VALUE :: cast(HANDLE) (cast(LONG_PTR)0xffffffffffffffff);
 INFINITE : u32 : 0xFFFFFFFF;
 
+STD_INPUT_HANDLE :: cast(DWORD) -10;
+STD_OUTPUT_HANDLE :: cast(DWORD) -11;
+STD_ERROR_HANDLE :: cast(DWORD) -12;
+
 ERROR_FILE_NOT_FOUND :: 2;
 ERROR_FILE_EXISTS :: 80;
 ERROR_ACCESS_DENIED  :: 5;
@@ -448,3 +452,5 @@ LoadCursorA :: fn (hInstance: HINSTANCE, lpCursorName: LPCSTR) HCURSOR #extern "
 SetCursor :: fn (hCursor: HCURSOR) HCURSOR #extern "SetCursor";
 GetSaveFileNameA :: fn (param1: LPOPENFILENAMEA) BOOL #extern "GetSaveFileNameA";
 GetOpenFileNameA :: fn (param1: LPOPENFILENAMEA) BOOL #extern "GetOpenFileNameA";
+FlushFileBuffers :: fn (hFile: HANDLE) BOOL #extern "FlushFileBuffers";
+GetStdHandle :: fn (nStdHandle: DWORD) HANDLE #extern "GetStdHandle";
