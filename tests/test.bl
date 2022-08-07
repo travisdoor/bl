@@ -4,13 +4,9 @@ setlocale :: fn (category: s32, locale: string_view) {
 
 
 main :: fn () s32 {
-    setlocale(C.LC_ALL, "cs_CZ.utf8");
-
-    v :: "Ahoj světe, jak se máš";
-    written, e :: std.write_string(os_stdout(), v);
-    print("\nwritten: %\n", written);
-    print("len: %\n", v.len);
-
+    //setlocale(C.LC_ALL, "cs_CZ.utf8");
+    win32.SetConsoleOutputCP(win32.CP_UTF8);
+    std.write_string(os_stdout(), "Příliš žluťoučký kůň úpěl ďábelské ódy.");
     return 0;
 }
 
