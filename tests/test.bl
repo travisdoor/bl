@@ -1,6 +1,6 @@
 main :: fn () s32 {
-    std.write_string(os_stdout(), os_get_exec_path());
-
+    _, e :: std.write_string(os_stdout(), "Hello world!\n");
+    if e { panic(); }
     return 0;
 }
 

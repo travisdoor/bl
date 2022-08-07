@@ -2,9 +2,9 @@
 
 Collection of operating system interface imported implicitly.
 
-## Standart IO
+## Standard IO
 
-Standart input and output is implemented using the builtin [Stream](/modules/io) abstraction, so all common stream manipulation methods
+Standard input and output is implemented using the builtin [Stream](/modules/io) abstraction, so all common stream manipulation methods
 like `read` and `write` can be used. Use following methods to obtain the stream handle.
 
 ```c
@@ -12,15 +12,15 @@ OsStdIoStream :: struct #base std.Stream {
     handle: win32.HANDLE;
 }
 
-// Standart input stream
+// Standard input stream
 os_stdin :: fn () *OsStdIoStream
-// Standart output stream.
+// Standard output stream.
 os_stdout :: fn () *OsStdIoStream
-// Standart output error stream.
+// Standard output error stream.
 os_stderr :: fn () *OsStdIoStream
 ```
 
-In general, you can use i.e. Standart Output Stream for printing into the console, however using [print](/modules/print) function is
+In general, you can use i.e. Standard Output Stream for printing into the console, however using [print](/modules/print) function is
 more elegant in most situations.
 
 ## os_execute

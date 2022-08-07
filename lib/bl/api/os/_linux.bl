@@ -28,6 +28,7 @@
 
 #import "libc"
 #import "std/string"
+#import "std/io"
 
 #load "std/error.bl"
 
@@ -47,17 +48,14 @@ ERR_INVALID_HANDLE :: C.EBADF;
 ERR_DIRECTORY      :: C.EISDIR;
 
 os_stdin :: fn () *OsStdIoStream {
-    if !_std_io_initialized { init_std_io(); }
     return &_std_in;
 }
 
 os_stdout :: fn () *OsStdIoStream {
-    if !_std_io_initialized { init_std_io(); }
     return &_std_out;
 }
 
 os_stderr :: fn () *OsStdIoStream {
-    if !_std_io_initialized { init_std_io(); }
     return &_std_err;
 }
 
@@ -132,13 +130,9 @@ __os_start :: fn (argc: s64, argv: **u8, _: **u8) s32 #entry {
     loop i := 0; i < args.len; i += 1 {
         command_line_arguments[i] = string_view.{auto C.strlen(auto args[i]), args[i]};
     }
-    if !_std_io_initialized { init_std_io(); }
     out :: cast(s32) main();
     if is_allocated {
         C.free(auto command_line_arguments.ptr);
-    }
-    if _std_io_initialized {
-        terminate_std_io();
     }
     return out;
 }
@@ -151,39 +145,18 @@ STD_IN_STREAM_VTABLE :: std.StreamVTable.{
 
 STD_OUT_STREAM_VTABLE :: std.StreamVTable.{
     write = auto &std_io_write,
-    flush = auto &std_io_flush
 };
 
 
-_std_io_initialized := false;
-_std_in  := OsStdIoStream.{ std.Stream.{ vtable = &STD_IN_STREAM_VTABLE }  };
-_std_out := OsStdIoStream.{ std.Stream.{ vtable = &STD_OUT_STREAM_VTABLE } };
-_std_err := OsStdIoStream.{ std.Stream.{ vtable = &STD_OUT_STREAM_VTABLE } };
-
-init_std_io :: fn () {
-    assert(!_std_io_initialized);
-    mode_r :: "r";
-    mode_w :: "w";
-    _std_in.handle = C.fdopen(C.STDIN, auto mode_r.ptr);
-    _std_out.handle = C.fdopen(C.STDOUT, auto mode_w.ptr);
-    _std_err.handle = C.fdopen(C.STDERR, auto mode_w.ptr);
-    _std_io_initialized = true;
-}
-
-terminate_std_io :: fn () {
-    assert(_std_io_initialized);
-    C.fclose(_std_in.handle);
-    C.fclose(_std_out.handle);
-    C.fclose(_std_err.handle);
-    _std_io_initialized = false;
-}
+_std_in  :: OsStdIoStream.{ std.Stream.{ vtable = &STD_IN_STREAM_VTABLE },  C.STDIN  };
+_std_out :: OsStdIoStream.{ std.Stream.{ vtable = &STD_OUT_STREAM_VTABLE }, C.STDOUT };
+_std_err :: OsStdIoStream.{ std.Stream.{ vtable = &STD_OUT_STREAM_VTABLE }, C.STDERR };
 
 // @Duplicate: The same as fs.write, but we want to keep implicitly loaded OS interface small. We
 //             can eventually put file stream operations into separate file.
 std_io_write :: fn (stream: *OsStdIoStream, src: *u8, size: s64) (s64, Error) {
-    if !stream.handle { return 0, error(ERR_INVALID_HANDLE, "Cannot write into standart output, the stream is closed."); }
     if !src { return 0, error(ERR_INVALID_HANDLE, "Cannot write, source is invalid."); }
-    written_bytes :: C.write(auto stream.handle, auto src, auto bytes_to_write);
+    written_bytes :: C.write(stream.handle, auto src, auto size);
     if written_bytes < 0 {
         ec, estr :: os_get_last_error();
         return 0, error(ec, "Cannot write to file: %.", estr);
@@ -194,23 +167,13 @@ std_io_write :: fn (stream: *OsStdIoStream, src: *u8, size: s64) (s64, Error) {
 // @Duplicate: The same as fs.write, but we want to keep implicitly loaded OS interface small. We
 //             can eventually put file stream operations into separate file.
 std_io_read :: fn (stream: *OsStdIoStream, dest: *u8, size: s64) (s64, Error) {
-    if !stream.handle { return 0, error(ERR_INVALID_HANDLE, "Cannot read from standart output, the stream is closed."); }
     if !dest { return 0, error(ERR_INVALID_HANDLE, "Cannot read, destination is invalid."); }
-    read_bytes :: C.read(auto stream.handle, auto dest, auto bytes_to_read);
+    read_bytes :: C.read(stream.handle, auto dest, auto size);
     if read_bytes < 0 {
         ec, estr :: os_get_last_error();
         return 0, error(ec, "Cannot read file: %", estr);
     }
     return auto read_bytes, OK;
-}
-
-std_io_flush :: fn (stream: *OsStdIoStream) Error {
-    if !stream.handle { return error(ERR_INVALID_HANDLE, "Cannot flush, the stream is closed."); }
-    if C.fflush(stream.handle) != 0 {
-        ec, estr :: os_get_last_error();
-        return error(ec, "Cannot flush: %", estr);
-    }
-    return OK;
 }
 
 // @Cleanup: move to the libc???

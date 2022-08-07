@@ -57,7 +57,7 @@ Add #obsolete directive.
 0.9.0 - PRE-RELEASE
 ---------------------------------------------------------------------------------------
 Use LLD as default linker on Windows and Linux (experimental on macOS).
-Update command line arguments to match unix common naming standarts.
+Update command line arguments to match unix common naming standards.
 Improve build system api and remove some obsolete functions.
 Change build pipeline to call compile/compile_all explicitly.
 Fix switch related parser bugs.

@@ -194,9 +194,12 @@ STD_IN_STREAM_VTABLE :: std.StreamVTable.{
 
 STD_OUT_STREAM_VTABLE :: std.StreamVTable.{
     write = auto &std_io_write,
-    flush = auto &std_io_flush
 };
 
+// We use standard file descriptors and related libc functions on UNIX, but here we use winapi functions
+// for file stream manipulation, we can eventualy consider use of some other methods like WriteConsole, to
+// skip the lazy-initialized streams here.
+// Can we get into situation the streams get initialized from multiple threads???
 
 _std_io_initialized := false;
 _std_in  := OsStdIoStream.{ std.Stream.{ vtable = &STD_IN_STREAM_VTABLE }  };
@@ -213,10 +216,8 @@ init_std_io :: fn () {
     _std_io_initialized = true;
 }
 
-// @Duplicate: The same as fs.write, but we want to keep implicitly loaded OS interface small. We
-//             can eventually put file stream operations into separate file.
 std_io_write :: fn (stream: *OsStdIoStream, src: *u8, size: s64) (s64, Error) {
-    if !stream.handle { return 0, error(ERR_INVALID_HANDLE, "Cannot write into standart output, the stream is closed."); }
+    if !stream.handle { return 0, error(ERR_INVALID_HANDLE, "Cannot write into standard output, the stream is closed."); }
     if !src { return 0, error(ERR_INVALID_HANDLE, "Cannot write, source is invalid."); }
     written_bytes: win32.DWORD #noinit;
     if win32.WriteFile(stream.handle, src, auto size, &written_bytes, null) == 0 {
@@ -226,10 +227,8 @@ std_io_write :: fn (stream: *OsStdIoStream, src: *u8, size: s64) (s64, Error) {
     return auto written_bytes, OK;
 }
 
-// @Duplicate: The same as fs.write, but we want to keep implicitly loaded OS interface small. We
-//             can eventually put file stream operations into separate file.
 std_io_read :: fn (stream: *OsStdIoStream, dest: *u8, size: s64) (s64, Error) {
-    if !stream.handle { return 0, error(ERR_INVALID_HANDLE, "Cannot read from standart output, the stream is closed."); }
+    if !stream.handle { return 0, error(ERR_INVALID_HANDLE, "Cannot read from standard output, the stream is closed."); }
     if !dest { return 0, error(ERR_INVALID_HANDLE, "Cannot read, destination is invalid."); }
     read_bytes: win32.DWORD #noinit;
     if win32.ReadFile(stream.handle, dest, auto size, &read_bytes, null) == 0 {
@@ -239,11 +238,3 @@ std_io_read :: fn (stream: *OsStdIoStream, dest: *u8, size: s64) (s64, Error) {
     return auto read_bytes, OK;
 }
 
-std_io_flush :: fn (stream: *OsStdIoStream) Error {
-    if !stream.handle { return error(ERR_INVALID_HANDLE, "Cannot flush, the stream is closed."); }
-    if win32.FlushFileBuffers(stream.handle) != 0 {
-        ec, estr :: os_get_last_error();
-        return error(ec, "Cannot flush: %", estr);
-    }
-    return OK;
-}

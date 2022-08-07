@@ -245,7 +245,7 @@ in case of collision.
 Example of documented `print` function:
 
 ```c
-/// Write string to the standart output (stdout). Format string can include format specifiers `%`
+/// Write string to the standard output (stdout). Format string can include format specifiers `%`
 /// which are replaced by corresponding argument value passed in `args`. Value-string conversion is
 /// done automatically, we can pass values of any type as an arguments, even structures or arrays.
 ///
@@ -272,7 +272,7 @@ Execution of `blc -doc print.bl` will produce following output:
 print :: fn (format: string, args: ...) s32
 ```
 
-Write string to the standart output (stdout). Format string can include format specifiers `%`
+Write string to the standard output (stdout). Format string can include format specifiers `%`
 which are replaced by corresponding argument value passed in `args`. Value-string conversion is
 done automatically, we can pass values of any type as an arguments, even structures or arrays.
 
