@@ -27,6 +27,14 @@ SIGILL  :: 4;
 SIGTRAP :: 5;
 SIGABRT :: 6;
 
+LC_ALL      :: 0;
+LC_COLLATE  :: 1;
+LC_CTYPE    :: 2;
+LC_MONETARY :: 3;
+LC_NUMERIC  :: 4;
+LC_TIME     :: 5;
+
+
 putenv :: fn (var: *char) int #extern "_putenv";
 popen :: fn (f: *char, m: *char) void_ptr #extern "_popen";
 pclose :: fn (f: void_ptr) #extern "_pclose";
@@ -66,5 +74,6 @@ copysignf :: fn (x: f32, y: f32) f32 #extern "copysingf";
 copysign :: fn (x: f64, y: f64) f64 #extern "copysing";
 tolower :: fn (c: int) int #extern "tolower";
 toupper :: fn (c: int) int #extern "toupper";
+setlocale :: fn (category: int, locale: *char) *char #extern "setlocale";
 
 __acrt_iob_func :: fn (i: int) void_ptr #extern "__acrt_iob_func";

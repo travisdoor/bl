@@ -1,6 +1,16 @@
+setlocale :: fn (category: s32, locale: string_view) {
+    C.setlocale(category, std.strtoc(locale));
+}
+
+
 main :: fn () s32 {
-    _, e :: std.write_string(os_stdout(), "Hello world!\n");
-    if e { panic(); }
+    setlocale(C.LC_ALL, "cs_CZ.utf8");
+
+    v :: "Ahoj světe, jak se máš";
+    written, e :: std.write_string(os_stdout(), v);
+    print("\nwritten: %\n", written);
+    print("len: %\n", v.len);
+
     return 0;
 }
 
