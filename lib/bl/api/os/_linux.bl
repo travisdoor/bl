@@ -147,7 +147,6 @@ STD_OUT_STREAM_VTABLE :: std.StreamVTable.{
     write = auto &std_io_write,
 };
 
-
 _std_in  :: OsStdIoStream.{ std.Stream.{ vtable = &STD_IN_STREAM_VTABLE },  C.STDIN  };
 _std_out :: OsStdIoStream.{ std.Stream.{ vtable = &STD_OUT_STREAM_VTABLE }, C.STDOUT };
 _std_err :: OsStdIoStream.{ std.Stream.{ vtable = &STD_OUT_STREAM_VTABLE }, C.STDERR };
