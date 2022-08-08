@@ -53,6 +53,9 @@ Rename slice_init and slice_terminate to alloc_slice and free_slice.
 Add realloc_slice.
 Add type alignment into the type info.
 Add #obsolete directive.
+Fix invalid binary operation volatile type borrowing for explicitly not matching types.
+Fix argparse issues in doctor.
+Fix emitting of string literals produced by compile time functions.
 
 0.9.0 - PRE-RELEASE
 ---------------------------------------------------------------------------------------

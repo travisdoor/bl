@@ -1,0 +1,5 @@
+// @ERR_INVALID_TYPE@
+main :: fn () s32 {
+    v :: 1 & 2 == 2;
+    return 0;
+}

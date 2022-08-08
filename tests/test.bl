@@ -2,16 +2,14 @@ main :: fn () s32 {
     //std.write_string(os_stdout(), "Příliš žluťoučký kůň úpěl ďábelské ódy.\n");
 
     // compiler bug (dereference null pointer)
-    utf_char :: "Á";
+    utf_char := "Á";
     loop i := 0; i < utf_char.len; i += 1 {
         print("%\n", fmt_int(utf_char[i], FmtIntBase.HEX));
     }
 
-    // compiler bug invalid cast operation
-    if utf_char[0] & 0xC0 == 0xC0 {
+    if (utf_char[0] & 0xC0) == 0xC0 {
         print("2 byte character");
     }
 
     return 0;
 }
-

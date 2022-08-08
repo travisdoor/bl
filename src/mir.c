@@ -491,8 +491,6 @@ static struct mir_instr *create_instr_elem_ptr(struct context   *ctx,
                                                struct ast       *node,
                                                struct mir_instr *arr_ptr,
                                                struct mir_instr *index);
-static struct mir_instr *
-create_instr_type_info(struct context *ctx, struct ast *node, struct mir_instr *expr);
 static struct mir_instr *create_instr_member_ptr(struct context      *ctx,
                                                  struct ast          *node,
                                                  struct mir_instr    *target_ptr,
@@ -3180,14 +3178,6 @@ struct mir_instr *create_instr_compound_impl(struct context  *ctx,
     return tmp;
 }
 
-struct mir_instr *
-create_instr_type_info(struct context *ctx, struct ast *node, struct mir_instr *expr)
-{
-    struct mir_instr_type_info *tmp = create_instr(ctx, MIR_INSTR_TYPE_INFO, node);
-    tmp->expr                       = ref_instr(expr);
-    return &tmp->base;
-}
-
 struct mir_instr *create_instr_elem_ptr(struct context   *ctx,
                                         struct ast       *node,
                                         struct mir_instr *arr_ptr,
@@ -4612,6 +4602,14 @@ enum vm_interp_state evaluate(struct context *ctx, struct mir_instr *instr)
         break;
     }
     if (can_mutate_comptime_to_const(ctx, instr)) {
+        if (type_cmp(instr->value.type, ctx->builtin_types->t_string_literal)) {
+            // This can be dangerous, we allow conversion from string view  to string literal here,
+            // this seems fine, however string views used as return type of a compile time function
+            // can point to any arbitrary data existing only in compile time.
+            // We should address this issue somehow in general, and improve compile time checks of
+            // compile time evaluated functions.
+            instr->value.type->data.strct.is_string_literal = true;
+        }
         const bool is_volatile = is_instr_type_volatile(instr);
         erase_instr_tree(instr, true, true);
         mutate_instr(instr, MIR_INSTR_CONST);
@@ -8782,7 +8780,9 @@ ANALYZE_STAGE_FN(set_volatile_expr)
     if (slot_type->kind != MIR_TYPE_INT) return ANALYZE_STAGE_CONTINUE;
     if (!is_instr_type_volatile(*input)) return ANALYZE_STAGE_CONTINUE;
     const enum mir_cast_op op = get_cast_op((*input)->value.type, slot_type);
-    bassert(op != MIR_CAST_INVALID);
+    // No valid cast operation found, volatile type cannot be set and error can be reported for not
+    // matching types eventually.
+    if (op == MIR_CAST_INVALID) return ANALYZE_STAGE_CONTINUE;
     struct mir_const_expr_value *value = &(*input)->value;
     vm_value_t                   tmp   = {0};
     vm_do_cast((vm_stack_ptr_t)&tmp[0], value->data, slot_type, value->type, op);
@@ -8795,9 +8795,7 @@ ANALYZE_STAGE_FN(implicit_cast)
 {
     if (type_cmp((*input)->value.type, slot_type)) return ANALYZE_STAGE_BREAK;
     if (!can_impl_cast((*input)->value.type, slot_type)) return ANALYZE_STAGE_CONTINUE;
-
-    *input = insert_instr_cast(ctx, *input, slot_type);
-
+    *input          = insert_instr_cast(ctx, *input, slot_type);
     struct result r = analyze_instr(ctx, *input);
     if (r.state != ANALYZE_PASSED) return ANALYZE_STAGE_FAILED;
     return ANALYZE_STAGE_BREAK;
@@ -8814,14 +8812,10 @@ struct result analyze_instr(struct context *ctx, struct mir_instr *instr)
     zone();
     if (!instr) return_zone(PASS);
     struct result state = PASS;
-
     if (instr->state == MIR_IS_COMPLETE) return_zone(state);
-
     enum mir_instr_state *analyze_state = &instr->state;
-
-    ctx->analyze.last_analyzed_instr = instr;
+    ctx->analyze.last_analyzed_instr    = instr;
     if (instr->owner_block) set_current_block(ctx, instr->owner_block);
-
     bassert((*analyze_state) != MIR_IS_FAILED && "Attempt to analyze already failed instruction?!");
 
     if ((*analyze_state) == MIR_IS_PENDING) {
