@@ -142,4 +142,5 @@ CONFIG ::
     "      - modules/sync.md\n"
     "      - modules/test.md\n"
     "      - modules/utils.md\n"
+    "      - misc/os.md\n"
 ;

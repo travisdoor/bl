@@ -38,7 +38,7 @@
 /// Size of buffer used by `print` function, this is maximum text length which can be printed at once.
 PRINT_MAX_LENGTH :: 4096;
 
-/// Write string to the standart output (stdout). Format string can include format specifiers `%` 
+/// Write string to the standard output (stdout). Format string can include format specifiers `%`
 /// which are replaced by corresponding argument value passed in `args`. Value-string conversion is 
 /// done automatically, we can pass values of any type as an arguments, even structures or arrays.
 /// 
@@ -70,7 +70,7 @@ PRINT_MAX_LENGTH :: 4096;
 print :: fn (format: string_view, args: ...) s32 {
     buf: [PRINT_MAX_LENGTH]u8 #noinit;
     w := _print_impl(buf, format, args);
-    __os_write(OS_STDOUT, buf.ptr, auto w);
+    std.write(os_stdout(), buf.ptr, auto w);
     return w;
 };
 
@@ -79,7 +79,7 @@ print :: fn (format: string_view, args: ...) s32 {
 eprint :: fn (format: string_view, args: ...) s32 {
     buf: [PRINT_MAX_LENGTH]u8 #noinit;
     w := _print_impl(buf, format, args);
-    __os_write(OS_STDERR, buf.ptr, auto w);
+    std.write(os_stderr(), buf.ptr, auto w);
     return w;
 };
 

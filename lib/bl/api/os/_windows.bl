@@ -29,15 +29,15 @@
 #import "libc"
 #import "os/windows"
 #import "std/string"
+#import "std/io"
 
 #load "std/error.bl"
 
-OS_NAME :: "Windows";
+OsStdIoStream :: struct #base std.Stream {
+    handle: win32.HANDLE;
+}
 
-//@Cleanup: We should use getter functions instead?
-OS_STDIN  :: C.STDIN;
-OS_STDOUT :: C.STDOUT;
-OS_STDERR :: C.STDERR;
+OS_NAME :: "Windows";
 
 OS_PATH_MAX :: win32.MAX_PATH;
 
@@ -48,22 +48,26 @@ ERR_ACCESS_DENIED  :: win32.ERROR_ACCESS_DENIED;
 ERR_INVALID_HANDLE :: win32.ERROR_INVALID_HANDLE;
 ERR_DIRECTORY      :: win32.ERROR_DIRECTORY;
 
-os_stdin :: fn () *u8 #inline {
-    return C.__acrt_iob_func(C.STDIN);
+os_stdin :: fn () *OsStdIoStream {
+    if !_std_io_initialized { init_std_io(); }
+    return &_std_in;
 }
 
-os_stdout :: fn () *u8 #inline {
-    return C.__acrt_iob_func(C.STDOUT);
+os_stdout :: fn () *OsStdIoStream {
+    if !_std_io_initialized { init_std_io(); }
+    return &_std_out;
 }
 
-os_stderr :: fn () *u8 #inline {
-    return C.__acrt_iob_func(C.STDERR);
+os_stderr :: fn () *OsStdIoStream {
+    if !_std_io_initialized { init_std_io(); }
+    return &_std_err;
 }
 
-os_sleep_ms :: fn (ms: f64) #inline {
-    win32.Sleep(auto ms);
+os_sleep_ms :: fn (ms: u32) #inline {
+    win32.Sleep(ms);
 };
 
+// @Incomplete: Use u32/u64
 os_tick_ms :: fn () f64 #inline {
     f: win32.LARGE_INTEGER #noinit;
     t: win32.LARGE_INTEGER #noinit;
@@ -104,10 +108,6 @@ os_get_last_error :: fn () (s32, string_view) #inline {
     if msg_len == 0 { return ec, "Unknown error."; }
     return ec, std.ctostr(_last_error_msg_buffer.ptr, auto msg_len);
 }
-
-__os_write :: fn (fd: s32, buf: *u8, count: usize) s64 {
-    return C.write(fd, auto buf, count);
-};
 
 // This is internally called from runtime when `debugbreak` is reached. Basically this when execution
 // reach the `debugbreak` builtin expression, compiler will use internal break handling for compile-time
@@ -177,6 +177,8 @@ __os_start :: fn () #entry {
     command_line_arguments.len = args.len;
     command_line_arguments.ptr = args.ptr;
 
+    if !_std_io_initialized { init_std_io(); }
+
     out :: cast(s32) main();
     C.free(auto args.ptr); 
     C.exit(out);
@@ -185,3 +187,54 @@ __os_start :: fn () #entry {
 #private
 
 _last_error_msg_buffer: [256]s8 #thread_local;
+
+STD_IN_STREAM_VTABLE :: std.StreamVTable.{
+    read = auto &std_io_read
+};
+
+STD_OUT_STREAM_VTABLE :: std.StreamVTable.{
+    write = auto &std_io_write,
+};
+
+// We use standard file descriptors and related libc functions on UNIX, but here we use winapi functions
+// for file stream manipulation, we can eventualy consider use of some other methods like WriteConsole, to
+// skip the lazy-initialized streams here.
+// Can we get into situation the streams get initialized from multiple threads???
+
+_std_io_initialized := false;
+_std_in  := OsStdIoStream.{ std.Stream.{ vtable = &STD_IN_STREAM_VTABLE }  };
+_std_out := OsStdIoStream.{ std.Stream.{ vtable = &STD_OUT_STREAM_VTABLE } };
+_std_err := OsStdIoStream.{ std.Stream.{ vtable = &STD_OUT_STREAM_VTABLE } };
+
+init_std_io :: fn () {
+    using win32;
+
+    assert(!_std_io_initialized);
+    _std_in.handle   = GetStdHandle(STD_INPUT_HANDLE);
+    _std_out.handle  = GetStdHandle(STD_OUTPUT_HANDLE);
+    _std_err.handle  = GetStdHandle(STD_ERROR_HANDLE);
+    _std_io_initialized = true;
+}
+
+std_io_write :: fn (stream: *OsStdIoStream, src: *u8, size: s64) (s64, Error) {
+    if !stream.handle { return 0, error(ERR_INVALID_HANDLE, "Cannot write into standard output, the stream is closed."); }
+    if !src { return 0, error(ERR_INVALID_HANDLE, "Cannot write, source is invalid."); }
+    written_bytes: win32.DWORD #noinit;
+    if win32.WriteFile(stream.handle, src, auto size, &written_bytes, null) == 0 {
+        ec, estr :: os_get_last_error();
+        return 0, error(ec, "Cannot write: %", estr);
+    }
+    return auto written_bytes, OK;
+}
+
+std_io_read :: fn (stream: *OsStdIoStream, dest: *u8, size: s64) (s64, Error) {
+    if !stream.handle { return 0, error(ERR_INVALID_HANDLE, "Cannot read from standard output, the stream is closed."); }
+    if !dest { return 0, error(ERR_INVALID_HANDLE, "Cannot read, destination is invalid."); }
+    read_bytes: win32.DWORD #noinit;
+    if win32.ReadFile(stream.handle, dest, auto size, &read_bytes, null) == 0 {
+        ec, estr :: os_get_last_error();
+        return 0, error(ec, "Cannot read: %", estr);
+    }
+    return auto read_bytes, OK;
+}
+

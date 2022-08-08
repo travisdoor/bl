@@ -80,6 +80,7 @@ fopen :: fn (filename: *char, mode: *char) *FILE #extern "fopen";
 fdopen :: fn (fd: int, mode: *char) *FILE #extern "fdopen";
 fclose :: fn (stream: *FILE) int #extern "fclose";
 fgets :: fn (buf: void_ptr, size: int, f: *FILE) void_ptr #extern "fgets";
+fflush :: fn (stream: *FILE) int  #extern "fflush";
 getcwd :: fn (buf: *char, size: size_t) *char #extern "getcwd";
 unlink :: fn (pathname: *char) int #extern "unlink";
 read :: fn (fd: int, buf: *char, count: size_t) ssize_t #extern "read";

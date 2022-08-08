@@ -28,14 +28,15 @@
 
 #import "libc"
 #import "std/string"
+#import "std/io"
 
 #load "std/error.bl"
 
-OS_NAME :: "Linux";
+OsStdIoStream :: struct #base std.Stream {
+    handle: C.int;
+}
 
-OS_STDIN  :: C.STDIN;
-OS_STDOUT :: C.STDOUT;
-OS_STDERR :: C.STDERR;
+OS_NAME :: "Linux";
 
 OS_PATH_MAX :: 1024;
 
@@ -46,21 +47,20 @@ ERR_ACCESS_DENIED  :: C.EACCES;
 ERR_INVALID_HANDLE :: C.EBADF;
 ERR_DIRECTORY      :: C.EISDIR;
 
-// @Cleanup: IO abstraction into separarte module!
-os_stdin :: fn () *u8 #inline {
-    return _stdin; 
+os_stdin :: fn () *OsStdIoStream {
+    return &_std_in;
 }
 
-os_stdout :: fn () *u8 #inline {
-    return _stdout; 
+os_stdout :: fn () *OsStdIoStream {
+    return &_std_out;
 }
 
-os_stderr :: fn () *u8 #inline {
-    return _stderr; 
+os_stderr :: fn () *OsStdIoStream {
+    return &_std_err;
 }
 
-os_sleep_ms :: fn (ms: f64) {
-    C.usleep(auto ms * 1000.0);
+os_sleep_ms :: fn (ms: u32) {
+    C.usleep(ms * 1000);
 };
 
 os_tick_ms :: fn () f64 #inline {
@@ -130,15 +130,6 @@ __os_start :: fn (argc: s64, argv: **u8, _: **u8) s32 #entry {
     loop i := 0; i < args.len; i += 1 {
         command_line_arguments[i] = string_view.{auto C.strlen(auto args[i]), args[i]};
     }
-    mode_r :: "r";
-    mode_w :: "w";
-    _stdin = C.fdopen(C.STDIN, auto mode_r.ptr);
-    defer C.fclose(_stdin);
-    _stdout = C.fdopen(C.STDOUT, auto mode_w.ptr);
-    defer C.fclose(_stdout);
-    _stderr = C.fdopen(C.STDERR, auto mode_w.ptr);
-    defer C.fclose(_stderr);
-
     out :: cast(s32) main();
     if is_allocated {
         C.free(auto command_line_arguments.ptr);
@@ -147,9 +138,42 @@ __os_start :: fn (argc: s64, argv: **u8, _: **u8) s32 #entry {
 }
 
 #private
-_stdin: *C.FILE;
-_stdout: *C.FILE;
-_stderr: *C.FILE;
+
+STD_IN_STREAM_VTABLE :: std.StreamVTable.{
+    read = auto &std_io_read
+};
+
+STD_OUT_STREAM_VTABLE :: std.StreamVTable.{
+    write = auto &std_io_write,
+};
+
+_std_in  :: OsStdIoStream.{ std.Stream.{ vtable = &STD_IN_STREAM_VTABLE },  C.STDIN  };
+_std_out :: OsStdIoStream.{ std.Stream.{ vtable = &STD_OUT_STREAM_VTABLE }, C.STDOUT };
+_std_err :: OsStdIoStream.{ std.Stream.{ vtable = &STD_OUT_STREAM_VTABLE }, C.STDERR };
+
+// @Duplicate: The same as fs.write, but we want to keep implicitly loaded OS interface small. We
+//             can eventually put file stream operations into separate file.
+std_io_write :: fn (stream: *OsStdIoStream, src: *u8, size: s64) (s64, Error) {
+    if !src { return 0, error(ERR_INVALID_HANDLE, "Cannot write, source is invalid."); }
+    written_bytes :: C.write(stream.handle, auto src, auto size);
+    if written_bytes < 0 {
+        ec, estr :: os_get_last_error();
+        return 0, error(ec, "Cannot write to file: %.", estr);
+    }
+    return auto written_bytes, OK;
+}
+
+// @Duplicate: The same as fs.write, but we want to keep implicitly loaded OS interface small. We
+//             can eventually put file stream operations into separate file.
+std_io_read :: fn (stream: *OsStdIoStream, dest: *u8, size: s64) (s64, Error) {
+    if !dest { return 0, error(ERR_INVALID_HANDLE, "Cannot read, destination is invalid."); }
+    read_bytes :: C.read(stream.handle, auto dest, auto size);
+    if read_bytes < 0 {
+        ec, estr :: os_get_last_error();
+        return 0, error(ec, "Cannot read file: %", estr);
+    }
+    return auto read_bytes, OK;
+}
 
 // @Cleanup: move to the libc???
 CLOCK_REALTIME :: 0;

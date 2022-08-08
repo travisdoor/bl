@@ -561,6 +561,15 @@ str_lower :: fn (str: *string) #inline {
     }
 }
 
+/// Converts single character from the `str` at index `index` to lower case. String `str` must be
+/// valid string pointer and `index` must be in range <0, str.len).
+str_lower_single_character :: fn (str: *string, index: s64) #inline {
+    assert(str);
+    assert(index >= 0 && index < str.len);
+    (@str)[index] = auto C.tolower(auto (@str)[index]);
+}
+
+
 /// Converts input string to upper case.
 str_to_upper :: fn (str: string_view) #inline #obsolete "Use str_upper" {
     loop i := 0; i < str.len; i += 1 {
@@ -574,6 +583,14 @@ str_upper :: fn (str: *string) #inline {
     loop i := 0; i < (@str).len; i += 1 {
         (@str)[i] = auto C.toupper(auto (@str)[i]);
     }
+}
+
+/// Converts single character from the `str` at index `index` to upper case. String `str` must be
+/// valid string pointer and `index` must be in range <0, str.len).
+str_upper_single_character :: fn (str: *string, index: s64) #inline {
+    assert(str);
+    assert(index >= 0 && index < str.len);
+    (@str)[index] = auto C.toupper(auto (@str)[index]);
 }
 
 /// Replace all found occurrences of character `c` in the input string with `with` character and 

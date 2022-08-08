@@ -1,5 +1,6 @@
 main :: fn () s32 {
-    print("%\n", command_line_arguments);
+    _, e :: std.write_string(os_stdout(), "Hello world!\n");
+    if e { panic(); }
     return 0;
 }
 

@@ -23,6 +23,7 @@ StreamVTable :: struct {
     read:  *fn(stream: *Stream, dest: *u8, bytes_to_write: s64) (bytes_read: s64, err: Error);
     write: *fn(stream: *Stream, src: *u8, bytes_to_read: s64) (bytes: s64, err: Error);
     seek:  *fn(stream: *Stream, locator: StreamLocator, offset: s64) (position: s64, err: Error);
+    flush: *fn(stream: *Stream) Error;
 }
 
 /// Stream seek offset locator.
@@ -114,6 +115,14 @@ read_string :: fn (stream: *Stream, dest: *string, bytes_to_read: s64 = std.S64_
 seek :: fn (stream: *Stream, locator := StreamLocator.CURRENT, offset: s64 = 0) (position: s64, err: Error) {
     assert(stream);
     assert(stream.vtable);
-    if !stream.vtable.seek { panic("Stream does not support position seeking, 'seek' function is missing."); }
+    if !stream.vtable.seek { panic("Stream does not support position seeking."); }
     return stream.vtable.seek(stream, locator, offset);
+}
+
+/// Flush all buffered stream data.
+flush :: fn (stream: *Stream) Error {
+    assert(stream);
+    assert(stream.vtable);
+    if !stream.vtable.flush { panic("Stream does not support flushing."); }
+    return stream.vtable.flush(stream);
 }
