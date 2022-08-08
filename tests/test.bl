@@ -1,12 +1,17 @@
-setlocale :: fn (category: s32, locale: string_view) {
-    C.setlocale(category, std.strtoc(locale));
-}
-
-
 main :: fn () s32 {
-    //setlocale(C.LC_ALL, "cs_CZ.utf8");
-    win32.SetConsoleOutputCP(win32.CP_UTF8);
-    std.write_string(os_stdout(), "Příliš žluťoučký kůň úpěl ďábelské ódy.");
+    //std.write_string(os_stdout(), "Příliš žluťoučký kůň úpěl ďábelské ódy.\n");
+
+    // compiler bug (dereference null pointer)
+    utf_char :: "Á";
+    loop i := 0; i < utf_char.len; i += 1 {
+        print("%\n", fmt_int(utf_char[i], FmtIntBase.HEX));
+    }
+
+    // compiler bug invalid cast operation
+    if utf_char[0] & 0xC0 == 0xC0 {
+        print("2 byte character");
+    }
+
     return 0;
 }
 

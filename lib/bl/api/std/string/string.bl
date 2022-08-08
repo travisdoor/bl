@@ -6,7 +6,7 @@
 //! 
 //! `#import "std/string"`
 //! 
-//! Builtin dynami string container. 
+//! Builtin UTF-8 encoded dynamic string container.
 //! 
 //! ```
 //! string :: struct {
