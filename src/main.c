@@ -322,7 +322,7 @@ int main(s32 argc, char *argv[])
     }
 #endif
     Options opt = {0};
-    setlocale(LC_ALL, "C");
+    setlocale(LC_ALL, "C.utf8");
 
     s32   state     = EXIT_SUCCESS;
     char *exec_dir  = NULL;

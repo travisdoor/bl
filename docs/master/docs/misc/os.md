@@ -23,6 +23,9 @@ os_stderr :: fn () *OsStdIoStream
 In general, you can use i.e. Standard Output Stream for printing into the console, however using [print](/modules/print) function is
 more elegant in most situations.
 
+!!! note
+    On Windows the terminal output is encoded to UTF-8 by defautl using winapi function `SetConsoleOutputCP`.
+
 ## os_execute
 
 ```c

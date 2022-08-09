@@ -75,3 +75,12 @@ struct_value :: fn () #test {
     test_eq(data.d, 30);
     test_eq(data.e, 40);
 }
+
+string_literal :: fn () #test{
+    get :: fn () string_view #comptime {
+        return "This is testing string.";
+    };
+
+    lit :: get();
+    test_eq(lit, "This is testing string.");
+}

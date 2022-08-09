@@ -213,6 +213,7 @@ init_std_io :: fn () {
     _std_in.handle   = GetStdHandle(STD_INPUT_HANDLE);
     _std_out.handle  = GetStdHandle(STD_OUTPUT_HANDLE);
     _std_err.handle  = GetStdHandle(STD_ERROR_HANDLE);
+    SetConsoleOutputCP(CP_UTF8);
     _std_io_initialized = true;
 }
 

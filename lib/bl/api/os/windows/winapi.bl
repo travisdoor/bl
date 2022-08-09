@@ -38,6 +38,7 @@ STD_INPUT_HANDLE :: cast(DWORD) -10;
 STD_OUTPUT_HANDLE :: cast(DWORD) -11;
 STD_ERROR_HANDLE :: cast(DWORD) -12;
 
+
 ERROR_FILE_NOT_FOUND :: 2;
 ERROR_FILE_EXISTS :: 80;
 ERROR_ACCESS_DENIED  :: 5;
@@ -454,3 +455,4 @@ GetSaveFileNameA :: fn (param1: LPOPENFILENAMEA) BOOL #extern "GetSaveFileNameA"
 GetOpenFileNameA :: fn (param1: LPOPENFILENAMEA) BOOL #extern "GetOpenFileNameA";
 FlushFileBuffers :: fn (hFile: HANDLE) BOOL #extern "FlushFileBuffers";
 GetStdHandle :: fn (nStdHandle: DWORD) HANDLE #extern "GetStdHandle";
+SetConsoleOutputCP :: fn (wCodePageID: UINT) BOOL #extern "SetConsoleOutputCP";

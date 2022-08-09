@@ -55,6 +55,7 @@ Parser :: struct {
 /// Use `terminate` function to release all resources needed by `parser`.
 init :: fn (parser: *Parser, info := "", allocator : *Allocator = null) {
     assert(parser);
+    zeromem(auto parser, sizeof(@parser));
     array_init(&parser.argument_list, 32, allocator);
     array_init(&parser.usage, 32, allocator);
     parser.info = info;
