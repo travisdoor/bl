@@ -20,3 +20,7 @@ compile_commands.json
 /clang/
 .cache
 /tests/out*
+/how-to/*.exe
+/how-to/*.dll
+/how-to/*.obj
+/how-to/*.o
