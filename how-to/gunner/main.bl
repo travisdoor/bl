@@ -8,11 +8,13 @@ main_window: *glfw.Window;
 main :: fn () s32 {
     using glfw;
 
+    // Initialize GLFW.
     if Init() == 0 {
         print_glfw_error();
         panic("Cannot initialize Glfw.\n");
     }
 
+    // Create GLFW window.
     WindowHint(CONTEXT_VERSION_MAJOR, 3);
     WindowHint(CONTEXT_VERSION_MINOR, 3);
     WindowHint(OPENGL_FORWARD_COMPAT, 1);
@@ -39,9 +41,13 @@ main :: fn () s32 {
     // Game loop comes here!
     loop WindowShouldClose(main_window) == 0 {
         glfw.PollEvents();
+
+        // Since we use temporary allocator, we should reset it's internal storage
+        // each frame.
         temporary_reset();
     }
 
+    // Termination
     DestroyWindow(main_window);
     Terminate();
     return 0;
