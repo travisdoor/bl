@@ -1,49 +1,4 @@
 .DS_Store
-
-# Prerequisites
-*.d
-
-# Object files
-*.o
-*.ko
-*.obj
-*.elf
-
-# Linker output
-*.ilk
-*.map
-*.exp
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Libraries
-*.lib
-*.a
-*.la
-*.lo
-
-# Shared objects (inc. Windows DLLs)
-*.dll
-*.so
-*.so.*
-*.dylib
-
-# Executables
-*.exe
-*.out
-*.app
-*.i*86
-*.x86_64
-*.hex
-
-# Debug files
-*.dSYM/
-*.su
-*.idb
-*.pdb
-
 # Other
 build
 deps/llvm*
@@ -56,22 +11,12 @@ src/config.h
 .suo
 /CMakeLists.txt.user
 compile_commands.json
-/lib/bl/api/gl
-/lib/bl/api/glfw3
-/lib/bl/api/sdl2
 /.idea
-/build-stable/
-/build-release/
-/build-debug/
-/build-assert/
-/cmake-build*
 /bin
 /out/
 /.vs/
 /msvc/
-/VS2019/
-docs/api/
 /etc
 /clang/
-/gcc-linux/
 .cache
+/tests/out*
