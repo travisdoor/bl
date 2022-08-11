@@ -1,0 +1,16 @@
+version: 9
+src: "glfw3.bl"
+
+x86_64-pc-windows-msvc:
+  link: "glfw3"
+  linker_lib_path: "win32"
+
+x86_64-pc-linux-gnu:
+  linker_opt: "-lglfw"
+
+x86_64-apple-darwin:
+  link: "glfw"
+
+arm64-apple-darwin:
+  link: "glfw"
+

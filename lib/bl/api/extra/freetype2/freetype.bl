@@ -1,0 +1,338 @@
+// generated from /Users/travis/Develop/tedit/src/freetype/c/freetype.h
+
+#scope FreeType
+
+Bool :: C.uchar;
+FWord :: C.short;
+UFWord :: C.ushort;
+Char :: C.char;
+Byte :: C.uchar;
+Bytes :: *Byte;
+Tag :: u32;
+String :: C.char;
+Short :: C.short;
+UShort :: C.ushort;
+Int :: C.int;
+UInt :: C.uint;
+Long :: C.long;
+ULong :: C.ulong;
+Int32 :: s32;
+F2Dot14 :: C.short;
+F26Dot6 :: C.long;
+Fixed :: C.long;
+Error :: C.int;
+Pointer :: *u8;
+Offset :: usize;
+PtrDist :: s64;
+Pos :: C.long;
+
+LOAD_DEFAULT                     :: 0x0;
+LOAD_NO_SCALE                    :: 1 << 0;
+LOAD_NO_HINTING                  :: 1 << 1;
+LOAD_RENDER                      :: 1 << 2;
+LOAD_NO_BITMAP                   :: 1 << 3;
+LOAD_VERTICAL_LAYOUT             :: 1 << 4;
+LOAD_FORCE_AUTOHINT              :: 1 << 5;
+LOAD_CROP_BITMAP                 :: 1 << 6;
+LOAD_PEDANTIC                    :: 1 << 7;
+LOAD_IGNORE_GLOBAL_ADVANCE_WIDTH :: 1 << 9;
+LOAD_NO_RECURSE                  :: 1 << 10;
+LOAD_IGNORE_TRANSFORM            :: 1 << 11;
+LOAD_MONOCHROME                  :: 1 << 12;
+LOAD_LINEAR_DESIGN               :: 1 << 13;
+LOAD_NO_AUTOHINT                 :: 1 << 15;
+LOAD_COLOR                       :: 1 << 20;
+LOAD_COMPUTE_METRICS             :: 1 << 21;
+LOAD_BITMAP_METRICS_ONLY         :: 1 << 22;
+LOAD_ADVANCE_ONLY                :: 1 << 8;
+LOAD_SBITS_ONLY                  :: 1 << 14;
+
+FACE_FLAG_SCALABLE         :: 1 <<  0;
+FACE_FLAG_FIXED_SIZES      :: 1 <<  1;
+FACE_FLAG_FIXED_WIDTH      :: 1 <<  2;
+FACE_FLAG_SFNT             :: 1 <<  3;
+FACE_FLAG_HORIZONTAL       :: 1 <<  4;
+FACE_FLAG_VERTICAL         :: 1 <<  5;
+FACE_FLAG_KERNING          :: 1 <<  6;
+FACE_FLAG_FAST_GLYPHS      :: 1 <<  7;
+FACE_FLAG_MULTIPLE_MASTERS :: 1 <<  8;
+FACE_FLAG_GLYPH_NAMES      :: 1 <<  9;
+FACE_FLAG_EXTERNAL_STREAM  :: 1 << 10;
+FACE_FLAG_HINTER           :: 1 << 11;
+FACE_FLAG_CID_KEYED        :: 1 << 12;
+FACE_FLAG_TRICKY           :: 1 << 13;
+FACE_FLAG_COLOR            :: 1 << 14;
+FACE_FLAG_VARIATION        :: 1 << 15;
+
+HINTING_FREETYPE :: 0;
+HINTING_ADOBE :: 1;
+
+LOAD_TARGET_NORMAL :: (RENDER_MODE_NORMAL & 15) << 16;
+LOAD_TARGET_LIGHT  :: (RENDER_MODE_LIGHT  & 15) << 16; 
+LOAD_TARGET_MONO   :: (RENDER_MODE_MONO   & 15) << 16;
+LOAD_TARGET_LCD    :: (RENDER_MODE_LCD    & 15) << 16;
+LOAD_TARGET_LCD_V  :: (RENDER_MODE_LCD_V  & 15) << 16;
+
+Encoding :: enum {
+    ENCODING_NONE = 0;
+    ENCODING_MS_SYMBOL = 1;
+    ENCODING_UNICODE = 2;
+    ENCODING_SJIS = 3;
+    ENCODING_PRC = 4;
+    ENCODING_BIG5 = 5;
+    ENCODING_WANSUNG = 6;
+    ENCODING_JOHAB = 7;
+    ENCODING_GB2312 = 4;
+    ENCODING_MS_SJIS = 3;
+    ENCODING_MS_GB2312 = 4;
+    ENCODING_MS_BIG5 = 5;
+    ENCODING_MS_WANSUNG = 6;
+    ENCODING_MS_JOHAB = 7;
+    ENCODING_ADOBE_STANDARD = 8;
+    ENCODING_ADOBE_EXPERT = 9;
+    ENCODING_ADOBE_CUSTOM = 10;
+    ENCODING_ADOBE_LATIN_1 = 11;
+    ENCODING_OLD_LATIN_2 = 12;
+    ENCODING_APPLE_ROMAN = 13;
+};
+
+Glyph_Format :: enum {
+    GLYPH_FORMAT_NONE = 0;
+    GLYPH_FORMAT_COMPOSITE = 1668246896;
+    GLYPH_FORMAT_BITMAP = 1651078259;
+    GLYPH_FORMAT_OUTLINE = 1869968492;
+    GLYPH_FORMAT_PLOTTER = 1886154612;
+};
+
+Size_Request_Type_ :: enum {
+    SIZE_REQUEST_TYPE_NOMINAL = -1;
+    SIZE_REQUEST_TYPE_REAL_DIM = 1;
+    SIZE_REQUEST_TYPE_BBOX = 2;
+    SIZE_REQUEST_TYPE_CELL = 3;
+    SIZE_REQUEST_TYPE_SCALES = 4;
+    SIZE_REQUEST_TYPE_MAX = 5;
+};
+
+Render_Mode :: s32; 
+RENDER_MODE_NORMAL :: 0;
+RENDER_MODE_LIGHT :: 1;
+RENDER_MODE_MONO :: 2;
+RENDER_MODE_LCD :: 3;
+RENDER_MODE_LCD_V :: 4;
+RENDER_MODE_MAX :: 5;
+
+Kerning_Mode_ :: enum {
+    KERNING_DEFAULT = 0;
+    KERNING_UNFITTED = 1;
+    KERNING_UNSCALED = 2;
+};
+
+Library :: *u8;
+Size :: *u8;
+Driver :: *u8;
+Memory :: *u8;
+Stream :: *u8;
+Face_Internal :: *u8;
+SubGlyph :: *u8;
+Slot_Internal :: *u8;
+
+Color :: struct {
+    blue: Byte;
+    green: Byte;
+    red: Byte;
+    alpha: Byte;
+} 
+
+Face :: struct {
+    num_faces: Long;
+    face_index: Long;
+    face_flags: Long;
+    style_flags: Long;
+    num_glyphs: Long;
+    family_name: *String;
+    style_name: *String;
+    num_fixed_sizes: Int;
+    available_sizes: *Bitmap_Size;
+    num_charmaps: Int;
+    charmaps: **CharMap;
+    generic: Generic;
+    bbox: BBox;
+    units_per_EM: UShort;
+    ascender: Short;
+    descender: Short;
+    height: Short;
+    max_advance_width: Short;
+    max_advance_height: Short;
+    underline_position: Short;
+    underline_thickness: Short;
+    glyph: *GlyphSlot;
+    size: Size;
+    charmap: *CharMap;
+    driver: Driver;
+    memory: Memory;
+    stream: Stream;
+    sizes_list: ListRec;
+    autohint: Generic;   
+    extensions: *u8; 
+    internal: Face_Internal;
+} 
+
+GlyphSlot :: struct {
+    library: Library;
+    face: *Face;
+    next: *GlyphSlot;
+    glyph_index: UInt;
+    generic: Generic;
+    metrics: Glyph_Metrics;
+    linearHoriAdvance: Fixed;
+    linearVertAdvance: Fixed;
+    advance: Vector;
+    format: Glyph_Format;
+    bitmap: Bitmap;
+    bitmap_left: Int;
+    bitmap_top: Int;
+    outline: Outline;
+    num_subglyphs: UInt;
+    subglyphs: SubGlyph;
+    control_data: *u8;
+    control_len: s64;
+    lsb_delta: Pos;
+    rsb_delta: Pos;
+    other: *u8;
+    internal: Slot_Internal;
+}
+
+Glyph_Metrics :: struct {
+    width: Pos;
+    height: Pos;
+    horiBearingX: Pos;
+    horiBearingY: Pos;
+    horiAdvance: Pos;
+    vertBearingX: Pos;
+    vertBearingY: Pos;
+    vertAdvance: Pos;
+}
+
+GlyphRec :: struct {
+    library: *Library;
+    clazz: *u8;
+    format: Glyph_Format;
+    advance: Vector;
+}
+
+Glyph :: *GlyphRec;
+
+ListNode :: struct {
+    prev: *ListNode;
+    next: *ListNode;
+    data: *u8;
+} 
+
+ListRec :: struct {
+    head: *ListNode;
+    tail: *ListNode;
+}
+
+Bitmap_Size :: struct {
+    height: Short;
+    width: Short;
+    size: Pos;
+    x_ppem: Pos;
+    y_ppem: Pos;
+}
+
+Bitmap :: struct {
+    rows: u32;
+    width: u32;
+    pitch: s32;
+    buffer: *u8;
+    num_grays: u16;
+    pixel_mode: u8;
+    palette_mode: u8;
+    palette: *u8;
+}
+
+Outline :: struct {
+    n_contours: s16;
+    n_points: s16;
+    points: *Vector;
+    tags: *s8;
+    contours: *s16;
+    flags: s32;
+};
+
+CharMap :: struct {
+    face: *Face;
+    encoding: Encoding;
+    platform_id: UShort;
+    encoding_id: UShort;
+}
+
+Generic :: struct {
+    data: *u8;
+    finalizer: *u8;
+}
+
+Vector :: struct {
+    x: Pos;
+    y: Pos;
+}
+
+BBox :: struct {
+    xMin: Pos; 
+    yMin: Pos; 
+    xMax: Pos; 
+    yMax: Pos; 
+}
+
+Matrix :: struct {
+    xx: Fixed;
+    xy: Fixed;
+    yx: Fixed;
+    yy: Fixed;
+}
+
+BitmapGlyphRec :: struct {
+    root: GlyphRec;
+    left: Int;
+    top: Int;
+    bitmap: Bitmap;
+}
+
+BitmapGlyph :: *BitmapGlyphRec;
+
+LcdFilter :: C.int;
+LCD_FILTER_NONE    :: 0;
+LCD_FILTER_DEFAULT :: 1;
+LCD_FILTER_LIGHT   :: 2;
+LCD_FILTER_LEGACY1 :: 3;
+LCD_FILTER_LEGACY  :: 16;
+
+Init_FreeType :: fn (alibrary: *Library) Error #extern "FT_Init_FreeType";
+Done_FreeType :: fn (library: Library) Error #extern "FT_Done_FreeType";
+New_Face :: fn (library: Library, filepathname: *u8, face_index: Long, aface: **Face) Error #extern "FT_New_Face";
+Done_Face :: fn (face: *Face) Error #extern "FT_Done_Face";
+Set_Pixel_Sizes :: fn (face: *Face, pixel_width: UInt, pixel_height: UInt) Error #extern "FT_Set_Pixel_Sizes";
+Load_Char :: fn (face: *Face, char_code: ULong, load_flags: Int32) Error #extern "FT_Load_Char";
+Library_SetLcdFilter :: fn (library: Library, filter: LcdFilter) Error #extern "FT_Library_SetLcdFilter";
+Render_Glyph :: fn (slot: *GlyphSlot, render_mode: Render_Mode) Error #extern "FT_Render_Glyph";
+Get_Char_Index :: fn (face: *Face, charcode: ULong) Error #extern "FT_Get_Char_Index";
+Load_Glyph :: fn (face: *Face, glyph_index: UInt, load_flags: Int32) Error #extern "FT_Load_Glyph";
+Bitmap_Convert :: fn (library: Library, source: *Bitmap, target: *Bitmap, alignment: Int) Error #extern "FT_Bitmap_Convert";
+Bitmap_Init :: fn (abitmap: *Bitmap) #extern "FT_Bitmap_Init";
+Palette_Set_Foreground_Color :: fn (face: *Face, foreground_color: Color) Error #extern "FT_Palette_Set_Foreground_Color";
+Library_SetLcdFilterWeights :: fn (library: Library, weights: *C.uchar) Error #extern "FT_Library_SetLcdFilterWeights";
+Glyph_To_Bitmap :: fn (glyph: *Glyph, render_mode: Render_Mode, origin: *Vector, destroy: Bool) Error #extern "FT_Glyph_To_Bitmap";
+Get_Glyph :: fn (slot:  *GlyphSlot, aglyph: *Glyph) Error #extern "FT_Get_Glyph";
+Set_Transform :: fn (face: *Face, matrix: *Matrix, delta: *Vector) #extern "FT_Set_Transform";
+Set_Char_Size :: fn (face: *Face, char_width: F26Dot6, char_height: F26Dot6, horz_resolution: UInt, vert_resolution: UInt) Error #extern "FT_Set_Char_Size";
+Property_Set :: fn (library: Library, module_name: *String, property_name: *String, value: *u8) Error #extern "FT_Property_Set";
+Select_Charmap :: fn (face: *Face, encoding: UInt) Error #extern "FT_Select_Charmap";
+
+ENC_TAG :: fn (a: u8, b: u8, c: u8, d: u8) UInt #inline {
+    return 
+        (cast(UInt)(a) << 24) |
+        (cast(UInt)(b) << 16) |
+        (cast(UInt)(c) <<  8) |
+        (cast(UInt)(d));
+}

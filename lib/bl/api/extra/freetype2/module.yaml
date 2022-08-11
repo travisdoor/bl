@@ -1,0 +1,16 @@
+version: 2
+src: "freetype.bl"
+
+x86_64-pc-windows-msvc:
+  linker_lib_path: "win32"
+  link: "freetype"
+
+x86_64-pc-linux-gnu:
+  linker_opt: "-lfreetype"
+
+x86_64-apple-darwin:
+  link: "freetype"
+
+arm64-apple-darwin:
+  link: "freetype"
+

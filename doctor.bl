@@ -1,4 +1,4 @@
-#!/usr/local/bin/blc --silent -run
+#!blc -silent-run
 #import "extra/argparse"
 #import "std/fs"
 #import "std/io"

@@ -66,7 +66,6 @@ static char       scan_specch(char c);
 bool scan_comment(struct context *ctx, struct token *tok, const char *term)
 {
     if (tok->sym == SYM_SHEBANG && ctx->line != 1) {
-        // Unterminated comment
         report_error(INVALID_TOKEN,
                      "%s %d:%d Shebang is allowed only on the first line of the file.",
                      ctx->unit->name,
