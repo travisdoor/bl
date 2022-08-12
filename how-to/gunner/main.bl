@@ -1,48 +1,64 @@
-// TODO: miniaudio, GL
+// TODO: miniaudio, GL, shader compilation, texture loading
 
 #import "extra/glfw3"
+#import "extra/leo"
 
 WINDOW_WIDTH  :: 800;
 WINDOW_HEIGHT :: 600;
 WINDOW_TITLE  :: "Gunner!";
-main_window: *glfw.Window;
+window: *glfw.Window;
 
 main :: fn () s32 {
-    using glfw;
-
     // Initialize GLFW.
-    if Init() == 0 {
+    if glfw.Init() == 0 {
         print_glfw_error();
         panic("Cannot initialize Glfw.\n");
     }
 
     // Create GLFW window.
-    WindowHint(CONTEXT_VERSION_MAJOR, 3);
-    WindowHint(CONTEXT_VERSION_MINOR, 3);
-    WindowHint(OPENGL_FORWARD_COMPAT, 1);
-    WindowHint(OPENGL_PROFILE, OPENGL_CORE_PROFILE);
-    WindowHint(DOUBLEBUFFER, TRUE);
-    WindowHint(RESIZABLE, FALSE);
+    glfw.WindowHint(glfw.CONTEXT_VERSION_MAJOR, 3);
+    glfw.WindowHint(glfw.CONTEXT_VERSION_MINOR, 3);
+    glfw.WindowHint(glfw.OPENGL_FORWARD_COMPAT, 1);
+    glfw.WindowHint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE);
+    glfw.WindowHint(glfw.DOUBLEBUFFER, glfw.TRUE);
+    glfw.WindowHint(glfw.RESIZABLE, glfw.FALSE);
 
-    main_window = CreateWindow(
+    window = glfw.CreateWindow(
         WINDOW_WIDTH,
         WINDOW_HEIGHT,
-        std.strtoc(WINDOW_TITLE),
+        std.strtoc(WINDOW_TITLE), // Convert bl string_view to C string.
         null,
         null
     );
 
-    if !main_window {
+    if !window {
         print_glfw_error();
         panic("Cannot create GLFW window.\n");
     }
 
-    MakeContextCurrent(main_window);
-    SwapInterval(1);
+    glfw.MakeContextCurrent(window);
+    glfw.SwapInterval(1);
+
+    leo.init(WINDOW_WIDTH, WINDOW_HEIGHT);
 
     // Game loop comes here!
-    loop WindowShouldClose(main_window) == 0 {
+    loop glfw.WindowShouldClose(window) == 0 {
         glfw.PollEvents();
+        using leo;
+        using glm;
+
+        begin_frame();
+
+        // Clear the frame.
+        clear_color();
+
+        set_color_shader();
+        draw_rect(10.f, 20.f, 100.f, 100.f, v4.{ 1.f, 0.f, 1.f, 1.f });
+
+        end_frame();
+
+        // Swap buffers to see rendered stuff.
+        glfw.SwapBuffers(window);
 
         // Since we use temporary allocator, we should reset it's internal storage
         // each frame.
@@ -50,8 +66,9 @@ main :: fn () s32 {
     }
 
     // Termination
-    DestroyWindow(main_window);
-    Terminate();
+    leo.terminate();
+    glfw.DestroyWindow(window);
+    glfw.Terminate();
     return 0;
 }
 

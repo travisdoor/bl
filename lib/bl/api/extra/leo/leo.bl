@@ -1,0 +1,39 @@
+#import "extra/gl"
+#import "extra/glm"
+
+#scope leo
+
+init :: fn (viewport_width: s32, viewport_height: s32) {
+    gl_init();
+    gl.Enable(GL_BLEND);
+    gl.Enable(GL_FRAMEBUFFER_SRGB);
+    gl.Enable(GL_LINE_SMOOTH);
+    gl.Enable(GL_MULTISAMPLE);
+    gl.DepthFunc(GL_LEQUAL);
+    gl.BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    gl.Hint(auto GL_TEXTURE_COMPRESSION_HINT, GL_NICEST);
+    gl.Hint(auto GL_POLYGON_SMOOTH_HINT, GL_NICEST);
+    gl.CullFace(GL_BACK);
+    gl.Viewport(0, 0, viewport_width, viewport_height);
+    gl_check();
+}
+
+terminate :: fn () {
+    gl_terminate();
+}
+
+clear_color :: fn (color := glm.v4_zero) #inline {
+    gl.ClearColor(color.x, color.y, color.z, color.w);
+    gl.Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
+begin_frame :: fn () {}
+
+end_frame :: fn () {}
+
+set_color_shader :: fn () {}
+
+draw_rect :: fn (x: f32, y: f32, w: f32, h: f32, color: glm.v4) {
+}
+
+#private
