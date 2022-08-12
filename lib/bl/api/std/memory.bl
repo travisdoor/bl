@@ -356,18 +356,23 @@ slice_range :: fn (slice: []?T, start: s64, end: s64 = -1) []T #inline {
 /// !!! note
 ///     Call this method i.e. in every event loop (update) iteration.
 temporary_reset :: fn () #inline {
+    // @Incomplete: use allocator from application context!!!
+    // @Incomplete: use allocator from application context!!!
+    // @Incomplete: use allocator from application context!!!
     std.pool_reset(&temporary_pool);
 }
 
-/// Release all memory allocated by temporary allocator, this method is supposed to be called
-/// at exit of a program or thread.
+/// Release all memory allocated by temporary allocator.
 ///
 /// !!! warning
 ///     All resources previously allocated by this allocator became invalid after release.
 ///
 /// !!! note
-///     Call this method before main returns.
+///     This method is implicitly called at exit of executable (after main).
 temporary_release :: fn () #inline {
+    // @Incomplete: use allocator from application context!!!
+    // @Incomplete: use allocator from application context!!!
+    // @Incomplete: use allocator from application context!!!
     std.pool_release(&temporary_pool);
 }
 

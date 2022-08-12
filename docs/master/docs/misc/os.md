@@ -51,3 +51,15 @@ os_get_exec_path :: fn () string
 Returns a full path to the currently running executable; internally a new string is allocated and must be deleted after use.
 The path may be empty in case of an error.
 
+## os_get_backtrace
+
+Returns current execution stack trace obtained from native executable debug information. This feature is available only in `DEBUG` mode
+and only during native runtime. Output slice of [CodeLocations](/modules/a/#codelocation) contains stack frame records starting from the
+`os_get_backtrace` caller function + `skip_frames`. The `max_frame_count` can limit maximum count of obtained frames.
+
+!!! note
+    This function internally allocate using current application context temporary allocator.
+
+```c
+os_get_backtrace :: fn (skip_frames := 0, max_frame_count := 64) []CodeLocation
+```

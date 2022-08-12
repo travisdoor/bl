@@ -832,6 +832,7 @@ struct mir_instr_call_loc {
     struct mir_instr base;
     struct location *call_location; // Optional call location
     struct mir_var  *meta_var;      // Optional meta var.
+    const char      *function_name;
     hash_t           hash;
 };
 

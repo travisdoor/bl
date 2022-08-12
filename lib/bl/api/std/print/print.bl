@@ -373,19 +373,16 @@ print_any :: fn (buf: *?T, cur: s32, any: *Any) s32 {
             if !err {
                 return print_string(buf, cur, "null");
             }
-
-            if err.code == ERR_UNKNOWN {
-                return print_string(buf, cur, err.msg);
+            if err.code != ERR_UNKNOWN {
+                cur = print_string(buf, cur, "[");
+                if err.code < 0 {
+                    cur = print_string(buf, cur, "-");
+                    cur = print_u64(buf, cur, auto err.code * -1, FmtIntBase.DEC, 1);
+                } else {
+                    cur = print_u64(buf, cur, auto err.code, FmtIntBase.DEC, 1);
+                }
+                cur = print_string(buf, cur, "] ");
             }
-
-            cur = print_string(buf, cur, "[");
-            if err.code < 0 { 
-                cur = print_string(buf, cur, "-");
-                cur = print_u64(buf, cur, auto err.code * -1, FmtIntBase.DEC, 1);
-            } else {
-                cur = print_u64(buf, cur, auto err.code, FmtIntBase.DEC, 1);
-            }
-            cur = print_string(buf, cur, "] ");
             return print_string(buf, cur, err.msg);
         } else {
             // Pointer

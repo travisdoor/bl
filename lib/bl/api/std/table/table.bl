@@ -48,7 +48,7 @@ Table :: fn (TKey: type, TValue: type) type #comptime {
     static_assert(TKey == string || is_number(TKey) || is_pointer(TKey) || TKey == string_view);
     return struct {
         slots: []Slot;
-        // @Performance: travis <2022-06-13> Maybe we don't want to use dynamic arrays
+        // @Performance: mdorazil <2022-06-13> Maybe we don't want to use dynamic arrays
         // here to reduce redundant values (i.e. len).
         keys: [..]TKey;
         values: [..]TValue;

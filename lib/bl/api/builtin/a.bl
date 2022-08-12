@@ -296,6 +296,8 @@ CodeLocation :: struct #compiler {
     file: string_view;
     /// Line in the source file.
     line: s32;
+    /// Name of the function.
+    function: string_view;
     /// File and line combination hash.
     hash: u32;
 }
@@ -311,19 +313,24 @@ CodeLocation :: struct #compiler {
 PrintLogFn :: * fn (kind: PrintLogKind, file: string_view, line: s32, format: string_view, args: ...);
 
 AbortFn :: * fn ();
+AssertFn :: * fn (message: string_view, loc: *CodeLocation);
 
 /// Default implicit context type. Implicit context is compiler internal global variable 
 /// containing basic context for whole assembly. This variable is mutable and can 
 /// be modified by user code. 
 Context :: struct {
-    /// Pointer to log print function. 
+    /// Print log callback.
     print_log_fn: PrintLogFn;
-    /// Pointer to abort handler function. 
+    /// Abort handler callback.
     abort_fn: AbortFn;
+    /// Assert handler callback.
+    assert_fn: AssertFn;
     /// Default memory allocator used across the application.
     allocator: *Allocator;
     // Default temporary allocator.
     temporary_allocator: *Allocator;
+
+    _assert_handled: bool;
 };
 
 /// Default application context. Implicit context is compiler internal global variable
@@ -333,6 +340,7 @@ Context :: struct {
 application_context := Context.{
     print_log_fn        = &__print_log_default,
     abort_fn            = &__os_abort_default,
+    assert_fn           = &__assert_default,
     allocator           = &default_allocator,
     temporary_allocator = &default_temporary_allocator,
 };

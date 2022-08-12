@@ -109,6 +109,42 @@ os_get_last_error :: fn () (s32, string_view) #inline {
     return ec, std.ctostr(_last_error_msg_buffer.ptr, auto msg_len);
 }
 
+os_get_backtrace :: fn (skip_frames := 0, max_frame_count := 64) []CodeLocation {
+    trace: [..]CodeLocation;
+    if max_frame_count < 1 { return trace; }
+    using win32;
+    using std;
+    allocator :: application_context.temporary_allocator; // In case we change allocator we should call free!
+    stack: []C.void_ptr;
+    err_slice_alloc :: alloc_slice(&stack, max_frame_count, false, allocator);
+    if err_slice_alloc { panic(err_slice_alloc); }
+
+    process :: GetCurrentProcess();
+    SymSetOptions(SYMOPT_LOAD_LINES);
+    SymInitialize(process, null, TRUE);
+    defer SymCleanup(process);
+    available_frame_count :: cast(s32) CaptureStackBackTrace(0, auto stack.len, stack.ptr, null);
+    symbol_mem, err_symbol_alloc  :: alloc(sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(WCHAR), DEFAULT_ALIGNMENT, allocator);
+    if err_symbol_alloc { panic(err_symbol_alloc); }
+    symbol := cast(PSYMBOL_INFO) symbol_mem;
+    symbol.MaxNameLen   = auto MAX_SYM_NAME;
+    symbol.SizeOfStruct = auto sizeof(SYMBOL_INFO);
+    line: IMAGEHLP_LINE64;
+    displacementLine: DWORD;
+
+    skip_frames += 1; // Ignore this function frame.
+    array_init(&trace, 0, allocator);
+    loop i := skip_frames; i < available_frame_count; i += 1 {
+        SymFromAddr(process, auto (stack[i]), null, symbol);
+        SymGetLineFromAddr64(process, auto (stack[i]), &displacementLine, &line);
+        frame := array_push(&trace);
+        frame.file = str_new(ctostr(line.FileName), allocator);
+        frame.line = auto line.LineNumber;
+        frame.function = str_new(ctostr(auto symbol.Name.ptr), allocator);
+    }
+    return trace;
+}
+
 // This is internally called from runtime when `debugbreak` is reached. Basically this when execution
 // reach the `debugbreak` builtin expression, compiler will use internal break handling for compile-time
 // execution (using interpreter) and replace this expression with call to this function in runtime.
@@ -126,6 +162,7 @@ __os_abort :: fn () #compiler {
 }
 
 __os_abort_default :: fn () #inline {
+    if !IS_COMPTIME_RUN { print_backtrace(); }
     C.raise(C.SIGABRT);
 }
 
@@ -178,6 +215,7 @@ __os_start :: fn () #entry {
     command_line_arguments.ptr = args.ptr;
 
     if !_std_io_initialized { init_std_io(); }
+    std.temporary_release();
 
     out :: cast(s32) main();
     C.free(auto args.ptr); 

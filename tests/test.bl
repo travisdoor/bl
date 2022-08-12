@@ -1,21 +1,18 @@
-// file:line
+// Release temporary allocator in __start by default.
+// Add function name into CodeLocation structure.
+
+Foo :: struct { a: [12]u32; }
 
 main :: fn () s32 {
-    __push_frame();
-    foo();
+    err :: foo();
+    a: Foo;
+    b: Foo;
+    a = b;
+    if err { print_err(err); }
     return 0;
 }
 
-foo :: fn () {
-    defer __pop_frame();
-
-    __push_frame();
-    bar();
-}
-
-bar :: fn () {
-    defer __pop_frame();
-    loop i := 0; i < stack_trace.len; i += 1 {
-        print("%\n", @stack_trace[i]);
-    }
+foo :: fn () Error {
+    assert(false);
+    return error("This is error!");
 }

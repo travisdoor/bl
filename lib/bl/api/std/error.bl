@@ -70,45 +70,32 @@ is_error :: fn (err: Error, code: s32) bool #inline {
 /// 
 /// Error creating does not require any HEAP memory alocations.
 /// 
-/// ```
+/// **Overloads:**
+/// ```c
 /// fn (code: s32) Error #inline
-/// ```
-/// 
-/// Sets error code.
-/// 
-/// ***
-/// 
-/// ```
 /// fn (format: string, args: ...) Error #inline
-/// ```
-/// 
-/// Sets error state with `ERR_UNKNOWN` code and formatted message.
-/// 
-/// ***
-/// 
-/// ```
-/// fn (code: s32, format: string, args: ...) Error
+/// fn (code: s32, format: string, args: ...) Error #inline
 /// ```
 /// 
 /// Sets error state with `code` and formatted message.
-error :: fn {  error1; error2; error3; }
+error :: fn {  impl_error1; impl_error2; impl_error3; }
 
 #private
 _last_error_msg_buffer: [1024]u8 #thread_local;
 _last_error: _Error #thread_local;
 
-error1 :: fn (code: s32) Error #inline {
-    return error3(code, std.str_empty);
+impl_error1 :: fn (code: s32) Error #inline {
+    return impl_error3(code, std.str_empty);
 }
 
-error2 :: fn (format: string_view, args: ...) Error #inline {
-    return error3(ERR_UNKNOWN, format, args);
+impl_error2 :: fn (format: string_view, args: ...) Error #inline {
+    return impl_error3(ERR_UNKNOWN, format, args);
 }
 
-error3 :: fn (code: s32, format: string_view, args: ...) Error {
+impl_error3 :: fn (code: s32, format: string_view, args: ...) Error #inline {
     e := &_last_error;
     msg_size :: bprint(_last_error_msg_buffer, format, args);
-    e.code = code;
-    e.msg = string_view.{ msg_size, _last_error_msg_buffer.ptr };
+    e.code      = code;
+    e.msg       = string_view.{ msg_size, _last_error_msg_buffer.ptr };
     return e;
 }

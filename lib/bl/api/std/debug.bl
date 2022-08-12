@@ -47,23 +47,28 @@ print_warn :: fn (format: string_view, args: ...) #inline {
 /// Print debug error using current application_context.print_log_fn function.
 print_err :: fn { print_err_e; print_err_msg; }
 
-/// Interrupt execution when `cond` is false. Assert use current application_context `print_log_fn` to print out error
-/// message containing assert location in source code.
-//current application/
+/// Invoke assert handler from the application context in case the `condition` is `false`.
+///
 /// !!! important
 ///     All calls to the assert function are removed from release builds by default.
 ///
 /// !!! warning
 ///     There is no argument validation in case the assert call is removed from compilation.
-assert :: fn (cond: bool, loc := #call_location) #compiler {
-    if cond { return; }
-    application_context.print_log_fn(PrintLogKind.ASSERT, loc.file, loc.line, "Assertion failed!");
-    unreachable;
+assert :: fn (condition: bool, message := "", loc := #call_location) #compiler {
+    if condition { return; }
+    if application_context._assert_handled { return; }
+    application_context._assert_handled = true;
+    application_context.assert_fn(message, loc);
 }
 
 /// Assertion check evaluated in compile time.
 static_assert :: fn (expr: bool) #comptime {
     if expr { return; }
+    unreachable;
+}
+
+__assert_default :: fn (message: string_view, loc: *CodeLocation) {
+    application_context.print_log_fn(PrintLogKind.ASSERT, loc.file, loc.line, message);
     unreachable;
 }
 
@@ -94,6 +99,22 @@ PrintLogKind :: enum u8 {
     /// Panic log message.
     PANIC;
 };
+
+/// Print current stack trace into stdout. Does nothing in release modes.
+print_backtrace :: fn (skip_frames := 0) #inline {
+    trace: []CodeLocation;
+#if IS_DEBUG {
+    trace = os_get_backtrace(skip_frames+1);
+} else {
+    skip_frames; // To silent usage warning.
+}
+    if trace.len == 0 { return; }
+    print("Backtrace: \n");
+    loop i := 0; i < trace.len; i += 1 {
+        frame :: &trace[i];
+        print("  %:%: %\n", frame.file, frame.line, frame.function);
+    }
+}
 
 __print_log_default :: fn (kind: PrintLogKind, file: string_view, line: s32, format: string_view, args: ...) {
     output_stream := os_stdout();
@@ -147,27 +168,16 @@ measure_elapsed_ms_end :: fn (name : string_view = "") f64 #inline {
     return elapsed_ms;
 }
 
-stack_trace: [..]*CodeLocation #thread_local;
-
-__push_frame :: fn (loc := #call_location) {
-    array_push(&stack_trace, loc);
-}
-
-__pop_frame :: fn () {
-    if stack_trace.len < 1 { return; }
-    stack_trace.len -= 1;
-}
-
 #private
 _elapsed_ms_stack: [..]f64 #thread_local;
 
 panic_empty :: fn () {
-    unreachable;    
+    unreachable;
 }
 
 panic_error :: fn (err: Error) {
     application_context.print_log_fn(PrintLogKind.PANIC, "", 0, "%", err);
-    unreachable;    
+    unreachable;
 }
 
 panic_msg :: fn (format: string_view, args: ...) {

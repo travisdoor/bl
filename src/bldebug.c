@@ -37,6 +37,10 @@
 // clang-format on
 #endif
 
+#if BL_PLATFORM_MACOS || BL_PLATFORM_LINUX
+#include <execinfo.h>
+#endif
+
 #define MAX_LOG_MSG_SIZE 2048
 
 void log_impl(log_msg_kind_t t, const char *file, s32 line, const char *msg, ...)
@@ -76,96 +80,36 @@ void log_impl(log_msg_kind_t t, const char *file, s32 line, const char *msg, ...
 void print_trace_impl(void)
 {
 #if BL_PLATFORM_MACOS || BL_PLATFORM_LINUX
-#include <execinfo.h>
-    void  *tmp[32];
-    usize  size;
-    char **strings;
-    usize  i;
-
-    size    = backtrace(tmp, static_arrlenu(tmp));
-    strings = backtrace_symbols(tmp, size);
+    void  *tmp[128];
+    usize  size    = backtrace(tmp, static_arrlenu(tmp));
+    char **strings = backtrace_symbols(tmp, size);
 
     printf("Obtained stack trace:\n");
-
-    for (i = 1; i < size; i++)
-        printf("%s\n", strings[i]);
+    for (usize i = 1; i < size; i++)
+        printf("  %s\n", strings[i]);
 
     free(strings);
 #elif BL_PLATFORM_WIN
+    void  *stack[128];
     HANDLE process = GetCurrentProcess();
-    HANDLE thread  = GetCurrentThread();
 
-    CONTEXT context;
-    memset(&context, 0, sizeof(CONTEXT));
-    context.ContextFlags = CONTEXT_FULL;
-    RtlCaptureContext(&context);
-
+    SymSetOptions(SYMOPT_LOAD_LINES);
     SymInitialize(process, NULL, TRUE);
 
-    DWORD        image;
-    STACKFRAME64 stackframe;
-    ZeroMemory(&stackframe, sizeof(STACKFRAME64));
-
-#ifdef _M_IX86
-    image                       = IMAGE_FILE_MACHINE_I386;
-    stackframe.AddrPC.Offset    = context.Eip;
-    stackframe.AddrPC.Mode      = AddrModeFlat;
-    stackframe.AddrFrame.Offset = context.Ebp;
-    stackframe.AddrFrame.Mode   = AddrModeFlat;
-    stackframe.AddrStack.Offset = context.Esp;
-    stackframe.AddrStack.Mode   = AddrModeFlat;
-#elif _M_X64
-    image                       = IMAGE_FILE_MACHINE_AMD64;
-    stackframe.AddrPC.Offset    = context.Rip;
-    stackframe.AddrPC.Mode      = AddrModeFlat;
-    stackframe.AddrFrame.Offset = context.Rsp;
-    stackframe.AddrFrame.Mode   = AddrModeFlat;
-    stackframe.AddrStack.Offset = context.Rsp;
-    stackframe.AddrStack.Mode   = AddrModeFlat;
-#elif _M_IA64
-    image                        = IMAGE_FILE_MACHINE_IA64;
-    stackframe.AddrPC.Offset     = context.StIIP;
-    stackframe.AddrPC.Mode       = AddrModeFlat;
-    stackframe.AddrFrame.Offset  = context.IntSp;
-    stackframe.AddrFrame.Mode    = AddrModeFlat;
-    stackframe.AddrBStore.Offset = context.RsBSP;
-    stackframe.AddrBStore.Mode   = AddrModeFlat;
-    stackframe.AddrStack.Offset  = context.IntSp;
-    stackframe.AddrStack.Mode    = AddrModeFlat;
-#endif
+    unsigned short  frame_count = CaptureStackBackTrace(0, static_arrlenu(stack), stack, NULL);
+    char            symbol_buffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
+    PSYMBOL_INFO    symbol           = (PSYMBOL_INFO)symbol_buffer;
+    IMAGEHLP_LINE64 line             = {0};
+    DWORD           displacementLine = 0;
+    symbol->MaxNameLen               = MAX_SYM_NAME;
+    symbol->SizeOfStruct             = sizeof(SYMBOL_INFO);
 
     printf("Obtained stack trace:\n");
-    for (size_t i = 0; i < 25; i++) {
-
-        BOOL result = StackWalk64(image,
-                                  process,
-                                  thread,
-                                  &stackframe,
-                                  &context,
-                                  NULL,
-                                  SymFunctionTableAccess64,
-                                  SymGetModuleBase64,
-                                  NULL);
-
-        if (!result) {
-            break;
-        }
-
-        char         buffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
-        PSYMBOL_INFO symbol  = (PSYMBOL_INFO)buffer;
-        symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
-        symbol->MaxNameLen   = MAX_SYM_NAME;
-
-        DWORD64 displacement = 0;
-        if (SymFromAddr(process, stackframe.AddrPC.Offset, &displacement, symbol)) {
-            printf("    %s\n", symbol->Name);
-        } else {
-            printf("    ???\n");
-        }
+    for (s32 i = 1; i < frame_count; i++) {
+        SymGetLineFromAddr64(process, (DWORD64)(stack[i]), &displacementLine, &line);
+        SymFromAddr(process, (DWORD64)(stack[i]), 0, symbol);
+        printf("  %s:%lu: %s\n", line.FileName, line.LineNumber, symbol->Name);
     }
-
-    printf("\n");
-
     SymCleanup(process);
 #endif
 }

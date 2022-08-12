@@ -97,6 +97,12 @@ os_get_last_error :: fn () (s32, string_view) #inline {
     return ec, str;
 }
 
+os_get_backtrace :: fn (skip_frames := 0, max_frame_count := 64) []CodeLocation {
+    trace: [..]CodeLocation;
+    // @Incomplete mdorazil <2022-08-12 Fri>
+    return trace;
+}
+
 __os_debug_break :: fn () #inline #compiler {
     // @Incomplete: I'm not sure what to do here.
     //_posix_raise(SIGTRAP);
@@ -116,6 +122,7 @@ __os_abort :: fn () #compiler {
 }
 
 __os_abort_default :: fn () {
+    if !IS_COMPTIME_RUN { print_backtrace(); }
     C.raise(C.SIGABRT);
 }
 
@@ -144,6 +151,7 @@ __os_start :: fn (argc: s64, argv: **u8, _: **u8) #entry {
     if is_allocated {
         C.free(auto command_line_arguments.ptr);
     }
+    std.temporary_release();
 
     C.exit(out);
 }

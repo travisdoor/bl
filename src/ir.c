@@ -2787,16 +2787,14 @@ State emit_instr_call_loc(struct context *ctx, struct mir_instr_call_loc *loc)
     LLVMSetLinkage(llvm_var, LLVMPrivateLinkage);
     LLVMSetGlobalConstant(llvm_var, true);
 
-    LLVMValueRef llvm_vals[3];
-    const char  *filepath = loc->call_location->unit->filepath;
-    llvm_vals[0]          = emit_const_string(ctx, filepath, strlen(filepath));
-
+    LLVMValueRef llvm_vals[4];
+    const char  *filepath      = loc->call_location->unit->filepath;
+    llvm_vals[0]               = emit_const_string(ctx, filepath, strlen(filepath));
     struct mir_type *line_type = mir_get_struct_elem_type(type, 1);
     llvm_vals[1] = LLVMConstInt(get_type(ctx, line_type), (u32)loc->call_location->line, true);
-
-    struct mir_type *hash_type = mir_get_struct_elem_type(type, 2);
-    llvm_vals[2]               = LLVMConstInt(get_type(ctx, hash_type), (u32)loc->hash, false);
-
+    llvm_vals[2] = emit_const_string(ctx, loc->function_name, strlen(loc->function_name));
+    struct mir_type *hash_type = mir_get_struct_elem_type(type, 3);
+    llvm_vals[3]               = LLVMConstInt(get_type(ctx, hash_type), (u32)loc->hash, false);
     LLVMValueRef llvm_value =
         LLVMConstNamedStruct(get_type(ctx, type), llvm_vals, static_arrlenu(llvm_vals));
 
