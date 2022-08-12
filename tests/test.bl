@@ -1,79 +1,21 @@
+// file:line
+
 main :: fn () s32 {
-    //std.write_string(os_stdout(), "Příliš žluťoučký kůň úpěl ďábelské ódy.\n");
-
-    utf32: [..]u32;
-    defer array_terminate(&utf32);
-    err :: utf8_to_utf32("Příliš žluťoučký kůň úpěl ďábelské ódy.", &utf32);
-    if err { print_err(err); }
-    //print("%\n", utf32);
-
-    loop i := 0; i < (128 - 32); i += 4 {
-        c :: ' ' + auto i;
-        print("%, %, %, %\n", c, c + 1, c + 2, c + 3);
-    }
-
-
+    __push_frame();
+    foo();
     return 0;
 }
 
-// char table UTF32 -> glyph info
-// generate only needed glyphs (language pack) default + national characters
-// rendering: convert to UTF32, iterrate symbols, lookup in char table, draw
+foo :: fn () {
+    defer __pop_frame();
 
-utf8_to_utf32 :: fn (utf8_str: string_view, out_utf32_str: *[..]u32) Error {
-    assert(out_utf32_str);
-    if std.str_is_empty(utf8_str) { return OK; }
-    array_reserve(out_utf32_str, utf8_str.len);
-    converted_bytes: s32;
-    loop converted_bytes < utf8_str.len {
-        word :: std.str_sub(utf8_str, converted_bytes);
-        utf32word, decoded_bytes, err_decode :: utf8_to_utf32_single_char(word);
-        if err_decode { return err_decode; }
-        converted_bytes += decoded_bytes;
-        array_push(out_utf32_str, utf32word);
-    }
-    return OK;
+    __push_frame();
+    bar();
 }
 
-utf8_to_utf32_single_char :: fn (utf8: string_view) (utf32: u32, decoded_bytes: s32, state: Error) #inline {
-    if std.str_is_empty(utf8) { return 0, 0, error("Unable to convert UTF8 to UTF32, inptut character is empty."); }
-    if utf8[0] < 0x80 { // single byte encoding
-        return auto utf8[0], 1, OK;
+bar :: fn () {
+    defer __pop_frame();
+    loop i := 0; i < stack_trace.len; i += 1 {
+        print("%\n", @stack_trace[i]);
     }
-    b: [4]u32;
-    if (utf8[0] & 0xE0) == 0xC0 { // 2 bytes
-        if utf8.len < 2 { return 0, 0, error("Unable to convert UTF8 to UTF32, invalid encoding."); }
-        b[0] = utf8[0] & 0x1F;
-        if (utf8[1] & 0xC0) == 0x80 {
-            b[1] = auto (utf8[1] & 0x3F);
-        } else {
-            return 0, 0, error("Unable to convert UTF8 to UTF32, invalid encoding.");
-        }
-        return (b[0] << 6) | b[1], 2, OK;
-    }
-    if (utf8[0] & 0xE0) == 0xE0 { // 3 bytes
-        if utf8.len < 3 { return 0, 0, error("Unable to convert UTF8 to UTF32, invalid encoding."); }
-        b[0] = utf8[0] & 0x0F;
-        loop i := 1; i < 3; i += 1 {
-            if (utf8[i] & 0xC0) == 0x80 {
-                b[i] = auto (utf8[i] & 0x3F);
-            } else {
-                return 0, 0, error("Unable to convert UTF8 to UTF32, invalid encoding.");
-            }
-        }
-        return (b[0] << 12) | (b[1] << 6) | b[2], 3, OK;
-    }
-    if (utf8[0] & 0xF8) == 0xF0 { // 4 bytes
-        if utf8.len < 4 { return 0, 0, error("Unable to convert UTF8 to UTF32, invalid encoding."); }
-        b[0] = utf8[0] & 0x7;
-        loop i := 1; i < 4; i += 1 {
-            if (utf8[i] & 0xC0) == 0x80 {
-                b[i] = auto (utf8[i] & 0x3F);
-            } else {
-                return 0, 0, error("Unable to convert UTF8 to UTF32, invalid encoding.");
-            }
-        }
-        return (b[0] << 18) | (b[1] << 12) | (b[2] << 6) | b[3], 4, OK;
-    }
-    return 0, 0, error("Unable to convert UTF8 to UTF32, invalid encoding.");
 }

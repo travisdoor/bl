@@ -147,6 +147,17 @@ measure_elapsed_ms_end :: fn (name : string_view = "") f64 #inline {
     return elapsed_ms;
 }
 
+stack_trace: [..]*CodeLocation #thread_local;
+
+__push_frame :: fn (loc := #call_location) {
+    array_push(&stack_trace, loc);
+}
+
+__pop_frame :: fn () {
+    if stack_trace.len < 1 { return; }
+    stack_trace.len -= 1;
+}
+
 #private
 _elapsed_ms_stack: [..]f64 #thread_local;
 

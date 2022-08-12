@@ -1,3 +1,5 @@
+// TODO: miniaudio, GL
+
 #import "extra/glfw3"
 
 WINDOW_WIDTH  :: 800;
@@ -25,7 +27,7 @@ main :: fn () s32 {
     main_window = CreateWindow(
         WINDOW_WIDTH,
         WINDOW_HEIGHT,
-        WINDOW_TITLE.ptr,
+        std.strtoc(WINDOW_TITLE),
         null,
         null
     );

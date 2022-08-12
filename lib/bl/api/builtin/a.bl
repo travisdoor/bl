@@ -416,5 +416,4 @@ has_member :: fn (TStruct: type, name: string_view) bool #comptime {
     return false;
 }
 
-
 #private
