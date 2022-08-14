@@ -8,6 +8,8 @@ WINDOW_HEIGHT :: 600;
 WINDOW_TITLE  :: "Gunner!";
 window: *glfw.Window;
 
+ship_texture: leo.Texture;
+
 main :: fn () s32 {
     // Initialize GLFW.
     if glfw.Init() == 0 {
@@ -41,21 +43,34 @@ main :: fn () s32 {
 
     leo.init(WINDOW_WIDTH, WINDOW_HEIGHT);
 
+    err: Error;
+    err = leo.init_texture(&ship_texture, "spaceship.png");
+    if err { panic(err); }
+    defer leo.terminate_texture(&ship_texture);
+
+
     // Game loop comes here!
     loop glfw.WindowShouldClose(window) == 0 {
         glfw.PollEvents();
         using leo;
         using glm;
 
-        begin_frame();
-
         // Clear the frame.
         clear_color();
 
-        set_color_shader();
-        draw_rect(10.f, 20.f, 100.f, 100.f, v4.{ 1.f, 0.f, 1.f, 1.f });
+        set_shader_color();
 
-        end_frame();
+        loop i := 0; i < 10; i += 1 {
+            fi :: cast(f32) i;
+            draw_rect(10.f + fi * 50.f, 10.f + fi * 50.f, 40.f, 40.f, v4.{ fi / 10.f, 0.f, 1.f, 1.f });
+        }
+
+        set_shader_texture(&ship_texture);
+        draw_rect(100.f, 20.f, 100.f, 68.f);
+
+        draw_rect_centered(160.f, 20.f, 100.f, 68.f);
+
+        flush();
 
         // Swap buffers to see rendered stuff.
         glfw.SwapBuffers(window);

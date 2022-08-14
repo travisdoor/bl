@@ -1,8 +1,13 @@
 #import "extra/gl"
 #import "extra/glm"
+#import "extra/png"
+#import "std/fs"
 
-#scope leo
+#scope leo // Rename to draw or something.
 
+// =================================================================================================
+// Main API
+// =================================================================================================
 init :: fn (viewport_width: s32, viewport_height: s32) {
     gl_init();
     gl.Enable(GL_BLEND);
@@ -15,11 +20,32 @@ init :: fn (viewport_width: s32, viewport_height: s32) {
     gl.Hint(auto GL_POLYGON_SMOOTH_HINT, GL_NICEST);
     gl.CullFace(GL_BACK);
     gl.Viewport(0, 0, viewport_width, viewport_height);
+    generate_gl_buffers();
+
+    shader_err: Error;
+    shader_err = shader_init(&simple_color_shader, SHADER_SIMPLE_COLOR_SOURCE, "simple-color");
+    if shader_err { print_err(shader_err); }
+    shader_err = shader_init(&texture_shader, SHADER_TEXTURE_SOURCE, "texture");
+    if shader_err { print_err(shader_err); }
+
+    glm.mat4_ortho(0.f, auto viewport_width, auto viewport_height, 0.f, 0.f, 1.f, &view_matrix);
+
     gl_check();
+    is_initialized = true;
 }
 
 terminate :: fn () {
+    array_terminate(&vertex_buffer);
+    array_terminate(&color_buffer);
+    array_terminate(&uv_buffer);
+    array_terminate(&index_buffer);
+    array_terminate(&draw_call_data);
+
+    shader_terminate(&texture_shader);
+    shader_terminate(&simple_color_shader);
+    delete_gl_buffers();
     gl_terminate();
+    is_initialized = false;
 }
 
 clear_color :: fn (color := glm.v4_zero) #inline {
@@ -27,13 +53,612 @@ clear_color :: fn (color := glm.v4_zero) #inline {
     gl.Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
-begin_frame :: fn () {}
+set_shader_color :: fn () #inline {
+    set_shader(&simple_color_shader);
+}
 
-end_frame :: fn () {}
+set_shader_texture :: fn (texture: *Texture) #inline {
+    assert(texture, "Invalid texture.");
+    set_shader(&texture_shader);
+    current_texture = texture;
+}
 
-set_color_shader :: fn () {}
+draw_rect :: fn (x: f32, y: f32, w: f32, h: f32, color := glm.v4_one) {
+    assert(current_shader, "No shader set! Call 'set_shader_*' first.");
+    using glm;
+    base_index :: cast(u32) vertex_buffer.len;
+    add_vertex(v2.{ x,     y     });
+    add_vertex(v2.{ x + w, y     });
+    add_vertex(v2.{ x,     y + h });
+    add_vertex(v2.{ x + w, y + h });
 
-draw_rect :: fn (x: f32, y: f32, w: f32, h: f32, color: glm.v4) {
+    if shader_has_attribute(current_shader, ShaderAttribute.COLOR) {
+        add_color(color);
+        add_color(color);
+        add_color(color);
+        add_color(color);
+    }
+    if shader_has_attribute(current_shader, ShaderAttribute.UV) {
+        add_uv(v2.{ 0.f, 1.f });
+        add_uv(v2.{ 1.f, 1.f });
+        add_uv(v2.{ 0.f, 0.f });
+        add_uv(v2.{ 1.f, 0.f });
+    }
+
+    add_index(base_index + 0);
+    add_index(base_index + 1);
+    add_index(base_index + 2);
+    add_index(base_index + 1);
+    add_index(base_index + 3);
+    add_index(base_index + 2);
+}
+
+draw_rect_centered :: fn (cx: f32, cy: f32, w: f32, h: f32, color := glm.v4_one) #inline {
+    draw_rect(cx - w * 0.5f, cy - h * 0.5f, w, h, color);
+}
+
+draw_rect_centered_rotated :: fn (cx: f32, cy: f32, w: f32, h: f32, angle: f32, color := glm.v4_one) #inline {
+    using glm;
+    draw_rect(cx - w * 0.5f, cy - h * 0.5f, w, h, color);
+    //quat_rotate_v3 :: fn (q: quat, v: v3) v3 {
+    //quat_axis_angle :: fn (axis: v3, angle_rad: f32) quat {
+}
+
+flush :: fn () #inline {
+    do_render();
+}
+
+// =================================================================================================
+// Texture
+// =================================================================================================
+TextureFormat :: enum u8 {
+    RGB = 3;
+    RGBA = 4;
+}
+
+Texture :: struct {
+    format: TextureFormat;
+    bit_depth: u8;
+    w: u32;
+    h: u32;
+    handle: GLuint;
+}
+
+init_texture :: fn (texture: *Texture, filepath: string_view) Error {
+    // @Incomplete: we should support custom allocators here.
+    assert(texture);
+    data: *u8;
+    err :: png_load_from_file(filepath, &data, &texture.w, &texture.h, &texture.bit_depth, &texture.format);
+    if err { return err; }
+    gl_init_texture_2d(texture, data);
+    free(data);
+    return OK;
+}
+
+terminate_texture :: fn (texture: *Texture) {
+    assert(texture);
+    gl_terminate_texture(texture);
+}
+
+// =================================================================================================
+// PNG
+// =================================================================================================
+png_load_from_file :: fn (filepath: string_view, out_data: **u8, out_width: *u32, out_height: *u32, out_bit_depth: *u8, out_format: *TextureFormat) Error {
+    using std;
+    stream, err_input :: open_file(filepath, OpenFileMode.READ);
+    if err_input { return err_input; }
+    defer close_file(&stream);
+    err_sig :: png_validate_signature(&stream, filepath);
+    if err_sig { return err_sig; }
+
+    png_ptr :: png.create_read_struct(png.LIBPNG_VER_STRING.ptr, null, &png_handle_error, &png_handle_warning);
+    assert(png_ptr);
+    info_ptr :: png.create_info_struct(png_ptr);
+    assert(info_ptr);
+    png.set_read_fn(png_ptr, auto &stream, &png_reader);
+    png.set_sig_bytes(png_ptr, auto PNG_SIG_LENGTH);
+    png.read_info(png_ptr, info_ptr);
+
+    color_type, bit_depth: s32;
+    w, h: u32;
+    png.get_IHDR(png_ptr, info_ptr, &w, &h, &bit_depth, &color_type, null, null, null);
+    png.read_update_info(png_ptr, info_ptr);
+    rowbytes := cast(u32) png.get_rowbytes(png_ptr, info_ptr);
+    rowbytes += 3 - ((rowbytes-1) % 4);
+    image_data: *png.byte;
+    mem, image_data_alloc_err :: alloc(rowbytes * h * sizeof(png.byte)+15);
+    if image_data_alloc_err { panic(image_data_alloc_err); }
+    image_data = mem;
+    row_pointers: []png.bytep;
+    row_pointers.len = auto h;
+    row_mem, row_alloc_err :: alloc(h * sizeof(png.bytep));
+    if row_alloc_err { panic(row_alloc_err); }
+    row_pointers.ptr = auto row_mem;
+    defer free(auto row_pointers.ptr);
+    if row_pointers.ptr == null {
+        panic("Bad alloc!");
+    }
+    loop i : u32 = 0; i < h; i += 1 {
+        ptr :: ptr_shift_bytes(image_data, auto i * rowbytes);
+        row_pointers[auto h - 1 - i] = ptr;
+    }
+
+    png.read_image(png_ptr, row_pointers.ptr);
+    png.destroy_read_struct(&png_ptr, &info_ptr, null);
+
+    if out_width { (@out_width) = w; }
+    if out_height { (@out_height) = h; }
+    if out_bit_depth { (@out_bit_depth) = auto bit_depth; }
+    if out_format {
+        switch color_type {
+            png.COLOR_TYPE_RGB  { (@out_format) = TextureFormat.RGB;  }
+            png.COLOR_TYPE_RGBA { (@out_format) = TextureFormat.RGBA; }
+            default {
+                free(image_data);
+                return error("Unsupported color format % in file '%'.", color_type, filepath);
+            }
+        }
+    }
+
+    assert(out_data);
+    (@out_data) = image_data;
+
+    return OK;
 }
 
 #private
+view_matrix: glm.mat4;
+simple_color_shader: Shader;
+texture_shader: Shader;
+current_shader: *Shader;
+current_texture: *Texture;
+vertex_buffer: [..]glm.v2;
+color_buffer: [..]glm.v4;
+uv_buffer: [..]glm.v2;
+index_buffer: [..]u32;
+draw_call_data: [..]f32;
+glbuffers: struct {
+    vbo: GLuint;
+    ebo: GLuint;
+    vao: GLuint;
+};
+
+is_initialized: bool;
+
+// =================================================================================================
+// Rendering
+// =================================================================================================
+
+add_vertex :: fn (v: glm.v2) #inline {
+    array_push(&vertex_buffer, v);
+}
+
+add_index :: fn (i: u32) #inline {
+    array_push(&index_buffer, i);
+}
+
+add_color :: fn (c: glm.v4) #inline {
+    array_push(&color_buffer, c);
+}
+
+add_uv :: fn (c: glm.v2) #inline {
+    array_push(&uv_buffer, c);
+}
+
+set_shader :: fn (shader: *Shader) {
+    if current_shader && (current_shader != shader) {
+        do_render();
+    }
+    current_shader = shader;
+}
+
+do_render :: fn () {
+    assert(current_shader, "No shader set! Call 'set_shader_*' first.");
+    assert(is_initialized, "Rendering engine is not initialized, call 'init' first!");
+    if index_buffer.len == 0 { return; }
+
+    // @PERFORMANCE: this is probably not so effective...
+    array_push_all(&draw_call_data, []f32.{ vertex_buffer.len * 2, auto vertex_buffer.ptr });
+    color_offset, uv_offset: s64;
+    has_colors :: color_buffer.len > 0;
+    has_uvs :: uv_buffer.len > 0;
+    if has_colors {
+        color_offset = draw_call_data.len * cast(s64) sizeof(f32);
+        array_push_all(&draw_call_data, []f32.{ color_buffer.len * 4, auto color_buffer.ptr });
+    }
+    if has_uvs {
+        uv_offset = draw_call_data.len * cast(s64) sizeof(f32);
+        array_push_all(&draw_call_data, []f32.{ uv_buffer.len * 4, auto uv_buffer.ptr });
+    }
+
+    USAGE :: GL_DYNAMIC_DRAW;
+    gl.BindVertexArray(glbuffers.vao);
+    gl.BindBuffer(GL_ARRAY_BUFFER, glbuffers.vbo);
+    gl.BufferData(
+        GL_ARRAY_BUFFER,
+        auto cast(usize)draw_call_data.len * sizeof(f32),
+        auto draw_call_data.ptr,
+        USAGE
+    );
+    gl.BindVertexArray(0);
+    gl.BindBuffer(GL_ELEMENT_ARRAY_BUFFER, glbuffers.ebo);
+    gl.BufferData(
+        GL_ELEMENT_ARRAY_BUFFER,
+        auto cast(usize)index_buffer.len * sizeof(u32),
+        auto index_buffer.ptr,
+        USAGE
+    );
+
+    shader_use(current_shader);
+    defer shader_unuse();
+
+    shader_bind_uniform(current_shader, ShaderUniform.DATA_MV, view_matrix);
+    if current_texture {
+        shader_bind_texture(current_shader, current_texture, ShaderUniform.DIFFUSE);
+    }
+
+    gl.BindVertexArray(glbuffers.vao);
+    gl.BindBuffer(GL_ARRAY_BUFFER, glbuffers.vbo);
+    gl.BindBuffer(GL_ELEMENT_ARRAY_BUFFER, glbuffers.ebo);
+
+    shader_attrib_ptr(current_shader, ShaderAttribute.VERTEX, glm.v2, 0);
+    if has_colors {
+        shader_attrib_ptr(current_shader, ShaderAttribute.COLOR, glm.v4, color_offset);
+    }
+    if has_uvs {
+        shader_attrib_ptr(current_shader, ShaderAttribute.UV, glm.v2, uv_offset);
+    }
+    gl.DrawElements(GL_TRIANGLES, auto index_buffer.len, GL_UNSIGNED_INT, null);
+    shader_attrib_disable_all(current_shader);
+
+    array_clear(&vertex_buffer);
+    array_clear(&color_buffer);
+    array_clear(&uv_buffer);
+    array_clear(&index_buffer);
+    array_clear(&draw_call_data);
+}
+
+generate_gl_buffers :: fn () {
+    gl.GenVertexArrays(1, &glbuffers.vao);
+    gl.GenBuffers(1, &glbuffers.vbo);
+    gl.GenBuffers(1, &glbuffers.ebo);
+}
+
+delete_gl_buffers :: fn () {
+    gl.DeleteVertexArrays(1, &glbuffers.vao);
+    gl.DeleteBuffers(1, &glbuffers.vbo);
+    gl.DeleteBuffers(1, &glbuffers.ebo);
+}
+
+// =================================================================================================
+// Texture
+// =================================================================================================
+gl_init_texture_2d :: fn (texture: *Texture, texture_data: *u8) {
+    if texture.handle == 0 { gl.GenTextures(1, &texture.handle); }
+    gl.BindTexture(GL_TEXTURE_2D, texture.handle);
+    defer gl.BindTexture(GL_TEXTURE_2D, 0);
+    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+    gl_format, gl_internal_format: GLenum;
+    switch texture.format {
+        TextureFormat.RGB  {
+            gl_format = GL_RGB;
+            gl_internal_format = GL_SRGB;
+        }
+        TextureFormat.RGBA {
+            gl_format = GL_RGBA;
+            gl_internal_format = GL_SRGB_ALPHA;
+        }
+        default { panic("Invalid color format."); }
+    }
+    gl.PixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    gl.PixelStorei(GL_UNPACK_IMAGE_HEIGHT, 0);
+    gl.TexImage2D(
+        GL_TEXTURE_2D,
+        0,
+        auto gl_internal_format,
+        auto texture.w,
+        auto texture.h,
+        0,
+        gl_format,
+        GL_UNSIGNED_BYTE,
+        texture_data
+    );
+    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, auto GL_LINEAR);
+    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, auto GL_LINEAR);
+    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, auto GL_CLAMP_TO_EDGE);
+    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, auto GL_CLAMP_TO_EDGE);
+}
+
+gl_terminate_texture :: fn (texture: *Texture) {
+    gl.DeleteTextures(1, &texture.handle);
+}
+
+// =================================================================================================
+// Shader
+// =================================================================================================
+ShaderUniform :: enum {
+    DATA_MV;
+    DIFFUSE;
+}
+
+ShaderAttribute :: enum {
+    VERTEX;
+    COLOR;
+    UV;
+}
+
+Shader :: struct {
+    handle: GLuint;
+    attrib_locs:  [enum_count(ShaderAttribute)]GLint;
+    uniform_locs: [enum_count(ShaderUniform)]GLint;
+
+    texture_unit: s32;
+}
+
+shader_init :: fn (shader: *Shader, source: string_view, name: string_view) Error {
+    using std;
+
+    if shader.handle != 0 {
+        gl.DeleteProgram(shader.handle);
+        zeromem(auto shader, sizeof(@shader));
+    }
+
+    shader.handle = compile(source);
+    if shader.handle == 0 { return error("Compilation failed of '%' failed.", name); }
+
+    h :: shader.handle;
+    shader.attrib_locs[auto ShaderAttribute.VERTEX] = gl_get_attribute(h, "v");
+    shader.attrib_locs[auto ShaderAttribute.COLOR] = gl_get_attribute(h, "c");
+    shader.attrib_locs[auto ShaderAttribute.UV] = gl_get_attribute(h, "uv");
+
+    shader.uniform_locs[auto ShaderUniform.DATA_MV] = gl_get_uniform(h, "data.mv");
+    shader.uniform_locs[auto ShaderUniform.DIFFUSE] = gl_get_uniform(h, "diffuse");
+
+    return OK;
+}
+
+shader_terminate :: fn (shader: *Shader) {
+    gl.DeleteProgram(shader.handle);
+}
+
+shader_use :: fn (shader: *Shader) #inline {
+    shader.texture_unit = 0;
+    gl.UseProgram(shader.handle);
+};
+
+shader_unuse :: fn () #inline {
+    gl.UseProgram(0);
+};
+
+shader_bind_texture :: fn (shader: *Shader, texture: *Texture, uniform: ShaderUniform) #inline {
+    if !shader_has_uniform(shader, uniform) { return; }
+    gl.ActiveTexture(GL_TEXTURE0 + auto shader.texture_unit);
+    gl.BindTexture(GL_TEXTURE_2D, texture.handle);
+    shader_bind_uniform(shader, uniform, shader.texture_unit);
+    shader.texture_unit += 1;
+}
+
+shader_has_attribute :: fn (shader: *Shader, kind: ShaderAttribute) bool #inline {
+    id :: shader.attrib_locs[auto kind];
+    return id != -1;
+}
+
+shader_has_uniform :: fn (shader: *Shader, kind: ShaderUniform) bool #inline {
+    id :: shader.uniform_locs[auto kind];
+    return id != -1;
+}
+
+shader_bind_uniform :: fn (shader: *Shader, kind: ShaderUniform, v: ?T) {
+    using glm;
+    id :: shader.uniform_locs[auto kind];
+    if id == -1 { return; } // not used or presented in shader program
+
+    #if T == mat4 {
+        gl.UniformMatrix4fv(id, 1, auto GL_FALSE, auto &v);
+    } else if T == v4 {
+        gl.Uniform4f(id, v.x, v.y, v.z, v.w);
+    } else if T == v3 {
+        gl.Uniform3f(id, v.x, v.y, v.z);
+    } else if T == v2 {
+        gl.Uniform2f(id, v.x, v.y);
+    } else if T == s32 {
+        gl.Uniform1i(id, v);
+    } else if T == u32 {
+        gl.Uniform1ui(id, v);
+    } else if T == bool {
+        if v {
+            gl.Uniform1i(id, 1);
+        } else {
+            gl.Uniform1i(id, 0);
+        }
+    } else if T == f32 {
+        gl.Uniform1f(id, v);
+    } else {
+        compiler_error("Unsupported uniform type");
+    }
+}
+
+shader_attrib_ptr :: fn (shader: *Shader, kind: ShaderAttribute, T: Any, offset: s64) {
+    using glm;
+    id :: shader.attrib_locs[auto kind];
+    if T.type_info.kind != TypeKind.TYPE { panic("Invalid type!"); }
+    if offset == -1 { return; } // no such data in buffer
+    if id == -1 { return; } // not used or presented in shader program
+
+    gl.EnableVertexAttribArray(auto id);
+    type_info :: cast(*TypeInfo) T.data;
+    if type_info == typeinfo(v2) {
+        gl.VertexAttribPointer(auto id, 2, GL_FLOAT, GL_FALSE, 0, auto offset);
+    } else if type_info == typeinfo(v3) {
+        gl.VertexAttribPointer(auto id, 3, GL_FLOAT, GL_FALSE, 0, auto offset);
+    } else if type_info == typeinfo(v4) {
+        gl.VertexAttribPointer(auto id, 4, GL_FLOAT, GL_FALSE, 0, auto offset);
+    } else if type_info == typeinfo(s32) {
+        gl.VertexAttribIPointer(auto id, 1, GL_INT, GL_FALSE, 0, auto offset);
+    } else if type_info == typeinfo(u32) {
+        gl.VertexAttribIPointer(auto id, 1, GL_UNSIGNED_INT, GL_FALSE, 0, auto offset);
+    } else {
+        panic("Invalid attribute pointer value type '%'.", @type_info);
+    }
+}
+
+shader_attrib_disable_all :: fn (shader: *Shader) {
+    loop i := 0; i < shader.attrib_locs.len; i += 1 {
+        id :: shader.attrib_locs[i];
+        if id == -1 { continue; }
+        gl.DisableVertexAttribArray(auto id);
+    }
+}
+
+compile :: fn (source: string_view) GLuint {
+    vs := compile_unit(GL_VERTEX_SHADER, source);
+    fs := compile_unit(GL_FRAGMENT_SHADER, source);
+    defer gl.DeleteShader(vs);
+    defer gl.DeleteShader(fs);
+    if vs == 0 || fs == 0 { return 0; }
+    program := link(vs, fs);
+    return program;
+}
+
+link :: fn (vs: u32, fs: u32) u32 {
+    program := gl.CreateProgram();
+    gl.AttachShader(program, vs);
+    gl.AttachShader(program, fs);
+
+    gl.LinkProgram(program);
+    is_linked := GL_FALSE;
+    gl.GetProgramiv(program, GL_LINK_STATUS, &is_linked);
+    if is_linked != GL_TRUE {
+        max_length := 0;
+        gl.GetProgramiv(program, GL_INFO_LOG_LENGTH, &max_length);
+        info := std.str_new(max_length);
+        info.len = max_length;
+        defer std.str_delete(&info);
+        gl.GetProgramInfoLog(program, max_length, &max_length, info.ptr);
+        print_err("Shader linker error: \n%\n", info);
+        gl.DeleteProgram(program);
+        return 0;
+    }
+
+    gl.DetachShader(program, fs);
+    gl.DetachShader(program, vs);
+    return program;
+}
+
+compile_unit :: fn (kind: u32, source: string_view) u32 {
+    prefix: string_view;
+    switch kind {
+        GL_VERTEX_SHADER   { prefix = "#version 330 core\n#define SUBPROGRAM_VERTEX\n";   }
+        GL_FRAGMENT_SHADER { prefix = "#version 330 core\n#define SUBPROGRAM_FRAGMENT\n"; }
+        default { panic(); }
+    }
+    shader := gl.CreateShader(kind);
+    data :: [3]*u8.{ prefix.ptr, SHADER_DATA_STRUCT.ptr, source.ptr };
+    gl.ShaderSource(shader, auto data.len, data.ptr, 0);
+    gl.CompileShader(shader);
+    is_compiled := GL_FALSE;
+    gl.GetShaderiv(shader, GL_COMPILE_STATUS, &is_compiled);
+    if is_compiled != GL_TRUE {
+        max_length := 0;
+        gl.GetShaderiv(shader, GL_INFO_LOG_LENGTH, &max_length);
+        info := std.str_new(max_length);
+        info.len = max_length;
+        defer std.str_delete(&info);
+        gl.GetShaderInfoLog(shader, max_length, &max_length, info.ptr);
+        print_err(info);
+
+        return 0;
+    }
+
+    return shader;
+}
+
+// =================================================================================================
+// PNG
+// =================================================================================================
+PNG_SIG_LENGTH :: 8;
+
+png_validate_signature :: fn (stream: *std.Stream, filepath: string_view) Error {
+    using std;
+
+    data: [PNG_SIG_LENGTH]u8 #noinit;
+    read_bytes, err_read :: read(stream, data.ptr, data.len);
+    if err_read { return err_read; }
+    if read_bytes != PNG_SIG_LENGTH {
+        return error("File '%' stream malformed.", filepath);
+    }
+    if png.sig_cmp(data.ptr, 0, auto PNG_SIG_LENGTH) != 0 {
+        return error("File '%' is not recognized as a PNG file.", filepath);
+    }
+
+    return OK;
+}
+
+png_handle_warning :: fn (_: png.structp, msg: png.const_charp) {
+    tmp :: string_view.{ auto C.strlen(auto msg), msg };
+    print_warn("[PNG] %.", tmp);
+}
+
+png_handle_error :: fn (_: png.structp, msg: png.const_charp) {
+    tmp :: string_view.{ auto C.strlen(auto msg), msg };
+    print_err("[PNG] %.", tmp);
+}
+
+png_reader :: fn (png_ptr: png.structp, out_bytes: png.bytep, count: png.size_t) {
+    using std;
+    stream :: cast(*Stream) png.get_io_ptr(png_ptr);
+    _, err_read :: read(stream, out_bytes, auto count);
+    if err_read { panic(); }
+}
+
+// =================================================================================================
+// GLSL
+// =================================================================================================
+
+SHADER_DATA_STRUCT ::
+    "struct Data {\n"
+    "    mat4 mv;\n"
+    "};\n"
+    ;
+
+SHADER_SIMPLE_COLOR_SOURCE ::
+    "#ifdef SUBPROGRAM_VERTEX\n"
+    "layout(location = 0) in vec2 v;\n"
+    "layout(location = 1) in vec4 c;\n"
+    "uniform Data data;\n"
+    "out vec4 color;\n"
+    "void main(void) {\n"
+    "    gl_Position = data.mv * vec4(v.x, v.y, 0.f, 1.0f);\n"
+    "    color = c;\n"
+    "}\n"
+    "#endif\n"
+    "#ifdef SUBPROGRAM_FRAGMENT\n"
+    "in vec4 color;\n"
+    "out vec4 frag_color;\n"
+    "void main(void) {\n"
+    "    frag_color = color;\n"
+    "}\n"
+    "#endif\n"
+    ;
+
+SHADER_TEXTURE_SOURCE ::
+    "#ifdef SUBPROGRAM_VERTEX\n"
+    "layout(location = 0) in vec2 v;\n"
+    "layout(location = 1) in vec2 uv;\n"
+    "uniform Data data;\n"
+    "out vec2 st;\n"
+    "void main(void) {\n"
+    "    gl_Position = data.mv * vec4(v.x, v.y, 0.f, 1.0f);\n"
+    "    st = uv;\n"
+    "}\n"
+    "#endif\n"
+    "#ifdef SUBPROGRAM_FRAGMENT\n"
+    "uniform sampler2D diffuse;\n"
+    "in vec2 st;\n"
+    "out vec4 frag_color;\n"
+    "void main(void) {\n"
+    "    frag_color = texture(diffuse, st);\n"
+    "}\n"
+    "#endif\n"
+    ;
