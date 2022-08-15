@@ -142,8 +142,7 @@ parse :: fn (parser: *Parser, args: []string_view, first_arg_index := 1) (parsed
             positional_argument = found_argument;
             positional_argument.data.args.len = 0;
             positional_argument.data.args.ptr = &args[i+1];
-        }
-        if positional_argument {
+            positional_argument.was_found = true;
             parsed_count += 1;
             continue;
         }

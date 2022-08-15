@@ -56,6 +56,7 @@ Add #obsolete directive.
 Fix invalid binary operation volatile type borrowing for explicitly not matching types.
 Fix argparse issues in doctor.
 Fix emitting of string literals produced by compile time functions.
+Add silent-run compiler argument.
 
 0.9.0 - PRE-RELEASE
 ---------------------------------------------------------------------------------------

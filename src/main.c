@@ -110,7 +110,7 @@ typedef struct ApplicationOptions {
 typedef struct Options {
     ApplicationOptions     app;
     struct builder_options builder;
-    struct target *        target;
+    struct target         *target;
 } Options;
 
 enum getarg_opt_kind {
@@ -121,11 +121,11 @@ enum getarg_opt_kind {
 };
 
 struct getarg_opt {
-    const char *         name;
+    const char          *name;
     enum getarg_opt_kind kind;
     union {
-        bool * b;
-        s32 *  n;
+        bool  *b;
+        s32   *n;
         char **s;
     } property;
     const char *variants;
@@ -171,10 +171,10 @@ getarg(s32 argc, char *argv[], struct getarg_opt *opts, s32 *optindex, const cha
                     if (value) {
                         bool        found     = false;
                         s32         j         = 0;
-                        char *      variants  = strdup(opt->variants);
+                        char       *variants  = strdup(opt->variants);
                         const char *delimiter = "|";
-                        char *      it        = variants;
-                        char *      token;
+                        char       *it        = variants;
+                        char       *token;
                         while ((token = strtok_r(it, delimiter, &it))) {
                             if (strcmp(value, token) == 0) {
                                 found = true;
@@ -347,13 +347,14 @@ int main(s32 argc, char *argv[])
 #define ID_SHARED 4
 #define ID_VMDBG_BREAK_ON 5
 #define ID_RELEASE 6
+#define ID_SILENT_RUN 7
 
     struct getarg_opt optlist[] = {
         {
             .name = "-build",
             .help = "Invoke project build pipeline. All following arguments are forwarded into the "
                     "build script and ignored by compiler itself. Use as '-build [arguments]'.",
-            .id = ID_BUILD,
+            .id   = ID_BUILD,
         },
         {
             .name = "-run",
@@ -363,6 +364,17 @@ int main(s32 argc, char *argv[])
                 "passed into the executed program and ignored by compiler itself. Use as '-run "
                 "<source-file> [arguments]'.",
             .id = ID_RUN,
+        },
+        {
+            .name = "-silent-run",
+            .help =
+                "Execute BL program using interpreter and exit. The compiler expects <source-file> "
+                "after '-silent-run' flag, the file name and all following command line arguments "
+                "are passed into the executed program and ignored by compiler itself. Use as "
+                "'-silent-run <source-file> [arguments]'. This flag also suppress all compiler "
+                "console outputs. Basically it combines '-run' and '--silent' into a single flag. "
+                "This can be useful in case the compiler is called implicitly from UNIX shebang.",
+            .id = ID_SILENT_RUN,
         },
         {
             .name = "-doc",
@@ -536,7 +548,7 @@ int main(s32 argc, char *argv[])
         {
             .name       = "--tests-minimal-output",
             .property.b = &opt.target->tests_minimal_output,
-            .help       = "Reduce compile-time tests (--run-tests) output (remove results section).",
+            .help = "Reduce compile-time tests (--run-tests) output (remove results section).",
         },
         {
             .name       = "--no-api",
@@ -573,8 +585,8 @@ int main(s32 argc, char *argv[])
             .kind       = NUMBER,
             .property.n = &opt.target->vmdbg_break_on,
             .help       = "Attach compile-time execution debugger and sets break point to the MIR "
-                    "instruction with <N> id.",
-            .id = ID_VMDBG_BREAK_ON,
+                          "instruction with <N> id.",
+            .id         = ID_VMDBG_BREAK_ON,
         },
         {
             .name       = "--error-limit",
@@ -611,6 +623,8 @@ int main(s32 argc, char *argv[])
             opt.target->kind = ASSEMBLY_SHARED_LIB;
             opt.target->run  = false;
             break;
+        case ID_SILENT_RUN: // Silent run mode.
+            opt.builder.silent = true;
         case ID_RUN: // Run mode.
             opt.target->kind    = ASSEMBLY_EXECUTABLE;
             opt.target->run     = true;

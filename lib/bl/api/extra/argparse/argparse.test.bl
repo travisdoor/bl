@@ -410,6 +410,32 @@ positional_arg_forward_multiple :: fn () #test {
     }
 }
 
+positional_arg_required :: fn () #test {
+    using argparse;
+    parser: Parser;
+    init(&parser);
+    defer terminate(&parser);
+
+    input: []string_view;
+    add_positional(&parser, &input, "--input", "-i", "help", true);
+
+    { // OK
+        c, err :: parse(&parser, [5]string_view.{ "test-application", "-i", "foo.txt", "bar.txt", "main.bl" });
+        test_ok(err);
+        test_eq(c, 1);
+        test_eq(input.len, 3);
+        test_eq(input[0], "foo.txt");
+        test_eq(input[1], "bar.txt");
+        test_eq(input[2], "main.bl");
+    }
+    { // MISSING
+        c, err :: parse(&parser, [1]string_view.{ "test-application" });
+        test_not_ok(err);
+        test_eq(c, 0);
+    }
+}
+
+
 MyOptLevel :: enum {
     DEBUG;
     RELEASE_SMALL;
