@@ -1,4 +1,8 @@
-// TODO: miniaudio, GL, shader compilation, texture loading
+/*
+TODO:
+miniaudio
+rect rotation
+*/
 
 #import "extra/glfw3"
 #import "extra/leo"
@@ -9,6 +13,7 @@ WINDOW_TITLE  :: "Gunner!";
 window: *glfw.Window;
 
 ship_texture: leo.Texture;
+font: leo.Font;
 
 main :: fn () s32 {
     // Initialize GLFW.
@@ -44,10 +49,15 @@ main :: fn () s32 {
     leo.init(WINDOW_WIDTH, WINDOW_HEIGHT);
 
     err: Error;
-    err = leo.init_texture(&ship_texture, "spaceship.png");
+    err = leo.texture_init_from_file(&ship_texture, "spaceship.png");
     if err { panic(err); }
-    defer leo.terminate_texture(&ship_texture);
+    defer leo.texture_terminate(&ship_texture);
 
+    err = leo.font_init_at_size(&font, "font.ttf", 60);
+    if err { panic(err); }
+    defer leo.font_terminate(&font);
+
+    angle: f32;
 
     // Game loop comes here!
     loop glfw.WindowShouldClose(window) == 0 {
@@ -69,6 +79,11 @@ main :: fn () s32 {
         draw_rect(100.f, 20.f, 100.f, 68.f);
 
         draw_rect_centered(160.f, 20.f, 100.f, 68.f);
+        draw_rect_centered_rotated(400.f, 400.f, 100.f, 68.f, angle);
+        angle += 0.1f;
+
+        set_shader_font(&font);
+        draw_text(200.f, 200.f, "Hello world!");
 
         flush();
 
