@@ -5,15 +5,16 @@ rect rotation
 */
 
 #import "extra/glfw3"
-#import "extra/leo"
+#import "extra/draw"
 
 WINDOW_WIDTH  :: 800;
 WINDOW_HEIGHT :: 600;
 WINDOW_TITLE  :: "Gunner!";
 window: *glfw.Window;
 
-ship_texture: leo.Texture;
-font: leo.Font;
+ship_texture: draw.Texture;
+font: draw.Font;
+font_alpha: draw.Font;
 
 main :: fn () s32 {
     // Initialize GLFW.
@@ -46,44 +47,41 @@ main :: fn () s32 {
     glfw.MakeContextCurrent(window);
     glfw.SwapInterval(1);
 
-    leo.init(WINDOW_WIDTH, WINDOW_HEIGHT);
+    draw.init(WINDOW_WIDTH, WINDOW_HEIGHT);
 
     err: Error;
-    err = leo.texture_init_from_file(&ship_texture, "spaceship.png");
+    err = draw.texture_init(&ship_texture, ".", "ship.png");
     if err { panic(err); }
-    defer leo.texture_terminate(&ship_texture);
+    defer draw.texture_terminate(&ship_texture);
 
-    err = leo.font_init_at_size(&font, "font.ttf", 60);
+    err = draw.font_init_at_size(&font, ".", "font.ttf", 60, draw.FontAntialiasing.SUBPIXEL);
     if err { panic(err); }
-    defer leo.font_terminate(&font);
+    defer draw.font_terminate(&font);
+
+    err = draw.font_init_at_size(&font_alpha, ".", "font.ttf", 80, draw.FontAntialiasing.ALPHA);
+    if err { panic(err); }
+    defer draw.font_terminate(&font_alpha);
 
     angle: f32;
 
     // Game loop comes here!
     loop glfw.WindowShouldClose(window) == 0 {
         glfw.PollEvents();
-        using leo;
+        using draw;
         using glm;
 
         // Clear the frame.
         clear_color();
 
-        set_shader_color();
-
-        loop i := 0; i < 10; i += 1 {
-            fi :: cast(f32) i;
-            draw_rect(10.f + fi * 50.f, 10.f + fi * 50.f, 40.f, 40.f, v4.{ fi / 10.f, 0.f, 1.f, 1.f });
-        }
-
         set_shader_texture(&ship_texture);
-        draw_rect(100.f, 20.f, 100.f, 68.f);
-
-        draw_rect_centered(160.f, 20.f, 100.f, 68.f);
-        draw_rect_centered_rotated(400.f, 400.f, 100.f, 68.f, angle);
+        rect_centered_rotated(400.f, 400.f, 100.f, 68.f, angle);
         angle += 0.1f;
 
         set_shader_font(&font);
-        draw_text(200.f, 200.f, "Hello world!");
+        text(200.f, 200.f, "Hello world!", v4.{1.f, 0.f, 1.f, 1.f});
+
+        set_shader_font(&font_alpha);
+        text(200.f, 300.f, "Hello sailor!", v4.{0.f, 1.f, 1.f, 1.f});
 
         flush();
 
@@ -96,7 +94,7 @@ main :: fn () s32 {
     }
 
     // Termination
-    leo.terminate();
+    draw.terminate();
     glfw.DestroyWindow(window);
     glfw.Terminate();
     return 0;
