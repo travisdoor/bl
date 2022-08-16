@@ -5,7 +5,7 @@
 #import "std/fs"
 #import "std/table"
 
-#scope leo // Rename to draw or something.
+#scope draw // Rename to draw or something.
 
 // =================================================================================================
 // Main API
@@ -34,6 +34,9 @@ init :: fn (viewport_width: s32, viewport_height: s32) {
     err = shader_init(&text_shader, SHADER_TEXT_SOURCE, "text-subpixel");
     if err { print_err(err); }
 
+    err = shader_init(&text_alpha_shader, SHADER_TEXT_ALPHA_SOURCE, "text-alpha");
+    if err { print_err(err); }
+
     glm.mat4_ortho(0.f, auto viewport_width, auto viewport_height, 0.f, 0.f, 1.f, &view_matrix);
 
     err = font_library_init();
@@ -45,13 +48,16 @@ init :: fn (viewport_width: s32, viewport_height: s32) {
 
 terminate :: fn () {
     array_terminate(&vertex_buffer);
-    array_terminate(&color_buffer);
+    array_terminate(&fg_color_buffer);
+    array_terminate(&bg_color_buffer);
     array_terminate(&uv_buffer);
     array_terminate(&index_buffer);
     array_terminate(&draw_call_data);
 
     shader_terminate(&texture_shader);
     shader_terminate(&simple_color_shader);
+    shader_terminate(&text_shader);
+    shader_terminate(&text_alpha_shader);
     font_library_terminate();
     delete_gl_buffers();
     gl_terminate();
@@ -64,25 +70,34 @@ clear_color :: fn (color := glm.v4_zero) #inline {
 }
 
 set_shader_color :: fn () #inline {
-    set_shader(&simple_color_shader);
+    new_context :: make_context_color();
+    if !compare_context(&context, &new_context) {
+        do_render();
+        context = new_context;
+    }
 }
 
 set_shader_texture :: fn (texture: *Texture) #inline {
     assert(texture, "Invalid texture.");
-    set_shader(&texture_shader);
-    current_texture = texture;
+    new_context :: make_context_texture(texture);
+    if !compare_context(&context, &new_context) {
+        do_render();
+        context = new_context;
+    }
 }
 
 set_shader_font :: fn (font: *Font) #inline {
     assert(font, "Invalid font.");
-    set_shader(&text_shader);
-    current_font    = font;
-    current_texture = &font.atlas;
+    new_context :: make_context_font(font);
+    if !compare_context(&context, &new_context) {
+        do_render();
+        context = new_context;
+    }
 }
 
-draw_rect :: fn (x: f32, y: f32, w: f32, h: f32, color := glm.v4_one) #inline {
+rect :: fn (x: f32, y: f32, w: f32, h: f32, color := glm.v4_one) #inline {
     using glm;
-    impl_draw_rect([4]v2.{
+    add_rect([4]v2.{
         v2.{ x,     y     },
         v2.{ x + w, y     },
         v2.{ x,     y + h },
@@ -90,11 +105,11 @@ draw_rect :: fn (x: f32, y: f32, w: f32, h: f32, color := glm.v4_one) #inline {
     }, color);
 }
 
-draw_rect_centered :: fn (cx: f32, cy: f32, w: f32, h: f32, color := glm.v4_one) #inline {
-    draw_rect(cx - w * 0.5f, cy - h * 0.5f, w, h, color);
+rect_centered :: fn (cx: f32, cy: f32, w: f32, h: f32, color := glm.v4_one) #inline {
+    rect(cx - w * 0.5f, cy - h * 0.5f, w, h, color);
 }
 
-draw_rect_centered_rotated :: fn (cx: f32, cy: f32, w: f32, h: f32, angle_rad: f32, color := glm.v4_one) #inline {
+rect_centered_rotated :: fn (cx: f32, cy: f32, w: f32, h: f32, angle_rad: f32, color := glm.v4_one) #inline {
     using glm;
     pivot :: v2.{ w * 0.5f, h * 0.5f };
     q :: quat_axis_angle(v3.{ 0.f, 0.f, 1.f }, angle_rad);
@@ -103,7 +118,7 @@ draw_rect_centered_rotated :: fn (cx: f32, cy: f32, w: f32, h: f32, angle_rad: f
     v_3 := quat_rotate_v3(q, v3.{ -pivot.x, -pivot.y });
     v_4 := quat_rotate_v3(q, v3.{  pivot.x, -pivot.y });
 
-    impl_draw_rect([4]v2.{
+    add_rect([4]v2.{
         v2.{ v_1.x + cx, v_1.y + cy},
         v2.{ v_2.x + cx, v_2.y + cy},
         v2.{ v_3.x + cx, v_3.y + cy},
@@ -111,16 +126,16 @@ draw_rect_centered_rotated :: fn (cx: f32, cy: f32, w: f32, h: f32, angle_rad: f
     }, color);
 }
 
-draw_text :: fn (x: f32, y: f32, text: string_view, fg_color: glm.v4 = glm.v4.{1.f, 1.f, 1.f, 1.f}, bg_color: glm.v4 = glm.v4_zero) {
-    assert(current_font, "No font set, please call 'set_shader_font' first.");
-    assert(current_shader == &text_shader, "Invalid current shader in use, please call 'set_shader_font' first.");
+text :: fn (x: f32, y: f32, text: string_view, fg_color: glm.v4 = glm.v4_one, bg_color: glm.v4 = glm.v4_zero) {
+    assert(context.font, "No font set, please call 'set_shader_font' first.");
+    assert(context.shader == &text_shader || context.shader == &text_alpha_shader, "Invalid current shader in use, please call 'set_shader_font' first.");
     using glm;
     if text.len == 0 { return; }
-    is_pixel_perfect :: current_font.mode == FontAntialiasing.SUBPIXEL;
-    if is_pixel_perfect { x = std.ceil(x); y = std.ceil(y); }
-    aw :: cast(f32) current_font.atlas.w;
-    ah :: cast(f32) current_font.atlas.h;
-    directing_glyph_info :: get_glyph_utf32(current_font, cast(u32) 'X');
+    is_subpixel :: context.font.mode == FontAntialiasing.SUBPIXEL;
+    if is_subpixel { x = std.ceil(x); y = std.ceil(y); }
+    aw :: cast(f32) context.font.atlas.w;
+    ah :: cast(f32) context.font.atlas.h;
+    directing_glyph_info :: get_glyph_utf32(context.font, cast(u32) 'X');
     p := v2.{ y = directing_glyph_info.bt};
     converted_bytes: s32;
     loop converted_bytes < text.len {
@@ -128,10 +143,10 @@ draw_text :: fn (x: f32, y: f32, text: string_view, fg_color: glm.v4 = glm.v4.{1
         utf32char, decoded_bytes, err_decode :: utf8_to_utf32_single_char(word);
         if err_decode { continue; }
         converted_bytes += decoded_bytes;
-        ci :: get_glyph_utf32(current_font, utf32char);
+        ci :: get_glyph_utf32(context.font, utf32char);
         x2 := p.x + ci.bl;
         y2 := -p.y - ci.bt;
-        if is_pixel_perfect {
+        if is_subpixel {
             x2 = std.ceil(x2);
             y2 = std.ceil(y2);
         }
@@ -159,6 +174,11 @@ draw_text :: fn (x: f32, y: f32, text: string_view, fg_color: glm.v4 = glm.v4.{1
             v2.{ ci.tx      , ci.ty + gth },
             v2.{ ci.tx + gsw, ci.ty + gth }
         });
+
+        array_push_all(&fg_color_buffer, [4]v4.{ fg_color, fg_color, fg_color, fg_color });
+        if is_subpixel {
+            array_push_all(&bg_color_buffer, [4]v4.{ bg_color, bg_color, bg_color, bg_color });
+        }
 
         array_push_all(&index_buffer, [6]u32.{
             base_index + 0,
@@ -191,11 +211,11 @@ Texture :: struct {
     handle: GLuint;
 }
 
-texture_init_from_file :: fn (texture: *Texture, filepath: string_view) Error {
+texture_init :: fn (texture: *Texture, directory: string_view, filename: string_view) Error {
     // @Incomplete: we should support custom allocators here.
     assert(texture);
     data: *u8;
-    err :: png_load_from_file(filepath, &data, &texture.w, &texture.h, &texture.bit_depth, &texture.format);
+    err :: png_load_from_file(tprint("%/%", directory, filename), &data, &texture.w, &texture.h, &texture.bit_depth, &texture.format);
     if err { return err; }
     gl_init_texture_2d(texture, data);
     free(data);
@@ -302,7 +322,7 @@ font_validate_size :: fn (size: s32) bool #inline {
 
 FontAntialiasing :: enum {
     SUBPIXEL;
-    //ALPHA;
+    ALPHA;
 }
 
 font_default_char_set :: fn () []u32 #inline { return ASCII_CHAR_TABLE; }
@@ -312,7 +332,8 @@ font_generate_char_set :: fn (chars: string_view, out_set: *[..]u32) {
     if err { panic(err); } // @Incomplete: return error?
 }
 
-font_init_at_size :: fn (font: *Font, filepath: string_view, size: s32, char_set := []u32.{}, mode := FontAntialiasing.SUBPIXEL) Error {
+font_init_at_size :: fn (font: *Font, directory: string_view, filename: string_view, size: s32, mode := FontAntialiasing.ALPHA, char_set := []u32.{}) Error {
+    filepath :: tprint("%/%", directory, filename);
     zeromem(auto font, sizeof(@font));
     face: *FreeType.Face;
     matrix :: FreeType.Matrix.{
@@ -352,15 +373,46 @@ font_terminate :: fn (font: *Font) {
 
 
 #private
+Context :: struct {
+    shader: *Shader;
+    texture: *Texture;
+    font: *Font;
+}
+
+compare_context :: fn (a: *Context, b: *Context) bool #inline {
+    if a.shader  != b.shader  { return false; }
+    if a.texture != b.texture { return false; }
+    if a.font    != b.font    { return false; }
+    return true;
+}
+
+make_context_color :: fn () Context #inline {
+    return Context.{ shader = &simple_color_shader };
+}
+
+make_context_texture :: fn (texture: *Texture) Context #inline {
+    return Context.{ shader = &texture_shader, texture = texture };
+}
+
+make_context_font :: fn (font: *Font) Context #inline {
+    shader: *Shader #noinit;
+    if font.mode == FontAntialiasing.SUBPIXEL {
+        shader = &text_shader;
+    } else {
+        shader = &text_alpha_shader;
+    }
+    return Context.{ shader = shader, font = font, texture = &font.atlas };
+}
+
+context: Context;
 view_matrix: glm.mat4;
 simple_color_shader: Shader;
 texture_shader: Shader;
 text_shader: Shader;
-current_shader: *Shader;
-current_texture: *Texture;
-current_font: *Font;
+text_alpha_shader: Shader;
 vertex_buffer: [..]glm.v2;
-color_buffer: [..]glm.v4;
+fg_color_buffer: [..]glm.v4;
+bg_color_buffer: [..]glm.v4;
 uv_buffer: [..]glm.v2;
 index_buffer: [..]u32;
 draw_call_data: [..]f32;
@@ -378,15 +430,15 @@ is_initialized: bool;
 // Rendering
 // =================================================================================================
 
-impl_draw_rect :: fn (v: []glm.v2, color: glm.v4) {
-    assert(current_shader == &simple_color_shader || current_shader == &texture_shader, "Invalid current shader in use, please call 'set_shader_*' first.");
+add_rect :: fn (v: []glm.v2, color: glm.v4) {
+    assert(context.shader == &simple_color_shader || context.shader == &texture_shader, "Invalid current shader in use, please call 'set_shader_*' first.");
     using glm;
     base_index :: cast(u32) vertex_buffer.len;
     array_push_all(&vertex_buffer, v);
-    if shader_has_attribute(current_shader, ShaderAttribute.COLOR) {
-        array_push_all(&color_buffer, [4]v4.{ color, color, color, color });
+    if shader_has_attribute(context.shader, ShaderAttribute.FG_COLOR) {
+        array_push_all(&fg_color_buffer, [4]v4.{ color, color, color, color });
     }
-    if shader_has_attribute(current_shader, ShaderAttribute.UV) {
+    if shader_has_attribute(context.shader, ShaderAttribute.UV) {
         array_push_all(&uv_buffer, [4]v2.{
             v2.{ 0.f, 1.f },
             v2.{ 1.f, 1.f },
@@ -404,30 +456,33 @@ impl_draw_rect :: fn (v: []glm.v2, color: glm.v4) {
     });
 }
 
-set_shader :: fn (shader: *Shader) {
-    if current_shader && (current_shader != shader) {
-        do_render();
-    }
-    current_shader = shader;
-}
-
 do_render :: fn () {
-    assert(current_shader, "No shader set! Call 'set_shader_*' first.");
-    assert(is_initialized, "Rendering engine is not initialized, call 'init' first!");
+    using ShaderUniform;
+    using ShaderAttribute;
     if index_buffer.len == 0 { return; }
+    assert(context.shader, "No shader set! Call 'set_shader_*' first.");
+    assert(is_initialized, "Rendering engine is not initialized, call 'init' first!");
 
     // @PERFORMANCE: this is probably not so effective...
     array_push_all(&draw_call_data, []f32.{ vertex_buffer.len * 2, auto vertex_buffer.ptr });
-    color_offset, uv_offset: s64;
-    has_colors :: color_buffer.len > 0;
-    has_uvs :: uv_buffer.len > 0;
-    if has_colors {
-        color_offset = draw_call_data.len * cast(s64) sizeof(f32);
-        array_push_all(&draw_call_data, []f32.{ color_buffer.len * 4, auto color_buffer.ptr });
+    fg_color_offset, bg_color_offset, uv_offset: s64;
+    has_fg_colors :: fg_color_buffer.len > 0;
+    has_bg_colors :: bg_color_buffer.len > 0;
+    has_uvs    :: uv_buffer.len > 0;
+    if has_fg_colors {
+        fg_color_offset = draw_call_data.len * cast(s64) sizeof(f32);
+        array_push_all(&draw_call_data, []f32.{ fg_color_buffer.len * 4, auto fg_color_buffer.ptr });
+        assert(shader_has_attribute(context.shader, FG_COLOR));
+    }
+    if has_bg_colors {
+        bg_color_offset = draw_call_data.len * cast(s64) sizeof(f32);
+        array_push_all(&draw_call_data, []f32.{ bg_color_buffer.len * 4, auto bg_color_buffer.ptr });
+        assert(shader_has_attribute(context.shader, BG_COLOR));
     }
     if has_uvs {
         uv_offset = draw_call_data.len * cast(s64) sizeof(f32);
         array_push_all(&draw_call_data, []f32.{ uv_buffer.len * 4, auto uv_buffer.ptr });
+        assert(shader_has_attribute(context.shader, UV));
     }
 
     USAGE :: GL_DYNAMIC_DRAW;
@@ -448,30 +503,34 @@ do_render :: fn () {
         USAGE
     );
 
-    shader_use(current_shader);
+    shader_use(context.shader);
     defer shader_unuse();
 
-    shader_bind_uniform(current_shader, ShaderUniform.DATA_MV, view_matrix);
-    if current_texture {
-        shader_bind_texture(current_shader, current_texture, ShaderUniform.DIFFUSE);
+    shader_bind_uniform(context.shader, DATA_MV, view_matrix);
+    if context.texture {
+        shader_bind_texture(context.shader, context.texture, DIFFUSE);
     }
 
     gl.BindVertexArray(glbuffers.vao);
     gl.BindBuffer(GL_ARRAY_BUFFER, glbuffers.vbo);
     gl.BindBuffer(GL_ELEMENT_ARRAY_BUFFER, glbuffers.ebo);
 
-    shader_attrib_ptr(current_shader, ShaderAttribute.VERTEX, glm.v2, 0);
-    if has_colors {
-        shader_attrib_ptr(current_shader, ShaderAttribute.COLOR, glm.v4, color_offset);
+    shader_attrib_ptr(context.shader, VERTEX, glm.v2, 0);
+    if has_fg_colors {
+        shader_attrib_ptr(context.shader, FG_COLOR, glm.v4, fg_color_offset);
+    }
+    if has_bg_colors {
+        shader_attrib_ptr(context.shader, BG_COLOR, glm.v4, bg_color_offset);
     }
     if has_uvs {
-        shader_attrib_ptr(current_shader, ShaderAttribute.UV, glm.v2, uv_offset);
+        shader_attrib_ptr(context.shader, UV, glm.v2, uv_offset);
     }
     gl.DrawElements(GL_TRIANGLES, auto index_buffer.len, GL_UNSIGNED_INT, null);
-    shader_attrib_disable_all(current_shader);
+    shader_attrib_disable_all(context.shader);
 
     array_clear(&vertex_buffer);
-    array_clear(&color_buffer);
+    array_clear(&fg_color_buffer);
+    array_clear(&bg_color_buffer);
     array_clear(&uv_buffer);
     array_clear(&index_buffer);
     array_clear(&draw_call_data);
@@ -543,7 +602,8 @@ ShaderUniform :: enum {
 
 ShaderAttribute :: enum {
     VERTEX;
-    COLOR;
+    FG_COLOR;
+    BG_COLOR;
     UV;
 }
 
@@ -568,7 +628,8 @@ shader_init :: fn (shader: *Shader, source: string_view, name: string_view) Erro
 
     h :: shader.handle;
     shader.attrib_locs[auto ShaderAttribute.VERTEX] = gl_get_attribute(h, "v");
-    shader.attrib_locs[auto ShaderAttribute.COLOR] = gl_get_attribute(h, "c");
+    shader.attrib_locs[auto ShaderAttribute.FG_COLOR] = gl_get_attribute(h, "fgc");
+    shader.attrib_locs[auto ShaderAttribute.BG_COLOR] = gl_get_attribute(h, "bgc");
     shader.attrib_locs[auto ShaderAttribute.UV] = gl_get_attribute(h, "uv");
 
     shader.uniform_locs[auto ShaderUniform.DATA_MV] = gl_get_uniform(h, "data.mv");
@@ -840,7 +901,10 @@ prepare_atlas :: fn (font: *Font, face: *FreeType.Face) {
             print_err("Loading character % failed!", i);
             continue;
         }
-        gw :: glyph_slot.bitmap.width / 3;
+        gw := glyph_slot.bitmap.width;
+        if font.mode == FontAntialiasing.SUBPIXEL {
+            gw /= 3;
+        }
         gh :: glyph_slot.bitmap.rows;
         row_w += gw;
         row_h = std.max(row_h, gh);
@@ -855,18 +919,18 @@ prepare_atlas :: fn (font: *Font, face: *FreeType.Face) {
     switch font.mode {
         SUBPIXEL {
             gl.TexImage2D(GL_TEXTURE_2D, 0, auto GL_RGB8, auto atlas_w, auto atlas_h, 0, GL_RGB, GL_UNSIGNED_BYTE, null);
+            gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, auto GL_NEAREST);
+            gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, auto GL_NEAREST);
         }
-        /*
         ALPHA {
             gl.TexImage2D(GL_TEXTURE_2D, 0, auto GL_R8, auto atlas_w, auto atlas_h, 0, GL_RED, GL_UNSIGNED_BYTE, null);
+            gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, auto GL_LINEAR);
+            gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, auto GL_LINEAR);
             gl.PixelStorei(GL_UNPACK_ALIGNMENT, 1);
-            gl.PixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
-            gl.PixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+            //gl.PixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+            //gl.PixelStorei(GL_UNPACK_SKIP_ROWS, 0);
         }
-        */
     }
-    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, auto GL_NEAREST);
-    gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, auto GL_NEAREST);
     gl_check();
     font.atlas.handle = atlas;
     font.atlas.w = atlas_w;
@@ -883,7 +947,7 @@ gen_glyphs :: fn (font: *Font, face: *FreeType.Face) {
     using FontAntialiasing;
     switch font.mode {
         SUBPIXEL { format = GL_RGB; }
-        //ALPHA    { format = GL_RED; }
+        ALPHA    { format = GL_RED; }
     }
 
     gl.BindTexture(GL_TEXTURE_2D, font.atlas.handle);
@@ -894,7 +958,10 @@ gen_glyphs :: fn (font: *Font, face: *FreeType.Face) {
             print_err("Loading character % failed!", i);
         }
 
-        gw :: glyph_slot.bitmap.width / 3;
+        gw := glyph_slot.bitmap.width;
+        if font.mode == FontAntialiasing.SUBPIXEL {
+            gw /= 3;
+        }
         gh :: glyph_slot.bitmap.rows;
         gl.TexSubImage2D(
             GL_TEXTURE_2D,
@@ -930,8 +997,8 @@ get_generation_flags :: fn (font: *Font) s32 {
 
     flags := LOAD_RENDER;
     switch font.mode {
-        SUBPIXEL { flags |= LOAD_TARGET_LCD; }
-        default;
+        SUBPIXEL { flags |= LOAD_TARGET_LCD;    }
+        ALPHA    { flags |= LOAD_TARGET_NORMAL; }
     }
     return flags;
 }
@@ -948,12 +1015,12 @@ SHADER_DATA_STRUCT ::
 SHADER_SIMPLE_COLOR_SOURCE ::
     "#ifdef SUBPROGRAM_VERTEX\n"
     "layout(location = 0) in vec2 v;\n"
-    "layout(location = 1) in vec4 c;\n"
+    "layout(location = 1) in vec4 fgc;\n"
     "uniform Data data;\n"
     "out vec4 color;\n"
     "void main(void) {\n"
     "    gl_Position = data.mv * vec4(v.x, v.y, 0.f, 1.0f);\n"
-    "    color = c;\n"
+    "    color = fgc;\n"
     "}\n"
     "#endif\n"
     "#ifdef SUBPROGRAM_FRAGMENT\n"
@@ -990,24 +1057,57 @@ SHADER_TEXT_SOURCE ::
     "#ifdef SUBPROGRAM_VERTEX\n"
     "layout(location = 0) in vec2 v;\n"
     "layout(location = 1) in vec2 uv;\n"
+    "layout(location = 2) in vec4 fgc;\n"
+    "layout(location = 3) in vec4 bgc;\n"
     "uniform Data data;\n"
     "out vec2 st;\n"
+    "out vec4 fg_color;\n"
+    "out vec4 bg_color;\n"
     "void main(void) {\n"
     "    gl_Position = data.mv * vec4(v.x, v.y, 0.f, 1.0f);\n"
     "    st = uv;\n"
+    "    fg_color = fgc;\n"
+    "    bg_color = bgc;\n"
     "}\n"
     "#endif\n"
     "#ifdef SUBPROGRAM_FRAGMENT\n"
     "uniform sampler2D diffuse;\n"
     "in vec2 st;\n"
+    "in vec4 fg_color;\n"
+    "in vec4 bg_color;\n"
     "out vec4 frag_color;\n"
     "void main(void) {\n"
     "    const float eps = 0.1f;\n"
     "    vec4 sample = texture(diffuse, st);\n"
-    "    vec4 bg_color = vec4(0.f);\n"
-    "    vec4 fg_color = vec4(1.f);\n"
     "    sample = mix(bg_color, fg_color, sample);\n"
     "    if (abs(sample.r - bg_color.r) < eps && abs(sample.g - bg_color.g) < eps && abs(sample.b - bg_color.b) < eps) { sample.a = 0.f; }\n"
+    "    frag_color = sample;\n"
+    "}\n"
+    "#endif\n"
+    ;
+
+SHADER_TEXT_ALPHA_SOURCE ::
+    "#ifdef SUBPROGRAM_VERTEX\n"
+    "layout(location = 0) in vec2 v;\n"
+    "layout(location = 1) in vec2 uv;\n"
+    "layout(location = 2) in vec4 fgc;\n"
+    "uniform Data data;\n"
+    "out vec2 st;\n"
+    "out vec4 fg_color;\n"
+    "void main(void) {\n"
+    "    gl_Position = data.mv * vec4(v.x, v.y, 0.f, 1.0f);\n"
+    "    st = uv;\n"
+    "    fg_color = fgc;\n"
+    "}\n"
+    "#endif\n"
+    "#ifdef SUBPROGRAM_FRAGMENT\n"
+    "uniform sampler2D diffuse;\n"
+    "in vec2 st;\n"
+    "in vec4 fg_color;\n"
+    "out vec4 frag_color;\n"
+    "void main(void) {\n"
+    "    vec4 sample = fg_color;\n"
+    "    sample.a = texture(diffuse, st).r;\n"
     "    frag_color = sample;\n"
     "}\n"
     "#endif\n"
