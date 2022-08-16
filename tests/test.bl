@@ -1,18 +1,13 @@
 // Release temporary allocator in __start by default.
 // Add function name into CodeLocation structure.
 
-Foo :: struct { a: [12]u32; }
-
 main :: fn () s32 {
-    err :: foo();
-    a: Foo;
-    b: Foo;
-    a = b;
-    if err { print_err(err); }
+    arr: [4]s32;
+
+    loop it : s32 = arr {
+        it;
+    }
+
     return 0;
 }
 
-foo :: fn () Error {
-    assert(false);
-    return error("This is error!");
-}

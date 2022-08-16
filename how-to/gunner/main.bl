@@ -16,6 +16,7 @@ ship_texture: draw.Texture;
 star_texture: draw.Texture;
 bg_texture: draw.Texture;
 bullet_texture: draw.Texture;
+stone_texture: draw.Texture;
 
 Ship :: struct {
     position: glm.v2;
@@ -23,6 +24,9 @@ Ship :: struct {
     move_right: bool;
     move_up: bool;
     move_down: bool;
+    fire: bool;
+    fire_timeout: f32;
+    power: f32;
 }
 
 Star :: struct {
@@ -35,12 +39,27 @@ Bullet :: struct {
     position: glm.v2;
 }
 
-SHIP_MOVE_SPEED :: 300.f;
-STAR_SPEED      :: 200.f;
+Stone :: struct {
+    position: glm.v2;
+    rotation: f32;
+    speed: f32;
+}
+
+SHIP_MOVE_SPEED      :: 300.f;
+SHIP_FIRE_SPEED      :: 0.1f;
+BULLET_SPEED         :: 500.f;
+STONE_SPEED          :: 200;
+STONE_ROTATION_SPEED :: 5.f;
+STONE_COUNT          :: 8;
+STAR_SPEED           :: 100.f;
+POWER_DOWN_PER_SHOOT :: 0.05f;
+POWER_UP_SPEED       :: 0.1f;
 
 ship: Ship;
 stars: [64]Star;
 bullets: [..]Bullet;
+stones: [..]Stone;
+score: s32;
 
 main :: fn () s32 {
     // Initialize GLFW.
@@ -94,6 +113,10 @@ main :: fn () s32 {
     if err { panic(err); }
     defer draw.texture_terminate(&bullet_texture);
 
+    err = draw.texture_init(&stone_texture, ".", "stone.png");
+    if err { panic(err); }
+    defer draw.texture_terminate(&stone_texture);
+
     err = draw.font_init_at_size(&font, ".", "font.ttf", 32, draw.FontAntialiasing.ALPHA);
     if err { panic(err); }
     defer draw.font_terminate(&font);
@@ -131,6 +154,7 @@ main :: fn () s32 {
 
     // Termination
     array_terminate(&bullets);
+    array_terminate(&stones);
     draw.terminate();
     glfw.DestroyWindow(window);
     glfw.Terminate();
@@ -157,30 +181,56 @@ key_callback :: fn (_: *glfw.Window, key: s32, _: s32, action: s32, _: s32) {
         KEY_DOWN  { ship.move_down  = action_down; }
         KEY_LEFT  { ship.move_left  = action_down; }
         KEY_RIGHT { ship.move_right = action_down; }
+        KEY_SPACE { ship.fire       = action_down; }
         default;
     }
 }
 
 start_game :: fn () {
     using glm;
+
+    score = 0;
     random_seed_time();
     array_clear(&bullets);
+    array_clear(&stones);
     ship.position = v2.{ auto (WINDOW_WIDTH / 2), auto (WINDOW_HEIGHT - 100) };
+    ship.power    = 1.f;
 
     loop i := 0; i < stars.len; i += 1 {
         star := &stars[i];
         star.position.x = auto random_number(0, WINDOW_WIDTH);
         star.position.y = auto random_number(0, WINDOW_HEIGHT);
         star.size       = auto random_number(8, auto star_texture.w);
-        star.speed      = STAR_SPEED - ((cast(f32) star_texture.w) - star.size) * 16.f;
+        star.speed      = STAR_SPEED - ((cast(f32) star_texture.w) - star.size) * 10.f;
     }
 }
 
 handle_input :: fn (dt: f32) {
+    using glm;
     if ship.move_left  { ship.position.x -= dt * SHIP_MOVE_SPEED; }
     if ship.move_right { ship.position.x += dt * SHIP_MOVE_SPEED; }
     if ship.move_up    { ship.position.y -= dt * SHIP_MOVE_SPEED; }
     if ship.move_down  { ship.position.y += dt * SHIP_MOVE_SPEED; }
+    if ship.fire && ship.fire_timeout < 0.f && ship.power > 0.1f {
+        bullet_l := array_push(&bullets);
+        bullet_r := array_push(&bullets);
+        bullet_l.position = v2.{ ship.position.x - 33.f, ship.position.y - 10.f };
+        bullet_r.position = v2.{ ship.position.x + 33.f, ship.position.y - 10.f };
+        ship.power -= POWER_DOWN_PER_SHOOT;
+        ship.fire_timeout = SHIP_FIRE_SPEED;
+    }
+    ship.fire_timeout -= dt;
+}
+
+is_point_in_rect :: fn (p: glm.v2, rect_center: glm.v2, w: f32, h: f32) bool #inline {
+    using glm;
+    rect_min :: v2.{ rect_center.x - w * 0.5f, rect_center.y - h * 0.5f };
+    if p.x < rect_min.x { return false; }
+    if p.y < rect_min.y { return false; }
+    rect_max :: v2.{ rect_center.x + w * 0.5f, rect_center.y + h * 0.5f };
+    if p.x > rect_max.x { return false; }
+    if p.y > rect_max.y { return false; }
+    return true;
 }
 
 simulate :: fn (dt: f32) {
@@ -189,6 +239,12 @@ simulate :: fn (dt: f32) {
     if cast(s32) ship.position.y > WINDOW_HEIGHT     { ship.position.y = auto WINDOW_HEIGHT;     }
     if cast(s32) ship.position.y < WINDOW_HEIGHT / 2 { ship.position.y = auto WINDOW_HEIGHT / 2; }
 
+    if ship.power < 1.f {
+        ship.power += dt * POWER_UP_SPEED;
+    } else {
+        ship.power = 1.f;
+    }
+
     loop i := 0; i < stars.len; i += 1 {
         star := &stars[i];
         star.position.y += dt * star.speed;
@@ -196,6 +252,52 @@ simulate :: fn (dt: f32) {
             star.position.y = 0.f;
             star.position.x = auto random_number(0, WINDOW_WIDTH);
         }
+    }
+
+    loop i := 0; i < stones.len; {
+        stone := &stones[i];
+        stone.position.y += dt * stone.speed;
+        stone.rotation += dt * STONE_ROTATION_SPEED;
+        is_stone_dead := false;
+
+        if stone.position.y > auto WINDOW_HEIGHT {
+            is_stone_dead = true;
+        } else {
+            loop j := 0; j < bullets.len; {
+                bullet :: &bullets[j];
+                if is_point_in_rect(bullet.position, stone.position, auto stone_texture.w, auto stone_texture.h) {
+                    is_stone_dead = true;
+                    array_erase(&bullets, j);
+                    score += 1;
+                    break;
+                }
+                j += 1;
+            }
+        }
+
+        if is_stone_dead {
+            array_erase(&stones, i);
+        } else {
+            i += 1;
+        }
+    }
+
+    loop i := 0; i < bullets.len; {
+        bullet := &bullets[i];
+        bullet.position.y -= dt * BULLET_SPEED;
+        if bullet.position.y < 0.f {
+            array_erase(&bullets, i);
+        } else {
+            i += 1;
+        }
+    }
+
+    if stones.len < STONE_COUNT {
+        stone := array_push(&stones);
+        stone.position.x = auto random_number(0, WINDOW_WIDTH);
+        stone.position.y = 0.f;
+        stone.rotation   = cast(f32) random_number(0, 1) * cast(f32) std.TWO_PI;
+        stone.speed      = auto random_number(STONE_SPEED / 2, STONE_SPEED);
     }
 }
 
@@ -212,6 +314,12 @@ draw_game :: fn () {
         rect_centered(star.position.x, star.position.y, star.size, star.size);
     }
 
+    set_shader_texture(&stone_texture);
+    loop i := 0; i < stones.len; i += 1 {
+        stone := &stones[i];
+        rect_centered_rotated(stone.position.x, stone.position.y, auto stone_texture.w, auto stone_texture.h, stone.rotation);
+    }
+
     set_shader_texture(&bullet_texture);
     loop i := 0; i < bullets.len; i += 1 {
         bullet := &bullets[i];
@@ -222,5 +330,8 @@ draw_game :: fn () {
     rect_centered(ship.position.x, ship.position.y, auto ship_texture.w, auto ship_texture.h);
 
     set_shader_font(&font);
-    text(10.f, 10.f, "Score: 0");
+    text(10.f, 10.f, tprint("Score: %", score));
+
+    set_shader_color();
+    rect(0.f, auto WINDOW_HEIGHT - 4, (cast(f32) WINDOW_WIDTH) * ship.power, 4.f, v4.{ 0.f, 1.f, 0.f, 1.f });
 }
