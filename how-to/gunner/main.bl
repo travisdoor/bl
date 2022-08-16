@@ -1,7 +1,6 @@
 /*
 TODO:
 miniaudio
-rect rotation
 */
 
 #import "extra/glfw3"
@@ -12,9 +11,36 @@ WINDOW_HEIGHT :: 600;
 WINDOW_TITLE  :: "Gunner!";
 window: *glfw.Window;
 
-ship_texture: draw.Texture;
 font: draw.Font;
-font_alpha: draw.Font;
+ship_texture: draw.Texture;
+star_texture: draw.Texture;
+bg_texture: draw.Texture;
+bullet_texture: draw.Texture;
+
+Ship :: struct {
+    position: glm.v2;
+    move_left: bool;
+    move_right: bool;
+    move_up: bool;
+    move_down: bool;
+}
+
+Star :: struct {
+    position: glm.v2;
+    size: f32;
+    speed: f32;
+}
+
+Bullet :: struct {
+    position: glm.v2;
+}
+
+SHIP_MOVE_SPEED :: 300.f;
+STAR_SPEED      :: 200.f;
+
+ship: Ship;
+stars: [64]Star;
+bullets: [..]Bullet;
 
 main :: fn () s32 {
     // Initialize GLFW.
@@ -47,6 +73,8 @@ main :: fn () s32 {
     glfw.MakeContextCurrent(window);
     glfw.SwapInterval(1);
 
+    glfw.SetKeyCallback(window, &key_callback);
+
     draw.init(WINDOW_WIDTH, WINDOW_HEIGHT);
 
     err: Error;
@@ -54,15 +82,25 @@ main :: fn () s32 {
     if err { panic(err); }
     defer draw.texture_terminate(&ship_texture);
 
-    err = draw.font_init_at_size(&font, ".", "font.ttf", 60, draw.FontAntialiasing.SUBPIXEL);
+    err = draw.texture_init(&star_texture, ".", "star.png");
+    if err { panic(err); }
+    defer draw.texture_terminate(&star_texture);
+
+    err = draw.texture_init(&bg_texture, ".", "background.png");
+    if err { panic(err); }
+    defer draw.texture_terminate(&bg_texture);
+
+    err = draw.texture_init(&bullet_texture, ".", "bullet.png");
+    if err { panic(err); }
+    defer draw.texture_terminate(&bullet_texture);
+
+    err = draw.font_init_at_size(&font, ".", "font.ttf", 32, draw.FontAntialiasing.ALPHA);
     if err { panic(err); }
     defer draw.font_terminate(&font);
 
-    err = draw.font_init_at_size(&font_alpha, ".", "font.ttf", 80, draw.FontAntialiasing.ALPHA);
-    if err { panic(err); }
-    defer draw.font_terminate(&font_alpha);
+    start_game();
 
-    angle: f32;
+    time_current := glfw.GetTime();
 
     // Game loop comes here!
     loop glfw.WindowShouldClose(window) == 0 {
@@ -70,18 +108,16 @@ main :: fn () s32 {
         using draw;
         using glm;
 
+        time_previous :: time_current;
+        time_current = glfw.GetTime();
+        dt := cast(f32) (time_current - time_previous);
+
         // Clear the frame.
         clear_color();
 
-        set_shader_texture(&ship_texture);
-        rect_centered_rotated(400.f, 400.f, 100.f, 68.f, angle);
-        angle += 0.1f;
-
-        set_shader_font(&font);
-        text(200.f, 200.f, "Hello world!", v4.{1.f, 0.f, 1.f, 1.f});
-
-        set_shader_font(&font_alpha);
-        text(200.f, 300.f, "Hello sailor!", v4.{0.f, 1.f, 1.f, 1.f});
+        handle_input(dt);
+        simulate(dt);
+        draw_game();
 
         flush();
 
@@ -94,6 +130,7 @@ main :: fn () s32 {
     }
 
     // Termination
+    array_terminate(&bullets);
     draw.terminate();
     glfw.DestroyWindow(window);
     glfw.Terminate();
@@ -110,4 +147,80 @@ print_glfw_error :: fn () {
     if cstr == null { return; }
     tmp := string_view.{ auto C.strlen(auto cstr), auto cstr };
     print_err("GLFW Error: %", tmp);
+}
+
+key_callback :: fn (_: *glfw.Window, key: s32, _: s32, action: s32, _: s32) {
+    using glfw;
+    action_down :: action == PRESS || action == REPEAT;
+    switch key {
+        KEY_UP    { ship.move_up    = action_down; }
+        KEY_DOWN  { ship.move_down  = action_down; }
+        KEY_LEFT  { ship.move_left  = action_down; }
+        KEY_RIGHT { ship.move_right = action_down; }
+        default;
+    }
+}
+
+start_game :: fn () {
+    using glm;
+    random_seed_time();
+    array_clear(&bullets);
+    ship.position = v2.{ auto (WINDOW_WIDTH / 2), auto (WINDOW_HEIGHT - 100) };
+
+    loop i := 0; i < stars.len; i += 1 {
+        star := &stars[i];
+        star.position.x = auto random_number(0, WINDOW_WIDTH);
+        star.position.y = auto random_number(0, WINDOW_HEIGHT);
+        star.size       = auto random_number(8, auto star_texture.w);
+        star.speed      = STAR_SPEED - ((cast(f32) star_texture.w) - star.size) * 16.f;
+    }
+}
+
+handle_input :: fn (dt: f32) {
+    if ship.move_left  { ship.position.x -= dt * SHIP_MOVE_SPEED; }
+    if ship.move_right { ship.position.x += dt * SHIP_MOVE_SPEED; }
+    if ship.move_up    { ship.position.y -= dt * SHIP_MOVE_SPEED; }
+    if ship.move_down  { ship.position.y += dt * SHIP_MOVE_SPEED; }
+}
+
+simulate :: fn (dt: f32) {
+    if cast(s32) ship.position.x > WINDOW_WIDTH      { ship.position.x = 0.f;                    }
+    if cast(s32) ship.position.x < 0                 { ship.position.x = auto WINDOW_WIDTH;      }
+    if cast(s32) ship.position.y > WINDOW_HEIGHT     { ship.position.y = auto WINDOW_HEIGHT;     }
+    if cast(s32) ship.position.y < WINDOW_HEIGHT / 2 { ship.position.y = auto WINDOW_HEIGHT / 2; }
+
+    loop i := 0; i < stars.len; i += 1 {
+        star := &stars[i];
+        star.position.y += dt * star.speed;
+        if cast(s32) star.position.y > WINDOW_HEIGHT {
+            star.position.y = 0.f;
+            star.position.x = auto random_number(0, WINDOW_WIDTH);
+        }
+    }
+}
+
+draw_game :: fn () {
+    using draw;
+    using glm;
+
+    set_shader_texture(&bg_texture);
+    rect(0.f, 0.f, auto WINDOW_WIDTH, auto WINDOW_HEIGHT);
+
+    set_shader_texture(&star_texture);
+    loop i := 0; i < stars.len; i += 1 {
+        star := &stars[i];
+        rect_centered(star.position.x, star.position.y, star.size, star.size);
+    }
+
+    set_shader_texture(&bullet_texture);
+    loop i := 0; i < bullets.len; i += 1 {
+        bullet := &bullets[i];
+        rect_centered(bullet.position.x, bullet.position.y, auto bullet_texture.w, auto bullet_texture.h);
+    }
+
+    set_shader_texture(&ship_texture);
+    rect_centered(ship.position.x, ship.position.y, auto ship_texture.w, auto ship_texture.h);
+
+    set_shader_font(&font);
+    text(10.f, 10.f, "Score: 0");
 }
