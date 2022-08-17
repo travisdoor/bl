@@ -6,17 +6,11 @@ miniaudio
 #import "extra/glfw3"
 #import "extra/draw"
 
-WINDOW_WIDTH  :: 800;
-WINDOW_HEIGHT :: 600;
-WINDOW_TITLE  :: "Gunner!";
-window: *glfw.Window;
-
-font: draw.Font;
-ship_texture: draw.Texture;
-star_texture: draw.Texture;
-bg_texture: draw.Texture;
-bullet_texture: draw.Texture;
-stone_texture: draw.Texture;
+Mode :: enum {
+    UNKNOWN;
+    GAME;
+    AFTER_SCREEN;
+}
 
 Ship :: struct {
     position: glm.v2;
@@ -45,21 +39,49 @@ Stone :: struct {
     speed: f32;
 }
 
-SHIP_MOVE_SPEED      :: 300.f;
-SHIP_FIRE_SPEED      :: 0.1f;
-BULLET_SPEED         :: 500.f;
-STONE_SPEED          :: 200;
-STONE_ROTATION_SPEED :: 5.f;
-STONE_COUNT          :: 8;
-STAR_SPEED           :: 100.f;
-POWER_DOWN_PER_SHOOT :: 0.05f;
-POWER_UP_SPEED       :: 0.1f;
+PowerUp :: struct {
+    position: glm.v2;
+    rotation: f32;
+}
+
+WINDOW_WIDTH  :: 800;
+WINDOW_HEIGHT :: 600;
+WINDOW_TITLE  :: "Gunner!";
+window: *glfw.Window;
+
+SHIP_MOVE_SPEED          :: 300.f;
+SHIP_FIRE_SPEED          :: 0.1f;
+BULLET_SPEED             :: 800.f;
+STONE_SPEED              :: 200;
+STONE_ROTATION_SPEED     :: 5.f;
+STONE_COUNT              :: 8;
+STAR_SPEED               :: 100.f;
+POWER_DOWN_PER_SHOOT     :: 0.05f;
+POWER_REGENERATION_SPEED :: 0.1f;
+POWER_UP_TIMEOUT         :: 10.f;
+POWER_UP_SPEED           :: 100.f;
+POWER_UP_ROTATION_SPEED  :: 3.f;
+POWER_UP_ADD_POWER       :: 0.5f;
+
+font: draw.Font;
+ship_texture: draw.Texture;
+star_texture: draw.Texture;
+bg_texture: draw.Texture;
+bullet_texture: draw.Texture;
+stone_texture: draw.Texture;
+power_texture: draw.Texture;
+
+mode := Mode.UNKNOWN;
+next_mode := Mode.UNKNOWN;
+power_up_timeout: f32;
 
 ship: Ship;
 stars: [64]Star;
 bullets: [..]Bullet;
 stones: [..]Stone;
+powerups: [..]PowerUp;
 score: s32;
+restart_game := false;
 
 main :: fn () s32 {
     // Initialize GLFW.
@@ -117,15 +139,19 @@ main :: fn () s32 {
     if err { panic(err); }
     defer draw.texture_terminate(&stone_texture);
 
+    err = draw.texture_init(&power_texture, ".", "power.png");
+    if err { panic(err); }
+    defer draw.texture_terminate(&power_texture);
+
     err = draw.font_init_at_size(&font, ".", "font.ttf", 32, draw.FontAntialiasing.ALPHA);
     if err { panic(err); }
     defer draw.font_terminate(&font);
 
-    start_game();
-
-    time_current := glfw.GetTime();
+    set_game_mode(Mode.GAME);
+    change_game_mode();
 
     // Game loop comes here!
+    time_current := glfw.GetTime();
     loop glfw.WindowShouldClose(window) == 0 {
         glfw.PollEvents();
         using draw;
@@ -138,14 +164,27 @@ main :: fn () s32 {
         // Clear the frame.
         clear_color();
 
-        handle_input(dt);
-        simulate(dt);
-        draw_game();
+        switch mode {
+            Mode.GAME {
+                handle_game_input(dt);
+                simulate_game(dt);
+                draw_game();
+            }
+            Mode.AFTER_SCREEN {
+                if restart_game {
+                    set_game_mode(Mode.GAME);
+                }
+                draw_after_screen(dt);
+            }
+            default { panic("Invalid game mode!"); }
+        }
 
         flush();
 
         // Swap buffers to see rendered stuff.
         glfw.SwapBuffers(window);
+
+        change_game_mode();
 
         // Since we use temporary allocator, we should reset it's internal storage
         // each frame.
@@ -177,12 +216,29 @@ key_callback :: fn (_: *glfw.Window, key: s32, _: s32, action: s32, _: s32) {
     using glfw;
     action_down :: action == PRESS || action == REPEAT;
     switch key {
-        KEY_UP    { ship.move_up    = action_down; }
-        KEY_DOWN  { ship.move_down  = action_down; }
-        KEY_LEFT  { ship.move_left  = action_down; }
-        KEY_RIGHT { ship.move_right = action_down; }
-        KEY_SPACE { ship.fire       = action_down; }
+        KEY_UP    { ship.move_up    = action_down;  }
+        KEY_DOWN  { ship.move_down  = action_down;  }
+        KEY_LEFT  { ship.move_left  = action_down;  }
+        KEY_RIGHT { ship.move_right = action_down;  }
+        KEY_SPACE { ship.fire    = action_down;     }
+        KEY_R     { restart_game = action == PRESS; }
         default;
+    }
+}
+
+set_game_mode :: fn (new_mode: Mode) {
+    assert(new_mode != Mode.UNKNOWN);
+    next_mode = new_mode;
+}
+
+change_game_mode :: fn () {
+    using Mode;
+    if mode == next_mode { return; }
+    mode = next_mode;
+    switch mode {
+        GAME { start_game(); }
+        AFTER_SCREEN;
+        default { panic("Invalid game mode!"); }
     }
 }
 
@@ -205,7 +261,7 @@ start_game :: fn () {
     }
 }
 
-handle_input :: fn (dt: f32) {
+handle_game_input :: fn (dt: f32) {
     using glm;
     if ship.move_left  { ship.position.x -= dt * SHIP_MOVE_SPEED; }
     if ship.move_right { ship.position.x += dt * SHIP_MOVE_SPEED; }
@@ -214,8 +270,8 @@ handle_input :: fn (dt: f32) {
     if ship.fire && ship.fire_timeout < 0.f && ship.power > 0.1f {
         bullet_l := array_push(&bullets);
         bullet_r := array_push(&bullets);
-        bullet_l.position = v2.{ ship.position.x - 33.f, ship.position.y - 10.f };
-        bullet_r.position = v2.{ ship.position.x + 33.f, ship.position.y - 10.f };
+        bullet_l.position = v2.{ ship.position.x - 16.f, ship.position.y - 40.f };
+        bullet_r.position = v2.{ ship.position.x + 16.f, ship.position.y - 40.f };
         ship.power -= POWER_DOWN_PER_SHOOT;
         ship.fire_timeout = SHIP_FIRE_SPEED;
     }
@@ -233,14 +289,24 @@ is_point_in_rect :: fn (p: glm.v2, rect_center: glm.v2, w: f32, h: f32) bool #in
     return true;
 }
 
-simulate :: fn (dt: f32) {
-    if cast(s32) ship.position.x > WINDOW_WIDTH      { ship.position.x = 0.f;                    }
-    if cast(s32) ship.position.x < 0                 { ship.position.x = auto WINDOW_WIDTH;      }
-    if cast(s32) ship.position.y > WINDOW_HEIGHT     { ship.position.y = auto WINDOW_HEIGHT;     }
-    if cast(s32) ship.position.y < WINDOW_HEIGHT / 2 { ship.position.y = auto WINDOW_HEIGHT / 2; }
+is_rect_in_rect :: fn (c1: glm.v2, w1: f32, h1: f32, c2: glm.v2, w2: f32, h2: f32) bool #inline {
+    using glm;
+    min1 :: v2.{ c1.x - w1 * 0.5f, c1.y - h1 * 0.5f };
+    min2 :: v2.{ c2.x - w2 * 0.5f, c2.y - h2 * 0.5f };
+    max1 :: v2.{ c1.x + w1 * 0.5f, c1.y + h1 * 0.5f };
+    max2 :: v2.{ c2.x + w2 * 0.5f, c2.y + h2 * 0.5f };
+
+    return min1.x < max2.x && min1.y < max2.y && min2.x < max1.x && min2.y < max1.y;
+}
+
+simulate_game :: fn (dt: f32) {
+    if cast(s32) ship.position.x > WINDOW_WIDTH  { ship.position.x = auto WINDOW_WIDTH;  }
+    if cast(s32) ship.position.y > WINDOW_HEIGHT { ship.position.y = auto WINDOW_HEIGHT; }
+    if cast(s32) ship.position.x < 0             { ship.position.x = 0.f;                }
+    if cast(s32) ship.position.y < 0             { ship.position.y = 0.f;                }
 
     if ship.power < 1.f {
-        ship.power += dt * POWER_UP_SPEED;
+        ship.power += dt * POWER_REGENERATION_SPEED;
     } else {
         ship.power = 1.f;
     }
@@ -273,6 +339,11 @@ simulate :: fn (dt: f32) {
                 }
                 j += 1;
             }
+
+            if is_rect_in_rect(ship.position, auto ship_texture.w, auto ship_texture.h, stone.position, auto stone_texture.w, auto stone_texture.h) {
+                is_stone_dead = true;
+                set_game_mode(Mode.AFTER_SCREEN);
+            }
         }
 
         if is_stone_dead {
@@ -292,13 +363,42 @@ simulate :: fn (dt: f32) {
         }
     }
 
+    loop i := 0; i < powerups.len; {
+        power_up := &powerups[i];
+        power_up.position.y += dt * POWER_UP_SPEED;
+        power_up.rotation += dt * POWER_UP_ROTATION_SPEED;
+        is_power_up_dead := power_up.position.y > auto WINDOW_HEIGHT;
+        if is_rect_in_rect(ship.position, auto ship_texture.w, auto ship_texture.h, power_up.position, auto power_texture.w, auto power_texture.h) {
+            is_power_up_dead = true;
+            ship.power += POWER_UP_ADD_POWER;
+            ship.power = std.min(ship.power, 1.f);
+        }
+
+        if is_power_up_dead {
+            array_erase(&powerups, i);
+        } else {
+            i += 1;
+        }
+    }
+
     if stones.len < STONE_COUNT {
         stone := array_push(&stones);
         stone.position.x = auto random_number(0, WINDOW_WIDTH);
-        stone.position.y = 0.f;
+        stone.position.y = auto random_number(-100, -40);
         stone.rotation   = cast(f32) random_number(0, 1) * cast(f32) std.TWO_PI;
         stone.speed      = auto random_number(STONE_SPEED / 2, STONE_SPEED);
     }
+
+    if power_up_timeout < 0.f {
+        power_up := array_push(&powerups);
+        power_up.position.x = auto random_number(0, WINDOW_WIDTH);
+        power_up.position.y = auto random_number(-100, -40);
+        power_up.rotation   = cast(f32) random_number(0, 1) * cast(f32) std.TWO_PI;
+        power_up_timeout = POWER_UP_TIMEOUT;
+    } else {
+        power_up_timeout -= dt;
+    }
+
 }
 
 draw_game :: fn () {
@@ -312,6 +412,12 @@ draw_game :: fn () {
     loop i := 0; i < stars.len; i += 1 {
         star := &stars[i];
         rect_centered(star.position.x, star.position.y, star.size, star.size);
+    }
+
+    set_shader_texture(&power_texture);
+    loop i := 0; i < powerups.len; i += 1 {
+        powerup := &powerups[i];
+        rect_centered_rotated(powerup.position.x, powerup.position.y, auto power_texture.w, auto power_texture.h, powerup.rotation);
     }
 
     set_shader_texture(&stone_texture);
@@ -333,5 +439,17 @@ draw_game :: fn () {
     text(10.f, 10.f, tprint("Score: %", score));
 
     set_shader_color();
-    rect(0.f, auto WINDOW_HEIGHT - 4, (cast(f32) WINDOW_WIDTH) * ship.power, 4.f, v4.{ 0.f, 1.f, 0.f, 1.f });
+    rect(0.f, auto WINDOW_HEIGHT - 4, (cast(f32) WINDOW_WIDTH) * ship.power, 4.f, v4.{ 1.f, 0.f, 0.f, 1.f });
+}
+
+draw_after_screen :: fn (_: f32) {
+    using draw;
+
+    set_shader_texture(&bg_texture);
+    rect(0.f, 0.f, auto WINDOW_WIDTH, auto WINDOW_HEIGHT);
+
+    set_shader_font(&font);
+    text(30.f, 30.f, "Game over.");
+    text(30.f, 80.f, tprint("Score: %", score));
+    text(30.f, 120.f, "Press R to restart.");
 }
