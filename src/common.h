@@ -330,6 +330,7 @@ bool        dir_exists(const char *dirpath);
 bool        normalize_path(char **path);
 bool        brealpath(const char *file, char *out, s32 out_len);
 bool        get_current_working_dir(char *buf, usize buf_size);
+bool        set_current_working_dir(const char *path);
 bool        get_dir_from_filepath(char *buf, const usize l, const char *filepath);
 bool        get_filename_from_filepath(char *buf, const usize l, const char *filepath);
 bool        get_current_exec_path(char *buf, usize buf_size);

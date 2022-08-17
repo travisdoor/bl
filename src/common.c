@@ -44,8 +44,8 @@
 #include <time.h>
 
 #if !BL_PLATFORM_WIN
-#include "unistd.h"
 #include <sys/stat.h>
+#include <unistd.h>
 #endif
 
 #if BL_PLATFORM_MACOS
@@ -299,6 +299,15 @@ bool get_current_exec_dir(char *buf, usize buf_size)
 bool get_current_working_dir(char *buf, usize buf_size)
 {
     return brealpath(".", buf, (s32)buf_size);
+}
+
+bool set_current_working_dir(const char *path)
+{
+#if BL_PLATFORM_WIN
+    return SetCurrentDirectoryA(path);
+#else
+    return chdir(path) != -1;
+#endif
 }
 
 bool file_exists(const char *filepath)

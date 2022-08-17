@@ -521,6 +521,25 @@ bool builder_load_config(const char *filepath)
     return (bool)builder.config;
 }
 
+struct target *builder_add_target(const char *name)
+{
+    bassert(builder.default_target && "Default target must be set first!");
+    struct target *target = target_dup(name, builder.default_target);
+    bassert(target);
+    arrput(builder.targets, target);
+    return target;
+}
+
+struct target *builder_add_default_target(const char *name)
+{
+    bassert(!builder.default_target && "Default target is already set!");
+    struct target *target = target_new(name);
+    bassert(target);
+    builder.default_target = target;
+    arrput(builder.targets, target);
+    return target;
+}
+
 struct target *_builder_add_target(const char *name, bool is_default)
 {
     struct target *target = NULL;
