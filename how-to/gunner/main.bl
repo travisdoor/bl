@@ -67,6 +67,8 @@ bullet_texture: draw.Texture;
 stone_texture: draw.Texture;
 power_texture: draw.Texture;
 
+audio_engine: miniaudio.ma_engine;
+
 mode := Mode.UNKNOWN;
 next_mode := Mode.UNKNOWN;
 power_up_timeout: f32;
@@ -142,6 +144,12 @@ main :: fn () s32 {
     err = draw.font_init_at_size(&font, ".", "font.ttf", 32, draw.FontAntialiasing.ALPHA);
     if err { panic(err); }
     defer draw.font_terminate(&font);
+
+    result :: miniaudio.ma_engine_init(null, &audio_engine);
+    if result != miniaudio.ma_result.SUCCESS {
+        panic("Failed to initialize audio engine with error: %", result);
+    }
+    defer miniaudio.ma_engine_uninit(&audio_engine);
 
     set_game_mode(Mode.GAME);
     change_game_mode();
@@ -238,6 +246,10 @@ change_game_mode :: fn () {
     }
 }
 
+play_sound :: fn (directory: string_view, filename: string_view) #inline {
+    miniaudio.ma_engine_play_sound(&audio_engine, std.strtoc(tprint("%/%", directory, filename)), null);
+}
+
 start_game :: fn () {
     using glm;
 
@@ -269,6 +281,7 @@ handle_game_input :: fn (dt: f32) {
         bullet_l.position = v2.{ ship.position.x - 16.f, ship.position.y - 40.f };
         bullet_r.position = v2.{ ship.position.x + 16.f, ship.position.y - 40.f };
         ship.power -= POWER_DOWN_PER_SHOOT;
+        play_sound(".", "fire.ogg");
         ship.fire_timeout = SHIP_FIRE_SPEED;
     }
     ship.fire_timeout -= dt;
@@ -368,6 +381,7 @@ simulate_game :: fn (dt: f32) {
             is_power_up_dead = true;
             ship.power += POWER_UP_ADD_POWER;
             ship.power = std.min(ship.power, 1.f);
+            play_sound(".", "powerup.ogg");
         }
 
         if is_power_up_dead {

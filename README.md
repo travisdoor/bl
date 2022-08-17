@@ -53,3 +53,7 @@ main :: fn () s32 {
 ```
 
 See more examples [here](https://biscuitlang.org/#how-to/).
+
+### Space Shooter
+
+<div style="text-align:center"><img src="how-to/gunner/gunner.gif" /></div>
