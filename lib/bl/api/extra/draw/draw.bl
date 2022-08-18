@@ -5,7 +5,25 @@
 #import "std/fs"
 #import "std/table"
 
-#scope draw // Rename to draw or something.
+#scope draw
+
+//! # Draw
+//!
+//! `#import "extra/draw"`
+//!
+//! Collection of simple 2D primitive rendering functions. Internally the module uses OpenGL core
+//! profile for rendering and is supposed to be used for simple games or quick prototyping.
+//!
+//! The `draw` module is not supposed to be an OpenGL replacement, if you want to do some advanced
+//! rendering, use OpenGL directly.
+//!
+//! ## Features
+//!
+//! - Rendering of colored 2D rectangles with rotation.
+//! - Rendering of textured 2D rectangles with rotation.
+//! - Text rendering.
+//! - PNG texture loading using `png` module.
+//! - TTF font loading using `freetype2` module (subpixel and grayscale antialiasing).
 
 // =================================================================================================
 // Main API

@@ -10,5 +10,9 @@ build :: fn () #build_entry {
     test_eq(exe.debug_info_kind, DebugInfo.DWARF);
 }
 
+    parent_dir: string_view;
+    std.str_split_by_last(get_output_dir(exe), '/', null, &parent_dir);
+    test_eq(parent_dir, "build_api_test");
+
     // @Incomplete: add more test here.
 }
