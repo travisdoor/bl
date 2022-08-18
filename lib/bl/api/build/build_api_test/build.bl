@@ -1,0 +1,14 @@
+#import "std/test"
+
+build :: fn () #build_entry {
+    exe := add_executable("build_api_test");
+    test_eq(exe.kind, TargetKind.EXECUTABLE);
+    test_eq(exe.build_mode, BuildMode.DEBUG);
+#if PLATFORM == Platform.WINDOWS {
+    test_eq(exe.debug_info_kind, DebugInfo.CODE_VIEW);
+} else {
+    test_eq(exe.debug_info_kind, DebugInfo.DWARF);
+}
+
+    // @Incomplete: add more test here.
+}

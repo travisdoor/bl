@@ -315,11 +315,6 @@ int main(s32 argc, char *argv[])
 #ifdef BL_DEBUG
     puts("Running in DEBUG mode");
     printf("CPU count: %d\n", cpu_thread_count());
-
-    char cwdbuf[PATH_MAX];
-    if (get_current_working_dir(cwdbuf, static_arrlenu(cwdbuf))) {
-        printf("Running in '%s'\n", cwdbuf);
-    }
 #endif
     Options opt = {0};
     setlocale(LC_ALL, "C.utf8");
@@ -339,7 +334,8 @@ int main(s32 argc, char *argv[])
     // user passed arguments!
     opt.target = builder_add_default_target("out");
 
-    bool has_input_files = false;
+    char *user_working_directory = NULL;
+    bool  has_input_files        = false;
 
 #define ID_BUILD 1
 #define ID_RUN 2
@@ -392,6 +388,13 @@ int main(s32 argc, char *argv[])
             .help = "Set documentation output directory. (Use 'out' in current working directory "
                     "by default.)",
             .property.s = &opt.builder.doc_out_dir,
+        },
+        {
+            .kind = STRING,
+            .name = "--work-dir",
+            .help = "Set current working directory. Compiler use by default the current working "
+                    "directory to output all files.",
+            .property.s = &user_working_directory,
         },
         {
             .name = "-shared",
@@ -713,6 +716,15 @@ SKIP:
     // allowed!
     if (!target_init_default_triple(&opt.target->triple)) {
         exit(ERR_UNSUPPORTED_TARGET);
+    }
+
+    if (user_working_directory) {
+        if (!set_current_working_dir(user_working_directory)) {
+            builder_error("Cannot set working directory to '%s'.", user_working_directory);
+            EXIT(EXIT_FAILURE);
+        } else {
+            builder_info("Running in '%s'.", user_working_directory);
+        }
     }
 
     state                = builder_compile(opt.target);
