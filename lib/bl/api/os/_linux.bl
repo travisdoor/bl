@@ -93,26 +93,14 @@ os_get_exec_path :: fn () string {
 }
 
 os_get_backtrace :: fn (skip_frames := 0, max_frame_count := 64) []CodeLocation {
+    // @Incomplete <2022-08-21 Sun>: Here we tried to use 'backtrace' from the C library, but is seems not
+    // working correctly. Documentation claims that '-rdynamic' linker flag must be used, but still, the
+    // resulting array does not contain any captured frames.
+    //
+    // We can eventually try to use some 3rd party solution (libunwind) or implement stack tracing internally
+    // in the compiler.
+
     trace: [..]CodeLocation;
-    // In case we change allocator we should call free!
-    allocator :: application_context.temporary_allocator;
-
-    ptrs: []C.void_ptr;
-    alloc_slice(&ptrs, max_frame_count, false, allocator);
-    available_frames :: C.backtrace(ptrs.ptr, auto ptrs.len);
-    symbol_ptrs :: C.backtrace_symbols(ptrs.ptr, available_frames);
-    defer C.free(auto symbol_ptrs);
-    symbols :: []*C.char.{ available_frames, symbol_ptrs };
-
-    skip_frames += 1; // Ignore this function frame.
-    array_init(&trace, 0, allocator);
-    loop i := skip_frames; i < symbols.len; i += 1 {
-        using std;
-        frame := array_push(&trace);
-        frame.file = str_new(ctostr(symbols[i]), allocator);
-        frame.line = -1;
-        frame.function = "(unknown)";
-    }
     return trace;
 }
 

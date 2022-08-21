@@ -264,8 +264,8 @@ start_game :: fn () {
         star := &stars[i];
         star.position.x = auto random_number(0, WINDOW_WIDTH);
         star.position.y = auto random_number(0, WINDOW_HEIGHT);
-        star.size       = auto random_number(8, auto star_texture.w);
-        star.speed      = STAR_SPEED - ((cast(f32) star_texture.w) - star.size) * 10.f;
+        star.size       = auto random_number(8, auto star_texture.width);
+        star.speed      = STAR_SPEED - ((cast(f32) star_texture.width) - star.size) * 10.f;
     }
 }
 
@@ -340,7 +340,7 @@ simulate_game :: fn (dt: f32) {
         } else {
             loop j := 0; j < bullets.len; {
                 bullet :: &bullets[j];
-                if is_point_in_rect(bullet.position, stone.position, auto stone_texture.w, auto stone_texture.h) {
+                if is_point_in_rect(bullet.position, stone.position, auto stone_texture.width, auto stone_texture.height) {
                     is_stone_dead = true;
                     array_erase(&bullets, j);
                     score += 1;
@@ -349,7 +349,7 @@ simulate_game :: fn (dt: f32) {
                 j += 1;
             }
 
-            if is_rect_in_rect(ship.position, auto ship_texture.w, auto ship_texture.h, stone.position, auto stone_texture.w, auto stone_texture.h) {
+            if is_rect_in_rect(ship.position, auto ship_texture.width, auto ship_texture.height, stone.position, auto stone_texture.width, auto stone_texture.height) {
                 is_stone_dead = true;
                 set_game_mode(Mode.AFTER_SCREEN);
             }
@@ -377,7 +377,7 @@ simulate_game :: fn (dt: f32) {
         power_up.position.y += dt * POWER_UP_SPEED;
         power_up.rotation += dt * POWER_UP_ROTATION_SPEED;
         is_power_up_dead := power_up.position.y > auto WINDOW_HEIGHT;
-        if is_rect_in_rect(ship.position, auto ship_texture.w, auto ship_texture.h, power_up.position, auto power_texture.w, auto power_texture.h) {
+        if is_rect_in_rect(ship.position, auto ship_texture.width, auto ship_texture.height, power_up.position, auto power_texture.width, auto power_texture.height) {
             is_power_up_dead = true;
             ship.power += POWER_UP_ADD_POWER;
             ship.power = std.min(ship.power, 1.f);
@@ -427,23 +427,23 @@ draw_game :: fn () {
     set_shader_texture(&power_texture);
     loop i := 0; i < powerups.len; i += 1 {
         powerup := &powerups[i];
-        rect_centered_rotated(powerup.position.x, powerup.position.y, auto power_texture.w, auto power_texture.h, powerup.rotation);
+        rect_centered_rotated(powerup.position.x, powerup.position.y, auto power_texture.width, auto power_texture.height, powerup.rotation);
     }
 
     set_shader_texture(&stone_texture);
     loop i := 0; i < stones.len; i += 1 {
         stone := &stones[i];
-        rect_centered_rotated(stone.position.x, stone.position.y, auto stone_texture.w, auto stone_texture.h, stone.rotation);
+        rect_centered_rotated(stone.position.x, stone.position.y, auto stone_texture.width, auto stone_texture.height, stone.rotation);
     }
 
     set_shader_texture(&bullet_texture);
     loop i := 0; i < bullets.len; i += 1 {
         bullet := &bullets[i];
-        rect_centered(bullet.position.x, bullet.position.y, auto bullet_texture.w, auto bullet_texture.h);
+        rect_centered(bullet.position.x, bullet.position.y, auto bullet_texture.width, auto bullet_texture.height);
     }
 
     set_shader_texture(&ship_texture);
-    rect_centered(ship.position.x, ship.position.y, auto ship_texture.w, auto ship_texture.h);
+    rect_centered(ship.position.x, ship.position.y, auto ship_texture.width, auto ship_texture.height);
 
     set_shader_font(&font);
     text(10.f, 10.f, tprint("Score: %", score));

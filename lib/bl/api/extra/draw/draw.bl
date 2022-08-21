@@ -24,10 +24,44 @@
 //! - Text rendering.
 //! - PNG texture loading using `png` module.
 //! - TTF font loading using `freetype2` module (subpixel and grayscale antialiasing).
+//!
+//! ## Notes
+//!
+//! - Module does not handle window creation and system events. Use i.e. `glfw` to do it.
+//! - The module is not feature-complete and still under development, all missing/required functionality
+//!   should be implemented in the future; current implementation is mainly used to demonstrate the language
+//!   capabilities.
+//!
+//! ## General desing
+//! The `draw` API is based on switching the global context of rendering primitives (rectangles). In example
+//! to draw bunch of colored rectangles we must set the propper shader first:
+//!
+//! ```c
+//! using draw;
+//! using glm;
+//! set_shader_color(); // Prepare renderer for rendering of colored rectangles.
+//!
+//! rect(10.f, 10.f, 100.f, 100.f, v4.{ 1.f, 0.f, 0.f, 1.f });
+//! rect(200.f, 10.f, 100.f, 100.f, v4.{ 0.f, 1.f, 0.f, 1.f });
+//! rect(400.f, 10.f, 100.f, 100.f, v4.{ 0.f, 0.f, 1.f, 1.f });
+//! ```
+//!
+//! Internally each call to `rect` just appends the geometry caches; actual rendering is done when currenty
+//! used shader is changed or [flush](#drawflush) is called explicitly. This approach reduces count of required draw
+//! calls a bit.
 
 // =================================================================================================
 // Main API
 // =================================================================================================
+
+/// Draw library initialization must be called once before the module is used. The `viewport_width` and
+/// `viewport_height` defines the viewport size in current opengl context. These values are usually the
+/// same as the window size.
+///
+/// The [terminate](#drawterminate) must be called when draw module is not needed anymore.
+///
+/// !!! note
+///     Window resizing is not supported right now.
 init :: fn (viewport_width: s32, viewport_height: s32) {
     gl_init();
     gl.Enable(GL_BLEND);
@@ -64,6 +98,7 @@ init :: fn (viewport_width: s32, viewport_height: s32) {
     is_initialized = true;
 }
 
+/// Release all resources used by the module. This should be called when the module is not needed anymore.
 terminate :: fn () {
     array_terminate(&vertex_buffer);
     array_terminate(&fg_color_buffer);
@@ -82,11 +117,14 @@ terminate :: fn () {
     is_initialized = false;
 }
 
+/// Fill the current frame buffer with `color`. This is usually called each frame.
 clear_color :: fn (color := glm.v4_zero) #inline {
     gl.ClearColor(color.x, color.y, color.z, color.w);
     gl.Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
+/// Prepare renderer for rendering colored rectangles. Each rectangle can use different color. This method
+/// is supposed to be called before [rect](#drawrect) or [rect_centered](#drawrect_centered).
 set_shader_color :: fn () #inline {
     new_context :: make_context_color();
     if !compare_context(&context, &new_context) {
@@ -95,6 +133,8 @@ set_shader_color :: fn () #inline {
     }
 }
 
+/// Prepare renderer for rendering textured rectangles. This method is supposed to be called before
+/// [rect](#drawrect) or [rect_centered](#drawrect_centered) (all rectangles will use the same texture).
 set_shader_texture :: fn (texture: *Texture) #inline {
     assert(texture, "Invalid texture.");
     new_context :: make_context_texture(texture);
@@ -104,6 +144,7 @@ set_shader_texture :: fn (texture: *Texture) #inline {
     }
 }
 
+/// Prepare the renderer for rendering of a text.
 set_shader_font :: fn (font: *Font) #inline {
     assert(font, "Invalid font.");
     new_context :: make_context_font(font);
@@ -113,46 +154,50 @@ set_shader_font :: fn (font: *Font) #inline {
     }
 }
 
-rect :: fn (x: f32, y: f32, w: f32, h: f32, color := glm.v4_one) #inline {
+/// Draw a single colored rectangle or texture into the frame buffer.
+rect :: fn (position_x: f32, position_y: f32, width: f32, height: f32, color := glm.v4_one) #inline {
     using glm;
     add_rect([4]v2.{
-        v2.{ x,     y     },
-        v2.{ x + w, y     },
-        v2.{ x,     y + h },
-        v2.{ x + w, y + h }
+        v2.{ position_x,         position_y          },
+        v2.{ position_x + width, position_y          },
+        v2.{ position_x,         position_y + height },
+        v2.{ position_x + width, position_y + height }
     }, color);
 }
 
-rect_centered :: fn (cx: f32, cy: f32, w: f32, h: f32, color := glm.v4_one) #inline {
-    rect(cx - w * 0.5f, cy - h * 0.5f, w, h, color);
+/// Draw a single colored rectangle or texture into the frame buffer.
+rect_centered :: fn (center_x: f32, center_y: f32, width: f32, height: f32, color := glm.v4_one) #inline {
+    rect(center_x - width * 0.5f, center_y - height * 0.5f, width, height, color);
 }
 
-rect_centered_rotated :: fn (cx: f32, cy: f32, w: f32, h: f32, angle_rad: f32, color := glm.v4_one) #inline {
+/// Draw a single colored rectangle or texture with rotation into the frame buffer.
+rect_centered_rotated :: fn (center_x: f32, center_y: f32, width: f32, height: f32, angle_in_radians: f32, color := glm.v4_one) #inline {
     using glm;
-    pivot :: v2.{ w * 0.5f, h * 0.5f };
-    q :: quat_axis_angle(v3.{ 0.f, 0.f, 1.f }, angle_rad);
+    pivot :: v2.{ width * 0.5f, height * 0.5f };
+    q :: quat_axis_angle(v3.{ 0.f, 0.f, 1.f }, angle_in_radians);
     v_1 := quat_rotate_v3(q, v3.{ -pivot.x,  pivot.y });
     v_2 := quat_rotate_v3(q, v3.{  pivot.x,  pivot.y });
     v_3 := quat_rotate_v3(q, v3.{ -pivot.x, -pivot.y });
     v_4 := quat_rotate_v3(q, v3.{  pivot.x, -pivot.y });
 
     add_rect([4]v2.{
-        v2.{ v_1.x + cx, v_1.y + cy},
-        v2.{ v_2.x + cx, v_2.y + cy},
-        v2.{ v_3.x + cx, v_3.y + cy},
-        v2.{ v_4.x + cx, v_4.y + cy},
+        v2.{ v_1.x + center_x, v_1.y + center_y},
+        v2.{ v_2.x + center_x, v_2.y + center_y},
+        v2.{ v_3.x + center_x, v_3.y + center_y},
+        v2.{ v_4.x + center_x, v_4.y + center_y},
     }, color);
 }
 
-text :: fn (x: f32, y: f32, text: string_view, fg_color: glm.v4 = glm.v4_one, bg_color: glm.v4 = glm.v4_zero) {
+/// Draw text into the frame buffer.
+text :: fn (position_x: f32, position_y: f32, text: string_view, text_color: glm.v4 = glm.v4_one, background_color: glm.v4 = glm.v4_zero) {
     assert(context.font, "No font set, please call 'set_shader_font' first.");
     assert(context.shader == &text_shader || context.shader == &text_alpha_shader, "Invalid current shader in use, please call 'set_shader_font' first.");
     using glm;
     if text.len == 0 { return; }
     is_subpixel :: context.font.mode == FontAntialiasing.SUBPIXEL;
-    if is_subpixel { x = std.ceil(x); y = std.ceil(y); }
-    aw :: cast(f32) context.font.atlas.w;
-    ah :: cast(f32) context.font.atlas.h;
+    if is_subpixel { position_x = std.ceil(position_x); position_y = std.ceil(position_y); }
+    aw :: cast(f32) context.font.atlas.width;
+    ah :: cast(f32) context.font.atlas.height;
     directing_glyph_info :: get_glyph_utf32(context.font, cast(u32) 'X');
     p := v2.{ y = directing_glyph_info.bt};
     converted_bytes: s32;
@@ -175,8 +220,8 @@ text :: fn (x: f32, y: f32, text: string_view, fg_color: glm.v4 = glm.v4_one, bg
         if w < std.F32_EPSILON || h < std.F32_EPSILON { continue; }
 
         base_index :: cast(u32) vertex_buffer.len;
-        gx :: x + x2;
-        gy :: y - y2;
+        gx :: position_x + x2;
+        gy :: position_y - y2;
         array_push_all(&vertex_buffer, [4]v2.{
             v2.{ gx    , gy     },
             v2.{ gx + w, gy     },
@@ -193,9 +238,9 @@ text :: fn (x: f32, y: f32, text: string_view, fg_color: glm.v4 = glm.v4_one, bg
             v2.{ ci.tx + gsw, ci.ty + gth }
         });
 
-        array_push_all(&fg_color_buffer, [4]v4.{ fg_color, fg_color, fg_color, fg_color });
+        array_push_all(&fg_color_buffer, [4]v4.{ text_color, text_color, text_color, text_color });
         if is_subpixel {
-            array_push_all(&bg_color_buffer, [4]v4.{ bg_color, bg_color, bg_color, bg_color });
+            array_push_all(&bg_color_buffer, [4]v4.{ background_color, background_color, background_color, background_color });
         }
 
         array_push_all(&index_buffer, [6]u32.{
@@ -209,6 +254,7 @@ text :: fn (x: f32, y: f32, text: string_view, fg_color: glm.v4 = glm.v4_one, bg
     }
 }
 
+/// Immediately render all cached stuff into the frame buffer.
 flush :: fn () #inline {
     do_render();
 }
@@ -216,30 +262,39 @@ flush :: fn () #inline {
 // =================================================================================================
 // Texture
 // =================================================================================================
+
+/// Texture channel distribution format.
 TextureFormat :: enum u8 {
     RGB = 3;
     RGBA = 4;
 }
 
+/// Texture representation in `draw` module.
 Texture :: struct {
+    /// Texture channel distribution format.
     format: TextureFormat;
+    /// Bit depth of each channel.
     bit_depth: u8;
-    w: u32;
-    h: u32;
+    /// Texture image width.
+    width: u32;
+    /// Texture image height.
+    height: u32;
     handle: GLuint;
 }
 
+/// Load `png` texture from the `directory/filename`.
 texture_init :: fn (texture: *Texture, directory: string_view, filename: string_view) Error {
     // @Incomplete: we should support custom allocators here.
     assert(texture);
     data: *u8;
-    err :: png_load_from_file(tprint("%/%", directory, filename), &data, &texture.w, &texture.h, &texture.bit_depth, &texture.format);
+    err :: png_load_from_file(tprint("%/%", directory, filename), &data, &texture.width, &texture.height, &texture.bit_depth, &texture.format);
     if err { return err; }
     gl_init_texture_2d(texture, data);
     free(data);
     return OK;
 }
 
+/// Release texture data.
 texture_terminate :: fn (texture: *Texture) {
     assert(texture);
     gl_terminate_texture(texture);
@@ -248,6 +303,8 @@ texture_terminate :: fn (texture: *Texture) {
 // =================================================================================================
 // PNG
 // =================================================================================================
+
+/// Loads `png` image from `filepath` into `out_data`. The `out_data` shoud be released by `free` call on caller side.
 png_load_from_file :: fn (filepath: string_view, out_data: **u8, out_width: *u32, out_height: *u32, out_bit_depth: *u8, out_format: *TextureFormat) Error {
     using std;
     stream, err_input :: open_file(filepath, OpenFileMode.READ);
@@ -314,6 +371,7 @@ png_load_from_file :: fn (filepath: string_view, out_data: **u8, out_width: *u32
 // =================================================================================================
 // Font Rendering
 // =================================================================================================
+/// @Incomplete
 Font :: struct {
     char_table: std.Table(u32, GlyphInfo);
     atlas: Texture;
@@ -334,22 +392,23 @@ GlyphInfo :: struct {
     bs: f32; // texture border size
 }
 
-font_validate_size :: fn (size: s32) bool #inline {
-    return size >= 8 && size <= 64;
-}
-
+/// @Incomplete
 FontAntialiasing :: enum {
     SUBPIXEL;
     ALPHA;
 }
 
+/// @Incomplete
 font_default_char_set :: fn () []u32 #inline { return ASCII_CHAR_TABLE; }
 
+/// @Incomplete
 font_generate_char_set :: fn (chars: string_view, out_set: *[..]u32) {
     err :: utf8_to_utf32(chars, out_set);
     if err { panic(err); } // @Incomplete: return error?
 }
 
+/// Initialize new `font` from the 'TTF' file at `directory/filename` at required `size`.
+/// @Incomplete
 font_init_at_size :: fn (font: *Font, directory: string_view, filename: string_view, size: s32, mode := FontAntialiasing.ALPHA, char_set := []u32.{}) Error {
     filepath :: tprint("%/%", directory, filename);
     zeromem(auto font, sizeof(@font));
@@ -383,6 +442,7 @@ font_init_at_size :: fn (font: *Font, directory: string_view, filename: string_v
     return OK;
 }
 
+/// @Incomplete
 font_terminate :: fn (font: *Font) {
     if !font { return; }
     std.tbl_terminate(&font.char_table);
@@ -593,8 +653,8 @@ gl_init_texture_2d :: fn (texture: *Texture, texture_data: *u8) {
         GL_TEXTURE_2D,
         0,
         auto gl_internal_format,
-        auto texture.w,
-        auto texture.h,
+        auto texture.width,
+        auto texture.height,
         0,
         gl_format,
         GL_UNSIGNED_BYTE,
@@ -951,8 +1011,8 @@ prepare_atlas :: fn (font: *Font, face: *FreeType.Face) {
     }
     gl_check();
     font.atlas.handle = atlas;
-    font.atlas.w = atlas_w;
-    font.atlas.h = atlas_h;
+    font.atlas.width = atlas_w;
+    font.atlas.height = atlas_h;
     gl.BindTexture(GL_TEXTURE_2D, 0);
 }
 
@@ -999,8 +1059,8 @@ gen_glyphs :: fn (font: *Font, face: *FreeType.Face) {
         glyph_info.bh = auto gh;
         glyph_info.bl = auto glyph_slot.bitmap_left;
         glyph_info.bt = auto glyph_slot.bitmap_top;
-        glyph_info.tx = cast(f32)ox / cast(f32)font.atlas.w;
-        glyph_info.ty = cast(f32)oy / cast(f32)font.atlas.h;
+        glyph_info.tx = cast(f32)ox / cast(f32)font.atlas.width;
+        glyph_info.ty = cast(f32)oy / cast(f32)font.atlas.height;
         height = std.max(cast(f32) (glyph_slot.metrics.height >> 6), height);
         ox += gw;
     }

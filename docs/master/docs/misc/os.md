@@ -53,6 +53,10 @@ The path may be empty in case of an error.
 
 ## os_get_backtrace
 
+```c
+os_get_backtrace :: fn (skip_frames := 0, max_frame_count := 64) []CodeLocation
+```
+
 Returns current execution stack trace obtained from native executable debug information. This feature is available only in `DEBUG` mode
 and only during native runtime. Output slice of [CodeLocations](/modules/a/#codelocation) contains stack frame records starting from the
 `os_get_backtrace` caller function + `skip_frames`. The `max_frame_count` can limit maximum count of obtained frames.
@@ -60,6 +64,5 @@ and only during native runtime. Output slice of [CodeLocations](/modules/a/#code
 !!! note
     This function internally allocate using current application context temporary allocator.
 
-```c
-os_get_backtrace :: fn (skip_frames := 0, max_frame_count := 64) []CodeLocation
-```
+!!! warning
+    Currently this function is implemented only on Windows and does nothing on all other supported platforms.

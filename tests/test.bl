@@ -1,13 +1,22 @@
-// Release temporary allocator in __start by default.
-// Add function name into CodeLocation structure.
+#import "std/debug_allocator"
+
+debug_allocator: std.DebugAllocator;
 
 main :: fn () s32 {
-    arr: [4]s32;
+    using std;
+    // Initialize debug allocator with current context allocator.
+    debug_allocator = debug_allocator_make(application_context.allocator);
+    // Always cleanup at the end of the scope.
+    defer debug_allocator_terminate(&debug_allocator);
 
-    loop it : s32 = arr {
-        it;
-    }
+    application_context.allocator = &debug_allocator;
 
+    ptr := alloc(sizeof(s32));
+    @ptr = 32;
+    free(ptr);
+
+    print("ptr   = %\n", ptr);
+    print("value = %\n", @ptr);
     return 0;
 }
 
