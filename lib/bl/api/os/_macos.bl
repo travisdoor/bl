@@ -99,10 +99,29 @@ os_get_last_error :: fn () (s32, string_view) #inline {
 
 os_get_backtrace :: fn (skip_frames := 0, max_frame_count := 64) []CodeLocation {
     trace: [..]CodeLocation;
-    // @Incomplete mdorazil <2022-08-12 Fri>
+    // In case we change allocator we should call free!
+    allocator :: application_context.temporary_allocator;
+
+    ptrs: []C.void_ptr;
+    alloc_slice(&ptrs, max_frame_count, false, allocator);
+    // @Incomplete: backtrace does not seem to work for some reason on macOS, only returned
+    // stack frame is the current one.
+    available_frames :: C.backtrace(ptrs.ptr, auto ptrs.len);
+    symbol_ptrs :: C.backtrace_symbols(ptrs.ptr, available_frames);
+    defer C.free(auto symbol_ptrs);
+    symbols :: []*C.char.{ available_frames, symbol_ptrs };
+
+    skip_frames += 1; // Ignore this function frame.
+    array_init(&trace, 0, allocator);
+    loop i := skip_frames; i < symbols.len; i += 1 {
+        using std;
+        frame := array_push(&trace);
+        frame.file = str_new(ctostr(symbols[i]), allocator);
+        frame.line = -1;
+        frame.function = "(unknown)";
+    }
     return trace;
 }
-
 __os_debug_break :: fn () #inline #compiler {
     // @Incomplete: I'm not sure what to do here.
     //_posix_raise(SIGTRAP);

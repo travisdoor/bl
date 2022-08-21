@@ -94,6 +94,8 @@ qsort :: fn (base: void_ptr, nitems: size_t, size: size_t, compar: *fn (void_ptr
 ftell :: fn (stream: void_ptr) long #extern "ftell";
 fseek :: fn (stream: void_ptr, offset: long, whence: int) int #extern "fseek";
 lseek64 :: fn (fd: int, offset: longlong, whence: longlong) longlong #extern "lseek64";
+backtrace :: fn (array: *void_ptr, size: int) int #extern "backtrace";
+backtrace_symbols :: fn (array: *void_ptr, size: int) **char #extern "backtrace_symbols";
 
 DIR :: u8;
 dirent_t :: struct {
