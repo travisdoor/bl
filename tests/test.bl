@@ -1,22 +1,40 @@
-#import "std/debug_allocator"
-
-debug_allocator: std.DebugAllocator;
+// #scope glwindow
 
 main :: fn () s32 {
-    using std;
-    // Initialize debug allocator with current context allocator.
-    debug_allocator = debug_allocator_make(application_context.allocator);
-    // Always cleanup at the end of the scope.
-    defer debug_allocator_terminate(&debug_allocator);
+    using win32;
+    window_class :: WNDCLASSA.{
+        style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC,
+        lpfnWndProc = &window_callback,
+        hCursor = LoadCursorA(null, IDC_ARROW),
+        lpszClassName = std.strtoc("WGL_dummy"),
+    };
+    if RegisterClassA(&window_class) == 0 {
+        panic("Failed to register window.");
+    }
 
-    application_context.allocator = &debug_allocator;
+    window := CreateWindowExA(0, window_class.lpszClassName, std.strtoc("OpenGL"), 0, CW_USEDEFAULT, CW_USEDEFAULT, 800, 600, null, null, null, null);
+    if !window {
+        panic("Failed to create window with error.");
+    }
 
-    ptr := alloc(sizeof(s32));
-    @ptr = 32;
-    free(ptr);
+    ShowWindow(window, 1);
+    UpdateWindow(window);
 
-    print("ptr   = %\n", ptr);
-    print("value = %\n", @ptr);
+    is_running := true;
+    loop is_running {
+        msg: MSG;
+        loop PeekMessageA(&msg, null, 0, 0, PM_REMOVE) > 0 {
+            if (msg.message == WM_QUIT) {
+                is_running = false;
+            } else {
+                TranslateMessage(&msg);
+                DispatchMessageA(&msg);
+            }
+        }
+    }
     return 0;
 }
 
+window_callback :: fn (window: win32.HWND, msg: win32.UINT, wparam: win32.WPARAM, lparam: win32.LPARAM) *s32 {
+    return win32.DefWindowProcA(window, msg, wparam, lparam);
+}

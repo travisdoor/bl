@@ -88,6 +88,7 @@ PLONG        :: *LONG;
 WORD         :: C.ushort;
 LPARAM       :: LONG_PTR;
 WPARAM       :: UINT_PTR;
+LRESULT      :: LONG_PTR;
 DWORD64      :: s64;
 PDWORD64     :: *DWORD64;
 
@@ -230,6 +231,35 @@ SYMOPT_DISABLE_SRVSTAR_ON_STARTUP : DWORD : 0x40000000;
 SYMOPT_DEBUG                      : DWORD : 0x80000000;
 
 MAX_SYM_NAME : usize : 2000;
+
+CS_VREDRAW         : u32 : 0x0001;
+CS_HREDRAW         : u32 : 0x0002;
+CS_DBLCLKS         : u32 : 0x0008;
+CS_OWNDC           : u32 : 0x0020;
+CS_CLASSDC         : u32 : 0x0040;
+CS_PARENTDC        : u32 : 0x0080;
+CS_NOCLOSE         : u32 : 0x0200;
+CS_SAVEBITS        : u32 : 0x0800;
+CS_BYTEALIGNCLIENT : u32 : 0x1000;
+CS_BYTEALIGNWINDOW : u32 : 0x2000;
+CS_GLOBALCLASS     : u32 : 0x4000;
+
+WNDPROC :: *fn (HWND, UINT, WPARAM, LPARAM) LRESULT;
+HICON :: *C.int;
+HBRUSH :: *C.int;
+
+WNDCLASSA :: struct {
+    style: UINT;
+    lpfnWndProc: WNDPROC;
+    cbClsExtra: C.int;
+    cbWndExtra: C.int;
+    hInstance: HINSTANCE;
+    hIcon: HICON;
+    hCursor: HCURSOR;
+    hbrBackground: HBRUSH;
+    lpszMenuName: LPCSTR;
+    lpszClassName: LPCSTR;
+}
 
 SYMBOL_INFO :: struct {
     SizeOfStruct: ULONG;
@@ -483,6 +513,25 @@ CreateMutexA :: fn (
     lpName: LPCSTR
 ) HANDLE #extern "CreateMutexA";
 
+HMENU :: *C.int;
+CW_USEDEFAULT : C.int : 0x80000000;
+
+MSG :: struct {
+    hwnd: HWND;
+    message: UINT;
+    wParam: WPARAM;
+    lParam: LPARAM;
+    time: DWORD;
+    pt: POINT;
+}
+LPMSG :: *MSG;
+
+PM_NOREMOVE : u32 : 0x0000;
+PM_REMOVE   : u32 : 0x0001;
+PM_NOYIELD  : u32 : 0x0002;
+
+WM_QUIT : u32 : 0x0012;
+
 ReleaseMutex :: fn (hMutex: HANDLE) BOOL #extern "ReleaseMutex";
 GetTickCount :: fn () DWORD #extern "GetTickCount";
 QueryPerformanceCounter :: fn (lpPerformanceCount: *LARGE_INTEGER) BOOL #extern "QueryPerformanceCounter";
@@ -532,3 +581,12 @@ SymCleanup :: fn (hProcess: HANDLE) BOOL #extern "SymCleanup";
 CaptureStackBackTrace :: fn (FramesToSkip: DWORD, FramesToCapture: DWORD, BackTrace: *PVOID, BackTraceHash: PDWORD) WORD #extern "RtlCaptureStackBackTrace";
 SymFromAddr :: fn (hProcess: HANDLE, Address: DWORD64, Displacement: PDWORD64, Symbol: PSYMBOL_INFO) BOOL #extern "SymFromAddr";
 SymGetLineFromAddr64 :: fn (hProcess: HANDLE, qwAddr: DWORD64, pdwDisplacement: PDWORD, Line64: PIMAGEHLP_LINE64) BOOL #extern "SymGetLineFromAddr64";
+RegisterClassA :: fn (lpWndClass: *WNDCLASSA) WORD #extern "RegisterClassA";
+CreateWindowExA :: fn (dwExStyle: DWORD, lpClassName: LPCSTR, lpWindowName: LPCSTR, dwStyle: DWORD, X: C.int, Y: C.int, nWidth: C.int, nHeight: C.int, hWndParent: HWND, hMenu: HMENU, hInstance: HINSTANCE, lpParam: LPVOID) HWND #extern "CreateWindowExA";
+GetModuleHandleW :: fn (lpModuleName: LPCWSTR) HMODULE #extern "GetModuleHandleW";
+DefWindowProcA :: fn (hWnd: HWND, Msg: UINT, wParam: WPARAM, lParam: LPARAM) LRESULT #extern "DefWindowProcA";
+ShowWindow :: fn (hWnd: HWND, nCmdShow: C.int) BOOL #extern "ShowWindow";
+PeekMessageA :: fn (lpMsg: LPMSG, hWnd: HWND, wMsgFilterMin: UINT, wMsgFilterMax: UINT, wRemoveMsg: UINT) BOOL #extern "PeekMessageA";
+TranslateMessage :: fn (lpMsg: *MSG) BOOL #extern "TranslateMessage";
+DispatchMessageA :: fn (lpMsg: *MSG) BOOL #extern "DispatchMessageA";
+UpdateWindow :: fn (hWnd: HWND) BOOL #extern "UpdateWindow";
