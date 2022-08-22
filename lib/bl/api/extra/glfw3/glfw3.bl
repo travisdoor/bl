@@ -396,7 +396,7 @@ SetGammaRamp :: fn (monitor: *Monitor, ramp: *GammaRamp)  #extern "glfwSetGammaR
 DefaultWindowHints :: fn ()  #extern "glfwDefaultWindowHints";
 WindowHint :: fn (hint: s32, value: s32)  #extern "glfwWindowHint";
 WindowHintString :: fn (hint: s32, value: *u8)  #extern "glfwWindowHintString";
-CreateWindow :: fn (width: s32, height: s32, title: *u8, monitor: *Monitor, share: *Window) *Window #extern "glfwCreateWindow";
+CreateWindow :: fn (width: s32, height: s32, title: *s8, monitor: *Monitor, share: *Window) *Window #extern "glfwCreateWindow";
 DestroyWindow :: fn (window: *Window)  #extern "glfwDestroyWindow";
 WindowShouldClose :: fn (window: *Window) s32 #extern "glfwWindowShouldClose";
 SetWindowShouldClose :: fn (window: *Window, value: s32)  #extern "glfwSetWindowShouldClose";

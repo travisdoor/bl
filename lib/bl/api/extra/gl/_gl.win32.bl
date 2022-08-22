@@ -1,0 +1,26 @@
+#load "gl.bl"
+#import "std/dlib"
+
+__gl_get_proc :: fn (proc_name: string) *u8 {
+    wglGetProcAddress :: fn (procName: *u8) *u8 #extern;
+
+    if proc_name.len == 0 { return null; }
+    p := wglGetProcAddress(proc_name.ptr);
+    ip :: cast(s64) p;
+    if ip != 0 && ip != 0x1 && ip != 0x2 && ip != 0x3 { return p; }
+
+    module, err1 :: std.library_open("opengl32");
+    if err1 {
+        panic("GL Error: %", err1);
+        return null;
+    }
+    defer std.library_close(module);
+
+    sym, err2 :: std.library_get_symbol(module, proc_name);
+    if err2 {
+        print_err("GL Error: %", err2);
+        return null;
+    }
+    return sym;
+}
+

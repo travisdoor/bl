@@ -1,0 +1,15 @@
+version: 1
+src: "png.bl"
+
+x86_64-pc-windows-msvc:
+  linker_lib_path: "win32"
+  linker_opt: "libpng16_static.lib zlibstatic.lib"
+
+x86_64-pc-linux-gnu:
+  linker_opt: "-lpng -lz -lbz2"
+
+x86_64-apple-darwin:
+  linker_opt: "-lpng -lz -lbz2"
+
+arm64-apple-darwin:
+  linker_opt: "-lpng -lz -lbz2"

@@ -8,6 +8,8 @@ TEST_SRC_DIR :: "tests/src";
 EXAMPLES_DIR :: "docs/master/docs/examples";
 EXPECT_FAIL_DIR :: "tests/src/expect_fail";
 DOCS_MAKE :: "docs/master/make.bl";
+GUNNER_PROJECT_DIR :: "how-to/gunner";
+BUILD_API_TEST_DIR :: "lib/bl/api/build/build_api_test";
 
 SKIP :: [1]Skip.{
     Skip.{
@@ -40,6 +42,8 @@ TestKind :: enum {
     EXECUTE;
     // Just compile.
     COMPILE;
+    // Compile using build api.
+    BUILD;
     // Compile and execute + include custom main.
     TEST_EXECUTE;
     // Compile and execute in compile-time + include custom main.
@@ -163,6 +167,8 @@ main :: fn () s32 {
     // Test docs make
     if print_sections { print("\nMisc:\n"); }
     test_file(&results, get_full_path(DOCS_MAKE), COMPILE);
+    test_file(&results, get_full_path(GUNNER_PROJECT_DIR), BUILD);
+    test_file(&results, get_full_path(BUILD_API_TEST_DIR), BUILD);
 
     // Print results
     failed_count := 0;
@@ -234,6 +240,13 @@ test_file :: fn (results: *[..]Result, filepath: string_view, kind: TestKind) {
 
         COMPILE {
             if os_execute(tprint("% % %", compiler, "--no-warning --silent --no-bin", filepath)) != 0 {
+                set_flag(&result.state, FAILED_COMPILE);
+            }
+            report(result);
+        }
+
+        BUILD {
+            if os_execute(tprint("% % --work-dir=\"%\" -build", compiler, "--no-warning --silent --no-bin", filepath)) != 0 {
                 set_flag(&result.state, FAILED_COMPILE);
             }
             report(result);

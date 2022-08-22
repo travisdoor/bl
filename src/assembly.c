@@ -271,16 +271,6 @@ static inline void mir_terminate(struct assembly *assembly)
     mir_arenas_terminate(&assembly->arenas.mir);
 }
 
-static inline void set_default_out_dir(char **dir)
-{
-    char path[PATH_MAX] = {0};
-    if (!get_current_working_dir(&path[0], PATH_MAX)) {
-        builder_error("Cannot get current working directory!");
-        return;
-    }
-    strprint(*dir, "%s", path);
-}
-
 // Create directory tree and set out_path.
 static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, char **out_path)
 {
@@ -428,7 +418,9 @@ struct target *target_new(const char *name)
     strinit(target->out_dir, 128);
     target->name = strdup(name);
 
-    set_default_out_dir(&target->out_dir);
+    // Default target uses current working directory which may be changed by user compiler flags
+    // later (--work-dir).
+    strappend(target->out_dir, ".");
 
     // Setup some defaults.
     target->opt           = ASSEMBLY_OPT_DEBUG;

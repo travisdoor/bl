@@ -51,9 +51,12 @@ LPCWSTR      :: *C.ushort;
 LPCSTR       :: *C.char;
 LPSTR        :: *C.char;
 LPCTSTR      :: *C.uchar;
+PCSTR        :: *C.char;
+PCHAR        :: *C.char;
 HLOCAL       :: *C.uchar;
 UINT         :: C.uint;
 DWORD        :: C.uint;
+PDWORD       :: *DWORD;
 LPCCH        :: C.uchar;
 LPCWCH       :: C.ushort;
 LPBOOL       :: C.int;
@@ -67,7 +70,9 @@ LPDWORD      :: *DWORD;
 HANDLE       :: *C.uchar;
 HCURSOR      :: C.void_ptr;
 HINSTANCE    :: C.void_ptr;
-ULONG_PTR    :: *C.ulong;
+ULONG        :: C.ulong;
+ULONG_PTR    :: *ULONG;
+ULONG64      :: *s64;
 SIZE_T       :: C.ulong;
 PVOID        :: *C.uchar; 
 CHAR         :: C.uchar; 
@@ -83,6 +88,8 @@ PLONG        :: *LONG;
 WORD         :: C.ushort;
 LPARAM       :: LONG_PTR;
 WPARAM       :: UINT_PTR;
+DWORD64      :: s64;
+PDWORD64     :: *DWORD64;
 
 GENERIC_READ : u32 : 0x80000000;
 GENERIC_WRITE : u32 : 0x40000000;
@@ -189,6 +196,69 @@ IDC_SIZENS          :: cast(LPCSTR) (cast(ULONG_PTR) 32645);
 IDC_SIZEALL         :: cast(LPCSTR) (cast(ULONG_PTR) 32646);
 IDC_NO              :: cast(LPCSTR) (cast(ULONG_PTR) 32648);
 
+SYMOPT_CASE_INSENSITIVE           : DWORD : 0x00000001;
+SYMOPT_UNDNAME                    : DWORD : 0x00000002;
+SYMOPT_DEFERRED_LOADS             : DWORD : 0x00000004;
+SYMOPT_NO_CPP                     : DWORD : 0x00000008;
+SYMOPT_LOAD_LINES                 : DWORD : 0x00000010;
+SYMOPT_OMAP_FIND_NEAREST          : DWORD : 0x00000020;
+SYMOPT_LOAD_ANYTHING              : DWORD : 0x00000040;
+SYMOPT_IGNORE_CVREC               : DWORD : 0x00000080;
+SYMOPT_NO_UNQUALIFIED_LOADS       : DWORD : 0x00000100;
+SYMOPT_FAIL_CRITICAL_ERRORS       : DWORD : 0x00000200;
+SYMOPT_EXACT_SYMBOLS              : DWORD : 0x00000400;
+SYMOPT_ALLOW_ABSOLUTE_SYMBOLS     : DWORD : 0x00000800;
+SYMOPT_IGNORE_NT_SYMPATH          : DWORD : 0x00001000;
+SYMOPT_INCLUDE_32BIT_MODULES      : DWORD : 0x00002000;
+SYMOPT_PUBLICS_ONLY               : DWORD : 0x00004000;
+SYMOPT_NO_PUBLICS                 : DWORD : 0x00008000;
+SYMOPT_AUTO_PUBLICS               : DWORD : 0x00010000;
+SYMOPT_NO_IMAGE_SEARCH            : DWORD : 0x00020000;
+SYMOPT_SECURE                     : DWORD : 0x00040000;
+SYMOPT_NO_PROMPTS                 : DWORD : 0x00080000;
+SYMOPT_OVERWRITE                  : DWORD : 0x00100000;
+SYMOPT_IGNORE_IMAGEDIR            : DWORD : 0x00200000;
+SYMOPT_FLAT_DIRECTORY             : DWORD : 0x00400000;
+SYMOPT_FAVOR_COMPRESSED           : DWORD : 0x00800000;
+SYMOPT_ALLOW_ZERO_ADDRESS         : DWORD : 0x01000000;
+SYMOPT_DISABLE_SYMSRV_AUTODETECT  : DWORD : 0x02000000;
+SYMOPT_READONLY_CACHE             : DWORD : 0x04000000;
+SYMOPT_SYMPATH_LAST               : DWORD : 0x08000000;
+SYMOPT_DISABLE_FAST_SYMBOLS       : DWORD : 0x10000000;
+SYMOPT_DISABLE_SYMSRV_TIMEOUT     : DWORD : 0x20000000;
+SYMOPT_DISABLE_SRVSTAR_ON_STARTUP : DWORD : 0x40000000;
+SYMOPT_DEBUG                      : DWORD : 0x80000000;
+
+MAX_SYM_NAME : usize : 2000;
+
+SYMBOL_INFO :: struct {
+    SizeOfStruct: ULONG;
+    TypeIndex: ULONG;
+    Reserved: [2]ULONG64;
+    Index: ULONG;
+    Size: ULONG;
+    ModBase: ULONG64;
+    Flags: ULONG;
+    Value: ULONG64;
+    Address: ULONG64;
+    Register: ULONG;
+    Scope: ULONG;
+    Tag: ULONG;
+    NameLen: ULONG;
+    MaxNameLen: ULONG;
+    Name: [1]CHAR;
+}
+PSYMBOL_INFO :: *SYMBOL_INFO;
+
+IMAGEHLP_LINE64 :: struct {
+    SizeOfStruct: DWORD;
+    Key: PVOID;
+    LineNumber: DWORD;
+    FileName: PCHAR;
+    Address: DWORD64;
+}
+PIMAGEHLP_LINE64 :: *IMAGEHLP_LINE64;
+
 OPENFILENAMEA :: struct {
    lStructSize: DWORD;
    hwndOwner: HWND;
@@ -214,7 +284,6 @@ OPENFILENAMEA :: struct {
    dwReserved: DWORD;
    FlagsEx: DWORD;
 }
-
 LPOPENFILENAMEA :: *OPENFILENAMEA;
 
 FILE_NOTIFY_INFORMATION :: struct {
@@ -404,6 +473,7 @@ CreateThread :: fn (
 ) HANDLE #extern "CreateThread";
 
 GetCurrentThread :: fn () HANDLE #extern "GetCurrentThread";
+GetCurrentProcess :: fn () HANDLE #extern "GetCurrentProcess";
 TerminateThread :: fn (handle: HANDLE, exit_code: DWORD) BOOL #extern "TerminateThread";
 GetExitCodeThread :: fn (hThread: HANDLE, lpExitCode: LPDWORD) BOOL #extern "GetExitCodeThread";
 
@@ -456,3 +526,9 @@ GetOpenFileNameA :: fn (param1: LPOPENFILENAMEA) BOOL #extern "GetOpenFileNameA"
 FlushFileBuffers :: fn (hFile: HANDLE) BOOL #extern "FlushFileBuffers";
 GetStdHandle :: fn (nStdHandle: DWORD) HANDLE #extern "GetStdHandle";
 SetConsoleOutputCP :: fn (wCodePageID: UINT) BOOL #extern "SetConsoleOutputCP";
+SymSetOptions :: fn (SymOptions: DWORD) DWORD #extern "SymSetOptions";
+SymInitialize :: fn (hProcess: HANDLE, UserSearchPath: PCSTR, fInvadeProcess: BOOL) BOOL #extern "SymInitialize";
+SymCleanup :: fn (hProcess: HANDLE) BOOL #extern "SymCleanup";
+CaptureStackBackTrace :: fn (FramesToSkip: DWORD, FramesToCapture: DWORD, BackTrace: *PVOID, BackTraceHash: PDWORD) WORD #extern "RtlCaptureStackBackTrace";
+SymFromAddr :: fn (hProcess: HANDLE, Address: DWORD64, Displacement: PDWORD64, Symbol: PSYMBOL_INFO) BOOL #extern "SymFromAddr";
+SymGetLineFromAddr64 :: fn (hProcess: HANDLE, qwAddr: DWORD64, pdwDisplacement: PDWORD, Line64: PIMAGEHLP_LINE64) BOOL #extern "SymGetLineFromAddr64";

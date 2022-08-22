@@ -1,0 +1,10 @@
+#private
+
+call_location :: fn () #test {
+    foo();
+}
+
+foo :: fn (loc := #call_location) {
+    test_eq(loc.line, 4);
+    test_eq(loc.function, "call_location");
+}

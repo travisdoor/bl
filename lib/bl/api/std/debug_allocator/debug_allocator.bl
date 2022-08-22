@@ -62,6 +62,10 @@
 //! 
 //! !!! note
 //!     Debug allocator is thread safe.
+//!
+//! !!! note
+//!     Memory freed by this allocator is set to 0xdddddddd, if you see such a patern in the debugger, you
+//!     are probably trying to used already freed data.
 
 DebugAllocator :: struct #base Allocator {
     mutex: std.Mutex;
@@ -196,12 +200,17 @@ handler :: fn (dbgalloc: *DebugAllocator, operation: AllocOp, old_ptr: *u8, old_
             mem, err :: realloc(old_ptr, old_size, new_size, alignment, dbgalloc.allocator);
             if err { return mem, err; }
             add_allocation(dbgalloc, mem, new_size, alignment, file, line);
+            if old_ptr != mem {
+
+            }
             return mem, OK;
         }
         FREE {
             if old_ptr {
-                remove_allocation(dbgalloc, old_ptr);
+                previously_allocated_size :: remove_allocation(dbgalloc, old_ptr);
+                invalidate_memory(old_ptr, previously_allocated_size);
                 free(old_ptr, dbgalloc.allocator);
+
             }
         }
         default { panic(); }
@@ -238,4 +247,9 @@ remove_allocation :: fn (dbgalloc: *DebugAllocator, ptr: *u8) (size: usize, alig
     dbgalloc.total_allocated -= auto allocated_size;
     std.tbl_erase(&dbgalloc.alloc_table, ptr);
     return allocated_size, alignment;
+}
+
+invalidate_memory :: fn (ptr: *u8, size: usize) #inline {
+    if ptr == null || size == 0 { return; }
+    memset(ptr, 0xdd, size);
 }

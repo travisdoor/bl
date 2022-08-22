@@ -92,6 +92,18 @@ os_get_exec_path :: fn () string {
     return std.str_new(buf.ptr);
 }
 
+os_get_backtrace :: fn (skip_frames := 0, max_frame_count := 64) []CodeLocation {
+    // @Incomplete <2022-08-21 Sun>: Here we tried to use 'backtrace' from the C library, but is seems not
+    // working correctly. Documentation claims that '-rdynamic' linker flag must be used, but still, the
+    // resulting array does not contain any captured frames.
+    //
+    // We can eventually try to use some 3rd party solution (libunwind) or implement stack tracing internally
+    // in the compiler.
+
+    trace: [..]CodeLocation;
+    return trace;
+}
+
 __os_debug_break :: fn () #inline #compiler {
     // @Incomplete: I'm not sure what to do here.
     //_raise(_SIGTRAP);
@@ -111,6 +123,7 @@ __os_abort :: fn () #compiler {
 }
 
 __os_abort_default :: fn () {
+    if !IS_COMPTIME_RUN { print_backtrace(); }
     C.raise(C.SIGABRT);
 }
 
@@ -134,6 +147,7 @@ __os_start :: fn (argc: s64, argv: **u8, _: **u8) s32 #entry {
     if is_allocated {
         C.free(auto command_line_arguments.ptr);
     }
+    std.temporary_release();
     return out;
 }
 

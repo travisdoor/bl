@@ -2371,10 +2371,7 @@ void vm_terminate(struct virtual_machine *vm)
 
 void vm_print_backtrace(struct virtual_machine *vm)
 {
-    const char *sep =
-        "================================================================================";
-    builder_note("\n%s\nObtained backtrace:\n%s", sep, sep);
-
+    builder_note("\nBacktrace:");
     struct mir_instr *instr = vm->stack->pc;
     struct vm_frame  *fr    = vm->stack->ra;
     usize             n     = 0;

@@ -110,7 +110,8 @@ void doc_decl_entity(struct context *ctx, struct ast *decl)
 
     if (name[0] == '_') return;
 
-    if (text && strstr(text, "@INCOMPLETE")) {
+    // @Performance: we can do it better I guess.
+    if (text && (strstr(text, "@INCOMPLETE") || strstr(text, "@Incomplete") || strstr(text, "@incomplete"))) {
         builder_msg(MSG_WARN, 0, ident->location, CARET_WORD, "Found incomplete documentation!");
     }
 

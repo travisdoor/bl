@@ -5,11 +5,6 @@
 SRC_API_DIR :: "../../lib/bl/api";
 OUT_DIR :: "docs/modules";
 CONFIG_FILE :: "mkdocs.yml";
-IGNORE :: [3]string_view.{
-           "sdl2",
-           "glfw3",
-           "gl",
-          };
 
 working_directory: string_view;
 output_directory: string_view;
@@ -23,7 +18,7 @@ main :: fn () s32 {
     create_config_file();
 
     src_files := std.str_new(&default_temporary_allocator);
-    list_files_recursive(get_full_path(SRC_API_DIR), IGNORE, &src_files);
+    list_files_recursive(get_full_path(SRC_API_DIR), &src_files);
     err_cmd :: cmd("blc -doc --doc-out-dir=\"%\" %", output_directory, src_files);
     if err_cmd {
         print_err(err_cmd);
@@ -69,13 +64,18 @@ blc_ver :: fn () string_view #inline {
     return tprint("%.%.%", BLC_VER_MAJOR, BLC_VER_MINOR, BLC_VER_PATCH);
 }
 
-list_files_recursive :: fn (dirpath: string_view, ignore: []string_view, out: *string) {
+list_files_recursive :: fn (dirpath: string_view, out: *string) {
     using std;
 
     visitor :: fn (info: *std.Info, data: *string) Error {
         using std;
-        if info.is_directory { return OK; }
-        _, ext :: path_splitext(info.filename);
+        if info.is_directory  { return OK; }
+        if info.filename[0] == '_' { return OK; }
+        name, ext :: path_splitext(info.filename);
+        sub_extension: string_view;
+        if str_split_by_last(name, '.', null, &sub_extension) && str_match(sub_extension, "test") {
+            return OK;
+        }
         if str_match(ext, ".bl") {
             str_append(data, tprint("\"%\" ", info.filepath));
         }
@@ -118,29 +118,32 @@ CONFIG ::
     "    - compiler.md\n"
     "    - how-to.md\n"
     "    - Modules:\n"
-    "      - modules/a.md\n"
-    "      - modules/argparse.md\n"
-    "      - modules/array.md\n"
-    "      - modules/static_array.md\n"
-    "      - modules/bucket_array.md\n"
-    "      - modules/table.md\n"
-    "      - modules/pool.md\n"
-    "      - modules/buffer_allocator.md\n"
-    "      - modules/debug_allocator.md\n"
-    "      - modules/build.md\n"
-    "      - modules/debug.md\n"
-    "      - modules/dlib.md\n"
-    "      - modules/error.md\n"
-    "      - modules/fs.md\n"
-    "      - modules/glm.md\n"
-    "      - modules/io.md\n"
-    "      - modules/math.md\n"
-    "      - modules/memory.md\n"
-    "      - modules/print.md\n"
-    "      - modules/string.md\n"
-    "      - modules/thread.md\n"
-    "      - modules/sync.md\n"
-    "      - modules/test.md\n"
-    "      - modules/utils.md\n"
+    "      - std:\n"
+    "        - modules/a.md\n"
+    "        - modules/array.md\n"
+    "        - modules/static_array.md\n"
+    "        - modules/bucket_array.md\n"
+    "        - modules/table.md\n"
+    "        - modules/pool.md\n"
+    "        - modules/buffer_allocator.md\n"
+    "        - modules/debug_allocator.md\n"
+    "        - modules/build.md\n"
+    "        - modules/debug.md\n"
+    "        - modules/dlib.md\n"
+    "        - modules/error.md\n"
+    "        - modules/fs.md\n"
+    "        - modules/io.md\n"
+    "        - modules/math.md\n"
+    "        - modules/memory.md\n"
+    "        - modules/print.md\n"
+    "        - modules/string.md\n"
+    "        - modules/thread.md\n"
+    "        - modules/sync.md\n"
+    "        - modules/test.md\n"
+    "        - modules/utils.md\n"
+    "      - extra:\n"
+    "        - modules/argparse.md\n"
+    "        - modules/draw.md\n"
+    "        - modules/glm.md\n"
     "      - misc/os.md\n"
 ;

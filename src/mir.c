@@ -7465,23 +7465,31 @@ struct result analyze_instr_call_loc(struct context *ctx, struct mir_instr_call_
                                           });
     vm_alloc_global(ctx->vm, ctx->assembly, var);
 
-    vm_stack_ptr_t   dest           = vm_read_var(ctx->vm, var);
-    struct mir_type *dest_file_type = mir_get_struct_elem_type(type, 0);
-    vm_stack_ptr_t   dest_file      = vm_get_struct_elem_ptr(ctx->assembly, type, dest, 0);
-    struct mir_type *dest_line_type = mir_get_struct_elem_type(type, 1);
-    vm_stack_ptr_t   dest_line      = vm_get_struct_elem_ptr(ctx->assembly, type, dest, 1);
-    struct mir_type *dest_hash_type = mir_get_struct_elem_type(type, 2);
-    vm_stack_ptr_t   dest_hash      = vm_get_struct_elem_ptr(ctx->assembly, type, dest, 2);
+    vm_stack_ptr_t   dest               = vm_read_var(ctx->vm, var);
+    struct mir_type *dest_file_type     = mir_get_struct_elem_type(type, 0);
+    vm_stack_ptr_t   dest_file          = vm_get_struct_elem_ptr(ctx->assembly, type, dest, 0);
+    struct mir_type *dest_line_type     = mir_get_struct_elem_type(type, 1);
+    vm_stack_ptr_t   dest_line          = vm_get_struct_elem_ptr(ctx->assembly, type, dest, 1);
+    struct mir_type *dest_function_type = mir_get_struct_elem_type(type, 2);
+    vm_stack_ptr_t   dest_function      = vm_get_struct_elem_ptr(ctx->assembly, type, dest, 2);
+    struct mir_type *dest_hash_type     = mir_get_struct_elem_type(type, 3);
+    vm_stack_ptr_t   dest_hash          = vm_get_struct_elem_ptr(ctx->assembly, type, dest, 3);
 
     const char *filepath = loc->call_location->unit->filepath;
     bassert(filepath);
-
+    const struct mir_fn *owner_fn = instr_owner_fn(&loc->base);
+    loc->function_name            = "";
+    if (owner_fn) {
+        loc->function_name = owner_fn->full_name;
+    }
     char *str_hash = tstr();
     strprint(str_hash, "%s%d", filepath, loc->call_location->line);
     const hash_t hash = strhash(str_hash);
     put_tstr(str_hash);
 
     vm_write_string(ctx->vm, dest_file_type, dest_file, make_str_from_c(filepath));
+    vm_write_string(
+        ctx->vm, dest_function_type, dest_function, make_str_from_c(loc->function_name));
     vm_write_int(dest_line_type, dest_line, (u64)loc->call_location->line);
     vm_write_int(dest_hash_type, dest_hash, (u64)hash);
 

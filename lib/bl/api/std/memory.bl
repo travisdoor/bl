@@ -295,20 +295,21 @@ align_ptr_up :: fn (p: *u8, alignment: usize) (p: *u8, adjustment: usize)
 ///
 /// !!! note
 ///     Zero initialization of allocated memory block can be expensive in case of large number of elements.
-alloc_slice :: fn (slice: *[]?T, n: s64, zero_initialized := true, allocator: *Allocator = null, loc := #call_location) {
+alloc_slice :: fn (slice: *[]?T, n: s64, zero_initialized := true, allocator: *Allocator = null, loc := #call_location) Error {
     if n < 0 { panic("Attempt to allocate % elements in slice!", n); }
     if n == 0  {
         slice.ptr = null;
         slice.len = 0;
-        return;
+        return OK;
     }
     elem_size :: sizeof(T);
     bytes :: elem_size * auto n;
     mem, err :: alloc(bytes, alignof(T), allocator, loc);
-    if err { panic(err); }
+    if err { return err; }
     slice.ptr = auto mem;
     slice.len = n;
     if zero_initialized { zeromem(auto slice.ptr, bytes); }
+    return OK;
 }
 
 /// Release slice memory allocated by [alloc_slice](#alloc_slice) call.
@@ -355,18 +356,23 @@ slice_range :: fn (slice: []?T, start: s64, end: s64 = -1) []T #inline {
 /// !!! note
 ///     Call this method i.e. in every event loop (update) iteration.
 temporary_reset :: fn () #inline {
+    // @Incomplete: use allocator from application context!!!
+    // @Incomplete: use allocator from application context!!!
+    // @Incomplete: use allocator from application context!!!
     std.pool_reset(&temporary_pool);
 }
 
-/// Release all memory allocated by temporary allocator, this method is supposed to be called
-/// at exit of a program or thread.
+/// Release all memory allocated by temporary allocator.
 ///
 /// !!! warning
 ///     All resources previously allocated by this allocator became invalid after release.
 ///
 /// !!! note
-///     Call this method before main returns.
+///     This method is implicitly called at exit of executable (after main).
 temporary_release :: fn () #inline {
+    // @Incomplete: use allocator from application context!!!
+    // @Incomplete: use allocator from application context!!!
+    // @Incomplete: use allocator from application context!!!
     std.pool_release(&temporary_pool);
 }
 

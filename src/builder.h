@@ -90,17 +90,14 @@ struct location;
 void builder_init(const struct builder_options *options, const char *exec_dir);
 void builder_terminate(void);
 // Return zero terminated list of supported target triples. Must be disposed by bfree.
-char      **builder_get_supported_targets(void);
-const char *builder_get_lib_dir(void);
-const char *builder_get_exec_dir(void);
-bool        builder_load_config(const char *filepath);
-
-#define builder_add_target(name) _builder_add_target(name, false)
-#define builder_add_default_target(name) _builder_add_target(name, true)
-struct target *_builder_add_target(const char *name, bool is_default);
-
-s32 builder_compile_all(void);
-s32 builder_compile(const struct target *target);
+char         **builder_get_supported_targets(void);
+const char    *builder_get_lib_dir(void);
+const char    *builder_get_exec_dir(void);
+bool           builder_load_config(const char *filepath);
+struct target *builder_add_target(const char *name);
+struct target *builder_add_default_target(const char *name);
+s32            builder_compile_all(void);
+s32            builder_compile(const struct target *target);
 
 // Submit new unit for async compilation, in case no-jobs flag is set, this function does nothing.
 void builder_async_submit_unit(struct unit *unit);

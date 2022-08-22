@@ -1,0 +1,15 @@
+version: 9
+
+x86_64-pc-windows-msvc:
+  src: "_gl.win32.bl"
+  linker_opt: "opengl32.lib"
+
+x86_64-pc-linux-gnu:
+  src: "_gl.posix.bl"
+  linker_opt: "-lGL"
+
+x86_64-apple-darwin:
+  src: "_gl.posix.bl"
+
+arm64-apple-darwin:
+  src: "_gl.posix.bl"
