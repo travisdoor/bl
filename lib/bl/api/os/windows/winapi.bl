@@ -595,6 +595,61 @@ RECT :: struct {
     bottom: LONG;
 }
 
+PFD_TYPE_RGBA             : u32 : 0;
+PFD_TYPE_COLORINDEX       : u32 : 1;
+PFD_MAIN_PLANE            : u32 : 0;
+PFD_OVERLAY_PLANE         : u32 : 1;
+PFD_UNDERLAY_PLANE        : u32 : -1;
+PFD_DOUBLEBUFFER          : u32 : 0x00000001;
+PFD_STEREO                : u32 : 0x00000002;
+PFD_DRAW_TO_WINDOW        : u32 : 0x00000004;
+PFD_DRAW_TO_BITMAP        : u32 : 0x00000008;
+PFD_SUPPORT_GDI           : u32 : 0x00000010;
+PFD_SUPPORT_OPENGL        : u32 : 0x00000020;
+PFD_GENERIC_FORMAT        : u32 : 0x00000040;
+PFD_NEED_PALETTE          : u32 : 0x00000080;
+PFD_NEED_SYSTEM_PALETTE   : u32 : 0x00000100;
+PFD_SWAP_EXCHANGE         : u32 : 0x00000200;
+PFD_SWAP_COPY             : u32 : 0x00000400;
+PFD_SWAP_LAYER_BUFFERS    : u32 : 0x00000800;
+PFD_GENERIC_ACCELERATED   : u32 : 0x00001000;
+PFD_SUPPORT_DIRECTDRAW    : u32 : 0x00002000;
+PFD_DIRECT3D_ACCELERATED  : u32 : 0x00004000;
+PFD_SUPPORT_COMPOSITION   : u32 : 0x00008000;
+PFD_DEPTH_DONTCARE        : u32 : 0x20000000;
+PFD_DOUBLEBUFFER_DONTCARE : u32 : 0x40000000;
+PFD_STEREO_DONTCARE       : u32 : 0x80000000;
+
+
+PIXELFORMATDESCRIPTOR :: struct {
+    nSize: WORD;
+    nVersion: WORD;
+    dwFlags: DWORD;
+    iPixelType: BYTE;
+    cColorBits: BYTE;
+    cRedBits: BYTE;
+    cRedShift: BYTE;
+    cGreenBits: BYTE;
+    cGreenShift: BYTE;
+    cBlueBits: BYTE;
+    cBlueShift: BYTE;
+    cAlphaBits: BYTE;
+    cAlphaShift: BYTE;
+    cAccumBits: BYTE;
+    cAccumRedBits: BYTE;
+    cAccumGreenBits: BYTE;
+    cAccumBlueBits: BYTE;
+    cAccumAlphaBits: BYTE;
+    cDepthBits: BYTE;
+    cStencilBits: BYTE;
+    cAuxBuffers: BYTE;
+    iLayerType: BYTE;
+    bReserved: BYTE;
+    dwLayerMask: DWORD;
+    dwVisibleMask: DWORD;
+    dwDamageMask: DWORD;
+};
+
 ReleaseMutex :: fn (hMutex: HANDLE) BOOL #extern "ReleaseMutex";
 GetTickCount :: fn () DWORD #extern "GetTickCount";
 QueryPerformanceCounter :: fn (lpPerformanceCount: *LARGE_INTEGER) BOOL #extern "QueryPerformanceCounter";
@@ -654,3 +709,5 @@ TranslateMessage :: fn (lpMsg: *MSG) BOOL #extern "TranslateMessage";
 DispatchMessageA :: fn (lpMsg: *MSG) BOOL #extern "DispatchMessageA";
 UpdateWindow :: fn (hWnd: HWND) BOOL #extern "UpdateWindow";
 PostQuitMessage :: fn (nExitCode: C.int) #extern "PostQuitMessage";
+GetDC :: fn (hWnd: HWND) HDC #extern "GetDC";
+ChoosePixelFormat :: fn (hdc: HDC, ppfd: *PIXELFORMATDESCRIPTOR) C.int #extern "ChoosePixelFormat";
