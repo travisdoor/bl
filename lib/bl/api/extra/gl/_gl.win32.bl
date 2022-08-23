@@ -101,14 +101,14 @@ __gl_get_proc :: fn (proc_name: string_view) *u8 {
     // @Performance: open for each symbol???
     module, err1 :: std.library_open("opengl32");
     if err1 {
-        panic("GL Error: %", err1);
+        panic("[GL]: %", err1);
         return null;
     }
     defer std.library_close(module);
 
     sym, err2 :: std.library_get_symbol(module, proc_name);
     if err2 {
-        print_err("GL Error: %", err2);
+        print_err("[GL]: % (%)", err2, proc_name);
         return null;
     }
     return sym;
