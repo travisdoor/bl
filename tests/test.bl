@@ -1,54 +1,16 @@
-// #scope glwindow
+#import "extra/glwindow"
 
 main :: fn () s32 {
     using win32;
-    window_class :: WNDCLASSA.{
-        style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC,
-        lpfnWndProc = &window_callback,
-        hCursor = LoadCursorA(null, IDC_ARROW),
-        lpszClassName = std.strtoc("GlWindowClass"),
-    };
-    if RegisterClassA(&window_class) == 0 {
-        panic("Failed to register window.");
-    }
 
-    fake_window := CreateWindowExA(
-        WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
-        window_class.lpszClassName,
-        std.strtoc("OpenGL"),
-        WS_OVERLAPPEDWINDOW,
-        0, 0,
-        1, 1,
-        null, null, null, null);
+    opt := glwindow.make_default_create_window_options();
+    opt.title  = "My Window";
+    opt.width  = 1024;
+    opt.height = 768;
 
-    if !window {
-        panic("Failed to create window with error.");
-    }
-
-    fake_context :: GetDC(fake_window);
-    fake_pixel_descriptor :: PIXELFORMATDESCRIPTOR.{
-        nSize = sizeof(PIXELFORMATDESCRIPTOR);
-        nVersion = 1;
-        dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
-        iPixelType = PFD_TYPE_RGBA;
-        cColorBits = 32;
-        cAlphaBits = 8;
-        cDepthBits = 24;
-    };
-
-
-    fake_pixel_format :: ChoosePixelFormat(fake_context, &fake_pixel_descriptor);
-    if fake_pixel_format == 0 {
-        panic("Cannot setup pixel format.");
-    }
-
-
-    /// @Incomplete
-    rect  :: RECT.{ 0, 0, 800, 600 };
-
-
-    ShowWindow(window, TRUE);
-    UpdateWindow(window);
+    window, err :: glwindow.create_window(&opt);
+    if err { panic(err); }
+    defer glwindow.destroy_window(window);
 
     is_running := true;
     loop is_running {
@@ -61,19 +23,13 @@ main :: fn () s32 {
             TranslateMessage(&msg);
             DispatchMessageA(&msg);
         }
-    }
-    return 0;
-}
 
-window_callback :: fn (window: win32.HWND, msg: win32.UINT, wparam: win32.WPARAM, lparam: win32.LPARAM) *s32 {
-    using win32;
-    switch msg {
-        WM_DESTROY {
-            PostQuitMessage(0);
-        }
-        default {
-            return win32.DefWindowProcA(window, msg, wparam, lparam);
-        }
+        gl.ClearColor(0.f, 1.f, 1.f, 1.f);
+        gl.Clear(GL_COLOR_BUFFER_BIT);
+
+        glwindow.swap_buffers(window);
     }
-    return null; // null means handled
+
+    print("DONE\n");
+    return 0;
 }

@@ -1,14 +1,104 @@
 #load "gl.bl"
 #import "std/dlib"
 
-__gl_get_proc :: fn (proc_name: string) *u8 {
-    wglGetProcAddress :: fn (procName: *u8) *u8 #extern;
+WGL_NUMBER_PIXEL_FORMATS_ARB     :: 0x2000;
+WGL_DRAW_TO_WINDOW_ARB           :: 0x2001;
+WGL_DRAW_TO_BITMAP_ARB           :: 0x2002;
+WGL_ACCELERATION_ARB             :: 0x2003;
+WGL_NEED_PALETTE_ARB             :: 0x2004;
+WGL_NEED_SYSTEM_PALETTE_ARB      :: 0x2005;
+WGL_SWAP_LAYER_BUFFERS_ARB       :: 0x2006;
+WGL_SWAP_METHOD_ARB              :: 0x2007;
+WGL_NUMBER_OVERLAYS_ARB          :: 0x2008;
+WGL_NUMBER_UNDERLAYS_ARB         :: 0x2009;
+WGL_TRANSPARENT_ARB              :: 0x200A;
+WGL_TRANSPARENT_RED_VALUE_ARB    :: 0x2037;
+WGL_TRANSPARENT_GREEN_VALUE_ARB  :: 0x2038;
+WGL_TRANSPARENT_BLUE_VALUE_ARB   :: 0x2039;
+WGL_TRANSPARENT_ALPHA_VALUE_ARB  :: 0x203A;
+WGL_TRANSPARENT_INDEX_VALUE_ARB  :: 0x203B;
+WGL_SHARE_DEPTH_ARB              :: 0x200C;
+WGL_SHARE_STENCIL_ARB            :: 0x200D;
+WGL_SHARE_ACCUM_ARB              :: 0x200E;
+WGL_SUPPORT_GDI_ARB              :: 0x200F;
+WGL_SUPPORT_OPENGL_ARB           :: 0x2010;
+WGL_DOUBLE_BUFFER_ARB            :: 0x2011;
+WGL_STEREO_ARB                   :: 0x2012;
+WGL_PIXEL_TYPE_ARB               :: 0x2013;
+WGL_COLOR_BITS_ARB               :: 0x2014;
+WGL_RED_BITS_ARB                 :: 0x2015;
+WGL_RED_SHIFT_ARB                :: 0x2016;
+WGL_GREEN_BITS_ARB               :: 0x2017;
+WGL_GREEN_SHIFT_ARB              :: 0x2018;
+WGL_BLUE_BITS_ARB                :: 0x2019;
+WGL_BLUE_SHIFT_ARB               :: 0x201A;
+WGL_ALPHA_BITS_ARB               :: 0x201B;
+WGL_ALPHA_SHIFT_ARB              :: 0x201C;
+WGL_ACCUM_BITS_ARB               :: 0x201D;
+WGL_ACCUM_RED_BITS_ARB           :: 0x201E;
+WGL_ACCUM_GREEN_BITS_ARB         :: 0x201F;
+WGL_ACCUM_BLUE_BITS_ARB          :: 0x2020;
+WGL_ACCUM_ALPHA_BITS_ARB         :: 0x2021;
+WGL_DEPTH_BITS_ARB               :: 0x2022;
+WGL_STENCIL_BITS_ARB             :: 0x2023;
+WGL_AUX_BUFFERS_ARB              :: 0x2024;
+WGL_SAMPLE_BUFFERS_ARB           :: 0x2041;
+WGL_SAMPLES_ARB                  :: 0x2042;
+WGL_NO_ACCELERATION_ARB          :: 0x2025;
+WGL_GENERIC_ACCELERATION_ARB     :: 0x2026;
+WGL_FULL_ACCELERATION_ARB        :: 0x2027;
+WGL_SWAP_EXCHANGE_ARB            :: 0x2028;
+WGL_SWAP_COPY_ARB                :: 0x2029;
+WGL_SWAP_UNDEFINED_ARB           :: 0x202A;
+WGL_TYPE_RGBA_ARB                :: 0x202B;
+WGL_TYPE_COLORINDEX_ARB          :: 0x202C;
 
+WGL_CONTEXT_MAJOR_VERSION_ARB             :: 0x2091;
+WGL_CONTEXT_MINOR_VERSION_ARB             :: 0x2092;
+WGL_CONTEXT_LAYER_PLANE_ARB               :: 0x2093;
+WGL_CONTEXT_FLAGS_ARB                     :: 0x2094;
+WGL_CONTEXT_PROFILE_MASK_ARB              :: 0x9126;
+WGL_CONTEXT_DEBUG_BIT_ARB                 :: 0x0001;
+WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB    :: 0x0002;
+WGL_CONTEXT_CORE_PROFILE_BIT_ARB          :: 0x00000001;
+WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB :: 0x00000002;
+
+wglCopyContext :: fn (_: win32.HGLRC, _: win32.HGLRC, _: win32.UINT) win32.BOOL #extern "wglCopyContext";
+wglCreateContext :: fn (_: win32.HDC) win32.HGLRC #extern "wglCreateContext";
+wglCreateLayerContext :: fn (_: win32.HDC, _: C.int) win32.HGLRC #extern "wglCreateLayerContext";
+wglDeleteContext :: fn (_: win32.HGLRC) win32.BOOL #extern "wglDeleteContext";
+wglGetCurrentContext :: fn () win32.HGLRC #extern "wglGetCurrentContext";
+wglGetCurrentDC :: fn () win32.HDC #extern "wglGetCurrentDC";
+wglGetProcAddress :: fn (_: win32.LPCSTR) win32.PROC #extern "wglGetProcAddress";
+wglMakeCurrent :: fn (_: win32.HDC, _: win32.HGLRC) win32.BOOL #extern "wglMakeCurrent";
+wglShareLists :: fn (_: win32.HGLRC, _: win32.HGLRC) win32.BOOL #extern "wglShareLists";
+wglUseFontBitmapsA :: fn (_: win32.HDC, _: win32.DWORD, _: win32.DWORD, _: win32.DWORD) win32.BOOL #extern "wglUseFontBitmapsA";
+wglUseFontBitmapsW :: fn (_: win32.HDC, _: win32.DWORD, _: win32.DWORD, _: win32.DWORD) win32.BOOL #extern "wglUseFontBitmapsW";
+
+WGL :: struct {
+    using win32;
+
+    ChoosePixelFormatARB: *fn (hdc: HDC, piAttribIList: *C.int, pfAttribFList: *f32, nMaxFormats: UINT, piFormats: *C.int, nNumFormats: *UINT) BOOL;
+    CreateContextAttribsARB: *fn (hDC: HDC, hshareContext: HGLRC, attribList: *C.int) HGLRC;
+}
+
+wgl: WGL;
+
+// Initialize internal `__wgl` global structure containing pointers to loaded
+wgl_init :: fn () {
+    wgl.ChoosePixelFormatARB    = auto __gl_get_proc("wglChoosePixelFormatARB");
+    wgl.CreateContextAttribsARB = auto __gl_get_proc("wglCreateContextAttribsARB");
+}
+
+__gl_get_proc :: fn (proc_name: string_view) *u8 {
     if proc_name.len == 0 { return null; }
-    p := wglGetProcAddress(proc_name.ptr);
+    p := wglGetProcAddress(std.strtoc(proc_name));
     ip :: cast(s64) p;
     if ip != 0 && ip != 0x1 && ip != 0x2 && ip != 0x3 { return p; }
 
+    // @Performance: open for each symbol???
+    // @Performance: open for each symbol???
+    // @Performance: open for each symbol???
     module, err1 :: std.library_open("opengl32");
     if err1 {
         panic("GL Error: %", err1);

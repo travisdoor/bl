@@ -80,8 +80,6 @@ LONG_PTR     :: *C.long;
 UINT_PTR     :: *C.uint;
 LARGE_INTEGER :: C.longlong;
 PLARGE_INTEGER :: *LARGE_INTEGER;
-HGLOBAL      :: C.void_ptr;
-HWND         :: C.void_ptr;
 LONG         :: C.long;
 LONGLONG     :: C.longlong;
 PLONG        :: *LONG;
@@ -91,6 +89,13 @@ WPARAM       :: UINT_PTR;
 LRESULT      :: LONG_PTR;
 DWORD64      :: s64;
 PDWORD64     :: *DWORD64;
+BYTE         :: u8;
+PROC         :: *u8;
+
+HGLOBAL      :: C.void_ptr;
+HWND         :: C.void_ptr;
+HDC          :: C.void_ptr;
+HGLRC        :: C.void_ptr;
 
 GENERIC_READ : u32 : 0x80000000;
 GENERIC_WRITE : u32 : 0x40000000;
@@ -309,6 +314,21 @@ WNDCLASSA :: struct {
     hbrBackground: HBRUSH;
     lpszMenuName: LPCSTR;
     lpszClassName: LPCSTR;
+}
+
+WNDCLASSEXA :: struct {
+    cbSize: UINT;
+    style: UINT;
+    lpfnWndProc: WNDPROC;
+    cbClsExtra: C.int;
+    cbWndExtra: C.int;
+    hInstance: HINSTANCE;
+    hIcon: HICON;
+    hCursor: HCURSOR;
+    hbrBackground: HBRUSH;
+    lpszMenuName: LPCSTR;
+    lpszClassName: LPCSTR;
+    hIconSm: HICON;
 }
 
 SYMBOL_INFO :: struct {
@@ -587,6 +607,16 @@ WM_MOVE     : u32 : 0x0003;
 WM_SIZE     : u32 : 0x0005;
 WM_ACTIVATE : u32 : 0x0006;
 WM_QUIT     : u32 : 0x0012;
+WM_SETFOCUS      : u32 :  0x0007;
+WM_KILLFOCUS     : u32 :  0x0008;
+WM_ENABLE        : u32 :  0x000A;
+WM_SETREDRAW     : u32 :  0x000B;
+WM_SETTEXT       : u32 :  0x000C;
+WM_GETTEXT       : u32 :  0x000D;
+WM_GETTEXTLENGTH : u32 :  0x000E;
+WM_PAINT         : u32 :  0x000F;
+WM_CLOSE         : u32 :  0x0010;
+
 
 RECT :: struct {
     left: LONG;
@@ -649,6 +679,14 @@ PIXELFORMATDESCRIPTOR :: struct {
     dwVisibleMask: DWORD;
     dwDamageMask: DWORD;
 };
+LPPIXELFORMATDESCRIPTOR :: *PIXELFORMATDESCRIPTOR;
+
+MB_OK               : u32 : 0x00000000;
+MB_OKCANCEL         : u32 : 0x00000001;
+MB_ABORTRETRYIGNORE : u32 : 0x00000002;
+MB_YESNOCANCEL      : u32 : 0x00000003;
+MB_YESNO            : u32 : 0x00000004;
+MB_RETRYCANCEL      : u32 : 0x00000005;
 
 ReleaseMutex :: fn (hMutex: HANDLE) BOOL #extern "ReleaseMutex";
 GetTickCount :: fn () DWORD #extern "GetTickCount";
@@ -711,3 +749,14 @@ UpdateWindow :: fn (hWnd: HWND) BOOL #extern "UpdateWindow";
 PostQuitMessage :: fn (nExitCode: C.int) #extern "PostQuitMessage";
 GetDC :: fn (hWnd: HWND) HDC #extern "GetDC";
 ChoosePixelFormat :: fn (hdc: HDC, ppfd: *PIXELFORMATDESCRIPTOR) C.int #extern "ChoosePixelFormat";
+RegisterClassExA :: fn (lpWndClass: *WNDCLASSEXA) WORD #extern "RegisterClassExA";
+CreateWindowA :: fn (lpClassName: LPCSTR, lpWindowName: LPCSTR, dwStyle: DWORD, X: C.int, Y: C.int, nWidth: C.int, nHeight: C.int, hWndParent: HWND, hMenu: HMENU, hInstance: HINSTANCE, lpParam: LPVOID) HWND #inline {
+    return CreateWindowExA(0, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
+}
+SetPixelFormat :: fn (hdc: HDC, format: C.int, ppfd: *PIXELFORMATDESCRIPTOR) BOOL #extern "SetPixelFormat";
+DescribePixelFormat :: fn (hdc: HDC, iPixelFormat: C.int, nBytes: UINT, ppfd: LPPIXELFORMATDESCRIPTOR) C.int #extern "DescribePixelFormat";
+ReleaseDC :: fn (hWnd: HWND, hDC: HDC) C.int #extern "ReleaseDC";
+DestroyWindow :: fn (hWnd: HWND) BOOL #extern "DestroyWindow";
+SetWindowTextA :: fn (hWnd: HWND, lpString: LPCSTR) BOOL #extern "SetWindowText";
+SwapBuffers :: fn (context: HDC) BOOL #extern "SwapBuffers";
+MessageBoxA :: fn (hWnd: HWND, lpText: LPCSTR, lpCaption: LPCSTR, uType: UINT) C.int #extern "MessageBoxA";

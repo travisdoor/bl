@@ -1,0 +1,203 @@
+
+#import "extra/gl"
+
+#scope glwindow
+
+//! # GLWindow
+//!
+//! `#import "extra/glwindow"`
+//!
+//! !!! warning
+//!     This module is currently available only for Windows.
+
+Window :: win32.HWND;
+
+/// Initialization window options. Use [make_default_create_window_options](#glwindowmake_default_create_window_options) to
+/// create default options.
+CreateWindowOptions :: struct {
+    /// Window title text shown in the title bar.
+    title: string_view;
+    /// Window width in pixels. (Must be greater than 0.)
+    width: s32;
+    /// Window height in pixels. (Must be greater than 0.)
+    height: s32;
+    /// Window initial X position in pixels.
+    position_x: s32;
+    /// Window initial Y position in pixels.
+    position_y: s32;
+    /// Minimal supported OpenGL major version.
+    gl_minimal_major_version: s32;
+    /// Minimal supported OpenGL minor version.
+    gl_minimal_minor_version: s32;
+
+    // @Incomplete: pixel formats, multisampling
+}
+
+/// Creates instance of default [CreateWindowOptions](#drawcreatewindowoptions)
+make_default_create_window_options :: fn () CreateWindowOptions #inline {
+    return CreateWindowOptions.{
+        title                    = "OpenGL Window",
+        width                    = 800,
+        height                   = 600,
+        position_x               = win32.CW_USEDEFAULT,
+        position_y               = win32.CW_USEDEFAULT,
+        gl_minimal_major_version = 3,
+        gl_minimal_minor_version = 3,
+    };
+}
+
+/// Create new instance of window with OpenGL buffer initialized.
+create_window :: fn (options: *CreateWindowOptions) (Window, Error) {
+    using win32;
+    assert(options.width * options.height > 0, "Invalid window size requested!");
+
+    window_class :: WNDCLASSEXA.{
+        cbSize        = auto sizeof(WNDCLASSEXA),
+        style         = CS_HREDRAW | CS_VREDRAW | CS_OWNDC,
+        lpfnWndProc   = &window_callback,
+        hCursor       = LoadCursorA(null, IDC_ARROW),
+        lpszClassName = std.strtoc("GlWindowClass"),
+    };
+    if RegisterClassExA(&window_class) == 0 {
+        return null, error("Failed to register window.");
+    }
+
+    fake_window := CreateWindowA(
+        window_class.lpszClassName,
+        std.strtoc("Fake"),
+        WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
+        0, 0,
+        1, 1,
+        null, null, null, null);
+
+    if !fake_window {
+        return null, error("Failed to create window.");
+    }
+
+    fake_device_context :: GetDC(fake_window);
+    fake_pixel_format_descriptor :: PIXELFORMATDESCRIPTOR.{
+        nSize = auto sizeof(PIXELFORMATDESCRIPTOR),
+        nVersion = 1,
+        dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
+        iPixelType = auto PFD_TYPE_RGBA,
+        cColorBits = 32,
+        cAlphaBits = 8,
+        cDepthBits = 24,
+    };
+
+    fake_pixel_format :: ChoosePixelFormat(fake_device_context, &fake_pixel_format_descriptor);
+    if fake_pixel_format == 0 {
+        return null, error("Cannot setup pixel format.");
+    }
+
+    if SetPixelFormat(fake_device_context, fake_pixel_format, &fake_pixel_format_descriptor) == 0 {
+        return null, error("Cannot setup pixel format.");
+    }
+
+    fake_render_context :: wglCreateContext(fake_device_context);
+    if !fake_render_context {
+        return null, error("Cannot create OpenGL render context.");
+    }
+    if wglMakeCurrent(fake_device_context, fake_render_context) == 0 {
+        return null, error("Cannot make current OpenGL render context.");
+    }
+
+    wgl_init();
+
+    window := CreateWindowA(
+        window_class.lpszClassName,
+        std.strtoc(options.title),
+        WS_CAPTION | WS_SYSMENU | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
+        options.position_x, options.position_y,
+        options.width, options.height,
+        null, null, null, null);
+
+    if !window {
+        return null, error("Failed to create window.");
+    }
+
+    device_context :: GetDC(window);
+
+    // @Incomplete: Those things should be configurable.
+    pixel_attributes :: [23]s32.{
+        WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
+        WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
+        WGL_DOUBLE_BUFFER_ARB, GL_TRUE,
+        WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB,
+        WGL_ACCELERATION_ARB, WGL_FULL_ACCELERATION_ARB,
+        WGL_COLOR_BITS_ARB, 32,
+        WGL_ALPHA_BITS_ARB, 8,
+        WGL_DEPTH_BITS_ARB, 24,
+        WGL_STENCIL_BITS_ARB, 8,
+        WGL_SAMPLE_BUFFERS_ARB, GL_TRUE,
+        WGL_SAMPLES_ARB, 4,
+        0
+    };
+
+    pixel_format_id: s32;
+    num_formats: u32;
+    status :: wgl.ChoosePixelFormatARB(device_context, pixel_attributes.ptr, null, 1, &pixel_format_id, &num_formats);
+    if status == 0 || num_formats == 0 {
+        return null, error("Cannot choose pixel format.");
+    }
+
+    pixel_format_descriptor: PIXELFORMATDESCRIPTOR;
+    DescribePixelFormat(device_context, pixel_format_id, auto sizeof(pixel_format_descriptor), &pixel_format_descriptor);
+    SetPixelFormat(device_context, pixel_format_id, &pixel_format_descriptor);
+
+    context_attributes :: [7]s32.{
+        WGL_CONTEXT_MAJOR_VERSION_ARB, options.gl_minimal_major_version,
+        WGL_CONTEXT_MINOR_VERSION_ARB, options.gl_minimal_minor_version,
+        WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
+        0
+    };
+
+    render_context :: wgl.CreateContextAttribsARB(device_context, null, context_attributes.ptr);
+    if !render_context {
+        return null, error("Cannot create render context, requested minimal OpenGL version is: %.%. (The version is not supported on current system or it's missing from the options.)", options.gl_minimal_major_version, options.gl_minimal_minor_version);
+    }
+
+    wglMakeCurrent(null, null);
+    wglDeleteContext(fake_render_context);
+    ReleaseDC(fake_window, fake_device_context);
+    DestroyWindow(fake_window);
+    if wglMakeCurrent(device_context, render_context) == 0 {
+        return null, error("Cannot make current render context.");
+    }
+
+    wgl_init(); // Just to be sure we have correct function pointers with a new context.
+    gl_init();
+
+    ShowWindow(window, 1);
+    return window, OK;
+}
+
+/// Destroy window created by [create_window](#drawcreate_window).
+destroy_window :: fn (window: Window) {
+    using win32;
+    if !window { return; }
+    DestroyWindow(window);
+    gl_terminate();
+}
+
+/// Swaps current buffers (presents changes to the window's OpenGL buffer).
+swap_buffers :: fn (window: Window) #inline {
+    using win32;
+    assert(window);
+    SwapBuffers(GetDC(window));
+}
+
+#private
+
+window_callback :: fn (window: win32.HWND, msg: win32.UINT, wparam: win32.WPARAM, lparam: win32.LPARAM) *s32 {
+    using win32;
+    switch msg {
+        WM_CLOSE {
+            PostQuitMessage(0);
+        }
+        default {
+            return win32.DefWindowProcA(window, msg, wparam, lparam);
+        }
+    }
+    return null; // null means handled
+}
