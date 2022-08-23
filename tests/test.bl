@@ -12,19 +12,40 @@ main :: fn () s32 {
         panic("Failed to register window.");
     }
 
-    rect  :: RECT.{ 0, 0, 800, 600 };
-
-    window := CreateWindowExA(
-        WS_EX_CLIENTEDGE,
+    fake_window := CreateWindowExA(
+        WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
         window_class.lpszClassName,
         std.strtoc("OpenGL"),
         WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT, CW_USEDEFAULT,
-        rect.right-rect.left, rect.bottom-rect.top,
+        0, 0,
+        1, 1,
         null, null, null, null);
+
     if !window {
         panic("Failed to create window with error.");
     }
+
+    fake_context :: GetDC(fake_window);
+    fake_pixel_descriptor :: PIXELFORMATDESCRIPTOR.{
+        nSize = sizeof(PIXELFORMATDESCRIPTOR);
+        nVersion = 1;
+        dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+        iPixelType = PFD_TYPE_RGBA;
+        cColorBits = 32;
+        cAlphaBits = 8;
+        cDepthBits = 24;
+    };
+
+
+    fake_pixel_format :: ChoosePixelFormat(fake_context, &fake_pixel_descriptor);
+    if fake_pixel_format == 0 {
+        panic("Cannot setup pixel format.");
+    }
+
+
+    /// @Incomplete
+    rect  :: RECT.{ 0, 0, 800, 600 };
+
 
     ShowWindow(window, TRUE);
     UpdateWindow(window);
