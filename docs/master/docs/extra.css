@@ -1,6 +1,6 @@
 body {
   line-height: 1.3;
-  font-family: Roboto, "Segoe UI", sans-serif;
+  font-family: Georgia, Roboto, "Segoe UI", sans-serif;
   background-color: white;
 }
 pre, .rst-content tt {
@@ -17,4 +17,7 @@ code {
 .admonition {
   background: #ffc9c9;
   color: #ae8787;
+}
+.wm-toc-pane {
+    max-width: 250px;
 }
