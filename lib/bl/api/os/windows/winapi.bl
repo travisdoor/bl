@@ -97,6 +97,21 @@ HWND         :: C.void_ptr;
 HDC          :: C.void_ptr;
 HGLRC        :: C.void_ptr;
 
+DPI_AWARENESS_CONTEXT :: *u8;
+
+DPI_AWARENESS :: enum {
+    DPI_AWARENESS_INVALID           = -1;
+    DPI_AWARENESS_UNAWARE           = 0;
+    DPI_AWARENESS_SYSTEM_AWARE      = 1;
+    DPI_AWARENESS_PER_MONITOR_AWARE = 2;
+};
+
+DPI_AWARENESS_CONTEXT_UNAWARE               :: cast(DPI_AWARENESS_CONTEXT)-1;
+DPI_AWARENESS_CONTEXT_SYSTEM_AWARE          :: cast(DPI_AWARENESS_CONTEXT)-2;
+DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE     :: cast(DPI_AWARENESS_CONTEXT)-3;
+DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2  :: cast(DPI_AWARENESS_CONTEXT)-4;
+DPI_AWARENESS_CONTEXT_UNAWARE_GDISCALED     :: cast(DPI_AWARENESS_CONTEXT)-5;
+
 GENERIC_READ : u32 : 0x80000000;
 GENERIC_WRITE : u32 : 0x40000000;
 FILE_BEGIN : u32 : 0;
@@ -732,6 +747,7 @@ RECT :: struct {
     right: LONG;
     bottom: LONG;
 }
+LPRECT :: *RECT;
 
 PFD_TYPE_RGBA             : u32 : 0;
 PFD_TYPE_COLORINDEX       : u32 : 1;
@@ -876,3 +892,9 @@ GET_X_LPARAM :: fn (lp: LPARAM) C.int #inline {
 GET_Y_LPARAM :: fn (lp: LPARAM) C.int #inline {
     return auto ((cast(usize)lp >> 16) & 0xffff);
 }
+
+AdjustWindowRect :: fn (lpRect: LPRECT, dwStyle: DWORD, bMenu: BOOL) BOOL #extern "AdjustWindowRect";
+GetDpiForWindow :: fn (hwnd: HWND) UINT #extern "GetDpiForWindow";
+SetThreadDpiAwarenessContext :: fn (dpiContext: DPI_AWARENESS_CONTEXT) DPI_AWARENESS_CONTEXT #extern "SetThreadDpiAwarenessContext";
+SetProcessDpiAwarenessContext :: fn (value: DPI_AWARENESS_CONTEXT) BOOL #extern "SetProcessDpiAwarenessContext";
+//GetScaleFactorForMonitor :: fn (hMon: HMONITOR, pScale: *DEVICE_SCALE_FACTOR) HRESULT #extern "GetScaleFactorForMonitor";

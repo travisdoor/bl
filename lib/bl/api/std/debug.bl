@@ -157,8 +157,8 @@ measure_elapsed_ms_begin :: fn () #inline {
 
 /// Pop the last start time from the runtime measurement queue and log the result time difference when 
 /// the name is specified. Function return time difference between the current time and last start time.
-measure_elapsed_ms_end :: fn (name : string_view = "") f64 #inline {
-    if _elapsed_ms_stack.len == 0 { return 0.0; }
+measure_elapsed_ms_end :: fn (name : string_view = "") u64 #inline {
+    if _elapsed_ms_stack.len == 0 { return 0; }
     index :: _elapsed_ms_stack.len - 1;
     start_ms :: _elapsed_ms_stack[index];
     _elapsed_ms_stack.len -= 1;
@@ -169,7 +169,7 @@ measure_elapsed_ms_end :: fn (name : string_view = "") f64 #inline {
 }
 
 #private
-_elapsed_ms_stack: [..]f64 #thread_local;
+_elapsed_ms_stack: [..]u64 #thread_local;
 
 panic_empty :: fn () {
     unreachable;

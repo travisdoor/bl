@@ -1,0 +1,69 @@
+#import "extra/glwindow"
+#import "extra/draw"
+
+font: draw.Font;
+
+main :: fn () s32 {
+    using win32;
+
+    glwindow.init();
+    defer glwindow.terminate();
+
+    opt := glwindow.make_default_create_window_options();
+    opt.title  = "My Window";
+    opt.width  = 1024;
+    opt.height = 768;
+
+    window, window_err :: glwindow.create_window(&opt);
+    if window_err { panic(window_err); }
+    defer glwindow.destroy_window(window);
+
+    draw.init(opt.width, opt.height);
+    defer draw.terminate();
+
+    err := draw.font_init_at_size(&font, ".", "LiberationMono-Regular.ttf", 14, draw.FontAntialiasing.ALPHA);
+    if err { panic(err); }
+    defer draw.font_terminate(&font);
+
+    position: glm.v2;
+    time_current := os_tick_ms();
+    should_quit := false;
+    loop !should_quit {
+        glwindow.poll_window_events();
+
+        time_previous :: time_current;
+        time_current = os_tick_ms();
+        dt := cast(f32) (time_current - time_previous);
+
+        loop i := 0; i < glwindow.frame_events.len; i += 1 {
+            event :: &glwindow.frame_events[i];
+            using glwindow.EventKind;
+            switch event.kind {
+                QUIT { should_quit = true; }
+                MOUSE_MOVE {
+                    position = glm.v2.{ auto event.data.mouse_move.x, auto event.data.mouse_move.y };
+                }
+                default;
+            }
+        }
+
+        draw.clear_color(glm.v4.{ 0.01f, 0.02f, 0.01f, 1.f });
+
+        draw.set_shader_color();
+        draw.rect_centered(position.x, position.y, 100.f, 100.f, glm.v4.{ 1.f, 0.f, 0.f, 1.f });
+
+        draw.set_shader_font(&font);
+        draw.text(10.f, 10.f, tprint("Vendor:   %", gl_get_vendor()));
+        draw.text(10.f, 25.f, tprint("Renderer: %", gl_get_renderer()));
+        draw.text(10.f, 40.f, tprint("Version:  %", gl_get_version()));
+        draw.text(10.f, 55.f, tprint("Time:     % ms", os_tick_ms()));
+        draw.text(10.f, 70.f, tprint("Frame:    % ms", dt));
+        draw.text(10.f, 85.f, tprint("FPS:      %", 1000.f / std.max(0.001f, dt)));
+
+        draw.flush();
+        glwindow.swap_buffers(window);
+    }
+
+    print("DONE\n");
+    return 0;
+}

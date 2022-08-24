@@ -16,13 +16,14 @@ main :: fn () s32 {
     if err { panic(err); }
     defer glwindow.destroy_window(window);
 
-    gl_init();
-    defer gl_terminate();
+    draw.init(opt.width, opt.height);
+    defer draw.terminate();
 
     print("Vendor:     %\n", gl_get_vendor());
     print("Renderer:   %\n", gl_get_renderer());
     print("Version:    %\n", gl_get_version());
 
+    position: glm.v2;
     should_quit := false;
     loop !should_quit {
         glwindow.poll_window_events();
@@ -34,22 +35,25 @@ main :: fn () s32 {
                 QUIT { should_quit = true; }
                 MOUSE_LB_DOWN { print("Down!\n"); }
                 MOUSE_LB_UP   { print("Up!\n");   }
-                KEY_DOWN      {
-                    if cast(u8) event.data.key_code == 'a' {
-                        print("A!\n");
-                    } else {
-                        print("Key Down %!\n", event.data.key_code);
-                    }
+                KEY_PRESS     {
+                    using glwindow;
+                    key :: event.data.key_code;
+                    if key == KEY_UP    { position.y -= 1.f; }
+                    if key == KEY_DOWN  { position.y += 1.f; }
+                    if key == KEY_LEFT  { position.x -= 1.f; }
+                    if key == KEY_RIGHT { position.x += 1.f; }
                 }
                 default;
             }
         }
 
+        draw.clear_color(glm.v4.{ 0.f, 1.f, 1.f, 1.f });
+        draw.set_shader_color();
 
-        gl.ClearColor(0.f, 1.f, 1.f, 1.f);
-        gl.Clear(GL_COLOR_BUFFER_BIT);
+        draw.rect_centered(position.x, position.y, 100.f, 100.f, glm.v4.{ 1.f, 0.f, 0.f, 1.f });
+
+        draw.flush();
         glwindow.swap_buffers(window);
-        os_sleep_ms(16);
     }
 
     print("DONE\n");
