@@ -666,6 +666,7 @@ WM_GETTEXT       : u32 :  0x000D;
 WM_GETTEXTLENGTH : u32 :  0x000E;
 WM_PAINT         : u32 :  0x000F;
 WM_CLOSE         : u32 :  0x0010;
+WM_DPICHANGED    : u32 :  0x02E0;
 WM_MOUSEFIRST    : u32 :  0x0200;
 WM_MOUSEMOVE     : u32 :  0x0200;
 WM_LBUTTONDOWN   : u32 :  0x0201;
@@ -783,6 +784,20 @@ RECT :: struct {
     bottom: LONG;
 }
 LPRECT :: *RECT;
+
+SWP_NOSIZE         : u32 : 0x0001;
+SWP_NOMOVE         : u32 : 0x0002;
+SWP_NOZORDER       : u32 : 0x0004;
+SWP_NOREDRAW       : u32 : 0x0008;
+SWP_NOACTIVATE     : u32 : 0x0010;
+SWP_FRAMECHANGED   : u32 : 0x0020;
+SWP_SHOWWINDOW     : u32 : 0x0040;
+SWP_HIDEWINDOW     : u32 : 0x0080;
+SWP_NOCOPYBITS     : u32 : 0x0100;
+SWP_NOOWNERZORDER  : u32 : 0x0200;
+SWP_NOSENDCHANGING : u32 : 0x0400;
+SWP_DRAWFRAME      : u32 : SWP_FRAMECHANGED;
+SWP_NOREPOSITION   : u32 : SWP_NOOWNERZORDER;
 
 PFD_TYPE_RGBA             : u32 : 0;
 PFD_TYPE_COLORINDEX       : u32 : 1;
@@ -936,3 +951,5 @@ GetScaleFactorForMonitor :: fn (hMon: HMONITOR, pScale: *DEVICE_SCALE_FACTOR) HR
 AdjustWindowRectExForDpi :: fn (lpRect: LPRECT, dwStyle: DWORD, bMenu: BOOL, dwExStyle: DWORD, dpi: UINT) BOOL #extern "AdjustWindowRectExForDpi";
 MonitorFromWindow :: fn (hwnd: HWND, dwFlags: DWORD) HMONITOR #extern "MonitorFromWindow";
 GetDpiForMonitor :: fn (hmonitor: HMONITOR, dpiType: MONITOR_DPI_TYPE, dpiX: *UINT, dpiY: *UINT) HRESULT #extern "GetDpiForMonitor";
+GetWindowRect :: fn (hWnd: HWND, lpRect: LPRECT) BOOL #extern "GetWindowRect";
+SetWindowPos :: fn (hWnd: HWND, hWndInsertAfter: HWND, X: C.int, Y: C.int, cx: C.int, cy: C.int, uFlags: UINT) BOOL #extern "SetWindowPos";
