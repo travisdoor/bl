@@ -80,6 +80,7 @@ WGL :: struct {
 
     ChoosePixelFormatARB: *fn (hdc: HDC, piAttribIList: *C.int, pfAttribFList: *f32, nMaxFormats: UINT, piFormats: *C.int, nNumFormats: *UINT) BOOL;
     CreateContextAttribsARB: *fn (hDC: HDC, hshareContext: HGLRC, attribList: *C.int) HGLRC;
+    SwapIntervalEXT: *fn (v: C.int) BOOL;
 }
 
 wgl: WGL;
@@ -88,6 +89,7 @@ wgl: WGL;
 wgl_init :: fn () {
     wgl.ChoosePixelFormatARB    = auto __gl_get_proc("wglChoosePixelFormatARB");
     wgl.CreateContextAttribsARB = auto __gl_get_proc("wglCreateContextAttribsARB");
+    wgl.SwapIntervalEXT         = auto __gl_get_proc("wglSwapIntervalEXT");
 }
 
 __gl_get_proc :: fn (proc_name: string_view) *u8 {

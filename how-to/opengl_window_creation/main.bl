@@ -11,8 +11,8 @@ main :: fn () s32 {
 
     opt := glwindow.make_default_create_window_options();
     opt.title  = "My Window";
-    opt.width  = 1024;
-    opt.height = 768;
+    opt.width  = 800;
+    opt.height = 600;
 
     window, window_err :: glwindow.create_window(&opt);
     if window_err { panic(window_err); }
@@ -53,12 +53,13 @@ main :: fn () s32 {
         draw.rect_centered(position.x, position.y, 100.f, 100.f, glm.v4.{ 1.f, 0.f, 0.f, 1.f });
 
         draw.set_shader_font(&font);
-        draw.text(10.f, 10.f, tprint("Vendor:   %", gl_get_vendor()));
-        draw.text(10.f, 25.f, tprint("Renderer: %", gl_get_renderer()));
-        draw.text(10.f, 40.f, tprint("Version:  %", gl_get_version()));
-        draw.text(10.f, 55.f, tprint("Time:     % ms", os_tick_ms()));
-        draw.text(10.f, 70.f, tprint("Frame:    % ms", dt));
-        draw.text(10.f, 85.f, tprint("FPS:      %", 1000.f / std.max(0.001f, dt)));
+        draw.text(10.f, 10.f, tprint("Vendor:         %", gl_get_vendor()));
+        draw.text(10.f, 25.f, tprint("Renderer:       %", gl_get_renderer()));
+        draw.text(10.f, 40.f, tprint("Version:        %", gl_get_version()));
+        draw.text(10.f, 55.f, tprint("Time:           % ms", os_tick_ms()));
+        draw.text(10.f, 70.f, tprint("Frame:          % ms", dt));
+        draw.text(10.f, 85.f, tprint("FPS:            %", 1000.f / std.max(0.001f, dt)));
+        draw.text(10.f, 100.f, tprint("Mouse Position: %", position));
 
         draw.flush();
         glwindow.swap_buffers(window);

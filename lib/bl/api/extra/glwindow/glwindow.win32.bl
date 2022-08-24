@@ -174,7 +174,10 @@ frame_events: [..]Event;
 
 init :: fn () {
     using win32;
-    SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+    if SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2) == 0 {
+        _, error_message ::os_get_last_error();
+        print_warn("Cannot set process DPI avareness with error: %", error_message);
+    }
 }
 
 terminate :: fn () {
@@ -198,6 +201,8 @@ CreateWindowOptions :: struct {
     gl_major_version: s32;
     /// Required OpenGL minor version.
     gl_minor_version: s32;
+    /// Enable VSync.
+    vsync: bool;
     // @Incomplete: pixel formats, multisampling
 }
 
@@ -211,6 +216,7 @@ make_default_create_window_options :: fn () CreateWindowOptions #inline {
         position_y       = win32.CW_USEDEFAULT,
         gl_major_version = 3,
         gl_minor_version = 3,
+        vsync            = true,
     };
 }
 
@@ -339,6 +345,11 @@ create_window :: fn (options: *CreateWindowOptions) (Window, Error) {
         return null, error("Cannot make current render context.");
     }
 
+    if wgl.SwapIntervalEXT {
+        if options.vsync { wgl.SwapIntervalEXT(1); }
+        else             { wgl.SwapIntervalEXT(0); }
+    }
+
     ShowWindow(window, 1);
     return window, OK;
 }
@@ -369,6 +380,18 @@ poll_window_events :: fn () {
 }
 
 #private
+
+get_monitor_scale :: fn (window: win32.HWND) (scale_x: f32, scale_y: f32) #maybe_unused {
+    using win32;
+    assert(window);
+    monitor :: MonitorFromWindow(window, 0);
+    dpix, dpiy: UINT;
+    if GetDpiForMonitor(monitor, MONITOR_DPI_TYPE.MDT_EFFECTIVE_DPI, &dpix, &dpiy) != S_OK {
+        print_warn("Unable to get monitor scaling.");
+        return 1.f, 1.f;
+    }
+    return cast(f32)dpix / 96.f, cast(f32)dpiy / 96.f;
+}
 
 window_procedure :: fn (window: win32.HWND, msg: win32.UINT, wparam: win32.WPARAM, lparam: win32.LPARAM) *s32 {
     using win32;
