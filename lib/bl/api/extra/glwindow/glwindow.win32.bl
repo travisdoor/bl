@@ -1,4 +1,5 @@
 #import "extra/gl"
+#import "std/table"
 
 #scope glwindow
 
@@ -32,128 +33,130 @@ EventKind :: enum {
     KEY_RELEASE;
 }
 
-KEY_LBUTTON      : u32 : 0x01;
-KEY_RBUTTON      : u32 : 0x02;
-KEY_CANCEL       : u32 : 0x03;
-KEY_BACK         : u32 : 0x08;
-KEY_TAB          : u32 : 0x09;
-KEY_CLEAR        : u32 : 0x0C;
-KEY_RETURN       : u32 : 0x0D;
-KEY_SHIFT        : u32 : 0x10;
-KEY_CONTROL      : u32 : 0x11;
-KEY_MENU         : u32 : 0x12;
-KEY_PAUSE        : u32 : 0x13;
-KEY_CAPITAL      : u32 : 0x14;
-KEY_KANA         : u32 : 0x15;
-KEY_HANGEUL      : u32 : 0x15;
-KEY_HANGUL       : u32 : 0x15;
-KEY_IME_ON       : u32 : 0x16;
-KEY_JUNJA        : u32 : 0x17;
-KEY_FINAL        : u32 : 0x18;
-KEY_HANJA        : u32 : 0x19;
-KEY_KANJI        : u32 : 0x19;
-KEY_IME_OFF      : u32 : 0x1A;
-KEY_ESCAPE       : u32 : 0x1B;
-KEY_CONVERT      : u32 : 0x1C;
-KEY_NONCONVERT   : u32 : 0x1D;
-KEY_ACCEPT       : u32 : 0x1E;
-KEY_MODECHANGE   : u32 : 0x1F;
-KEY_SPACE        : u32 : 0x20;
-KEY_PRIOR        : u32 : 0x21;
-KEY_NEXT         : u32 : 0x22;
-KEY_END          : u32 : 0x23;
-KEY_HOME         : u32 : 0x24;
-KEY_LEFT         : u32 : 0x25;
-KEY_UP           : u32 : 0x26;
-KEY_RIGHT        : u32 : 0x27;
-KEY_DOWN         : u32 : 0x28;
-KEY_SELECT       : u32 : 0x29;
-KEY_PRINT        : u32 : 0x2A;
-KEY_EXECUTE      : u32 : 0x2B;
-KEY_SNAPSHOT     : u32 : 0x2C;
-KEY_INSERT       : u32 : 0x2D;
-KEY_DELETE       : u32 : 0x2E;
-KEY_HELP         : u32 : 0x2F;
-KEY_LWIN         : u32 : 0x5B;
-KEY_RWIN         : u32 : 0x5C;
-KEY_APPS         : u32 : 0x5D;
-KEY_SLEEP        : u32 : 0x5F;
-KEY_NUMPAD0      : u32 : 0x60;
-KEY_NUMPAD1      : u32 : 0x61;
-KEY_NUMPAD2      : u32 : 0x62;
-KEY_NUMPAD3      : u32 : 0x63;
-KEY_NUMPAD4      : u32 : 0x64;
-KEY_NUMPAD5      : u32 : 0x65;
-KEY_NUMPAD6      : u32 : 0x66;
-KEY_NUMPAD7      : u32 : 0x67;
-KEY_NUMPAD8      : u32 : 0x68;
-KEY_NUMPAD9      : u32 : 0x69;
-KEY_MULTIPLY     : u32 : 0x6A;
-KEY_ADD          : u32 : 0x6B;
-KEY_SEPARATOR    : u32 : 0x6C;
-KEY_SUBTRACT     : u32 : 0x6D;
-KEY_DECIMAL      : u32 : 0x6E;
-KEY_DIVIDE       : u32 : 0x6F;
-KEY_F1           : u32 : 0x70;
-KEY_F2           : u32 : 0x71;
-KEY_F3           : u32 : 0x72;
-KEY_F4           : u32 : 0x73;
-KEY_F5           : u32 : 0x74;
-KEY_F6           : u32 : 0x75;
-KEY_F7           : u32 : 0x76;
-KEY_F8           : u32 : 0x77;
-KEY_F9           : u32 : 0x78;
-KEY_F10          : u32 : 0x79;
-KEY_F11          : u32 : 0x7A;
-KEY_F12          : u32 : 0x7B;
-KEY_F13          : u32 : 0x7C;
-KEY_F14          : u32 : 0x7D;
-KEY_F15          : u32 : 0x7E;
-KEY_F16          : u32 : 0x7F;
-KEY_F17          : u32 : 0x80;
-KEY_F18          : u32 : 0x81;
-KEY_F19          : u32 : 0x82;
-KEY_F20          : u32 : 0x83;
-KEY_F21          : u32 : 0x84;
-KEY_F22          : u32 : 0x85;
-KEY_F23          : u32 : 0x86;
-KEY_F24          : u32 : 0x87;
-KEY_0            : u32 : 0x30;
-KEY_1            : u32 : 0x31;
-KEY_2            : u32 : 0x32;
-KEY_3            : u32 : 0x33;
-KEY_4            : u32 : 0x34;
-KEY_5            : u32 : 0x35;
-KEY_6            : u32 : 0x36;
-KEY_7            : u32 : 0x37;
-KEY_8            : u32 : 0x38;
-KEY_9            : u32 : 0x39;
-KEY_A            : u32 : 0x41;
-KEY_B            : u32 : 0x42;
-KEY_C            : u32 : 0x43;
-KEY_D            : u32 : 0x44;
-KEY_E            : u32 : 0x45;
-KEY_F            : u32 : 0x46;
-KEY_G            : u32 : 0x47;
-KEY_H            : u32 : 0x48;
-KEY_I            : u32 : 0x49;
-KEY_J            : u32 : 0x4a;
-KEY_K            : u32 : 0x4b;
-KEY_L            : u32 : 0x4c;
-KEY_M            : u32 : 0x4d;
-KEY_N            : u32 : 0x4e;
-KEY_O            : u32 : 0x4f;
-KEY_P            : u32 : 0x50;
-KEY_Q            : u32 : 0x51;
-KEY_R            : u32 : 0x52;
-KEY_S            : u32 : 0x53;
-KEY_T            : u32 : 0x54;
-KEY_U            : u32 : 0x55;
-KEY_V            : u32 : 0x56;
-KEY_W            : u32 : 0x57;
-KEY_X            : u32 : 0x58;
-KEY_Y            : u32 : 0x59;
-KEY_Z            : u32 : 0x5a;
+KeyCode :: enum u32 {
+    LBUTTON      = 0x01;
+    RBUTTON      = 0x02;
+    CANCEL       = 0x03;
+    BACK         = 0x08;
+    TAB          = 0x09;
+    CLEAR        = 0x0C;
+    RETURN       = 0x0D;
+    SHIFT        = 0x10;
+    CONTROL      = 0x11;
+    MENU         = 0x12;
+    PAUSE        = 0x13;
+    CAPITAL      = 0x14;
+    KANA         = 0x15;
+    HANGEUL      = 0x15;
+    HANGUL       = 0x15;
+    IME_ON       = 0x16;
+    JUNJA        = 0x17;
+    FINAL        = 0x18;
+    HANJA        = 0x19;
+    KANJI        = 0x19;
+    IME_OFF      = 0x1A;
+    ESCAPE       = 0x1B;
+    CONVERT      = 0x1C;
+    NONCONVERT   = 0x1D;
+    ACCEPT       = 0x1E;
+    MODECHANGE   = 0x1F;
+    SPACE        = 0x20;
+    PRIOR        = 0x21;
+    NEXT         = 0x22;
+    END          = 0x23;
+    HOME         = 0x24;
+    LEFT         = 0x25;
+    UP           = 0x26;
+    RIGHT        = 0x27;
+    DOWN         = 0x28;
+    SELECT       = 0x29;
+    PRINT        = 0x2A;
+    EXECUTE      = 0x2B;
+    SNAPSHOT     = 0x2C;
+    INSERT       = 0x2D;
+    DELETE       = 0x2E;
+    HELP         = 0x2F;
+    LWIN         = 0x5B;
+    RWIN         = 0x5C;
+    APPS         = 0x5D;
+    SLEEP        = 0x5F;
+    NUMPAD0      = 0x60;
+    NUMPAD1      = 0x61;
+    NUMPAD2      = 0x62;
+    NUMPAD3      = 0x63;
+    NUMPAD4      = 0x64;
+    NUMPAD5      = 0x65;
+    NUMPAD6      = 0x66;
+    NUMPAD7      = 0x67;
+    NUMPAD8      = 0x68;
+    NUMPAD9      = 0x69;
+    MULTIPLY     = 0x6A;
+    ADD          = 0x6B;
+    SEPARATOR    = 0x6C;
+    SUBTRACT     = 0x6D;
+    DECIMAL      = 0x6E;
+    DIVIDE       = 0x6F;
+    F1           = 0x70;
+    F2           = 0x71;
+    F3           = 0x72;
+    F4           = 0x73;
+    F5           = 0x74;
+    F6           = 0x75;
+    F7           = 0x76;
+    F8           = 0x77;
+    F9           = 0x78;
+    F10          = 0x79;
+    F11          = 0x7A;
+    F12          = 0x7B;
+    F13          = 0x7C;
+    F14          = 0x7D;
+    F15          = 0x7E;
+    F16          = 0x7F;
+    F17          = 0x80;
+    F18          = 0x81;
+    F19          = 0x82;
+    F20          = 0x83;
+    F21          = 0x84;
+    F22          = 0x85;
+    F23          = 0x86;
+    F24          = 0x87;
+    NUMBER_0     = 0x30;
+    NUMBER_1     = 0x31;
+    NUMBER_2     = 0x32;
+    NUMBER_3     = 0x33;
+    NUMBER_4     = 0x34;
+    NUMBER_5     = 0x35;
+    NUMBER_6     = 0x36;
+    NUMBER_7     = 0x37;
+    NUMBER_8     = 0x38;
+    NUMBER_9     = 0x39;
+    A            = 0x41;
+    B            = 0x42;
+    C            = 0x43;
+    D            = 0x44;
+    E            = 0x45;
+    F            = 0x46;
+    G            = 0x47;
+    H            = 0x48;
+    I            = 0x49;
+    J            = 0x4a;
+    K            = 0x4b;
+    L            = 0x4c;
+    M            = 0x4d;
+    N            = 0x4e;
+    O            = 0x4f;
+    P            = 0x50;
+    Q            = 0x51;
+    R            = 0x52;
+    S            = 0x53;
+    T            = 0x54;
+    U            = 0x55;
+    V            = 0x56;
+    W            = 0x57;
+    X            = 0x58;
+    Y            = 0x59;
+    Z            = 0x5a;
+}
 
 /// General window event representation.
 Event :: struct {
@@ -166,7 +169,7 @@ Event :: struct {
         /// Related to MOUSE_MOVE event.
         mouse_move: struct { x: s32; y: s32; };
         /// Related to KEY_* events.
-        key_code: u32;
+        key_code: KeyCode;
     }
 }
 
@@ -174,7 +177,10 @@ frame_events: [..]Event;
 
 init :: fn () {
     using win32;
-    SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+    if SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2) == 0 {
+        _, error_message ::os_get_last_error();
+        print_warn("Cannot set process DPI avareness with error: %", error_message);
+    }
 }
 
 terminate :: fn () {
@@ -198,6 +204,8 @@ CreateWindowOptions :: struct {
     gl_major_version: s32;
     /// Required OpenGL minor version.
     gl_minor_version: s32;
+    /// Enable VSync.
+    vsync: bool;
     // @Incomplete: pixel formats, multisampling
 }
 
@@ -211,6 +219,7 @@ make_default_create_window_options :: fn () CreateWindowOptions #inline {
         position_y       = win32.CW_USEDEFAULT,
         gl_major_version = 3,
         gl_minor_version = 3,
+        vsync            = true,
     };
 }
 
@@ -273,7 +282,7 @@ create_window :: fn (options: *CreateWindowOptions) (Window, Error) {
 
     wgl_init();
 
-    window_style :: WS_CAPTION | WS_SYSMENU | WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
+    window_style :: get_window_style();
     window_rect := RECT.{ right = options.width, bottom = options.height };
     AdjustWindowRect(&window_rect, window_style, 0);
 
@@ -339,7 +348,13 @@ create_window :: fn (options: *CreateWindowOptions) (Window, Error) {
         return null, error("Cannot make current render context.");
     }
 
+    if wgl.SwapIntervalEXT {
+        if options.vsync { wgl.SwapIntervalEXT(1); }
+        else             { wgl.SwapIntervalEXT(0); }
+    }
+
     ShowWindow(window, 1);
+
     return window, OK;
 }
 
@@ -370,6 +385,23 @@ poll_window_events :: fn () {
 
 #private
 
+get_window_style :: fn () win32.DWORD {
+    using win32;
+    return WS_CAPTION | WS_SYSMENU | WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
+}
+
+get_monitor_scale :: fn (window: win32.HWND) (scale_x: f32, scale_y: f32) #maybe_unused {
+    using win32;
+    assert(window);
+    monitor :: MonitorFromWindow(window, 0);
+    dpix, dpiy: UINT;
+    if GetDpiForMonitor(monitor, MONITOR_DPI_TYPE.MDT_EFFECTIVE_DPI, &dpix, &dpiy) != S_OK {
+        print_warn("Unable to get monitor scaling.");
+        return 1.f, 1.f;
+    }
+    return cast(f32)dpix / 96.f, cast(f32)dpiy / 96.f;
+}
+
 window_procedure :: fn (window: win32.HWND, msg: win32.UINT, wparam: win32.WPARAM, lparam: win32.LPARAM) *s32 {
     using win32;
     using EventKind;
@@ -377,7 +409,20 @@ window_procedure :: fn (window: win32.HWND, msg: win32.UINT, wparam: win32.WPARA
     event: *Event;
 
     switch msg {
-        WM_CLOSE         { event = array_push(&frame_events, Event.{ kind = QUIT });           }
+        WM_CLOSE      { event = array_push(&frame_events, Event.{ kind = QUIT });           }
+        WM_DPICHANGED {
+            /*
+            suggested := cast(*RECT) lparam;
+            SetWindowPos(window,
+                         null,
+                         suggested.left,
+                         suggested.top,
+                         suggested.right  - suggested.left,
+                         suggested.bottom - suggested.top,
+                         SWP_NOACTIVATE | SWP_NOZORDER);
+            */
+            return null;
+        }
 
         WM_LBUTTONDOWN   { event = array_push(&frame_events, Event.{ kind = MOUSE_LB_DOWN});   }
         WM_LBUTTONUP     { event = array_push(&frame_events, Event.{ kind = MOUSE_LB_UP});     }
@@ -394,13 +439,13 @@ window_procedure :: fn (window: win32.HWND, msg: win32.UINT, wparam: win32.WPARA
 
         WM_KEYDOWN {
             data: Event.data;
-            data.key_code = cast(u32) wparam;
+            data.key_code = auto cast(u32) wparam;
             event = array_push(&frame_events, Event.{ kind = KEY_PRESS, data = data });
         }
 
         WM_KEYUP {
             data: Event.data;
-            data.key_code = cast(u32) wparam;
+            data.key_code = auto cast(u32) wparam;
             event = array_push(&frame_events, Event.{ kind = KEY_RELEASE, data = data });
         }
 
