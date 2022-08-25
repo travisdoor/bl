@@ -953,3 +953,4 @@ MonitorFromWindow :: fn (hwnd: HWND, dwFlags: DWORD) HMONITOR #extern "MonitorFr
 GetDpiForMonitor :: fn (hmonitor: HMONITOR, dpiType: MONITOR_DPI_TYPE, dpiX: *UINT, dpiY: *UINT) HRESULT #extern "GetDpiForMonitor";
 GetWindowRect :: fn (hWnd: HWND, lpRect: LPRECT) BOOL #extern "GetWindowRect";
 SetWindowPos :: fn (hWnd: HWND, hWndInsertAfter: HWND, X: C.int, Y: C.int, cx: C.int, cy: C.int, uFlags: UINT) BOOL #extern "SetWindowPos";
+GetClientRect :: fn (hWnd: HWND, lpRect: LPRECT) BOOL #extern "GetClientRect";

@@ -1,5 +1,4 @@
 #import "extra/gl"
-#import "std/table"
 
 #scope glwindow
 
@@ -283,8 +282,12 @@ create_window :: fn (options: *CreateWindowOptions) (Window, Error) {
     wgl_init();
 
     window_style :: get_window_style();
-    window_rect := RECT.{ right = options.width, bottom = options.height };
-    AdjustWindowRect(&window_rect, window_style, 0);
+    window_rect := RECT.{
+        right  = options.width,
+        bottom = options.height
+    };
+    dpi :: get_monitor_dpi(fake_window);
+    AdjustWindowRectExForDpi(&window_rect, window_style, 0, 0, dpi);
 
     window := CreateWindowA(
         window_class.lpszClassName,
@@ -354,7 +357,6 @@ create_window :: fn (options: *CreateWindowOptions) (Window, Error) {
     }
 
     ShowWindow(window, 1);
-
     return window, OK;
 }
 
@@ -391,15 +393,20 @@ get_window_style :: fn () win32.DWORD {
 }
 
 get_monitor_scale :: fn (window: win32.HWND) (scale_x: f32, scale_y: f32) #maybe_unused {
-    using win32;
     assert(window);
+    dpix, dpiy :: get_monitor_dpi(window);
+    return cast(f32)dpix / 96.f, cast(f32)dpiy / 96.f;
+}
+
+get_monitor_dpi :: fn (window: win32.HWND) (dpix: u32, dpiy: u32) {
+    using win32;
     monitor :: MonitorFromWindow(window, 0);
     dpix, dpiy: UINT;
     if GetDpiForMonitor(monitor, MONITOR_DPI_TYPE.MDT_EFFECTIVE_DPI, &dpix, &dpiy) != S_OK {
         print_warn("Unable to get monitor scaling.");
-        return 1.f, 1.f;
+        return 96, 96;
     }
-    return cast(f32)dpix / 96.f, cast(f32)dpiy / 96.f;
+    return dpix, dpiy;
 }
 
 window_procedure :: fn (window: win32.HWND, msg: win32.UINT, wparam: win32.WPARAM, lparam: win32.LPARAM) *s32 {
@@ -411,16 +418,17 @@ window_procedure :: fn (window: win32.HWND, msg: win32.UINT, wparam: win32.WPARA
     switch msg {
         WM_CLOSE      { event = array_push(&frame_events, Event.{ kind = QUIT });           }
         WM_DPICHANGED {
-            /*
-            suggested := cast(*RECT) lparam;
+            window_style :: get_window_style();
+            window_rect: RECT;
+            GetClientRect(window, &window_rect);
+            dpi :: get_monitor_dpi(window);
+            AdjustWindowRectExForDpi(&window_rect, window_style, 0, 0, dpi);
             SetWindowPos(window,
                          null,
-                         suggested.left,
-                         suggested.top,
-                         suggested.right  - suggested.left,
-                         suggested.bottom - suggested.top,
-                         SWP_NOACTIVATE | SWP_NOZORDER);
-            */
+                         0, 0,
+                         window_rect.right  - window_rect.left,
+                         window_rect.bottom - window_rect.top,
+                         SWP_NOMOVE);
             return null;
         }
 
