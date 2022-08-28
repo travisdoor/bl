@@ -1,6 +1,0 @@
-build :: fn () #build_entry {
-    exe := add_executable("window");
-    add_unit(exe, "main.bl");
-
-    compile(exe);
-}

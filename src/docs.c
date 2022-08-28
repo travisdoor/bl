@@ -33,9 +33,12 @@
 #define H1(stream, str) fprintf(stream, "\n## %s\n", str)
 #define H2(stream, str) fprintf(stream, "\n### %s\n", str)
 
+#define INDENTATION_CHARS 4
+
 #define CODE_BLOCK_BEGIN(stream) fprintf(stream, "\n```c\n")
 #define CODE_BLOCK_END(stream) fprintf(stream, "\n```\n\n")
-#define CODE_BLOCK_NEW_LINE(stream) fprintf(stream, "\n    ")
+#define CODE_INDENTED(stream, indentation)                                                         \
+    fprintf(stream, "\n%*c", INDENTATION_CHARS *(indentation), ' ')
 
 #define PUSH_IS_INLINE(ctx)                                                                        \
     const bool _prev_is_inline = ctx->is_inline;                                                   \
@@ -57,6 +60,7 @@ struct context {
     char        *section_variants;
     char        *section_members;
     char        *output_directory;
+    s32          indentation;
 };
 
 static void append_section(struct context *ctx, const char *name, const char *content);
@@ -111,7 +115,8 @@ void doc_decl_entity(struct context *ctx, struct ast *decl)
     if (name[0] == '_') return;
 
     // @Performance: we can do it better I guess.
-    if (text && (strstr(text, "@INCOMPLETE") || strstr(text, "@Incomplete") || strstr(text, "@incomplete"))) {
+    if (text && (strstr(text, "@INCOMPLETE") || strstr(text, "@Incomplete") ||
+                 strstr(text, "@incomplete"))) {
         builder_msg(MSG_WARN, 0, ident->location, CARET_WORD, "Found incomplete documentation!");
     }
 
@@ -131,7 +136,7 @@ void doc_decl_entity(struct context *ctx, struct ast *decl)
     H1(ctx->stream, full_name);
     put_tstr(full_name);
     CODE_BLOCK_BEGIN(ctx->stream);
-        fprintf(ctx->stream, "%s :", name);
+    fprintf(ctx->stream, "%s :", name);
     if (type) {
         fprintf(ctx->stream, " ");
         doc(ctx, type);
@@ -214,7 +219,7 @@ void doc_decl_variant(struct context *ctx, struct ast *decl)
         }
     }
     if (value && value->kind == AST_EXPR_LIT_INT) {
-        fprintf(ctx->stream, " :: ");
+        fprintf(ctx->stream, " = ");
         doc(ctx, value);
     }
 }
@@ -262,22 +267,28 @@ void doc_type_enum(struct context *ctx, struct ast *type)
     }
     fprintf(ctx->stream, "{");
     ast_nodes_t *variants = type->data.type_enm.variants;
+    ctx->indentation += 1;
     for (usize i = 0; i < sarrlenu(variants); ++i) {
         struct ast *variant = sarrpeek(variants, i);
-        CODE_BLOCK_NEW_LINE(ctx->stream);
+        CODE_INDENTED(ctx->stream, ctx->indentation);
         doc(ctx, variant);
         fprintf(ctx->stream, ";");
     }
+    ctx->indentation -= 1;
     fprintf(ctx->stream, "\n}");
 }
 
-void doc_type_struct(struct context *ctx, struct ast UNUSED(*type))
+void doc_type_struct(struct context *ctx, struct ast *type)
 {
     if (!ctx->is_multi_return)
-        fprintf(ctx->stream, "struct {");
+        if (type->data.type_strct.is_union)
+            fprintf(ctx->stream, "union {");
+        else
+            fprintf(ctx->stream, "struct {");
     else
         fprintf(ctx->stream, "(");
 
+    ctx->indentation += 1;
     ast_nodes_t *members = type->data.type_strct.members;
     for (usize i = 0; i < sarrlenu(members); ++i) {
         struct ast *member = sarrpeek(members, i);
@@ -285,15 +296,17 @@ void doc_type_struct(struct context *ctx, struct ast UNUSED(*type))
             doc(ctx, member);
             if (i + 1 < sarrlenu(members)) fprintf(ctx->stream, ", ");
         } else {
-            CODE_BLOCK_NEW_LINE(ctx->stream);
+            CODE_INDENTED(ctx->stream, ctx->indentation);
             doc(ctx, member);
             fprintf(ctx->stream, ";");
         }
     }
+    ctx->indentation -= 1;
     if (ctx->is_multi_return) {
-        fprintf(ctx->stream, "\n)");
+        fprintf(ctx->stream, ")");
     } else {
-        fprintf(ctx->stream, "\n}");
+        CODE_INDENTED(ctx->stream, ctx->indentation);
+        fprintf(ctx->stream, "}");
     }
 }
 
@@ -348,12 +361,15 @@ void doc_expr_lit_fn_group(struct context *ctx, struct ast *lit)
 {
     ast_nodes_t *variants = lit->data.expr_fn_group.variants;
     fprintf(ctx->stream, "fn { ");
+    ctx->indentation += 1;
     for (usize i = 0; i < sarrlenu(variants); ++i) {
         struct ast *variant = sarrpeek(variants, i);
+        CODE_INDENTED(ctx->stream, ctx->indentation);
         doc(ctx, variant);
         if (i < sarrlenu(variants)) fprintf(ctx->stream, "; ");
     }
-    fprintf(ctx->stream, "}");
+    ctx->indentation -= 1;
+    fprintf(ctx->stream, "\n}");
 }
 
 void doc(struct context *ctx, struct ast *node)

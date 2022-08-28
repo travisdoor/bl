@@ -1,4 +1,5 @@
 #import "extra/gl"
+#import "std/table"
 
 #scope glwindow
 
@@ -7,13 +8,80 @@
 //! `#import "extra/glwindow"`
 //!
 //! !!! warning
-//!     This module is currently available only for Windows.
+//!     This module is currently available only on Windows as experimental.
 //!
-//! Set of tools to handle creation of the operating system native window with OpenGL context and its user inputs (like keyboard and mouse).
-//! Since the OpenGL context is set globally only one window can be created right now.
+//! Set of tools to handle creation of the operating system native window with OpenGL context and handling of user inputs.
 //!
 //! The window creation does not cover OpenGL initialization, since its API must be loaded dynamically in runtime, thus the `gl_init` must
-//! be called after a window is successfully created (the propper context is set).
+//! be called after a window is successfully created (the propper context is set) and before any rendering.
+//!
+//! ### Example
+//!
+//! ```c
+//! #import "extra/glwindow"
+//!
+//! main :: fn () s32 {
+//!     // Initialize the glwindow module first.
+//!     glwindow.init();
+//!     // And don't forget to terminate it at the end.
+//!     defer glwindow.terminate();
+//!
+//!     // Create default instance of window options and override some values.
+//!     opt := glwindow.make_default_create_window_options();
+//!
+//!     // Text shown in the window title.
+//!     opt.title  = "My Window";
+//!
+//!     // Window resolution
+//!     opt.width  = 1024;
+//!     opt.height = 768;
+//!
+//!     // Uncommnet this to enable fullscreen mode.
+//!     //opt.fullscreen = true;
+//!
+//!     // Create new window using our options and handle all possible errors.
+//!     window, window_err :: glwindow.create_window(&opt);
+//!     if window_err {
+//!         // Kill the app on error.
+//!         panic(window_err);
+//!     }
+//!     // Destroy the window at the end of the scope.
+//!     defer glwindow.destroy_window(window);
+//!
+//!     // Make the window's GL context the current one.
+//!     glwindow.set_window_context_current(window);
+//!
+//!     gl_init();
+//!     defer gl_terminate();
+//!
+//!     // The "game loop" is looping until the should_quit is false.
+//!     should_quit := false;
+//!     loop !should_quit {
+//!         // Poll all pending window events.
+//!         glwindow.poll_window_events();
+//!
+//!         // Process user input events here.
+//!         loop i := 0; i < glwindow.frame_events.len; i += 1 {
+//!             event :: &glwindow.frame_events[i];
+//!             using glwindow.EventKind;
+//!             switch event.kind {
+//!                 QUIT { should_quit = true; }
+//!                 default;
+//!             }
+//!         }
+//!
+//!         // Draw one frame.
+//!         gl.ClearColor(1.f, 0.f, 0.f, 1.f);
+//!         gl.Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+//!
+//!         // Don't forget to swap gl buffers at the end of the frame.
+//!         glwindow.swap_buffers(window);
+//!     }
+//!
+//!     print("DONE\n");
+//!     return 0;
+//! }
+//! ```
 
 Window :: win32.HWND;
 
@@ -172,8 +240,10 @@ Event :: struct {
     }
 }
 
+/// Array of all collected window events in the current frame, this array is updated by calling [poll_window_events](#glwindowpoll_window_events).
 frame_events: [..]Event;
 
+/// Initialize module internals.
 init :: fn () {
     using win32;
     if SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2) == 0 {
@@ -182,8 +252,11 @@ init :: fn () {
     }
 }
 
+/// Release all module internals.
 terminate :: fn () {
+    assert(window_data_table.len == 0, "Not all windows were properly destroyed!");
     array_terminate(&frame_events);
+    std.tbl_terminate(&window_data_table);
 }
 
 /// Window initialization options. Use [make_default_create_window_options](#glwindowmake_default_create_window_options) to
@@ -205,6 +278,9 @@ CreateWindowOptions :: struct {
     gl_minor_version: s32;
     /// Enable VSync.
     vsync: bool;
+    /// Enable fullscreen mode.
+    fullscreen: bool; // @Incomplete: we can use just monitor ID or pointer to also indicate which monitor should be used.
+
     // @Incomplete: pixel formats, multisampling
 }
 
@@ -224,9 +300,22 @@ make_default_create_window_options :: fn () CreateWindowOptions #inline {
 
 /// Create a new instance of window with OpenGL buffer initialized; the OpenGL API initialization must be handled
 /// explicitly on caller side with `gl_init` and `gl_terminate`.
-create_window :: fn (options: *CreateWindowOptions) (Window, Error) {
+create_window :: fn (options: *CreateWindowOptions) (window: Window, error: Error) {
     using win32;
     assert(options.width * options.height > 0, "Invalid window size requested!");
+
+    if options.fullscreen {
+        screen_settings: DEVMODEA;
+        screen_settings.dmSize       = auto sizeof(screen_settings);
+        screen_settings.dmPelsWidth  = auto options.width;
+        screen_settings.dmPelsHeight = auto options.height;
+        screen_settings.dmBitsPerPel = 32;
+        screen_settings.dmFields     = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT;
+
+        if ChangeDisplaySettingsA(&screen_settings, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL {
+            return null, error("Requested screen resolution %x% or color mode % bit is not supported by current monitor.", screen_settings.dmPelsWidth, screen_settings.dmPelsHeight, screen_settings.dmBitsPerPel);
+        }
+    }
 
     window_class :: WNDCLASSEXA.{
         cbSize        = auto sizeof(WNDCLASSEXA),
@@ -281,7 +370,7 @@ create_window :: fn (options: *CreateWindowOptions) (Window, Error) {
 
     wgl_init();
 
-    window_style :: get_window_style();
+    window_style, window_ex_style :: get_window_style(options.fullscreen);
     window_rect := RECT.{
         right  = options.width,
         bottom = options.height
@@ -289,7 +378,8 @@ create_window :: fn (options: *CreateWindowOptions) (Window, Error) {
     dpi :: get_monitor_dpi(fake_window);
     AdjustWindowRectExForDpi(&window_rect, window_style, 0, 0, dpi);
 
-    window := CreateWindowA(
+    window := CreateWindowExA(
+        window_ex_style,
         window_class.lpszClassName,
         std.strtoc(options.title),
         window_style,
@@ -347,14 +437,15 @@ create_window :: fn (options: *CreateWindowOptions) (Window, Error) {
     wglDeleteContext(fake_render_context);
     ReleaseDC(fake_window, fake_device_context);
     DestroyWindow(fake_window);
-    if wglMakeCurrent(device_context, render_context) == 0 {
-        return null, error("Cannot make current render context.");
-    }
 
     if wgl.SwapIntervalEXT {
         if options.vsync { wgl.SwapIntervalEXT(1); }
         else             { wgl.SwapIntervalEXT(0); }
     }
+
+    data := std.tbl_insert(&window_data_table, window);
+    data.is_fullscreen  = options.fullscreen;
+    data.render_context = render_context;
 
     ShowWindow(window, 1);
     return window, OK;
@@ -365,6 +456,25 @@ destroy_window :: fn (window: Window) {
     using win32;
     if !window { return; }
     DestroyWindow(window);
+    data :: std.tbl_lookup_ptr(&window_data_table, window);
+    assert(data);
+    if data.is_fullscreen {
+        ChangeDisplaySettingsA(null, 0);
+    }
+    std.tbl_erase(&window_data_table, window);
+}
+
+/// Set the OpenGL window context as current used context. This must be called before OpenGL is initialized.
+set_window_context_current :: fn (window: Window) Error {
+    using win32;
+    assert(window, "Invalid window handle. Not created yet?");
+    data :: std.tbl_lookup_ptr(&window_data_table, window);
+    assert(data);
+    device_context :: GetDC(window);
+    if wglMakeCurrent(device_context, data.render_context) == 0 {
+        return error("Cannot set current render context.");
+    }
+    return OK;
 }
 
 /// Swaps current buffers (presents changes to the window's OpenGL viewport).
@@ -374,6 +484,7 @@ swap_buffers :: fn (window: Window) #inline {
     SwapBuffers(GetDC(window));
 }
 
+/// Poll all window events and update [frame_events](#glwindowframe_events) array.
 poll_window_events :: fn () {
     using win32;
     array_clear(&frame_events);
@@ -387,9 +498,19 @@ poll_window_events :: fn () {
 
 #private
 
-get_window_style :: fn () win32.DWORD {
+WindowData :: struct {
+    is_fullscreen: bool;
+    render_context: win32.HGLRC;
+}
+
+window_data_table: std.Table(Window, WindowData);
+
+get_window_style :: fn (is_fullscreen := false) (style: win32.DWORD, ex_style: win32.DWORD) {
     using win32;
-    return WS_CAPTION | WS_SYSMENU | WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
+    if is_fullscreen {
+        return WS_POPUP, WS_EX_APPWINDOW;
+    }
+    return WS_CAPTION | WS_SYSMENU | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, 0;
 }
 
 get_monitor_scale :: fn (window: win32.HWND) (scale_x: f32, scale_y: f32) #maybe_unused {
@@ -418,7 +539,9 @@ window_procedure :: fn (window: win32.HWND, msg: win32.UINT, wparam: win32.WPARA
     switch msg {
         WM_CLOSE      { event = array_push(&frame_events, Event.{ kind = QUIT });           }
         WM_DPICHANGED {
-            window_style :: get_window_style();
+            data :: std.tbl_lookup_ptr(&window_data_table, window);
+            assert(data);
+            window_style :: get_window_style(data.is_fullscreen);
             window_rect: RECT;
             GetClientRect(window, &window_rect);
             dpi :: get_monitor_dpi(window);
