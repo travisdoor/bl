@@ -1,0 +1,9 @@
+build :: fn () #build_entry {
+    #if PLATFORM != Platform.WINDOWS {
+        panic("This example is awailable only on Windows, sorry.");
+    }
+    exe := add_executable("window");
+    add_unit(exe, "main.bl");
+
+    compile(exe);
+}
