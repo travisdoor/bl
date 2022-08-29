@@ -38,6 +38,8 @@ STD_INPUT_HANDLE :: cast(DWORD) -10;
 STD_OUTPUT_HANDLE :: cast(DWORD) -11;
 STD_ERROR_HANDLE :: cast(DWORD) -12;
 
+S_OK    :: cast(HRESULT)0;
+S_FALSE :: cast(HRESULT)1;
 
 ERROR_FILE_NOT_FOUND :: 2;
 ERROR_FILE_EXISTS :: 80;
@@ -80,16 +82,66 @@ LONG_PTR     :: *C.long;
 UINT_PTR     :: *C.uint;
 LARGE_INTEGER :: C.longlong;
 PLARGE_INTEGER :: *LARGE_INTEGER;
-HGLOBAL      :: C.void_ptr;
-HWND         :: C.void_ptr;
 LONG         :: C.long;
 LONGLONG     :: C.longlong;
 PLONG        :: *LONG;
 WORD         :: C.ushort;
 LPARAM       :: LONG_PTR;
 WPARAM       :: UINT_PTR;
+LRESULT      :: LONG_PTR;
 DWORD64      :: s64;
 PDWORD64     :: *DWORD64;
+BYTE         :: u8;
+PROC         :: *u8;
+
+HGLOBAL      :: C.void_ptr;
+HWND         :: C.void_ptr;
+HDC          :: C.void_ptr;
+HGLRC        :: C.void_ptr;
+HMONITOR     :: C.void_ptr;
+HRESULT      :: C.void_ptr;
+
+DPI_AWARENESS_CONTEXT :: *u8;
+
+DPI_AWARENESS :: enum {
+    DPI_AWARENESS_INVALID           = -1;
+    DPI_AWARENESS_UNAWARE           = 0;
+    DPI_AWARENESS_SYSTEM_AWARE      = 1;
+    DPI_AWARENESS_PER_MONITOR_AWARE = 2;
+}
+
+DEVICE_SCALE_FACTOR :: enum {
+    DEVICE_SCALE_FACTOR_INVALID = 0;
+    SCALE_100_PERCENT = 100;
+    SCALE_120_PERCENT = 120;
+    SCALE_125_PERCENT = 125;
+    SCALE_140_PERCENT = 140;
+    SCALE_150_PERCENT = 150;
+    SCALE_160_PERCENT = 160;
+    SCALE_175_PERCENT = 175;
+    SCALE_180_PERCENT = 180;
+    SCALE_200_PERCENT = 200;
+    SCALE_225_PERCENT = 225;
+    SCALE_250_PERCENT = 250;
+    SCALE_300_PERCENT = 300;
+    SCALE_350_PERCENT = 350;
+    SCALE_400_PERCENT = 400;
+    SCALE_450_PERCENT = 450;
+    SCALE_500_PERCENT = 500;
+}
+
+MONITOR_DPI_TYPE :: enum {
+    MDT_EFFECTIVE_DPI = 0;
+    MDT_ANGULAR_DPI = 1;
+    MDT_RAW_DPI = 2;
+    MDT_DEFAULT = MDT_EFFECTIVE_DPI;
+}
+
+DPI_AWARENESS_CONTEXT_UNAWARE               :: cast(DPI_AWARENESS_CONTEXT) 0xffffffffffffffff;
+DPI_AWARENESS_CONTEXT_SYSTEM_AWARE          :: cast(DPI_AWARENESS_CONTEXT) 0xfffffffffffffffe;
+DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE     :: cast(DPI_AWARENESS_CONTEXT) 0xfffffffffffffffd;
+DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2  :: cast(DPI_AWARENESS_CONTEXT) 0xfffffffffffffffc;
+DPI_AWARENESS_CONTEXT_UNAWARE_GDISCALED     :: cast(DPI_AWARENESS_CONTEXT) 0xfffffffffffffffb;
 
 GENERIC_READ : u32 : 0x80000000;
 GENERIC_WRITE : u32 : 0x40000000;
@@ -230,6 +282,100 @@ SYMOPT_DISABLE_SRVSTAR_ON_STARTUP : DWORD : 0x40000000;
 SYMOPT_DEBUG                      : DWORD : 0x80000000;
 
 MAX_SYM_NAME : usize : 2000;
+
+CS_VREDRAW         : u32 : 0x0001;
+CS_HREDRAW         : u32 : 0x0002;
+CS_DBLCLKS         : u32 : 0x0008;
+CS_OWNDC           : u32 : 0x0020;
+CS_CLASSDC         : u32 : 0x0040;
+CS_PARENTDC        : u32 : 0x0080;
+CS_NOCLOSE         : u32 : 0x0200;
+CS_SAVEBITS        : u32 : 0x0800;
+CS_BYTEALIGNCLIENT : u32 : 0x1000;
+CS_BYTEALIGNWINDOW : u32 : 0x2000;
+CS_GLOBALCLASS     : u32 : 0x4000;
+
+WS_OVERLAPPED       : u32 :0x00000000;
+WS_POPUP            : u32 :0x80000000;
+WS_CHILD            : u32 :0x40000000;
+WS_MINIMIZE         : u32 :0x20000000;
+WS_VISIBLE          : u32 :0x10000000;
+WS_DISABLED         : u32 :0x08000000;
+WS_CLIPSIBLINGS     : u32 :0x04000000;
+WS_CLIPCHILDREN     : u32 :0x02000000;
+WS_MAXIMIZE         : u32 :0x01000000;
+WS_CAPTION          : u32 :0x00C00000;
+WS_BORDER           : u32 :0x00800000;
+WS_DLGFRAME         : u32 :0x00400000;
+WS_VSCROLL          : u32 :0x00200000;
+WS_HSCROLL          : u32 :0x00100000;
+WS_SYSMENU          : u32 :0x00080000;
+WS_THICKFRAME       : u32 :0x00040000;
+WS_GROUP            : u32 :0x00020000;
+WS_TABSTOP          : u32 :0x00010000;
+WS_MINIMIZEBOX      : u32 :0x00020000;
+WS_MAXIMIZEBOX      : u32 :0x00010000;
+WS_TILED            : u32 :WS_OVERLAPPED;
+WS_ICONIC           : u32 :WS_MINIMIZE;
+WS_SIZEBOX          : u32 :WS_THICKFRAME;
+WS_TILEDWINDOW      : u32 :WS_OVERLAPPEDWINDOW;
+WS_OVERLAPPEDWINDOW : u32 :WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
+WS_POPUPWINDOW      : u32 :WS_POPUP | WS_BORDER | WS_SYSMENU;
+WS_CHILDWINDOW      : u32 :WS_CHILD;
+
+WS_EX_DLGMODALFRAME    : u32 : 0x00000001;
+WS_EX_NOPARENTNOTIFY   : u32 : 0x00000004;
+WS_EX_TOPMOST          : u32 : 0x00000008;
+WS_EX_ACCEPTFILES      : u32 : 0x00000010;
+WS_EX_TRANSPARENT      : u32 : 0x00000020;
+WS_EX_MDICHILD         : u32 : 0x00000040;
+WS_EX_TOOLWINDOW       : u32 : 0x00000080;
+WS_EX_WINDOWEDGE       : u32 : 0x00000100;
+WS_EX_CLIENTEDGE       : u32 : 0x00000200;
+WS_EX_CONTEXTHELP      : u32 : 0x00000400;
+WS_EX_RIGHT            : u32 : 0x00001000;
+WS_EX_LEFT             : u32 : 0x00000000;
+WS_EX_RTLREADING       : u32 : 0x00002000;
+WS_EX_LTRREADING       : u32 : 0x00000000;
+WS_EX_LEFTSCROLLBAR    : u32 : 0x00004000;
+WS_EX_RIGHTSCROLLBAR   : u32 : 0x00000000;
+WS_EX_CONTROLPARENT    : u32 : 0x00010000;
+WS_EX_STATICEDGE       : u32 : 0x00020000;
+WS_EX_APPWINDOW        : u32 : 0x00040000;
+WS_EX_OVERLAPPEDWINDOW : u32 : WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE;
+WS_EX_PALETTEWINDOW    : u32 : WS_EX_WINDOWEDGE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST;
+
+WNDPROC :: *fn (HWND, UINT, WPARAM, LPARAM) LRESULT;
+HICON :: *C.int;
+HBRUSH :: *C.int;
+
+WNDCLASSA :: struct {
+    style: UINT;
+    lpfnWndProc: WNDPROC;
+    cbClsExtra: C.int;
+    cbWndExtra: C.int;
+    hInstance: HINSTANCE;
+    hIcon: HICON;
+    hCursor: HCURSOR;
+    hbrBackground: HBRUSH;
+    lpszMenuName: LPCSTR;
+    lpszClassName: LPCSTR;
+}
+
+WNDCLASSEXA :: struct {
+    cbSize: UINT;
+    style: UINT;
+    lpfnWndProc: WNDPROC;
+    cbClsExtra: C.int;
+    cbWndExtra: C.int;
+    hInstance: HINSTANCE;
+    hIcon: HICON;
+    hCursor: HCURSOR;
+    hbrBackground: HBRUSH;
+    lpszMenuName: LPCSTR;
+    lpszClassName: LPCSTR;
+    hIconSm: HICON;
+}
 
 SYMBOL_INFO :: struct {
     SizeOfStruct: ULONG;
@@ -373,6 +519,7 @@ POINT :: struct {
 }
 
 LPPOINT :: *POINT;
+POINTL  :: POINT;
 
 FORMAT_MESSAGE_IGNORE_INSERTS : u32 : 0x00000200;
 FORMAT_MESSAGE_FROM_STRING    : u32 : 0x00000400;
@@ -483,6 +630,354 @@ CreateMutexA :: fn (
     lpName: LPCSTR
 ) HANDLE #extern "CreateMutexA";
 
+HMENU :: *C.int;
+CW_USEDEFAULT : C.int : 0x80000000;
+
+MSG :: struct {
+    hwnd: HWND;
+    message: UINT;
+    wParam: WPARAM;
+    lParam: LPARAM;
+    time: DWORD;
+    pt: POINT;
+}
+LPMSG :: *MSG;
+
+MONITOR_DEFAULTTONULL    : u32 :0x00000000;
+MONITOR_DEFAULTTOPRIMARY : u32 :0x00000001;
+MONITOR_DEFAULTTONEAREST : u32 :0x00000002;
+
+PM_NOREMOVE : u32 : 0x0000;
+PM_REMOVE   : u32 : 0x0001;
+PM_NOYIELD  : u32 : 0x0002;
+
+WM_NULL     : u32 : 0x0000;
+WM_CREATE   : u32 : 0x0001;
+WM_DESTROY  : u32 : 0x0002;
+WM_MOVE     : u32 : 0x0003;
+WM_SIZE     : u32 : 0x0005;
+WM_ACTIVATE : u32 : 0x0006;
+WM_QUIT     : u32 : 0x0012;
+WM_SETFOCUS      : u32 :  0x0007;
+WM_KILLFOCUS     : u32 :  0x0008;
+WM_ENABLE        : u32 :  0x000A;
+WM_SETREDRAW     : u32 :  0x000B;
+WM_SETTEXT       : u32 :  0x000C;
+WM_GETTEXT       : u32 :  0x000D;
+WM_GETTEXTLENGTH : u32 :  0x000E;
+WM_PAINT         : u32 :  0x000F;
+WM_CLOSE         : u32 :  0x0010;
+WM_DPICHANGED    : u32 :  0x02E0;
+WM_MOUSEFIRST    : u32 :  0x0200;
+WM_MOUSEMOVE     : u32 :  0x0200;
+WM_LBUTTONDOWN   : u32 :  0x0201;
+WM_LBUTTONUP     : u32 :  0x0202;
+WM_LBUTTONDBLCLK : u32 :  0x0203;
+WM_RBUTTONDOWN   : u32 :  0x0204;
+WM_RBUTTONUP     : u32 :  0x0205;
+WM_RBUTTONDBLCLK : u32 :  0x0206;
+WM_MBUTTONDOWN   : u32 :  0x0207;
+WM_MBUTTONUP     : u32 :  0x0208;
+WM_MBUTTONDBLCLK : u32 :  0x0209;
+WM_KEYFIRST      : u32 :  0x0100;
+WM_KEYDOWN       : u32 :  0x0100;
+WM_KEYUP         : u32 :  0x0101;
+WM_CHAR          : u32 :  0x0102;
+WM_DEADCHAR      : u32 :  0x0103;
+WM_SYSKEYDOWN    : u32 :  0x0104;
+WM_SYSKEYUP      : u32 :  0x0105;
+WM_SYSCHAR       : u32 :  0x0106;
+WM_SYSDEADCHAR   : u32 :  0x0107;
+WM_UNICHAR       : u32 :  0x0109;
+WM_KEYLAST       : u32 :  0x0109;
+
+VK_LBUTTON       : u32 : 0x01;
+VK_RBUTTON       : u32 : 0x02;
+VK_CANCEL        : u32 : 0x03;
+VK_BACK          : u32 : 0x08;
+VK_TAB           : u32 : 0x09;
+VK_CLEAR         : u32 : 0x0C;
+VK_RETURN        : u32 : 0x0D;
+VK_SHIFT         : u32 : 0x10;
+VK_CONTROL       : u32 : 0x11;
+VK_MENU          : u32 : 0x12;
+VK_PAUSE         : u32 : 0x13;
+VK_CAPITAL       : u32 : 0x14;
+VK_KANA          : u32 : 0x15;
+VK_HANGEUL       : u32 : 0x15;
+VK_HANGUL        : u32 : 0x15;
+VK_IME_ON        : u32 : 0x16;
+VK_JUNJA         : u32 : 0x17;
+VK_FINAL         : u32 : 0x18;
+VK_HANJA         : u32 : 0x19;
+VK_KANJI         : u32 : 0x19;
+VK_IME_OFF       : u32 : 0x1A;
+VK_ESCAPE        : u32 : 0x1B;
+VK_CONVERT       : u32 : 0x1C;
+VK_NONCONVERT    : u32 : 0x1D;
+VK_ACCEPT        : u32 : 0x1E;
+VK_MODECHANGE    : u32 : 0x1F;
+VK_SPACE         : u32 : 0x20;
+VK_PRIOR         : u32 : 0x21;
+VK_NEXT          : u32 : 0x22;
+VK_END           : u32 : 0x23;
+VK_HOME          : u32 : 0x24;
+VK_LEFT          : u32 : 0x25;
+VK_UP            : u32 : 0x26;
+VK_RIGHT         : u32 : 0x27;
+VK_DOWN          : u32 : 0x28;
+VK_SELECT        : u32 : 0x29;
+VK_PRINT         : u32 : 0x2A;
+VK_EXECUTE       : u32 : 0x2B;
+VK_SNAPSHOT      : u32 : 0x2C;
+VK_INSERT        : u32 : 0x2D;
+VK_DELETE        : u32 : 0x2E;
+VK_HELP          : u32 : 0x2F;
+VK_LWIN          : u32 : 0x5B;
+VK_RWIN          : u32 : 0x5C;
+VK_APPS          : u32 : 0x5D;
+VK_SLEEP         : u32 : 0x5F;
+VK_NUMPAD0       : u32 : 0x60;
+VK_NUMPAD1       : u32 : 0x61;
+VK_NUMPAD2       : u32 : 0x62;
+VK_NUMPAD3       : u32 : 0x63;
+VK_NUMPAD4       : u32 : 0x64;
+VK_NUMPAD5       : u32 : 0x65;
+VK_NUMPAD6       : u32 : 0x66;
+VK_NUMPAD7       : u32 : 0x67;
+VK_NUMPAD8       : u32 : 0x68;
+VK_NUMPAD9       : u32 : 0x69;
+VK_MULTIPLY      : u32 : 0x6A;
+VK_ADD           : u32 : 0x6B;
+VK_SEPARATOR     : u32 : 0x6C;
+VK_SUBTRACT      : u32 : 0x6D;
+VK_DECIMAL       : u32 : 0x6E;
+VK_DIVIDE        : u32 : 0x6F;
+VK_F1            : u32 : 0x70;
+VK_F2            : u32 : 0x71;
+VK_F3            : u32 : 0x72;
+VK_F4            : u32 : 0x73;
+VK_F5            : u32 : 0x74;
+VK_F6            : u32 : 0x75;
+VK_F7            : u32 : 0x76;
+VK_F8            : u32 : 0x77;
+VK_F9            : u32 : 0x78;
+VK_F10           : u32 : 0x79;
+VK_F11           : u32 : 0x7A;
+VK_F12           : u32 : 0x7B;
+VK_F13           : u32 : 0x7C;
+VK_F14           : u32 : 0x7D;
+VK_F15           : u32 : 0x7E;
+VK_F16           : u32 : 0x7F;
+VK_F17           : u32 : 0x80;
+VK_F18           : u32 : 0x81;
+VK_F19           : u32 : 0x82;
+VK_F20           : u32 : 0x83;
+VK_F21           : u32 : 0x84;
+VK_F22           : u32 : 0x85;
+VK_F23           : u32 : 0x86;
+VK_F24           : u32 : 0x87;
+
+RECT :: struct {
+    left: LONG;
+    top: LONG;
+    right: LONG;
+    bottom: LONG;
+}
+LPRECT :: *RECT;
+
+SWP_NOSIZE         : u32 : 0x0001;
+SWP_NOMOVE         : u32 : 0x0002;
+SWP_NOZORDER       : u32 : 0x0004;
+SWP_NOREDRAW       : u32 : 0x0008;
+SWP_NOACTIVATE     : u32 : 0x0010;
+SWP_FRAMECHANGED   : u32 : 0x0020;
+SWP_SHOWWINDOW     : u32 : 0x0040;
+SWP_HIDEWINDOW     : u32 : 0x0080;
+SWP_NOCOPYBITS     : u32 : 0x0100;
+SWP_NOOWNERZORDER  : u32 : 0x0200;
+SWP_NOSENDCHANGING : u32 : 0x0400;
+SWP_DRAWFRAME      : u32 : SWP_FRAMECHANGED;
+SWP_NOREPOSITION   : u32 : SWP_NOOWNERZORDER;
+
+PFD_TYPE_RGBA             : u32 : 0;
+PFD_TYPE_COLORINDEX       : u32 : 1;
+PFD_MAIN_PLANE            : u32 : 0;
+PFD_OVERLAY_PLANE         : u32 : 1;
+PFD_UNDERLAY_PLANE        : u32 : -1;
+PFD_DOUBLEBUFFER          : u32 : 0x00000001;
+PFD_STEREO                : u32 : 0x00000002;
+PFD_DRAW_TO_WINDOW        : u32 : 0x00000004;
+PFD_DRAW_TO_BITMAP        : u32 : 0x00000008;
+PFD_SUPPORT_GDI           : u32 : 0x00000010;
+PFD_SUPPORT_OPENGL        : u32 : 0x00000020;
+PFD_GENERIC_FORMAT        : u32 : 0x00000040;
+PFD_NEED_PALETTE          : u32 : 0x00000080;
+PFD_NEED_SYSTEM_PALETTE   : u32 : 0x00000100;
+PFD_SWAP_EXCHANGE         : u32 : 0x00000200;
+PFD_SWAP_COPY             : u32 : 0x00000400;
+PFD_SWAP_LAYER_BUFFERS    : u32 : 0x00000800;
+PFD_GENERIC_ACCELERATED   : u32 : 0x00001000;
+PFD_SUPPORT_DIRECTDRAW    : u32 : 0x00002000;
+PFD_DIRECT3D_ACCELERATED  : u32 : 0x00004000;
+PFD_SUPPORT_COMPOSITION   : u32 : 0x00008000;
+PFD_DEPTH_DONTCARE        : u32 : 0x20000000;
+PFD_DOUBLEBUFFER_DONTCARE : u32 : 0x40000000;
+PFD_STEREO_DONTCARE       : u32 : 0x80000000;
+
+
+PIXELFORMATDESCRIPTOR :: struct {
+    nSize: WORD;
+    nVersion: WORD;
+    dwFlags: DWORD;
+    iPixelType: BYTE;
+    cColorBits: BYTE;
+    cRedBits: BYTE;
+    cRedShift: BYTE;
+    cGreenBits: BYTE;
+    cGreenShift: BYTE;
+    cBlueBits: BYTE;
+    cBlueShift: BYTE;
+    cAlphaBits: BYTE;
+    cAlphaShift: BYTE;
+    cAccumBits: BYTE;
+    cAccumRedBits: BYTE;
+    cAccumGreenBits: BYTE;
+    cAccumBlueBits: BYTE;
+    cAccumAlphaBits: BYTE;
+    cDepthBits: BYTE;
+    cStencilBits: BYTE;
+    cAuxBuffers: BYTE;
+    iLayerType: BYTE;
+    bReserved: BYTE;
+    dwLayerMask: DWORD;
+    dwVisibleMask: DWORD;
+    dwDamageMask: DWORD;
+};
+LPPIXELFORMATDESCRIPTOR :: *PIXELFORMATDESCRIPTOR;
+
+DM_ORIENTATION          : u32 : 0x00000001;
+DM_PAPERSIZE            : u32 : 0x00000002;
+DM_PAPERLENGTH          : u32 : 0x00000004;
+DM_PAPERWIDTH           : u32 : 0x00000008;
+DM_SCALE                : u32 : 0x00000010;
+DM_POSITION             : u32 : 0x00000020;
+DM_NUP                  : u32 : 0x00000040;
+DM_DISPLAYORIENTATION   : u32 : 0x00000080;
+DM_COPIES               : u32 : 0x00000100;
+DM_DEFAULTSOURCE        : u32 : 0x00000200;
+DM_PRINTQUALITY         : u32 : 0x00000400;
+DM_COLOR                : u32 : 0x00000800;
+DM_DUPLEX               : u32 : 0x00001000;
+DM_YRESOLUTION          : u32 : 0x00002000;
+DM_TTOPTION             : u32 : 0x00004000;
+DM_COLLATE              : u32 : 0x00008000;
+DM_FORMNAME             : u32 : 0x00010000;
+DM_LOGPIXELS            : u32 : 0x00020000;
+DM_BITSPERPEL           : u32 : 0x00040000;
+DM_PELSWIDTH            : u32 : 0x00080000;
+DM_PELSHEIGHT           : u32 : 0x00100000;
+DM_DISPLAYFLAGS         : u32 : 0x00200000;
+DM_DISPLAYFREQUENCY     : u32 : 0x00400000;
+DM_ICMMETHOD            : u32 : 0x00800000;
+DM_ICMINTENT            : u32 : 0x01000000;
+DM_MEDIATYPE            : u32 : 0x02000000;
+DM_DITHERTYPE           : u32 : 0x04000000;
+DM_PANNINGWIDTH         : u32 : 0x08000000;
+DM_PANNINGHEIGHT        : u32 : 0x10000000;
+DM_DISPLAYFIXEDOUTPUT   : u32 : 0x20000000;
+
+DISP_CHANGE_SUCCESSFUL :: 0;
+DISP_CHANGE_RESTART    :: 1;
+DISP_CHANGE_FAILED     ::-1;
+DISP_CHANGE_BADMODE    ::-2;
+DISP_CHANGE_NOTUPDATED ::-3;
+DISP_CHANGE_BADFLAGS   ::-4;
+DISP_CHANGE_BADPARAM   ::-5;
+
+CDS_UPDATEREGISTRY       : u32 : 0x00000001;
+CDS_TEST                 : u32 : 0x00000002;
+CDS_FULLSCREEN           : u32 : 0x00000004;
+CDS_GLOBAL               : u32 : 0x00000008;
+CDS_SET_PRIMARY          : u32 : 0x00000010;
+CDS_VIDEOPARAMETERS      : u32 : 0x00000020;
+CDS_ENABLE_UNSAFE_MODES  : u32 : 0x00000100;
+CDS_DISABLE_UNSAFE_MODES : u32 : 0x00000200;
+CDS_RESET                : u32 : 0x40000000;
+CDS_RESET_EX             : u32 : 0x20000000;
+CDS_NORESET              : u32 : 0x10000000;
+
+IDOK       : u32 : 1;
+IDCANCEL   : u32 : 2;
+IDABORT    : u32 : 3;
+IDRETRY    : u32 : 4;
+IDIGNORE   : u32 : 5;
+IDYES      : u32 : 6;
+IDNO       : u32 : 7;
+IDCLOSE    : u32 : 8;
+IDHELP     : u32 : 9;
+IDTRYAGAIN : u32 : 10;
+IDCONTINUE : u32 : 11;
+
+MB_OK               : u32 : 0x00000000;
+MB_OKCANCEL         : u32 : 0x00000001;
+MB_ABORTRETRYIGNORE : u32 : 0x00000002;
+MB_YESNOCANCEL      : u32 : 0x00000003;
+MB_YESNO            : u32 : 0x00000004;
+MB_RETRYCANCEL      : u32 : 0x00000005;
+
+CCHDEVICENAME :: 32;
+CCHFORMNAME :: 32;
+
+DEVMODEA :: struct {
+    dmDeviceName: [CCHDEVICENAME]BYTE;
+    dmSpecVersion: WORD;
+    dmDriverVersion: WORD;
+    dmSize: WORD;
+    dmDriverExtra: WORD;
+    dmFields: DWORD;
+    DUMMYUNIONNAME: union {
+      DUMMYSTRUCTNAME: struct {
+        dmOrientation: s16;
+        dmPaperSize: s16;
+        dmPaperLength: s16;
+        dmPaperWidth: s16;
+        dmScale: s16;
+        dmCopies: s16;
+        dmDefaultSource: s16;
+        dmPrintQuality: s16;
+      };
+      DUMMYSTRUCTNAME2: struct {
+        dmPosition: POINTL;
+        dmDisplayOrientation: DWORD;
+        dmDisplayFixedOutput: DWORD;
+      };
+    };
+    dmColor: s16;
+    dmDuplex: s16;
+    dmYResolution: s16;
+    dmTTOption: s16;
+    dmCollate: s16;
+    dmFormName: [CCHFORMNAME]BYTE;
+    dmLogPixels: WORD;
+    dmBitsPerPel: DWORD;
+    dmPelsWidth: DWORD;
+    dmPelsHeight: DWORD;
+    DUMMYUNIONNAME2: union {
+        dmDisplayFlags: DWORD;
+        dmNup: DWORD;
+    };
+    dmDisplayFrequency: DWORD;
+    dmICMMethod: DWORD;
+    dmICMIntent: DWORD;
+    dmMediaType: DWORD;
+    dmDitherType: DWORD;
+    dmReserved1: DWORD;
+    dmReserved2: DWORD;
+    dmPanningWidth: DWORD;
+    dmPanningHeight: DWORD;
+}
+
 ReleaseMutex :: fn (hMutex: HANDLE) BOOL #extern "ReleaseMutex";
 GetTickCount :: fn () DWORD #extern "GetTickCount";
 QueryPerformanceCounter :: fn (lpPerformanceCount: *LARGE_INTEGER) BOOL #extern "QueryPerformanceCounter";
@@ -532,3 +1027,48 @@ SymCleanup :: fn (hProcess: HANDLE) BOOL #extern "SymCleanup";
 CaptureStackBackTrace :: fn (FramesToSkip: DWORD, FramesToCapture: DWORD, BackTrace: *PVOID, BackTraceHash: PDWORD) WORD #extern "RtlCaptureStackBackTrace";
 SymFromAddr :: fn (hProcess: HANDLE, Address: DWORD64, Displacement: PDWORD64, Symbol: PSYMBOL_INFO) BOOL #extern "SymFromAddr";
 SymGetLineFromAddr64 :: fn (hProcess: HANDLE, qwAddr: DWORD64, pdwDisplacement: PDWORD, Line64: PIMAGEHLP_LINE64) BOOL #extern "SymGetLineFromAddr64";
+RegisterClassA :: fn (lpWndClass: *WNDCLASSA) WORD #extern "RegisterClassA";
+CreateWindowExA :: fn (dwExStyle: DWORD, lpClassName: LPCSTR, lpWindowName: LPCSTR, dwStyle: DWORD, X: C.int, Y: C.int, nWidth: C.int, nHeight: C.int, hWndParent: HWND, hMenu: HMENU, hInstance: HINSTANCE, lpParam: LPVOID) HWND #extern "CreateWindowExA";
+GetModuleHandleW :: fn (lpModuleName: LPCWSTR) HMODULE #extern "GetModuleHandleW";
+DefWindowProcA :: fn (hWnd: HWND, Msg: UINT, wParam: WPARAM, lParam: LPARAM) LRESULT #extern "DefWindowProcA";
+ShowWindow :: fn (hWnd: HWND, nCmdShow: C.int) BOOL #extern "ShowWindow";
+PeekMessageA :: fn (lpMsg: LPMSG, hWnd: HWND, wMsgFilterMin: UINT, wMsgFilterMax: UINT, wRemoveMsg: UINT) BOOL #extern "PeekMessageA";
+TranslateMessage :: fn (lpMsg: *MSG) BOOL #extern "TranslateMessage";
+DispatchMessageA :: fn (lpMsg: *MSG) BOOL #extern "DispatchMessageA";
+UpdateWindow :: fn (hWnd: HWND) BOOL #extern "UpdateWindow";
+PostQuitMessage :: fn (nExitCode: C.int) #extern "PostQuitMessage";
+GetDC :: fn (hWnd: HWND) HDC #extern "GetDC";
+ChoosePixelFormat :: fn (hdc: HDC, ppfd: *PIXELFORMATDESCRIPTOR) C.int #extern "ChoosePixelFormat";
+RegisterClassExA :: fn (lpWndClass: *WNDCLASSEXA) WORD #extern "RegisterClassExA";
+CreateWindowA :: fn (lpClassName: LPCSTR, lpWindowName: LPCSTR, dwStyle: DWORD, X: C.int, Y: C.int, nWidth: C.int, nHeight: C.int, hWndParent: HWND, hMenu: HMENU, hInstance: HINSTANCE, lpParam: LPVOID) HWND #inline {
+    return CreateWindowExA(0, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
+}
+SetPixelFormat :: fn (hdc: HDC, format: C.int, ppfd: *PIXELFORMATDESCRIPTOR) BOOL #extern "SetPixelFormat";
+DescribePixelFormat :: fn (hdc: HDC, iPixelFormat: C.int, nBytes: UINT, ppfd: LPPIXELFORMATDESCRIPTOR) C.int #extern "DescribePixelFormat";
+ReleaseDC :: fn (hWnd: HWND, hDC: HDC) C.int #extern "ReleaseDC";
+DestroyWindow :: fn (hWnd: HWND) BOOL #extern "DestroyWindow";
+SetWindowTextA :: fn (hWnd: HWND, lpString: LPCSTR) BOOL #extern "SetWindowText";
+SwapBuffers :: fn (context: HDC) BOOL #extern "SwapBuffers";
+MessageBoxA :: fn (hWnd: HWND, lpText: LPCSTR, lpCaption: LPCSTR, uType: UINT) C.int #extern "MessageBoxA";
+
+GET_X_LPARAM :: fn (lp: LPARAM) C.int #inline {
+    return auto (cast(usize)lp & 0xffff);
+}
+
+GET_Y_LPARAM :: fn (lp: LPARAM) C.int #inline {
+    return auto ((cast(usize)lp >> 16) & 0xffff);
+}
+
+AdjustWindowRect :: fn (lpRect: LPRECT, dwStyle: DWORD, bMenu: BOOL) BOOL #extern "AdjustWindowRect";
+GetDpiForWindow :: fn (hwnd: HWND) UINT #extern "GetDpiForWindow";
+SetThreadDpiAwarenessContext :: fn (dpiContext: DPI_AWARENESS_CONTEXT) DPI_AWARENESS_CONTEXT #extern "SetThreadDpiAwarenessContext";
+SetProcessDpiAwarenessContext :: fn (value: DPI_AWARENESS_CONTEXT) BOOL #extern "SetProcessDpiAwarenessContext";
+GetScaleFactorForMonitor :: fn (hMon: HMONITOR, pScale: *DEVICE_SCALE_FACTOR) HRESULT #extern "GetScaleFactorForMonitor";
+AdjustWindowRectExForDpi :: fn (lpRect: LPRECT, dwStyle: DWORD, bMenu: BOOL, dwExStyle: DWORD, dpi: UINT) BOOL #extern "AdjustWindowRectExForDpi";
+MonitorFromWindow :: fn (hwnd: HWND, dwFlags: DWORD) HMONITOR #extern "MonitorFromWindow";
+GetDpiForMonitor :: fn (hmonitor: HMONITOR, dpiType: MONITOR_DPI_TYPE, dpiX: *UINT, dpiY: *UINT) HRESULT #extern "GetDpiForMonitor";
+GetWindowRect :: fn (hWnd: HWND, lpRect: LPRECT) BOOL #extern "GetWindowRect";
+SetWindowPos :: fn (hWnd: HWND, hWndInsertAfter: HWND, X: C.int, Y: C.int, cx: C.int, cy: C.int, uFlags: UINT) BOOL #extern "SetWindowPos";
+GetClientRect :: fn (hWnd: HWND, lpRect: LPRECT) BOOL #extern "GetClientRect";
+SetCapture :: fn (hWnd: HWND) HWND #extern "SetCapture";
+ChangeDisplaySettingsA :: fn (lpDevMode: *DEVMODEA, dwFlags: DWORD) LONG #extern "ChangeDisplaySettingsA";

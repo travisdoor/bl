@@ -21,29 +21,21 @@ Alternative usage:
   blc [options] <-run> <source-file> [arguments] [forwarded-arguments]
 
 Options:
-  -build                   Invoke project build pipeline. All following arguments are
-                           forwarded into the build script and ignored by compiler itself.
-                           Use as '-build [arguments]'.
+  -build                   Invoke project build pipeline. All following arguments are forwarded into the build script and ignored by compiler itself. Use as '-build [arguments]'.
   -doc                     Generate documentation and exit.
-  -opt=<debug|release-fast|release-small>
+  -opt=<debug|release-fast|release-small|release-with-debug-info>
                            Specify binary optimization mode (use 'debug' by default).
-  -release                 Specify binary optimization mode to release. (same as
-                           '-opt=release-fast')
-  -run                     Execute BL program using interpreter and exit. The compiler
-                           expects <source-file> after '-run' flag, the file name and
-                           all following command line arguments are passed into the
-                           executed program and ignored by compiler itself. Use as
-                           '-run <source-file> [arguments]'.
+  -release                 Specify binary optimization mode to release. (same as '-opt=release-fast')
+  -run                     Execute BL program using interpreter and exit. The compiler expects <source-file> after '-run' flag, the file name and all following command line arguments are passed into the executed program and ignored by compiler itself. Use as '-run <source-file> [arguments]'.
   -shared                  Compile shared library.
+  -silent-run              Execute BL program using interpreter and exit. The compiler expects <source-file> after '-silent-run' flag, the file name and all following command line arguments are passed into the executed program and ignored by compiler itself. Use as '-silent-run <source-file> [arguments]'. This flag also suppress all compiler console outputs. Basically it combines '-run' and '--silent' into a single flag. This can be useful in case the compiler is called implicitly from UNIX shebang.
   --about                  Print compiler info and exit
   --assert=<default|on|off>
-                           Set assert mode ('default' option sets assert 'on' in debug
-                           and 'off' in release mode).
+                           Set assert mode ('default' option sets assert 'on' in debug and 'off' in release mode).
   --ast-dump               Print AST.
   --configure              Generate configuration file and exit.
   --di=<dwarf|codeview>    Set debug info format.
-  --doc-out-dir=<STRING>   Set documentation output directory. (Use 'out' in current
-                           working directory by default.)
+  --doc-out-dir=<STRING>   Set documentation output directory. (Use 'out' in current working directory by default.)
   --emit-asm               Write assembly to file.
   --emit-llvm              Write LLVM-IR to file.
   --emit-mir               Write MIR to file.
@@ -59,18 +51,22 @@ Options:
   --no-llvm                Disable LLVM back-end.
   --no-usage-check         Disable checking of unused symbols.
   --no-warning             Ignore all warnings.
-  --reg-split=<off|on>     Enable/disable splitting of structures passed into the
-                           function by value into registers.
+  --reg-split=<off|on>     Enable/disable splitting of structures passed into the function by value into registers.
   --run-tests              Execute all unit tests in compile time.
   --silent                 Disable compiler console logging.
   --syntax-only            Check syntax and exit.
+  --target-experimental    Enable experimental compilation targets.
+  --target-host            Print current host target triple and exit.
+  --target-supported       Print all supported targets and exit. (Cross compilation is not allowed yet!)
+  --tests-minimal-output   Reduce compile-time tests (--run-tests) output (remove results section).
   --time-report            Print compilation time report.
   --verbose                Enable verbose mode.
   --verify-llvm            Verify LLVM IR after generation.
+  --version                Print compiler version and exit.
   --vmdbg-attach           Attach compile-time execution debugger.
-  --vmdbg-break-on=<N>     Attach compile-time execution debugger and sets break
-                           point to the MIR instruction with <N> id.
-  --where-is-api           Return path to API folder and exit.
+  --vmdbg-break-on=<N>     Attach compile-time execution debugger and sets break point to the MIR instruction with <N> id.
+  --where-is-api           Print path to API folder and exit.
+  --work-dir=<STRING>      Set current working directory. Compiler use by default the current working directory to output all files.
 ```
 
 ## Configuration
@@ -201,7 +197,7 @@ function in compile time. No output binary is produced in such a case. Following
 directly executed in `bash` as it was executable.
 
 ```c
-#!/usr/local/bin/blc --silent -run
+#!/usr/local/bin/blc --silent-run
 
 main :: fn () s32 {
     print("Hello!!!\n");

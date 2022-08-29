@@ -1,0 +1,589 @@
+#import "extra/gl"
+#import "std/table"
+
+#scope glwindow
+
+//! # GLWindow
+//!
+//! `#import "extra/glwindow"`
+//!
+//! !!! warning
+//!     This module is currently available only on Windows as experimental.
+//!
+//! Set of tools to handle creation of the operating system native window with OpenGL context and handling of user inputs.
+//!
+//! The window creation does not cover OpenGL initialization, since its API must be loaded dynamically in runtime, thus the `gl_init` must
+//! be called after a window is successfully created (the propper context is set) and before any rendering.
+//!
+//! ### Example
+//!
+//! ```c
+//! #import "extra/glwindow"
+//!
+//! main :: fn () s32 {
+//!     // Initialize the glwindow module first.
+//!     glwindow.init();
+//!     // And don't forget to terminate it at the end.
+//!     defer glwindow.terminate();
+//!
+//!     // Create default instance of window options and override some values.
+//!     opt := glwindow.make_default_create_window_options();
+//!
+//!     // Text shown in the window title.
+//!     opt.title  = "My Window";
+//!
+//!     // Window resolution
+//!     opt.width  = 1024;
+//!     opt.height = 768;
+//!
+//!     // Uncommnet this to enable fullscreen mode.
+//!     //opt.fullscreen = true;
+//!
+//!     // Create new window using our options and handle all possible errors.
+//!     window, window_err :: glwindow.create_window(&opt);
+//!     if window_err {
+//!         // Kill the app on error.
+//!         panic(window_err);
+//!     }
+//!     // Destroy the window at the end of the scope.
+//!     defer glwindow.destroy_window(window);
+//!
+//!     // Make the window's GL context the current one.
+//!     glwindow.set_window_context_current(window);
+//!
+//!     gl_init();
+//!     defer gl_terminate();
+//!
+//!     // The "game loop" is looping until the should_quit is false.
+//!     should_quit := false;
+//!     loop !should_quit {
+//!         // Poll all pending window events.
+//!         glwindow.poll_window_events();
+//!
+//!         // Process user input events here.
+//!         loop i := 0; i < glwindow.frame_events.len; i += 1 {
+//!             event :: &glwindow.frame_events[i];
+//!             using glwindow.EventKind;
+//!             switch event.kind {
+//!                 QUIT { should_quit = true; }
+//!                 default;
+//!             }
+//!         }
+//!
+//!         // Draw one frame.
+//!         gl.ClearColor(1.f, 0.f, 0.f, 1.f);
+//!         gl.Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+//!
+//!         // Don't forget to swap gl buffers at the end of the frame.
+//!         glwindow.swap_buffers(window);
+//!     }
+//!
+//!     print("DONE\n");
+//!     return 0;
+//! }
+//! ```
+
+Window :: win32.HWND;
+
+EventKind :: enum {
+    QUIT;
+
+    MOUSE_LB_DOWN;
+    MOUSE_LB_UP;
+    MOUSE_MB_DOWN;
+    MOUSE_MB_UP;
+    MOUSE_RB_DOWN;
+    MOUSE_RB_UP;
+    MOUSE_MOVE;
+
+    KEY_PRESS;
+    KEY_RELEASE;
+}
+
+KeyCode :: enum u32 {
+    LBUTTON      = 0x01;
+    RBUTTON      = 0x02;
+    CANCEL       = 0x03;
+    BACK         = 0x08;
+    TAB          = 0x09;
+    CLEAR        = 0x0C;
+    RETURN       = 0x0D;
+    SHIFT        = 0x10;
+    CONTROL      = 0x11;
+    MENU         = 0x12;
+    PAUSE        = 0x13;
+    CAPITAL      = 0x14;
+    KANA         = 0x15;
+    HANGEUL      = 0x15;
+    HANGUL       = 0x15;
+    IME_ON       = 0x16;
+    JUNJA        = 0x17;
+    FINAL        = 0x18;
+    HANJA        = 0x19;
+    KANJI        = 0x19;
+    IME_OFF      = 0x1A;
+    ESCAPE       = 0x1B;
+    CONVERT      = 0x1C;
+    NONCONVERT   = 0x1D;
+    ACCEPT       = 0x1E;
+    MODECHANGE   = 0x1F;
+    SPACE        = 0x20;
+    PRIOR        = 0x21;
+    NEXT         = 0x22;
+    END          = 0x23;
+    HOME         = 0x24;
+    LEFT         = 0x25;
+    UP           = 0x26;
+    RIGHT        = 0x27;
+    DOWN         = 0x28;
+    SELECT       = 0x29;
+    PRINT        = 0x2A;
+    EXECUTE      = 0x2B;
+    SNAPSHOT     = 0x2C;
+    INSERT       = 0x2D;
+    DELETE       = 0x2E;
+    HELP         = 0x2F;
+    LWIN         = 0x5B;
+    RWIN         = 0x5C;
+    APPS         = 0x5D;
+    SLEEP        = 0x5F;
+    NUMPAD0      = 0x60;
+    NUMPAD1      = 0x61;
+    NUMPAD2      = 0x62;
+    NUMPAD3      = 0x63;
+    NUMPAD4      = 0x64;
+    NUMPAD5      = 0x65;
+    NUMPAD6      = 0x66;
+    NUMPAD7      = 0x67;
+    NUMPAD8      = 0x68;
+    NUMPAD9      = 0x69;
+    MULTIPLY     = 0x6A;
+    ADD          = 0x6B;
+    SEPARATOR    = 0x6C;
+    SUBTRACT     = 0x6D;
+    DECIMAL      = 0x6E;
+    DIVIDE       = 0x6F;
+    F1           = 0x70;
+    F2           = 0x71;
+    F3           = 0x72;
+    F4           = 0x73;
+    F5           = 0x74;
+    F6           = 0x75;
+    F7           = 0x76;
+    F8           = 0x77;
+    F9           = 0x78;
+    F10          = 0x79;
+    F11          = 0x7A;
+    F12          = 0x7B;
+    F13          = 0x7C;
+    F14          = 0x7D;
+    F15          = 0x7E;
+    F16          = 0x7F;
+    F17          = 0x80;
+    F18          = 0x81;
+    F19          = 0x82;
+    F20          = 0x83;
+    F21          = 0x84;
+    F22          = 0x85;
+    F23          = 0x86;
+    F24          = 0x87;
+    NUMBER_0     = 0x30;
+    NUMBER_1     = 0x31;
+    NUMBER_2     = 0x32;
+    NUMBER_3     = 0x33;
+    NUMBER_4     = 0x34;
+    NUMBER_5     = 0x35;
+    NUMBER_6     = 0x36;
+    NUMBER_7     = 0x37;
+    NUMBER_8     = 0x38;
+    NUMBER_9     = 0x39;
+    A            = 0x41;
+    B            = 0x42;
+    C            = 0x43;
+    D            = 0x44;
+    E            = 0x45;
+    F            = 0x46;
+    G            = 0x47;
+    H            = 0x48;
+    I            = 0x49;
+    J            = 0x4a;
+    K            = 0x4b;
+    L            = 0x4c;
+    M            = 0x4d;
+    N            = 0x4e;
+    O            = 0x4f;
+    P            = 0x50;
+    Q            = 0x51;
+    R            = 0x52;
+    S            = 0x53;
+    T            = 0x54;
+    U            = 0x55;
+    V            = 0x56;
+    W            = 0x57;
+    X            = 0x58;
+    Y            = 0x59;
+    Z            = 0x5a;
+}
+
+/// General window event representation.
+Event :: struct {
+    /// Window event [kind](#draweventkind).
+    kind: EventKind;
+    /// Window which recieved this event.
+    sender: Window;
+    /// Event related data
+    data: union {
+        /// Related to MOUSE_MOVE event.
+        mouse_move: struct { x: s32; y: s32; };
+        /// Related to KEY_* events.
+        key_code: KeyCode;
+    }
+}
+
+/// Array of all collected window events in the current frame, this array is updated by calling [poll_window_events](#glwindowpoll_window_events).
+frame_events: [..]Event;
+
+/// Initialize module internals.
+init :: fn () {
+    using win32;
+    if SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2) == 0 {
+        _, error_message ::os_get_last_error();
+        print_warn("Cannot set process DPI avareness with error: %", error_message);
+    }
+}
+
+/// Release all module internals.
+terminate :: fn () {
+    assert(window_data_table.len == 0, "Not all windows were properly destroyed!");
+    array_terminate(&frame_events);
+    std.tbl_terminate(&window_data_table);
+}
+
+/// Window initialization options. Use [make_default_create_window_options](#glwindowmake_default_create_window_options) to
+/// create default options.
+CreateWindowOptions :: struct {
+    /// Window title text shown in the title bar.
+    title: string_view;
+    /// Window width in pixels. (Must be greater than 0.)
+    width: s32;
+    /// Window height in pixels. (Must be greater than 0.)
+    height: s32;
+    /// Window initial X position in pixels.
+    position_x: s32;
+    /// Window initial Y position in pixels.
+    position_y: s32;
+    /// Required OpenGL major version.
+    gl_major_version: s32;
+    /// Required OpenGL minor version.
+    gl_minor_version: s32;
+    /// Enable VSync.
+    vsync: bool;
+    /// Enable fullscreen mode.
+    fullscreen: bool; // @Incomplete: we can use just monitor ID or pointer to also indicate which monitor should be used.
+
+    // @Incomplete: pixel formats, multisampling
+}
+
+/// Creates instance of default [CreateWindowOptions](#drawcreatewindowoptions)
+make_default_create_window_options :: fn () CreateWindowOptions #inline {
+    return CreateWindowOptions.{
+        title            = "OpenGL Window",
+        width            = 800,
+        height           = 600,
+        position_x       = win32.CW_USEDEFAULT,
+        position_y       = win32.CW_USEDEFAULT,
+        gl_major_version = 3,
+        gl_minor_version = 3,
+        vsync            = true,
+    };
+}
+
+/// Create a new instance of window with OpenGL buffer initialized; the OpenGL API initialization must be handled
+/// explicitly on caller side with `gl_init` and `gl_terminate`.
+create_window :: fn (options: *CreateWindowOptions) (window: Window, error: Error) {
+    using win32;
+    assert(options.width * options.height > 0, "Invalid window size requested!");
+
+    if options.fullscreen {
+        screen_settings: DEVMODEA;
+        screen_settings.dmSize       = auto sizeof(screen_settings);
+        screen_settings.dmPelsWidth  = auto options.width;
+        screen_settings.dmPelsHeight = auto options.height;
+        screen_settings.dmBitsPerPel = 32;
+        screen_settings.dmFields     = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT;
+
+        if ChangeDisplaySettingsA(&screen_settings, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL {
+            return null, error("Requested screen resolution %x% or color mode % bit is not supported by current monitor.", screen_settings.dmPelsWidth, screen_settings.dmPelsHeight, screen_settings.dmBitsPerPel);
+        }
+    }
+
+    window_class :: WNDCLASSEXA.{
+        cbSize        = auto sizeof(WNDCLASSEXA),
+        style         = CS_HREDRAW | CS_VREDRAW | CS_OWNDC,
+        lpfnWndProc   = &window_procedure,
+        hCursor       = LoadCursorA(null, IDC_ARROW),
+        lpszClassName = std.strtoc("GlWindowClass"),
+    };
+    if RegisterClassExA(&window_class) == 0 {
+        return null, error("Failed to register window.");
+    }
+
+    fake_window := CreateWindowA(
+        window_class.lpszClassName,
+        std.strtoc("Fake"),
+        WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
+        0, 0,
+        1, 1,
+        null, null, null, null);
+
+    if !fake_window {
+        return null, error("Failed to create window.");
+    }
+
+    fake_device_context :: GetDC(fake_window);
+    fake_pixel_format_descriptor :: PIXELFORMATDESCRIPTOR.{
+        nSize = auto sizeof(PIXELFORMATDESCRIPTOR),
+        nVersion = 1,
+        dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
+        iPixelType = auto PFD_TYPE_RGBA,
+        cColorBits = 32,
+        cAlphaBits = 8,
+        cDepthBits = 24,
+    };
+
+    fake_pixel_format :: ChoosePixelFormat(fake_device_context, &fake_pixel_format_descriptor);
+    if fake_pixel_format == 0 {
+        return null, error("Cannot setup pixel format.");
+    }
+
+    if SetPixelFormat(fake_device_context, fake_pixel_format, &fake_pixel_format_descriptor) == 0 {
+        return null, error("Cannot setup pixel format.");
+    }
+
+    fake_render_context :: wglCreateContext(fake_device_context);
+    if !fake_render_context {
+        return null, error("Cannot create OpenGL render context.");
+    }
+    if wglMakeCurrent(fake_device_context, fake_render_context) == 0 {
+        return null, error("Cannot make current OpenGL render context.");
+    }
+
+    wgl_init();
+
+    window_style, window_ex_style :: get_window_style(options.fullscreen);
+    window_rect := RECT.{
+        right  = options.width,
+        bottom = options.height
+    };
+    dpi :: get_monitor_dpi(fake_window);
+    AdjustWindowRectExForDpi(&window_rect, window_style, 0, 0, dpi);
+
+    window := CreateWindowExA(
+        window_ex_style,
+        window_class.lpszClassName,
+        std.strtoc(options.title),
+        window_style,
+        options.position_x, options.position_y,
+        window_rect.right  - window_rect.left,
+        window_rect.bottom - window_rect.top,
+        null, null, null, null);
+
+    if !window {
+        return null, error("Failed to create window.");
+    }
+
+    device_context :: GetDC(window);
+
+    // @Incomplete: Those things should be configurable.
+    pixel_attributes :: [23]s32.{
+        WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
+        WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
+        WGL_DOUBLE_BUFFER_ARB, GL_TRUE,
+        WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB,
+        WGL_ACCELERATION_ARB, WGL_FULL_ACCELERATION_ARB,
+        WGL_COLOR_BITS_ARB, 32,
+        WGL_ALPHA_BITS_ARB, 8,
+        WGL_DEPTH_BITS_ARB, 24,
+        WGL_STENCIL_BITS_ARB, 8,
+        WGL_SAMPLE_BUFFERS_ARB, GL_TRUE,
+        WGL_SAMPLES_ARB, 4,
+        0
+    };
+
+    pixel_format_id: s32;
+    num_formats: u32;
+    status :: wgl.ChoosePixelFormatARB(device_context, pixel_attributes.ptr, null, 1, &pixel_format_id, &num_formats);
+    if status == 0 || num_formats == 0 {
+        return null, error("Cannot choose pixel format.");
+    }
+
+    pixel_format_descriptor: PIXELFORMATDESCRIPTOR;
+    DescribePixelFormat(device_context, pixel_format_id, auto sizeof(pixel_format_descriptor), &pixel_format_descriptor);
+    SetPixelFormat(device_context, pixel_format_id, &pixel_format_descriptor);
+
+    context_attributes :: [7]s32.{
+        WGL_CONTEXT_MAJOR_VERSION_ARB, options.gl_major_version,
+        WGL_CONTEXT_MINOR_VERSION_ARB, options.gl_minor_version,
+        WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
+        0
+    };
+
+    render_context :: wgl.CreateContextAttribsARB(device_context, null, context_attributes.ptr);
+    if !render_context {
+        return null, error("Cannot create render context, requested OpenGL version is: %.%. (The version is not supported on current system or it's missing from the options.)", options.gl_major_version, options.gl_minor_version);
+    }
+
+    wglMakeCurrent(null, null);
+    wglDeleteContext(fake_render_context);
+    ReleaseDC(fake_window, fake_device_context);
+    DestroyWindow(fake_window);
+
+    if wgl.SwapIntervalEXT {
+        if options.vsync { wgl.SwapIntervalEXT(1); }
+        else             { wgl.SwapIntervalEXT(0); }
+    }
+
+    data := std.tbl_insert(&window_data_table, window);
+    data.is_fullscreen  = options.fullscreen;
+    data.render_context = render_context;
+
+    ShowWindow(window, 1);
+    return window, OK;
+}
+
+/// Destroy window created by [create_window](#drawcreate_window).
+destroy_window :: fn (window: Window) {
+    using win32;
+    if !window { return; }
+    DestroyWindow(window);
+    data :: std.tbl_lookup_ptr(&window_data_table, window);
+    assert(data);
+    if data.is_fullscreen {
+        ChangeDisplaySettingsA(null, 0);
+    }
+    std.tbl_erase(&window_data_table, window);
+}
+
+/// Set the OpenGL window context as current used context. This must be called before OpenGL is initialized.
+set_window_context_current :: fn (window: Window) Error {
+    using win32;
+    assert(window, "Invalid window handle. Not created yet?");
+    data :: std.tbl_lookup_ptr(&window_data_table, window);
+    assert(data);
+    device_context :: GetDC(window);
+    if wglMakeCurrent(device_context, data.render_context) == 0 {
+        return error("Cannot set current render context.");
+    }
+    return OK;
+}
+
+/// Swaps current buffers (presents changes to the window's OpenGL viewport).
+swap_buffers :: fn (window: Window) #inline {
+    using win32;
+    assert(window);
+    SwapBuffers(GetDC(window));
+}
+
+/// Poll all window events and update [frame_events](#glwindowframe_events) array.
+poll_window_events :: fn () {
+    using win32;
+    array_clear(&frame_events);
+
+    msg: MSG;
+    loop PeekMessageA(&msg, null, 0, 0, PM_REMOVE) != 0 {
+        TranslateMessage(&msg);
+        DispatchMessageA(&msg);
+    }
+}
+
+#private
+
+WindowData :: struct {
+    is_fullscreen: bool;
+    render_context: win32.HGLRC;
+}
+
+window_data_table: std.Table(Window, WindowData);
+
+get_window_style :: fn (is_fullscreen := false) (style: win32.DWORD, ex_style: win32.DWORD) {
+    using win32;
+    if is_fullscreen {
+        return WS_POPUP, WS_EX_APPWINDOW;
+    }
+    return WS_CAPTION | WS_SYSMENU | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, 0;
+}
+
+get_monitor_scale :: fn (window: win32.HWND) (scale_x: f32, scale_y: f32) #maybe_unused {
+    assert(window);
+    dpix, dpiy :: get_monitor_dpi(window);
+    return cast(f32)dpix / 96.f, cast(f32)dpiy / 96.f;
+}
+
+get_monitor_dpi :: fn (window: win32.HWND) (dpix: u32, dpiy: u32) {
+    using win32;
+    monitor :: MonitorFromWindow(window, 0);
+    dpix, dpiy: UINT;
+    if GetDpiForMonitor(monitor, MONITOR_DPI_TYPE.MDT_EFFECTIVE_DPI, &dpix, &dpiy) != S_OK {
+        print_warn("Unable to get monitor scaling.");
+        return 96, 96;
+    }
+    return dpix, dpiy;
+}
+
+window_procedure :: fn (window: win32.HWND, msg: win32.UINT, wparam: win32.WPARAM, lparam: win32.LPARAM) *s32 {
+    using win32;
+    using EventKind;
+
+    event: *Event;
+
+    switch msg {
+        WM_CLOSE      { event = array_push(&frame_events, Event.{ kind = QUIT });           }
+        WM_DPICHANGED {
+            data :: std.tbl_lookup_ptr(&window_data_table, window);
+            assert(data);
+            window_style :: get_window_style(data.is_fullscreen);
+            window_rect: RECT;
+            GetClientRect(window, &window_rect);
+            dpi :: get_monitor_dpi(window);
+            AdjustWindowRectExForDpi(&window_rect, window_style, 0, 0, dpi);
+            SetWindowPos(window,
+                         null,
+                         0, 0,
+                         window_rect.right  - window_rect.left,
+                         window_rect.bottom - window_rect.top,
+                         SWP_NOMOVE);
+            return null;
+        }
+
+        WM_LBUTTONDOWN   { event = array_push(&frame_events, Event.{ kind = MOUSE_LB_DOWN});   }
+        WM_LBUTTONUP     { event = array_push(&frame_events, Event.{ kind = MOUSE_LB_UP});     }
+        WM_MBUTTONDOWN   { event = array_push(&frame_events, Event.{ kind = MOUSE_MB_DOWN});   }
+        WM_MBUTTONUP     { event = array_push(&frame_events, Event.{ kind = MOUSE_MB_UP});     }
+        WM_RBUTTONDOWN   { event = array_push(&frame_events, Event.{ kind = MOUSE_RB_DOWN});   }
+        WM_RBUTTONUP     { event = array_push(&frame_events, Event.{ kind = MOUSE_RB_UP});     }
+        WM_MOUSEMOVE     {
+            data: Event.data;
+            data.mouse_move.x = GET_X_LPARAM(lparam);
+            data.mouse_move.y = GET_Y_LPARAM(lparam);
+            event = array_push(&frame_events, Event.{ kind = MOUSE_MOVE, data = data });
+        }
+
+        WM_KEYDOWN {
+            data: Event.data;
+            data.key_code = auto cast(u32) wparam;
+            event = array_push(&frame_events, Event.{ kind = KEY_PRESS, data = data });
+        }
+
+        WM_KEYUP {
+            data: Event.data;
+            data.key_code = auto cast(u32) wparam;
+            event = array_push(&frame_events, Event.{ kind = KEY_RELEASE, data = data });
+        }
+
+        default { return win32.DefWindowProcA(window, msg, wparam, lparam); }
+    }
+
+    assert(event);
+    event.sender = window;
+    return null; // null means handled
+}

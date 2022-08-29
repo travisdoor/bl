@@ -64,7 +64,11 @@ os_sleep_ms :: fn (ms: u32) {
     C.usleep(ms * 1000);
 }
 
-os_tick_ms :: fn () f64 #inline {
+os_tick_ms :: fn () u64 #inline {
+    return auto os_ftick_ms();
+}
+
+os_ftick_ms :: fn () f64 #inline {
     convfact: macos.MachTimebaseInfo;
     if macos.mach_timebase_info(&convfact) != 0 {
         tick :: macos.mach_absolute_time();

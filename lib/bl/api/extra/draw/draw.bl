@@ -49,6 +49,8 @@
 //! Internally each call to `rect` just appends the geometry caches; actual rendering is done when currenty
 //! used shader is changed or [flush](#drawflush) is called explicitly. This approach reduces count of required draw
 //! calls a bit.
+//!
+//! See the [example](https://github.com/travisdoor/bl/tree/master/how-to/gunner).
 
 // =================================================================================================
 // Main API
@@ -60,10 +62,19 @@
 ///
 /// The [terminate](#drawterminate) must be called when draw module is not needed anymore.
 ///
+/// The current OpenGL context must be aready set, the minimal required OpenGL version is 3.3 "Core Profile". You can use
+/// i.e. `glfw` or similar tool to create window and propper OpenGL context.
+///
+/// The `gl_init` function is called internally.
+///
 /// !!! note
 ///     Window resizing is not supported right now.
-init :: fn (viewport_width: s32, viewport_height: s32) {
+init :: fn (viewport_width: s32, viewport_height: s32) Error {
     gl_init();
+    current_gl_major_version, current_gl_minor_version :: gl_get_version_numbers();
+    if !(current_gl_major_version >= 3 && current_gl_minor_version >= 3) {
+        return error("Minimal supported OpenGL version is 3.3, current context version is %.%.", current_gl_major_version, current_gl_minor_version);
+    }
     gl.Enable(GL_BLEND);
     gl.Enable(GL_FRAMEBUFFER_SRGB);
     gl.Enable(GL_LINE_SMOOTH);
@@ -78,27 +89,30 @@ init :: fn (viewport_width: s32, viewport_height: s32) {
 
     err: Error;
     err = shader_init(&simple_color_shader, SHADER_SIMPLE_COLOR_SOURCE, "simple-color");
-    if err { print_err(err); }
+    if err { return err; }
 
     err = shader_init(&texture_shader, SHADER_TEXTURE_SOURCE, "texture");
-    if err { print_err(err); }
+    if err { return err; }
 
     err = shader_init(&text_shader, SHADER_TEXT_SOURCE, "text-subpixel");
-    if err { print_err(err); }
+    if err { return err; }
 
     err = shader_init(&text_alpha_shader, SHADER_TEXT_ALPHA_SOURCE, "text-alpha");
-    if err { print_err(err); }
+    if err { return err; }
 
     glm.mat4_ortho(0.f, auto viewport_width, auto viewport_height, 0.f, 0.f, 1.f, &view_matrix);
 
     err = font_library_init();
-    if err { print_err(err); }
+    if err { return err; }
 
     gl_check();
     is_initialized = true;
+    return OK;
 }
 
 /// Release all resources used by the module. This should be called when the module is not needed anymore.
+///
+/// The `gl_terminate` function is called internally.
 terminate :: fn () {
     array_terminate(&vertex_buffer);
     array_terminate(&fg_color_buffer);
@@ -371,7 +385,6 @@ png_load_from_file :: fn (filepath: string_view, out_data: **u8, out_width: *u32
 // =================================================================================================
 // Font Rendering
 // =================================================================================================
-/// @Incomplete
 Font :: struct {
     char_table: std.Table(u32, GlyphInfo);
     atlas: Texture;
@@ -392,23 +405,26 @@ GlyphInfo :: struct {
     bs: f32; // texture border size
 }
 
-/// @Incomplete
+/// Fonts in draw module can be loaded in two antialiasing modes.
 FontAntialiasing :: enum {
+    /// Clear Type mode, rendered glyphs must be perfectly aligned to the display pixels and the background color
+    /// must be known.
     SUBPIXEL;
+    /// Gray scale alpha blending.
     ALPHA;
 }
 
-/// @Incomplete
+/// Returns default ASCII character table.
 font_default_char_set :: fn () []u32 #inline { return ASCII_CHAR_TABLE; }
 
-/// @Incomplete
+/// Generate new character table based on input `chars`.
 font_generate_char_set :: fn (chars: string_view, out_set: *[..]u32) {
     err :: utf8_to_utf32(chars, out_set);
     if err { panic(err); } // @Incomplete: return error?
 }
 
-/// Initialize new `font` from the 'TTF' file at `directory/filename` at required `size`.
-/// @Incomplete
+/// Initialize new `font` from the 'TTF' file at `directory/filename` at required `size`. Custom `char_set` can be specified in case
+/// we need to render some non-ascii unicode characters. Each loaded font must be terminated by [font_terminate](#drawfont_terminate).
 font_init_at_size :: fn (font: *Font, directory: string_view, filename: string_view, size: s32, mode := FontAntialiasing.ALPHA, char_set := []u32.{}) Error {
     filepath :: tprint("%/%", directory, filename);
     zeromem(auto font, sizeof(@font));
@@ -442,7 +458,7 @@ font_init_at_size :: fn (font: *Font, directory: string_view, filename: string_v
     return OK;
 }
 
-/// @Incomplete
+/// Terminate loaded font.
 font_terminate :: fn (font: *Font) {
     if !font { return; }
     std.tbl_terminate(&font.char_table);

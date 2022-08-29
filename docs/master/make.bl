@@ -144,6 +144,8 @@ CONFIG ::
     "      - extra:\n"
     "        - modules/argparse.md\n"
     "        - modules/draw.md\n"
+    "        - modules/gl.md\n"
     "        - modules/glm.md\n"
+    "        - modules/glwindow.win32.md\n"
     "      - misc/os.md\n"
 ;

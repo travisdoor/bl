@@ -63,7 +63,11 @@ os_sleep_ms :: fn (ms: u32) {
     C.usleep(ms * 1000);
 };
 
-os_tick_ms :: fn () f64 #inline {
+os_tick_ms :: fn () u64 #inline {
+    return auto os_ftick_ms();
+}
+
+os_ftick_ms :: fn () f64 #inline {
     t: _posix_timespec;
     _posix_clock_gettime(CLOCK_REALTIME, &t);
     s :: cast(f64) t.tv_sec;

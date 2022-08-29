@@ -21,6 +21,14 @@ GLsizeiptr   :: *GLsizei;
 GL_TRUE  :: 1;
 GL_FALSE :: 0;
 
+GL_MAJOR_VERSION : u32 : 0x821B;
+GL_MINOR_VERSION : u32 : 0x821C;
+
+GL_VENDOR     : u32 : 0x1F00;
+GL_RENDERER   : u32 : 0x1F01;
+GL_VERSION    : u32 : 0x1F02;
+GL_EXTENSIONS : u32 : 0x1F03;
+
 GL_DONT_CARE                      : u32 : 0x1100;
 GL_FASTEST                        : u32 : 0x1101;
 GL_NICEST                         : u32 : 0x1102;
@@ -520,6 +528,8 @@ GL_COLOR : u32 : 0x1800;
 
 // OpenGL extensions must be loaded in runtime on Windows so we can do the same even on Unix.
 _Gl :: struct {
+    is_initialized: bool #tag TAG_SKIP;
+
     ClearColor: *fn (red: f32, green: f32, blue: f32, alpha: f32);
     Clear: *fn (mask: u32);
     TexImage2D: *fn (target: GLenum, level: GLint, internalformat: GLint, width: GLsizei, height: GLsizei, border: GLint, format: GLenum, t: GLenum, data: *u8);
@@ -631,37 +641,46 @@ _Gl :: struct {
     CheckFramebufferStatus: *fn (target: GLenum) GLenum;
     DrawBuffers: *fn (n: GLsizei, bufs: *GLenum);
     ClearBufferuiv: *fn (buffer: GLenum, drawBuffer: GLint, value: *GLuint);
+    GetString: *fn (name: GLenum) *GLubyte;
 }
 
 gl: _Gl;
 
 gl_init :: fn () {
+    assert(!gl.is_initialized, "OpenGL is already initialized!");
     using std;
+    if gl.is_initialized { return; }
     tmp := str_new();
     defer str_delete(&tmp);
     
     info :: cast(*TypeInfoStruct) typeinfo(_Gl);
     loop i := 0; i < info.members.len; i += 1 {
         member :: info.members[i];
+        if member.tag == TAG_SKIP { continue; }
         dest_member_ptr := ptr_shift_bytes(cast(*u8) &gl, auto member.offset_bytes);
         str_clear_concat(&tmp, "gl", member.name);
         proc :: __gl_get_proc(tmp);
         memcpy(dest_member_ptr, auto &proc, sizeof(*u8));
     }
+    gl.is_initialized = true;
 }
 
 gl_terminate :: fn () {
+    zeromem(auto &gl, sizeof(gl));
 }
 
 gl_get_uniform :: fn (program: GLuint, name: string_view) GLint #inline {
+    assert(gl.is_initialized, "OpenGL is not initialized, call gl_init first!");
     return gl.GetUniformLocation(program, name.ptr);
 }
 
 gl_get_attribute :: fn (program: GLuint, name: string_view) GLint #inline {
+    assert(gl.is_initialized, "OpenGL is not initialized, call gl_init first!");
     return gl.GetAttribLocation(program, name.ptr);
 }
 
 gl_check :: fn (loc := #call_location) bool {
+    assert(gl.is_initialized, "OpenGL is not initialized, call gl_init first!");
     status := true;
     err := gl.GetError();
     loop err != auto GL_NO_ERROR {
@@ -675,9 +694,41 @@ gl_check :: fn (loc := #call_location) bool {
             GL_OUT_OF_MEMORY     { serr = "GL_OUT_OF_MEMORY";     };
             default;
         }
-        print_err("GL Error: % (%) on (%:%)\n", err, serr, loc.file, loc.line);
+        print_err("[GL]: % (%) on (%:%)\n", err, serr, loc.file, loc.line);
         err = gl.GetError();
         status = false;
     }
     return status;
 }
+
+gl_get_version :: fn () string_view #inline {
+    assert(gl.is_initialized, "OpenGL is not initialized, call gl_init first!");
+    return std.ctostr(auto gl.GetString(GL_VERSION));
+}
+
+gl_get_vendor :: fn () string_view #inline {
+    assert(gl.is_initialized, "OpenGL is not initialized, call gl_init first!");
+    return std.ctostr(auto gl.GetString(GL_VENDOR));
+}
+
+gl_get_renderer :: fn () string_view #inline {
+    assert(gl.is_initialized, "OpenGL is not initialized, call gl_init first!");
+    return std.ctostr(auto gl.GetString(GL_RENDERER));
+}
+
+gl_get_extensions :: fn () string_view #inline {
+    assert(gl.is_initialized, "OpenGL is not initialized, call gl_init first!");
+    return std.ctostr(auto gl.GetString(GL_EXTENSIONS));
+}
+
+gl_get_version_numbers :: fn () (major: s32, minor: s32) #inline {
+    assert(gl.is_initialized, "OpenGL is not initialized, call gl_init first!");
+    major: GLint;
+    minor: GLint;
+    gl.GetIntegerv(GL_MAJOR_VERSION, &major);
+    gl.GetIntegerv(GL_MINOR_VERSION, &minor);
+    return major, minor;
+}
+
+#private
+TAG_SKIP : u32 : 1;

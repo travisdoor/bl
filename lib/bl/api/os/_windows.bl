@@ -67,8 +67,11 @@ os_sleep_ms :: fn (ms: u32) #inline {
     win32.Sleep(ms);
 };
 
-// @Incomplete: Use u32/u64
-os_tick_ms :: fn () f64 #inline {
+os_tick_ms :: fn () u64 #inline {
+    return auto os_ftick_ms();
+};
+
+os_ftick_ms :: fn () f64 #inline {
     f: win32.LARGE_INTEGER #noinit;
     t: win32.LARGE_INTEGER #noinit;
 
