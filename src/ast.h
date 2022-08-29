@@ -196,13 +196,13 @@ struct ast_decl {
     struct ast *name;
     struct ast *type;
     struct ast *tag; // Optional.
+    u32         flags;
 };
 
 struct ast_decl_entity {
     struct ast_decl base;
     struct ast     *value;
     struct ast     *explicit_linkage_name; // Optional.
-    u32             flags;
     bool            is_global;
     bool            mut;
 };

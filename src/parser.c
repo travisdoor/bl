@@ -828,10 +828,18 @@ struct ast *parse_decl_arg(struct context *ctx, bool named)
         return_zone(
             ast_create_node(ctx->ast_arena, AST_BAD, tokens_peek(ctx->tokens), scope_get(ctx)));
     }
+
+    // Parse hash directive flags foo : s32 = 0 #maybe_unused.
+    u32                       flags           = 0;
+    enum hash_directive_flags found_directive = HD_NONE;
+    parse_hash_directive(ctx, HD_MAYBE_UNUSED, &found_directive);
+    hash_directive_to_flags(found_directive, &flags);
+
     struct ast *arg = ast_create_node(ctx->ast_arena, AST_DECL_ARG, tok_begin, scope_get(ctx));
     arg->data.decl_arg.value = value;
     arg->data.decl.type      = type;
     arg->data.decl.name      = name;
+    arg->data.decl.flags     = flags;
     return_zone(arg);
 }
 
@@ -1519,7 +1527,7 @@ struct ast *parse_expr_lit_fn(struct context *ctx)
             }
             accepted &= ~found;
         }
-        curr_decl->data.decl_entity.flags |= flags;
+        curr_decl->data.decl.flags |= flags;
     }
 
     // parse block (block is optional function body can be external)
@@ -1685,7 +1693,7 @@ struct ast *parse_type_enum(struct context *ctx)
         }
         struct ast *curr_decl = decl_get(ctx);
         if (curr_decl && curr_decl->kind == AST_DECL_ENTITY) {
-            curr_decl->data.decl_entity.flags |= flags;
+            curr_decl->data.decl.flags |= flags;
         }
         enm->data.type_enm.is_flags = isflag(flags, FLAG_FLAGS);
     }
@@ -2102,7 +2110,7 @@ struct ast *parse_type_struct(struct context *ctx)
 
     struct ast *curr_decl = decl_get(ctx);
     if (curr_decl && curr_decl->kind == AST_DECL_ENTITY) {
-        curr_decl->data.decl_entity.flags |= flags;
+        curr_decl->data.decl.flags |= flags;
     }
 
     struct token *tok = tokens_consume_if(ctx->tokens, SYM_LBLOCK);
@@ -2199,7 +2207,7 @@ struct ast *parse_decl(struct context *ctx)
         // parse declaration expression
         decl->data.decl_entity.value = parse_expr(ctx);
 
-        if (isnotflag(decl->data.decl_entity.flags, FLAG_EXTERN)) {
+        if (isnotflag(decl->data.decl.flags, FLAG_EXTERN)) {
             if (!decl->data.decl_entity.value) {
                 report_error(EXPECTED_INITIALIZATION,
                              tok_assign,
@@ -2233,7 +2241,7 @@ struct ast *parse_decl(struct context *ctx)
                          ident->data.ident.id.str);
         }
 
-        decl->data.decl_entity.flags |= flags;
+        decl->data.decl.flags |= flags;
     }
 
     decl_pop(ctx);
@@ -2456,7 +2464,7 @@ NEXT:
             if (decl && rq_semicolon_after_decl_entity(decl)) parse_semicolon_rq(ctx);
             // setup global scope flag for declaration
             tmp->data.decl_entity.is_global = true;
-            if (ctx->current_private_scope) tmp->data.decl_entity.flags |= FLAG_PRIVATE;
+            if (ctx->current_private_scope) tmp->data.decl.flags |= FLAG_PRIVATE;
         }
 
         arrput(ublock->data.ublock.nodes, tmp);

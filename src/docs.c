@@ -145,8 +145,8 @@ void doc_decl_entity(struct context *ctx, struct ast *decl)
     fprintf(ctx->stream, "%s", is_mutable ? "= " : ": ");
     doc(ctx, value);
 
-    if (decl->data.decl_entity.flags & FLAG_EXTERN) fprintf(ctx->stream, " #extern");
-    if (decl->data.decl_entity.flags & FLAG_INLINE) fprintf(ctx->stream, " #inline");
+    if (decl->data.decl.flags & FLAG_EXTERN) fprintf(ctx->stream, " #extern");
+    if (decl->data.decl.flags & FLAG_INLINE) fprintf(ctx->stream, " #inline");
     CODE_BLOCK_END(ctx->stream);
     if (text) fprintf(ctx->stream, "%s\n\n", text);
 

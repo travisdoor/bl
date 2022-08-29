@@ -96,9 +96,7 @@ os_get_exec_path :: fn () string {
     return std.str_new(buf.ptr);
 }
 
-os_get_backtrace :: fn (skip_frames := 0, max_frame_count := 64) []CodeLocation {
-    skip_frames; // @Cleanup
-    max_frame_count; // @Cleanup
+os_get_backtrace :: fn (skip_frames := 0 #maybe_unused, max_frame_count := 64 #maybe_unused) []CodeLocation {
     // @Incomplete <2022-08-21 Sun>: Here we tried to use 'backtrace' from the C library, but is seems not
     // working correctly. Documentation claims that '-rdynamic' linker flag must be used, but still, the
     // resulting array does not contain any captured frames.

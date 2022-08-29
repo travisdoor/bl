@@ -10412,7 +10412,8 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
             ast_arg_name = ast_arg->data.decl.name;
             bassert(ast_arg_name);
             bassert(ast_arg_name->kind == AST_IDENT && "Expected identificator.");
-            struct id *id = &ast_arg_name->data.ident.id;
+            struct id *id    = &ast_arg_name->data.ident.id;
+            const u32  flags = ast_arg->data.decl.flags;
 
             struct mir_instr *arg = append_instr_arg(ctx, ast_arg, (u32)i);
 
@@ -10427,6 +10428,7 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
                         .init       = arg,
                         .is_mutable = true,
                         .builtin_id = BUILTIN_ID_NONE,
+                        .flags      = flags,
                     });
 
             decl_var->var->entry =
@@ -10698,8 +10700,8 @@ static void ast_decl_fn(struct context *ctx, struct ast *ast_fn)
     struct ast *ast_value = ast_fn->data.decl_entity.value;
 
     // recognized named function declaration
+    const s32   flags                     = ast_fn->data.decl.flags;
     struct ast *ast_explicit_linkage_name = ast_fn->data.decl_entity.explicit_linkage_name;
-    const s32   flags                     = ast_fn->data.decl_entity.flags;
     const bool  is_mutable                = ast_fn->data.decl_entity.mut;
     const bool  generate_entry            = ctx->assembly->target->kind == ASSEMBLY_EXECUTABLE;
     if (!generate_entry && isflag(flags, FLAG_ENTRY)) {
@@ -10719,7 +10721,7 @@ static void ast_decl_fn(struct context *ctx, struct ast *ast_fn)
     }
 
     enum builtin_id_kind builtin_id  = BUILTIN_ID_NONE;
-    const bool           is_compiler = isflag(ast_fn->data.decl_entity.flags, FLAG_COMPILER);
+    const bool           is_compiler = isflag(flags, FLAG_COMPILER);
     if (is_compiler) builtin_id = check_symbol_marked_compiler(ctx, ast_name);
     const bool  is_global = ast_fn->data.decl_entity.is_global;
     const char *optional_explicit_linkage_name =
@@ -10769,7 +10771,7 @@ static void ast_decl_var_local(struct context *ctx, struct ast *ast_local)
     // declaration.
     struct mir_instr *type        = ast_type ? ast_create_type_resolver_call(ctx, ast_type) : NULL;
     struct mir_instr *value       = ast(ctx, ast_value);
-    const bool        is_compiler = isflag(ast_local->data.decl_entity.flags, FLAG_COMPILER);
+    const bool        is_compiler = isflag(ast_local->data.decl.flags, FLAG_COMPILER);
     const bool        is_unroll   = ast_value && ast_value->kind == AST_EXPR_CALL;
     const bool        is_mutable  = ast_local->data.decl_entity.mut;
 
@@ -10809,19 +10811,18 @@ static void ast_decl_var_local(struct context *ctx, struct ast *ast_local)
         } else if (prev_var) {
             current_value = append_instr_decl_direct_ref(ctx, NULL, prev_var);
         }
-        struct id        *id = &ast_current_name->data.ident.id;
-        struct mir_instr *var =
-            append_instr_decl_var(ctx,
-                                  &(append_instr_decl_var_args_t){
-                                      .node       = ast_current_name,
-                                      .id         = id,
-                                      .scope      = scope,
-                                      .type       = type,
-                                      .init       = current_value,
-                                      .is_mutable = is_mutable,
-                                      .flags      = ast_local->data.decl_entity.flags,
-                                      .builtin_id = builtin_id,
-                                  });
+        struct id        *id  = &ast_current_name->data.ident.id;
+        struct mir_instr *var = append_instr_decl_var(ctx,
+                                                      &(append_instr_decl_var_args_t){
+                                                          .node       = ast_current_name,
+                                                          .id         = id,
+                                                          .scope      = scope,
+                                                          .type       = type,
+                                                          .init       = current_value,
+                                                          .is_mutable = is_mutable,
+                                                          .flags      = ast_local->data.decl.flags,
+                                                          .builtin_id = builtin_id,
+                                                      });
         ((struct mir_instr_decl_var *)var)->var->entry =
             register_symbol(ctx, ast_current_name, id, scope, is_compiler);
 
@@ -10842,7 +10843,7 @@ static void ast_decl_var_global_or_struct(struct context *ctx, struct ast *ast_g
     const bool        is_struct_decl = ast_value && ast_value->kind == AST_EXPR_TYPE &&
                                 ast_value->data.expr_type.type->kind == AST_TYPE_STRUCT;
     const bool is_mutable  = ast_global->data.decl_entity.mut;
-    const bool is_compiler = isflag(ast_global->data.decl_entity.flags, FLAG_COMPILER);
+    const bool is_compiler = isflag(ast_global->data.decl.flags, FLAG_COMPILER);
 
     struct mir_instr *value = NULL;
     struct scope     *scope = ast_name->owner_scope;
@@ -10875,19 +10876,18 @@ static void ast_decl_var_global_or_struct(struct context *ctx, struct ast *ast_g
     while (ast_current_name) {
         enum builtin_id_kind builtin_id = BUILTIN_ID_NONE;
         if (is_compiler) builtin_id = check_symbol_marked_compiler(ctx, ast_name);
-        struct id        *id = &ast_current_name->data.ident.id;
-        struct mir_instr *decl =
-            append_instr_decl_var(ctx,
-                                  &(append_instr_decl_var_args_t){
-                                      .node       = ast_current_name,
-                                      .id         = id,
-                                      .scope      = scope,
-                                      .type       = type,
-                                      .init       = value,
-                                      .is_mutable = is_mutable,
-                                      .flags      = ast_global->data.decl_entity.flags,
-                                      .builtin_id = builtin_id,
-                                  });
+        struct id        *id   = &ast_current_name->data.ident.id;
+        struct mir_instr *decl = append_instr_decl_var(ctx,
+                                                       &(append_instr_decl_var_args_t){
+                                                           .node       = ast_current_name,
+                                                           .id         = id,
+                                                           .scope      = scope,
+                                                           .type       = type,
+                                                           .init       = value,
+                                                           .is_mutable = is_mutable,
+                                                           .flags = ast_global->data.decl.flags,
+                                                           .builtin_id = builtin_id,
+                                                       });
         sarrput(decls, decl);
 
         struct mir_var *var    = ((struct mir_instr_decl_var *)decl)->var;

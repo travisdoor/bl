@@ -337,7 +337,7 @@ void print_decl_entity(struct ast *entity, s32 pad, FILE *stream)
             entity->data.decl.name->data.ident.id.str,
             entity->data.decl_entity.mut ? "mutable" : "immutable");
 
-    print_flags(entity->data.decl_entity.flags, stream);
+    print_flags(entity->data.decl.flags, stream);
     print_node((struct ast *)entity->data.decl.type, pad + 1, stream);
     print_node((struct ast *)entity->data.decl_entity.value, pad + 1, stream);
 }
