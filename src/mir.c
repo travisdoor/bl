@@ -433,12 +433,16 @@ static struct mir_member         *create_member(struct context  *ctx,
                                                 s64              index,
                                                 struct mir_type *type);
 
-static struct mir_arg *create_arg(struct context   *ctx,
-                                  struct ast       *node,
-                                  struct id        *id,
-                                  struct scope     *scope,
-                                  struct mir_type  *type,
-                                  struct mir_instr *value);
+typedef struct {
+    struct ast       *node;
+    struct id        *id;
+    struct scope     *scope;
+    struct mir_type  *type;
+    struct mir_instr *value;
+    const u32         flags;
+} create_arg_args_t;
+
+static struct mir_arg *create_arg(struct context *ctx, create_arg_args_t *args);
 static struct mir_variant *
 create_variant(struct context *ctx, struct id *id, struct mir_type *value_type, const u64 value);
 // Create block without owner function.
@@ -710,7 +714,9 @@ static struct mir_instr *append_instr_decl_member_impl(struct context           
 static struct mir_instr *append_instr_decl_arg(struct context   *ctx,
                                                struct ast       *node,
                                                struct mir_instr *type,
-                                               struct mir_instr *value);
+                                               struct mir_instr *value,
+                                               const u32         flags);
+
 static struct mir_instr *append_instr_decl_variant(struct context     *ctx,
                                                    struct ast         *node,
                                                    struct mir_instr   *value,
@@ -2925,20 +2931,15 @@ struct mir_member *create_member(struct context  *ctx,
     return tmp;
 }
 
-struct mir_arg *create_arg(struct context   *ctx,
-                           struct ast       *node,
-                           struct id        *id,
-                           struct scope     *scope,
-                           struct mir_type  *type,
-                           struct mir_instr *value)
+struct mir_arg *create_arg(struct context *ctx, create_arg_args_t *args)
 {
     struct mir_arg *tmp = arena_safe_alloc(&ctx->assembly->arenas.mir.arg);
-    tmp->decl_node      = node;
-    tmp->id             = id;
-    tmp->type           = type;
-    tmp->decl_scope     = scope;
-    tmp->value          = value;
-    tmp->is_unnamed     = id && is_ignored_id(id);
+    tmp->decl_node      = args->node;
+    tmp->id             = args->id;
+    tmp->type           = args->type;
+    tmp->decl_scope     = args->scope;
+    tmp->value          = args->value;
+    tmp->is_unnamed     = args->id && is_ignored_id(args->id);
     return tmp;
 }
 
@@ -4103,7 +4104,8 @@ static struct mir_instr *append_instr_decl_member_impl(struct context           
 struct mir_instr *append_instr_decl_arg(struct context   *ctx,
                                         struct ast       *node,
                                         struct mir_instr *type,
-                                        struct mir_instr *value)
+                                        struct mir_instr *value,
+                                        const u32         flags)
 {
     ref_instr(value);
     struct mir_instr_decl_arg *tmp = create_instr(ctx, MIR_INSTR_DECL_ARG, node);
@@ -4114,7 +4116,8 @@ struct mir_instr *append_instr_decl_arg(struct context   *ctx,
     tmp->type           = ref_instr(type);
 
     struct id *id = node ? &node->data.ident.id : NULL;
-    tmp->arg      = create_arg(ctx, node, id, NULL, NULL, value);
+    tmp->arg      = create_arg(
+        ctx, &(create_arg_args_t){.node = node, .id = id, .value = value, .flags = flags});
 
     append_current_block(ctx, &tmp->base);
     return &tmp->base;
@@ -10306,6 +10309,7 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
         ast_fn_type->data.type_fn.is_polymorph =
             isflag(flags, FLAG_COMPTIME) && isnotflag(flags, FLAG_EXTERN);
     }
+
     const bool is_polymorph =
         ast_fn_type->data.type_fn.is_polymorph && !ctx->polymorph.is_replacement_active;
 
@@ -10939,6 +10943,7 @@ struct mir_instr *ast_decl_arg(struct context *ctx, struct ast *arg)
     struct ast       *ast_value = arg->data.decl_arg.value;
     struct ast       *ast_name  = arg->data.decl.name;
     struct ast       *ast_type  = arg->data.decl.type;
+    const u32         flags     = arg->data.decl.flags;
     struct mir_instr *value     = NULL;
     // Type is resolved in type resolver in case we have default value defined.
     struct mir_instr *type = NULL;
@@ -10969,7 +10974,7 @@ struct mir_instr *ast_decl_arg(struct context *ctx, struct ast *arg)
                             "value is specified!");
         type = ast_create_type_resolver_call(ctx, ast_type);
     }
-    return append_instr_decl_arg(ctx, ast_name, type, value);
+    return append_instr_decl_arg(ctx, ast_name, type, value, flags);
 }
 
 struct mir_instr *ast_decl_member(struct context *ctx, struct ast *arg)

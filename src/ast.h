@@ -241,7 +241,12 @@ struct ast_type_dynarr {
 struct ast_type_fn {
     struct ast  *ret_type;
     ast_nodes_t *args;
-    bool         is_polymorph;
+
+    // True for polymorph, comptime evaluated and mixed (comptime/runtime) functions.
+    bool is_polymorph;
+
+    // @Incomplete: Introduce polymorph flavor to generate better error messages (polymorph vs
+    // comptime vs mixed).
 };
 
 struct ast_type_fn_group {

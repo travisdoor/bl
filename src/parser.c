@@ -164,6 +164,20 @@ static inline struct ast *_parse_ident(struct context *ctx)
     return_zone(ident);
 }
 
+// Lookup parent function type and set it as polymorph in case it's not already set.
+static inline void set_parent_function_type_as_polymorph(struct context *ctx)
+{
+    bassert(
+        arrlenu(ctx->fn_type_stack) &&
+        "No parent function type to be set as polymorph type, this should be an compiler error!");
+    for (usize i = arrlenu(ctx->fn_type_stack); i-- > 0;) {
+        struct ast *fn_type = ctx->fn_type_stack[i];
+        bassert(fn_type && fn_type->kind == AST_TYPE_FN);
+        if (fn_type->data.type_fn.is_polymorph) return;
+        fn_type->data.type_fn.is_polymorph = true;
+    }
+}
+
 static inline bool rq_semicolon_after_decl_entity(struct ast *node)
 {
     bassert(node);
@@ -829,11 +843,25 @@ struct ast *parse_decl_arg(struct context *ctx, bool named)
             ast_create_node(ctx->ast_arena, AST_BAD, tokens_peek(ctx->tokens), scope_get(ctx)));
     }
 
-    // Parse hash directive flags foo : s32 = 0 #maybe_unused.
-    u32                       flags           = 0;
-    enum hash_directive_flags found_directive = HD_NONE;
-    parse_hash_directive(ctx, HD_MAYBE_UNUSED, &found_directive);
-    hash_directive_to_flags(found_directive, &flags);
+    // Parse hash directives.
+    u32 flags    = 0;
+    u32 accepted = HD_COMPTIME | HD_MAYBE_UNUSED;
+    while (true) {
+        enum hash_directive_flags found = HD_NONE;
+        parse_hash_directive(ctx, accepted, &found);
+        if (!hash_directive_to_flags(found, &flags)) break;
+        accepted &= ~found;
+    }
+
+    if (isflag(flags, FLAG_COMPTIME)) {
+        // Currently compile time arguments cause changing of parent function generation to act like
+        // a polymorph function, this is needed due to how compile time arguments replacement work.
+        // Basically all comptime arguments are removed from a function signature in LLVM (kept for
+        // analyze in MIR), all its value (provided on call side) is used as compile time constant
+        // in function body. That's why we need to generate each function specialization the same
+        // way as polymorph functions does.
+        set_parent_function_type_as_polymorph(ctx);
+    }
 
     struct ast *arg = ast_create_node(ctx->ast_arena, AST_DECL_ARG, tok_begin, scope_get(ctx));
     arg->data.decl_arg.value = value;
@@ -1788,16 +1816,6 @@ struct ast *parse_ref_nested(struct context *ctx, struct ast *prev)
     return_zone(ref);
 }
 
-static inline void set_polymorph(struct context *ctx)
-{
-    for (usize i = arrlenu(ctx->fn_type_stack); i-- > 0;) {
-        struct ast *fn_type = ctx->fn_type_stack[i];
-        bassert(fn_type && fn_type->kind == AST_TYPE_FN);
-        if (fn_type->data.type_fn.is_polymorph) return;
-        fn_type->data.type_fn.is_polymorph = true;
-    }
-}
-
 struct ast *parse_type_polymorph(struct context *ctx)
 {
     zone();
@@ -1812,7 +1830,7 @@ struct ast *parse_type_polymorph(struct context *ctx)
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
-    set_polymorph(ctx);
+    set_parent_function_type_as_polymorph(ctx);
     struct ast *ident = parse_ident(ctx);
     if (!ident) {
         struct token *tok_err = tokens_peek(ctx->tokens);
