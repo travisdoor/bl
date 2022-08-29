@@ -68,17 +68,17 @@ os_tick_ms :: fn () u64 #inline {
     return auto os_ftick_ms();
 }
 
-os_ftick_ms :: fn () u64 #inline {
+os_ftick_ms :: fn () f64 #inline {
     convfact: macos.MachTimebaseInfo;
     if macos.mach_timebase_info(&convfact) != 0 {
         tick :: macos.mach_absolute_time();
-        return (tick * convfact.numer) / (convfact.denom * 1000000);
+        return cast(f64)((tick * convfact.numer) / (convfact.denom * 1000000));
     } else {
         tv: C.timeval;
         C.gettimeofday(&tv, null);
         s :: cast(f64) tv.tv_sec;
         u :: cast(f64) tv.tv_usec;
-        return (s * 1000.0) + (u / 1000.0);
+        return (s * 1000.0) + (u / 1000.0); 
     }
 }
 

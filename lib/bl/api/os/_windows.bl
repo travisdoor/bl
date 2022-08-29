@@ -160,7 +160,6 @@ __os_debug_break :: fn () #inline #compiler {
 // This is internally called from runtime when execution reach unreachable code path.
 // Should not be called from interpreter.
 __os_abort :: fn () #compiler {
-    using win32;
     #if IS_DEBUG { __os_debug_break(); }
     application_context.abort_fn();
 }

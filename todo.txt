@@ -22,4 +22,11 @@
       number: s32;
   }
 
-- Consider #import and #load to be limited only to the file scope
+- Consider #import and #load to be limited only to the file scope.
+
+- Application context.
+  - Should be implicitly passed into all functions.
+  - Accessible via #context directive.
+
+- Create new(s32) somehow.
+  - Allow comtime artuments (mixed function signature).

@@ -122,7 +122,7 @@ main :: fn () s32 {
         }
     }
 
-    start_time_ms :: cast(f64) os_tick_ms();
+    start_time_ms :: os_ftick_ms();
 
     results: [..]Result;
     files: [..]string_view;
@@ -195,7 +195,7 @@ main :: fn () s32 {
     if failed_count > 0 {
         print("--------------------------------------------------------------------------------\n");
     }
-    duration_ms :: (cast(f64)os_tick_ms()) - start_time_ms;
+    duration_ms :: os_ftick_ms() - start_time_ms;
     print("Test suite count:  %\n", results.len);
     print("Test suite failed: %\n", failed_count);
     print("Finished in:       %s\n", fmt_real(duration_ms*0.001, 2));

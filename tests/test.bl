@@ -1,4 +1,20 @@
+/*
+
+- Mixture of compile time and regular arguments.
+- Acts like a polymorph (generate new function for each value).
+- Skip LLVM for comptime values.
+- Does not evaluate automatically while compilation unless the whole function is marked as #comptime.
+- Call side checking for constantness.
+- Insert 'value' into scope when it's replaced to allow access to the symbol i.e. in return type.
+
+*/
+
+comptime_arg :: fn (value: s32 #comptime, i: bool) {
+    print("value = %i = %\n", value, i);
+}
+
 main :: fn () s32 {
+    comptime_arg(10, false);
     print("DONE\n");
     return 0;
 }
