@@ -17,7 +17,7 @@ SKIP :: [1]Test.{
 
 MISC :: [5]Test.{
     Test.{ name = "docs/master/make.bl",             kind = TestKind.COMPILE },
-    Test.{ name = "how-to/gunner",                   kind = TestKind.BUILD },
+    Test.{ name = "how-to/gunner",                   kind = TestKind.BUILD, platform = Platform.WINDOWS },
     Test.{ name = "how-to/glwindow_gunner",          kind = TestKind.BUILD, platform = Platform.WINDOWS },
     Test.{ name = "how-to/glwindow_creation",        kind = TestKind.BUILD, platform = Platform.WINDOWS },
     Test.{ name = "lib/bl/api/build/build_api_test", kind = TestKind.BUILD },

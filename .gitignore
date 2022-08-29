@@ -1,14 +1,14 @@
 .DS_Store
-# Other
+.suo
+*.blm
+*.ll
+*.sln
+*.rdbg
 build
 deps/llvm*
 deps/lld*
-*.blm
 bl.conf
 src/config.h
-*.ll
-*.sln
-.suo
 /CMakeLists.txt.user
 compile_commands.json
 /.idea
