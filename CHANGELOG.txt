@@ -59,6 +59,7 @@ Fix emitting of string literals produced by compile time functions.
 Add silent-run compiler argument.
 Add call-stack getter for Windows and improve assert and panic reports.
 Add function name into code location.
+Add glwindow and draw modules + some example projects.
 
 0.9.0 - PRE-RELEASE
 ---------------------------------------------------------------------------------------

@@ -519,6 +519,7 @@ POINT :: struct {
 }
 
 LPPOINT :: *POINT;
+POINTL  :: POINT;
 
 FORMAT_MESSAGE_IGNORE_INSERTS : u32 : 0x00000200;
 FORMAT_MESSAGE_FROM_STRING    : u32 : 0x00000400;
@@ -855,12 +856,127 @@ PIXELFORMATDESCRIPTOR :: struct {
 };
 LPPIXELFORMATDESCRIPTOR :: *PIXELFORMATDESCRIPTOR;
 
+DM_ORIENTATION          : u32 : 0x00000001;
+DM_PAPERSIZE            : u32 : 0x00000002;
+DM_PAPERLENGTH          : u32 : 0x00000004;
+DM_PAPERWIDTH           : u32 : 0x00000008;
+DM_SCALE                : u32 : 0x00000010;
+DM_POSITION             : u32 : 0x00000020;
+DM_NUP                  : u32 : 0x00000040;
+DM_DISPLAYORIENTATION   : u32 : 0x00000080;
+DM_COPIES               : u32 : 0x00000100;
+DM_DEFAULTSOURCE        : u32 : 0x00000200;
+DM_PRINTQUALITY         : u32 : 0x00000400;
+DM_COLOR                : u32 : 0x00000800;
+DM_DUPLEX               : u32 : 0x00001000;
+DM_YRESOLUTION          : u32 : 0x00002000;
+DM_TTOPTION             : u32 : 0x00004000;
+DM_COLLATE              : u32 : 0x00008000;
+DM_FORMNAME             : u32 : 0x00010000;
+DM_LOGPIXELS            : u32 : 0x00020000;
+DM_BITSPERPEL           : u32 : 0x00040000;
+DM_PELSWIDTH            : u32 : 0x00080000;
+DM_PELSHEIGHT           : u32 : 0x00100000;
+DM_DISPLAYFLAGS         : u32 : 0x00200000;
+DM_DISPLAYFREQUENCY     : u32 : 0x00400000;
+DM_ICMMETHOD            : u32 : 0x00800000;
+DM_ICMINTENT            : u32 : 0x01000000;
+DM_MEDIATYPE            : u32 : 0x02000000;
+DM_DITHERTYPE           : u32 : 0x04000000;
+DM_PANNINGWIDTH         : u32 : 0x08000000;
+DM_PANNINGHEIGHT        : u32 : 0x10000000;
+DM_DISPLAYFIXEDOUTPUT   : u32 : 0x20000000;
+
+DISP_CHANGE_SUCCESSFUL :: 0;
+DISP_CHANGE_RESTART    :: 1;
+DISP_CHANGE_FAILED     ::-1;
+DISP_CHANGE_BADMODE    ::-2;
+DISP_CHANGE_NOTUPDATED ::-3;
+DISP_CHANGE_BADFLAGS   ::-4;
+DISP_CHANGE_BADPARAM   ::-5;
+
+CDS_UPDATEREGISTRY       : u32 : 0x00000001;
+CDS_TEST                 : u32 : 0x00000002;
+CDS_FULLSCREEN           : u32 : 0x00000004;
+CDS_GLOBAL               : u32 : 0x00000008;
+CDS_SET_PRIMARY          : u32 : 0x00000010;
+CDS_VIDEOPARAMETERS      : u32 : 0x00000020;
+CDS_ENABLE_UNSAFE_MODES  : u32 : 0x00000100;
+CDS_DISABLE_UNSAFE_MODES : u32 : 0x00000200;
+CDS_RESET                : u32 : 0x40000000;
+CDS_RESET_EX             : u32 : 0x20000000;
+CDS_NORESET              : u32 : 0x10000000;
+
+IDOK       : u32 : 1;
+IDCANCEL   : u32 : 2;
+IDABORT    : u32 : 3;
+IDRETRY    : u32 : 4;
+IDIGNORE   : u32 : 5;
+IDYES      : u32 : 6;
+IDNO       : u32 : 7;
+IDCLOSE    : u32 : 8;
+IDHELP     : u32 : 9;
+IDTRYAGAIN : u32 : 10;
+IDCONTINUE : u32 : 11;
+
 MB_OK               : u32 : 0x00000000;
 MB_OKCANCEL         : u32 : 0x00000001;
 MB_ABORTRETRYIGNORE : u32 : 0x00000002;
 MB_YESNOCANCEL      : u32 : 0x00000003;
 MB_YESNO            : u32 : 0x00000004;
 MB_RETRYCANCEL      : u32 : 0x00000005;
+
+CCHDEVICENAME :: 32;
+CCHFORMNAME :: 32;
+
+DEVMODEA :: struct {
+    dmDeviceName: [CCHDEVICENAME]BYTE;
+    dmSpecVersion: WORD;
+    dmDriverVersion: WORD;
+    dmSize: WORD;
+    dmDriverExtra: WORD;
+    dmFields: DWORD;
+    DUMMYUNIONNAME: union {
+      DUMMYSTRUCTNAME: struct {
+        dmOrientation: s16;
+        dmPaperSize: s16;
+        dmPaperLength: s16;
+        dmPaperWidth: s16;
+        dmScale: s16;
+        dmCopies: s16;
+        dmDefaultSource: s16;
+        dmPrintQuality: s16;
+      };
+      DUMMYSTRUCTNAME2: struct {
+        dmPosition: POINTL;
+        dmDisplayOrientation: DWORD;
+        dmDisplayFixedOutput: DWORD;
+      };
+    };
+    dmColor: s16;
+    dmDuplex: s16;
+    dmYResolution: s16;
+    dmTTOption: s16;
+    dmCollate: s16;
+    dmFormName: [CCHFORMNAME]BYTE;
+    dmLogPixels: WORD;
+    dmBitsPerPel: DWORD;
+    dmPelsWidth: DWORD;
+    dmPelsHeight: DWORD;
+    DUMMYUNIONNAME2: union {
+        dmDisplayFlags: DWORD;
+        dmNup: DWORD;
+    };
+    dmDisplayFrequency: DWORD;
+    dmICMMethod: DWORD;
+    dmICMIntent: DWORD;
+    dmMediaType: DWORD;
+    dmDitherType: DWORD;
+    dmReserved1: DWORD;
+    dmReserved2: DWORD;
+    dmPanningWidth: DWORD;
+    dmPanningHeight: DWORD;
+}
 
 ReleaseMutex :: fn (hMutex: HANDLE) BOOL #extern "ReleaseMutex";
 GetTickCount :: fn () DWORD #extern "GetTickCount";
@@ -954,3 +1070,5 @@ GetDpiForMonitor :: fn (hmonitor: HMONITOR, dpiType: MONITOR_DPI_TYPE, dpiX: *UI
 GetWindowRect :: fn (hWnd: HWND, lpRect: LPRECT) BOOL #extern "GetWindowRect";
 SetWindowPos :: fn (hWnd: HWND, hWndInsertAfter: HWND, X: C.int, Y: C.int, cx: C.int, cy: C.int, uFlags: UINT) BOOL #extern "SetWindowPos";
 GetClientRect :: fn (hWnd: HWND, lpRect: LPRECT) BOOL #extern "GetClientRect";
+SetCapture :: fn (hWnd: HWND) HWND #extern "SetCapture";
+ChangeDisplaySettingsA :: fn (lpDevMode: *DEVMODEA, dwFlags: DWORD) LONG #extern "ChangeDisplaySettingsA";

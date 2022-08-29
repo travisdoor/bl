@@ -68,12 +68,16 @@ os_sleep_ms :: fn (ms: u32) #inline {
 };
 
 os_tick_ms :: fn () u64 #inline {
+    return auto os_ftick_ms();
+};
+
+os_ftick_ms :: fn () f64 #inline {
     f: win32.LARGE_INTEGER #noinit;
     t: win32.LARGE_INTEGER #noinit;
 
-    if win32.QueryPerformanceFrequency(&f) == 0 { return 0; }
-    if win32.QueryPerformanceCounter(&t) == 0 { return 0; }
-    return auto ((cast(f64) t / cast(f64) f) * 1000.);
+    if win32.QueryPerformanceFrequency(&f) == 0 { return 0.; }
+    if win32.QueryPerformanceCounter(&t) == 0 { return 0.; }
+    return (cast(f64) t / cast(f64) f) * 1000.;
 };
 
 os_get_exec_path :: fn () string {
@@ -156,6 +160,7 @@ __os_debug_break :: fn () #inline #compiler {
 // This is internally called from runtime when execution reach unreachable code path.
 // Should not be called from interpreter.
 __os_abort :: fn () #compiler {
+    using win32;
     #if IS_DEBUG { __os_debug_break(); }
     application_context.abort_fn();
 }

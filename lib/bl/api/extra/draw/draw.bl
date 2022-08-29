@@ -385,7 +385,6 @@ png_load_from_file :: fn (filepath: string_view, out_data: **u8, out_width: *u32
 // =================================================================================================
 // Font Rendering
 // =================================================================================================
-/// @Incomplete
 Font :: struct {
     char_table: std.Table(u32, GlyphInfo);
     atlas: Texture;
@@ -406,23 +405,26 @@ GlyphInfo :: struct {
     bs: f32; // texture border size
 }
 
-/// @Incomplete
+/// Fonts in draw module can be loaded in two antialiasing modes.
 FontAntialiasing :: enum {
+    /// Clear Type mode, rendered glyphs must be perfectly aligned to the display pixels and the background color
+    /// must be known.
     SUBPIXEL;
+    /// Gray scale alpha blending.
     ALPHA;
 }
 
-/// @Incomplete
+/// Returns default ASCII character table.
 font_default_char_set :: fn () []u32 #inline { return ASCII_CHAR_TABLE; }
 
-/// @Incomplete
+/// Generate new character table based on input `chars`.
 font_generate_char_set :: fn (chars: string_view, out_set: *[..]u32) {
     err :: utf8_to_utf32(chars, out_set);
     if err { panic(err); } // @Incomplete: return error?
 }
 
-/// Initialize new `font` from the 'TTF' file at `directory/filename` at required `size`.
-/// @Incomplete
+/// Initialize new `font` from the 'TTF' file at `directory/filename` at required `size`. Custom `char_set` can be specified in case
+/// we need to render some non-ascii unicode characters. Each loaded font must be terminated by [font_terminate](#drawfont_terminate).
 font_init_at_size :: fn (font: *Font, directory: string_view, filename: string_view, size: s32, mode := FontAntialiasing.ALPHA, char_set := []u32.{}) Error {
     filepath :: tprint("%/%", directory, filename);
     zeromem(auto font, sizeof(@font));
@@ -456,7 +458,7 @@ font_init_at_size :: fn (font: *Font, directory: string_view, filename: string_v
     return OK;
 }
 
-/// @Incomplete
+/// Terminate loaded font.
 font_terminate :: fn (font: *Font) {
     if !font { return; }
     std.tbl_terminate(&font.char_table);

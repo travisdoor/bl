@@ -37,8 +37,8 @@
 /// 
 /// **Overloads:**
 /// ```c
-/// fn (allocator: *Allocator = null) string 
-/// fn (size: s64, allocator: *Allocator = null) string 
+/// fn (allocator: *Allocator = null) string
+/// fn (size: s64, allocator: *Allocator = null) string
 /// fn (v: string_view, allocator: *Allocator = null) string
 /// fn (cstr: *u8, allocator: *Allocator = null) string
 /// ```
