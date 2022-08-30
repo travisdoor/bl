@@ -8270,6 +8270,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
     if (is_polymorph) {
         struct mir_fn *fn = optional_fn_or_group.fn;
         bmagic_assert(fn);
+        blog("Call to the polymorph function '%s'.", fn->linkage_name);
         struct mir_instr_fn_proto *instr_replacement_fn_proto = NULL;
         runtime_measure_begin(poly);
 

@@ -7,21 +7,21 @@
 - Call side checking for constantness.
 - Insert 'value' into scope when it's replaced to allow access to the symbol i.e. in return type.
 
-comptime_arg :: fn (value: s32 #comptime, i: bool) {
-    print("value = %i = %\n", value, i);
-}
-
 bar :: macro (v: s32) s32 {
     return v + 1;
 }
 
 */
 
-foo :: fn (unused: s32 = 10 #maybe_unused) {
+foo :: fn (a: bool, FOO: s32 #comptime, b: s32) {
+    a;
+    b;
+    print("FOO = %\n", FOO);
+    assert(false);
 }
 
 main :: fn () s32 {
-    foo();
+    foo(true, 20, 30);
     print("DONE\n");
     return 0;
 }
