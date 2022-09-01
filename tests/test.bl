@@ -12,17 +12,27 @@ bar :: macro (v: s32) s32 {
 }
 
 
-*/
-
 foo :: fn (a: bool, FOO: s32 #comptime, b: s32) {
     a;
     b;
     print("FOO = %\n", FOO);
 }
 
+*/
+
+A := 10;
+
+Foo :: struct {
+    i: A;
+}
+
+bar :: fn (T: type) type #comptime {
+    return struct { a: T };
+}
+
 main :: fn () s32 {
-    i :: 10;
-    foo(true, 666, i);
-    print("DONE\n");
+    //foo(true, 666, 10);
+    i: bar(s32);
+    print("i = %\n", i);
     return 0;
 }

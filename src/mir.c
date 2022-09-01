@@ -1122,7 +1122,7 @@ static inline bool can_mutate_comptime_to_const(struct context *ctx, struct mir_
     switch (instr->kind) {
     case MIR_INSTR_CONST:
     case MIR_INSTR_BLOCK:
-    case MIR_INSTR_ARG:
+    case MIR_INSTR_ARG: // @Incomplete this should be removed.
     case MIR_INSTR_FN_PROTO:
         return false;
     case MIR_INSTR_CALL:
@@ -2645,7 +2645,10 @@ void type_init_llvm_fn(struct context *ctx, struct mir_type *type)
 
     for (usize i = 0; i < sarrlenu(args); ++i) {
         struct mir_arg *arg = sarrpeek(args, i);
-        arg->llvm_index     = (u32)sarrlenu(&llvm_args);
+        // Skip generation of LLVM argument when it's supposed to be passed into the function in
+        // compile time.
+        if (arg->is_comptime) continue;
+        arg->llvm_index = (u32)sarrlenu(&llvm_args);
 
         // Composit types.
         if (ctx->assembly->target->reg_split && mir_is_composite_type(arg->type)) {
@@ -4525,6 +4528,7 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
         case MIR_INSTR_UNROLL:
         case MIR_INSTR_FN_PROTO:
         case MIR_INSTR_FN_GROUP:
+        case MIR_INSTR_ARG:
             break;
 
         default:
@@ -6159,8 +6163,9 @@ struct result analyze_instr_arg(struct context UNUSED(*ctx), struct mir_instr_ar
 
     struct mir_arg *arg_data = mir_get_fn_arg(fn->type, arg->i);
     assert(arg_data);
-    const bool       is_comptime = isflag(fn->flags, FLAG_COMPTIME) || arg_data->is_comptime;
-    struct mir_type *type        = arg_data->type;
+    const bool       is_function_comptime = isflag(fn->flags, FLAG_COMPTIME);
+    const bool       is_comptime          = is_function_comptime || arg_data->is_comptime;
+    struct mir_type *type                 = arg_data->type;
     bassert(type);
     if (!is_comptime && type->kind == MIR_TYPE_TYPE) {
         report_error(INVALID_TYPE,
@@ -6169,8 +6174,18 @@ struct result analyze_instr_arg(struct context UNUSED(*ctx), struct mir_instr_ar
                      "evaluated functions or in case the argument is compile-time known.");
         return_zone(FAIL);
     }
+    if (arg_data->is_comptime && is_function_comptime) {
+        report_warning(arg->base.node,
+                       "Redundant comptime directive. The whole function is evaluated in compile "
+                       "time, so all it's arguments are implicitly comptime too.");
+    }
     arg->base.value.type        = type;
     arg->base.value.is_comptime = is_comptime;
+    if (is_comptime) {
+        arg->base.value.addr_mode = MIR_VAM_LVALUE_CONST;
+    } else {
+        arg->base.value.addr_mode = MIR_VAM_RVALUE; // @Incomplete: not sure about this.
+    }
     return_zone(PASS);
 }
 
@@ -7016,6 +7031,13 @@ struct result analyze_instr_type_struct(struct context               *ctx,
             decl_member = (struct mir_instr_decl_member *)*member_instr;
             bassert(decl_member->base.kind == MIR_INSTR_DECL_MEMBER);
             bassert(mir_is_comptime(&decl_member->base));
+
+            if (!mir_is_comptime(decl_member->type)) {
+                report_error(EXPECTED_COMPTIME,
+                             decl_member->type->node,
+                             "Structure member type must be compile-time known.");
+                return_zone(FAIL);
+            }
 
             // solve member type
             member_type = MIR_CEV_READ_AS(struct mir_type *, &decl_member->type->value);
@@ -10434,10 +10456,11 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
                 (struct mir_instr_decl_var *)append_instr_decl_var(
                     ctx,
                     &(append_instr_decl_var_args_t){
-                        .node       = ast_arg_name,
-                        .id         = id,
-                        .scope      = ast_arg_name->owner_scope,
-                        .init       = arg,
+                        .node  = ast_arg_name,
+                        .id    = id,
+                        .scope = ast_arg_name->owner_scope,
+                        .init  = arg,
+                        // @Incomplete: consider making function argumenst immutable by default.
                         .is_mutable = true,
                         .builtin_id = BUILTIN_ID_NONE,
                         .flags      = flags,
