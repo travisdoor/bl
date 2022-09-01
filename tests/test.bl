@@ -11,17 +11,18 @@ bar :: macro (v: s32) s32 {
     return v + 1;
 }
 
+
 */
 
 foo :: fn (a: bool, FOO: s32 #comptime, b: s32) {
     a;
     b;
     print("FOO = %\n", FOO);
-    assert(false);
 }
 
 main :: fn () s32 {
-    foo(true, 20, 30);
+    i :: 10;
+    foo(true, 666, i);
     print("DONE\n");
     return 0;
 }

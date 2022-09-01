@@ -2198,11 +2198,11 @@ void eval_instr_arg(struct virtual_machine UNUSED(*vm), struct mir_instr_arg *ar
 {
     struct mir_fn *fn = arg->base.owner_block->owner_fn;
     bmagic_assert(fn);
-    bassert(isflag(fn->flags, FLAG_COMPTIME));
     mir_instrs_t *comptime_args = fn->comptime_call_args;
-    if (comptime_args && arg->i < sarrlenu(comptime_args)) {
-        arg->base.value.data = sarrpeek(comptime_args, arg->i)->value.data;
-    }
+    bassert(comptime_args &&
+            "No compile-time known arguments provided to the function argument evaluator!");
+    bassert(arg->i < sarrlenu(comptime_args) && arg->i >= 0 && "Argument index is out of the range!");
+    arg->base.value.data = sarrpeek(comptime_args, arg->i)->value.data;
 }
 
 void eval_instr_decl_var(struct virtual_machine UNUSED(*vm), struct mir_instr_decl_var *decl_var)

@@ -2934,12 +2934,14 @@ struct mir_member *create_member(struct context  *ctx,
 struct mir_arg *create_arg(struct context *ctx, create_arg_args_t *args)
 {
     struct mir_arg *tmp = arena_safe_alloc(&ctx->assembly->arenas.mir.arg);
-    tmp->decl_node      = args->node;
-    tmp->id             = args->id;
-    tmp->type           = args->type;
-    tmp->decl_scope     = args->scope;
-    tmp->value          = args->value;
-    tmp->is_unnamed     = args->id && is_ignored_id(args->id);
+    bmagic_set(tmp);
+    tmp->decl_node   = args->node;
+    tmp->id          = args->id;
+    tmp->type        = args->type;
+    tmp->decl_scope  = args->scope;
+    tmp->value       = args->value;
+    tmp->is_unnamed  = args->id && is_ignored_id(args->id);
+    tmp->is_comptime = isflag(args->flags, FLAG_COMPTIME);
     return tmp;
 }
 
@@ -6155,23 +6157,20 @@ struct result analyze_instr_arg(struct context UNUSED(*ctx), struct mir_instr_ar
     struct mir_fn *fn = arg->base.owner_block->owner_fn;
     bmagic_assert(fn);
 
-    const bool is_comptime_fn = isflag(fn->flags, FLAG_COMPTIME);
-
-    struct mir_type *type = mir_get_fn_arg_type(fn->type, arg->i);
+    struct mir_arg *arg_data = mir_get_fn_arg(fn->type, arg->i);
+    assert(arg_data);
+    const bool       is_comptime = isflag(fn->flags, FLAG_COMPTIME) || arg_data->is_comptime;
+    struct mir_type *type        = arg_data->type;
     bassert(type);
-
-    if (!is_comptime_fn && type->kind == MIR_TYPE_TYPE) {
+    if (!is_comptime && type->kind == MIR_TYPE_TYPE) {
         report_error(INVALID_TYPE,
                      arg->base.node,
-                     "Argument has invalid type 'type'. This is allowed only in compile-time "
-                     "functions, consider using #comptime directive for the function declaration; "
-                     "but keep in mind the comptime functions are evaluated in compile-time.");
+                     "Argument has invalid type 'type', this is allowed only in compile-time "
+                     "evaluated functions or in case the argument is compile-time known.");
         return_zone(FAIL);
     }
-
     arg->base.value.type        = type;
-    arg->base.value.is_comptime = is_comptime_fn;
-
+    arg->base.value.is_comptime = is_comptime;
     return_zone(PASS);
 }
 
@@ -8270,7 +8269,6 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
     if (is_polymorph) {
         struct mir_fn *fn = optional_fn_or_group.fn;
         bmagic_assert(fn);
-        blog("Call to the polymorph function '%s'.", fn->linkage_name);
         struct mir_instr_fn_proto *instr_replacement_fn_proto = NULL;
         runtime_measure_begin(poly);
 
@@ -8430,6 +8428,8 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         goto INVALID_ARGC;
     }
     // validate argument types
+    const bool is_comptime_call       = mir_is_comptime(&call->base);
+    bool       has_comptime_arguments = false;
     for (usize i = 0; i < callee_argc; ++i) {
         struct mir_instr **call_arg   = &sarrpeek(call->args, i);
         struct mir_arg    *callee_arg = sarrpeek(type->data.fn.args, i);
@@ -8438,27 +8438,34 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
             ANALYZE_PASSED) {
             goto REPORT_OVERLOAD_LOCATION;
         }
-        if (mir_is_comptime(&call->base) && !mir_is_comptime(*call_arg) &&
-            !callee_arg->is_unnamed) {
-            // When function is called in compile-time, we must know all arguments in
-            // compile-time also, there is one exception for unnamed arguments (id = '_'); when
-            // argument is unnamed, we know its value cannot be used inside the function, but we
-            // can still use its type (known in compile-time). This allows things like:
-            //
-            //    get_type :: fn (_: ?T) type #comptime { return T; }
-            //
+        const bool must_be_comtime =
+            (is_comptime_call && !callee_arg->is_unnamed) || callee_arg->is_comptime;
+        if (!must_be_comtime) continue;
+        has_comptime_arguments = true;
+        // When function is called in compile-time, we must know all arguments in
+        // compile-time also, there is one exception for unnamed arguments (id = '_'); when
+        // argument is unnamed, we know its value cannot be used inside the function, but we
+        // can still use its type (known in compile-time). This allows things like:
+        //
+        //    get_type :: fn (_: ?T) type #comptime { return T; }
+        //
+        if (callee_arg->is_unnamed) continue;
+        if (!mir_is_comptime(*call_arg)) {
             report_error(EXPECTED_COMPTIME,
                          (*call_arg)->node,
-                         "Function argument is supposed to be compile-time known since function is "
-                         "called in compile-time.");
-            report_note(optional_fn_or_group.fn->decl_node, "Function is declared here:");
+                         "Function argument is supposed to be compile-time known.");
+            _report(ctx->analyze.last_analyzed_instr,
+                    MSG_ERR_NOTE,
+                    0,
+                    callee_arg->decl_node,
+                    CARET_WORD,
+                    "Function argument is declared here:");
             goto REPORT_OVERLOAD_LOCATION;
         }
     }
-    // Functions called in compile time are supposed to be called right after successful analyze
-    // pass and should be replaced by constant in MIR. Keep in mind that such function must be
-    // fully analyzed before call.
-    if (call_argc && mir_is_comptime(&call->base)) {
+    // In case the function has compile-time arguments, we must provide the call list to replace
+    // them later with comptime values. These values are evaluated in mir_instr_arg evaluation pass.
+    if (has_comptime_arguments) {
         // Provide compile time arguments to the function.
         struct mir_fn *fn = optional_fn_or_group.fn;
         bmagic_assert(fn);

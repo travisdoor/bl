@@ -245,6 +245,9 @@ struct mir_fn {
     // passing types and compile-time values inside the function. These values are used directly
     // inside the function and evaluated by arg instruction. All call-side arguments must be
     // compile-time known!
+    // This array is used also for mixed functions (part of the argument list is compile time known,
+    // in case some arguments are marked as #comptime). Not all elements in this array are set in
+    // such a case.
     mir_instrs_t *comptime_call_args;
     // Optional, this is set to first call location used for generation of this function from
     // polymorph recipe.
@@ -316,6 +319,7 @@ struct mir_arg {
     struct ast      *decl_node;
     struct scope    *decl_scope;
     bool             is_unnamed;
+    bool             is_comptime;
 
     // This is index of this argument in LLVM IR not in MIR, it can be different based on
     // compiler configuration (via. System V ABI)
@@ -325,6 +329,7 @@ struct mir_arg {
     struct mir_instr *value;
 
     enum llvm_extern_arg_struct_generation_mode llvm_easgm;
+    bmagic_member
 };
 
 // TYPE
@@ -923,13 +928,20 @@ static inline struct mir_type *mir_get_struct_elem_type(const struct mir_type *t
     return sarrpeek(members, i)->type;
 }
 
-static inline struct mir_type *mir_get_fn_arg_type(const struct mir_type *type, usize i)
+static inline struct mir_arg *mir_get_fn_arg(const struct mir_type *type, usize i)
 {
     bassert(type->kind == MIR_TYPE_FN && "Expected function type");
     mir_args_t *args = type->data.fn.args;
     if (!args) return NULL;
     bassert(sarrlenu(args) > i);
-    return sarrpeek(args, i)->type;
+    return sarrpeek(args, i);
+}
+
+static inline struct mir_type *mir_get_fn_arg_type(const struct mir_type *type, usize i)
+{
+    struct mir_arg *arg = mir_get_fn_arg(type, i);
+    bassert(arg);
+    return arg->type;
 }
 
 // Determinate if the instruction has compile time known value.
