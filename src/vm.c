@@ -2198,7 +2198,7 @@ void eval_instr_arg(struct virtual_machine UNUSED(*vm), struct mir_instr_arg *ar
 {
     struct mir_fn *fn = arg->base.owner_block->owner_fn;
     bmagic_assert(fn);
-    mir_instrs_t *comptime_args = fn->comptime_call_args;
+    mir_instrs_t *comptime_args = fn->poly_generated.comptime_args;
     bassert(comptime_args &&
             "No compile-time known arguments provided to the function argument evaluator!");
     bassert(arg->i < sarrlenu(comptime_args) && arg->i >= 0 && "Argument index is out of the range!");
@@ -2387,13 +2387,13 @@ void vm_print_backtrace(struct virtual_machine *vm)
             break;
         }
         struct mir_fn *fn = instr->owner_block->owner_fn;
-        if (fn && is_str_valid_nonempty(fn->debug_poly_replacement)) {
+        if (fn && is_str_valid_nonempty(fn->poly_generated.debug_replacement)) {
             builder_msg(MSG_ERR_NOTE,
                         0,
                         instr->node->location,
                         CARET_NONE,
                         "Called from following location with polymorph replacement: %s",
-                        fn->debug_poly_replacement);
+                        fn->poly_generated.debug_replacement);
         } else {
             builder_msg(MSG_ERR_NOTE, 0, instr->node->location, CARET_NONE, "Called from:");
         }

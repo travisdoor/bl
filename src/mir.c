@@ -1103,7 +1103,7 @@ static inline void usage_check_push(struct context *ctx, struct scope_entry *ent
     if (entry->kind == SCOPE_ENTRY_FN) {
         if (isflag(entry->data.fn->flags, FLAG_TEST_FN)) return;
         if (isflag(entry->data.fn->flags, FLAG_MAYBE_UNUSED)) return;
-        if (entry->data.fn->poly) return;
+        if (entry->data.fn->poly_recipe) return;
     }
     // No usage checking in general is done only for symbols in function local scope and symbols
     // in global private scope.
@@ -1122,7 +1122,7 @@ static inline bool can_mutate_comptime_to_const(struct context *ctx, struct mir_
     switch (instr->kind) {
     case MIR_INSTR_CONST:
     case MIR_INSTR_BLOCK:
-    case MIR_INSTR_ARG: // @Incomplete this should be removed.
+    // case MIR_INSTR_ARG: // @Incomplete this should be removed.
     case MIR_INSTR_FN_PROTO:
         return false;
     case MIR_INSTR_CALL:
@@ -1378,10 +1378,8 @@ static inline bool is_current_block_terminated(struct context *ctx)
 static inline void *mutate_instr(struct mir_instr *instr, enum mir_instr_kind kind)
 {
     bassert(instr);
-#if BL_DEBUG
-    instr->_orig_kind = instr->kind;
-#endif
-    instr->kind = kind;
+    instr->orig_kind = instr->kind;
+    instr->kind      = kind;
     return instr;
 }
 
@@ -6254,7 +6252,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
     struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, value);
     bmagic_assert(fn);
 
-    const bool is_polymorph = fn->poly;
+    const bool is_polymorph_recipe = fn->poly_recipe;
 
     if (isflag(fn->flags, FLAG_TEST_FN)) {
         // We must wait for builtin types for test cases.
@@ -6381,7 +6379,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 
         fn->dyncall.extern_entry = assembly_find_extern(ctx->assembly, intrinsic_name);
         fn->is_fully_analyzed    = true;
-    } else if (is_polymorph) {
+    } else if (is_polymorph_recipe) {
         // Nothing to do
     } else {
         // Add entry block of the function into analyze queue.
@@ -6400,7 +6398,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
     if (isflag(fn->flags, FLAG_EXPORT)) {
         schedule_llvm_generation = true;
         ++fn->ref_count;
-        if (is_polymorph) {
+        if (is_polymorph_recipe) {
             report_error(UNEXPECTED_DIRECTIVE,
                          fn_proto->base.node,
                          "Polymorph function cannot be exported.");
@@ -7693,8 +7691,10 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
     //
     // @Incomplete: Check this expression, we cannot now change value of argument passed into the
     // comptime functions!?
-    bool is_decl_comptime = !var->is_mutable || (decl->init && decl->init->kind == MIR_INSTR_ARG &&
-                                                 mir_is_comptime(decl->init));
+    // @Cleanup
+    const bool is_initialized_from_comptime_argument =
+        (decl->init && decl->init->orig_kind == MIR_INSTR_ARG && mir_is_comptime(decl->init));
+    bool is_decl_comptime = !var->is_mutable || is_initialized_from_comptime_argument;
 
     // Resolve declaration type if not set implicitly to the target variable by
     // compiler.
@@ -7904,7 +7904,7 @@ struct result generate_fn_poly(struct context             *ctx,
     // '?T' so they are replaced by 's32' type even if matching call side argument has different
     // type
     zone();
-    struct mir_fn_poly_recipe *recipe = fn->poly;
+    struct mir_fn_poly_recipe *recipe = fn->poly_recipe;
     bmagic_assert(recipe);
     bassert(out_fn_proto);
 
@@ -8008,11 +8008,16 @@ struct result generate_fn_poly(struct context             *ctx,
 
         struct mir_fn *replacement_fn = MIR_CEV_READ_AS(struct mir_fn *, &instr_fn_proto->value);
         bmagic_assert(replacement_fn);
-        replacement_fn->first_poly_call_node = call;
+        replacement_fn->poly_generated.first_call_node = call;
 
-        char *debug_replacement_str_dup = scdup(
-            &ctx->assembly->string_cache, debug_replacement_str, strlenu(debug_replacement_str));
-        replacement_fn->debug_poly_replacement = debug_replacement_str_dup;
+        if (strlenu(debug_replacement_str)) {
+            char *debug_replacement_str_dup                  = scdup(&ctx->assembly->string_cache,
+                                                    debug_replacement_str,
+                                                    strlenu(debug_replacement_str));
+            replacement_fn->poly_generated.debug_replacement = debug_replacement_str_dup;
+        } else {
+            replacement_fn->poly_generated.debug_replacement = NULL;
+        }
 
         ctx->polymorph.is_replacement_active = false;
         ctx->polymorph.current_scope_layer   = prev_scope_layer;
@@ -8491,7 +8496,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         // Provide compile time arguments to the function.
         struct mir_fn *fn = optional_fn_or_group.fn;
         bmagic_assert(fn);
-        fn->comptime_call_args = call->args;
+        fn->poly_generated.comptime_args = call->args;
     }
     return_zone(PASS);
 
@@ -8522,7 +8527,7 @@ struct result analyze_instr_store(struct context *ctx, struct mir_instr_store *s
     }
 
     if (dest->value.addr_mode == MIR_VAM_LVALUE_CONST || dest->value.addr_mode == MIR_VAM_RVALUE) {
-        report_error(INVALID_EXPR, store->base.node, "Cannot assign to constant.");
+        report_error(INVALID_EXPR, store->base.node, "Cannot assign to immutable.");
     }
 
     struct mir_type *dest_type = mir_deref_type(dest->value.type);
@@ -8549,9 +8554,9 @@ struct result analyze_instr_block(struct context *ctx, struct mir_instr_block *b
     if (!fn->first_unreachable_loc && block->base.is_unreachable && block->entry_instr &&
         block->entry_instr->node && isnotflag(fn->flags, FLAG_COMPTIME)) {
         // Report unreachable code if there is one only once inside function body.
-        fn->first_unreachable_loc = block->entry_instr->node->location;
-        const char *poly          = fn->debug_poly_replacement;
-        if (is_str_valid_nonempty(poly)) {
+        fn->first_unreachable_loc     = block->entry_instr->node->location;
+        const char *debug_replacement = fn->poly_generated.debug_replacement;
+        if (debug_replacement) {
             builder_msg(
                 MSG_WARN,
                 0,
@@ -8559,7 +8564,7 @@ struct result analyze_instr_block(struct context *ctx, struct mir_instr_block *b
                 CARET_NONE,
                 "Unreachable code detected in the function '%s' with polymorph replacement: %s",
                 mir_get_fn_readable_name(fn),
-                poly);
+                debug_replacement);
         } else {
             builder_msg(MSG_WARN,
                         0,
@@ -10393,7 +10398,7 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
     }
 
     if (is_polymorph) {
-        fn->poly = create_fn_poly_recipe(ctx, lit_fn);
+        fn->poly_recipe = create_fn_poly_recipe(ctx, lit_fn);
         goto FINISH;
     }
 
@@ -10461,7 +10466,7 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
                         .scope = ast_arg_name->owner_scope,
                         .init  = arg,
                         // @Incomplete: consider making function argumenst immutable by default.
-                        .is_mutable = true,
+                        .is_mutable = !isflag(flags, FLAG_COMPTIME),
                         .builtin_id = BUILTIN_ID_NONE,
                         .flags      = flags,
                     });
@@ -10703,26 +10708,22 @@ void report_poly(struct mir_instr *instr)
     if (!instr) return;
     struct mir_fn *owner_fn = instr_owner_fn(instr);
     if (!owner_fn) return;
-    if (!owner_fn->first_poly_call_node) return;
-    if (!owner_fn->first_poly_call_node->location) return;
-    const char *poly = owner_fn->debug_poly_replacement;
-    if (poly) {
+    if (!owner_fn->poly_generated.first_call_node) return;
+    if (!owner_fn->poly_generated.first_call_node->location) return;
+    const char *debug_replacement = owner_fn->poly_generated.debug_replacement;
+    if (debug_replacement) {
         builder_msg(MSG_ERR_NOTE,
                     0,
                     owner_fn->decl_node->location,
                     CARET_WORD,
-                    "In polymorph of function with substitution: %s",
-                    poly);
+                    "In polymorphic function with substitution: %s",
+                    debug_replacement);
     } else {
-        builder_msg(MSG_ERR_NOTE,
-                    0,
-                    owner_fn->decl_node->location,
-                    CARET_WORD,
-                    "In polymorph of function.");
+        builder_msg(MSG_ERR_NOTE, 0, owner_fn->decl_node->location, CARET_WORD, "In function:");
     }
     builder_msg(MSG_ERR_NOTE,
                 0,
-                owner_fn->first_poly_call_node->location,
+                owner_fn->poly_generated.first_call_node->location,
                 CARET_WORD,
                 "First called here:");
 }
