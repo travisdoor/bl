@@ -40,10 +40,18 @@ new :: fn (T: type #comptime) *u8 {
     return null;
 }
 
+Data :: struct {
+    a: s32;
+    e: [8]u64;
+}
+
 main :: fn () s32 {
-    foo(true, 666, 10);
-    i: bar(s32);
-    v :: new(s32);
-    print("i = %\n", i);
+    new(s32);
+    new(bool);
+    foo :: fn (DATA: Data #comptime) {
+        print("%\n", DATA);
+    };
+    data :: Data.{ 10 };
+    foo(data);
     return 0;
 }
