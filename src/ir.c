@@ -1681,8 +1681,10 @@ State emit_instr_arg(struct context *ctx, struct mir_var *dest, struct mir_instr
     LLVMValueRef     llvm_fn = fn->llvm_value;
     bassert(llvm_fn);
 
-    struct mir_arg *arg       = sarrpeek(fn_type->data.fn.args, arg_instr->i);
-    LLVMValueRef    llvm_dest = dest->llvm_value;
+    struct mir_arg *arg = sarrpeek(fn_type->data.fn.args, arg_instr->i);
+    bassert(!arg->is_comptime &&
+            "Comtime arguments should be evaluated and replaced by constants!");
+    LLVMValueRef llvm_dest = dest->llvm_value;
     bassert(llvm_dest);
 
     switch (arg->llvm_easgm) {
@@ -2337,7 +2339,9 @@ State emit_instr_call(struct context *ctx, struct mir_instr_call *call)
         for (usize i = 0; i < sarrlenu(call->args); ++i) {
             struct mir_instr *arg_instr = sarrpeek(call->args, i);
             struct mir_arg   *arg       = sarrpeek(callee_type->data.fn.args, i);
-            LLVMValueRef      llvm_arg  = arg_instr->llvm_value;
+            // Comptime arguments does not exist in LLVM.
+            if (arg->is_comptime) continue;
+            LLVMValueRef llvm_arg = arg_instr->llvm_value;
 
             switch (arg->llvm_easgm) {
             case LLVM_EASGM_NONE: { // Default behavior.

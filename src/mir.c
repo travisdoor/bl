@@ -1103,7 +1103,7 @@ static inline void usage_check_push(struct context *ctx, struct scope_entry *ent
     if (entry->kind == SCOPE_ENTRY_FN) {
         if (isflag(entry->data.fn->flags, FLAG_TEST_FN)) return;
         if (isflag(entry->data.fn->flags, FLAG_MAYBE_UNUSED)) return;
-        if (entry->data.fn->poly) return;
+        if (entry->data.fn->poly_recipe) return;
     }
     // No usage checking in general is done only for symbols in function local scope and symbols
     // in global private scope.
@@ -1122,7 +1122,7 @@ static inline bool can_mutate_comptime_to_const(struct context *ctx, struct mir_
     switch (instr->kind) {
     case MIR_INSTR_CONST:
     case MIR_INSTR_BLOCK:
-    case MIR_INSTR_ARG:
+    // case MIR_INSTR_ARG: // @Incomplete this should be removed.
     case MIR_INSTR_FN_PROTO:
         return false;
     case MIR_INSTR_CALL:
@@ -1378,10 +1378,8 @@ static inline bool is_current_block_terminated(struct context *ctx)
 static inline void *mutate_instr(struct mir_instr *instr, enum mir_instr_kind kind)
 {
     bassert(instr);
-#if BL_DEBUG
-    instr->_orig_kind = instr->kind;
-#endif
-    instr->kind = kind;
+    instr->orig_kind = instr->kind;
+    instr->kind      = kind;
     return instr;
 }
 
@@ -2645,7 +2643,10 @@ void type_init_llvm_fn(struct context *ctx, struct mir_type *type)
 
     for (usize i = 0; i < sarrlenu(args); ++i) {
         struct mir_arg *arg = sarrpeek(args, i);
-        arg->llvm_index     = (u32)sarrlenu(&llvm_args);
+        // Skip generation of LLVM argument when it's supposed to be passed into the function in
+        // compile time.
+        if (arg->is_comptime) continue;
+        arg->llvm_index = (u32)sarrlenu(&llvm_args);
 
         // Composit types.
         if (ctx->assembly->target->reg_split && mir_is_composite_type(arg->type)) {
@@ -2934,12 +2935,14 @@ struct mir_member *create_member(struct context  *ctx,
 struct mir_arg *create_arg(struct context *ctx, create_arg_args_t *args)
 {
     struct mir_arg *tmp = arena_safe_alloc(&ctx->assembly->arenas.mir.arg);
-    tmp->decl_node      = args->node;
-    tmp->id             = args->id;
-    tmp->type           = args->type;
-    tmp->decl_scope     = args->scope;
-    tmp->value          = args->value;
-    tmp->is_unnamed     = args->id && is_ignored_id(args->id);
+    bmagic_set(tmp);
+    tmp->decl_node   = args->node;
+    tmp->id          = args->id;
+    tmp->type        = args->type;
+    tmp->decl_scope  = args->scope;
+    tmp->value       = args->value;
+    tmp->is_unnamed  = args->id && is_ignored_id(args->id);
+    tmp->is_comptime = isflag(args->flags, FLAG_COMPTIME);
     return tmp;
 }
 
@@ -4523,6 +4526,7 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
         case MIR_INSTR_UNROLL:
         case MIR_INSTR_FN_PROTO:
         case MIR_INSTR_FN_GROUP:
+        case MIR_INSTR_ARG:
             break;
 
         default:
@@ -6155,23 +6159,31 @@ struct result analyze_instr_arg(struct context UNUSED(*ctx), struct mir_instr_ar
     struct mir_fn *fn = arg->base.owner_block->owner_fn;
     bmagic_assert(fn);
 
-    const bool is_comptime_fn = isflag(fn->flags, FLAG_COMPTIME);
-
-    struct mir_type *type = mir_get_fn_arg_type(fn->type, arg->i);
+    struct mir_arg *arg_data = mir_get_fn_arg(fn->type, arg->i);
+    assert(arg_data);
+    const bool       is_function_comptime = isflag(fn->flags, FLAG_COMPTIME);
+    const bool       is_comptime          = is_function_comptime || arg_data->is_comptime;
+    struct mir_type *type                 = arg_data->type;
     bassert(type);
-
-    if (!is_comptime_fn && type->kind == MIR_TYPE_TYPE) {
+    if (!is_comptime && type->kind == MIR_TYPE_TYPE) {
         report_error(INVALID_TYPE,
                      arg->base.node,
-                     "Argument has invalid type 'type'. This is allowed only in compile-time "
-                     "functions, consider using #comptime directive for the function declaration; "
-                     "but keep in mind the comptime functions are evaluated in compile-time.");
+                     "Argument has invalid type 'type', this is allowed only in compile-time "
+                     "evaluated functions or in case the argument is compile-time known.");
         return_zone(FAIL);
     }
-
+    if (arg_data->is_comptime && is_function_comptime) {
+        report_warning(arg->base.node,
+                       "Redundant comptime directive. The whole function is evaluated in compile "
+                       "time, so all it's arguments are implicitly comptime too.");
+    }
     arg->base.value.type        = type;
-    arg->base.value.is_comptime = is_comptime_fn;
-
+    arg->base.value.is_comptime = is_comptime;
+    if (is_comptime) {
+        arg->base.value.addr_mode = MIR_VAM_LVALUE_CONST;
+    } else {
+        arg->base.value.addr_mode = MIR_VAM_RVALUE; // @Incomplete: not sure about this.
+    }
     return_zone(PASS);
 }
 
@@ -6240,7 +6252,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
     struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, value);
     bmagic_assert(fn);
 
-    const bool is_polymorph = fn->poly;
+    const bool is_polymorph_recipe = fn->poly_recipe;
 
     if (isflag(fn->flags, FLAG_TEST_FN)) {
         // We must wait for builtin types for test cases.
@@ -6367,7 +6379,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 
         fn->dyncall.extern_entry = assembly_find_extern(ctx->assembly, intrinsic_name);
         fn->is_fully_analyzed    = true;
-    } else if (is_polymorph) {
+    } else if (is_polymorph_recipe) {
         // Nothing to do
     } else {
         // Add entry block of the function into analyze queue.
@@ -6386,7 +6398,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
     if (isflag(fn->flags, FLAG_EXPORT)) {
         schedule_llvm_generation = true;
         ++fn->ref_count;
-        if (is_polymorph) {
+        if (is_polymorph_recipe) {
             report_error(UNEXPECTED_DIRECTIVE,
                          fn_proto->base.node,
                          "Polymorph function cannot be exported.");
@@ -7017,6 +7029,13 @@ struct result analyze_instr_type_struct(struct context               *ctx,
             decl_member = (struct mir_instr_decl_member *)*member_instr;
             bassert(decl_member->base.kind == MIR_INSTR_DECL_MEMBER);
             bassert(mir_is_comptime(&decl_member->base));
+
+            if (!mir_is_comptime(decl_member->type)) {
+                report_error(EXPECTED_COMPTIME,
+                             decl_member->type->node,
+                             "Structure member type must be compile-time known.");
+                return_zone(FAIL);
+            }
 
             // solve member type
             member_type = MIR_CEV_READ_AS(struct mir_type *, &decl_member->type->value);
@@ -7672,8 +7691,10 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
     //
     // @Incomplete: Check this expression, we cannot now change value of argument passed into the
     // comptime functions!?
-    bool is_decl_comptime = !var->is_mutable || (decl->init && decl->init->kind == MIR_INSTR_ARG &&
-                                                 mir_is_comptime(decl->init));
+    // @Cleanup
+    const bool is_initialized_from_comptime_argument =
+        (decl->init && decl->init->orig_kind == MIR_INSTR_ARG && mir_is_comptime(decl->init));
+    bool is_decl_comptime = !var->is_mutable || is_initialized_from_comptime_argument;
 
     // Resolve declaration type if not set implicitly to the target variable by
     // compiler.
@@ -7883,7 +7904,7 @@ struct result generate_fn_poly(struct context             *ctx,
     // '?T' so they are replaced by 's32' type even if matching call side argument has different
     // type
     zone();
-    struct mir_fn_poly_recipe *recipe = fn->poly;
+    struct mir_fn_poly_recipe *recipe = fn->poly_recipe;
     bmagic_assert(recipe);
     bassert(out_fn_proto);
 
@@ -7987,11 +8008,16 @@ struct result generate_fn_poly(struct context             *ctx,
 
         struct mir_fn *replacement_fn = MIR_CEV_READ_AS(struct mir_fn *, &instr_fn_proto->value);
         bmagic_assert(replacement_fn);
-        replacement_fn->first_poly_call_node = call;
+        replacement_fn->poly_generated.first_call_node = call;
 
-        char *debug_replacement_str_dup = scdup(
-            &ctx->assembly->string_cache, debug_replacement_str, strlenu(debug_replacement_str));
-        replacement_fn->debug_poly_replacement = debug_replacement_str_dup;
+        if (strlenu(debug_replacement_str)) {
+            char *debug_replacement_str_dup                  = scdup(&ctx->assembly->string_cache,
+                                                    debug_replacement_str,
+                                                    strlenu(debug_replacement_str));
+            replacement_fn->poly_generated.debug_replacement = debug_replacement_str_dup;
+        } else {
+            replacement_fn->poly_generated.debug_replacement = NULL;
+        }
 
         ctx->polymorph.is_replacement_active = false;
         ctx->polymorph.current_scope_layer   = prev_scope_layer;
@@ -8270,7 +8296,6 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
     if (is_polymorph) {
         struct mir_fn *fn = optional_fn_or_group.fn;
         bmagic_assert(fn);
-        blog("Call to the polymorph function '%s'.", fn->linkage_name);
         struct mir_instr_fn_proto *instr_replacement_fn_proto = NULL;
         runtime_measure_begin(poly);
 
@@ -8430,6 +8455,8 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         goto INVALID_ARGC;
     }
     // validate argument types
+    const bool is_comptime_call       = mir_is_comptime(&call->base);
+    bool       has_comptime_arguments = false;
     for (usize i = 0; i < callee_argc; ++i) {
         struct mir_instr **call_arg   = &sarrpeek(call->args, i);
         struct mir_arg    *callee_arg = sarrpeek(type->data.fn.args, i);
@@ -8438,31 +8465,38 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
             ANALYZE_PASSED) {
             goto REPORT_OVERLOAD_LOCATION;
         }
-        if (mir_is_comptime(&call->base) && !mir_is_comptime(*call_arg) &&
-            !callee_arg->is_unnamed) {
-            // When function is called in compile-time, we must know all arguments in
-            // compile-time also, there is one exception for unnamed arguments (id = '_'); when
-            // argument is unnamed, we know its value cannot be used inside the function, but we
-            // can still use its type (known in compile-time). This allows things like:
-            //
-            //    get_type :: fn (_: ?T) type #comptime { return T; }
-            //
+        const bool must_be_comtime =
+            (is_comptime_call && !callee_arg->is_unnamed) || callee_arg->is_comptime;
+        if (!must_be_comtime) continue;
+        has_comptime_arguments = true;
+        // When function is called in compile-time, we must know all arguments in
+        // compile-time also, there is one exception for unnamed arguments (id = '_'); when
+        // argument is unnamed, we know its value cannot be used inside the function, but we
+        // can still use its type (known in compile-time). This allows things like:
+        //
+        //    get_type :: fn (_: ?T) type #comptime { return T; }
+        //
+        if (callee_arg->is_unnamed) continue;
+        if (!mir_is_comptime(*call_arg)) {
             report_error(EXPECTED_COMPTIME,
                          (*call_arg)->node,
-                         "Function argument is supposed to be compile-time known since function is "
-                         "called in compile-time.");
-            report_note(optional_fn_or_group.fn->decl_node, "Function is declared here:");
+                         "Function argument is supposed to be compile-time known.");
+            _report(ctx->analyze.last_analyzed_instr,
+                    MSG_ERR_NOTE,
+                    0,
+                    callee_arg->decl_node,
+                    CARET_WORD,
+                    "Function argument is declared here:");
             goto REPORT_OVERLOAD_LOCATION;
         }
     }
-    // Functions called in compile time are supposed to be called right after successful analyze
-    // pass and should be replaced by constant in MIR. Keep in mind that such function must be
-    // fully analyzed before call.
-    if (call_argc && mir_is_comptime(&call->base)) {
+    // In case the function has compile-time arguments, we must provide the call list to replace
+    // them later with comptime values. These values are evaluated in mir_instr_arg evaluation pass.
+    if (has_comptime_arguments) {
         // Provide compile time arguments to the function.
         struct mir_fn *fn = optional_fn_or_group.fn;
         bmagic_assert(fn);
-        fn->comptime_call_args = call->args;
+        fn->poly_generated.comptime_args = call->args;
     }
     return_zone(PASS);
 
@@ -8493,7 +8527,7 @@ struct result analyze_instr_store(struct context *ctx, struct mir_instr_store *s
     }
 
     if (dest->value.addr_mode == MIR_VAM_LVALUE_CONST || dest->value.addr_mode == MIR_VAM_RVALUE) {
-        report_error(INVALID_EXPR, store->base.node, "Cannot assign to constant.");
+        report_error(INVALID_EXPR, store->base.node, "Cannot assign to immutable.");
     }
 
     struct mir_type *dest_type = mir_deref_type(dest->value.type);
@@ -8520,9 +8554,9 @@ struct result analyze_instr_block(struct context *ctx, struct mir_instr_block *b
     if (!fn->first_unreachable_loc && block->base.is_unreachable && block->entry_instr &&
         block->entry_instr->node && isnotflag(fn->flags, FLAG_COMPTIME)) {
         // Report unreachable code if there is one only once inside function body.
-        fn->first_unreachable_loc = block->entry_instr->node->location;
-        const char *poly          = fn->debug_poly_replacement;
-        if (is_str_valid_nonempty(poly)) {
+        fn->first_unreachable_loc     = block->entry_instr->node->location;
+        const char *debug_replacement = fn->poly_generated.debug_replacement;
+        if (debug_replacement) {
             builder_msg(
                 MSG_WARN,
                 0,
@@ -8530,7 +8564,7 @@ struct result analyze_instr_block(struct context *ctx, struct mir_instr_block *b
                 CARET_NONE,
                 "Unreachable code detected in the function '%s' with polymorph replacement: %s",
                 mir_get_fn_readable_name(fn),
-                poly);
+                debug_replacement);
         } else {
             builder_msg(MSG_WARN,
                         0,
@@ -10364,7 +10398,7 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
     }
 
     if (is_polymorph) {
-        fn->poly = create_fn_poly_recipe(ctx, lit_fn);
+        fn->poly_recipe = create_fn_poly_recipe(ctx, lit_fn);
         goto FINISH;
     }
 
@@ -10427,11 +10461,12 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
                 (struct mir_instr_decl_var *)append_instr_decl_var(
                     ctx,
                     &(append_instr_decl_var_args_t){
-                        .node       = ast_arg_name,
-                        .id         = id,
-                        .scope      = ast_arg_name->owner_scope,
-                        .init       = arg,
-                        .is_mutable = true,
+                        .node  = ast_arg_name,
+                        .id    = id,
+                        .scope = ast_arg_name->owner_scope,
+                        .init  = arg,
+                        // @Incomplete: consider making function argumenst immutable by default.
+                        .is_mutable = !isflag(flags, FLAG_COMPTIME),
                         .builtin_id = BUILTIN_ID_NONE,
                         .flags      = flags,
                     });
@@ -10673,26 +10708,22 @@ void report_poly(struct mir_instr *instr)
     if (!instr) return;
     struct mir_fn *owner_fn = instr_owner_fn(instr);
     if (!owner_fn) return;
-    if (!owner_fn->first_poly_call_node) return;
-    if (!owner_fn->first_poly_call_node->location) return;
-    const char *poly = owner_fn->debug_poly_replacement;
-    if (poly) {
+    if (!owner_fn->poly_generated.first_call_node) return;
+    if (!owner_fn->poly_generated.first_call_node->location) return;
+    const char *debug_replacement = owner_fn->poly_generated.debug_replacement;
+    if (debug_replacement) {
         builder_msg(MSG_ERR_NOTE,
                     0,
                     owner_fn->decl_node->location,
                     CARET_WORD,
-                    "In polymorph of function with substitution: %s",
-                    poly);
+                    "In polymorphic function with substitution: %s",
+                    debug_replacement);
     } else {
-        builder_msg(MSG_ERR_NOTE,
-                    0,
-                    owner_fn->decl_node->location,
-                    CARET_WORD,
-                    "In polymorph of function.");
+        builder_msg(MSG_ERR_NOTE, 0, owner_fn->decl_node->location, CARET_WORD, "In function:");
     }
     builder_msg(MSG_ERR_NOTE,
                 0,
-                owner_fn->first_poly_call_node->location,
+                owner_fn->poly_generated.first_call_node->location,
                 CARET_WORD,
                 "First called here:");
 }

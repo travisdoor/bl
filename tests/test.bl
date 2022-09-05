@@ -11,17 +11,39 @@ bar :: macro (v: s32) s32 {
     return v + 1;
 }
 
+Mutation propagation:
+a :: 10; // error, immutable
+
+Foo :: struct {
+    a: s32;
+}
+
+foo :: Foo.{};
+foo.a = 10; // error immutable
+
+foo_ptr :: 
+
 */
 
 foo :: fn (a: bool, FOO: s32 #comptime, b: s32) {
-    a;
-    b;
+    a = false;
+    b = 10;
     print("FOO = %\n", FOO);
-    assert(false);
+}
+
+bar :: fn (T: type) type #comptime {
+    return struct { a: T };
+}
+
+new :: fn (T: type #comptime) *u8 {
+    print("T = %\n", T);
+    return null;
 }
 
 main :: fn () s32 {
-    foo(true, 20, 30);
-    print("DONE\n");
+    foo(true, 666, 10);
+    i: bar(s32);
+    v :: new(s32);
+    print("i = %\n", i);
     return 0;
 }

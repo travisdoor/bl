@@ -237,19 +237,32 @@ struct mir_fn {
     struct id          *id;
     struct ast         *decl_node;
     struct scope_entry *scope_entry;
-    // Optional, set only for polymorphic functions.
-    // @CLEANUP we can use this type directly without function to save some memory.
-    struct mir_fn_poly_recipe *poly;
-    // Optional, in case the function is marked as #comptime, we assume that all input arguments are
-    // compile-time known; also new function specification is generated for every call to allow
-    // passing types and compile-time values inside the function. These values are used directly
-    // inside the function and evaluated by arg instruction. All call-side arguments must be
-    // compile-time known!
-    mir_instrs_t *comptime_call_args;
-    // Optional, this is set to first call location used for generation of this function from
-    // polymorph recipe.
-    struct ast *first_poly_call_node;
-    const char *debug_poly_replacement;
+    // Optional, set only for polymorphic functions. Not those generated from polymorph functions.
+    // In general when user specifies polymorphic function, it's used only as a recipe to generate
+    // actual runtime functions with proper poly type replacements.
+    struct mir_fn_poly_recipe *poly_recipe;
+
+    // This structure is initialized only in case this function is generated from polymorphic
+    // function recipe, it's not polymorph anymore (its type is also not polymorph).
+    struct {
+        // Optional, in case the function is marked as #comptime, we assume that all input arguments
+        // are compile-time known; also new function specification is generated for every call to
+        // allow passing types and compile-time values inside the function. These values are used
+        // directly inside the function and evaluated by arg instruction. All call-side arguments
+        // must be compile-time known! This array is used also for mixed functions (part of the
+        // argument list is compile time known, in case some arguments are marked as #comptime). Not
+        // all elements in this array are set in such a case.
+        mir_instrs_t *comptime_args;
+        // Optional, this is set to first call location used for generation of this function from
+        // polymorph recipe.
+        struct ast *first_call_node;
+        // Optional, simple stringification of the original polymorph argument types used to
+        // generate this function, this may be useful to produce informative error messages. In case
+        // the function is comptime or has mixed arguments without any polymorph replacements this
+        // string may be NULL.
+        const char *debug_replacement;
+    } poly_generated;
+
     // function body scope if there is one (optional)
     struct scope    *body_scope;
     struct mir_type *type;
@@ -316,6 +329,7 @@ struct mir_arg {
     struct ast      *decl_node;
     struct scope    *decl_scope;
     bool             is_unnamed;
+    bool             is_comptime;
 
     // This is index of this argument in LLVM IR not in MIR, it can be different based on
     // compiler configuration (via. System V ABI)
@@ -325,6 +339,7 @@ struct mir_arg {
     struct mir_instr *value;
 
     enum llvm_extern_arg_struct_generation_mode llvm_easgm;
+    bmagic_member
 };
 
 // TYPE
@@ -486,12 +501,14 @@ struct mir_instr {
     struct mir_instr           *prev;
     struct mir_instr           *next;
     enum mir_instr_kind         kind;
-#if BL_DEBUG
-    enum mir_instr_kind _orig_kind;
-#endif
-    s32  ref_count;
-    bool is_unreachable;
-    bool is_implicit;
+    // Set when the instruction was mutated.
+    // @Incomplete: This can be removed later, we use it only in debbuger and to check is comptime
+    // argument was passed to the function and its local variable should be comptime too. In case we
+    // change arguments to be immutable this field cane be define only in debug mode.
+    enum mir_instr_kind orig_kind;
+    s32                 ref_count;
+    bool                is_unreachable;
+    bool                is_implicit;
 
     enum mir_instr_state state;
 
@@ -923,13 +940,20 @@ static inline struct mir_type *mir_get_struct_elem_type(const struct mir_type *t
     return sarrpeek(members, i)->type;
 }
 
-static inline struct mir_type *mir_get_fn_arg_type(const struct mir_type *type, usize i)
+static inline struct mir_arg *mir_get_fn_arg(const struct mir_type *type, usize i)
 {
     bassert(type->kind == MIR_TYPE_FN && "Expected function type");
     mir_args_t *args = type->data.fn.args;
     if (!args) return NULL;
     bassert(sarrlenu(args) > i);
-    return sarrpeek(args, i)->type;
+    return sarrpeek(args, i);
+}
+
+static inline struct mir_type *mir_get_fn_arg_type(const struct mir_type *type, usize i)
+{
+    struct mir_arg *arg = mir_get_fn_arg(type, i);
+    bassert(arg);
+    return arg->type;
 }
 
 // Determinate if the instruction has compile time known value.
