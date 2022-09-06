@@ -27,6 +27,7 @@
 // =================================================================================================
 
 #include "mir.h"
+#include "ast.h"
 #include "basic_types.h"
 #include "bldebug.h"
 #include "builder.h"
@@ -1122,10 +1123,10 @@ static inline bool can_mutate_comptime_to_const(struct context *ctx, struct mir_
     switch (instr->kind) {
     case MIR_INSTR_CONST:
     case MIR_INSTR_BLOCK:
-    // case MIR_INSTR_ARG: // @Incomplete this should be removed.
     case MIR_INSTR_FN_PROTO:
         return false;
     case MIR_INSTR_CALL:
+    case MIR_INSTR_ARG:
         return true;
     default:
         break;
@@ -7903,6 +7904,9 @@ struct result generate_fn_poly(struct context             *ctx,
     // references to
     // '?T' so they are replaced by 's32' type even if matching call side argument has different
     // type
+    //
+    // As an polymorph function is considered also comptime function (executed in compile time) and
+    // mixed function (some of arguments in the argument list are comptime).
     zone();
     struct mir_fn_poly_recipe *recipe = fn->poly_recipe;
     bmagic_assert(recipe);
@@ -7917,13 +7921,17 @@ struct result generate_fn_poly(struct context             *ctx,
     bassert(ast_recipe->kind == AST_EXPR_LIT_FN);
 
     char        *debug_replacement_str = tstr();
+    bool         has_comptime_argument = false;
     mir_types_t *queue                 = &ctx->polymorph.replacement_queue;
-    const usize  argc                  = sarrlenu(recipe_args);
+
+    const usize argc = sarrlenu(recipe_args);
     for (usize i = 0; i < argc; ++i) {
         const bool       is_expected_arg_valid = expected_args && i < sarrlenu(expected_args);
         struct mir_type *call_arg_type =
             is_expected_arg_valid ? sarrpeek(expected_args, i)->value.type : NULL;
-        struct mir_type *recipe_arg_type = sarrpeek(recipe_args, i)->type;
+        struct mir_arg *recipe_arg = sarrpeek(recipe_args, i);
+        has_comptime_argument |= recipe_arg->is_comptime;
+        struct mir_type *recipe_arg_type = recipe_arg->type;
         if (is_expected_arg_valid && is_load_needed(sarrpeek(expected_args, i))) {
             bassert(call_arg_type);
             call_arg_type = mir_deref_type(call_arg_type);
@@ -7977,7 +7985,9 @@ struct result generate_fn_poly(struct context             *ctx,
     }
 
     // @Performance: Consider more precise way how to choose if we need cache or not
-    const bool use_cache = isnotflag(fn->flags, FLAG_COMPTIME);
+    // We do caching only in case the function is not polymorph of comptime function or if it's not
+    // a mixed function (each call can produce different comptime values to be generated).
+    const bool use_cache = isnotflag(fn->flags, FLAG_COMPTIME) && !has_comptime_argument;
 
     hash_t replacement_hash = 0;
     s64    index            = -1;
@@ -8011,9 +8021,10 @@ struct result generate_fn_poly(struct context             *ctx,
         replacement_fn->poly_generated.first_call_node = call;
 
         if (strlenu(debug_replacement_str)) {
-            char *debug_replacement_str_dup                  = scdup(&ctx->assembly->string_cache,
+            char *debug_replacement_str_dup = scdup(&ctx->assembly->string_cache,
                                                     debug_replacement_str,
                                                     strlenu(debug_replacement_str));
+
             replacement_fn->poly_generated.debug_replacement = debug_replacement_str_dup;
         } else {
             replacement_fn->poly_generated.debug_replacement = NULL;

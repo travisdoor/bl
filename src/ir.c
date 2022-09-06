@@ -30,7 +30,10 @@
 #include "bldebug.h"
 #include "builder.h"
 #include "common.h"
+#include "mir.h"
 #include "stb_ds.h"
+#include "vm.h"
+#include "llvm-c/Core.h"
 #include "llvm-c/Types.h"
 
 #if BL_DEBUG
@@ -265,7 +268,6 @@ static inline LLVMTypeRef get_type(struct context *ctx, struct mir_type *t)
     if (ctx->generate_debug_info && !t->llvm_meta) {
         DI_type_init(ctx, t);
     }
-
     return t->llvm_type;
 }
 
@@ -473,6 +475,8 @@ LLVMMetadataRef DI_type_init(struct context *ctx, struct mir_type *type)
         sarrput(&params, DI_type_init(ctx, type->data.fn.ret_type));
         for (usize i = 0; i < sarrlenu(type->data.fn.args); ++i) {
             struct mir_arg *it = sarrpeek(type->data.fn.args, i);
+            // No debug info for comptime arguments.
+            if (it->is_comptime) continue;
             sarrput(&params, DI_type_init(ctx, it->type));
         }
         // @Incomplete: file meta not used?
@@ -2492,10 +2496,12 @@ State emit_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl)
     bassert(!var->is_global && "Global variable IR is supposed to lazy generated only as needed!");
     bassert(var->llvm_value);
     if (decl->init) {
-        // There is special handling for initialization via compound instruction
         if (decl->init->kind == MIR_INSTR_COMPOUND) {
+            // There is special handling for initialization via compound instruction
             emit_instr_compound(ctx, var->llvm_value, (struct mir_instr_compound *)decl->init);
         } else if (decl->init->kind == MIR_INSTR_ARG) {
+            // In case the comptime function argument is not converted to constant (we convert only
+            // fundamental type) we have to simply duplicate the value of initializer here.
             emit_instr_arg(ctx, var, (struct mir_instr_arg *)decl->init);
         } else {
             // use simple store
@@ -2674,6 +2680,28 @@ State emit_instr_const(struct context *ctx, struct mir_instr_const *c)
         llvm_value =
             LLVMConstNamedStruct(llvm_type, sarrdata(&llvm_members), sarrlen(&llvm_members));
         sarrfree(&llvm_members);
+        break;
+    }
+    case MIR_TYPE_ARRAY: {
+        llvm_values_t    llvm_elems = SARR_ZERO;
+        struct mir_type *elem_type  = type->data.array.elem_type;
+        const s64        elemc      = type->data.array.len;
+        for (s64 i = 0; i < elemc; ++i) {
+            vm_stack_ptr_t         value_ptr = vm_get_array_elem_ptr(type, c->base.value.data, i);
+            struct mir_instr_const tmp       = {
+                      .base.value.type        = elem_type,
+                      .base.value.data        = value_ptr,
+                      .base.value.is_comptime = true,
+            };
+            if (emit_instr_const(ctx, &tmp) != STATE_PASSED) {
+                babort("Cannot evaluate constant data blob!");
+            }
+            bassert(tmp.base.llvm_value);
+            sarrput(&llvm_elems, tmp.base.llvm_value);
+        }
+        llvm_value =
+            LLVMConstArray(elem_type->llvm_type, sarrdata(&llvm_elems), sarrlen(&llvm_elems));
+        sarrfree(&llvm_elems);
         break;
     }
     default:

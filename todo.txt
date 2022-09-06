@@ -31,3 +31,4 @@
 - Create new(s32) somehow.
   - Allow comtime artuments (mixed function signature).
   - Change function arfuments mutability.
+  - Redesign mutability propagation (now immutable struct cannot have its members modified).
