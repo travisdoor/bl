@@ -7722,6 +7722,7 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
         report_error(INVALID_DIRECTIVE, var->decl_node, "Thread local variable must be global.");
         return_zone(FAIL);
     }
+    
     // Continue only with local variables and struct typedefs.
     bool has_initializer = decl->init;
     if (has_initializer) {

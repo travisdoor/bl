@@ -46,12 +46,9 @@ Data :: struct {
 }
 
 main :: fn () s32 {
+    foo(10, 20, 30);
+    bar(s32);
     new(s32);
     new(bool);
-    foo :: fn (DATA: Data #comptime) {
-        print("%\n", DATA);
-    };
-    data :: Data.{ 10 };
-    foo(data);
     return 0;
 }
