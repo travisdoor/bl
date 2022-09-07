@@ -6,6 +6,10 @@
 - Does not evaluate automatically while compilation unless the whole function is marked as #comptime.
 - Call side checking for constantness.
 - Insert 'value' into scope when it's replaced to allow access to the symbol i.e. in return type.
+- Comptime arguments needs to be registered into scope while they are processed in the type analyze pass
+  to allow i.e. modification of a function return type.
+
+!!! Checking of provided comptime-call arguments must be done before the mixed function is generated. !!!
 
 bar :: macro (v: s32) s32 {
     return v + 1;
