@@ -6174,7 +6174,7 @@ struct result analyze_instr_arg(struct context UNUSED(*ctx), struct mir_instr_ar
         return_zone(FAIL);
     }
     if (arg_data->is_comptime && is_function_comptime) {
-        // @Cleanup: This check is valid, but needs to be moved somewhere else. nochekin
+        // @Cleanup: This check is valid, but needs to be moved somewhere else. nocheckin
         report_warning(arg->base.node,
                        "Redundant comptime directive. The whole function is evaluated in compile "
                        "time, so all it's arguments are implicitly comptime too.");
