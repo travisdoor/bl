@@ -20,19 +20,21 @@ set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "" FORCE)
 
 # Set a default build type if none was specified
 set(DEFAULT_BUILD_TYPE "Release")
-set(CMAKE_C_FLAGS_DEBUG "-DBL_DEBUG")
-set(CMAKE_CXX_FLAGS_DEBUG "-DBL_DEBUG")
-
 if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}' as none was specified.")
     set(CMAKE_BUILD_TYPE ${DEFAULT_BUILD_TYPE})
 endif()
 
+set(CMAKE_C_FLAGS_DEBUG "-DBL_DEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "-DBL_DEBUG")
+
 option(BL_ASSERT_ENABLE "Turn on assert checks" OFF)
 if(BL_ASSERT_ENABLE)
-    add_definitions(-DBL_ASSERT_ENABLE=1)
+    add_compile_definitions(BL_ASSERT_ENABLE=1)
 else()
-    add_definitions(-DBL_ASSERT_ENABLE=0)
+    add_compile_definitions(
+        $<$<CONFIG:Debug>:BL_ASSERT_ENABLE=1>
+        $<$<CONFIG:Release>:BL_ASSERT_ENABLE=0>)
 endif()
 
 option(TRACY_ENABLE "Turn on Tracy profiler." OFF)
@@ -161,12 +163,17 @@ add_subdirectory(${BL_DEPS_DIR}/libyaml-0.2.5)
 if(MSVC)
     add_definitions(-DNOMINMAX)
     target_link_libraries(blc PUBLIC shlwapi DbgHelp)
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Od /MDd /Z7")
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Od /MDd /Z7")
-    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /DEBUG /Z7 /O2 /Oi")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /DEBUG /Z7 /O2 /Oi")
-    target_compile_options(yaml PRIVATE $<$<CONFIG:RELEASE>: /wd4996 /wd4267 /wd4244>)
-    target_compile_options(yaml PRIVATE $<$<CONFIG:DEBUG>: /wd4996 /wd4267 /wd4244 /Od /MDd /Z7>)
+    set(MSVC_RELEASE_FLAGS /DEBUG /Z7 /O2 /Oi /GL)
+    set(MSVC_DEBUG_FLAGS /Od /MDd /Z7)
+    target_compile_options(blc PRIVATE
+        $<$<CONFIG:Release>: ${MSVC_RELEASE_FLAGS}>
+        $<$<CONFIG:Debug>:   ${MSVC_DEBUG_FLAGS}>)
+    target_compile_options(dynload_s PRIVATE
+        $<$<CONFIG:Release>: ${MSVC_RELEASE_FLAGS}>
+        $<$<CONFIG:Debug>:   ${MSVC_DEBUG_FLAGS}>)
+    target_compile_options(yaml PRIVATE
+        $<$<CONFIG:Release>: ${MSVC_RELEASE_FLAGS} /wd4996 /wd4267 /wd4244>
+        $<$<CONFIG:Debug>:   ${MSVC_DEBUG_FLAGS} /wd4996 /wd4267 /wd4244>)
 else()
     set(THREADS_PREFER_PTHREAD_FLAG ON)
     find_package(Threads REQUIRED)

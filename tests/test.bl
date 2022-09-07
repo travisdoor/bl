@@ -29,18 +29,19 @@ foo_ptr ::
 
 */
 
-foo :: fn (a: bool, FOO: s32 #comptime, b: s32) {
+foo :: fn (a: bool, FOO: s32 #comptime, b: s32) s32 {
+    BAR :: 10;
     a = false;
     b = 10;
-    print("FOO = %\n", FOO);
+    return FOO + BAR;
 }
 
 bar :: fn (T: type) type #comptime {
+    // T = s32; // Should be possible???
     return struct { a: T };
 }
 
-new :: fn (T: type #comptime) *u8 {
-    print("T = %\n", T);
+new :: fn (T: type #comptime) *T {
     return null;
 }
 
@@ -50,9 +51,8 @@ Data :: struct {
 }
 
 main :: fn () s32 {
-    foo(10, 20, 30);
+    foo(false, 666, 30);
     bar(s32);
     new(s32);
-    new(bool);
     return 0;
 }

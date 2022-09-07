@@ -32,6 +32,7 @@
 #include "bldebug.h"
 #include "builder.h"
 #include "common.h"
+#include "scope.h"
 #include "stb_ds.h"
 #include <stdarg.h>
 
@@ -6174,7 +6175,6 @@ struct result analyze_instr_arg(struct context UNUSED(*ctx), struct mir_instr_ar
         return_zone(FAIL);
     }
     if (arg_data->is_comptime && is_function_comptime) {
-        // @Cleanup: This check is valid, but needs to be moved somewhere else. nocheckin
         report_warning(arg->base.node,
                        "Redundant comptime directive. The whole function is evaluated in compile "
                        "time, so all it's arguments are implicitly comptime too.");
@@ -6689,9 +6689,9 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
     zone();
     bassert(type_fn->ret_type ? (type_fn->ret_type->state == MIR_IS_COMPLETE) : true);
 
-    bool       is_vargs         = false;
-    bool       has_default_args = false;
-    const bool is_polymorph     = type_fn->is_polymorph;
+    bool          is_vargs         = false;
+    bool          has_default_args = false;
+    const bool    is_polymorph     = type_fn->is_polymorph;
 
     mir_args_t *args = NULL;
     if (type_fn->args) {
@@ -6769,6 +6769,18 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
                 return_zone(FAIL);
             }
             sarrput(args, arg);
+
+            if (arg->is_comptime) {
+                // Provide comptime arguments directly as reference to comptime constant passed to
+                // the function, this allows usage of the 'type' arguments as the return type of
+                // this function.
+
+                struct scope_entry *entry =
+                    register_symbol(ctx, arg->decl_node, arg->id, arg->decl_scope, false);
+                bassert(entry);
+                entry->kind      = SCOPE_ENTRY_COMPTIME_ARG;
+                entry->data.type = type;
+            }
         }
     }
 
@@ -7723,7 +7735,7 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
         report_error(INVALID_DIRECTIVE, var->decl_node, "Thread local variable must be global.");
         return_zone(FAIL);
     }
-    
+
     // Continue only with local variables and struct typedefs.
     bool has_initializer = decl->init;
     if (has_initializer) {
