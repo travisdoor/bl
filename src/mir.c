@@ -6174,6 +6174,7 @@ struct result analyze_instr_arg(struct context UNUSED(*ctx), struct mir_instr_ar
         return_zone(FAIL);
     }
     if (arg_data->is_comptime && is_function_comptime) {
+        // @Cleanup: This check is valid, but needs to be moved somewhere else. nochekin
         report_warning(arg->base.node,
                        "Redundant comptime directive. The whole function is evaluated in compile "
                        "time, so all it's arguments are implicitly comptime too.");
@@ -8306,6 +8307,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
 
     const bool is_polymorph = type->data.fn.is_polymorph;
     if (is_polymorph) {
+        // Polymorph function is comptime, polymorph and mixed function.
         struct mir_fn *fn = optional_fn_or_group.fn;
         bmagic_assert(fn);
         struct mir_instr_fn_proto *instr_replacement_fn_proto = NULL;

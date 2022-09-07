@@ -144,8 +144,8 @@ endif()
 add_subdirectory(dynload)
 add_subdirectory(dyncall)
 add_subdirectory(dyncallback)
-add_subdirectory(doc/manual EXCLUDE_FROM_ALL)
-add_subdirectory(test EXCLUDE_FROM_ALL)
+#add_subdirectory(doc/manual EXCLUDE_FROM_ALL)
+#add_subdirectory(test EXCLUDE_FROM_ALL)
 
 # install cmake Find scripts (disabled per default)
 

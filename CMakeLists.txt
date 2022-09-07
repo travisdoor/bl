@@ -16,6 +16,8 @@ set(HAVE_64_BIT 1)
 set(BL_DEPS_REMOTE biscuitlang.org/releases)
 set(BL_DEPS_DIR ${CMAKE_SOURCE_DIR}/deps)
 
+set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "" FORCE)
+
 # Set a default build type if none was specified
 set(DEFAULT_BUILD_TYPE "Release")
 set(CMAKE_C_FLAGS_DEBUG "-DBL_DEBUG")
@@ -163,23 +165,6 @@ if(MSVC)
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Od /MDd /Z7")
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /DEBUG /Z7 /O2 /Oi")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /DEBUG /Z7 /O2 /Oi")
-    #if (${CMAKE_C_COMPILER_ID} STREQUAL "Clang" AND "x${CMAKE_C_SIMULATE_ID}" STREQUAL "xMSVC")
-    #    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}\
-    #    -Werror\
-    #    -Wpedantic\
-    #    -Wno-double-promotion\
-    #    -Wno-gnu-zero-variadic-macro-arguments\
-    #    -Wno-format-nonliteral\
-    #    -Wno-c++98-compat\
-    #    -Wno-missing-prototypes\
-    #    -Wno-documentation-unknown-command\
-    #    -Wno-switch-enum\
-    #    -Wno-language-extension-token\
-    #    -Wno-cast-align\
-    #    -Wno-reserved-macro-identifier\
-    #    -Wno-gnu-flexible-array-initializer\
-    #    -Wno-reserved-identifier")
-    #endif()
     target_compile_options(yaml PRIVATE $<$<CONFIG:RELEASE>: /wd4996 /wd4267 /wd4244>)
     target_compile_options(yaml PRIVATE $<$<CONFIG:DEBUG>: /wd4996 /wd4267 /wd4244 /Od /MDd /Z7>)
 else()
@@ -212,6 +197,10 @@ target_include_directories(
             ${BL_DEPS_DIR}/libyaml-0.2.5/include
             ${LLVM_INCLUDE_DIRS}
 )
+
+set_target_properties(dyncall_s dyncallback_s dynload_s PROPERTIES FOLDER dyncall)
+set_target_properties(acc_gen intrinsics_gen omp_gen PROPERTIES FOLDER LLVM)
+set_target_properties(yaml PROPERTIES FOLDER yaml)
 
 # 'make install' to the correct locations (provided by GNUInstallDirs).
 install(TARGETS blc RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
