@@ -239,7 +239,7 @@ static void fn_dtor(struct mir_fn *fn)
     arrfree(fn->variables);
 }
 
-static void fn_poly_dtor(struct mir_fn_poly_recipe *recipe)
+static void fn_poly_dtor(struct mir_fn_generated_recipe *recipe)
 {
     bmagic_assert(recipe);
     hmfree(recipe->entries);
@@ -427,13 +427,13 @@ static struct mir_fn *create_fn(struct context            *ctx,
 
 static struct mir_fn_group *
 create_fn_group(struct context *ctx, struct ast *decl_node, mir_fns_t *variants);
-static struct mir_fn_poly_recipe *create_fn_poly_recipe(struct context *ctx,
-                                                        struct ast     *ast_lit_fn);
-static struct mir_member         *create_member(struct context  *ctx,
-                                                struct ast      *node,
-                                                struct id       *id,
-                                                s64              index,
-                                                struct mir_type *type);
+static struct mir_fn_generated_recipe *create_fn_generation_recipe(struct context *ctx,
+                                                                   struct ast     *ast_lit_fn);
+static struct mir_member              *create_member(struct context  *ctx,
+                                                     struct ast      *node,
+                                                     struct id       *id,
+                                                     s64              index,
+                                                     struct mir_type *type);
 
 typedef struct {
     struct ast       *node;
@@ -976,11 +976,11 @@ static void          analyze_report_unused(struct context *ctx);
 
 // Find or generate implementation of polymorph function template. Function will try to find already
 // generated function based on expected argument list or create new one.
-static struct result generate_fn_poly(struct context             *ctx,
-                                      struct ast                 *call,
-                                      struct mir_fn              *fn,
-                                      mir_instrs_t               *expected_args,
-                                      struct mir_instr_fn_proto **out_fn_proto);
+static struct result generate_function_implementation(struct context             *ctx,
+                                                      struct ast                 *call,
+                                                      struct mir_fn              *fn,
+                                                      mir_instrs_t               *expected_args,
+                                                      struct mir_instr_fn_proto **out_fn_proto);
 
 // =================================================================================================
 //  RTTI
@@ -1105,7 +1105,7 @@ static inline void usage_check_push(struct context *ctx, struct scope_entry *ent
     if (entry->kind == SCOPE_ENTRY_FN) {
         if (isflag(entry->data.fn->flags, FLAG_TEST_FN)) return;
         if (isflag(entry->data.fn->flags, FLAG_MAYBE_UNUSED)) return;
-        if (entry->data.fn->poly_recipe) return;
+        if (entry->data.fn->generation_recipe) return;
     }
     // No usage checking in general is done only for symbols in function local scope and symbols
     // in global private scope.
@@ -2910,10 +2910,11 @@ create_fn_group(struct context *ctx, struct ast *decl_node, mir_fns_t *variants)
     return tmp;
 }
 
-struct mir_fn_poly_recipe *create_fn_poly_recipe(struct context *ctx, struct ast *ast_lit_fn)
+struct mir_fn_generated_recipe *create_fn_generation_recipe(struct context *ctx,
+                                                            struct ast     *ast_lit_fn)
 {
     bassert(ast_lit_fn && ast_lit_fn->kind == AST_EXPR_LIT_FN);
-    struct mir_fn_poly_recipe *tmp = arena_safe_alloc(&ctx->assembly->arenas.mir.fn_poly);
+    struct mir_fn_generated_recipe *tmp = arena_safe_alloc(&ctx->assembly->arenas.mir.fn_generated);
     bmagic_set(tmp);
     tmp->ast_lit_fn = ast_lit_fn;
     return tmp;
@@ -5715,7 +5716,7 @@ struct result analyze_instr_addrof(struct context *ctx, struct mir_instr_addrof 
     bassert(src);
     if (src->state != MIR_IS_COMPLETE) return_zone(POSTPONE);
     const enum mir_value_address_mode src_addr_mode = src->value.addr_mode;
-    const bool                        is_source_polymorph =
+    const bool is_source_polymorph =
         src->value.type->kind == MIR_TYPE_FN && src->value.type->data.fn.is_polymorph;
     const bool can_grab_address =
         (src_addr_mode == MIR_VAM_LVALUE || src_addr_mode == MIR_VAM_LVALUE_CONST ||
@@ -6254,7 +6255,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
     struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, value);
     bmagic_assert(fn);
 
-    const bool is_polymorph_recipe = fn->poly_recipe;
+    const bool is_polymorph_recipe = fn->generation_recipe;
 
     if (isflag(fn->flags, FLAG_TEST_FN)) {
         // We must wait for builtin types for test cases.
@@ -6689,9 +6690,9 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
     zone();
     bassert(type_fn->ret_type ? (type_fn->ret_type->state == MIR_IS_COMPLETE) : true);
 
-    bool          is_vargs         = false;
-    bool          has_default_args = false;
-    const bool    is_polymorph     = type_fn->is_polymorph;
+    bool       is_vargs         = false;
+    bool       has_default_args = false;
+    const bool is_polymorph     = type_fn->is_polymorph;
 
     mir_args_t *args = NULL;
     if (type_fn->args) {
@@ -6770,6 +6771,7 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
             }
             sarrput(args, arg);
 
+#if 0 // @Incomplete
             if (arg->is_comptime) {
                 // Provide comptime arguments directly as reference to comptime constant passed to
                 // the function, this allows usage of the 'type' arguments as the return type of
@@ -6781,6 +6783,7 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
                 entry->kind      = SCOPE_ENTRY_COMPTIME_ARG;
                 entry->data.type = type;
             }
+#endif
         }
     }
 
@@ -7897,11 +7900,11 @@ static inline hash_t get_current_poly_replacement_hash(struct context *ctx)
     return_zone(hash);
 }
 
-struct result generate_fn_poly(struct context             *ctx,
-                               struct ast                 *call,
-                               struct mir_fn              *fn,
-                               mir_instrs_t               *expected_args,
-                               struct mir_instr_fn_proto **out_fn_proto)
+struct result generate_function_implementation(struct context             *ctx,
+                                               struct ast                 *call,
+                                               struct mir_fn              *fn,
+                                               mir_instrs_t               *expected_args,
+                                               struct mir_instr_fn_proto **out_fn_proto)
 {
     // Polymorph types can be divided into two groups, masters and slaves. The master type is
     // defined as '?<type name>', such type acts like type definition (creates scope entry) and
@@ -7922,7 +7925,7 @@ struct result generate_fn_poly(struct context             *ctx,
     // As an polymorph function is considered also comptime function (executed in compile time) and
     // mixed function (some of arguments in the argument list are comptime).
     zone();
-    struct mir_fn_poly_recipe *recipe = fn->poly_recipe;
+    struct mir_fn_generated_recipe *recipe = fn->generation_recipe;
     bmagic_assert(recipe);
     bassert(out_fn_proto);
 
@@ -8032,16 +8035,16 @@ struct result generate_fn_poly(struct context             *ctx,
 
         struct mir_fn *replacement_fn = MIR_CEV_READ_AS(struct mir_fn *, &instr_fn_proto->value);
         bmagic_assert(replacement_fn);
-        replacement_fn->poly_generated.first_call_node = call;
+        replacement_fn->generated.first_call_node = call;
 
         if (strlenu(debug_replacement_str)) {
             char *debug_replacement_str_dup = scdup(&ctx->assembly->string_cache,
                                                     debug_replacement_str,
                                                     strlenu(debug_replacement_str));
 
-            replacement_fn->poly_generated.debug_replacement = debug_replacement_str_dup;
+            replacement_fn->generated.debug_replacement = debug_replacement_str_dup;
         } else {
-            replacement_fn->poly_generated.debug_replacement = NULL;
+            replacement_fn->generated.debug_replacement = NULL;
         }
 
         ctx->polymorph.is_replacement_active = false;
@@ -8325,8 +8328,8 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         struct mir_instr_fn_proto *instr_replacement_fn_proto = NULL;
         runtime_measure_begin(poly);
 
-        struct result state =
-            generate_fn_poly(ctx, call->base.node, fn, call->args, &instr_replacement_fn_proto);
+        struct result state = generate_function_implementation(
+            ctx, call->base.node, fn, call->args, &instr_replacement_fn_proto);
         if (state.state != ANALYZE_PASSED) {
             return_zone(FAIL);
         }
@@ -8522,7 +8525,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         // Provide compile time arguments to the function.
         struct mir_fn *fn = optional_fn_or_group.fn;
         bmagic_assert(fn);
-        fn->poly_generated.comptime_args = call->args;
+        fn->generated.comptime_args = call->args;
     }
     return_zone(PASS);
 
@@ -8581,7 +8584,7 @@ struct result analyze_instr_block(struct context *ctx, struct mir_instr_block *b
         block->entry_instr->node && isnotflag(fn->flags, FLAG_COMPTIME)) {
         // Report unreachable code if there is one only once inside function body.
         fn->first_unreachable_loc     = block->entry_instr->node->location;
-        const char *debug_replacement = fn->poly_generated.debug_replacement;
+        const char *debug_replacement = fn->generated.debug_replacement;
         if (debug_replacement) {
             builder_msg(
                 MSG_WARN,
@@ -10371,7 +10374,7 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
             isflag(flags, FLAG_COMPTIME) && isnotflag(flags, FLAG_EXTERN);
     }
 
-    const bool is_polymorph =
+    const bool is_generated =
         ast_fn_type->data.type_fn.is_polymorph && !ctx->polymorph.is_replacement_active;
 
     struct mir_instr_fn_proto *fn_proto =
@@ -10423,8 +10426,8 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
         goto FINISH;
     }
 
-    if (is_polymorph) {
-        fn->poly_recipe = create_fn_poly_recipe(ctx, lit_fn);
+    if (is_generated) {
+        fn->generation_recipe = create_fn_generation_recipe(ctx, lit_fn);
         goto FINISH;
     }
 
@@ -10734,9 +10737,9 @@ void report_poly(struct mir_instr *instr)
     if (!instr) return;
     struct mir_fn *owner_fn = instr_owner_fn(instr);
     if (!owner_fn) return;
-    if (!owner_fn->poly_generated.first_call_node) return;
-    if (!owner_fn->poly_generated.first_call_node->location) return;
-    const char *debug_replacement = owner_fn->poly_generated.debug_replacement;
+    if (!owner_fn->generated.first_call_node) return;
+    if (!owner_fn->generated.first_call_node->location) return;
+    const char *debug_replacement = owner_fn->generated.debug_replacement;
     if (debug_replacement) {
         builder_msg(MSG_ERR_NOTE,
                     0,
@@ -10749,7 +10752,7 @@ void report_poly(struct mir_instr *instr)
     }
     builder_msg(MSG_ERR_NOTE,
                 0,
-                owner_fn->poly_generated.first_call_node->location,
+                owner_fn->generated.first_call_node->location,
                 CARET_WORD,
                 "First called here:");
 }
@@ -10792,9 +10795,10 @@ static void ast_decl_fn(struct context *ctx, struct ast *ast_fn)
         ctx, ast_value, ast_name, optional_explicit_linkage_name, is_global, flags, builtin_id);
     bassert(value);
 
-    if (ast_type)
+    if (ast_type) {
         ((struct mir_instr_fn_proto *)value)->user_type =
             ast_create_type_resolver_call(ctx, ast_type);
+    }
 
     bassert(value);
     struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &value->value);
@@ -11994,9 +11998,9 @@ void mir_arenas_init(struct mir_arenas *arenas)
                alignment_of(struct mir_var),
                ARENA_CHUNK_COUNT,
                NULL);
-    arena_init(&arenas->fn_poly,
-               sizeof(struct mir_fn_poly_recipe),
-               alignment_of(struct mir_fn_poly_recipe),
+    arena_init(&arenas->fn_generated,
+               sizeof(struct mir_fn_generated_recipe),
+               alignment_of(struct mir_fn_generated_recipe),
                ARENA_CHUNK_COUNT,
                (arena_elem_dtor_t)&fn_poly_dtor);
     arena_init(&arenas->fn,
@@ -12036,7 +12040,7 @@ void mir_arenas_terminate(struct mir_arenas *arenas)
     arena_terminate(&arenas->variant);
     arena_terminate(&arenas->arg);
     arena_terminate(&arenas->fn_group);
-    arena_terminate(&arenas->fn_poly);
+    arena_terminate(&arenas->fn_generated);
 }
 
 void mir_run(struct assembly *assembly)
