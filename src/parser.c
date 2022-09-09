@@ -165,7 +165,8 @@ static inline struct ast *_parse_ident(struct context *ctx)
 }
 
 // Lookup parent function type and set it as polymorph in case it's not already set.
-static inline void set_parent_function_type_as_polymorph(struct context *ctx)
+static inline void set_parent_function_type_flavor(struct context               *ctx,
+                                                   const enum ast_type_fn_flavor flavor)
 {
     bassert(
         arrlenu(ctx->fn_type_stack) &&

@@ -142,7 +142,7 @@ struct context {
         mir_types_t replacement_queue;
         hash_t      current_scope_layer;
         bool        is_replacement_active;
-    } polymorph;
+    } fn_generate;
 
     // Analyze MIR generated from Ast
     struct {
@@ -1962,7 +1962,7 @@ struct scope_entry *register_symbol(struct context *ctx,
         return ctx->analyze.unnamed_entry;
     }
     const bool          is_private  = scope->kind == SCOPE_PRIVATE;
-    const hash_t        layer_index = ctx->polymorph.current_scope_layer;
+    const hash_t        layer_index = ctx->fn_generate.current_scope_layer;
     struct scope_entry *collision   = scope_lookup(scope,
                                                  &(scope_lookup_args_t){
                                                        .layer   = layer_index,
@@ -5463,7 +5463,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
             (struct mir_instr_decl_ref *)mutate_instr(&member_ptr->base, MIR_INSTR_DECL_REF);
         decl_ref->scope                  = scope;
         decl_ref->scope_entry            = NULL;
-        decl_ref->scope_layer            = ctx->polymorph.current_scope_layer;
+        decl_ref->scope_layer            = ctx->fn_generate.current_scope_layer;
         decl_ref->accept_incomplete_type = false;
         decl_ref->parent_unit            = parent_unit;
         decl_ref->rid                    = rid;
@@ -5716,7 +5716,7 @@ struct result analyze_instr_addrof(struct context *ctx, struct mir_instr_addrof 
     bassert(src);
     if (src->state != MIR_IS_COMPLETE) return_zone(POSTPONE);
     const enum mir_value_address_mode src_addr_mode = src->value.addr_mode;
-    const bool is_source_polymorph =
+    const bool                        is_source_polymorph =
         src->value.type->kind == MIR_TYPE_FN && src->value.type->data.fn.is_polymorph;
     const bool can_grab_address =
         (src_addr_mode == MIR_VAM_LVALUE || src_addr_mode == MIR_VAM_LVALUE_CONST ||
@@ -7887,7 +7887,7 @@ static void poly_type_match(struct mir_type  *recipe,
 
 static inline hash_t get_current_poly_replacement_hash(struct context *ctx)
 {
-    mir_types_t *queue = &ctx->polymorph.replacement_queue;
+    mir_types_t *queue = &ctx->fn_generate.replacement_queue;
     if (!sarrlenu(queue)) return 0;
 
     zone();
@@ -7900,6 +7900,10 @@ static inline hash_t get_current_poly_replacement_hash(struct context *ctx)
     return_zone(hash);
 }
 
+// Can be used to generate actual function implementation from function generation recipe. This is
+// used in case the function is polymorph (the function type contains polymorph types) or function
+// has some compile time arguments (mixed function). In some cases we need to generate also comptime
+// executed functions (they may contain types in argument list).
 struct result generate_function_implementation(struct context             *ctx,
                                                struct ast                 *call,
                                                struct mir_fn              *fn,
@@ -7907,7 +7911,7 @@ struct result generate_function_implementation(struct context             *ctx,
                                                struct mir_instr_fn_proto **out_fn_proto)
 {
     // Polymorph types can be divided into two groups, masters and slaves. The master type is
-    // defined as '?<type name>', such type acts like type definition (creates scope entry) and
+    // defined as '?<NAME>', such type acts like type definition (creates scope entry) and
     // should be replaced by matching argument type deduced from call side of the function. The
     // slave type on the other hand cannot be directly replaced (based on type of matching
     // argument), it creates only reference to the master.
@@ -7939,7 +7943,7 @@ struct result generate_function_implementation(struct context             *ctx,
 
     char        *debug_replacement_str = tstr();
     bool         has_comptime_argument = false;
-    mir_types_t *queue                 = &ctx->polymorph.replacement_queue;
+    mir_types_t *queue                 = &ctx->fn_generate.replacement_queue;
 
     const usize argc = sarrlenu(recipe_args);
     for (usize i = 0; i < argc; ++i) {
@@ -8013,9 +8017,9 @@ struct result generate_function_implementation(struct context             *ctx,
         index            = hmgeti(recipe->entries, replacement_hash);
     }
     if (index == -1) {
-        const hash_t prev_scope_layer        = ctx->polymorph.current_scope_layer;
-        ctx->polymorph.current_scope_layer   = ++recipe->scope_layer;
-        ctx->polymorph.is_replacement_active = true;
+        const hash_t prev_scope_layer          = ctx->fn_generate.current_scope_layer;
+        ctx->fn_generate.current_scope_layer   = ++recipe->scope_layer;
+        ctx->fn_generate.is_replacement_active = true;
 
         // Create name for generated function
         const char *original_fn_name     = fn->id ? fn->id->str : IMPL_FN_NAME;
@@ -8047,8 +8051,8 @@ struct result generate_function_implementation(struct context             *ctx,
             replacement_fn->generated.debug_replacement = NULL;
         }
 
-        ctx->polymorph.is_replacement_active = false;
-        ctx->polymorph.current_scope_layer   = prev_scope_layer;
+        ctx->fn_generate.is_replacement_active = false;
+        ctx->fn_generate.current_scope_layer   = prev_scope_layer;
 
         // Feed the output
         (*out_fn_proto) = (struct mir_instr_fn_proto *)instr_fn_proto;
@@ -10375,7 +10379,7 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
     }
 
     const bool is_generated =
-        ast_fn_type->data.type_fn.is_polymorph && !ctx->polymorph.is_replacement_active;
+        ast_fn_type->data.type_fn.is_polymorph && !ctx->fn_generate.is_replacement_active;
 
     struct mir_instr_fn_proto *fn_proto =
         (struct mir_instr_fn_proto *)append_instr_fn_proto(ctx, lit_fn, NULL, NULL, true);
@@ -10384,8 +10388,9 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
     fn_proto->type = ast_create_type_resolver_call(ctx, ast_fn_type);
     bassert(fn_proto->type);
 
-    bassert(!(ctx->polymorph.is_replacement_active && sarrlenu(&ctx->polymorph.replacement_queue)));
-    ctx->polymorph.is_replacement_active = false;
+    bassert(
+        !(ctx->fn_generate.is_replacement_active && sarrlenu(&ctx->fn_generate.replacement_queue)));
+    ctx->fn_generate.is_replacement_active = false;
 
     // Prepare new function context. Must be in sync with pop at the end of scope!
     // DON'T CALL FINISH BEFORE THIS!!!
@@ -11088,7 +11093,7 @@ struct mir_instr *ast_ref(struct context *ctx, struct ast *ref)
     struct ast *next  = ref->data.ref.next;
     bassert(ident);
     struct scope *scope       = ident->owner_scope;
-    const hash_t  scope_layer = ctx->polymorph.current_scope_layer;
+    const hash_t  scope_layer = ctx->fn_generate.current_scope_layer;
     struct unit  *unit        = ident->location->unit;
     bassert(unit);
     bassert(scope);
@@ -11105,7 +11110,7 @@ struct mir_instr *ast_type_fn(struct context *ctx, struct ast *type_fn)
     struct ast  *ast_ret_type  = type_fn->data.type_fn.ret_type;
     ast_nodes_t *ast_arg_types = type_fn->data.type_fn.args;
     const bool   is_polymorph =
-        type_fn->data.type_fn.is_polymorph && !ctx->polymorph.is_replacement_active;
+        type_fn->data.type_fn.is_polymorph && !ctx->fn_generate.is_replacement_active;
     // Discard current entity ID to fix bug when multi-return structure takes this name as an
     // alias. There should be probably better way to solve this issue, but lets keep this for
     // now.
@@ -11298,7 +11303,7 @@ struct mir_instr *ast_type_struct(struct context *ctx, struct ast *type_struct)
                                     id,
                                     fwd_decl,
                                     scope,
-                                    ctx->polymorph.current_scope_layer,
+                                    ctx->fn_generate.current_scope_layer,
                                     members,
                                     false,
                                     is_union,
@@ -11311,11 +11316,11 @@ struct mir_instr *ast_type_poly(struct context *ctx, struct ast *poly)
     struct scope *scope     = poly->owner_scope;
     bassert(ast_ident);
 
-    mir_types_t        *queue       = &ctx->polymorph.replacement_queue;
+    mir_types_t        *queue       = &ctx->fn_generate.replacement_queue;
     struct id          *T_id        = &ast_ident->data.ident.id;
     struct scope_entry *scope_entry = register_symbol(ctx, ast_ident, T_id, scope, false);
     if (!scope_entry) goto USE_DUMMY;
-    if (ctx->polymorph.is_replacement_active) {
+    if (ctx->fn_generate.is_replacement_active) {
         if (sarrlen(queue) == 0) {
             // Use s32 as dummy when polymorph replacement fails.
             goto USE_DUMMY;
@@ -12049,13 +12054,13 @@ void mir_run(struct assembly *assembly)
     struct context ctx;
     zone();
     memset(&ctx, 0, sizeof(struct context));
-    ctx.assembly                      = assembly;
-    ctx.debug_mode                    = assembly->target->opt == ASSEMBLY_OPT_DEBUG;
-    ctx.builtin_types                 = &assembly->builtin_types;
-    ctx.vm                            = &assembly->vm;
-    ctx.testing.cases                 = assembly->testing.cases;
-    ctx.polymorph.current_scope_layer = SCOPE_DEFAULT_LAYER;
-    ctx.ast.current_defer_stack_index = -1;
+    ctx.assembly                        = assembly;
+    ctx.debug_mode                      = assembly->target->opt == ASSEMBLY_OPT_DEBUG;
+    ctx.builtin_types                   = &assembly->builtin_types;
+    ctx.vm                              = &assembly->vm;
+    ctx.testing.cases                   = assembly->testing.cases;
+    ctx.fn_generate.current_scope_layer = SCOPE_DEFAULT_LAYER;
+    ctx.ast.current_defer_stack_index   = -1;
 
     // @Incomplete: use available CPU count here?
     ctx.llvm_module_count = 4;
@@ -12099,7 +12104,7 @@ DONE:
 
     arrfree(ctx.analyze.usage_check_arr);
     sarrfree(&ctx.analyze.incomplete_rtti);
-    sarrfree(&ctx.polymorph.replacement_queue);
+    sarrfree(&ctx.fn_generate.replacement_queue);
     sarrfree(&ctx.analyze.complete_check_type_stack);
     return_zone();
 }

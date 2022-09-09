@@ -238,15 +238,18 @@ struct ast_type_dynarr {
     struct ast *elem_type;
 };
 
+enum ast_type_fn_flavor {
+    AST_TYPE_FN_FLAVOR_NONE = 0,
+    // Function type contains polymorph types.
+    AST_TYPE_FN_FLAVOR_POLYMORPH = 1 << 1,
+    // Function type contains comptime arguments.
+    AST_TYPE_FN_FLAVOR_MIXED = 1 << 2,
+};
+
 struct ast_type_fn {
     struct ast  *ret_type;
     ast_nodes_t *args;
-
-    // True for polymorph, comptime evaluated and mixed (comptime/runtime) functions.
-    bool is_polymorph;
-
-    // @Incomplete: Introduce polymorph flavor to generate better error messages (polymorph vs
-    // comptime vs mixed).
+    u32          flavor; // @Note: see ast_type_fn_flavor
 };
 
 struct ast_type_fn_group {
