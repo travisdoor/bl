@@ -1,0 +1,52 @@
+%YAML 1.2
+---
+# See http://www.sublimetext.com/docs/syntax.html
+file_extensions:
+  - bl
+scope: source.bl
+contexts:
+  main:
+    - include: line-comment
+    - include: block-comment
+    
+    - match: '"'
+      scope: punctuation.definition.string.begin.bl
+      push: double_quoted_string
+
+    - match: '\b(if|else|loop|switch|fn|using|continue|return|cast|auto|default|break)\b'
+      scope: keyword.control.bl
+
+    - match: '\b(s8|s16|s32|s64|u8|u16|u32|u64|f32|f64|string|string_view|bool|type|Any|enum|struct|union|TypeInfo)\b'
+      scope: keyword.type.bl
+
+    - match: '\b(assert|panic|unreachable|typeof|typeinfo|alignof|sizeof|debug_break|static_assert|typeid)\b'
+      scope: keyword.other.bl
+
+    - match: '\b(-)?[0-9.]+\b'
+      scope: constant.numeric.bl
+
+    - match: '#\w*'
+      scope: keyword.other.directive.bl
+
+  line-comment:
+    - match: //
+      push:
+        - meta_scope: comment.line.bl
+        - match: $
+          pop: true
+
+  block-comment:
+    - match: /\*
+      push:
+        - include: block-comment
+        - meta_scope: comment.block.bl
+        - match: \*/
+          pop: true
+
+  double_quoted_string:
+    - meta_scope: string.quoted.double.bl
+    - match: '\\.'
+      scope: constant.character.escape.bl
+    - match: '"'
+      scope: punctuation.definition.string.end.bl
+      pop: true

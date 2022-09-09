@@ -15,44 +15,28 @@ bar :: macro (v: s32) s32 {
     return v + 1;
 }
 
-Mutation propagation:
-a :: 10; // error, immutable
+Generate function implementation if:
+    - The function type is polymorph.
+    - Has #comptime arguments.
+    - Is called in compile time.
 
-Foo :: struct {
-    a: s32;
-}
-
-foo :: Foo.{};
-foo.a = 10; // error immutable
-
-foo_ptr :: 
-
+- Replacement must be done in a single function to support mixed stuff as comptime polymorphic arguments???
 */
 
-foo :: fn (a: bool, FOO: s32 #comptime, b: s32) {
-    a = false;
-    b = 10;
-    print("FOO = %\n", FOO);
+// Function evaluated in compile time without arguments.
+// - arguments must be compile-time known but are mutable inside the function.
+// - called after all arguments are analyzed on call-size
+// - needs provided arguments before it's called
+// - call can be postponed -> arguments needs to be persistant!
+
+// Polymorph -> must be generated.
+foo_2 :: fn (a: ?T) { // type is polymorph
 }
 
-bar :: fn (T: type) type #comptime {
-    return struct { a: T };
-}
-
-new :: fn (T: type #comptime) *u8 {
-    print("T = %\n", T);
-    return null;
-}
-
-Data :: struct {
-    a: s32;
-    e: [8]u64;
+// Generated only in case the fuction argument list contains types???
+foo_5 :: fn (T: type) #comptime { 
 }
 
 main :: fn () s32 {
-    foo(10, 20, 30);
-    bar(s32);
-    new(s32);
-    new(bool);
     return 0;
 }

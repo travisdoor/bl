@@ -860,7 +860,7 @@ struct ast *parse_decl_arg(struct context *ctx, bool named)
         // analyze in MIR), all its value (provided on call side) is used as compile time constant
         // in function body. That's why we need to generate each function specialization the same
         // way as polymorph functions does.
-        set_parent_function_type_as_polymorph(ctx);
+        set_parent_function_type_as_polymorph(ctx); // @Incomplete
     }
 
     struct ast *arg = ast_create_node(ctx->ast_arena, AST_DECL_ARG, tok_begin, scope_get(ctx));

@@ -64,7 +64,7 @@ struct mir_arg;
 struct mir_var;
 struct mir_fn;
 struct mir_fn_group;
-struct mir_fn_poly_recipe;
+struct mir_fn_generated_recipe;
 struct mir_const_expr_value;
 
 struct mir_instr;
@@ -128,7 +128,7 @@ struct mir_arenas {
     struct arena variant;
     struct arena arg;
     struct arena fn_group;
-    struct arena fn_poly;
+    struct arena fn_generated;
 };
 
 struct mir_switch_case {
@@ -216,7 +216,7 @@ struct dyncall_cb_context {
     struct mir_fn          *fn;
 };
 
-struct mir_fn_poly_recipe {
+struct mir_fn_generated_recipe {
     // Function literal (used for function replacement generation).
     struct ast *ast_lit_fn;
     // Scope layer solves symbol collisions in reused scopes.
@@ -230,6 +230,13 @@ struct mir_fn_poly_recipe {
     bmagic_member
 };
 
+enum mir_fn_generated_flavor_flags { // @Incomplete: not used.
+    MIR_FN_GENERATED_NONE               = 0,
+    MIR_FN_GENERATED_POLY               = 1 << 1,
+    MIR_FN_GENERATED_CALLED_IN_COMPTIME = 1 << 2,
+    MIR_FN_GENERATED_MIXED              = 1 << 3,
+};
+
 // FN
 struct mir_fn {
     // Must be first!!!
@@ -237,10 +244,11 @@ struct mir_fn {
     struct id          *id;
     struct ast         *decl_node;
     struct scope_entry *scope_entry;
-    // Optional, set only for polymorphic functions. Not those generated from polymorph functions.
-    // In general when user specifies polymorphic function, it's used only as a recipe to generate
-    // actual runtime functions with proper poly type replacements.
-    struct mir_fn_poly_recipe *poly_recipe;
+
+    // Optional, set only in case this function instance is only "recipe" and it is later used to
+    // generate actual implementation based on some compile time known requirements. I.e.
+    // polymorphic type replacement or comptime value replacement.
+    struct mir_fn_generated_recipe *generation_recipe;
 
     // This structure is initialized only in case this function is generated from polymorphic
     // function recipe, it's not polymorph anymore (its type is also not polymorph).
@@ -261,7 +269,7 @@ struct mir_fn {
         // the function is comptime or has mixed arguments without any polymorph replacements this
         // string may be NULL.
         const char *debug_replacement;
-    } poly_generated;
+    } generated;
 
     // function body scope if there is one (optional)
     struct scope    *body_scope;
