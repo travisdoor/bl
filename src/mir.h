@@ -230,7 +230,7 @@ struct mir_fn_generated_recipe {
     bmagic_member
 };
 
-enum mir_fn_generated_flavor_flags { // @Incomplete: not used.
+enum mir_fn_generated_flavor_flags { 
     MIR_FN_GENERATED_NONE               = 0,
     MIR_FN_GENERATED_POLY               = 1 << 1,
     MIR_FN_GENERATED_CALLED_IN_COMPTIME = 1 << 2,
@@ -249,6 +249,9 @@ struct mir_fn {
     // generate actual implementation based on some compile time known requirements. I.e.
     // polymorphic type replacement or comptime value replacement.
     struct mir_fn_generated_recipe *generation_recipe;
+
+    // Describe compile-time generated function, set for polymorph, mixed and comptime-called function.
+    u32 generated_flags;
 
     // This structure is initialized only in case this function is generated from polymorphic
     // function recipe, it's not polymorph anymore (its type is also not polymorph).

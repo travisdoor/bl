@@ -26,7 +26,9 @@
 // SOFTWARE.
 // =================================================================================================
 
+#include "ast.h"
 #include "builder.h"
+#include "common.h"
 #include "tokens_inline_utils.h"
 #include <setjmp.h>
 
@@ -164,7 +166,8 @@ static inline struct ast *_parse_ident(struct context *ctx)
     return_zone(ident);
 }
 
-// Lookup parent function type and set it as polymorph in case it's not already set.
+// Set function type flavor flag of current parent function type being parsed. Asserts in case there
+// is no current function type in the fn_type_stack.
 static inline void set_parent_function_type_flavor(struct context               *ctx,
                                                    const enum ast_type_fn_flavor flavor)
 {
@@ -174,8 +177,8 @@ static inline void set_parent_function_type_flavor(struct context               
     for (usize i = arrlenu(ctx->fn_type_stack); i-- > 0;) {
         struct ast *fn_type = ctx->fn_type_stack[i];
         bassert(fn_type && fn_type->kind == AST_TYPE_FN);
-        if (fn_type->data.type_fn.is_polymorph) return;
-        fn_type->data.type_fn.is_polymorph = true;
+        if (isflag(fn_type->data.type_fn.flavor, flavor)) return;
+        setflag(fn_type->data.type_fn.flavor, flavor);
     }
 }
 
@@ -856,12 +859,12 @@ struct ast *parse_decl_arg(struct context *ctx, bool named)
 
     if (isflag(flags, FLAG_COMPTIME)) {
         // Currently compile time arguments cause changing of parent function generation to act like
-        // a polymorph function, this is needed due to how compile time arguments replacement work.
+        // a generated function, this is needed due to how compile time arguments replacement work.
         // Basically all comptime arguments are removed from a function signature in LLVM (kept for
-        // analyze in MIR), all its value (provided on call side) is used as compile time constant
+        // analyze in MIR), its value (provided on call side) is used as compile time constant
         // in function body. That's why we need to generate each function specialization the same
         // way as polymorph functions does.
-        set_parent_function_type_as_polymorph(ctx); // @Incomplete
+        set_parent_function_type_flavor(ctx, AST_TYPE_FN_FLAVOR_MIXED);
     }
 
     struct ast *arg = ast_create_node(ctx->ast_arena, AST_DECL_ARG, tok_begin, scope_get(ctx));
@@ -1831,7 +1834,7 @@ struct ast *parse_type_polymorph(struct context *ctx)
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
-    set_parent_function_type_as_polymorph(ctx);
+    set_parent_function_type_flavor(ctx, AST_TYPE_FN_FLAVOR_POLYMORPH);
     struct ast *ident = parse_ident(ctx);
     if (!ident) {
         struct token *tok_err = tokens_peek(ctx->tokens);

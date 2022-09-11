@@ -141,7 +141,7 @@ struct context {
     struct {
         mir_types_t replacement_queue;
         hash_t      current_scope_layer;
-        bool        is_replacement_active;
+        bool        is_generation_active;
     } fn_generate;
 
     // Analyze MIR generated from Ast
@@ -8019,7 +8019,7 @@ struct result generate_function_implementation(struct context             *ctx,
     if (index == -1) {
         const hash_t prev_scope_layer          = ctx->fn_generate.current_scope_layer;
         ctx->fn_generate.current_scope_layer   = ++recipe->scope_layer;
-        ctx->fn_generate.is_replacement_active = true;
+        ctx->fn_generate.is_generation_active = true;
 
         // Create name for generated function
         const char *original_fn_name     = fn->id ? fn->id->str : IMPL_FN_NAME;
@@ -8051,7 +8051,7 @@ struct result generate_function_implementation(struct context             *ctx,
             replacement_fn->generated.debug_replacement = NULL;
         }
 
-        ctx->fn_generate.is_replacement_active = false;
+        ctx->fn_generate.is_generation_active = false;
         ctx->fn_generate.current_scope_layer   = prev_scope_layer;
 
         // Feed the output
@@ -10378,8 +10378,21 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
             isflag(flags, FLAG_COMPTIME) && isnotflag(flags, FLAG_EXTERN);
     }
 
-    const bool is_generated =
-        ast_fn_type->data.type_fn.is_polymorph && !ctx->fn_generate.is_replacement_active;
+    // @Incomplete: Comptime called function should not be exported or intrinsics? This may be
+    // checked directly in the parser, but maybe we don't wan to introduce any semantic check there.
+    const u32 function_type_flavor = ast_fn_type->data.type_fn.flavor;
+
+    u32 functon_generated_flavor_flags = MIR_FN_GENERATED_NONE;
+    if (!ctx->fn_generate.is_generation_active) {
+        // Convert type flavor to function flavor here, but just in case the function generation is
+        // not active (we're generating just recipe function).
+        if (isflag(function_type_flavor, AST_TYPE_FN_FLAVOR_POLYMORPH))
+            setflag(functon_generated_flavor_flags, MIR_FN_GENERATED_POLY);
+        if (isflag(function_type_flavor, AST_TYPE_FN_FLAVOR_MIXED))
+            setflag(functon_generated_flavor_flags, MIR_FN_GENERATED_MIXED);
+        if (isflag(flags, AST_TYPE_FN_FLAVOR_MIXED))
+            setflag(functon_generated_flavor_flags, MIR_FN_GENERATED_CALLED_IN_COMPTIME);
+    }
 
     struct mir_instr_fn_proto *fn_proto =
         (struct mir_instr_fn_proto *)append_instr_fn_proto(ctx, lit_fn, NULL, NULL, true);
@@ -10389,8 +10402,8 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
     bassert(fn_proto->type);
 
     bassert(
-        !(ctx->fn_generate.is_replacement_active && sarrlenu(&ctx->fn_generate.replacement_queue)));
-    ctx->fn_generate.is_replacement_active = false;
+        !(ctx->fn_generate.is_generation_active && sarrlenu(&ctx->fn_generate.replacement_queue)));
+    ctx->fn_generate.is_generation_active = false;
 
     // Prepare new function context. Must be in sync with pop at the end of scope!
     // DON'T CALL FINISH BEFORE THIS!!!
@@ -11110,7 +11123,7 @@ struct mir_instr *ast_type_fn(struct context *ctx, struct ast *type_fn)
     struct ast  *ast_ret_type  = type_fn->data.type_fn.ret_type;
     ast_nodes_t *ast_arg_types = type_fn->data.type_fn.args;
     const bool   is_polymorph =
-        type_fn->data.type_fn.is_polymorph && !ctx->fn_generate.is_replacement_active;
+        type_fn->data.type_fn.is_polymorph && !ctx->fn_generate.is_generation_active;
     // Discard current entity ID to fix bug when multi-return structure takes this name as an
     // alias. There should be probably better way to solve this issue, but lets keep this for
     // now.
@@ -11320,7 +11333,7 @@ struct mir_instr *ast_type_poly(struct context *ctx, struct ast *poly)
     struct id          *T_id        = &ast_ident->data.ident.id;
     struct scope_entry *scope_entry = register_symbol(ctx, ast_ident, T_id, scope, false);
     if (!scope_entry) goto USE_DUMMY;
-    if (ctx->fn_generate.is_replacement_active) {
+    if (ctx->fn_generate.is_generation_active) {
         if (sarrlen(queue) == 0) {
             // Use s32 as dummy when polymorph replacement fails.
             goto USE_DUMMY;
