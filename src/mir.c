@@ -416,14 +416,17 @@ typedef struct {
 
 static struct mir_var *create_var_impl(struct context *ctx, create_var_impl_args_t *args);
 
-static struct mir_fn *create_fn(struct context            *ctx,
-                                struct ast                *node,
-                                struct id                 *id,
-                                const char                *linkage_name,
-                                u32                        flags,
-                                struct mir_instr_fn_proto *prototype,
-                                bool                       is_global,
-                                enum builtin_id_kind       builtin_id);
+typedef struct {
+    struct ast                *node;
+    struct id                 *id;
+    const char                *linkage_name;
+    u32                        flags;
+    struct mir_instr_fn_proto *prototype;
+    bool                       is_global;
+    enum builtin_id_kind       builtin_id;
+} create_fn_args_t;
+
+static struct mir_fn *create_fn(struct context *ctx, create_fn_args_t *args);
 
 static struct mir_fn_group *
 create_fn_group(struct context *ctx, struct ast *decl_node, mir_fns_t *variants);
@@ -2874,26 +2877,19 @@ static struct mir_var *create_var_impl(struct context *ctx, create_var_impl_args
     return tmp;
 }
 
-struct mir_fn *create_fn(struct context            *ctx,
-                         struct ast                *node,
-                         struct id                 *id,
-                         const char                *linkage_name,
-                         u32                        flags,
-                         struct mir_instr_fn_proto *prototype,
-                         bool                       is_global,
-                         enum builtin_id_kind       builtin_id)
+struct mir_fn *create_fn(struct context *ctx, create_fn_args_t *args)
 {
-    bassert(prototype);
+    bassert(args->prototype);
     struct mir_fn *tmp = arena_safe_alloc(&ctx->assembly->arenas.mir.fn);
     bmagic_set(tmp);
-    tmp->linkage_name      = linkage_name;
-    tmp->id                = id;
-    tmp->flags             = flags;
-    tmp->decl_node         = node;
-    tmp->prototype         = &prototype->base;
-    tmp->is_global         = is_global;
-    tmp->builtin_id        = builtin_id;
-    tmp->llvm_module_index = prototype->base.id % ctx->llvm_module_count;
+    tmp->linkage_name      = args->linkage_name;
+    tmp->id                = args->id;
+    tmp->flags             = args->flags;
+    tmp->decl_node         = args->node;
+    tmp->prototype         = &args->prototype->base;
+    tmp->is_global         = args->is_global;
+    tmp->builtin_id        = args->builtin_id;
+    tmp->llvm_module_index = args->prototype->base.id % ctx->llvm_module_count;
     arrsetcap(tmp->variables, 8);
     return tmp;
 }
@@ -10379,7 +10375,7 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
     }
 
     // @Incomplete: Comptime called function should not be exported or intrinsics? This may be
-    // checked directly in the parser, but maybe we don't wan to introduce any semantic check there.
+    // checked directly in the parser, but maybe we don't want to introduce any semantic check there.
     const u32 function_type_flavor = ast_fn_type->data.type_fn.flavor;
 
     u32 functon_generated_flavor_flags = MIR_FN_GENERATED_NONE;
@@ -10414,13 +10410,15 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
 
     // bassert(decl_node ? decl_node->kind == AST_IDENT : true);
     struct mir_fn *fn = create_fn(ctx,
-                                  decl_node ? decl_node : lit_fn,
-                                  id,
-                                  linkage_name,
-                                  (u32)flags,
-                                  fn_proto,
-                                  is_global,
-                                  builtin_id);
+                                  &(create_fn_args_t){
+                                      .node         = decl_node ? decl_node : lit_fn,
+                                      .id           = id,
+                                      .linkage_name = linkage_name,
+                                      .flags        = (u32)flags,
+                                      .prototype    = fn_proto,
+                                      .is_global    = is_global,
+                                      .builtin_id   = builtin_id,
+                                  });
 
     if (isflag(flags, FLAG_OBSOLETE)) {
         struct ast *ast_optional_message = lit_fn->data.expr_fn.obsolete_warning_message;
@@ -11404,8 +11402,12 @@ struct mir_instr *ast_create_type_resolver_call(struct context *ctx, struct ast 
     struct mir_instr       *fn_proto   = append_instr_fn_proto(ctx, NULL, NULL, NULL, false);
     fn_proto->value.type               = fn_type;
 
-    struct mir_fn *fn = create_fn(
-        ctx, NULL, NULL, fn_name, 0, (struct mir_instr_fn_proto *)fn_proto, true, BUILTIN_ID_NONE);
+    struct mir_fn *fn = create_fn(ctx,
+                                  &(create_fn_args_t){
+                                      .linkage_name = fn_name,
+                                      .prototype    = (struct mir_instr_fn_proto *)fn_proto,
+                                      .is_global    = true,
+                                  });
     MIR_CEV_WRITE_AS(struct mir_fn *, &fn_proto->value, fn);
     fn->type                      = fn_type;
     struct mir_instr_block *entry = append_block(ctx, fn, "entry");
