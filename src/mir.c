@@ -6231,7 +6231,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
         struct result    result  = analyze_resolve_type(ctx, fn_proto->type, &fn_type);
         if (result.state != ANALYZE_PASSED) return_zone(result);
 
-        // Analyze user defined type (this must be compared with infered type).
+        // Analyze user defined type (this must be compared with inferred type).
         if (fn_proto->user_type) {
             struct mir_type *user_fn_type = NULL;
             result = analyze_resolve_type(ctx, fn_proto->user_type, &user_fn_type);
@@ -8017,8 +8017,8 @@ struct result generate_function_implementation(struct context             *ctx,
         index            = hmgeti(recipe->entries, replacement_hash);
     }
     if (index == -1) {
-        const hash_t prev_scope_layer          = ctx->fn_generate.current_scope_layer;
-        ctx->fn_generate.current_scope_layer   = ++recipe->scope_layer;
+        const hash_t prev_scope_layer         = ctx->fn_generate.current_scope_layer;
+        ctx->fn_generate.current_scope_layer  = ++recipe->scope_layer;
         ctx->fn_generate.is_generation_active = true;
 
         // Create name for generated function
@@ -8052,7 +8052,7 @@ struct result generate_function_implementation(struct context             *ctx,
         }
 
         ctx->fn_generate.is_generation_active = false;
-        ctx->fn_generate.current_scope_layer   = prev_scope_layer;
+        ctx->fn_generate.current_scope_layer  = prev_scope_layer;
 
         // Feed the output
         (*out_fn_proto) = (struct mir_instr_fn_proto *)instr_fn_proto;
