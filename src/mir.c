@@ -10375,7 +10375,7 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
     }
 
     // @Incomplete: Comptime called function should not be exported or intrinsics? This may be
-    // checked directly in the parser, but maybe we don't wan to introduce any semantic check there.
+    // checked directly in the parser, but maybe we don't want to introduce any semantic check there.
     const u32 function_type_flavor = ast_fn_type->data.type_fn.flavor;
 
     u32 functon_generated_flavor_flags = MIR_FN_GENERATED_NONE;
@@ -11402,9 +11402,12 @@ struct mir_instr *ast_create_type_resolver_call(struct context *ctx, struct ast 
     struct mir_instr       *fn_proto   = append_instr_fn_proto(ctx, NULL, NULL, NULL, false);
     fn_proto->value.type               = fn_type;
 
-    struct mir_fn *fn = create_fn(
-       &(create_fn_args_t){});
-        ctx, NULL, NULL, fn_name, 0, (struct mir_instr_fn_proto *)fn_proto, true, BUILTIN_ID_NONE);
+    struct mir_fn *fn = create_fn(ctx,
+                                  &(create_fn_args_t){
+                                      .linkage_name = fn_name,
+                                      .prototype    = (struct mir_instr_fn_proto *)fn_proto,
+                                      .is_global    = true,
+                                  });
     MIR_CEV_WRITE_AS(struct mir_fn *, &fn_proto->value, fn);
     fn->type                      = fn_type;
     struct mir_instr_block *entry = append_block(ctx, fn, "entry");
