@@ -264,6 +264,10 @@ struct mir_fn {
         // must be compile-time known! This array is used also for mixed functions (part of the
         // argument list is compile time known, in case some arguments are marked as #comptime). Not
         // all elements in this array are set in such a case.
+        //
+        // Comptime arguments may not be provided yet in case the generated function body is
+        // analyzed and evaluated. The compile-time value evaluatio of comptime instr_arg must wait
+        // for it!
         mir_instrs_t *comptime_args;
         // Optional, this is set to first call location used for generation of this function from
         // polymorph recipe.

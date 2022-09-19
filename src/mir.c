@@ -6201,6 +6201,7 @@ struct result analyze_instr_arg(struct context UNUSED(*ctx), struct mir_instr_ar
         return_zone(FAIL);
     }
     if (arg_data->is_comptime && is_function_comptime) {
+        // @Incomplete: Is this actually valid?
         report_warning(arg->base.node,
                        "Redundant comptime directive. The whole function is evaluated in compile "
                        "time, so all it's arguments are implicitly comptime too.");
@@ -6285,6 +6286,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
         struct id *missing = lookup_builtins_test_cases(ctx);
         if (missing) return_zone(WAIT(missing->hash));
     }
+
     fn->type          = value->type;
     fn->type->user_id = fn->id;
 
@@ -8476,7 +8478,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
                 struct mir_arg *arg = sarrpeek(type->data.fn.args, i);
                 // Missing argument has no default value!
                 if (!arg->value) {
-                    // @INCOMPLETE: Consider better error message...
+                    // @Incomplete: Consider better error message...
                     goto INVALID_ARGC;
                 }
 
