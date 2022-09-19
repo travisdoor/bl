@@ -30,13 +30,19 @@ Generate function implementation if:
 // - call can be postponed -> arguments needs to be persistant!
 
 // Polymorph -> must be generated.
-foo_2 :: fn (a: ?T) { // type is polymorph
-}
+//foo_2 :: fn (a: ?T) { // type is polymorph
+//}
 
 // Generated only in case the fuction argument list contains types???
-foo_5 :: fn (T: type) #comptime { 
+//foo_5 :: fn (T: type) #comptime { 
+//}
+
+
+foo :: fn (a: s32) #comptime {
+    a;
 }
 
 main :: fn () s32 {
+    foo();
     return 0;
 }

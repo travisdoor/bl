@@ -656,7 +656,8 @@ ptr : *s32 = null; // *s32 null pointer literal
 ```
 
 ## Integer literals
-
+
+
 Biscuit language provides constant integer literals written in various formats showed in example
 section. Integer literals has volatile type, when desired type is not specified compiler will choose
 best type to hold the value. Numbers requiring less space than 32 bits will be implicitly set to
@@ -968,7 +969,9 @@ This is workaround to get rid of unwanted warning for now.
 
 ### #comptime
 
-Mark the function as compile-time executed function.
+Mark the function as compile-time executed function. Any function declared with this directive is executed directly during
+compilation process, and its return value is converted to the compile-time known constant. See also [function](#function) 
+documentation.
 
 ## Variable
 
@@ -979,7 +982,7 @@ local or global scope, local variable lives only in particular function during f
       global variables lives during whole execution.
 
 Variables without explicit initialization value are `zero initialized` (set to default value). We
-can suppress this behaviour by `#noinit` directive. Global variables must be initialized every time
+can suppress this behavior by `#noinit` directive. Global variables must be initialized every time
 (explicitly or zero initialized) so `#noinit` cannot be used.
 
 **Example:**

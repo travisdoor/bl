@@ -424,6 +424,7 @@ typedef struct {
     struct mir_instr_fn_proto *prototype;
     bool                       is_global;
     enum builtin_id_kind       builtin_id;
+    u32                        generated_flags;
 } create_fn_args_t;
 
 static struct mir_fn *create_fn(struct context *ctx, create_fn_args_t *args);
@@ -609,7 +610,7 @@ static struct mir_instr *append_instr_type_fn(struct context   *ctx,
                                               struct ast       *node,
                                               struct mir_instr *ret_type,
                                               mir_instrs_t     *args,
-                                              bool              is_polymorph);
+                                              const bool        is_polymorph);
 
 static struct mir_instr *append_instr_type_fn_group(struct context *ctx,
                                                     struct ast     *node,
@@ -1128,9 +1129,9 @@ static inline bool can_mutate_comptime_to_const(struct context *ctx, struct mir_
     case MIR_INSTR_CONST:
     case MIR_INSTR_BLOCK:
     case MIR_INSTR_FN_PROTO:
+    case MIR_INSTR_ARG: // @Incomplete
         return false;
     case MIR_INSTR_CALL:
-    case MIR_INSTR_ARG:
         return true;
     default:
         break;
@@ -2890,6 +2891,7 @@ struct mir_fn *create_fn(struct context *ctx, create_fn_args_t *args)
     tmp->is_global         = args->is_global;
     tmp->builtin_id        = args->builtin_id;
     tmp->llvm_module_index = args->prototype->base.id % ctx->llvm_module_count;
+    tmp->generated_flavor  = args->generated_flags;
     arrsetcap(tmp->variables, 8);
     return tmp;
 }
@@ -3385,7 +3387,7 @@ struct mir_instr *append_instr_type_fn(struct context   *ctx,
                                        struct ast       *node,
                                        struct mir_instr *ret_type,
                                        mir_instrs_t     *args,
-                                       bool              is_polymorph)
+                                       const bool        is_polymorph)
 {
     struct mir_instr_type_fn *tmp = create_instr(ctx, MIR_INSTR_TYPE_FN, node);
     tmp->base.value.type          = ctx->builtin_types->t_type;
@@ -5712,11 +5714,50 @@ struct result analyze_instr_addrof(struct context *ctx, struct mir_instr_addrof 
     bassert(src);
     if (src->state != MIR_IS_COMPLETE) return_zone(POSTPONE);
     const enum mir_value_address_mode src_addr_mode = src->value.addr_mode;
-    const bool                        is_source_polymorph =
-        src->value.type->kind == MIR_TYPE_FN && src->value.type->data.fn.is_polymorph;
-    const bool can_grab_address =
-        (src_addr_mode == MIR_VAM_LVALUE || src_addr_mode == MIR_VAM_LVALUE_CONST ||
-         (src->value.type->kind == MIR_TYPE_FN && !is_source_polymorph));
+
+    struct mir_type *type = src->value.type;
+    bmagic_assert(type);
+
+    const bool can_grab_address = src_addr_mode == MIR_VAM_LVALUE ||
+                                  src_addr_mode == MIR_VAM_LVALUE_CONST ||
+                                  type->kind == MIR_TYPE_FN;
+
+    if (type->kind == MIR_TYPE_FN) {
+        struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &src->value);
+        bmagic_assert(fn);
+        if (fn->generated_flavor) {
+            if (isflag(fn->generated_flavor, MIR_FN_GENERATED_POLY)) {
+                report_error(EXPECTED_DECL,
+                             addrof->base.node,
+                             "Cannot take the address of polymorph function, its implementation "
+                             "may differ based on call side arguments, so the memory location may "
+                             "be ambiguous.");
+                report_note(fn->decl_node, "Function is declared here:");
+            } else if (isflag(fn->generated_flavor, MIR_FN_GENERATED_CALLED_IN_COMPTIME)) {
+                report_error(
+                    EXPECTED_DECL,
+                    addrof->base.node,
+                    "Cannot take the address of compile-time executed function, its "
+                    "implementation does not exist in runtime. All functions marked as 'comptime' "
+                    "are executed during compilation and excluded from the final binary.");
+                report_note(fn->decl_node, "Function is declared here:");
+            } else if (isflag(fn->generated_flavor, MIR_FN_GENERATED_MIXED)) {
+                report_error(EXPECTED_DECL,
+                             addrof->base.node,
+                             "Cannot take the address of compile time executed function, having "
+                             "compile-time arguments, the implementation may differ based on "
+                             "arguments provided on call side.");
+                report_note(fn->decl_node, "Function is declared here:");
+            } else {
+                BL_UNREACHABLE;
+            }
+            return_zone(FAIL);
+        }
+
+        // @Note: Here we increase function ref count.
+        ++fn->ref_count;
+        type = create_type_ptr(ctx, type);
+    }
 
     if (!can_grab_address) {
         report_error(
@@ -5724,18 +5765,6 @@ struct result analyze_instr_addrof(struct context *ctx, struct mir_instr_addrof 
         return_zone(FAIL);
     }
 
-    // setup type
-    struct mir_type *type = NULL;
-    bassert(src->value.type);
-    if (src->value.type->kind == MIR_TYPE_FN) {
-        struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &src->value);
-        bmagic_assert(fn);
-        // NOTE: Here we increase function ref count.
-        ++fn->ref_count;
-        type = create_type_ptr(ctx, src->value.type);
-    } else {
-        type = src->value.type;
-    }
     addrof->base.value.type        = type;
     addrof->base.value.is_comptime = addrof->src->value.is_comptime && mir_is_global(addrof->src);
     addrof->base.value.addr_mode   = MIR_VAM_RVALUE;
@@ -6227,7 +6256,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
         struct result    result  = analyze_resolve_type(ctx, fn_proto->type, &fn_type);
         if (result.state != ANALYZE_PASSED) return_zone(result);
 
-        // Analyze user defined type (this must be compared with infered type).
+        // Analyze user defined type (this must be compared with inferred type).
         if (fn_proto->user_type) {
             struct mir_type *user_fn_type = NULL;
             result = analyze_resolve_type(ctx, fn_proto->user_type, &user_fn_type);
@@ -6250,8 +6279,6 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
     // @Incomplete: Read struct mir_fn_poly_recipe here directly?
     struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, value);
     bmagic_assert(fn);
-
-    const bool is_polymorph_recipe = fn->generation_recipe;
 
     if (isflag(fn->flags, FLAG_TEST_FN)) {
         // We must wait for builtin types for test cases.
@@ -6378,8 +6405,9 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 
         fn->dyncall.extern_entry = assembly_find_extern(ctx->assembly, intrinsic_name);
         fn->is_fully_analyzed    = true;
-    } else if (is_polymorph_recipe) {
-        // Nothing to do
+    } else if (fn->generated_flavor) {
+        // Nothing to do, function is just a recipe.
+        bassert(fn->generation_recipe && "Missing generation recipe.");
     } else {
         // Add entry block of the function into analyze queue.
         struct mir_instr *entry_block = (struct mir_instr *)fn->first_block;
@@ -6397,10 +6425,11 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
     if (isflag(fn->flags, FLAG_EXPORT)) {
         schedule_llvm_generation = true;
         ++fn->ref_count;
-        if (is_polymorph_recipe) {
+        if (fn->generated_flavor) {
+            // Use the flavor for better error messages?
             report_error(UNEXPECTED_DIRECTIVE,
                          fn_proto->base.node,
-                         "Polymorph function cannot be exported.");
+                         "Generated function cannot be exported.");
             return_zone(FAIL);
         }
     }
@@ -7704,10 +7733,8 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
     //
     // @Incomplete: Check this expression, we cannot now change value of argument passed into the
     // comptime functions!?
-    // @Cleanup
-    const bool is_initialized_from_comptime_argument =
-        (decl->init && decl->init->orig_kind == MIR_INSTR_ARG && mir_is_comptime(decl->init));
-    bool is_decl_comptime = !var->is_mutable || is_initialized_from_comptime_argument;
+    bool is_decl_comptime = !var->is_mutable || (decl->init && decl->init->kind == MIR_INSTR_ARG &&
+                                                 mir_is_comptime(decl->init));
 
     // Resolve declaration type if not set implicitly to the target variable by
     // compiler.
@@ -8318,36 +8345,36 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
                 return_zone(POSTPONE);
             }
         }
-    }
+        if (fn->generated_flavor) {
+            // We must generate the function implementation here.
+            struct mir_fn *fn = optional_fn_or_group.fn;
+            bmagic_assert(fn);
+            struct mir_instr_fn_proto *instr_replacement_fn_proto = NULL;
+            runtime_measure_begin(poly);
 
-    const bool is_polymorph = type->data.fn.is_polymorph;
-    if (is_polymorph) {
-        // Polymorph function is comptime, polymorph and mixed function.
-        struct mir_fn *fn = optional_fn_or_group.fn;
-        bmagic_assert(fn);
-        struct mir_instr_fn_proto *instr_replacement_fn_proto = NULL;
-        runtime_measure_begin(poly);
+            struct result state = generate_function_implementation(
+                ctx, call->base.node, fn, call->args, &instr_replacement_fn_proto);
+            if (state.state != ANALYZE_PASSED) {
+                return_zone(FAIL);
+            }
+            ctx->assembly->stats.polymorph_s += runtime_measure_end(poly);
+            bassert(instr_replacement_fn_proto);
 
-        struct result state = generate_function_implementation(
-            ctx, call->base.node, fn, call->args, &instr_replacement_fn_proto);
-        if (state.state != ANALYZE_PASSED) {
-            return_zone(FAIL);
+            // Mutate callee instruction to direct declaration reference.
+            struct mir_instr_decl_direct_ref *callee_replacement =
+                (struct mir_instr_decl_direct_ref *)mutate_instr(call->callee,
+                                                                 MIR_INSTR_DECL_DIRECT_REF);
+            callee_replacement->ref        = ref_instr(&instr_replacement_fn_proto->base);
+            callee_replacement->base.state = MIR_IS_PENDING;
+
+            // We skip analyze of this instruction, newly generated function is not analyzed yet;
+            // however we've changed kind of callee instruction, so we have to roll-back in analyze
+            // stack by re-submit callee to analyze again.
+            analyze_schedule(ctx, &callee_replacement->base);
+            return_zone(SKIP);
         }
-        ctx->assembly->stats.polymorph_s += runtime_measure_end(poly);
-        bassert(instr_replacement_fn_proto);
-
-        // Mutate callee instruction to direct declaration reference.
-        struct mir_instr_decl_direct_ref *callee_replacement =
-            (struct mir_instr_decl_direct_ref *)mutate_instr(call->callee,
-                                                             MIR_INSTR_DECL_DIRECT_REF);
-        callee_replacement->ref        = ref_instr(&instr_replacement_fn_proto->base);
-        callee_replacement->base.state = MIR_IS_PENDING;
-
-        // We skip analyze of this instruction, newly created polymorph function is not analyzed
-        // yet; however we've changed kind of callee instruction, so we have to roll-back in
-        // analyze stack by re-sumbit callee to analyze again.
-        analyze_schedule(ctx, &callee_replacement->base);
-        return_zone(SKIP);
+    } else {
+        bassert(type->data.fn.is_polymorph == false);
     }
 
     struct mir_type *result_type = type->data.fn.ret_type;
@@ -8356,7 +8383,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
 
     // Direct call is call without any reference lookup, usually call to anonymous
     // function, type resolver or variable initializer. Constant value of callee
-    // instruction must containt pointer to the struct mir_fn object.
+    // instruction must contain pointer to the struct mir_fn object.
     const bool is_direct_call = call->callee->kind == MIR_INSTR_FN_PROTO;
     if (is_direct_call) {
         struct mir_fn *fn = optional_fn_or_group.fn;
@@ -8371,7 +8398,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         struct mir_fn *fn = optional_fn_or_group.fn;
         bmagic_assert(fn);
         if (isflag(fn->flags, FLAG_COMPTIME)) {
-            // Every comptime call is evaluated automatically (type resolvers also!).
+            // Every comptime call is evaluated automatically (type resolver also!).
             call->base.value.is_comptime = true;
         }
     }
@@ -8494,9 +8521,9 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
             ANALYZE_PASSED) {
             goto REPORT_OVERLOAD_LOCATION;
         }
-        const bool must_be_comtime =
+        const bool must_be_comptime =
             (is_comptime_call && !callee_arg->is_unnamed) || callee_arg->is_comptime;
-        if (!must_be_comtime) continue;
+        if (!must_be_comptime) continue;
         has_comptime_arguments = true;
         // When function is called in compile-time, we must know all arguments in
         // compile-time also, there is one exception for unnamed arguments (id = '_'); when
@@ -10367,15 +10394,10 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
     struct ast *ast_fn_type = lit_fn->data.expr_fn.type;
     struct id  *id          = decl_node ? &decl_node->data.ident.id : NULL;
     bassert(ast_fn_type->kind == AST_TYPE_FN);
-    // Force comptimes to act like polymorph functions, this will allow passing also types as
-    // values and keep static analyze as it is for now.
-    if (!ast_fn_type->data.type_fn.is_polymorph) {
-        ast_fn_type->data.type_fn.is_polymorph =
-            isflag(flags, FLAG_COMPTIME) && isnotflag(flags, FLAG_EXTERN);
-    }
 
     // @Incomplete: Comptime called function should not be exported or intrinsics? This may be
-    // checked directly in the parser, but maybe we don't want to introduce any semantic check there.
+    // checked directly in the parser, but maybe we don't want to introduce any semantic check
+    // there.
     const u32 function_type_flavor = ast_fn_type->data.type_fn.flavor;
 
     u32 functon_generated_flavor_flags = MIR_FN_GENERATED_NONE;
@@ -10386,9 +10408,12 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
             setflag(functon_generated_flavor_flags, MIR_FN_GENERATED_POLY);
         if (isflag(function_type_flavor, AST_TYPE_FN_FLAVOR_MIXED))
             setflag(functon_generated_flavor_flags, MIR_FN_GENERATED_MIXED);
-        if (isflag(flags, AST_TYPE_FN_FLAVOR_MIXED))
+        if (isflag(flags, FLAG_COMPTIME))
             setflag(functon_generated_flavor_flags, MIR_FN_GENERATED_CALLED_IN_COMPTIME);
     }
+
+    // Function body must be generated during compilation.
+    const bool is_generated = functon_generated_flavor_flags != 0;
 
     struct mir_instr_fn_proto *fn_proto =
         (struct mir_instr_fn_proto *)append_instr_fn_proto(ctx, lit_fn, NULL, NULL, true);
@@ -10408,16 +10433,16 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
 
     const char *linkage_name = explicit_linkage_name;
 
-    // bassert(decl_node ? decl_node->kind == AST_IDENT : true);
     struct mir_fn *fn = create_fn(ctx,
                                   &(create_fn_args_t){
-                                      .node         = decl_node ? decl_node : lit_fn,
-                                      .id           = id,
-                                      .linkage_name = linkage_name,
-                                      .flags        = (u32)flags,
-                                      .prototype    = fn_proto,
-                                      .is_global    = is_global,
-                                      .builtin_id   = builtin_id,
+                                      .node            = decl_node ? decl_node : lit_fn,
+                                      .id              = id,
+                                      .linkage_name    = linkage_name,
+                                      .flags           = (u32)flags,
+                                      .prototype       = fn_proto,
+                                      .is_global       = is_global,
+                                      .builtin_id      = builtin_id,
+                                      .generated_flags = functon_generated_flavor_flags,
                                   });
 
     if (isflag(flags, FLAG_OBSOLETE)) {
@@ -10433,6 +10458,9 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
     // FUNCTION BODY
     // External or intrinsic function declaration has no body so we can skip body generation.
     if (isflag(flags, FLAG_EXTERN) || isflag(flags, FLAG_INTRINSIC)) {
+        bassert(!functon_generated_flavor_flags &&
+                "Generated function should not be external or intrinsics function, this should be "
+                "an compiler error.");
         if (ast_block) {
             report_error(UNEXPECTED_FUNCTION_BODY,
                          ast_block,
@@ -11120,8 +11148,8 @@ struct mir_instr *ast_type_fn(struct context *ctx, struct ast *type_fn)
     bassert(type_fn->kind == AST_TYPE_FN);
     struct ast  *ast_ret_type  = type_fn->data.type_fn.ret_type;
     ast_nodes_t *ast_arg_types = type_fn->data.type_fn.args;
-    const bool   is_polymorph =
-        type_fn->data.type_fn.is_polymorph && !ctx->fn_generate.is_generation_active;
+    const bool is_polymorph = isflag(type_fn->data.type_fn.flavor, AST_TYPE_FN_FLAVOR_POLYMORPH) &&
+                              !ctx->fn_generate.is_generation_active;
     // Discard current entity ID to fix bug when multi-return structure takes this name as an
     // alias. There should be probably better way to solve this issue, but lets keep this for
     // now.

@@ -230,7 +230,7 @@ struct mir_fn_generated_recipe {
     bmagic_member
 };
 
-enum mir_fn_generated_flavor_flags { 
+enum mir_fn_generated_flavor_flags {
     MIR_FN_GENERATED_NONE               = 0,
     MIR_FN_GENERATED_POLY               = 1 << 1,
     MIR_FN_GENERATED_CALLED_IN_COMPTIME = 1 << 2,
@@ -250,8 +250,9 @@ struct mir_fn {
     // polymorphic type replacement or comptime value replacement.
     struct mir_fn_generated_recipe *generation_recipe;
 
-    // Describe compile-time generated function, set for polymorph, mixed and comptime-called function.
-    u32 generated_flags;
+    // Describe compile-time generated function, set for polymorph, mixed and comptime-called
+    // function.
+    u32 generated_flavor;
 
     // This structure is initialized only in case this function is generated from polymorphic
     // function recipe, it's not polymorph anymore (its type is also not polymorph).
@@ -370,11 +371,13 @@ struct mir_type_fn {
     u32              flags;
 
     enum builtin_id_kind builtin_id;
-    bool                 is_vargs;
-    bool                 is_polymorph;
-    bool                 has_default_args;
-    bool                 has_byval;
-    bool                 has_sret;
+    // @Incomplete: rewrite to flags?
+    bool is_vargs;
+    // Polymorph function type (not all arguments have known type -> cannot generate type info).
+    bool is_polymorph;
+    bool has_default_args;
+    bool has_byval;
+    bool has_sret;
 };
 
 struct mir_type_poly {
