@@ -37,12 +37,16 @@ Generate function implementation if:
 //foo_5 :: fn (T: type) #comptime { 
 //}
 
+bar :: fn (n: s32) s32 {
+    return n * n;
+}
 
-foo :: fn (a: s32) #comptime {
-    a;
+foo :: fn (n: s32) s32 #comptime {
+    return bar(n);
 }
 
 main :: fn () s32 {
-    foo();
+    i := foo(10);
+    print("i = %\n", i);
     return 0;
 }

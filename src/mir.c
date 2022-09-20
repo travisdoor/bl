@@ -6189,9 +6189,16 @@ struct result analyze_instr_arg(struct context UNUSED(*ctx), struct mir_instr_ar
 
     struct mir_arg *arg_data = mir_get_fn_arg(fn->type, arg->i);
     assert(arg_data);
-    const bool       is_function_comptime = isflag(fn->flags, FLAG_COMPTIME);
-    const bool       is_comptime          = is_function_comptime || arg_data->is_comptime;
-    struct mir_type *type                 = arg_data->type;
+    const bool is_function_executed_in_compiletime = isflag(fn->flags, FLAG_COMPTIME);
+    const bool is_comptime = is_function_executed_in_compiletime || arg_data->is_comptime;
+    if (is_comptime && !fn->generated.comptime_args) {
+        // We have to to wait for the compile time arguments being provided first when the comptime
+        // function is evaluated, all arguments should be already validated by call analyze pass.
+        // This also prevents the evaluator to evaluate arguments without proper values available in
+        // case a compilation error occurs.
+        return_zone(POSTPONE);
+    }
+    struct mir_type *type = arg_data->type;
     bassert(type);
     if (!is_comptime && type->kind == MIR_TYPE_TYPE) {
         report_error(INVALID_TYPE,
@@ -6200,7 +6207,7 @@ struct result analyze_instr_arg(struct context UNUSED(*ctx), struct mir_instr_ar
                      "evaluated functions or in case the argument is compile-time known.");
         return_zone(FAIL);
     }
-    if (arg_data->is_comptime && is_function_comptime) {
+    if (arg_data->is_comptime && is_function_executed_in_compiletime) {
         // @Incomplete: Is this actually valid?
         report_warning(arg->base.node,
                        "Redundant comptime directive. The whole function is evaluated in compile "
