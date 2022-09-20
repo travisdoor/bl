@@ -15,38 +15,21 @@ bar :: macro (v: s32) s32 {
     return v + 1;
 }
 
-Generate function implementation if:
-    - The function type is polymorph.
-    - Has #comptime arguments.
-    - Is called in compile time.
 
-- Replacement must be done in a single function to support mixed stuff as comptime polymorphic arguments???
+
+Redesign comptime functions:
+    
+    - Any #comptime function is evaluated in compile time.
+    - If any function is called with #run prefix, it's also evaluated in compile time.
+    - All arguments must be known in compile-time on the call side.
+
 */
 
-// Function evaluated in compile time without arguments.
-// - arguments must be compile-time known but are mutable inside the function.
-// - called after all arguments are analyzed on call-size
-// - needs provided arguments before it's called
-// - call can be postponed -> arguments needs to be persistant!
-
-// Polymorph -> must be generated.
-//foo_2 :: fn (a: ?T) { // type is polymorph
-//}
-
-// Generated only in case the fuction argument list contains types???
-//foo_5 :: fn (T: type) #comptime { 
-//}
-
-bar :: fn (n: s32) s32 {
-    return n * n;
-}
-
-foo :: fn (n: s32) s32 #comptime {
-    return bar(n);
+foo :: fn () #comptime {
+    print("Hello!!!\n");
 }
 
 main :: fn () s32 {
-    i := foo(10);
-    print("i = %\n", i);
+    foo();
     return 0;
 }

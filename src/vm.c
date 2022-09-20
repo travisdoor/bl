@@ -1025,7 +1025,6 @@ void interp_extern_call(struct virtual_machine *vm, struct mir_fn *fn, struct mi
 static void save_snapshot(struct virtual_machine *vm, struct mir_instr_call *call)
 {
     zone();
-    bwarn("Try to save stack snapshot! This is not completed yet!");
     bassert(call);
 
     vm_stack_ptr_t          prev_top   = vm->stack->top_ptr;
@@ -1039,7 +1038,7 @@ static void save_snapshot(struct virtual_machine *vm, struct mir_instr_call *cal
     const ptrdiff_t snapshot_bytes = ((ptrdiff_t)prev_top) - ((ptrdiff_t)curr_top);
     bassert(snapshot_bytes > 0);
     if (snapshot_bytes == 0) return_zone();
-    blog("snapshot size = %d", snapshot_bytes);
+    blog("Saving snapshot: %dB", snapshot_bytes);
 
     // @Performace: Saving of whole executed stack can be expensive; but we keep it for now; an
     // alternative solution would be freeze the execution state and continue pushing data of other
@@ -1115,6 +1114,7 @@ enum vm_interp_state execute_function(struct virtual_machine *vm,
     case VM_INTERP_PASSED:
         break;
     case VM_INTERP_POSTPONE:
+        blog("Executing: '%s'.", fn->linkage_name);
         save_snapshot(vm, optional_call);
         break;
     case VM_INTERP_ABORT:
@@ -1779,6 +1779,7 @@ enum vm_interp_state interp_instr_call(struct virtual_machine *vm, struct mir_in
         return VM_INTERP_ABORT;
     }
     if (!fn->is_fully_analyzed) {
+        blog("> POSTPONE due '%s'.", fn->linkage_name);
         return VM_INTERP_POSTPONE;
     }
     bassert(fn->type);
@@ -2201,7 +2202,8 @@ void eval_instr_arg(struct virtual_machine UNUSED(*vm), struct mir_instr_arg *ar
     mir_instrs_t *comptime_args = fn->generated.comptime_args;
     bassert(comptime_args &&
             "No compile-time known arguments provided to the function argument evaluator!");
-    bassert(arg->i < sarrlenu(comptime_args) && arg->i >= 0 && "Argument index is out of the range!");
+    bassert(arg->i < sarrlenu(comptime_args) && arg->i >= 0 &&
+            "Argument index is out of the range!");
     arg->base.value.data = sarrpeek(comptime_args, arg->i)->value.data;
 }
 
