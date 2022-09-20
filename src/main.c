@@ -472,9 +472,9 @@ int main(s32 argc, char *argv[])
             .help       = "Disable checking of unused symbols.",
         },
         {
-            .name       = "--time-report",
-            .property.b = &opt.builder.time_report,
-            .help       = "Print compilation time report.",
+            .name       = "--stats",
+            .property.b = &opt.builder.stats,
+            .help       = "Print compilation statistics.",
         },
         {
             .name       = "--lex-dump",

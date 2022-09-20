@@ -364,17 +364,20 @@ static void print_stats(struct assembly *assembly)
                         assembly->stats.llvm_s + assembly->stats.linking_s;
 
     builder_info(
-        "Compiled: %s\n"
         "--------------------------------------------------------------------------------\n"
-        "Lexing & Parsing: %10.3f seconds    %3.0f%%\n"
-        "MIR:              %10.3f seconds    %3.0f%%\n"
-        "LLVM IR:          %10.3f seconds    %3.0f%%\n"
-        "Linking:          %10.3f seconds    %3.0f%%\n\n"
-        "Polymorph:        %10lld generated in %.3f seconds\n"
+        "Compilation stats for '%s'\n"
         "--------------------------------------------------------------------------------\n"
-        "Total:            %10.3f seconds\n"
-        "Lines:              %8d\n"
-        "Speed:            %10.0f lines/second\n",
+        "Time:\n"
+        "  Lexing & Parsing: %10.3f seconds    %3.0f%%\n"
+        "  MIR:              %10.3f seconds    %3.0f%%\n"
+        "  LLVM IR:          %10.3f seconds    %3.0f%%\n"
+        "  Linking:          %10.3f seconds    %3.0f%%\n\n"
+        "  Polymorph:        %10lld generated in %.3f seconds\n\n"
+        "  Total:            %10.3f seconds\n"
+        "  Lines:              %8d\n"
+        "  Speed:            %10.0f lines/second\n\n"
+        "MISC:\n"
+        "  Allocated stack snapshot count: %lld\n",
         assembly->target->name,
         assembly->stats.parsing_lexing_s,
         assembly->stats.parsing_lexing_s / total_s * 100.,
@@ -388,7 +391,8 @@ static void print_stats(struct assembly *assembly)
         assembly->stats.polymorph_s,
         total_s,
         builder.total_lines,
-        ((f64)builder.total_lines) / total_s);
+        ((f64)builder.total_lines) / total_s,
+        assembly->stats.comptime_call_stacks_count);
 }
 
 static void clear_stats(struct assembly *assembly)
@@ -431,7 +435,7 @@ static int compile(struct assembly *assembly)
             builder_error("Compilation of target '%s' failed.", assembly->target->name);
         }
     }
-    if (builder.options->time_report && assembly->target->kind != ASSEMBLY_BUILD_PIPELINE) {
+    if (builder.options->stats && assembly->target->kind != ASSEMBLY_BUILD_PIPELINE) {
         print_stats(assembly);
     }
     clear_stats(assembly);

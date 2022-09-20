@@ -48,7 +48,7 @@ struct builder_options {
     bool  no_warning;
     bool  full_path_reports;
     bool  no_usage_check;
-    bool  time_report;
+    bool  stats;
     s32   error_limit;
     char *doc_out_dir;
     bool  enable_experimental_targets;

@@ -27,6 +27,8 @@
 // =================================================================================================
 
 #include "vm.h"
+#include "bldebug.h"
+#include "blmemory.h"
 #include "builder.h"
 #include "common.h"
 #include "stb_ds.h"
@@ -59,7 +61,8 @@ static void
 dyncall_push_arg(struct virtual_machine *vm, vm_stack_ptr_t val_ptr, struct mir_type *type);
 static enum vm_interp_state execute_function(struct virtual_machine *vm,
                                              struct mir_fn          *fn,
-                                             struct mir_instr_call  *optional_call);
+                                             struct mir_instr_call  *optional_call,
+                                             const bool              resume);
 static enum vm_interp_state interp_instr(struct virtual_machine *vm, struct mir_instr *instr);
 static void
 interp_extern_call(struct virtual_machine *vm, struct mir_fn *fn, struct mir_instr_call *call);
@@ -141,6 +144,36 @@ static inline void eval_abort(struct virtual_machine *vm)
 // =================================================================================================
 #define stack_alloc_size(s) ((s) + (VM_MAX_ALIGNMENT - ((s) % VM_MAX_ALIGNMENT)))
 
+static inline struct vm_stack *reset_stack(struct vm_stack *stack);
+
+static struct vm_stack *create_stack(const usize bytes)
+{
+    bassert(bytes > 0 && "Invalid stack size!");
+    struct vm_stack *stack = bmalloc(sizeof(char) * bytes);
+    stack->allocated_bytes = bytes;
+    reset_stack(stack);
+    return stack;
+}
+
+struct vm_stack *reset_stack(struct vm_stack *stack)
+{
+    bassert(stack && stack->allocated_bytes > 0);
+    stack->pc         = NULL;
+    stack->ra         = NULL;
+    stack->prev_block = NULL;
+    stack->top_ptr    = (u8 *)stack + stack_alloc_size(sizeof(struct vm_stack));
+    return stack;
+}
+
+static inline struct vm_stack *swap_current_stack(struct virtual_machine *vm,
+                                                  struct vm_stack        *stack)
+{
+    bassert(stack);
+    struct vm_stack *previous_stack = vm->stack;
+    vm->stack                       = stack;
+    return previous_stack;
+}
+
 static inline vm_stack_ptr_t stack_alloc(struct virtual_machine *vm, usize size)
 {
     bassert(size && "trying to allocate 0 bytes on stack");
@@ -148,7 +181,7 @@ static inline vm_stack_ptr_t stack_alloc(struct virtual_machine *vm, usize size)
     vm_stack_ptr_t mem = vm->stack->top_ptr;
     vm->stack->top_ptr += size;
     if (vm->stack->top_ptr > ((u8 *)(vm->stack)) + vm->stack->allocated_bytes) {
-        builder_error("Stack overflow!!!");
+        builder_error("Internal execution stack overflow.");
         vm_abort(vm);
     }
     bassert(is_aligned(mem, VM_MAX_ALIGNMENT));
@@ -160,8 +193,10 @@ static inline vm_stack_ptr_t stack_free(struct virtual_machine *vm, usize size)
 {
     size                   = stack_alloc_size(size);
     vm_stack_ptr_t new_top = vm->stack->top_ptr - size;
-    if (new_top < (u8 *)(vm->stack->ra + 1))
-        babort("Stack underflow!!!"); // @Incomplete: use vm_abort
+    if (new_top < (u8 *)(vm->stack->ra + 1)) {
+        builder_error("Internal execution stack underflow.");
+        vm_abort(vm);
+    }
     vm->stack->top_ptr = new_top;
     return new_top;
 }
@@ -1022,56 +1057,6 @@ void interp_extern_call(struct virtual_machine *vm, struct mir_fn *fn, struct mi
     }
 }
 
-static void save_snapshot(struct virtual_machine *vm, struct mir_instr_call *call)
-{
-    zone();
-    bassert(call);
-
-    vm_stack_ptr_t          prev_top   = vm->stack->top_ptr;
-    struct vm_frame        *prev_ra    = vm->stack->ra;
-    struct mir_instr       *prev_pc    = vm->stack->pc;
-    struct mir_instr_block *prev_block = vm->stack->prev_block;
-
-    while (pop_ra(vm) != call)
-        ;
-    vm_stack_ptr_t  curr_top       = vm->stack->top_ptr;
-    const ptrdiff_t snapshot_bytes = ((ptrdiff_t)prev_top) - ((ptrdiff_t)curr_top);
-    bassert(snapshot_bytes > 0);
-    if (snapshot_bytes == 0) return_zone();
-    blog("Saving snapshot: %dB", snapshot_bytes);
-
-    // @Performace: Saving of whole executed stack can be expensive; but we keep it for now; an
-    // alternative solution would be freeze the execution state and continue pushing data of other
-    // functions, but this would make restoring more complicated (we can resume only the last
-    // executed 'top' function in such case).
-    vm_stack_ptr_t buf = bmalloc(sizeof(u8) * snapshot_bytes);
-    memcpy(buf, curr_top, snapshot_bytes);
-
-    bassert(hmgeti(vm->snapshot_cache, call) == -1 && "Snapshot is already stored.");
-    struct vm_snapshot snapshot;
-    snapshot.key        = call;
-    snapshot.data       = buf;
-    snapshot.data_size  = (usize)snapshot_bytes;
-    snapshot.top_ptr    = prev_top;
-    snapshot.ra         = prev_ra;
-    snapshot.pc         = prev_pc;
-    snapshot.prev_block = prev_block;
-
-    hmputs(vm->snapshot_cache, snapshot);
-    return_zone();
-}
-
-static struct mir_instr *try_load_snapshot(struct virtual_machine *vm, struct mir_instr_call *call)
-{
-    if (!call) return NULL;
-    const s64 index = hmgeti(vm->snapshot_cache, call);
-    if (index == -1) return NULL;
-    struct vm_snapshot *snapshot = &vm->snapshot_cache[index];
-    bfree(snapshot->data);
-    hmdel(vm->snapshot_cache, call);
-    return NULL; // @Incomplete
-}
-
 // Execute top level function directly.
 // - Expects all arguments already on stack.
 // - Return value can be eventually pushed on the stack after execution.
@@ -1079,30 +1064,30 @@ static struct mir_instr *try_load_snapshot(struct virtual_machine *vm, struct mi
 //   return value on the stack even if the function is supposed to return one.
 enum vm_interp_state execute_function(struct virtual_machine *vm,
                                       struct mir_fn          *fn,
-                                      struct mir_instr_call  *optional_call)
+                                      struct mir_instr_call  *optional_call,
+                                      const bool              resume)
 {
-    try_load_snapshot(vm, optional_call); // @Incomplete
-    struct mir_instr       *fn_entry_instr    = fn->first_block->entry_instr;
     const struct mir_instr *fn_terminal_instr = &fn->terminal_instr->base;
     // Reset eventual previous failed state.
     vm->aborted = false;
-    // push terminal frame on stack
-    push_ra(vm, optional_call);
-    // allocate local variables
-    stack_alloc_local_vars(vm, fn);
-    // setup entry instruction
-    set_pc(vm, fn_entry_instr);
+    if (!resume) {
+        struct mir_instr *fn_entry_instr = fn->first_block->entry_instr;
+        // push terminal frame on stack
+        push_ra(vm, optional_call);
+        // allocate local variables
+        stack_alloc_local_vars(vm, fn);
+        // setup entry instruction
+        set_pc(vm, fn_entry_instr);
+    }
     // iterate over entry block of executable
     struct mir_instr    *instr, *prev;
     enum vm_interp_state state = VM_INTERP_PASSED;
     while (true) {
         instr = get_pc(vm);
         prev  = instr;
-        if (instr && state == VM_INTERP_PASSED) {
-            state = interp_instr(vm, instr);
-        } else {
-            break;
-        }
+        if (!instr) break;
+        state = interp_instr(vm, instr);
+        if (state != VM_INTERP_PASSED) break;
         // When we reach terminal instruction of this function, we must stop the execution,
         // otherwise when the interpreted call lives in scope of other function, interpreter will
         // continue with execution.
@@ -1111,16 +1096,12 @@ enum vm_interp_state execute_function(struct virtual_machine *vm,
         if (!get_pc(vm) || get_pc(vm) == prev) set_pc(vm, instr->next);
     }
     switch (state) {
-    case VM_INTERP_PASSED:
-        break;
-    case VM_INTERP_POSTPONE:
-        blog("Executing: '%s'.", fn->linkage_name);
-        save_snapshot(vm, optional_call);
-        break;
     case VM_INTERP_ABORT:
         // @Incomplete: endless loop?
         while (pop_ra(vm) != optional_call)
             ;
+        break;
+    default:
         break;
     }
     return state;
@@ -1779,7 +1760,6 @@ enum vm_interp_state interp_instr_call(struct virtual_machine *vm, struct mir_in
         return VM_INTERP_ABORT;
     }
     if (!fn->is_fully_analyzed) {
-        blog("> POSTPONE due '%s'.", fn->linkage_name);
         return VM_INTERP_POSTPONE;
     }
     bassert(fn->type);
@@ -2348,27 +2328,26 @@ void eval_instr_decl_direct_ref(struct virtual_machine            UNUSED(*vm),
 // =================================================================================================
 void vm_init(struct virtual_machine *vm, usize stack_size)
 {
-    if (stack_size == 0) babort("invalid frame stack size");
-    struct vm_stack *stack = bmalloc(sizeof(char) * stack_size);
-    stack->allocated_bytes = stack_size;
-    stack->pc              = NULL;
-    stack->ra              = NULL;
-    stack->prev_block      = NULL;
-    const usize size       = stack_alloc_size(sizeof(struct vm_stack));
-    stack->top_ptr         = (u8 *)stack + size;
-
-    vm->stack = stack;
+    vm->main_stack = create_stack(stack_size);
+    swap_current_stack(vm, vm->main_stack);
 }
 
 void vm_terminate(struct virtual_machine *vm)
 {
     data_free(vm);
     arrfree(vm->dcsigtmp);
-    for (u64 i = 0; i < hmlenu(vm->snapshot_cache); ++i) {
-        bfree(vm->snapshot_cache[i].data);
+
+    for (u64 i = 0; i < arrlenu(vm->available_comptime_call_stacks); ++i) {
+        bfree(vm->available_comptime_call_stacks[i]);
     }
-    hmfree(vm->snapshot_cache);
-    bfree(vm->stack);
+    arrfree(vm->available_comptime_call_stacks);
+
+    for (u64 i = 0; i < hmlenu(vm->comptime_call_stacks); ++i) {
+        bfree(vm->comptime_call_stacks[i].stack);
+    }
+    hmfree(vm->comptime_call_stacks);
+
+    bfree(vm->main_stack);
 }
 
 void vm_print_backtrace(struct virtual_machine *vm)
@@ -2474,7 +2453,7 @@ enum vm_interp_state vm_execute_fn(struct virtual_machine *vm,
             stack_push(vm, value->data, value->type);
         }
     }
-    enum vm_interp_state state = execute_function(vm, fn, NULL);
+    enum vm_interp_state state = execute_function(vm, fn, NULL, false);
     if (state == VM_INTERP_PASSED) {
         vm_stack_ptr_t return_ptr = NULL;
         if (fn_does_return(fn)) {
@@ -2493,6 +2472,55 @@ enum vm_interp_state vm_execute_fn(struct virtual_machine *vm,
     return state;
 }
 
+static void release_snapshot(struct virtual_machine *vm, struct vm_stack *stack)
+{
+    bassert(stack);
+    arrput(vm->available_comptime_call_stacks, reset_stack(stack));
+}
+
+static void
+store_snapshot(struct virtual_machine *vm, struct vm_stack *stack, struct mir_instr_call *call)
+{
+    bassert(hmgeti(vm->comptime_call_stacks, call) == -1);
+    hmputs(vm->comptime_call_stacks,
+           ((struct vm_snapshot){
+               .key   = call,
+               .stack = stack,
+           }));
+}
+
+struct get_snapshot_result {
+    struct vm_stack *stack;
+    bool             resume;
+};
+
+// Tries to find stack used for previous execution (in case the call was postponed). If there is
+// no such stack, new one is created or reused from cache.
+static struct get_snapshot_result get_snapshot(struct virtual_machine *vm,
+                                               struct mir_instr_call  *call)
+{
+    bassert(call);
+    struct get_snapshot_result result = {};
+
+    const s64 index = hmgeti(vm->comptime_call_stacks, call);
+    if (index != -1) {
+        result.stack = vm->comptime_call_stacks[index].stack;
+        hmdel(vm->comptime_call_stacks, call);
+        result.resume = true;
+        return result;
+    }
+
+    if (arrlenu(vm->available_comptime_call_stacks)) {
+        result.stack = arrpop(vm->available_comptime_call_stacks);
+        bassert(result.stack && result.stack->allocated_bytes == VM_COMPTIME_CALL_STACK_SIZE);
+    } else {
+        result.stack = create_stack(VM_COMPTIME_CALL_STACK_SIZE);
+        vm->assembly->stats.comptime_call_stacks_count += 1;
+    }
+    bassert(result.stack);
+    return result;
+}
+
 enum vm_interp_state vm_execute_comptime_call(struct virtual_machine *vm,
                                               struct assembly        *assembly,
                                               struct mir_instr_call  *call)
@@ -2506,15 +2534,24 @@ enum vm_interp_state vm_execute_comptime_call(struct virtual_machine *vm,
     if (isflag(fn->flags, FLAG_EXTERN)) {
         babort("External function cannot be #comptime for now!");
     }
-    mir_instrs_t *args = call->args;
-    bassert(sarrlenu(args) == sarrlenu(fn->type->data.fn.args));
-    // Push all arguments in reverse order on the stack.
-    for (usize i = sarrlenu(args); i-- > 0;) {
-        struct mir_const_expr_value *value = &sarrpeek(args, i)->value;
-        stack_push(vm, value->data, value->type);
+
+    // Compile-time calls use custom execution stack since its execution can be postponed.
+    struct get_snapshot_result snapshot       = get_snapshot(vm, call);
+    struct vm_stack           *previous_stack = swap_current_stack(vm, snapshot.stack);
+
+    if (!snapshot.resume) {
+        // In case we resuming, arguments are already on the stack.
+        mir_instrs_t *args = call->args;
+        bassert(sarrlenu(args) == sarrlenu(fn->type->data.fn.args));
+        // Push all arguments in reverse order on the stack.
+        for (usize i = sarrlenu(args); i-- > 0;) {
+            struct mir_const_expr_value *value = &sarrpeek(args, i)->value;
+            stack_push(vm, value->data, value->type);
+        }
     }
-    enum vm_interp_state state = execute_function(vm, fn, call);
-    if (state == VM_INTERP_PASSED) {
+    enum vm_interp_state state = execute_function(vm, fn, call, snapshot.resume);
+    switch (state) {
+    case VM_INTERP_PASSED:
         // Pop return value.
         if (fn_does_return(fn)) {
             struct mir_type *ret_type = fn->type->data.fn.ret_type;
@@ -2531,12 +2568,21 @@ enum vm_interp_state vm_execute_comptime_call(struct virtual_machine *vm,
         } else {
             call->base.value.data = NULL;
         }
-        // Cleanup previously pushed args from the stack.
-        for (usize i = 0; i < sarrlenu(args); ++i) {
-            struct mir_const_expr_value *value = &sarrpeek(args, i)->value;
-            stack_pop(vm, value->type);
-        }
+        // @Note: No cleanup is needed here, the stack is dedicated to this call and gets cleaned
+        // when it's reused eventually.
+        release_snapshot(vm, snapshot.stack);
+        break;
+
+    case VM_INTERP_POSTPONE:
+        store_snapshot(vm, snapshot.stack, call);
+        break;
+
+    case VM_INTERP_ABORT:
+        release_snapshot(vm, snapshot.stack);
+        break;
     }
+
+    swap_current_stack(vm, previous_stack);
     return_zone(state);
 }
 

@@ -105,6 +105,7 @@
 #endif
 
 #define VM_STACK_SIZE 2097152          // 2MB
+#define VM_COMPTIME_CALL_STACK_SIZE 131072 // 128kB  
 
 #define MODULE_CONFIG_FILE "module.yaml"
 #define BUILD_SCRIPT_FILE "build.bl"
