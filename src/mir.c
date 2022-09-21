@@ -1129,7 +1129,7 @@ static inline bool can_mutate_comptime_to_const(struct context *ctx, struct mir_
     case MIR_INSTR_CONST:
     case MIR_INSTR_BLOCK:
     case MIR_INSTR_FN_PROTO:
-    case MIR_INSTR_ARG: // @Incomplete
+    case MIR_INSTR_ARG:
         return false;
     case MIR_INSTR_CALL:
         return true;
@@ -1384,8 +1384,10 @@ static inline bool is_current_block_terminated(struct context *ctx)
 static inline void *mutate_instr(struct mir_instr *instr, enum mir_instr_kind kind)
 {
     bassert(instr);
-    instr->orig_kind = instr->kind;
-    instr->kind      = kind;
+#if BL_DEBUG
+    instr->_orig_kind = instr->kind;
+#endif
+    instr->kind = kind;
     return instr;
 }
 
@@ -2937,13 +2939,13 @@ struct mir_arg *create_arg(struct context *ctx, create_arg_args_t *args)
 {
     struct mir_arg *tmp = arena_safe_alloc(&ctx->assembly->arenas.mir.arg);
     bmagic_set(tmp);
-    tmp->decl_node   = args->node;
-    tmp->id          = args->id;
-    tmp->type        = args->type;
-    tmp->decl_scope  = args->scope;
-    tmp->value       = args->value;
-    tmp->is_unnamed  = args->id && is_ignored_id(args->id);
-    tmp->is_comptime = isflag(args->flags, FLAG_COMPTIME);
+    tmp->decl_node     = args->node;
+    tmp->id            = args->id;
+    tmp->type          = args->type;
+    tmp->decl_scope    = args->scope;
+    tmp->default_value = args->value;
+    tmp->is_unnamed    = args->id && is_ignored_id(args->id);
+    tmp->is_comptime   = isflag(args->flags, FLAG_COMPTIME);
     return tmp;
 }
 
@@ -4120,8 +4122,13 @@ struct mir_instr *append_instr_decl_arg(struct context   *ctx,
     tmp->type           = ref_instr(type);
 
     struct id *id = node ? &node->data.ident.id : NULL;
-    tmp->arg      = create_arg(
-        ctx, &(create_arg_args_t){.node = node, .id = id, .value = value, .flags = flags});
+    tmp->arg      = create_arg(ctx,
+                          &(create_arg_args_t){
+                                   .node  = node,
+                                   .id    = id,
+                                   .value = value,
+                                   .flags = flags,
+                          });
 
     append_current_block(ctx, &tmp->base);
     return &tmp->base;
@@ -5178,7 +5185,7 @@ struct result analyze_var(struct context *ctx, struct mir_var *var, const bool i
     switch (var->value.type->kind) {
     case MIR_TYPE_TYPE:
         // Type variable can be mutable in comptime function!
-        if (!var->is_mutable || in_comptime_fn) break;
+        if (!var->is_mutable) break;
         // Typedef must be immutable!
         report_error(INVALID_MUTABILITY, var->decl_node, "Type declaration must be immutable.");
         return_zone(FAIL);
@@ -6189,8 +6196,7 @@ struct result analyze_instr_arg(struct context UNUSED(*ctx), struct mir_instr_ar
 
     struct mir_arg *arg_data = mir_get_fn_arg(fn->type, arg->i);
     assert(arg_data);
-    const bool is_function_executed_in_compiletime = isflag(fn->flags, FLAG_COMPTIME);
-    const bool is_comptime = is_function_executed_in_compiletime || arg_data->is_comptime;
+    const bool is_comptime = arg_data->is_comptime;
     if (is_comptime && !fn->generated.comptime_args) {
         // We have to to wait for the compile time arguments being provided first when the comptime
         // function is evaluated, all arguments should be already validated by call analyze pass.
@@ -6731,7 +6737,7 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
             struct mir_instr_decl_arg *decl_arg =
                 (struct mir_instr_decl_arg *)sarrpeek(type_fn->args, i);
             struct mir_arg *arg = decl_arg->arg;
-            if (arg->value && arg->value->state != MIR_IS_COMPLETE) {
+            if (arg->default_value && arg->default_value->state != MIR_IS_COMPLETE) {
                 return_zone(POSTPONE);
             }
         }
@@ -6772,7 +6778,7 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
             }
 
             is_vargs         = arg->type->kind == MIR_TYPE_VARGS ? true : is_vargs;
-            has_default_args = arg->value ? true : has_default_args;
+            has_default_args = arg->default_value ? true : has_default_args;
             if (is_vargs && i != sarrlenu(type_fn->args) - 1) {
                 report_error(INVALID_TYPE,
                              arg->decl_node,
@@ -6788,7 +6794,7 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
                              "presented in the function argument list.");
                 return_zone(FAIL);
             }
-            if (!arg->value && has_default_args) {
+            if (!arg->default_value && has_default_args) {
                 struct mir_instr *arg_prev = sarrpeek(type_fn->args, i - 1);
                 report_error(INVALID_TYPE,
                              arg_prev->node,
@@ -7034,22 +7040,28 @@ struct result analyze_instr_decl_arg(struct context *ctx, struct mir_instr_decl_
     } else {
         // There is no explicitly defined argument type, but we have default argument value
         // to infer type from.
-        bassert(arg->value);
-        if (arg->value->state != MIR_IS_COMPLETE) {
-            // @PERFORMANCE: WAITING is preferred here, but we don't have ID to wait
-            // for.
+        bassert(arg->default_value);
+        if (arg->default_value->state != MIR_IS_COMPLETE) {
             return_zone(POSTPONE);
         }
-        if (arg->value->kind == MIR_INSTR_DECL_VAR) {
-            struct mir_var *var = ((struct mir_instr_decl_var *)arg->value)->var;
+        if (arg->default_value->kind == MIR_INSTR_DECL_VAR) {
+            struct mir_var *var = ((struct mir_instr_decl_var *)arg->default_value)->var;
             bassert(var);
             if (!var->is_analyzed) return_zone(POSTPONE);
             arg->type = var->value.type;
         } else {
-            arg->type = arg->value->value.type;
+            arg->type = arg->default_value->value.type;
         }
     }
     bassert(arg->type && "Invalid argument type!");
+    if (arg->type->kind == MIR_TYPE_TYPE && !arg->is_comptime) {
+        report_error(INVALID_TYPE,
+                     decl->base.node,
+                     "Types can be passed only as comptime arguments into the functions. Consider "
+                     "using the '#comptime' directive for the argument '%s'.",
+                     arg->id->str);
+        return_zone(FAIL);
+    }
     return_zone(PASS);
 }
 
@@ -7732,12 +7744,7 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
 
     // Immutable declaration can be comptime, but only if it's initializer value is also
     // comptime!
-    // To allow manipulation with types, we have one exception here for function arguments.
-    //
-    // @Incomplete: Check this expression, we cannot now change value of argument passed into the
-    // comptime functions!?
-    bool is_decl_comptime = !var->is_mutable || (decl->init && decl->init->kind == MIR_INSTR_ARG &&
-                                                 mir_is_comptime(decl->init));
+    bool is_decl_comptime = !var->is_mutable && decl->init && mir_is_comptime(decl->init);
 
     // Resolve declaration type if not set implicitly to the target variable by
     // compiler.
@@ -7748,7 +7755,7 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
 
     if (var->is_global && !var->is_struct_typedef) {
         bassert(var->linkage_name && "Missing variable linkage name!");
-        // Unexported globals have unique linkage name to solve potential conflicts
+        // Un-exported globals have unique linkage name to solve potential conflicts
         // with extern symbols.
         var->linkage_name = unique_name(ctx, var->linkage_name);
 
@@ -8163,7 +8170,7 @@ static struct mir_fn *group_select_overload(struct context            *ctx,
         bool is_vargs    = false;
         for (usize j = 0; j < sarrlenu(args); ++j) {
             const struct mir_arg *arg         = sarrpeek(args, j);
-            const bool            is_default  = arg->value;
+            const bool            is_default  = arg->default_value;
             const bool            is_provided = j < sarrlenu(expected_args);
 
             is_vargs = arg->type->kind == MIR_TYPE_VARGS;
@@ -8478,7 +8485,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
             for (usize i = call_argc; i < callee_argc; ++i) {
                 struct mir_arg *arg = sarrpeek(type->data.fn.args, i);
                 // Missing argument has no default value!
-                if (!arg->value) {
+                if (!arg->default_value) {
                     // @Incomplete: Consider better error message...
                     goto INVALID_ARGC;
                 }
@@ -8490,16 +8497,16 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
                                              : &call->base;
 
                 struct mir_instr *call_default_arg;
-                if (arg->value->kind == MIR_INSTR_CALL_LOC) {
+                if (arg->default_value->kind == MIR_INSTR_CALL_LOC) {
                     // Original InstrCallLoc is used only as note that we must generate real one
                     // containing information about call instruction location.
                     bassert(call->base.node);
                     bassert(call->base.node->location);
-                    struct ast *orig_node = arg->value->node;
+                    struct ast *orig_node = arg->default_value->node;
                     call_default_arg =
                         create_instr_call_loc(ctx, orig_node, call->base.node->location);
                 } else {
-                    call_default_arg = create_instr_decl_direct_ref(ctx, NULL, arg->value);
+                    call_default_arg = create_instr_decl_direct_ref(ctx, NULL, arg->default_value);
                 }
 
                 sarrput(call->args, call_default_arg);
@@ -10411,7 +10418,7 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
             setflag(functon_generated_flavor_flags, MIR_FN_GENERATED_POLY);
         if (isflag(function_type_flavor, AST_TYPE_FN_FLAVOR_MIXED))
             setflag(functon_generated_flavor_flags, MIR_FN_GENERATED_MIXED);
-        if (isflag(flags, FLAG_COMPTIME))
+        if (isflag(flags, FLAG_COMPTIME)) // @Cleanup
             setflag(functon_generated_flavor_flags, MIR_FN_GENERATED_CALLED_IN_COMPTIME);
     }
 
@@ -10532,16 +10539,16 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
 
             struct mir_instr *arg = append_instr_arg(ctx, ast_arg, (u32)i);
 
-            // create tmp declaration for arg variable
+            // @Note: Should all arguments be immutable in the future? This may allow better
+            // optimizations and also maybe lead to a simpler code.
             struct mir_instr_decl_var *decl_var =
                 (struct mir_instr_decl_var *)append_instr_decl_var(
                     ctx,
                     &(append_instr_decl_var_args_t){
-                        .node  = ast_arg_name,
-                        .id    = id,
-                        .scope = ast_arg_name->owner_scope,
-                        .init  = arg,
-                        // @Incomplete: consider making function argumenst immutable by default.
+                        .node       = ast_arg_name,
+                        .id         = id,
+                        .scope      = ast_arg_name->owner_scope,
+                        .init       = arg,
                         .is_mutable = !isflag(flags, FLAG_COMPTIME),
                         .builtin_id = BUILTIN_ID_NONE,
                         .flags      = flags,
