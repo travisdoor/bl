@@ -235,6 +235,7 @@ struct assembly {
         f64 linking_s;
         f64 polymorph_s;
         s64 polymorph_count;
+        s64 comptime_call_stacks_count;
     } stats;
 
     // DynCall/Lib data used for external method execution in compile time

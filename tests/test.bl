@@ -25,11 +25,13 @@ Redesign comptime functions:
 
 */
 
-foo :: fn () #comptime {
-    print("Hello!!!\n");
+foo :: fn (n: s32) #comptime {
+    loop i := 0; i < n; i += 1 {
+        print("Hello!!!\n");
+    }
 }
 
 main :: fn () s32 {
-    foo();
+    foo(10);
     return 0;
 }

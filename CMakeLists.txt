@@ -163,7 +163,7 @@ add_subdirectory(${BL_DEPS_DIR}/libyaml-0.2.5)
 if(MSVC)
     add_definitions(-DNOMINMAX)
     target_link_libraries(blc PUBLIC shlwapi DbgHelp)
-    set(MSVC_RELEASE_FLAGS /DEBUG /Z7 /O2 /Oi /GL)
+    set(MSVC_RELEASE_FLAGS /DEBUG /Z7 /O2 /Oi)
     set(MSVC_DEBUG_FLAGS /Od /MDd /Z7)
     target_compile_options(blc PRIVATE
         $<$<CONFIG:Release>: ${MSVC_RELEASE_FLAGS}>
