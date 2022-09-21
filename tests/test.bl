@@ -22,6 +22,8 @@ Redesign comptime functions:
     - Any #comptime function is evaluated in compile time.
     - If any function is called with #run prefix, it's also evaluated in compile time.
     - All arguments must be known in compile-time on the call side.
+    - Internally only arguments foo: s32 #comptime are comptime constants in the function body and may
+      cause the function generation.
 
 */
 
@@ -31,7 +33,13 @@ foo :: fn (n: s32) #comptime {
     }
 }
 
+bar :: fn (n: s32 #comptime, j: s32) s32 {
+    return n + j;
+}
+
 main :: fn () s32 {
+    i := 20;
+    bar(10, i);
     foo(10);
     return 0;
 }

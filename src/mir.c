@@ -6207,12 +6207,6 @@ struct result analyze_instr_arg(struct context UNUSED(*ctx), struct mir_instr_ar
                      "evaluated functions or in case the argument is compile-time known.");
         return_zone(FAIL);
     }
-    if (arg_data->is_comptime && is_function_executed_in_compiletime) {
-        // @Incomplete: Is this actually valid?
-        report_warning(arg->base.node,
-                       "Redundant comptime directive. The whole function is evaluated in compile "
-                       "time, so all it's arguments are implicitly comptime too.");
-    }
     arg->base.value.type        = type;
     arg->base.value.is_comptime = is_comptime;
     if (is_comptime) {
