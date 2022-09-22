@@ -2540,7 +2540,7 @@ enum vm_interp_state vm_execute_comptime_call(struct virtual_machine *vm,
     struct vm_stack           *previous_stack = swap_current_stack(vm, snapshot.stack);
 
     if (!snapshot.resume) {
-        // In case we resuming, arguments are already on the stack.
+        // In case we're resuming, arguments are already on the stack.
         mir_instrs_t *args = call->args;
         bassert(sarrlenu(args) == sarrlenu(fn->type->data.fn.args));
         // Push all arguments in reverse order on the stack.

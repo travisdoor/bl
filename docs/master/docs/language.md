@@ -1529,18 +1529,19 @@ main :: fn () s32 {
 
 So the comptime function has no runtime overhead.
 
-**List of cons:**
+**Pros:**
+
+1. We can pass any type as a value to the comptime function.
+2. We can return any type as a value.
+3. Since all comptime functions are evaluated in compile-time, there is no runtime overhead. 
+
+**Cons:**
 
 1. Every argument passed, must be known in compile-time.
 2. All arguments inside the function are constant (we cannot change it's values).
 3. Returning pointers from comptime functions is not a good idea in general (i.e. addresses of functions
    in compile-time are not the same in runtime).
-
-**List of pros:**
-
-1. We can pass any type as a value to the comptime function.
-2. We can return any type as a value.
-3. Since all comptime functions are evaluated in compile-time, there is no runtime overhead. 
+4. Internal execution stack for compile-time evaluated functions is limited to 128kB.
 
 ## Block
 

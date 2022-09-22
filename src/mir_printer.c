@@ -828,9 +828,9 @@ void print_instr_decl_arg(struct context *ctx, struct mir_instr_decl_arg *decl)
     fprintf(ctx->stream, "%s : ", arg->id ? arg->id->str : "-");
     print_comptime_value_or_id(ctx, decl->type);
 
-    if (arg->value) {
+    if (arg->default_value) {
         fprintf(ctx->stream, " = ");
-        print_comptime_value_or_id(ctx, arg->value);
+        print_comptime_value_or_id(ctx, arg->default_value);
     }
 }
 

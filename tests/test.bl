@@ -25,21 +25,43 @@ Redesign comptime functions:
     - Internally only arguments foo: s32 #comptime are comptime constants in the function body and may
       cause the function generation.
 
-*/
 
-foo :: fn (n: s32) #comptime {
-    loop i := 0; i < n; i += 1 {
-        print("Hello!!!\n");
-    }
+// comptime functions as:
+foo :: fn (T: type #comptime) type #run {
+    return T;
 }
 
-bar :: fn (n: s32 #comptime, j: s32) s32 {
-    return n + j;
+*/
+
+#import "std/fs"
+//#import "std/table"
+
+foo :: fn () #comptime {
+    using std;
+    file, err :: open_file(#file);
+    defer close_file(&file);
+    if err { 
+        print("%\n", err); 
+        return;
+    }
+    content := str_new();
+    defer str_delete(&content);
+
+    read_string(&file, &content);
+    print("%\n\n", content);
+}
+
+my_size :: fn (T: type #comptime) usize #comptime {
+    return sizeof(T);
+}
+
+get_type :: fn () type {
+    return s32;
 }
 
 main :: fn () s32 {
-    i := 20;
-    bar(10, i);
-    foo(10);
+    //foo();
+    my_size(s32);
+    get_type();
     return 0;
 }

@@ -352,7 +352,7 @@ struct mir_arg {
     u32 llvm_index;
 
     // Optional default value.
-    struct mir_instr *value;
+    struct mir_instr *default_value;
 
     enum llvm_extern_arg_struct_generation_mode llvm_easgm;
     bmagic_member
@@ -519,14 +519,12 @@ struct mir_instr {
     struct mir_instr           *prev;
     struct mir_instr           *next;
     enum mir_instr_kind         kind;
-    // Set when the instruction was mutated.
-    // @Incomplete: This can be removed later, we use it only in debbuger and to check is comptime
-    // argument was passed to the function and its local variable should be comptime too. In case we
-    // change arguments to be immutable this field cane be define only in debug mode.
-    enum mir_instr_kind orig_kind;
-    s32                 ref_count;
-    bool                is_unreachable;
-    bool                is_implicit;
+#if BL_DEBUG
+    enum mir_instr_kind _orig_kind;
+#endif
+    s32  ref_count;
+    bool is_unreachable;
+    bool is_implicit;
 
     enum mir_instr_state state;
 
