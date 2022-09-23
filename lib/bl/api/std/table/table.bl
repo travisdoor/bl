@@ -45,6 +45,7 @@
 /// }
 /// ```
 Table :: fn (TKey: type #comptime, TValue: type #comptime) type #comptime {
+    // The key type must be string, number, pointer or string_view.
     static_assert(TKey == string || is_number(TKey) || is_pointer(TKey) || TKey == string_view);
     return struct {
         slots: []Slot;

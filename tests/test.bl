@@ -33,8 +33,7 @@ foo :: fn (T: type #comptime) type #run {
 
 */
 
-//#import "std/fs"
-//#import "std/table"
+#import "std/fs"
 
 foo :: fn () #comptime {
     using std;
@@ -55,16 +54,14 @@ my_size :: fn (T: type #comptime) usize #comptime {
     return sizeof(T);
 }
 
-main :: fn () s32 {
-    using std;
-
-    //foo();
-    my_size(s32);
-    return 0;
+bar :: fn (n: s32 #comptime) {
+    n;
 }
 
-#private
-
-Foo :: struct #maybe_unused {
-    i: s32;
+main :: fn () s32 {
+    using std;
+    //foo();
+    bar(10);
+    //my_size(s32);
+    return 0;
 }

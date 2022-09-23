@@ -375,7 +375,8 @@ struct mir_type_fn {
     u32              flags;
 
     enum builtin_id_kind builtin_id;
-    // @Incomplete: rewrite to flags?
+
+    // @Performance: Rewrite to flags.
     bool is_vargs;
     // Polymorph function type (not all arguments have known type -> cannot generate type info).
     bool is_polymorph;
@@ -407,7 +408,9 @@ struct mir_type_struct {
     // This is optional base type, only structures with #base hash directive has this
     // information.
     struct mir_type *base_type;
-    bool             is_packed;
+
+    // @Performance: Rewrite to flags.
+    bool is_packed;
     // C-style union is represented as regular structure with special memory layout. Every
     // member is stored at same memory offset.
     bool is_union;
@@ -492,11 +495,13 @@ struct mir_var {
     const char          *linkage_name;
     enum builtin_id_kind builtin_id;
     s32                  ref_count;
-    bool                 is_mutable;
-    bool                 is_global;
-    bool                 is_implicit;
-    bool                 is_struct_typedef;
-    bool                 is_analyzed;
+
+    // @Performance: Rewrite to flags.
+    bool is_mutable;
+    bool is_global;
+    bool is_implicit;
+    bool is_struct_typedef;
+    bool is_analyzed;
 
     // We need this to allow the return temporary variable to be mutable even if it contains types;
     // the type can be returned only from compile-time functions. Value is set 'true' only when the

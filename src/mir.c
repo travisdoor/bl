@@ -1130,9 +1130,9 @@ static inline bool can_mutate_comptime_to_const(struct context *ctx, struct mir_
     case MIR_INSTR_CONST:
     case MIR_INSTR_BLOCK:
     case MIR_INSTR_FN_PROTO:
-    case MIR_INSTR_ARG:
         return false;
     case MIR_INSTR_CALL:
+    case MIR_INSTR_ARG:
         return true;
     default:
         break;
