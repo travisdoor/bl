@@ -412,6 +412,7 @@ typedef struct {
     bool             is_mutable;
     bool             is_global;
     bool             is_comptime;
+    bool             is_return_temporary;
 } create_var_impl_args_t;
 
 static struct mir_var *create_var_impl(struct context *ctx, create_var_impl_args_t *args);
@@ -697,6 +698,7 @@ typedef struct {
     bool              is_mutable;
     bool              is_global;
     bool              is_comptime;
+    bool              is_return_temporary;
 } create_instr_decl_var_impl_args_t, append_instr_decl_var_impl_args_t;
 
 static struct mir_instr *create_instr_decl_var_impl(struct context                    *ctx,
@@ -840,9 +842,8 @@ static struct mir_instr *ast_tag(struct context *ctx, struct ast *tag);
 
 // analyze
 static enum vm_interp_state evaluate(struct context *ctx, struct mir_instr *instr);
-static struct result
-analyze_var(struct context *ctx, struct mir_var *var, const bool in_comptime_fn);
-static struct result analyze_instr(struct context *ctx, struct mir_instr *instr);
+static struct result        analyze_var(struct context *ctx, struct mir_var *var);
+static struct result        analyze_instr(struct context *ctx, struct mir_instr *instr);
 
 #define analyze_slot(ctx, conf, input, slot_type)                                                  \
     _analyze_slot((ctx), (conf), (input), (slot_type), false)
@@ -2866,16 +2867,17 @@ struct mir_var *create_var(struct context *ctx, create_var_args_t *args)
 static struct mir_var *create_var_impl(struct context *ctx, create_var_impl_args_t *args)
 {
     bassert(args->name);
-    struct mir_var *tmp    = arena_safe_alloc(&ctx->assembly->arenas.mir.var);
-    tmp->value.type        = args->alloc_type;
-    tmp->value.is_comptime = args->is_comptime;
-    tmp->is_mutable        = args->is_mutable;
-    tmp->is_global         = args->is_global;
-    tmp->ref_count         = 1;
-    tmp->linkage_name      = args->name;
-    tmp->decl_node         = args->decl_node;
-    tmp->is_implicit       = true;
-    tmp->emit_llvm         = true;
+    struct mir_var *tmp      = arena_safe_alloc(&ctx->assembly->arenas.mir.var);
+    tmp->value.type          = args->alloc_type;
+    tmp->value.is_comptime   = args->is_comptime;
+    tmp->is_mutable          = args->is_mutable;
+    tmp->is_global           = args->is_global;
+    tmp->ref_count           = 1;
+    tmp->linkage_name        = args->name;
+    tmp->decl_node           = args->decl_node;
+    tmp->is_implicit         = true;
+    tmp->emit_llvm           = true;
+    tmp->is_return_temporary = args->is_return_temporary;
     push_var(ctx, tmp);
     return tmp;
 }
@@ -5175,7 +5177,7 @@ struct result analyze_instr_designator(struct context *ctx, struct mir_instr_des
     return_zone(PASS);
 }
 
-struct result analyze_var(struct context *ctx, struct mir_var *var, const bool in_comptime_fn)
+struct result analyze_var(struct context *ctx, struct mir_var *var)
 {
     zone();
     BL_TRACY_MESSAGE("ANALYZE_VAR", "%s", var->linkage_name);
@@ -5185,7 +5187,7 @@ struct result analyze_var(struct context *ctx, struct mir_var *var, const bool i
     switch (var->value.type->kind) {
     case MIR_TYPE_TYPE:
         // Type variable can be mutable in comptime function!
-        if (!var->is_mutable) break;
+        if (!var->is_mutable || var->is_return_temporary) break;
         // Typedef must be immutable!
         report_error(INVALID_MUTABILITY, var->decl_node, "Type declaration must be immutable.");
         return_zone(FAIL);
@@ -5298,7 +5300,7 @@ struct result analyze_instr_set_initializer(struct context                   *ct
             }
         }
 
-        struct result state = analyze_var(ctx, var, false /* var is in global scope */);
+        struct result state = analyze_var(ctx, var);
         if (state.state != ANALYZE_PASSED) return_zone(state);
 
         if (!var->value.is_comptime) {
@@ -7809,7 +7811,7 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
     // @Cleanup: Duplicate?
     decl->base.value.is_comptime = var->value.is_comptime = is_decl_comptime;
 
-    struct result state = analyze_var(ctx, decl->var, mir_is_in_comptime_fn(&decl->base));
+    struct result state = analyze_var(ctx, decl->var);
     if (state.state != ANALYZE_PASSED) return_zone(state);
     if (mir_is_comptime(&decl->base) && decl->init) {
         // initialize when known in compile-time
@@ -10513,6 +10515,7 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
                                                  &(append_instr_decl_var_impl_args_t){
                                                      .name       = unique_name(ctx, IMPL_RET_TMP),
                                                      .is_mutable = true,
+                                                     .is_return_temporary = true,
                                                  });
         set_current_block(ctx, exit_block);
         struct mir_instr *ret_init = append_instr_decl_direct_ref(ctx, ast_block, fn->ret_tmp);

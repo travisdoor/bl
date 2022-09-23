@@ -498,6 +498,11 @@ struct mir_var {
     bool                 is_struct_typedef;
     bool                 is_analyzed;
 
+    // We need this to allow the return temporary variable to be mutable even if it contains types;
+    // the type can be returned only from compile-time functions. Value is set 'true' only when the
+    // temporary return variable is created and used only for checking in 'analyze_var'.
+    bool is_return_temporary;
+
     bool emit_llvm; // Keep this, we sometimes have i.e. type defs in scope of the function.
 
     u32 flags;
