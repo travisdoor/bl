@@ -182,7 +182,7 @@ LOAD_FACTOR :: 70 #maybe_unused;
 EMPTY_INDEX : s32 : 0 #maybe_unused;
 DELETED_INDEX : s32 : -1 #maybe_unused;
 
-Slot :: struct {
+Slot :: struct #maybe_unused {
     index: s32;
     hash: u32;
 }

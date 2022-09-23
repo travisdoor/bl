@@ -34,7 +34,7 @@
 ///     len: s64;
 /// }
 /// ```
-BucketArray :: fn (TElem: type) type #comptime {
+BucketArray :: fn (TElem: type #comptime) type #comptime {
     TBucket :: Bucket(TElem);
     return struct {
         buckets: [..]TBucket;
@@ -52,7 +52,7 @@ BucketArray :: fn (TElem: type) type #comptime {
 ///     value: TElem;
 /// }
 /// ```
-BucketArrayIterator :: fn (TArr: type) type #comptime {
+BucketArrayIterator :: fn (TArr: type #comptime) type #comptime {
     return ElemWithMeta(bucket_array_typeof_elem(TArr));
 }
 
@@ -168,7 +168,7 @@ bucket_array_clear :: fn (arr: *?TArr) {
 }
 
 /// Returns type of the value stored in `TArr` type.
-bucket_array_typeof_elem :: fn (TArr: type) type #comptime {
+bucket_array_typeof_elem :: fn (TArr: type #comptime) type #comptime {
     return (@(@TArr.buckets.ptr).elems.ptr).value;
 }
 
@@ -177,7 +177,7 @@ BUCKET_ELEM_COUNT :: cast(s64) sizeof(u64) * 8 #maybe_unused;
 FULL : u64 : 0xffffffff #maybe_unused;
 MASK : u64 : 0x00000001 #maybe_unused;
 
-Bucket :: fn (TElem: type) type #comptime {
+Bucket :: fn (TElem: type #comptime) type #comptime {
     TElemWithMeta :: ElemWithMeta(TElem);
     return struct {
         mask: u64;
@@ -185,7 +185,7 @@ Bucket :: fn (TElem: type) type #comptime {
     };
 }
 
-ElemWithMeta :: fn (TElem: type) type #comptime {
+ElemWithMeta :: fn (TElem: type #comptime) type #comptime {
     return struct {
         value: TElem;
         bucket_index: s32;

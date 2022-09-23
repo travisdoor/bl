@@ -18,7 +18,7 @@
 ///     len: s64;
 /// }
 /// ```
-StaticArray :: fn (TElem: type, elem_count: s64) type #comptime {
+StaticArray :: fn (TElem: type #comptime, elem_count: s64) type #comptime {
     return struct {
         data: [elem_count]TElem;
         len: s64;

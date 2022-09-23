@@ -2872,12 +2872,12 @@ static struct mir_var *create_var_impl(struct context *ctx, create_var_impl_args
     tmp->value.is_comptime   = args->is_comptime;
     tmp->is_mutable          = args->is_mutable;
     tmp->is_global           = args->is_global;
-    tmp->ref_count           = 1;
+    tmp->is_return_temporary = args->is_return_temporary;
     tmp->linkage_name        = args->name;
     tmp->decl_node           = args->decl_node;
+    tmp->ref_count           = 1;
     tmp->is_implicit         = true;
     tmp->emit_llvm           = true;
-    tmp->is_return_temporary = args->is_return_temporary;
     push_var(ctx, tmp);
     return tmp;
 }
@@ -4061,11 +4061,12 @@ struct mir_instr *create_instr_decl_var_impl(struct context                    *
 
     tmp->var = create_var_impl(ctx,
                                &(create_var_impl_args_t){
-                                   .decl_node   = args->node,
-                                   .name        = args->name,
-                                   .is_mutable  = args->is_mutable,
-                                   .is_global   = args->is_global,
-                                   .is_comptime = args->is_comptime,
+                                   .decl_node           = args->node,
+                                   .name                = args->name,
+                                   .is_mutable          = args->is_mutable,
+                                   .is_global           = args->is_global,
+                                   .is_comptime         = args->is_comptime,
+                                   .is_return_temporary = args->is_return_temporary,
                                });
 
     if (!args->init) setflag(tmp->var->flags, FLAG_NO_INIT);
@@ -5181,14 +5182,15 @@ struct result analyze_var(struct context *ctx, struct mir_var *var)
 {
     zone();
     BL_TRACY_MESSAGE("ANALYZE_VAR", "%s", var->linkage_name);
+    bassert(!var->is_analyzed && "Variable already analyzed!");
     if (!var->value.type) {
         babort("unknown declaration type");
     }
     switch (var->value.type->kind) {
     case MIR_TYPE_TYPE:
-        // Type variable can be mutable in comptime function!
+        // Type variable can be mutable in case it's used as return temporary variable, this
+        // exception allows even types to be returned from compile time functions.
         if (!var->is_mutable || var->is_return_temporary) break;
-        // Typedef must be immutable!
         report_error(INVALID_MUTABILITY, var->decl_node, "Type declaration must be immutable.");
         return_zone(FAIL);
     case MIR_TYPE_FN:
@@ -5203,7 +5205,7 @@ struct result analyze_var(struct context *ctx, struct mir_var *var)
         return_zone(FAIL);
     case MIR_TYPE_VOID:
         // Allocated type is void type.
-        report_error(INVALID_TYPE, var->decl_node, "Cannot allocate unsized type.");
+        report_error(INVALID_TYPE, var->decl_node, "Cannot allocate 'void' type.");
         return_zone(FAIL);
     default:
         break;
@@ -7801,6 +7803,7 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
         // Immutable and comptime initializer value.
         is_decl_comptime &= decl->init->value.is_comptime;
     } else if (isnotflag(var->flags, FLAG_NO_INIT)) {
+        bassert(!var->is_struct_typedef && "Expected initializer for structure type definition.");
         // Create default initializer for locals without explicit initialization.
         struct mir_type  *type         = var->value.type;
         struct mir_instr *default_init = create_default_value_for_type(ctx, type);
@@ -7813,6 +7816,7 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
 
     struct result state = analyze_var(ctx, decl->var);
     if (state.state != ANALYZE_PASSED) return_zone(state);
+
     if (mir_is_comptime(&decl->base) && decl->init) {
         // initialize when known in compile-time
         var->value.data = decl->init->value.data;
@@ -9274,7 +9278,9 @@ void analyze_report_unused(struct context *ctx)
         if (!entry->node || !entry->id) continue;
         bassert(entry->node->location);
         report_warning(entry->node,
-                       "Unused symbol '%s'. (Use unnamed identificator '_' if this is intentional)",
+                       "Unused symbol '%s'. Please use unnamed identificator '_' if this is "
+                       "intentional (cannot be applied for global symbols); "
+                       "or mark the symbol as '#maybe_unused'.",
                        entry->id->str);
     }
 }

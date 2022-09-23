@@ -1,6 +1,6 @@
 #import "std/thread"
 
-my_is_number :: fn (T: type) bool #comptime #extern "__bl_is_number";
+my_is_number :: fn (T: type #comptime) bool #comptime #extern "__bl_is_number";
 
 main :: fn () s32 {
     my_is_number(s32);
@@ -14,7 +14,7 @@ main :: fn () s32 {
 
 #scope std
 
-typeof_future :: fn (TReturn: type) type #comptime {
+typeof_future :: fn (TReturn: type #comptime) type #comptime {
     return struct {
         result: TReturn;
     };

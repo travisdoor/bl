@@ -1,4 +1,4 @@
-Foo :: fn (T: type) type #comptime {
+Foo :: fn (T: type #comptime) type #comptime {
     TBar :: struct {
         self: *TBar;
         arr: [10]u32;

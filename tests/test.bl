@@ -33,7 +33,7 @@ foo :: fn (T: type #comptime) type #run {
 
 */
 
-#import "std/fs"
+//#import "std/fs"
 //#import "std/table"
 
 foo :: fn () #comptime {
@@ -55,13 +55,16 @@ my_size :: fn (T: type #comptime) usize #comptime {
     return sizeof(T);
 }
 
-get_type :: fn () type #comptime {
-    return s32;
-}
-
 main :: fn () s32 {
+    using std;
+
     //foo();
     my_size(s32);
-    get_type();
     return 0;
+}
+
+#private
+
+Foo :: struct {
+    i: s32;
 }

@@ -14,7 +14,7 @@ complete_for_any2 :: fn () #test {
 }
 
 
-my_function :: fn (T: type) #comptime {
+my_function :: fn (T: type #comptime) #comptime {
     static_assert(sizeof(T) == sizeof(Reference1));
     info1 :: typeinfo(T);
     info2 :: typeinfo(Bar);
@@ -37,7 +37,7 @@ group_with_any :: fn {
     };
 }
 
-MyType :: fn (TElem: type) type #comptime {
+MyType :: fn (TElem: type #comptime) type #comptime {
     static_assert(sizeof(TElem) == sizeof(Reference1));
     return struct {
         v: TElem;
