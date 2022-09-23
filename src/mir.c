@@ -4136,6 +4136,7 @@ struct mir_instr *append_instr_decl_arg(struct context   *ctx,
                                    .id    = id,
                                    .value = value,
                                    .flags = flags,
+                                   .scope = node ? node->owner_scope : NULL,
                           });
 
     append_current_block(ctx, &tmp->base);
@@ -6155,6 +6156,11 @@ struct result analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_
         break;
     }
 
+    case SCOPE_ENTRY_COMPTIME_ARG: {
+        babort("Not implemented comptime arg reference!");
+        break;
+    }
+
     default:
         babort("invalid scope entry kind");
     }
@@ -6825,8 +6831,8 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
                 struct scope_entry *entry =
                     register_symbol(ctx, arg->decl_node, arg->id, arg->decl_scope, false);
                 bassert(entry);
-                entry->kind      = SCOPE_ENTRY_COMPTIME_ARG;
-                entry->data.type = type;
+                entry->kind              = SCOPE_ENTRY_COMPTIME_ARG;
+                entry->data.comptime_arg = arg;
             }
 #endif
         }

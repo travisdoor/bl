@@ -53,7 +53,7 @@ enum scope_entry_kind {
     SCOPE_ENTRY_MEMBER,
     SCOPE_ENTRY_VARIANT,
     SCOPE_ENTRY_NAMED_SCOPE,
-    SCOPE_ENTRY_UNNAMED, // Special kind used for unnamed entries.
+    SCOPE_ENTRY_UNNAMED,      // Special kind used for unnamed entries.
     SCOPE_ENTRY_COMPTIME_ARG, // Used only as temporary for comptime arguments.
 };
 
@@ -63,6 +63,7 @@ union scope_entry_data {
     struct mir_var     *var;
     struct mir_member  *member;
     struct mir_variant *variant;
+    struct mir_arg     *comptime_arg;
     struct scope       *scope;
 };
 

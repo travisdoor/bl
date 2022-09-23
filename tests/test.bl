@@ -1,38 +1,3 @@
-/*
-
-- Mixture of compile time and regular arguments.
-- Acts like a polymorph (generate new function for each value).
-- Skip LLVM for comptime values.
-- Does not evaluate automatically while compilation unless the whole function is marked as #comptime.
-- Call side checking for constantness.
-- Insert 'value' into scope when it's replaced to allow access to the symbol i.e. in return type.
-- Comptime arguments needs to be registered into scope while they are processed in the type analyze pass
-  to allow i.e. modification of a function return type.
-
-!!! Checking of provided comptime-call arguments must be done before the mixed function is generated. !!!
-
-bar :: macro (v: s32) s32 {
-    return v + 1;
-}
-
-
-
-Redesign comptime functions:
-    
-    - Any #comptime function is evaluated in compile time.
-    - If any function is called with #run prefix, it's also evaluated in compile time.
-    - All arguments must be known in compile-time on the call side.
-    - Internally only arguments foo: s32 #comptime are comptime constants in the function body and may
-      cause the function generation.
-
-
-// comptime functions as:
-foo :: fn (T: type #comptime) type #run {
-    return T;
-}
-
-*/
-
 #import "std/fs"
 
 foo :: fn () #comptime {
@@ -54,14 +19,16 @@ my_size :: fn (T: type #comptime) usize #comptime {
     return sizeof(T);
 }
 
-bar :: fn (n: s32 #comptime) {
-    n;
+homo :: fn (a: T, b: ?T) {}
+
+/*
+sailor :: fn (T: type #comptime) T {
+    return T;
 }
+*/
 
 main :: fn () s32 {
-    using std;
-    //foo();
-    bar(10);
-    //my_size(s32);
+    homo(10, 20);
+    //sailor(s32);
     return 0;
 }
