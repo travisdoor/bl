@@ -842,8 +842,8 @@ static struct mir_instr *ast_tag(struct context *ctx, struct ast *tag);
 
 // analyze
 static enum vm_interp_state evaluate(struct context *ctx, struct mir_instr *instr);
-static struct result        analyze_var(struct context *ctx, struct mir_var *var);
-static struct result        analyze_instr(struct context *ctx, struct mir_instr *instr);
+static struct result analyze_var(struct context *ctx, struct mir_var *var, const bool check_usage);
+static struct result analyze_instr(struct context *ctx, struct mir_instr *instr);
 
 #define analyze_slot(ctx, conf, input, slot_type)                                                  \
     _analyze_slot((ctx), (conf), (input), (slot_type), false)
@@ -1589,8 +1589,8 @@ static inline void error_types(struct context   *ctx,
 {
     bassert(from && to);
     if (!msg) msg = "No implicit cast for type '%s' and '%s'.";
-    char *tmp_from = mir_type2str(from, true);
-    char *tmp_to   = mir_type2str(to, true);
+    char *tmp_from = mir_type2str(from, /* prefer_name */ true);
+    char *tmp_to   = mir_type2str(to, /* prefer_name */ true);
     report_error(INVALID_TYPE, node, msg, tmp_from, tmp_to);
     put_tstr(tmp_from);
     put_tstr(tmp_to);
@@ -1628,7 +1628,7 @@ static inline void commit_member(struct context UNUSED(*ctx), struct mir_member 
     entry->data.member = member;
 }
 
-static inline void commit_var(struct context *ctx, struct mir_var *var)
+static inline void commit_var(struct context *ctx, struct mir_var *var, const bool check_usage)
 {
     struct id *id = var->id;
     bassert(id);
@@ -1640,14 +1640,14 @@ static inline void commit_var(struct context *ctx, struct mir_var *var)
     entry->data.var = var;
     BL_TRACY_MESSAGE("COMMIT_VAR", "%s", id->str);
     if (var->is_global || var->is_struct_typedef) analyze_notify_provided(ctx, id->hash);
-    usage_check_push(ctx, entry);
+    if (check_usage) usage_check_push(ctx, entry);
 }
 
 // Provide builtin type. Register & commit.
 static inline void provide_builtin_type(struct context *ctx, struct mir_type *type)
 {
-    struct scope_entry *entry =
-        register_symbol(ctx, NULL, type->user_id, ctx->assembly->gscope, true);
+    struct scope_entry *entry = register_symbol(
+        ctx, /* node */ NULL, type->user_id, ctx->assembly->gscope, /* is_builtin */ true);
     if (!entry) return;
     bassert(entry->kind != SCOPE_ENTRY_UNNAMED);
     entry->kind      = SCOPE_ENTRY_TYPE;
@@ -1657,7 +1657,8 @@ static inline void provide_builtin_type(struct context *ctx, struct mir_type *ty
 static inline void
 provide_builtin_member(struct context *ctx, struct scope *scope, struct mir_member *member)
 {
-    struct scope_entry *entry = register_symbol(ctx, NULL, member->id, scope, true);
+    struct scope_entry *entry =
+        register_symbol(ctx, /* node */ NULL, member->id, scope, /* is_builtin */ true);
     if (!entry) return;
     bassert(entry->kind != SCOPE_ENTRY_UNNAMED);
     entry->kind        = SCOPE_ENTRY_MEMBER;
@@ -1668,7 +1669,8 @@ provide_builtin_member(struct context *ctx, struct scope *scope, struct mir_memb
 static inline void
 provide_builtin_variant(struct context *ctx, struct scope *scope, struct mir_variant *variant)
 {
-    struct scope_entry *entry = register_symbol(ctx, NULL, variant->id, scope, true);
+    struct scope_entry *entry =
+        register_symbol(ctx, /* node */ NULL, variant->id, scope, /* is_builtin */ true);
     if (!entry) return;
     bassert(entry->kind != SCOPE_ENTRY_UNNAMED);
     entry->kind         = SCOPE_ENTRY_VARIANT;
@@ -2095,36 +2097,39 @@ struct id *lookup_builtins_rtti(struct context *ctx)
     ctx->builtin_types->t_TypeInfo_ptr   = create_type_ptr(ctx, ctx->builtin_types->t_TypeInfo);
     ctx->builtin_types->t_TypeInfoFn_ptr = create_type_ptr(ctx, ctx->builtin_types->t_TypeInfoFn);
 
-    ctx->builtin_types->t_TypeInfo_slice =
-        create_type_slice(ctx, MIR_TYPE_SLICE, NULL, ctx->builtin_types->t_TypeInfo_ptr, false);
+    ctx->builtin_types->t_TypeInfo_slice = create_type_slice(ctx,
+                                                             MIR_TYPE_SLICE,
+                                                             /* id */ NULL,
+                                                             ctx->builtin_types->t_TypeInfo_ptr,
+                                                             /* is_string_literal */ false);
 
     ctx->builtin_types->t_TypeInfoStructMembers_slice =
         create_type_slice(ctx,
                           MIR_TYPE_SLICE,
-                          NULL,
+                          /* id */ NULL,
                           create_type_ptr(ctx, ctx->builtin_types->t_TypeInfoStructMember),
-                          false);
+                          /* is_string_literal */ false);
 
     ctx->builtin_types->t_TypeInfoEnumVariants_slice =
         create_type_slice(ctx,
                           MIR_TYPE_SLICE,
-                          NULL,
+                          /* id */ NULL,
                           create_type_ptr(ctx, ctx->builtin_types->t_TypeInfoEnumVariant),
-                          false);
+                          /* is_string_literal */ false);
 
     ctx->builtin_types->t_TypeInfoFnArgs_slice =
         create_type_slice(ctx,
                           MIR_TYPE_SLICE,
-                          NULL,
+                          /* id */ NULL,
                           create_type_ptr(ctx, ctx->builtin_types->t_TypeInfoFnArg),
-                          false);
+                          /* is_string_literal */ false);
 
     ctx->builtin_types->t_TypeInfoFn_ptr_slice =
         create_type_slice(ctx,
                           MIR_TYPE_SLICE,
-                          NULL,
+                          /* id */ NULL,
                           create_type_ptr(ctx, ctx->builtin_types->t_TypeInfoFn_ptr),
-                          false);
+                          /* is_string_literal */ false);
 
     ctx->builtin_types->is_rtti_ready = true;
     return NULL;
@@ -2396,7 +2401,7 @@ static struct mir_type *complete_type_struct(struct context *ctx, complete_type_
 
 #if TRACY_ENABLE
     {
-        char *type_name = mir_type2str(incomplete_type, true);
+        char *type_name = mir_type2str(incomplete_type, /* prefer_name */ true);
         BL_TRACY_MESSAGE("COMPLETE_TYPE", "%s", type_name);
         put_tstr(type_name);
     }
@@ -5057,7 +5062,7 @@ static struct result analyze_instr_compound_regular(struct context            *c
                                                              .id = id,
                                                          });
                 if (!found) {
-                    char *type_name = mir_type2str(type, true);
+                    char *type_name = mir_type2str(type, /* prefer_name */ true);
                     report_error(INVALID_INITIALIZER,
                                  designator->ident,
                                  "Structure member designator '%s' does not refer to any member of "
@@ -5178,11 +5183,13 @@ struct result analyze_instr_designator(struct context *ctx, struct mir_instr_des
     return_zone(PASS);
 }
 
-struct result analyze_var(struct context *ctx, struct mir_var *var)
+struct result analyze_var(struct context *ctx, struct mir_var *var, const bool check_usage)
 {
     zone();
     BL_TRACY_MESSAGE("ANALYZE_VAR", "%s", var->linkage_name);
-    bassert(!var->is_analyzed && "Variable already analyzed!");
+    // @Note: Structure type definitions are analyzed twice, first only placeholder is provided, and
+    // later proper type. (This solves possible dependency cycles.)
+    // bassert(!var->is_analyzed && "Variable already analyzed!");
     if (!var->value.type) {
         babort("unknown declaration type");
     }
@@ -5217,7 +5224,7 @@ struct result analyze_var(struct context *ctx, struct mir_var *var)
                 INVALID_NAME, var->decl_node, "Global variable cannot be explicitly unnamed.");
             return_zone(FAIL);
         }
-        commit_var(ctx, var);
+        commit_var(ctx, var, check_usage);
     }
     // Type declaration should not be generated in LLVM.
     const enum mir_type_kind var_type_kind = var->value.type->kind;
@@ -5302,7 +5309,7 @@ struct result analyze_instr_set_initializer(struct context                   *ct
             }
         }
 
-        struct result state = analyze_var(ctx, var);
+        struct result state = analyze_var(ctx, var, /* check_usage */ true);
         if (state.state != ANALYZE_PASSED) return_zone(state);
 
         if (!var->value.is_comptime) {
@@ -5709,7 +5716,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
     }
 
     // Invalid
-    char *type_name = mir_type2str(target_ptr->value.type, true);
+    char *type_name = mir_type2str(target_ptr->value.type, /* prefer_name */ true);
     report_error(INVALID_TYPE,
                  target_ptr->node,
                  "Expected structure or enumerator type, got '%s'.",
@@ -6704,7 +6711,7 @@ struct result analyze_instr_load(struct context *ctx, struct mir_instr_load *loa
         struct mir_type *src_type = MIR_CEV_READ_AS(struct mir_type *, &src->value);
         bmagic_assert(src_type);
         if (!mir_is_pointer_type(src_type) && src_type->kind != MIR_TYPE_POLY) {
-            char *type_name = mir_type2str(src_type, true);
+            char *type_name = mir_type2str(src_type, /* prefer_name */ true);
             report_error(INVALID_TYPE, src->node, "Expected pointer type, got '%s'.", type_name);
             put_tstr(type_name);
             return_zone(FAIL);
@@ -6713,7 +6720,7 @@ struct result analyze_instr_load(struct context *ctx, struct mir_instr_load *loa
         load->base.value.is_comptime = true;
         load->base.value.addr_mode   = src->value.addr_mode;
     } else {
-        char *type_name = mir_type2str(src->value.type, true);
+        char *type_name = mir_type2str(src->value.type, /* prefer_name */ true);
         report_error(
             INVALID_TYPE, src->node, "Expected value of pointer type, got '%s'.", type_name);
         put_tstr(type_name);
@@ -6769,7 +6776,7 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
             case MIR_TYPE_FN:
             case MIR_TYPE_FN_GROUP:
             case MIR_TYPE_NAMED_SCOPE: {
-                char *type_name = mir_type2str(arg->type, true);
+                char *type_name = mir_type2str(arg->type, /* prefer_name */ true);
                 report_error(INVALID_TYPE,
                              arg->decl_node,
                              "Invalid function argument type '%s'.",
@@ -6983,7 +6990,7 @@ struct result analyze_instr_decl_variant(struct context                *ctx,
         const bool u64overflow = value == 0;
         if (is_flags && (value > max_value || u64overflow)) {
             // @Incomplete: Detect overflow also for regular enums?
-            char *base_type_name = mir_type2str(base_type, true);
+            char *base_type_name = mir_type2str(base_type, /* prefer_name */ true);
             report_error(NUM_LIT_OVERFLOW,
                          variant_instr->base.node,
                          "Enum variant value overflow on variant '%s', maximum value for type "
@@ -7640,7 +7647,7 @@ struct result analyze_instr_unop(struct context *ctx, struct mir_instr_unop *uno
 
     case UNOP_BIT_NOT: {
         if (expr_type->kind != MIR_TYPE_INT) {
-            char *type_name = mir_type2str(expr_type, true);
+            char *type_name = mir_type2str(expr_type, /* prefer_name */ true);
             report_error_after(INVALID_TYPE,
                                unop->base.node,
                                "Invalid operation for type '%s'. This operation "
@@ -7655,7 +7662,7 @@ struct result analyze_instr_unop(struct context *ctx, struct mir_instr_unop *uno
     case UNOP_POS:
     case UNOP_NEG: {
         if (expr_type->kind != MIR_TYPE_INT && expr_type->kind != MIR_TYPE_REAL) {
-            char *type_name = mir_type2str(expr_type, true);
+            char *type_name = mir_type2str(expr_type, /* prefer_name */ true);
             report_error_after(INVALID_TYPE,
                                unop->base.node,
                                "Invalid operation for type '%s'. This operation "
@@ -7814,7 +7821,7 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
     // @Cleanup: Duplicate?
     decl->base.value.is_comptime = var->value.is_comptime = is_decl_comptime;
 
-    struct result state = analyze_var(ctx, decl->var);
+    struct result state = analyze_var(ctx, decl->var, /* check_usage */ !var->is_struct_typedef);
     if (state.state != ANALYZE_PASSED) return_zone(state);
 
     if (mir_is_comptime(&decl->base) && decl->init) {
@@ -8004,8 +8011,8 @@ struct result generate_function_implementation(struct context             *ctx,
                 ast_nodes_t *ast_poly_args = ast_recipe->data.expr_fn.type->data.type_fn.args;
                 struct ast  *ast_poly_arg  = sarrpeek(ast_poly_args, i);
                 if (call_arg_type) {
-                    char *recipe_type_name = mir_type2str(recipe_arg_type, true);
-                    char *arg_type_name    = mir_type2str(call_arg_type, true);
+                    char *recipe_type_name = mir_type2str(recipe_arg_type, /* prefer_name */ true);
+                    char *arg_type_name    = mir_type2str(call_arg_type, /* prefer_name */ true);
                     report_error(INVALID_POLY_MATCH,
                                  ast_poly_arg->data.decl.type,
                                  "Cannot deduce polymorph function argument type '%s'. Expected is "
@@ -8034,8 +8041,8 @@ struct result generate_function_implementation(struct context             *ctx,
             } else {
                 bassert(matching_type->kind != MIR_TYPE_POLY);
                 // Stringify replacement to get better error reports.
-                char *type_name1 = mir_type2str(poly_type, true);
-                char *type_name2 = mir_type2str(matching_type, true);
+                char *type_name1 = mir_type2str(poly_type, /* prefer_name */ true);
+                char *type_name2 = mir_type2str(matching_type, /* prefer_name */ true);
                 strappend(debug_replacement_str, "%s = %s; ", type_name1, type_name2);
                 sarrput(queue, matching_type);
                 put_tstr(type_name1);
@@ -9277,11 +9284,24 @@ void analyze_report_unused(struct context *ctx)
         if (entry->ref_count > 0) continue;
         if (!entry->node || !entry->id) continue;
         bassert(entry->node->location);
-        report_warning(entry->node,
-                       "Unused symbol '%s'. Please use unnamed identificator '_' if this is "
-                       "intentional (cannot be applied for global symbols); "
-                       "or mark the symbol as '#maybe_unused'.",
-                       entry->id->str);
+        switch (entry->node->owner_scope->kind) {
+        case SCOPE_GLOBAL:
+        case SCOPE_PRIVATE:
+        case SCOPE_NAMED: {
+            report_warning(
+                entry->node,
+                "Unused symbol '%s'. Mark the symbol as '#maybe_unused' it it's intentional.",
+                entry->id->str);
+            break;
+        }
+        default: {
+            report_warning(entry->node,
+                           "Unused symbol '%s'. Use blank identificator '_' if it's "
+                           "intentional, or mark the symbol as '#maybe_unused'. If it's used only "
+                           "in some conditional or generated code.",
+                           entry->id->str);
+        }
+        }
     }
 }
 
@@ -9430,7 +9450,7 @@ struct mir_var *_rtti_gen(struct context *ctx, struct mir_type *type)
         break;
 
     default: {
-        char *type_name = mir_type2str(type, true);
+        char *type_name = mir_type2str(type, /* prefer_name */ true);
         babort("missing RTTI generation for type '%s'", type_name);
         // no put_tstr here, we aborting anyway...
     }

@@ -2114,7 +2114,7 @@ struct ast *parse_type_struct(struct context *ctx)
     const bool is_union = tok_struct->sym == SYM_UNION;
 
     // parse flags
-    u32         accepted  = is_union ? 0 : HD_COMPILER | HD_BASE;
+    u32         accepted  = is_union ? 0 : HD_COMPILER | HD_BASE | HD_MAYBE_UNUSED;
     u32         flags     = 0;
     struct ast *base_type = NULL;
     while (true) {

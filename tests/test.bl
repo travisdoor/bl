@@ -65,6 +65,6 @@ main :: fn () s32 {
 
 #private
 
-Foo :: struct {
+Foo :: struct #maybe_unused {
     i: s32;
 }
