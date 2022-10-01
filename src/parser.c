@@ -27,6 +27,7 @@
 // =================================================================================================
 
 #include "ast.h"
+#include "bldebug.h"
 #include "builder.h"
 #include "common.h"
 #include "tokens_inline_utils.h"
@@ -1978,7 +1979,7 @@ struct ast *parse_type_fn_return(struct context *ctx)
         // eat (
         struct token *tok_begin = tokens_consume(ctx->tokens);
         struct scope *scope     = scope_create(
-            ctx->scope_arenas, SCOPE_TYPE_STRUCT, scope_get(ctx), &tok_begin->location);
+                ctx->scope_arenas, SCOPE_TYPE_STRUCT, scope_get(ctx), &tok_begin->location);
         scope_push(ctx, scope);
 
         struct ast *type_struct =
@@ -2030,13 +2031,16 @@ struct ast *parse_type_fn(struct context *ctx, bool named_args)
     }
     struct ast *fn = ast_create_node(ctx->ast_arena, AST_TYPE_FN, tok_fn, scope_get(ctx));
     // parse arg types
-    bool        rq = false;
+    bool        rq    = false;
+    u32         index = 0;
     struct ast *tmp;
     arrput(ctx->fn_type_stack, fn);
 NEXT:
     tmp = parse_decl_arg(ctx, named_args);
     if (tmp) {
         if (tmp->kind == AST_BAD) return tmp;
+        // Setup argument index -> order in the function type argument list.
+        tmp->data.decl_arg.index = index++;
         if (!fn->data.type_fn.args) {
             fn->data.type_fn.args = arena_safe_alloc(&ctx->assembly->arenas.sarr);
         }

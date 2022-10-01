@@ -94,6 +94,13 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 #define static_arrlenu(A) (sizeof(A) / sizeof((A)[0]))
 #define is_str_valid_nonempty(S) ((S) && (S)[0] != '\0')
 
+#ifndef MIN
+#define MIN(a, b) (((a)<(b))?(a):(b))
+#endif 
+#ifndef MAX
+#define MAX(a, b) (((a)>(b))?(a):(b))
+#endif 
+
 // =================================================================================================
 // STB utils
 // =================================================================================================
@@ -172,6 +179,7 @@ typedef sarr_t(u8, 1) sarr_any_t;
 #define sarrlen(A) ((s64)((A) ? (A)->len : 0))
 #define sarrdata(A) ((A)->cap ? ((A)->_data) : ((A)->_buf))
 #define sarrpeek(A, I) (sarrdata(A)[I])
+#define sarrpeekor(A, I, D) ((I) < sarrlenu(A) ? sarrdata(A)[I] : (D))
 #define sarrclear(A) ((A)->len = 0)
 #define sarrfree(A) ((A)->cap ? bfree((A)->_data) : (void)0, (A)->len = 0, (A)->cap = 0)
 #define sarrsetlen(A, L)                                                                           \
@@ -268,6 +276,7 @@ static inline bool is_ignored_id(const struct id *id)
 // =================================================================================================
 // Utils
 // =================================================================================================
+
 enum search_flags {
     SEARCH_FLAG_ABS         = 0,
     SEARCH_FLAG_WDIR        = 1,

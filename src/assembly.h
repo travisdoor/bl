@@ -291,7 +291,7 @@ DCpointer assembly_find_extern(struct assembly *assembly, const char *symbol);
 #define assembly_has_rtti(assembly, type_id) (hmgeti((assembly)->MIR.rtti_table, type_id) != -1)
 #define assembly_get_rtti(assembly, type_id) (hmget((assembly)->MIR.rtti_table, type_id))
 #define assembly_add_rtti(assembly, type_id, rtti_var)                                             \
-    hmput((assembly)->MIR.rtti_table, type_id, rtti_var);
+    hmput((assembly)->MIR.rtti_table, type_id, rtti_var)
 
 // Convert opt level to string.
 static inline const char *opt_to_str(enum assembly_opt opt)

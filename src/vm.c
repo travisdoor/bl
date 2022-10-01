@@ -31,6 +31,7 @@
 #include "blmemory.h"
 #include "builder.h"
 #include "common.h"
+#include "scope.h"
 #include "stb_ds.h"
 #include "vmdbg.h"
 
@@ -1492,8 +1493,7 @@ void interp_instr_arg(struct virtual_machine *vm, struct mir_instr_arg *arg)
             stack_push(vm, curr_arg_value->value.data, type);
         } else {
             // Arguments are located in reverse order right before return address on the
-            // stack
-            // so we can find them inside loop adjusting address up on the stack.
+            // stack so we can find them inside loop adjusting address up on the stack.
             struct mir_instr *arg_value = NULL;
             // starting point
             vm_stack_ptr_t arg_ptr = (vm_stack_ptr_t)vm->stack->ra;
@@ -2311,6 +2311,18 @@ void eval_instr_decl_ref(struct virtual_machine UNUSED(*vm), struct mir_instr_de
         MIR_CEV_WRITE_AS(struct scope_entry *, &decl_ref->base.value, entry);
         break;
 
+    case SCOPE_ENTRY_COMPTIME_ARG: {
+        struct mir_fn *fn = decl_ref->base.owner_block->owner_fn;
+        bmagic_assert(fn);
+        mir_instrs_t *comptime_args = fn->generated.comptime_args;
+        bassert(comptime_args && "No compile-time known arguments provided!");
+        const u32 index = entry->data.comptime_arg->index;
+        bassert(index < sarrlenu(comptime_args) && index >= 0 &&
+                "Argument index is out of the range!");
+        decl_ref->base.value.data = sarrpeek(comptime_args, index)->value.data;
+        break;
+    }
+
     default:
         BL_UNIMPLEMENTED;
     }
@@ -2368,13 +2380,13 @@ void vm_print_backtrace(struct virtual_machine *vm)
             break;
         }
         struct mir_fn *fn = instr->owner_block->owner_fn;
-        if (fn && is_str_valid_nonempty(fn->generated.debug_replacement)) {
+        if (fn && is_str_valid_nonempty(fn->generated.debug_replacement_types)) {
             builder_msg(MSG_ERR_NOTE,
                         0,
                         instr->node->location,
                         CARET_NONE,
                         "Called from following location with polymorph replacement: %s",
-                        fn->generated.debug_replacement);
+                        fn->generated.debug_replacement_types);
         } else {
             builder_msg(MSG_ERR_NOTE, 0, instr->node->location, CARET_NONE, "Called from:");
         }

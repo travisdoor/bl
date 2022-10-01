@@ -1,34 +1,71 @@
-#import "std/fs"
-
-foo :: fn () #comptime {
-    using std;
-    file, err :: open_file(#file);
-    defer close_file(&file);
-    if err { 
-        print("%\n", err); 
-        return;
-    }
-    content := str_new();
-    defer str_delete(&content);
-
-    read_string(&file, &content);
-    print("%\n\n", content);
-}
-
-my_size :: fn (T: type #comptime) usize #comptime {
-    return sizeof(T);
-}
-
-homo :: fn (a: T, b: ?T) {}
-
-/*
-sailor :: fn (T: type #comptime) T {
-    return T;
-}
-*/
+// Analyze state can be removed (only bool is enough)?
 
 main :: fn () s32 {
-    homo(10, 20);
-    //sailor(s32);
+    foo();
+
+    ptr := &foo;
+    ptr();
+
+    group();
+    bar(20);
+
+    poly(10, 20);
+
     return 0;
 }
+
+foo :: fn () {
+}
+
+group :: fn {
+    fn () {
+    };
+    fn (i: s32 #maybe_unused) {
+    };
+}
+
+bar :: fn (j: s32, k: s32 = 666) s32 {
+    return j + k;
+}
+
+poly :: fn (v: ?T, c: T) {
+    v;
+}
+
+Foo :: struct {
+    f: *Foo;
+    o: s32;
+}
+
+/*
+
+foo :: fn (a: ?T, b: T) T {}
+
+New call analyze:
+- Regular function call.
+- Called via pointer.
+- Conversions to Any.
+- VA-ARGS.
+- Mixed functions.
+- Compile-time called functions.
+- Polmorph functions.
+
+Strategy:
+1) Wait for Any type to be available.
+2) Disable polymorphs in groups.
+3) Pick the best overload.
+4) Iterate over arguments and do the magic
+    - Resolve polymorph replacement.
+    - Check matching type.
+
+Mixed function signature can be generated only in case it has resolved arguments
+with comptime values (those can be referenced from the signature).
+
+*/
+
+/* uncommnet while fixing using propagation into local functions.
+list_dir :: fn (paths: *[..]string_view, dir: string_view) {
+    using std;
+    foo :: fn (i: *Info) {};
+}
+*/

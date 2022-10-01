@@ -2687,11 +2687,11 @@ State emit_instr_const(struct context *ctx, struct mir_instr_const *c)
         struct mir_type *elem_type  = type->data.array.elem_type;
         const s64        elemc      = type->data.array.len;
         for (s64 i = 0; i < elemc; ++i) {
-            vm_stack_ptr_t         value_ptr = vm_get_array_elem_ptr(type, c->base.value.data, (u32)i);
-            struct mir_instr_const tmp       = {
-                      .base.value.type        = elem_type,
-                      .base.value.data        = value_ptr,
-                      .base.value.is_comptime = true,
+            vm_stack_ptr_t value_ptr   = vm_get_array_elem_ptr(type, c->base.value.data, (u32)i);
+            struct mir_instr_const tmp = {
+                .base.value.type        = elem_type,
+                .base.value.data        = value_ptr,
+                .base.value.is_comptime = true,
             };
             if (emit_instr_const(ctx, &tmp) != STATE_PASSED) {
                 babort("Cannot evaluate constant data blob!");
