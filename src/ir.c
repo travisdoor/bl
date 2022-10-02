@@ -31,6 +31,7 @@
 #include "builder.h"
 #include "common.h"
 #include "mir.h"
+#include "scope.h"
 #include "stb_ds.h"
 #include "vm.h"
 #include "llvm-c/Core.h"
@@ -60,7 +61,10 @@ struct rtti_incomplete {
     struct mir_type *type;
 };
 
-typedef enum { STATE_PASSED, STATE_POSTPONE } State;
+enum state {
+    STATE_PASSED,
+    STATE_POSTPONE,
+};
 
 typedef sarr_t(LLVMValueRef, 16) llvm_values_t;
 typedef sarr_t(LLVMMetadataRef, 16) llvm_metas_t;
@@ -161,38 +165,43 @@ static LLVMMetadataRef DI_unit_init(struct context *ctx, struct unit *unit);
 // =================================================================================================
 // Instruction emit
 // =================================================================================================
-static State        emit_instr(struct context *ctx, struct mir_instr *instr);
+static enum state   emit_instr(struct context *ctx, struct mir_instr *instr);
 static LLVMValueRef emit_const_string(struct context *ctx, const char *str, usize len);
-static State        emit_instr_binop(struct context *ctx, struct mir_instr_binop *binop);
-static State        emit_instr_phi(struct context *ctx, struct mir_instr_phi *phi);
-static State emit_instr_set_initializer(struct context *ctx, struct mir_instr_set_initializer *si);
-static State emit_instr_type_info(struct context *ctx, struct mir_instr_type_info *type_info);
-static State emit_instr_test_cases(struct context *ctx, struct mir_instr_test_case *tc);
-static State emit_instr_decl_ref(struct context *ctx, struct mir_instr_decl_ref *ref);
-static State emit_instr_decl_direct_ref(struct context *ctx, struct mir_instr_decl_direct_ref *ref);
-static State emit_instr_cast(struct context *ctx, struct mir_instr_cast *cast);
-static State emit_instr_addrof(struct context *ctx, struct mir_instr_addrof *addrof);
-static State emit_instr_unop(struct context *ctx, struct mir_instr_unop *unop);
-static State emit_instr_unreachable(struct context *ctx, struct mir_instr_unreachable *unr);
-static State emit_instr_debugbreak(struct context *ctx, struct mir_instr_debugbreak *debug_break);
-static State emit_instr_store(struct context *ctx, struct mir_instr_store *store);
-static State emit_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_proto);
-static State emit_instr_block(struct context *ctx, struct mir_instr_block *block);
-static State emit_instr_br(struct context *ctx, struct mir_instr_br *br);
-static State emit_instr_switch(struct context *ctx, struct mir_instr_switch *sw);
-static State emit_instr_const(struct context *ctx, struct mir_instr_const *c);
-static State emit_instr_arg(struct context *ctx, struct mir_var *dest, struct mir_instr_arg *arg);
-static State emit_instr_cond_br(struct context *ctx, struct mir_instr_cond_br *br);
-static State emit_instr_ret(struct context *ctx, struct mir_instr_ret *ret);
-static State emit_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl);
-static State emit_instr_load(struct context *ctx, struct mir_instr_load *load);
-static State emit_instr_call(struct context *ctx, struct mir_instr_call *call);
-static State emit_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_ptr *elem_ptr);
-static State emit_instr_member_ptr(struct context *ctx, struct mir_instr_member_ptr *member_ptr);
-static State emit_instr_unroll(struct context *ctx, struct mir_instr_unroll *unroll);
-static State emit_instr_vargs(struct context *ctx, struct mir_instr_vargs *vargs);
-static State emit_instr_toany(struct context *ctx, struct mir_instr_to_any *toany);
-static State emit_instr_call_loc(struct context *ctx, struct mir_instr_call_loc *loc);
+static enum state   emit_instr_binop(struct context *ctx, struct mir_instr_binop *binop);
+static enum state   emit_instr_phi(struct context *ctx, struct mir_instr_phi *phi);
+static enum state   emit_instr_set_initializer(struct context                   *ctx,
+                                               struct mir_instr_set_initializer *si);
+static enum state emit_instr_type_info(struct context *ctx, struct mir_instr_type_info *type_info);
+static enum state emit_instr_test_cases(struct context *ctx, struct mir_instr_test_case *tc);
+static enum state emit_instr_decl_ref(struct context *ctx, struct mir_instr_decl_ref *ref);
+static enum state emit_instr_decl_direct_ref(struct context                   *ctx,
+                                             struct mir_instr_decl_direct_ref *ref);
+static enum state emit_instr_cast(struct context *ctx, struct mir_instr_cast *cast);
+static enum state emit_instr_addrof(struct context *ctx, struct mir_instr_addrof *addrof);
+static enum state emit_instr_unop(struct context *ctx, struct mir_instr_unop *unop);
+static enum state emit_instr_unreachable(struct context *ctx, struct mir_instr_unreachable *unr);
+static enum state emit_instr_debugbreak(struct context              *ctx,
+                                        struct mir_instr_debugbreak *debug_break);
+static enum state emit_instr_store(struct context *ctx, struct mir_instr_store *store);
+static enum state emit_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_proto);
+static enum state emit_instr_block(struct context *ctx, struct mir_instr_block *block);
+static enum state emit_instr_br(struct context *ctx, struct mir_instr_br *br);
+static enum state emit_instr_switch(struct context *ctx, struct mir_instr_switch *sw);
+static enum state emit_instr_const(struct context *ctx, struct mir_instr_const *c);
+static enum state
+emit_instr_arg(struct context *ctx, struct mir_var *dest, struct mir_instr_arg *arg);
+static enum state emit_instr_cond_br(struct context *ctx, struct mir_instr_cond_br *br);
+static enum state emit_instr_ret(struct context *ctx, struct mir_instr_ret *ret);
+static enum state emit_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl);
+static enum state emit_instr_load(struct context *ctx, struct mir_instr_load *load);
+static enum state emit_instr_call(struct context *ctx, struct mir_instr_call *call);
+static enum state emit_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_ptr *elem_ptr);
+static enum state emit_instr_member_ptr(struct context              *ctx,
+                                        struct mir_instr_member_ptr *member_ptr);
+static enum state emit_instr_unroll(struct context *ctx, struct mir_instr_unroll *unroll);
+static enum state emit_instr_vargs(struct context *ctx, struct mir_instr_vargs *vargs);
+static enum state emit_instr_toany(struct context *ctx, struct mir_instr_to_any *toany);
+static enum state emit_instr_call_loc(struct context *ctx, struct mir_instr_call_loc *loc);
 
 static LLVMValueRef emit_global_var_proto(struct context *ctx, struct mir_var *var);
 static LLVMValueRef
@@ -217,7 +226,7 @@ static inline LLVMValueRef emit_instr_compound_global(struct context            
     return _emit_instr_compound_comptime(ctx, cmp);
 }
 
-static State emit_instr_compound_naked(struct context *ctx, struct mir_instr_compound *cmp)
+static enum state emit_instr_compound_naked(struct context *ctx, struct mir_instr_compound *cmp)
 {
     bassert(cmp->is_naked && "Expected naked compound initializer!");
     bassert(cmp->tmp_var && "Missing tmp variable for naked compound instruction!");
@@ -866,7 +875,7 @@ LLVMValueRef emit_const_string(struct context *ctx, const char *str, usize len)
     return llvm_result;
 }
 
-State emit_instr_decl_ref(struct context *ctx, struct mir_instr_decl_ref *ref)
+enum state emit_instr_decl_ref(struct context *ctx, struct mir_instr_decl_ref *ref)
 {
     struct scope_entry *entry = ref->scope_entry;
     bassert(entry);
@@ -884,6 +893,15 @@ State emit_instr_decl_ref(struct context *ctx, struct mir_instr_decl_ref *ref)
         ref->base.llvm_value = emit_fn_proto(ctx, entry->data.fn, true);
         break;
     }
+    case SCOPE_ENTRY_ARG: {
+        const struct mir_fn *current_fn = ref->base.owner_block->owner_fn;
+        bassert(current_fn && current_fn->llvm_value);
+
+        struct mir_arg *arg = entry->data.arg;
+        bassert(arg);
+        ref->base.llvm_value = LLVMGetParam(current_fn->llvm_value, arg->llvm_index);
+        break;
+    }
     default:
         BL_UNIMPLEMENTED;
     }
@@ -891,7 +909,7 @@ State emit_instr_decl_ref(struct context *ctx, struct mir_instr_decl_ref *ref)
     return STATE_PASSED;
 }
 
-State emit_instr_decl_direct_ref(struct context *ctx, struct mir_instr_decl_direct_ref *ref)
+enum state emit_instr_decl_direct_ref(struct context *ctx, struct mir_instr_decl_direct_ref *ref)
 {
     bassert(ref->ref && ref->ref->kind == MIR_INSTR_DECL_VAR);
     struct mir_var *var = ((struct mir_instr_decl_var *)ref->ref)->var;
@@ -905,7 +923,7 @@ State emit_instr_decl_direct_ref(struct context *ctx, struct mir_instr_decl_dire
     return STATE_PASSED;
 }
 
-State emit_instr_phi(struct context *ctx, struct mir_instr_phi *phi)
+enum state emit_instr_phi(struct context *ctx, struct mir_instr_phi *phi)
 {
     const usize   count   = sarrlenu(phi->incoming_blocks);
     llvm_values_t llvm_iv = SARR_ZERO;
@@ -927,7 +945,7 @@ State emit_instr_phi(struct context *ctx, struct mir_instr_phi *phi)
     return STATE_PASSED;
 }
 
-State emit_instr_debugbreak(struct context *ctx, struct mir_instr_debugbreak *debug_break)
+enum state emit_instr_debugbreak(struct context *ctx, struct mir_instr_debugbreak *debug_break)
 {
     struct mir_fn *break_fn = debug_break->break_fn;
     bassert(break_fn);
@@ -938,7 +956,7 @@ State emit_instr_debugbreak(struct context *ctx, struct mir_instr_debugbreak *de
     return STATE_PASSED;
 }
 
-State emit_instr_unreachable(struct context *ctx, struct mir_instr_unreachable *unreachable)
+enum state emit_instr_unreachable(struct context *ctx, struct mir_instr_unreachable *unreachable)
 {
     struct mir_fn *abort_fn = unreachable->abort_fn;
     bassert(abort_fn);
@@ -1497,7 +1515,7 @@ SKIP:
     return llvm_rtti_var;
 }
 
-State emit_instr_type_info(struct context *ctx, struct mir_instr_type_info *type_info)
+enum state emit_instr_type_info(struct context *ctx, struct mir_instr_type_info *type_info)
 {
     bassert(type_info->rtti_type);
     type_info->base.llvm_value = rtti_emit(ctx, type_info->rtti_type);
@@ -1555,7 +1573,7 @@ struct mir_var *testing_fetch_meta(struct context *ctx)
     return var;
 }
 
-State emit_instr_test_cases(struct context *ctx, struct mir_instr_test_case *tc)
+enum state emit_instr_test_cases(struct context *ctx, struct mir_instr_test_case *tc)
 {
     // Test case metadata variable is optional an can be null in case there are no test cases.
     // In such case we generate empty slice with zero length.
@@ -1584,7 +1602,7 @@ State emit_instr_test_cases(struct context *ctx, struct mir_instr_test_case *tc)
     return STATE_PASSED;
 }
 
-State emit_instr_cast(struct context *ctx, struct mir_instr_cast *cast)
+enum state emit_instr_cast(struct context *ctx, struct mir_instr_cast *cast)
 {
     LLVMValueRef llvm_src       = cast->expr->llvm_value;
     LLVMTypeRef  llvm_dest_type = get_type(ctx, cast->base.value.type);
@@ -1662,7 +1680,7 @@ State emit_instr_cast(struct context *ctx, struct mir_instr_cast *cast)
     return STATE_PASSED;
 }
 
-State emit_instr_addrof(struct context *ctx, struct mir_instr_addrof *addrof)
+enum state emit_instr_addrof(struct context *ctx, struct mir_instr_addrof *addrof)
 {
     if (addrof->src->kind == MIR_INSTR_FN_PROTO) {
         struct mir_instr_fn_proto *fn_proto = (struct mir_instr_fn_proto *)addrof->src;
@@ -1676,7 +1694,8 @@ State emit_instr_addrof(struct context *ctx, struct mir_instr_addrof *addrof)
     return STATE_PASSED;
 }
 
-State emit_instr_arg(struct context *ctx, struct mir_var *dest, struct mir_instr_arg *arg_instr)
+enum state
+emit_instr_arg(struct context *ctx, struct mir_var *dest, struct mir_instr_arg *arg_instr)
 {
     bassert(dest);
     struct mir_fn *fn = arg_instr->base.owner_block->owner_fn;
@@ -1742,7 +1761,7 @@ State emit_instr_arg(struct context *ctx, struct mir_var *dest, struct mir_instr
     return STATE_PASSED;
 }
 
-State emit_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_ptr *elem_ptr)
+enum state emit_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_ptr *elem_ptr)
 {
     struct mir_type *arr_type     = mir_deref_type(elem_ptr->arr_ptr->value.type);
     LLVMValueRef     llvm_arr_ptr = elem_ptr->arr_ptr->llvm_value;
@@ -1791,7 +1810,7 @@ State emit_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_ptr *elem_p
     return STATE_PASSED;
 }
 
-State emit_instr_member_ptr(struct context *ctx, struct mir_instr_member_ptr *member_ptr)
+enum state emit_instr_member_ptr(struct context *ctx, struct mir_instr_member_ptr *member_ptr)
 {
     LLVMValueRef llvm_target_ptr = member_ptr->target_ptr->llvm_value;
     bassert(llvm_target_ptr);
@@ -1829,7 +1848,7 @@ State emit_instr_member_ptr(struct context *ctx, struct mir_instr_member_ptr *me
     return STATE_PASSED;
 }
 
-State emit_instr_unroll(struct context *ctx, struct mir_instr_unroll *unroll)
+enum state emit_instr_unroll(struct context *ctx, struct mir_instr_unroll *unroll)
 {
     LLVMValueRef llvm_src_ptr = unroll->src->llvm_value;
     bassert(llvm_src_ptr);
@@ -1838,7 +1857,7 @@ State emit_instr_unroll(struct context *ctx, struct mir_instr_unroll *unroll)
     return STATE_PASSED;
 }
 
-State emit_instr_load(struct context *ctx, struct mir_instr_load *load)
+enum state emit_instr_load(struct context *ctx, struct mir_instr_load *load)
 {
     bassert(load->base.value.type && "invalid type of load instruction");
     LLVMValueRef llvm_src = load->src->llvm_value;
@@ -1903,7 +1922,7 @@ build_optimized_store(struct context *ctx, struct mir_instr *src, struct mir_ins
     return llvm_store;
 }
 
-State emit_instr_store(struct context *ctx, struct mir_instr_store *store)
+enum state emit_instr_store(struct context *ctx, struct mir_instr_store *store)
 {
     LLVMValueRef dest = store->dest->llvm_value;
     bassert(dest && "Missing LLVM store destination value!");
@@ -1917,7 +1936,7 @@ State emit_instr_store(struct context *ctx, struct mir_instr_store *store)
     return STATE_PASSED;
 }
 
-State emit_instr_unop(struct context *ctx, struct mir_instr_unop *unop)
+enum state emit_instr_unop(struct context *ctx, struct mir_instr_unop *unop)
 {
     LLVMValueRef llvm_val = unop->expr->llvm_value;
     bassert(llvm_val);
@@ -2157,7 +2176,7 @@ void emit_instr_compound(struct context            *ctx,
     }
 }
 
-State emit_instr_binop(struct context *ctx, struct mir_instr_binop *binop)
+enum state emit_instr_binop(struct context *ctx, struct mir_instr_binop *binop)
 {
     LLVMValueRef lhs = binop->lhs->llvm_value;
     LLVMValueRef rhs = binop->rhs->llvm_value;
@@ -2282,7 +2301,7 @@ State emit_instr_binop(struct context *ctx, struct mir_instr_binop *binop)
     return STATE_PASSED;
 }
 
-State emit_instr_call(struct context *ctx, struct mir_instr_call *call)
+enum state emit_instr_call(struct context *ctx, struct mir_instr_call *call)
 {
 #define INSERT_TMP(_name, _type)                                                                   \
     LLVMValueRef _name = NULL;                                                                     \
@@ -2456,7 +2475,7 @@ State emit_instr_call(struct context *ctx, struct mir_instr_call *call)
 #undef INSERT_TMP
 }
 
-State emit_instr_set_initializer(struct context *ctx, struct mir_instr_set_initializer *si)
+enum state emit_instr_set_initializer(struct context *ctx, struct mir_instr_set_initializer *si)
 {
     for (usize i = 0; i < sarrlenu(si->dests); ++i) {
         struct mir_instr *dest = sarrpeek(si->dests, i);
@@ -2475,7 +2494,7 @@ State emit_instr_set_initializer(struct context *ctx, struct mir_instr_set_initi
     return STATE_PASSED;
 }
 
-State emit_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl)
+enum state emit_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl)
 {
     struct mir_var *var = decl->var;
     bassert(var);
@@ -2519,7 +2538,7 @@ State emit_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl)
     return STATE_PASSED;
 }
 
-State emit_instr_ret(struct context *ctx, struct mir_instr_ret *ret)
+enum state emit_instr_ret(struct context *ctx, struct mir_instr_ret *ret)
 {
     struct mir_fn *fn = ret->base.owner_block->owner_fn;
     bassert(fn);
@@ -2550,7 +2569,7 @@ FINALIZE:
     return STATE_PASSED;
 }
 
-State emit_instr_br(struct context *ctx, struct mir_instr_br *br)
+enum state emit_instr_br(struct context *ctx, struct mir_instr_br *br)
 {
     struct mir_instr_block *then_block = br->then_block;
     bassert(then_block);
@@ -2563,7 +2582,7 @@ State emit_instr_br(struct context *ctx, struct mir_instr_br *br)
     return STATE_PASSED;
 }
 
-State emit_instr_switch(struct context *ctx, struct mir_instr_switch *sw)
+enum state emit_instr_switch(struct context *ctx, struct mir_instr_switch *sw)
 {
     struct mir_instr       *value              = sw->value;
     struct mir_instr_block *default_block      = sw->default_block;
@@ -2582,7 +2601,7 @@ State emit_instr_switch(struct context *ctx, struct mir_instr_switch *sw)
     return STATE_PASSED;
 }
 
-State emit_instr_const(struct context *ctx, struct mir_instr_const *c)
+enum state emit_instr_const(struct context *ctx, struct mir_instr_const *c)
 {
     struct mir_type *type = c->base.value.type;
     if (type->kind == MIR_TYPE_NAMED_SCOPE) {
@@ -2712,7 +2731,7 @@ State emit_instr_const(struct context *ctx, struct mir_instr_const *c)
     return STATE_PASSED;
 }
 
-State emit_instr_cond_br(struct context *ctx, struct mir_instr_cond_br *br)
+enum state emit_instr_cond_br(struct context *ctx, struct mir_instr_cond_br *br)
 {
     struct mir_instr       *cond       = br->cond;
     struct mir_instr_block *then_block = br->then_block;
@@ -2728,7 +2747,7 @@ State emit_instr_cond_br(struct context *ctx, struct mir_instr_cond_br *br)
     return STATE_PASSED;
 }
 
-State emit_instr_vargs(struct context *ctx, struct mir_instr_vargs *vargs)
+enum state emit_instr_vargs(struct context *ctx, struct mir_instr_vargs *vargs)
 {
     struct mir_type *vargs_type = vargs->base.value.type;
     mir_instrs_t    *values     = vargs->values;
@@ -2772,7 +2791,7 @@ State emit_instr_vargs(struct context *ctx, struct mir_instr_vargs *vargs)
     return STATE_PASSED;
 }
 
-State emit_instr_toany(struct context *ctx, struct mir_instr_to_any *toany)
+enum state emit_instr_toany(struct context *ctx, struct mir_instr_to_any *toany)
 {
     LLVMValueRef llvm_dest      = toany->tmp->llvm_value;
     LLVMValueRef llvm_type_info = rtti_emit(ctx, toany->rtti_type);
@@ -2809,7 +2828,7 @@ State emit_instr_toany(struct context *ctx, struct mir_instr_to_any *toany)
     return STATE_PASSED;
 }
 
-State emit_instr_call_loc(struct context *ctx, struct mir_instr_call_loc *loc)
+enum state emit_instr_call_loc(struct context *ctx, struct mir_instr_call_loc *loc)
 {
     struct mir_var *meta_var = loc->meta_var;
     bassert(meta_var);
@@ -2836,7 +2855,7 @@ State emit_instr_call_loc(struct context *ctx, struct mir_instr_call_loc *loc)
     return STATE_PASSED;
 }
 
-State emit_instr_block(struct context *ctx, struct mir_instr_block *block)
+enum state emit_instr_block(struct context *ctx, struct mir_instr_block *block)
 {
     // We don't want to generate type resolvers for typedefs!!!
     struct mir_fn    *fn              = block->owner_fn;
@@ -2865,7 +2884,7 @@ State emit_instr_block(struct context *ctx, struct mir_instr_block *block)
     // Generate all instructions in the block.
     struct mir_instr *instr = block->entry_instr;
     while (instr) {
-        const State s = emit_instr(ctx, instr);
+        const enum state s = emit_instr(ctx, instr);
         if (s == STATE_POSTPONE) {
             qpush_back(&ctx->incomplete_queue, instr);
             goto SKIP;
@@ -2924,7 +2943,7 @@ void emit_allocas(struct context *ctx, struct mir_fn *fn)
     }
 }
 
-State emit_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_proto)
+enum state emit_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_proto)
 {
     struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &fn_proto->base.value);
     bmagic_assert(fn);
@@ -2937,7 +2956,7 @@ State emit_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_pro
         struct mir_instr *block = (struct mir_instr *)fn->first_block;
         while (block) {
             if (!block->is_unreachable) {
-                const State s = emit_instr(ctx, block);
+                const enum state s = emit_instr(ctx, block);
                 if (s != STATE_PASSED) babort("Postpone for whole block is not supported!");
             }
             block = block->next;
@@ -2947,9 +2966,9 @@ State emit_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_pro
     return STATE_PASSED;
 }
 
-State emit_instr(struct context *ctx, struct mir_instr *instr)
+enum state emit_instr(struct context *ctx, struct mir_instr *instr)
 {
-    State state = STATE_PASSED;
+    enum state state = STATE_PASSED;
     bassert(instr->state == MIR_IS_COMPLETE && "Attempt to emit not-analyzed instruction!");
     if (!mir_type_has_llvm_representation((instr->value.type))) return state;
     switch (instr->kind) {

@@ -234,7 +234,7 @@ struct assembly {
         f64 llvm_s;
         f64 linking_s;
         f64 polymorph_s;
-        s64 polymorph_count;
+        s64 polymorph_count; // @Incomplete: rename to generated.
         s64 comptime_call_stacks_count;
     } stats;
 

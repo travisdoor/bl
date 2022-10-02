@@ -1,4 +1,16 @@
 // Analyze state can be removed (only bool is enough)?
+// 
+// ADD FATAL analyze state to handle invalid polymorph generation!
+// ADD FATAL analyze state to handle invalid polymorph generation!
+// ADD FATAL analyze state to handle invalid polymorph generation!
+//
+// Remove INSTR_ARG
+
+Data :: struct {
+    a: s32;
+    b: s32;
+    c: s64;
+}
 
 main :: fn () s32 {
     foo();
@@ -10,6 +22,25 @@ main :: fn () s32 {
     bar(20);
 
     poly(10, 20);
+
+    poly_default(10);
+    poly_default(10, 20);
+ 
+    this_is_called_in_comptime(10, true);
+
+    arr: [10]s32;
+    mixed(10, &arr);
+
+    arr2: [2]s32;
+    mixed(2, &arr2);
+
+    num : *s32 = new(s32) #maybe_unused;
+
+    mixed_poly(10);
+    mixed_poly(true);
+
+    data :: Data.{};
+    mixed_poly_2(data);
 
     return 0;
 }
@@ -28,39 +59,47 @@ bar :: fn (j: s32, k: s32 = 666) s32 {
     return j + k;
 }
 
+// If comptime is known type -> use default value for recipe.
+// If comptime is poly -> ignore in arr -> PASS.
+
 poly :: fn (v: ?T, c: T) {
+    v;
+    c;
+}
+
+poly_default :: fn (v: ?T, c: T = 20) {
+    v;
+    c;
+}
+
+this_is_called_in_comptime :: fn (a: s32, b: bool) #comptime {
+    a;
+    b;
+}
+
+mixed :: fn (v: s32 #comptime, arr: *[v]s32) {
+}
+
+mixed_poly :: fn (v: ?T #comptime) {
     v;
 }
 
-Foo :: struct {
-    f: *Foo;
-    o: s32;
+mixed_poly_2 :: fn (v: Data #comptime, arr: [v.a]s32) {
+    v;
+}
+
+new :: fn (T: type #comptime) *T {
+    mem, err :: alloc(sizeof(T));
+    if err { panic(err); }
+    return auto mem; 
 }
 
 /*
-
-foo :: fn (a: ?T, b: T) T {}
-
-New call analyze:
-- Regular function call.
-- Called via pointer.
-- Conversions to Any.
-- VA-ARGS.
-- Mixed functions.
-- Compile-time called functions.
-- Polmorph functions.
-
-Strategy:
-1) Wait for Any type to be available.
-2) Disable polymorphs in groups.
-3) Pick the best overload.
-4) Iterate over arguments and do the magic
-    - Resolve polymorph replacement.
-    - Check matching type.
-
-Mixed function signature can be generated only in case it has resolved arguments
-with comptime values (those can be referenced from the signature).
-
+// TODO: Currently we cannot have default value for polymorph master!
+poly_default_2 :: fn (v: ?T = 10) {
+    v;
+    c;
+}
 */
 
 /* uncommnet while fixing using propagation into local functions.

@@ -34,6 +34,7 @@
 #include "common.h"
 #include "scope.h"
 #include "stb_ds.h"
+#include <combaseapi.h>
 #include <stdarg.h>
 
 #ifdef _MSC_VER
@@ -139,10 +140,11 @@ struct context {
     } ast;
 
     struct {
-        mir_types_t replacement_queue;
-        s32         replacement_queue_index;
-        hash_t      current_scope_layer;
-        bool        is_generation_active;
+        mir_types_t   replacement_queue;
+        s32           replacement_queue_index;
+        hash_t        current_scope_layer;
+        bool          is_generation_active;
+        mir_instrs_t *call_args;
     } fn_generate;
 
     // Analyze MIR generated from Ast
@@ -244,6 +246,7 @@ static void fn_poly_dtor(struct mir_fn_generated_recipe *recipe)
 {
     bmagic_assert(recipe);
     hmfree(recipe->entries);
+    hmfree(recipe->entries2); // @Cleanup
 }
 
 // FW decls
@@ -442,13 +445,15 @@ static struct mir_member              *create_member(struct context  *ctx,
                                                      struct mir_type *type);
 
 typedef struct {
-    struct ast       *node;
-    struct id        *id;
-    struct scope     *scope;
-    struct mir_type  *type;
-    struct mir_instr *value;
-    u32               index;
-    const u32         flags;
+    struct ast         *node;
+    struct id          *id;
+    struct scope       *scope;
+    struct mir_type    *type;
+    struct mir_instr   *value;
+    struct scope_entry *entry;
+    mir_instrs_t       *generation_call_args;
+    u32                 index;
+    const u32           flags;
 } create_arg_args_t;
 
 static struct mir_arg *create_arg(struct context *ctx, create_arg_args_t *args);
@@ -721,11 +726,14 @@ static struct mir_instr *append_instr_decl_member(struct context                
 static struct mir_instr *append_instr_decl_member_impl(struct context                  *ctx,
                                                        append_instr_decl_member_args_t *args);
 typedef struct {
-    struct ast       *node;
-    struct mir_instr *type;
-    struct mir_instr *value;
-    u32               index;
-    const u32         flags;
+    struct ast         *node;
+    struct id          *id;
+    struct mir_instr   *type;
+    struct mir_instr   *value;
+    u32                 index;
+    const u32           flags;
+    struct scope_entry *entry;
+    mir_instrs_t       *generation_call_args;
 } append_instr_decl_arg_args_t;
 
 static struct mir_instr *append_instr_decl_arg(struct context               *ctx,
@@ -1978,7 +1986,7 @@ struct scope_entry *register_symbol(struct context *ctx,
     const bool          is_private  = scope->kind == SCOPE_PRIVATE;
     const hash_t        layer_index = ctx->fn_generate.current_scope_layer;
     struct scope_entry *collision   = scope_lookup(scope,
-                                                   &(scope_lookup_args_t){
+                                                 &(scope_lookup_args_t){
                                                        .layer   = layer_index,
                                                        .id      = id,
                                                        .in_tree = is_private,
@@ -2952,14 +2960,16 @@ struct mir_arg *create_arg(struct context *ctx, create_arg_args_t *args)
 {
     struct mir_arg *tmp = arena_safe_alloc(&ctx->assembly->arenas.mir.arg);
     bmagic_set(tmp);
-    tmp->decl_node     = args->node;
-    tmp->id            = args->id;
-    tmp->type          = args->type;
-    tmp->decl_scope    = args->scope;
-    tmp->default_value = args->value;
-    tmp->index         = args->index;
-    tmp->is_unnamed    = args->id && is_ignored_id(args->id);
-    tmp->is_comptime   = isflag(args->flags, FLAG_COMPTIME);
+    tmp->decl_node            = args->node;
+    tmp->id                   = args->id;
+    tmp->type                 = args->type;
+    tmp->decl_scope           = args->scope;
+    tmp->default_value        = args->value;
+    tmp->index                = args->index;
+    tmp->is_unnamed           = args->id && is_ignored_id(args->id);
+    tmp->is_comptime          = isflag(args->flags, FLAG_COMPTIME);
+    tmp->entry                = args->entry;
+    tmp->generation_call_args = args->generation_call_args;
     return tmp;
 }
 
@@ -4133,15 +4143,16 @@ static struct mir_instr *append_instr_decl_arg(struct context               *ctx
     tmp->base.ref_count = NO_REF_COUNTING;
     tmp->type           = ref_instr(args->type);
 
-    struct id *id = args->node ? &args->node->data.ident.id : NULL;
-    tmp->arg      = create_arg(ctx,
-                               &(create_arg_args_t){
-                                   .node  = args->node,
-                                   .id    = id,
-                                   .value = args->value,
-                                   .flags = args->flags,
-                                   .scope = args->node ? args->node->owner_scope : NULL,
-                                   .index = args->index,
+    tmp->arg = create_arg(ctx,
+                          &(create_arg_args_t){
+                              .node                 = args->node,
+                              .id                   = args->id,
+                              .value                = args->value,
+                              .flags                = args->flags,
+                              .scope                = args->node ? args->node->owner_scope : NULL,
+                              .index                = args->index,
+                              .entry                = args->entry,
+                              .generation_call_args = args->generation_call_args,
                           });
 
     append_current_block(ctx, &tmp->base);
@@ -5566,7 +5577,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
             struct scope       *scope       = sub_type->data.enm.scope;
             const hash_t        scope_layer = SCOPE_DEFAULT_LAYER; // @Incomplete
             struct scope_entry *found       = scope_lookup(scope,
-                                                           &(scope_lookup_args_t){
+                                                     &(scope_lookup_args_t){
                                                                .layer         = scope_layer,
                                                                .id            = rid,
                                                                .ignore_global = true,
@@ -5638,7 +5649,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
             struct scope       *scope       = sub_type->data.strct.scope;
             const hash_t        scope_layer = sub_type->data.strct.scope_layer;
             struct scope_entry *found       = scope_lookup(scope,
-                                                           &(scope_lookup_args_t){
+                                                     &(scope_lookup_args_t){
                                                                .layer   = scope_layer,
                                                                .id      = rid,
                                                                .in_tree = true,
@@ -5757,7 +5768,8 @@ struct result analyze_instr_addrof(struct context *ctx, struct mir_instr_addrof 
                              "may differ based on call side arguments, so the memory location may "
                              "be ambiguous.");
                 report_note(fn->decl_node, "Function is declared here:");
-            } else if (isflag(fn->generated_flavor, MIR_FN_GENERATED_CALLED_IN_COMPTIME)) {
+            } else if (isflag(fn->generated_flavor,
+                              MIR_FN_GENERATED_CALLED_IN_COMPTIME)) { // @Cleanup
                 report_error(
                     EXPECTED_DECL,
                     addrof->base.node,
@@ -6161,18 +6173,35 @@ struct result analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_
         break;
     }
 
-    case SCOPE_ENTRY_COMPTIME_ARG: {
-        struct mir_fn *fn = ref->base.owner_block->owner_fn;
-        bmagic_assert(fn);
-
-        if (!fn->generated.comptime_args) return_zone(POSTPONE);
-
-        const struct mir_arg *arg = found->data.comptime_arg;
+    case SCOPE_ENTRY_ARG: {
+        const struct mir_arg *arg = found->data.arg;
         bassert(arg);
 
-        struct mir_type *type       = create_type_ptr(ctx, arg->type);
-        ref->base.value.type        = type;
-        ref->base.value.is_comptime = true;
+        const bool has_valid_comptime_argument_value =
+            sarrpeekor(arg->generation_call_args, arg->index, NULL);
+
+        if (arg->is_comptime && !has_valid_comptime_argument_value) {
+            // In case there are no provided compile time arguments, we're generating the function
+            // recipe, so we have to provide some default values as placeholders to allow at least
+            // partial semantic checking.
+            switch (arg->type->kind) {
+            case MIR_TYPE_INT: {
+                MIR_CEV_WRITE_AS(s32, &ref->base.value, 1);
+                break;
+            }
+            case MIR_TYPE_TYPE: {
+                MIR_CEV_WRITE_AS(struct mir_type *, &ref->base.value, ctx->builtin_types->t_s32);
+                break;
+            }
+            default:
+                bwarn("Missing default value for compile-time argument placeholder in the function "
+                      "recipe.");
+                break;
+            }
+        }
+
+        ref->base.value.type        = arg->type;
+        ref->base.value.is_comptime = arg->is_comptime;
         ref->base.value.addr_mode   = MIR_VAM_RVALUE;
         break;
     }
@@ -6230,13 +6259,22 @@ struct result analyze_instr_arg(struct context UNUSED(*ctx), struct mir_instr_ar
     struct mir_arg *arg_data = mir_get_fn_arg(fn->type, arg->i);
     assert(arg_data);
     const bool is_comptime = arg_data->is_comptime;
-    if (is_comptime && !fn->generated.comptime_args) {
-        // We have to to wait for the compile time arguments being provided first when the comptime
-        // function is evaluated, all arguments should be already validated by call analyze pass.
-        // This also prevents the evaluator to evaluate arguments without proper values available in
-        // case a compilation error occurs.
-        return_zone(POSTPONE);
+
+    // @Cleanup!!!
+    // @Cleanup!!!
+    // @Cleanup!!!
+    const bool is_experimental = arg->base.node && strcmp(arg->base.node->location->unit->filepath,
+                                                          "C:/Develop/bl/tests/test.bl") == 0;
+    if (!is_experimental) {
+        if (is_comptime && !fn->generated.comptime_args) {
+            // We have to to wait for the compile time arguments being provided first when the
+            // comptime function is evaluated, all arguments should be already validated by call
+            // analyze pass. This also prevents the evaluator to evaluate arguments without proper
+            // values available in case a compilation error occurs.
+            return_zone(POSTPONE);
+        }
     }
+
     struct mir_type *type = arg_data->type;
     bassert(type);
     if (!is_comptime && type->kind == MIR_TYPE_TYPE) {
@@ -7055,7 +7093,7 @@ struct result analyze_instr_decl_arg(struct context *ctx, struct mir_instr_decl_
         }
         // @NOTE: Argument default value is generated as an implicit global constant
         // variable with proper expected type defined, so there is no need to do any type
-        // validation with user type, variable analyze pass will do it for us.*/
+        // validation with user type, variable analyze pass will do it for us.
     } else {
         // There is no explicitly defined argument type, but we have default argument value
         // to infer type from.
@@ -7082,19 +7120,18 @@ struct result analyze_instr_decl_arg(struct context *ctx, struct mir_instr_decl_
         return_zone(FAIL);
     }
 
-#if 0
-    if (arg->is_comptime) {
-        // Provide comptime arguments directly as reference to comptime constant passed to
-        // the function, this allows usage of the 'type' arguments as the return type of
-        // this function.
+    // @Cleanup!!!
+    // @Cleanup!!!
+    // @Cleanup!!!
+    const bool is_experimental =
+        decl->base.node &&
+        strcmp(decl->base.node->location->unit->filepath, "C:/Develop/bl/tests/test.bl") == 0;
 
-        struct scope_entry *entry =
-            register_symbol(ctx, arg->decl_node, arg->id, arg->decl_scope, false);
-        bassert(entry);
-        entry->kind              = SCOPE_ENTRY_COMPTIME_ARG;
-        entry->data.comptime_arg = arg;
+    if (is_experimental) {
+        bassert(arg->entry && "Missing scope entry for function argument.");
+        arg->entry->kind     = SCOPE_ENTRY_ARG;
+        arg->entry->data.arg = arg;
     }
-#endif
 
     return_zone(PASS);
 }
@@ -7570,7 +7607,7 @@ struct result analyze_instr_call_loc(struct context *ctx, struct mir_instr_call_
 
     struct mir_type *type = ctx->builtin_types->t_CodeLocation;
     struct mir_var  *var  = create_var_impl(ctx,
-                                            &(create_var_impl_args_t){
+                                          &(create_var_impl_args_t){
                                                 .name        = IMPL_CALL_LOC,
                                                 .alloc_type  = type,
                                                 .is_global   = true,
@@ -8414,18 +8451,12 @@ static struct result analyze_callee2(struct context *ctx, struct mir_instr **cal
     return_zone(PASS);
 }
 
-static void replace_callee_with_constant(struct mir_instr_call *call, struct mir_fn *replacement_fn)
+static inline void replace_callee(struct mir_instr_call *call, struct mir_fn *replacement_fn)
 {
-    bassert(call && replacement_fn);
-    erase_instr_tree(call->callee, true, true);
-    struct mir_instr_const *callee_replacement =
-        (struct mir_instr_const *)mutate_instr(call->callee, MIR_INSTR_CONST);
-    callee_replacement->volatile_type          = false;
-    callee_replacement->base.value.is_comptime = true;
-    callee_replacement->base.value.addr_mode   = MIR_VAM_RVALUE;
-    callee_replacement->base.node              = replacement_fn->decl_node;
-    callee_replacement->base.value.type        = replacement_fn->type;
-    MIR_CEV_WRITE_AS(struct mir_fn *, &callee_replacement->base.value, replacement_fn);
+    bassert(replacement_fn && replacement_fn->prototype &&
+            replacement_fn->prototype->kind == MIR_INSTR_FN_PROTO);
+    erase_instr_tree(call->callee, /* keep_root */ false, /* force */ true);
+    call->callee = replacement_fn->prototype;
 }
 
 static inline struct mir_type *get_called_function_type(const struct mir_instr_call *call)
@@ -8471,69 +8502,181 @@ static inline struct mir_instr *insert_default_argument_call_value(struct contex
     return call_default_arg;
 }
 
-#if false
-static struct result replace_argument_if_poly(struct context   *ctx,
-                                              struct ast       *call_node,
-                                              struct mir_instr *call_arg,
-                                              struct mir_fn    *recipe_fn,
-                                              struct mir_arg   *recipe_arg)
+// Can be used to generate actual function implementation from function generation recipe. This is
+// used in case the function is polymorph (the function type contains polymorph types) or function
+// has some compile time arguments (mixed function). In some cases we need to generate also comptime
+// executed functions (they may contain types in argument list).
+static struct mir_fn *generate_function_implementation2(struct context        *ctx,
+                                                        struct mir_instr_call *call)
 {
-    bassert(recipe_fn && recipe_arg && call_arg);
-    bassert(call_node && call_node->kind == AST_EXPR_CALL);
+    zone();
+    bassert(call);
+    struct mir_fn *replacement_fn = NULL;
+
+    struct mir_fn *recipe_fn = call->called_function;
+    bmagic_assert(recipe_fn);
+
+    bassert(isflag(recipe_fn->generated_flavor, MIR_FN_GENERATED_POLY) ||
+            isflag(recipe_fn->generated_flavor, MIR_FN_GENERATED_MIXED));
 
     struct mir_fn_generated_recipe *recipe = recipe_fn->generation_recipe;
-    bmagic_assert(recipe);
+    bassert(recipe);
 
-    struct ast *ast_recipe = recipe->ast_lit_fn;
-    bassert(ast_recipe && "Missing struct ast recipe for polymorph function!");
-    bassert(ast_recipe->kind == AST_EXPR_LIT_FN);
+    char *debug_replacement_str = tstr();
 
-    struct mir_type *poly_type     = NULL;
-    struct mir_type *matching_type = NULL;
+    const bool is_polymorph = isflag(recipe_fn->generated_flavor, MIR_FN_GENERATED_POLY);
+    if (is_polymorph) {
+        const struct mir_type *recipe_fn_type = recipe_fn->type;
+        bassert(recipe_fn_type && recipe_fn_type->kind == MIR_TYPE_FN);
 
-    struct mir_type *recipe_arg_type = recipe_arg->type;
-    struct mir_type *call_arg_type   = call_arg->value.type;
-    if (is_load_needed(call_arg)) {
-        call_arg_type = mir_deref_type(call_arg_type);
-    }
-    bassert(call_arg_type);
+        mir_types_t *queue = &ctx->fn_generate.replacement_queue;
 
-    poly_type_match(recipe_arg_type, call_arg_type, &poly_type, &matching_type);
+        // Resolve polymorph replacements only for polymorph functions.
+        const usize func_argc = sarrlenu(recipe_fn_type->data.fn.args);
+        const usize call_argc = sarrlenu(call->args);
 
-    if (poly_type) {
-        if (!matching_type) {
-            ast_nodes_t *ast_poly_args    = ast_recipe->data.expr_fn.type->data.type_fn.args;
-            struct ast  *ast_poly_arg     = sarrpeek(ast_poly_args, recipe_arg->index);
-            char        *recipe_type_name = mir_type2str(recipe_arg_type, /* prefer_name */ true);
-            char        *arg_type_name    = mir_type2str(call_arg_type, /* prefer_name */ true);
-            report_error(INVALID_POLY_MATCH,
-                         ast_poly_arg->data.decl.type,
-                         "Cannot deduce polymorph function argument type '%s'. Expected is "
-                         "'%s' but call-side argument type is '%s'.",
-                         poly_type->user_id->str,
-                         recipe_type_name,
-                         arg_type_name);
-            put_tstr(recipe_type_name);
-            put_tstr(arg_type_name);
+        for (usize index = 0; index < MAX(func_argc, call_argc); ++index) {
+            struct mir_arg   *recipe_fn_arg = sarrpeekor(recipe_fn_type->data.fn.args, index, NULL);
+            struct mir_instr *call_arg_instr = sarrpeekor(call->args, index, NULL);
 
-            builder_msg(MSG_ERR_NOTE, 0, call_node->location, CARET_WORD, "Called from here.");
-            report_note(call_node, "Called from here.");
+            if (!recipe_fn_arg) break;
+            if (!call_arg_instr) {
+                if (recipe_fn_arg->default_value) {
+                    // Try to deduce from default value if there is one.
+                    call_arg_instr = recipe_fn_arg->default_value;
+                }
+            }
 
-            reset_poly_replacement_queue(ctx);
-            put_tstr(debug_replacement_str);
-            return_zone(FAIL);
+            struct mir_type *call_arg_type = call_arg_instr ? call_arg_instr->value.type : NULL;
+
+            if (call_arg_type && is_load_needed(call_arg_instr)) {
+                call_arg_type = mir_deref_type(call_arg_type);
+            }
+
+            struct mir_type *poly_type     = NULL;
+            struct mir_type *matching_type = NULL;
+            poly_type_match(recipe_fn_arg->type, call_arg_type, &poly_type, &matching_type);
+            if (poly_type && !matching_type) {
+                // Resolve type AST node to get better
+                ast_nodes_t *ast_poly_args =
+                    recipe->ast_lit_fn->data.expr_fn.type->data.type_fn.args;
+                struct ast *ast_poly_arg = sarrpeek(ast_poly_args, index);
+                struct ast *err_node     = ast_poly_arg->data.decl.type;
+
+                // We expect polymorph master replacement, but no matching one was found.
+                if (call_arg_type) {
+                    char *recipe_type_name =
+                        mir_type2str(recipe_fn_arg->type, /* prefer_name */ true);
+                    char *arg_type_name = mir_type2str(call_arg_type, /* prefer_name */ true);
+
+                    report_error(INVALID_POLY_MATCH,
+                                 err_node,
+                                 "Cannot deduce polymorph function argument type '%s'. Expected is "
+                                 "'%s' but call-side argument type is '%s'.",
+                                 poly_type->user_id->str,
+                                 recipe_type_name,
+                                 arg_type_name);
+
+                    put_tstr(recipe_type_name);
+                    put_tstr(arg_type_name);
+                } else {
+                    // Missing argument on call side required for polymorph deduction.
+                    report_error(INVALID_POLY_MATCH,
+                                 err_node,
+                                 "Cannot deduce polymorph function argument type '%s'.",
+                                 poly_type->user_id->str);
+                }
+                report_note(call->base.node, "Called from here.");
+                goto DONE;
+            } else if (poly_type && matching_type) {
+                bassert(matching_type->kind != MIR_TYPE_POLY);
+
+                char *type_name1 = mir_type2str(poly_type, /* prefer_name */ true);
+                char *type_name2 = mir_type2str(matching_type, /* prefer_name */ true);
+                strappend(debug_replacement_str, "%s = %s; ", type_name1, type_name2);
+                put_tstr(type_name1);
+                put_tstr(type_name2);
+
+                sarrput(queue, matching_type);
+            }
         }
-        bassert(matching_type->kind != MIR_TYPE_POLY);
-        // Stringify replacement to get better error reports.
-        char *type_name1 = mir_type2str(poly_type, /* prefer_name */ true);
-        char *type_name2 = mir_type2str(matching_type, /* prefer_name */ true);
-        strappend(debug_replacement_str, "%s = %s; ", type_name1, type_name2);
-        sarrput(queue, matching_type);
-        put_tstr(type_name1);
-        put_tstr(type_name2);
     }
-}
+
+    const hash_t replacement_hash = get_current_poly_replacement_hash(ctx);
+#if BL_ASSERT_ENABLE
+    if (is_polymorph) bassert(replacement_hash != 0);
 #endif
+
+    const s64 index = replacement_hash ? hmgeti(recipe->entries2, replacement_hash) : -1;
+
+    if (index == -1) {
+        // Prepare global state for the function generation.
+        ctx->fn_generate.current_scope_layer  = ++recipe->scope_layer;
+        ctx->fn_generate.is_generation_active = true;
+
+        if (isflag(recipe_fn->generated_flavor, MIR_FN_GENERATED_MIXED)) {
+            // In case the function is mixed (has comptime arguments) we must provide them.
+            // i.e.: fn (v: s32 #comptime, arr: [v]s32)
+            ctx->fn_generate.call_args = call->args;
+        }
+
+        // Create name for generated function
+        const char *original_fn_name = recipe_fn->id ? recipe_fn->id->str : IMPL_FN_NAME;
+
+        bassert(recipe->ast_lit_fn && recipe->ast_lit_fn->kind == AST_EXPR_LIT_FN);
+
+        const s32 prev_errorc = builder.errorc;
+        // Generate new function.
+        struct mir_instr *instr_fn_proto = ast_expr_lit_fn(ctx,
+                                                           recipe->ast_lit_fn,
+                                                           recipe_fn->decl_node,
+                                                           unique_name(ctx, original_fn_name),
+                                                           recipe_fn->is_global,
+                                                           recipe_fn->flags,
+                                                           BUILTIN_ID_NONE);
+
+        // Handle invalid AST generation.
+        // @Incomplete: Use FATAL analyze state!!!!
+        // @Incomplete: Use FATAL analyze state!!!!
+        // @Incomplete: Use FATAL analyze state!!!!
+        // @Incomplete: Use FATAL analyze state!!!!
+        if (builder.errorc != prev_errorc) goto DONE;
+
+        bassert(instr_fn_proto && instr_fn_proto->kind == MIR_INSTR_FN_PROTO);
+
+        replacement_fn = MIR_CEV_READ_AS(struct mir_fn *, &instr_fn_proto->value);
+        bmagic_assert(replacement_fn);
+
+        replacement_fn->generated.first_call_node = call->base.node;
+        if (strlenu(debug_replacement_str)) {
+            char *debug_replacement_str_dup = scdup(&ctx->assembly->string_cache,
+                                                    debug_replacement_str,
+                                                    strlenu(debug_replacement_str));
+
+            replacement_fn->generated.debug_replacement_types = debug_replacement_str_dup;
+        } else {
+            replacement_fn->generated.debug_replacement_types = NULL;
+        }
+
+        // Restore previous state.
+        memset(&ctx->fn_generate, 0, sizeof(ctx->fn_generate));
+
+        if (replacement_hash != 0) {
+            // Function can be identified by hash (calculated from arguments) so we can reuse the
+            // same implementation later!
+            hmput(recipe->entries2, replacement_hash, replacement_fn);
+        }
+
+        ctx->assembly->stats.polymorph_count += 1;
+    } else {
+        replacement_fn = recipe->entries2[index].value;
+    }
+
+DONE:
+    reset_poly_replacement_queue(ctx);
+    put_tstr(debug_replacement_str);
+    return_zone(replacement_fn);
+}
 
 static struct result analyze_instr_call2(struct context *ctx, struct mir_instr_call *call)
 {
@@ -8581,15 +8724,27 @@ CALL_ANALYZE_BEGIN:
         struct mir_type *callee_type = get_called_function_type(call);
 
         if (callee_type->kind == MIR_TYPE_FN) {
+            call->state = MIR_CALL_FINALIZE;
             if (mir_is_comptime(call->callee)) {
                 bassert(!mir_is_pointer_type(call->callee->value.type));
                 call->called_function = MIR_CEV_READ_AS(struct mir_fn *, &call->callee->value);
                 bmagic_assert(call->called_function);
+                if (isflag(call->called_function->generated_flavor, MIR_FN_GENERATED_MIXED) ||
+                    isflag(call->called_function->generated_flavor, MIR_FN_GENERATED_POLY)) {
+                    call->state = MIR_CALL_ANALYZE_GENERATED;
+                }
+
+                if (isflag(call->called_function->flags, FLAG_COMPTIME)) {
+                    // Every comptime call is evaluated automatically (type resolver also!).
+                    call->base.value.is_comptime = true;
+                }
+
+                // Keep next state MIR_CALL_FINALIZE
             } else {
                 bassert(mir_is_pointer_type(call->callee->value.type));
                 call->called_function = NULL;
+                // Keep next state MIR_CALL_FINALIZE
             }
-            call->state = MIR_CALL_FINALIZE;
         } else if (callee_type->kind == MIR_TYPE_FN_GROUP) {
             bassert(!mir_is_pointer_type(call->callee->value.type) &&
                     "Groups cannot be called via pointer.");
@@ -8615,7 +8770,25 @@ CALL_ANALYZE_BEGIN:
         // lookup best call candidate in group
         selected_overload_fn = group_select_overload2(ctx, call, group);
         bmagic_assert(selected_overload_fn);
-        replace_callee_with_constant(call, selected_overload_fn);
+        replace_callee(call, selected_overload_fn);
+        call->state = MIR_CALL_ANALYZE_RESOLVE_CALLEE;
+        goto CALL_ANALYZE_BEGIN;
+    }
+
+    if (call->state == MIR_CALL_ANALYZE_GENERATED) {
+
+        // We're calling polymorph or mixed function recipe, so we have to generate its
+        // implementation first!
+        bassert(call->called_function);
+        runtime_measure_begin(generated);
+        struct mir_fn *generated_fn = generate_function_implementation2(ctx, call);
+        ctx->assembly->stats.polymorph_s += runtime_measure_end(generated);
+
+        if (!generated_fn) {
+            goto FAILED;
+        }
+
+        replace_callee(call, generated_fn);
         call->state = MIR_CALL_ANALYZE_RESOLVE_CALLEE;
         goto CALL_ANALYZE_BEGIN;
     }
@@ -8632,21 +8805,8 @@ CALL_ANALYZE_BEGIN:
         ++call->called_function->ref_count;
     }
 
-    bool is_generated_function = false;
-    if (call->called_function) {
-        bassert(!mir_is_pointer_type(call->callee->value.type) &&
-                "Called function cannot be resolved while call is done via pointer!");
-        is_generated_function = call->called_function->generated_flavor != 0;
-    } else {
-        bassert(mir_is_pointer_type(call->callee->value.type) &&
-                "Call is supposed to be done via pointer!");
-    }
-
     struct mir_type *fn_type = get_called_function_type(call);
     bassert(fn_type->kind == MIR_TYPE_FN);
-
-    char *debug_replacement_types = NULL;
-    if (is_generated_function) debug_replacement_types = tstr();
 
     const usize func_argc = sarrlenu(fn_type->data.fn.args);
     const usize call_argc = sarrlenu(call->args);
@@ -8654,6 +8814,10 @@ CALL_ANALYZE_BEGIN:
     for (usize index = 0; index < MAX(func_argc, call_argc); ++index) {
         struct mir_arg   *fn_arg         = sarrpeekor(fn_type->data.fn.args, index, NULL);
         struct mir_instr *call_arg_instr = sarrpeekor(call->args, index, NULL);
+
+        // @Incomplete: Skip comptime arguments!!!
+        // @Incomplete: Skip comptime arguments!!!
+        // @Incomplete: Skip comptime arguments!!!
 
         if (!fn_arg) {
             // We're providing more arguments than the function has.
@@ -8674,69 +8838,10 @@ CALL_ANALYZE_BEGIN:
 
         bassert(fn_arg && call_arg_instr);
 
-        // Expected type of the call-side argument, in general it's type of the function argument,
-        // however it can be changed in case the function is polymorph and call-side argument type
-        // is successfully used as polymorph master replacement.
-        struct mir_type *expected_arg_type = fn_arg->type;
-
-        if (is_generated_function) {
-            bassert(call->called_function);
-
-            // Maybe replace the polymorph type with type deduced from the function call-side
-            // argument.
-            struct mir_type *call_arg_type = call_arg_instr->value.type;
-            if (is_load_needed(call_arg_instr)) {
-                call_arg_type = mir_deref_type(call_arg_type);
-            }
-            bassert(call_arg_type);
-
-            struct mir_type *poly_type     = NULL;
-            struct mir_type *matching_type = NULL;
-
-            poly_type_match(fn_arg->type, call_arg_type, &poly_type, &matching_type);
-            if (poly_type) {
-                if (!matching_type) {
-                    // Function argument is polymorph, but no valid replacement was found.
-                    char *recipe_type_name = mir_type2str(fn_arg->type, /* prefer_name */ true);
-                    char *arg_type_name    = mir_type2str(call_arg_type, /* prefer_name */ true);
-
-                    report_error(INVALID_POLY_MATCH,
-                                 fn_arg->decl_node,
-                                 "Cannot deduce polymorph function argument type '%s'. Expected is "
-                                 "'%s' but call-side argument type is '%s'.",
-                                 poly_type->user_id->str,
-                                 recipe_type_name,
-                                 arg_type_name);
-
-                    put_tstr(recipe_type_name);
-                    put_tstr(arg_type_name);
-
-                    report_note(call->base.node, "Called from here.");
-
-                    reset_poly_replacement_queue(ctx);
-                    put_tstr(debug_replacement_types);
-
-                    goto FAILED;
-                }
-
-                // Found valid replacement.
-                bassert(matching_type->kind != MIR_TYPE_POLY);
-
-                // Stringify replacement to get better error reports.
-                char *type_name1 = mir_type2str(poly_type, /* prefer_name */ true);
-                char *type_name2 = mir_type2str(matching_type, /* prefer_name */ true);
-
-                strappend(debug_replacement_types, "%s = %s; ", type_name1, type_name2);
-                put_tstr(type_name1);
-                put_tstr(type_name2);
-
-                sarrput(&ctx->fn_generate.replacement_queue, matching_type);
-            }
-        }
-
         // Analyze argument instruction slot, this may modify the original instruction listed in
         // call arguments, so we have to update the local argument pointer afterwards.
         struct mir_instr **call_arg_instr_ref = &sarrpeek(call->args, index);
+        struct mir_type   *expected_arg_type  = fn_arg->type;
         if (analyze_slot(ctx, &analyze_slot_conf_full, call_arg_instr_ref, expected_arg_type) !=
             ANALYZE_PASSED) {
             goto FAILED;
@@ -8746,7 +8851,8 @@ CALL_ANALYZE_BEGIN:
         }
 
         // Check if the provided function argument is compile-time known in case it's required.
-        if (fn_arg->is_comptime && !mir_is_comptime(call_arg_instr)) {
+        if ((fn_arg->is_comptime || mir_is_comptime(&call->base)) &&
+            !mir_is_comptime(call_arg_instr)) {
             report_error(EXPECTED_COMPTIME,
                          call_arg_instr->node,
                          "Function argument is supposed to be compile-time known.");
@@ -8761,10 +8867,6 @@ CALL_ANALYZE_BEGIN:
     }
 
     bassert(sarrlenu(call->args) == sarrlenu(fn_type->data.fn.args) && "Incorrect call analyze!");
-
-    // In case the function implementation has to be generated we have to do it here!
-    if (is_generated_function) {
-    }
 
     // Set call expression type to function return type.
     call->base.value.type = fn_type->data.fn.ret_type;
@@ -8782,8 +8884,11 @@ FAILED:
 
 struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *call)
 {
-    if (call->base.node && strcmp(call->base.node->location->unit->filepath,
-                                  "/Users/travis/Develop/bl/tests/test.bl") == 0) {
+    // @Cleanup!!!
+    // @Cleanup!!!
+    // @Cleanup!!!
+    if (call->base.node &&
+        strcmp(call->base.node->location->unit->filepath, "C:/Develop/bl/tests/test.bl") == 0) {
         return analyze_instr_call2(ctx, call);
     }
 
@@ -9840,7 +9945,7 @@ struct mir_var *testing_gen_meta(struct context *ctx)
     if (ctx->assembly->testing.meta_var) return ctx->assembly->testing.meta_var;
     struct mir_type *type = create_type_array(ctx, NULL, ctx->builtin_types->t_TestCase, len);
     struct mir_var  *var  = create_var_impl(ctx,
-                                            &(create_var_impl_args_t){
+                                          &(create_var_impl_args_t){
                                                 .name        = IMPL_TESTCASES_TMP,
                                                 .alloc_type  = type,
                                                 .is_global   = true,
@@ -10961,6 +11066,12 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
     struct id  *id          = decl_node ? &decl_node->data.ident.id : NULL;
     bassert(ast_fn_type->kind == AST_TYPE_FN);
 
+    // @Cleanup!!!
+    // @Cleanup!!!
+    // @Cleanup!!!
+    const bool is_experimental =
+        strcmp(lit_fn->location->unit->filepath, "C:/Develop/bl/tests/test.bl") == 0;
+
     // @Incomplete: Comptime called function should not be exported or intrinsics? This may be
     // checked directly in the parser, but maybe we don't want to introduce any semantic check
     // there.
@@ -10974,8 +11085,12 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
             setflag(functon_generated_flavor_flags, MIR_FN_GENERATED_POLY);
         if (isflag(function_type_flavor, AST_TYPE_FN_FLAVOR_MIXED))
             setflag(functon_generated_flavor_flags, MIR_FN_GENERATED_MIXED);
-        if (isflag(flags, FLAG_COMPTIME)) // @Cleanup
-            setflag(functon_generated_flavor_flags, MIR_FN_GENERATED_CALLED_IN_COMPTIME);
+
+        if (!is_experimental) {
+            if (isflag(flags, FLAG_COMPTIME)) { // @Cleanup
+                setflag(functon_generated_flavor_flags, MIR_FN_GENERATED_CALLED_IN_COMPTIME);
+            }
+        }
     }
 
     // Function body must be generated during compilation.
@@ -11081,39 +11196,41 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
     }
     set_current_block(ctx, init_block);
 
-    // build MIR for fn arguments
-    ast_nodes_t *ast_args = ast_fn_type->data.type_fn.args;
-    if (ast_args) {
-        struct ast *ast_arg;
-        struct ast *ast_arg_name;
-        for (usize i = sarrlenu(ast_args); i-- > 0;) {
-            ast_arg = sarrpeek(ast_args, i);
-            bassert(ast_arg->kind == AST_DECL_ARG);
-            ast_arg_name = ast_arg->data.decl.name;
-            bassert(ast_arg_name);
-            bassert(ast_arg_name->kind == AST_IDENT && "Expected identificator.");
-            struct id *id    = &ast_arg_name->data.ident.id;
-            const u32  flags = ast_arg->data.decl.flags;
+    if (!is_experimental) {
+        // build MIR for fn arguments
+        ast_nodes_t *ast_args = ast_fn_type->data.type_fn.args;
+        if (ast_args) {
+            struct ast *ast_arg;
+            struct ast *ast_arg_name;
+            for (usize i = sarrlenu(ast_args); i-- > 0;) {
+                ast_arg = sarrpeek(ast_args, i);
+                bassert(ast_arg->kind == AST_DECL_ARG);
+                ast_arg_name = ast_arg->data.decl.name;
+                bassert(ast_arg_name);
+                bassert(ast_arg_name->kind == AST_IDENT && "Expected identificator.");
+                struct id *id    = &ast_arg_name->data.ident.id;
+                const u32  flags = ast_arg->data.decl.flags;
 
-            struct mir_instr *arg = append_instr_arg(ctx, ast_arg, (u32)i);
+                struct mir_instr *arg = append_instr_arg(ctx, ast_arg, (u32)i);
 
-            // @Note: Should all arguments be immutable in the future? This may allow better
-            // optimizations and also maybe lead to a simpler code.
-            struct mir_instr_decl_var *decl_var =
-                (struct mir_instr_decl_var *)append_instr_decl_var(
-                    ctx,
-                    &(append_instr_decl_var_args_t){
-                        .node       = ast_arg_name,
-                        .id         = id,
-                        .scope      = ast_arg_name->owner_scope,
-                        .init       = arg,
-                        .is_mutable = !isflag(flags, FLAG_COMPTIME),
-                        .builtin_id = BUILTIN_ID_NONE,
-                        .flags      = flags,
-                    });
+                // @Note: Should all arguments be immutable in the future? This may allow better
+                // optimizations and also maybe lead to a simpler code.
+                struct mir_instr_decl_var *decl_var =
+                    (struct mir_instr_decl_var *)append_instr_decl_var(
+                        ctx,
+                        &(append_instr_decl_var_args_t){
+                            .node       = ast_arg_name,
+                            .id         = id,
+                            .scope      = ast_arg_name->owner_scope,
+                            .init       = arg,
+                            .is_mutable = !isflag(flags, FLAG_COMPTIME),
+                            .builtin_id = BUILTIN_ID_NONE,
+                            .flags      = flags,
+                        });
 
-            decl_var->var->entry =
-                register_symbol(ctx, ast_arg_name, id, ast_arg_name->owner_scope, false);
+                decl_var->var->entry =
+                    register_symbol(ctx, ast_arg_name, id, ast_arg_name->owner_scope, false);
+            }
         }
     }
 
@@ -11649,13 +11766,30 @@ struct mir_instr *ast_decl_arg(struct context *ctx, struct ast *arg)
         type = ast_create_type_resolver_call(ctx, ast_type);
     }
 
+    // @Cleanup!!!
+    // @Cleanup!!!
+    // @Cleanup!!!
+    const bool is_experimental =
+        ast_name && strcmp(ast_name->location->unit->filepath, "C:/Develop/bl/tests/test.bl") == 0;
+
+    struct scope_entry *entry = NULL;
+
+    // Arguments may be unnamed.
+    struct id *id = ast_name ? &ast_name->data.ident.id : NULL;
+    if (is_experimental) {
+        if (id) entry = register_symbol(ctx, ast_name, id, ast_name->owner_scope, false);
+    }
+
     return append_instr_decl_arg(ctx,
                                  &(append_instr_decl_arg_args_t){
-                                     .node  = ast_name,
-                                     .type  = type,
-                                     .value = value,
-                                     .flags = flags,
-                                     .index = arg->data.decl_arg.index,
+                                     .node                 = ast_name,
+                                     .id                   = id,
+                                     .type                 = type,
+                                     .value                = value,
+                                     .flags                = flags,
+                                     .index                = arg->data.decl_arg.index,
+                                     .entry                = entry,
+                                     .generation_call_args = ctx->fn_generate.call_args,
                                  });
 }
 

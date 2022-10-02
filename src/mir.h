@@ -179,13 +179,19 @@ struct mir_fn_generated_recipe {
         struct mir_instr_fn_proto *value;
     }) entries;
 
+    // @Cleanup
+    hash_table(struct {
+        hash_t         key;
+        struct mir_fn *value;
+    }) entries2;
+
     bmagic_member
 };
 
 enum mir_fn_generated_flavor_flags {
     MIR_FN_GENERATED_NONE               = 0,
     MIR_FN_GENERATED_POLY               = 1 << 1,
-    MIR_FN_GENERATED_CALLED_IN_COMPTIME = 1 << 2,
+    MIR_FN_GENERATED_CALLED_IN_COMPTIME = 1 << 2, // @Cleanup: remove
     MIR_FN_GENERATED_MIXED              = 1 << 3,
 };
 
@@ -220,7 +226,8 @@ struct mir_fn {
         // Comptime arguments may not be provided yet in case the generated function body is
         // analyzed and evaluated. The compile-time value evaluation of comptime instr_arg must wait
         // for it!
-        mir_instrs_t *comptime_args;
+        mir_instrs_t *comptime_args; // @Cleanup
+
         // Optional, this is set to first call location used for generation of this function from
         // polymorph recipe.
         struct ast *first_call_node;
@@ -293,13 +300,14 @@ struct mir_member {
 
 // FUNCTION ARGUMENT
 struct mir_arg {
-    struct mir_type *type;
-    struct id       *id;
-    struct ast      *decl_node;
-    struct scope    *decl_scope;
-    u32              index;
-    bool             is_unnamed;
-    bool             is_comptime;
+    struct mir_type    *type;
+    struct id          *id;
+    struct ast         *decl_node;
+    struct scope       *decl_scope; // @Cleanup: Check if it's needed.
+    struct scope_entry *entry;
+    u32                 index; // @Cleanup: Do we need this or we can use entry?
+    bool                is_unnamed;
+    bool                is_comptime;
 
     // This is index of this argument in LLVM IR not in MIR, it can be different based on
     // compiler configuration.
@@ -307,6 +315,9 @@ struct mir_arg {
 
     // Optional default value.
     struct mir_instr *default_value;
+
+    // Optional, set when owning function was generated based on call-side arguments.
+    mir_instrs_t *generation_call_args;
 
     enum llvm_extern_arg_struct_generation_mode llvm_easgm;
     bmagic_member
@@ -728,6 +739,7 @@ enum mir_call_analyze {
     MIR_CALL_ANALYZE_RESOLVE_CALLEE,
     MIR_CALL_ANALYZE_CHECK_CALLEE,
     MIR_CALL_ANALYZE_RESOLVE_OVERLOAD,
+    MIR_CALL_ANALYZE_GENERATED,
     MIR_CALL_FINALIZE,
 };
 

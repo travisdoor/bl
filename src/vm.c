@@ -2311,15 +2311,15 @@ void eval_instr_decl_ref(struct virtual_machine UNUSED(*vm), struct mir_instr_de
         MIR_CEV_WRITE_AS(struct scope_entry *, &decl_ref->base.value, entry);
         break;
 
-    case SCOPE_ENTRY_COMPTIME_ARG: {
-        struct mir_fn *fn = decl_ref->base.owner_block->owner_fn;
-        bmagic_assert(fn);
-        mir_instrs_t *comptime_args = fn->generated.comptime_args;
-        bassert(comptime_args && "No compile-time known arguments provided!");
-        const u32 index = entry->data.comptime_arg->index;
-        bassert(index < sarrlenu(comptime_args) && index >= 0 &&
-                "Argument index is out of the range!");
-        decl_ref->base.value.data = sarrpeek(comptime_args, index)->value.data;
+    case SCOPE_ENTRY_ARG: {
+        struct mir_arg *arg = entry->data.arg;
+        bassert(arg);
+
+        struct mir_instr *comptime_value = sarrpeekor(arg->generation_call_args, arg->index, NULL);
+
+        if (!comptime_value) break;
+
+        decl_ref->base.value.data = comptime_value->value.data;
         break;
     }
 
@@ -2512,7 +2512,7 @@ static struct get_snapshot_result get_snapshot(struct virtual_machine *vm,
                                                struct mir_instr_call  *call)
 {
     bassert(call);
-    struct get_snapshot_result result = {};
+    struct get_snapshot_result result = {0};
 
     const s64 index = hmgeti(vm->comptime_call_stacks, call);
     if (index != -1) {
