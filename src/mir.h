@@ -110,6 +110,7 @@ enum mir_type_kind {
     MIR_TYPE_FN_GROUP    = 16,
     MIR_TYPE_NAMED_SCOPE = 17,
     MIR_TYPE_POLY        = 18,
+    MIR_TYPE_PLACEHOLDER = 19,
 };
 
 // External function arguments passing composite types by value needs special handling in IR.
@@ -196,6 +197,7 @@ enum mir_fn_generated_flavor_flags {
 };
 
 // FN
+// @Incomplete: Make smaller version of the function for function recipes.
 struct mir_fn {
     // Must be first!!!
     struct mir_instr   *prototype;
@@ -305,9 +307,10 @@ struct mir_arg {
     struct ast         *decl_node;
     struct scope       *decl_scope; // @Cleanup: Check if it's needed.
     struct scope_entry *entry;
-    u32                 index; // @Cleanup: Do we need this or we can use entry?
-    bool                is_unnamed;
-    bool                is_comptime;
+    u32                 index;     // @Cleanup: Do we need this or we can use entry?
+    bool                is_recipe; // True in case the argument is part of function recipe.
+
+    u32 flags;
 
     // This is index of this argument in LLVM IR not in MIR, it can be different based on
     // compiler configuration.
@@ -360,6 +363,10 @@ struct mir_type_fn_group {
 };
 
 struct mir_type_named_scope {
+    void *_;
+};
+
+struct mir_type_placeholder {
     void *_;
 };
 
@@ -429,6 +436,7 @@ struct mir_type {
         struct mir_type_null        null;
         struct mir_type_named_scope named_scope;
         struct mir_type_poly        poly;
+        struct mir_type_placeholder placeholder;
     } data;
 
     bmagic_member

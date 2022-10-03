@@ -485,7 +485,7 @@ LLVMMetadataRef DI_type_init(struct context *ctx, struct mir_type *type)
         for (usize i = 0; i < sarrlenu(type->data.fn.args); ++i) {
             struct mir_arg *it = sarrpeek(type->data.fn.args, i);
             // No debug info for comptime arguments.
-            if (it->is_comptime) continue;
+            if (isflag(it->flags, FLAG_COMPTIME)) continue;
             sarrput(&params, DI_type_init(ctx, it->type));
         }
         // @Incomplete: file meta not used?
@@ -899,6 +899,10 @@ enum state emit_instr_decl_ref(struct context *ctx, struct mir_instr_decl_ref *r
 
         struct mir_arg *arg = entry->data.arg;
         bassert(arg);
+        if (arg->llvm_easgm != LLVM_EASGM_NONE) {
+            babort("Missing implementation.");
+        }
+
         ref->base.llvm_value = LLVMGetParam(current_fn->llvm_value, arg->llvm_index);
         break;
     }
@@ -1705,7 +1709,7 @@ emit_instr_arg(struct context *ctx, struct mir_var *dest, struct mir_instr_arg *
     bassert(llvm_fn);
 
     struct mir_arg *arg = sarrpeek(fn_type->data.fn.args, arg_instr->i);
-    bassert(!arg->is_comptime &&
+    bassert(isnotflag(arg->flags, FLAG_COMPTIME) &&
             "Comtime arguments should be evaluated and replaced by constants!");
     LLVMValueRef llvm_dest = dest->llvm_value;
     bassert(llvm_dest);
@@ -2363,7 +2367,7 @@ enum state emit_instr_call(struct context *ctx, struct mir_instr_call *call)
             struct mir_instr *arg_instr = sarrpeek(call->args, i);
             struct mir_arg   *arg       = sarrpeek(callee_type->data.fn.args, i);
             // Comptime arguments does not exist in LLVM.
-            if (arg->is_comptime) continue;
+            if (isflag(arg->flags, FLAG_COMPTIME)) continue;
             LLVMValueRef llvm_arg = arg_instr->llvm_value;
 
             switch (arg->llvm_easgm) {

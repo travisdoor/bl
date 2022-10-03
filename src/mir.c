@@ -137,6 +137,10 @@ struct context {
 
         array(defer_stack_t) defer_stack;
         s32 current_defer_stack_index;
+
+        // True in case the current generation is done in context of function recipe generation.
+        // This may affect compile-time argument types.
+        bool is_recipe;
     } ast;
 
     struct {
@@ -313,6 +317,7 @@ static struct mir_type *
 create_type_int(struct context *ctx, struct id *id, s32 bitcount, bool is_signed);
 static struct mir_type *create_type_real(struct context *ctx, struct id *id, s32 bitcount);
 static struct mir_type *create_type_ptr(struct context *ctx, struct mir_type *src_type);
+static struct mir_type *create_type_placeholder(struct context *ctx);
 
 typedef struct {
     struct id       *id;
@@ -1831,6 +1836,11 @@ void type_init_id(struct context *ctx, struct mir_type *type)
         break;
     }
 
+    case MIR_TYPE_PLACEHOLDER: {
+        strprint(tmp, "@");
+        break;
+    }
+
     case MIR_TYPE_PTR: {
         strprint(tmp, "p.%s", type->data.ptr.expr->id.str);
         break;
@@ -2340,7 +2350,16 @@ struct mir_type *create_type_ptr(struct context *ctx, struct mir_type *src_type)
     return tmp;
 }
 
-static struct mir_type *create_type_fn(struct context *ctx, create_type_fn_args_t *args)
+struct mir_type *create_type_placeholder(struct context *ctx)
+{
+    struct mir_type *tmp =
+        create_type(ctx, MIR_TYPE_PLACEHOLDER, &builtin_ids[BUILTIN_ID_TYPE_PLACEHOLDER]);
+    type_init_id(ctx, tmp);
+    type_init_llvm_void(ctx, tmp);
+    return tmp;
+}
+
+struct mir_type *create_type_fn(struct context *ctx, create_type_fn_args_t *args)
 {
     struct mir_type *tmp          = create_type(ctx, MIR_TYPE_FN, args->id);
     tmp->data.fn.args             = args->args;
@@ -2673,7 +2692,7 @@ void type_init_llvm_fn(struct context *ctx, struct mir_type *type)
         struct mir_arg *arg = sarrpeek(args, i);
         // Skip generation of LLVM argument when it's supposed to be passed into the function in
         // compile time.
-        if (arg->is_comptime) continue;
+        if (isflag(arg->flags, FLAG_COMPTIME)) continue;
         arg->llvm_index = (u32)sarrlenu(&llvm_args);
 
         // Composite types.
@@ -2966,10 +2985,11 @@ struct mir_arg *create_arg(struct context *ctx, create_arg_args_t *args)
     tmp->decl_scope           = args->scope;
     tmp->default_value        = args->value;
     tmp->index                = args->index;
-    tmp->is_unnamed           = args->id && is_ignored_id(args->id);
-    tmp->is_comptime          = isflag(args->flags, FLAG_COMPTIME);
     tmp->entry                = args->entry;
     tmp->generation_call_args = args->generation_call_args;
+    tmp->flags                = args->flags;
+    tmp->is_recipe            = ctx->ast.is_recipe;
+
     return tmp;
 }
 
@@ -6177,31 +6197,14 @@ struct result analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_
         const struct mir_arg *arg = found->data.arg;
         bassert(arg);
 
-        const bool has_valid_comptime_argument_value =
-            sarrpeekor(arg->generation_call_args, arg->index, NULL);
-
-        if (arg->is_comptime && !has_valid_comptime_argument_value) {
-            // In case there are no provided compile time arguments, we're generating the function
-            // recipe, so we have to provide some default values as placeholders to allow at least
-            // partial semantic checking.
-            switch (arg->type->kind) {
-            case MIR_TYPE_INT: {
-                MIR_CEV_WRITE_AS(s32, &ref->base.value, 1);
-                break;
-            }
-            case MIR_TYPE_TYPE: {
-                MIR_CEV_WRITE_AS(struct mir_type *, &ref->base.value, ctx->builtin_types->t_s32);
-                break;
-            }
-            default:
-                bwarn("Missing default value for compile-time argument placeholder in the function "
-                      "recipe.");
-                break;
-            }
+        struct mir_type *ref_type = arg->type;
+        bassert(ref_type);
+        if (arg->is_recipe && ref_type->kind != MIR_TYPE_POLY) {
+            ref_type = ctx->builtin_types->t_placeholer;
         }
 
-        ref->base.value.type        = arg->type;
-        ref->base.value.is_comptime = arg->is_comptime;
+        ref->base.value.type        = ref_type;
+        ref->base.value.is_comptime = isflag(arg->flags, FLAG_COMPTIME);
         ref->base.value.addr_mode   = MIR_VAM_RVALUE;
         break;
     }
@@ -6258,7 +6261,7 @@ struct result analyze_instr_arg(struct context UNUSED(*ctx), struct mir_instr_ar
 
     struct mir_arg *arg_data = mir_get_fn_arg(fn->type, arg->i);
     assert(arg_data);
-    const bool is_comptime = arg_data->is_comptime;
+    const bool is_comptime = isflag(arg_data->flags, FLAG_COMPTIME);
 
     // @Cleanup!!!
     // @Cleanup!!!
@@ -7111,7 +7114,7 @@ struct result analyze_instr_decl_arg(struct context *ctx, struct mir_instr_decl_
         }
     }
     bassert(arg->type && "Invalid argument type!");
-    if (arg->type->kind == MIR_TYPE_TYPE && !arg->is_comptime) {
+    if (arg->type->kind == MIR_TYPE_TYPE && isnotflag(arg->flags, FLAG_COMPTIME)) {
         report_error(INVALID_TYPE,
                      decl->base.node,
                      "Types can be passed only as comptime arguments into the functions. Consider "
@@ -7128,6 +7131,12 @@ struct result analyze_instr_decl_arg(struct context *ctx, struct mir_instr_decl_
         strcmp(decl->base.node->location->unit->filepath, "C:/Develop/bl/tests/test.bl") == 0;
 
     if (is_experimental) {
+        if (arg->is_recipe)
+            blog("Argument recipe: '%s:%s:%d'.",
+                 arg->id ? arg->id->str : "?",
+                 arg->decl_node ? arg->decl_node->location->unit->filename : "?",
+                 arg->decl_node ? arg->decl_node->location->line : 0);
+
         bassert(arg->entry && "Missing scope entry for function argument.");
         arg->entry->kind     = SCOPE_ENTRY_ARG;
         arg->entry->data.arg = arg;
@@ -8063,7 +8072,7 @@ struct result generate_function_implementation(struct context             *ctx,
         struct mir_type *call_arg_type =
             is_expected_arg_valid ? sarrpeek(expected_args, i)->value.type : NULL;
         struct mir_arg *recipe_arg = sarrpeek(recipe_args, i);
-        has_comptime_argument |= recipe_arg->is_comptime;
+        has_comptime_argument |= isflag(recipe_arg->flags, FLAG_COMPTIME);
         struct mir_type *recipe_arg_type = recipe_arg->type;
         if (is_expected_arg_valid && is_load_needed(sarrpeek(expected_args, i))) {
             bassert(call_arg_type);
@@ -8851,7 +8860,7 @@ CALL_ANALYZE_BEGIN:
         }
 
         // Check if the provided function argument is compile-time known in case it's required.
-        if ((fn_arg->is_comptime || mir_is_comptime(&call->base)) &&
+        if ((isflag(fn_arg->flags, FLAG_COMPTIME) || mir_is_comptime(&call->base)) &&
             !mir_is_comptime(call_arg_instr)) {
             report_error(EXPECTED_COMPTIME,
                          call_arg_instr->node,
@@ -9177,8 +9186,9 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
             ANALYZE_PASSED) {
             goto REPORT_OVERLOAD_LOCATION;
         }
+        const bool is_unnamed = callee_arg->id && is_ignored_id(callee_arg->id);
         const bool must_be_comptime =
-            (is_comptime_call && !callee_arg->is_unnamed) || callee_arg->is_comptime;
+            (is_comptime_call && !is_unnamed) || isflag(callee_arg->flags, FLAG_COMPTIME);
         if (!must_be_comptime) continue;
         has_comptime_arguments = true;
         // When function is called in compile-time, we must know all arguments in
@@ -9188,7 +9198,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
         //
         //    get_type :: fn (_: ?T) type #comptime { return T; }
         //
-        if (callee_arg->is_unnamed) continue;
+        if (is_unnamed) continue;
         if (!mir_is_comptime(*call_arg)) {
             report_error(EXPECTED_COMPTIME,
                          (*call_arg)->node,
@@ -11095,6 +11105,7 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
 
     // Function body must be generated during compilation.
     const bool is_generated = functon_generated_flavor_flags != 0;
+    ctx->ast.is_recipe      = is_generated;
 
     struct mir_instr_fn_proto *fn_proto =
         (struct mir_instr_fn_proto *)append_instr_fn_proto(ctx, lit_fn, NULL, NULL, true);
@@ -11107,6 +11118,7 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
         !(ctx->fn_generate.is_generation_active && sarrlen(&ctx->fn_generate.replacement_queue) !=
                                                        ctx->fn_generate.replacement_queue_index));
     ctx->fn_generate.is_generation_active = false;
+    ctx->ast.is_recipe                    = false;
 
     // Prepare new function context. Must be in sync with pop at the end of scope!
     // DON'T CALL FINISH BEFORE THIS!!!
@@ -11777,6 +11789,7 @@ struct mir_instr *ast_decl_arg(struct context *ctx, struct ast *arg)
     // Arguments may be unnamed.
     struct id *id = ast_name ? &ast_name->data.ident.id : NULL;
     if (is_experimental) {
+        // @Incomplete: What about registration of '_' arguments?
         if (id) entry = register_symbol(ctx, ast_name, id, ast_name->owner_scope, false);
     }
 
@@ -12160,7 +12173,9 @@ struct mir_instr *ast_create_type_resolver_call(struct context *ctx, struct ast 
                                       .prototype    = (struct mir_instr_fn_proto *)fn_proto,
                                       .is_global    = true,
                                   });
+
     MIR_CEV_WRITE_AS(struct mir_fn *, &fn_proto->value, fn);
+
     fn->type                      = fn_type;
     struct mir_instr_block *entry = append_block(ctx, fn, "entry");
     entry->base.ref_count         = NO_REF_COUNTING;
@@ -12466,6 +12481,10 @@ static void _type2str(char **buf, const struct mir_type *type, bool prefer_name)
         strappend(*buf, "type");
         break;
 
+    case MIR_TYPE_PLACEHOLDER:
+        strappend(*buf, "@placeholder");
+        break;
+
     case MIR_TYPE_SLICE: {
         const bool has_members = type->data.strct.members;
         strappend(*buf, "[]");
@@ -12692,6 +12711,7 @@ void initialize_builtins(struct context *ctx)
     bt->t_string = create_type_slice(ctx, MIR_TYPE_STRING, BID(TYPE_STRING), bt->t_u8_ptr, false);
     bt->t_string_literal  = create_type_slice(ctx, MIR_TYPE_SLICE, NULL, bt->t_u8_ptr, true);
     bt->t_resolve_type_fn = create_type_fn(ctx, &(create_type_fn_args_t){.ret_type = bt->t_type});
+    bt->t_placeholer      = create_type_placeholder(ctx);
 
     provide_builtin_arch(ctx);
     provide_builtin_os(ctx);

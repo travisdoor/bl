@@ -82,6 +82,7 @@ struct config;
 #define isnotflag(_v, _flag) ((bool)(((_v) & (_flag)) != (_flag)))
 #define setflag(_v, _flag) ((_v) |= (_flag))
 #define clrflag(_v, _flag) ((_v) &= ~(_flag))
+#define setiflag(_v, _flag, _toggle) ((_toggle) ? setflag(_v, _flag) : clrflag(_v, _flag))
 
 enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 
@@ -95,11 +96,11 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 #define is_str_valid_nonempty(S) ((S) && (S)[0] != '\0')
 
 #ifndef MIN
-#define MIN(a, b) (((a)<(b))?(a):(b))
-#endif 
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#endif
 #ifndef MAX
-#define MAX(a, b) (((a)>(b))?(a):(b))
-#endif 
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#endif
 
 // =================================================================================================
 // STB utils
