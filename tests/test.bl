@@ -20,27 +20,37 @@ main :: fn () s32 {
 
     group();
     bar(20);
+    bar(20, 40);
 
     poly(10, 20);
+    //poly("hello", "world"); // @Incomplete: internal error
+    poly(true, false); 
 
     poly_default(10);
     poly_default(10, 20);
  
     this_is_called_in_comptime(10, true);
 
+    num : *s32 = new(s32) #maybe_unused;
+
+    mixed_poly(10);
+    mixed_poly(true);
+
+    variable_args(666, 777);
+    variable_args_2(666);
+    variable_args_2(666, 10);
+    variable_args_2(666, 10, 20);
+
+    /*
     arr: [10]s32;
     mixed(10, &arr);
 
     arr2: [2]s32;
     mixed(2, &arr2);
 
-    num : *s32 = new(s32) #maybe_unused;
-
-    mixed_poly(10);
-    mixed_poly(true);
-
     data :: Data.{};
     mixed_poly_2(data);
+    */
 
     return 0;
 }
@@ -50,43 +60,47 @@ foo :: fn () {
 
 group :: fn {
     fn () {
+        print("group()\n");
     };
-    fn (i: s32 #maybe_unused) {
+    fn (i: s32) {
+        print("group(%)\n", i);
     };
 }
 
 bar :: fn (j: s32, k: s32 = 666) s32 {
+    print("bar(%, %)\n", j, k);
     return j + k;
 }
 
-// If comptime is known type -> use default value for recipe.
-// If comptime is poly -> ignore in arr -> PASS.
-
 poly :: fn (v: ?T, c: T) {
-    v;
-    c;
+    print("poly(%, %)\n", v, c);
 }
 
 poly_default :: fn (v: ?T, c: T = 20) {
-    v;
-    c;
+    print("poly_default(%, %)\n", v, c);
 }
 
 this_is_called_in_comptime :: fn (a: s32, b: bool) #comptime {
-    a;
-    b;
-}
-
-mixed :: fn (v: s32 #comptime, arr: *[v]s32) {
+    // @Incomplete: internal error.
+    //print("this_is_called_in_comptime(%, %)\n", a, b);
 }
 
 mixed_poly :: fn (v: ?T #comptime) {
-    v;
+    print("mixed_poly(%)\n", v);
+}
+
+variable_args :: fn (v: ...s32) {}
+
+variable_args_2 :: fn (n: s32, v: ...s32) {}
+
+/*
+mixed :: fn (v: s32 #comptime, arr: *[v]s32) {
 }
 
 mixed_poly_2 :: fn (v: Data #comptime, arr: [v.a]s32) {
     v;
 }
+*/
 
 new :: fn (T: type #comptime) *T {
     mem, err :: alloc(sizeof(T));
