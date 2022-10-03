@@ -156,7 +156,6 @@ getarg(s32 argc, char *argv[], struct getarg_opt *opts, s32 *optindex, const cha
         }
 
         struct getarg_opt *opt;
-        s32                i = 0;
         while ((opt = opts++)->name) {
             if (strcmp(arg, opt->name) == 0) {
                 switch (opt->kind) {
@@ -207,7 +206,6 @@ getarg(s32 argc, char *argv[], struct getarg_opt *opts, s32 *optindex, const cha
                 }
                 return opt->id;
             }
-            ++i;
         }
         builder_error("Unknown argument '%s'", arg);
         return '?';

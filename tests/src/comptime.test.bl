@@ -85,7 +85,6 @@ string_literal :: fn () #test{
     test_eq(lit, "This is testing string.");
 }
 
-/* @Incomplete
 mixed_args_1 :: fn () #test {
     foo :: fn (NUMBER: s32 #comptime) s32 {
         return NUMBER;
@@ -146,4 +145,3 @@ mixed_args_array_data :: fn () #test {
     };
     foo(data);
 }
-*/

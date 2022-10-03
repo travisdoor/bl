@@ -214,6 +214,7 @@ struct ast_decl_member {
 struct ast_decl_arg {
     struct ast_decl base;
     struct ast     *value;
+    u32             index;
 };
 
 struct ast_decl_variant {

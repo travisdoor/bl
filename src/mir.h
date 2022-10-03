@@ -67,57 +67,9 @@ struct mir_fn_group;
 struct mir_fn_generated_recipe;
 struct mir_const_expr_value;
 
-struct mir_instr;
-struct mir_instr_unreachable;
-struct mir_instr_debugbreak;
-struct mir_instr_block;
-struct mir_instr_decl_var;
-struct mir_instr_decl_member;
-struct mir_instr_decl_variant;
-struct mir_instr_decl_arg;
-struct mir_instr_const;
-struct mir_instr_load;
-struct mir_instr_store;
-struct mir_instr_ret;
-struct mir_instr_binop;
-struct mir_instr_unop;
-struct mir_instr_fn_proto;
-struct mir_instr_fn_group;
-struct mir_instr_call;
-struct mir_instr_addrof;
-struct mir_instr_cond_br;
-struct mir_instr_br;
-struct mir_instr_arg;
-struct mir_instr_elem_ptr;
-struct mir_instr_member_ptr;
-struct mir_instr_type_fn;
-struct mir_instr_type_fn_group;
-struct mir_instr_type_struct;
-struct mir_instr_type_array;
-struct mir_instr_type_slice;
-struct mir_instr_type_dyn_arr;
-struct mir_instr_type_vargs;
-struct mir_instr_type_ptr;
-struct mir_instr_type_enum;
-struct mir_instr_type_poly;
-struct mir_instr_decl_ref;
-struct mir_instr_decl_direct_ref;
-struct mir_instr_cast;
-struct mir_instr_sizeof;
-struct mir_instr_alignof;
-struct mir_instr_compound;
-struct mir_instr_vargs;
-struct mir_instr_type_info;
-struct mir_instr_typeof;
-struct mir_instr_phi;
-struct mir_instr_to_any;
-struct mir_instr_switch;
-struct mir_instr_set_initializer;
-struct mir_instr_test_case;
-struct mir_instr_call_loc;
-struct mir_instr_unroll;
-struct mir_instr_using;
-struct mir_instr_designator;
+#define GEN_INSTR(kind, name) struct name;
+#include "mir.def"
+#undef GEN_INSTR
 
 struct mir_arenas {
     struct arena instr;
@@ -160,18 +112,18 @@ enum mir_type_kind {
     MIR_TYPE_POLY        = 18,
 };
 
-// External function arguments passing composit types by value needs special handling in IR.
+// External function arguments passing composite types by value needs special handling in IR.
 enum llvm_extern_arg_struct_generation_mode {
     LLVM_EASGM_NONE,  // No special handling
-    LLVM_EASGM_8,     // Promote composit as i8
-    LLVM_EASGM_16,    // Promote composit as i16
-    LLVM_EASGM_32,    // Promote composit as i32
-    LLVM_EASGM_64,    // Promote composit as i64
-    LLVM_EASGM_64_8,  // Promote composit as i64, i8
-    LLVM_EASGM_64_16, // Promote composit as i64, i16
-    LLVM_EASGM_64_32, // Promote composit as i64, i32
-    LLVM_EASGM_64_64, // Promote composit as i64, i64
-    LLVM_EASGM_BYVAL, // Promote composit as byval
+    LLVM_EASGM_8,     // Promote composite as i8
+    LLVM_EASGM_16,    // Promote composite as i16
+    LLVM_EASGM_32,    // Promote composite as i32
+    LLVM_EASGM_64,    // Promote composite as i64
+    LLVM_EASGM_64_8,  // Promote composite as i64, i8
+    LLVM_EASGM_64_16, // Promote composite as i64, i16
+    LLVM_EASGM_64_32, // Promote composite as i64, i32
+    LLVM_EASGM_64_64, // Promote composite as i64, i64
+    LLVM_EASGM_BYVAL, // Promote composite as byval
 };
 
 enum mir_instr_kind {
@@ -227,13 +179,19 @@ struct mir_fn_generated_recipe {
         struct mir_instr_fn_proto *value;
     }) entries;
 
+    // @Cleanup
+    hash_table(struct {
+        hash_t         key;
+        struct mir_fn *value;
+    }) entries2;
+
     bmagic_member
 };
 
 enum mir_fn_generated_flavor_flags {
     MIR_FN_GENERATED_NONE               = 0,
     MIR_FN_GENERATED_POLY               = 1 << 1,
-    MIR_FN_GENERATED_CALLED_IN_COMPTIME = 1 << 2,
+    MIR_FN_GENERATED_CALLED_IN_COMPTIME = 1 << 2, // @Cleanup: remove
     MIR_FN_GENERATED_MIXED              = 1 << 3,
 };
 
@@ -266,17 +224,19 @@ struct mir_fn {
         // all elements in this array are set in such a case.
         //
         // Comptime arguments may not be provided yet in case the generated function body is
-        // analyzed and evaluated. The compile-time value evaluatio of comptime instr_arg must wait
+        // analyzed and evaluated. The compile-time value evaluation of comptime instr_arg must wait
         // for it!
-        mir_instrs_t *comptime_args;
+        mir_instrs_t *comptime_args; // @Cleanup
+
         // Optional, this is set to first call location used for generation of this function from
         // polymorph recipe.
         struct ast *first_call_node;
+
         // Optional, simple stringification of the original polymorph argument types used to
         // generate this function, this may be useful to produce informative error messages. In case
         // the function is comptime or has mixed arguments without any polymorph replacements this
         // string may be NULL.
-        const char *debug_replacement;
+        char *debug_replacement_types;
     } generated;
 
     // function body scope if there is one (optional)
@@ -333,26 +293,31 @@ struct mir_member {
     s64                 index;
     u64                 tag;
     s32                 offset_bytes;
-    bool                is_base; // inherrited struct base
+    bool                is_base; // inherited struct base
     bool                is_parent_union;
     bmagic_member
 };
 
 // FUNCTION ARGUMENT
 struct mir_arg {
-    struct mir_type *type;
-    struct id       *id;
-    struct ast      *decl_node;
-    struct scope    *decl_scope;
-    bool             is_unnamed;
-    bool             is_comptime;
+    struct mir_type    *type;
+    struct id          *id;
+    struct ast         *decl_node;
+    struct scope       *decl_scope; // @Cleanup: Check if it's needed.
+    struct scope_entry *entry;
+    u32                 index; // @Cleanup: Do we need this or we can use entry?
+    bool                is_unnamed;
+    bool                is_comptime;
 
     // This is index of this argument in LLVM IR not in MIR, it can be different based on
-    // compiler configuration (via. System V ABI)
+    // compiler configuration.
     u32 llvm_index;
 
     // Optional default value.
     struct mir_instr *default_value;
+
+    // Optional, set when owning function was generated based on call-side arguments.
+    mir_instrs_t *generation_call_args;
 
     enum llvm_extern_arg_struct_generation_mode llvm_easgm;
     bmagic_member
@@ -375,7 +340,9 @@ struct mir_type_fn {
     u32              flags;
 
     enum builtin_id_kind builtin_id;
-    // @Incomplete: rewrite to flags?
+
+    // @Cleanup: after new call analyze pass we probably don't need those flags.
+    // @Performance: Rewrite to flags.
     bool is_vargs;
     // Polymorph function type (not all arguments have known type -> cannot generate type info).
     bool is_polymorph;
@@ -407,7 +374,9 @@ struct mir_type_struct {
     // This is optional base type, only structures with #base hash directive has this
     // information.
     struct mir_type *base_type;
-    bool             is_packed;
+
+    // @Performance: Rewrite to flags.
+    bool is_packed;
     // C-style union is represented as regular structure with special memory layout. Every
     // member is stored at same memory offset.
     bool is_union;
@@ -447,9 +416,6 @@ struct mir_type {
     enum mir_type_kind kind;
     s8                 alignment;
     bool               checked_and_complete;
-
-    // Optionally set pointer to RTTI var used by Virtual Machine.
-    struct mir_var *vm_rtti_var_cache;
 
     union {
         struct mir_type_int         integer;
@@ -492,11 +458,13 @@ struct mir_var {
     const char          *linkage_name;
     enum builtin_id_kind builtin_id;
     s32                  ref_count;
-    bool                 is_mutable;
-    bool                 is_global;
-    bool                 is_implicit;
-    bool                 is_struct_typedef;
-    bool                 is_analyzed;
+
+    // @Performance: Rewrite to flags.
+    bool is_mutable;
+    bool is_global;
+    bool is_implicit;
+    bool is_struct_typedef;
+    bool is_analyzed;
 
     // We need this to allow the return temporary variable to be mutable even if it contains types;
     // the type can be returned only from compile-time functions. Value is set 'true' only when the
@@ -574,7 +542,6 @@ struct mir_instr_decl_arg {
     struct mir_instr  base;
     struct mir_arg   *arg;
     struct mir_instr *type;
-    bool              llvm_byval;
 };
 
 struct mir_instr_elem_ptr {
@@ -767,16 +734,27 @@ struct mir_instr_type_poly {
     struct id       *T_id;
 };
 
+enum mir_call_analyze {
+    MIR_CALL_ANALYZE_CHECK_ARGS_COMPLETENESS = 0,
+    MIR_CALL_ANALYZE_RESOLVE_CALLEE,
+    MIR_CALL_ANALYZE_CHECK_CALLEE,
+    MIR_CALL_ANALYZE_RESOLVE_OVERLOAD,
+    MIR_CALL_ANALYZE_GENERATED,
+    MIR_CALL_FINALIZE,
+};
+
 // @Note: Call instruction with set base.value.is_comptime will be automatically executed during
 // analyze process.
 struct mir_instr_call {
     struct mir_instr base;
     // Generally any callable instruction.
-    struct mir_instr *callee;
+    struct mir_instr     *callee;
+    enum mir_call_analyze state;
+
     // Pointer to called function resolved after overload resolution.
     struct mir_fn *called_function;
-    mir_instrs_t  *args; // Optional
-    bool           callee_analyzed;
+    mir_instrs_t  *args;            // Optional
+    bool           callee_analyzed; // @Cleanup
 
     // Optional temporary variable for unroll multi-return struct type.
     struct mir_instr *unroll_tmp_var;
@@ -879,7 +857,7 @@ struct mir_instr_unroll {
     struct mir_instr *src;
     // Previous destination is optional reference to the previous variable in case we initialize
     // multiple variables at once by function call. i.e.: a, b, c := foo(); when 'foo' returns one
-    // single value. Unroll instruction is removed is nuch case and variable using current unroll is
+    // single value. Unroll instruction is removed is such case and variable using current unroll is
     // directly set to 'prev' value: c = b = a = foo();
     struct mir_instr *prev;
     s32               index;
@@ -988,7 +966,7 @@ static inline bool mir_is_global_block(const struct mir_instr_block *instr)
     return instr->owner_fn == NULL;
 }
 
-// Determinates if the instruction is in the global block.
+// Determinate if the instruction is in the global block.
 static inline bool mir_is_global(const struct mir_instr *instr)
 {
     // Instructions without owner block lives in global scope.

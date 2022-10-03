@@ -1,70 +1,110 @@
-/*
+// Analyze state can be removed (only bool is enough)?
+// 
+// ADD FATAL analyze state to handle invalid polymorph generation!
+// ADD FATAL analyze state to handle invalid polymorph generation!
+// ADD FATAL analyze state to handle invalid polymorph generation!
+//
+// Remove INSTR_ARG
 
-- Mixture of compile time and regular arguments.
-- Acts like a polymorph (generate new function for each value).
-- Skip LLVM for comptime values.
-- Does not evaluate automatically while compilation unless the whole function is marked as #comptime.
-- Call side checking for constantness.
-- Insert 'value' into scope when it's replaced to allow access to the symbol i.e. in return type.
-- Comptime arguments needs to be registered into scope while they are processed in the type analyze pass
-  to allow i.e. modification of a function return type.
-
-!!! Checking of provided comptime-call arguments must be done before the mixed function is generated. !!!
-
-bar :: macro (v: s32) s32 {
-    return v + 1;
-}
-
-
-
-Redesign comptime functions:
-    
-    - Any #comptime function is evaluated in compile time.
-    - If any function is called with #run prefix, it's also evaluated in compile time.
-    - All arguments must be known in compile-time on the call side.
-    - Internally only arguments foo: s32 #comptime are comptime constants in the function body and may
-      cause the function generation.
-
-
-// comptime functions as:
-foo :: fn (T: type #comptime) type #run {
-    return T;
-}
-
-*/
-
-//#import "std/fs"
-//#import "std/table"
-
-foo :: fn () #comptime {
-    using std;
-    file, err :: open_file(#file);
-    defer close_file(&file);
-    if err { 
-        print("%\n", err); 
-        return;
-    }
-    content := str_new();
-    defer str_delete(&content);
-
-    read_string(&file, &content);
-    print("%\n\n", content);
-}
-
-my_size :: fn (T: type #comptime) usize #comptime {
-    return sizeof(T);
+Data :: struct {
+    a: s32;
+    b: s32;
+    c: s64;
 }
 
 main :: fn () s32 {
-    using std;
+    foo();
 
-    //foo();
-    my_size(s32);
+    ptr := &foo;
+    ptr();
+
+    group();
+    bar(20);
+
+    poly(10, 20);
+
+    poly_default(10);
+    poly_default(10, 20);
+ 
+    this_is_called_in_comptime(10, true);
+
+    arr: [10]s32;
+    mixed(10, &arr);
+
+    arr2: [2]s32;
+    mixed(2, &arr2);
+
+    num : *s32 = new(s32) #maybe_unused;
+
+    mixed_poly(10);
+    mixed_poly(true);
+
+    data :: Data.{};
+    mixed_poly_2(data);
+
     return 0;
 }
 
-#private
-
-Foo :: struct {
-    i: s32;
+foo :: fn () {
 }
+
+group :: fn {
+    fn () {
+    };
+    fn (i: s32 #maybe_unused) {
+    };
+}
+
+bar :: fn (j: s32, k: s32 = 666) s32 {
+    return j + k;
+}
+
+// If comptime is known type -> use default value for recipe.
+// If comptime is poly -> ignore in arr -> PASS.
+
+poly :: fn (v: ?T, c: T) {
+    v;
+    c;
+}
+
+poly_default :: fn (v: ?T, c: T = 20) {
+    v;
+    c;
+}
+
+this_is_called_in_comptime :: fn (a: s32, b: bool) #comptime {
+    a;
+    b;
+}
+
+mixed :: fn (v: s32 #comptime, arr: *[v]s32) {
+}
+
+mixed_poly :: fn (v: ?T #comptime) {
+    v;
+}
+
+mixed_poly_2 :: fn (v: Data #comptime, arr: [v.a]s32) {
+    v;
+}
+
+new :: fn (T: type #comptime) *T {
+    mem, err :: alloc(sizeof(T));
+    if err { panic(err); }
+    return auto mem; 
+}
+
+/*
+// TODO: Currently we cannot have default value for polymorph master!
+poly_default_2 :: fn (v: ?T = 10) {
+    v;
+    c;
+}
+*/
+
+/* uncommnet while fixing using propagation into local functions.
+list_dir :: fn (paths: *[..]string_view, dir: string_view) {
+    using std;
+    foo :: fn (i: *Info) {};
+}
+*/
