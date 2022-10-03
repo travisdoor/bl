@@ -32,6 +32,9 @@ main :: fn () s32 {
     this_is_called_in_comptime(10, true);
 
     num : *s32 = new(s32) #maybe_unused;
+    (@num) = 800;
+    call_with_pointer(num);
+    //to_any(num);
 
     mixed_poly(10);
     mixed_poly(true);
@@ -41,6 +44,12 @@ main :: fn () s32 {
     variable_args_2(666, 10);
     variable_args_2(666, 10, 20);
 
+    tbl: MyTable(s32, bool);
+    d: s32;
+    v :: @d;
+    print("tbl = %\n", @tbl);
+
+    //with_call_loc(10);
     /*
     arr: [10]s32;
     mixed(10, &arr);
@@ -53,6 +62,19 @@ main :: fn () s32 {
     */
 
     return 0;
+}
+
+MyTable :: fn (TKey: type #comptime, TValue: type #comptime) type #comptime {
+    print(">>> Generation table type!\n");
+    return struct {
+        key: TKey;
+        value: TValue;
+    };
+}
+
+my_static_assert :: fn (expr: bool) #comptime {
+    if expr { return; }
+    unreachable;
 }
 
 foo :: fn () {
@@ -82,7 +104,7 @@ poly_default :: fn (v: ?T, c: T = 20) {
 
 this_is_called_in_comptime :: fn (a: s32, b: bool) #comptime {
     // @Incomplete: internal error.
-    //print("this_is_called_in_comptime(%, %)\n", a, b);
+    print(">>> this_is_called_in_comptime(%, %)\n", a, b);
 }
 
 mixed_poly :: fn (v: ?T #comptime) {
@@ -92,6 +114,18 @@ mixed_poly :: fn (v: ?T #comptime) {
 variable_args :: fn (v: ...s32) {}
 
 variable_args_2 :: fn (n: s32, v: ...s32) {}
+
+to_any :: fn (c: Any) {
+    print("to_any(%)\n", c);
+}
+
+call_with_pointer :: fn (n_ptr: *s32) {
+    print("call_with_pointer(%, %)\n", n_ptr, @n_ptr);
+}
+
+with_call_loc :: fn (n: s32, loc := #call_location) {
+    print("with_call_loc(%, %)\n", n, loc);
+}
 
 /*
 mixed :: fn (v: s32 #comptime, arr: *[v]s32) {

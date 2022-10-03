@@ -34,6 +34,7 @@
 #include "common.h"
 #include "scope.h"
 #include "stb_ds.h"
+#include "vm.h"
 #include <combaseapi.h>
 #include <stdarg.h>
 
@@ -617,8 +618,11 @@ static struct mir_instr *append_instr_switch(struct context         *ctx,
                                              bool                    user_defined_default,
                                              mir_switch_cases_t     *cases);
 
-static struct mir_instr *
-append_instr_load(struct context *ctx, struct ast *node, struct mir_instr *src);
+static struct mir_instr *append_instr_load(struct context   *ctx,
+                                           struct ast       *node,
+                                           struct mir_instr *src,
+                                           const bool        is_deref);
+
 static struct mir_instr *append_instr_type_fn(struct context   *ctx,
                                               struct ast       *node,
                                               struct mir_instr *ret_type,
@@ -1739,10 +1743,16 @@ static inline bool is_load_needed(struct mir_instr *instr)
         //
         // Ex.: j : *s32 = ^ (cast(**s32) i_ptr_ptr);
         //
-        // But I'm not 100% sure that this didn't broke something else...
+        // But I'm not 100% sure that this didn't break something else...
         //
         struct mir_instr_load *load = (struct mir_instr_load *)instr;
         return load->is_deref && is_load_needed(load->src);
+    }
+
+    case MIR_INSTR_DECL_REF: {
+        // Argument types are directly referenced by values. However we should them keep immutable!
+        struct mir_instr_decl_ref *ref = (struct mir_instr_decl_ref *)instr;
+        return ref->scope_entry->kind != SCOPE_ENTRY_ARG;
     }
 
     default:
@@ -3953,10 +3963,12 @@ struct mir_instr *append_instr_member_ptr(struct context      *ctx,
     return tmp;
 }
 
-struct mir_instr *append_instr_load(struct context *ctx, struct ast *node, struct mir_instr *src)
+struct mir_instr *
+append_instr_load(struct context *ctx, struct ast *node, struct mir_instr *src, const bool is_deref)
 {
     struct mir_instr_load *tmp = create_instr(ctx, MIR_INSTR_LOAD, node);
     tmp->src                   = ref_instr(src);
+    tmp->is_deref              = is_deref;
     append_current_block(ctx, &tmp->base);
     return &tmp->base;
 }
@@ -6761,8 +6773,10 @@ struct result analyze_instr_switch(struct context *ctx, struct mir_instr_switch 
 struct result analyze_instr_load(struct context *ctx, struct mir_instr_load *load)
 {
     zone();
+    bassert(load->src);
+
     struct mir_instr *src = load->src;
-    bassert(src);
+
     if (mir_is_pointer_type(src->value.type)) {
         struct mir_type *type = mir_deref_type(src->value.type);
         bassert(type);
@@ -10972,8 +10986,8 @@ struct mir_instr *ast_expr_deref(struct context *ctx, struct ast *deref)
 {
     struct mir_instr *next = ast(ctx, deref->data.expr_deref.next);
     bassert(next);
-    struct mir_instr_load *load = (struct mir_instr_load *)append_instr_load(ctx, deref, next);
-    load->is_deref              = true;
+    struct mir_instr_load *load =
+        (struct mir_instr_load *)append_instr_load(ctx, deref, next, true);
     return &load->base;
 }
 
