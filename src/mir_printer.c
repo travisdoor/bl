@@ -759,7 +759,11 @@ void print_instr_switch(struct context *ctx, struct mir_instr_switch *sw)
 
 void print_instr_load(struct context *ctx, struct mir_instr_load *load)
 {
-    print_instr_head(ctx, &load->base, "load");
+    if (load->is_deref)
+        print_instr_head(ctx, &load->base, "deref");
+    else
+        print_instr_head(ctx, &load->base, "load");
+    
     print_comptime_value_or_id(ctx, load->src);
 }
 

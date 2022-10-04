@@ -32,15 +32,17 @@
 #include "bldebug.h"
 #include "builder.h"
 #include "common.h"
+#include "mir_printer.h"
 #include "scope.h"
 #include "stb_ds.h"
 #include "vm.h"
-#include <combaseapi.h>
 #include <stdarg.h>
 
 #ifdef _MSC_VER
 #pragma warning(disable : 6001)
 #endif
+
+#define CLEANUP 0
 
 #define ARENA_CHUNK_COUNT 512
 #define ARENA_INSTR_CHUNK_COUNT 2048
@@ -539,7 +541,9 @@ static struct mir_instr *append_instr_designator(struct context   *ctx,
                                                  struct ast       *node,
                                                  struct ast       *ident,
                                                  struct mir_instr *value);
+#if CLEANUP
 static struct mir_instr *append_instr_arg(struct context *ctx, struct ast *node, unsigned i);
+#endif
 static struct mir_instr *append_instr_using(struct context   *ctx,
                                             struct ast       *node,
                                             struct scope     *owner_scope,
@@ -1002,6 +1006,7 @@ static struct result analyze_instr_msg(struct context *ctx, struct mir_instr_msg
 static void          analyze_report_unresolved(struct context *ctx);
 static void          analyze_report_unused(struct context *ctx);
 
+#if CLEANUP
 // Find or generate implementation of polymorph function template. Function will try to find already
 // generated function based on expected argument list or create new one.
 static struct result generate_function_implementation(struct context             *ctx,
@@ -1009,6 +1014,7 @@ static struct result generate_function_implementation(struct context            
                                                       struct mir_fn              *fn,
                                                       mir_instrs_t               *expected_args,
                                                       struct mir_instr_fn_proto **out_fn_proto);
+#endif
 
 // =================================================================================================
 //  RTTI
@@ -1114,6 +1120,13 @@ static inline struct ast *get_last_instruction_node(struct mir_instr_block *bloc
 {
     if (!block->last_instr) return NULL;
     return block->last_instr->node;
+}
+
+static inline bool is_argument_unnamed_or_ignored(const struct mir_arg *arg)
+{
+    bassert(arg);
+    if (!arg->id) return true;
+    return is_ignored_id(arg->id);
 }
 
 static inline void usage_check_push(struct context *ctx, struct scope_entry *entry)
@@ -3625,6 +3638,7 @@ struct mir_instr *append_instr_designator(struct context   *ctx,
     return &tmp->base;
 }
 
+#if CLEANUP
 struct mir_instr *append_instr_arg(struct context *ctx, struct ast *node, unsigned i)
 {
     struct mir_instr_arg *tmp = create_instr(ctx, MIR_INSTR_ARG, node);
@@ -3632,6 +3646,7 @@ struct mir_instr *append_instr_arg(struct context *ctx, struct ast *node, unsign
     append_current_block(ctx, &tmp->base);
     return &tmp->base;
 }
+#endif
 
 struct mir_instr *append_instr_unroll(struct context   *ctx,
                                       struct ast       *node,
@@ -4905,7 +4920,7 @@ struct result analyze_instr_using(struct context *ctx, struct mir_instr_using *u
                        "Attempt to use current scope. The using statement will be ignored.");
     } else if (!scope_using_add(using->scope, used_scope)) {
         // @Cleanup: Cause problems in polymorph!
-#if 0
+#if CLANUP
         report_warning(
             using->base.node,
             "Scope is already exposed in current context. The using statement will be ignored.");
@@ -5800,15 +5815,6 @@ struct result analyze_instr_addrof(struct context *ctx, struct mir_instr_addrof 
                              "may differ based on call side arguments, so the memory location may "
                              "be ambiguous.");
                 report_note(fn->decl_node, "Function is declared here:");
-            } else if (isflag(fn->generated_flavor,
-                              MIR_FN_GENERATED_CALLED_IN_COMPTIME)) { // @Cleanup
-                report_error(
-                    EXPECTED_DECL,
-                    addrof->base.node,
-                    "Cannot take the address of compile-time executed function, its "
-                    "implementation does not exist in runtime. All functions marked as 'comptime' "
-                    "are executed during compilation and excluded from the final binary.");
-                report_note(fn->decl_node, "Function is declared here:");
             } else if (isflag(fn->generated_flavor, MIR_FN_GENERATED_MIXED)) {
                 report_error(EXPECTED_DECL,
                              addrof->base.node,
@@ -6275,19 +6281,12 @@ struct result analyze_instr_arg(struct context UNUSED(*ctx), struct mir_instr_ar
     assert(arg_data);
     const bool is_comptime = isflag(arg_data->flags, FLAG_COMPTIME);
 
-    // @Cleanup!!!
-    // @Cleanup!!!
-    // @Cleanup!!!
-    const bool is_experimental = arg->base.node && strcmp(arg->base.node->location->unit->filepath,
-                                                          "C:/Develop/bl/tests/test.bl") == 0;
-    if (!is_experimental) {
-        if (is_comptime && !fn->generated.comptime_args) {
-            // We have to to wait for the compile time arguments being provided first when the
-            // comptime function is evaluated, all arguments should be already validated by call
-            // analyze pass. This also prevents the evaluator to evaluate arguments without proper
-            // values available in case a compilation error occurs.
-            return_zone(POSTPONE);
-        }
+    if (is_comptime && !fn->generated.comptime_args) {
+        // We have to to wait for the compile time arguments being provided first when the
+        // comptime function is evaluated, all arguments should be already validated by call
+        // analyze pass. This also prevents the evaluator to evaluate arguments without proper
+        // values available in case a compilation error occurs.
+        return_zone(POSTPONE);
     }
 
     struct mir_type *type = arg_data->type;
@@ -6775,6 +6774,12 @@ struct result analyze_instr_load(struct context *ctx, struct mir_instr_load *loa
     zone();
     bassert(load->src);
 
+    if (load->is_deref) {
+        if (analyze_slot(ctx, &analyze_slot_conf_basic, &load->src, NULL) != ANALYZE_PASSED) {
+            return_zone(FAIL);
+        }
+    }
+
     struct mir_instr *src = load->src;
 
     if (mir_is_pointer_type(src->value.type)) {
@@ -7151,14 +7156,9 @@ struct result analyze_instr_decl_arg(struct context *ctx, struct mir_instr_decl_
         return_zone(FAIL);
     }
 
-    // @Cleanup!!!
-    // @Cleanup!!!
-    // @Cleanup!!!
-    const bool is_experimental =
-        decl->base.node &&
-        strcmp(decl->base.node->location->unit->filepath, "C:/Develop/bl/tests/test.bl") == 0;
-
-    if (is_experimental) {
+    if (is_argument_unnamed_or_ignored(arg)) {
+        bassert(arg->entry == NULL);
+    } else {
         bassert(arg->entry && "Missing scope entry for function argument.");
         arg->entry->kind     = SCOPE_ENTRY_ARG;
         arg->entry->data.arg = arg;
@@ -8049,6 +8049,7 @@ static inline hash_t get_current_poly_replacement_hash(struct context *ctx)
     return_zone(hash);
 }
 
+#if CLEANUP
 // Can be used to generate actual function implementation from function generation recipe. This is
 // used in case the function is polymorph (the function type contains polymorph types) or function
 // has some compile time arguments (mixed function). In some cases we need to generate also comptime
@@ -8216,10 +8217,12 @@ struct result generate_function_implementation(struct context             *ctx,
     put_tstr(debug_replacement_str);
     return_zone(PASS);
 }
+#endif
 
 // =================================================================================================
 // Resolve type of called function inside call instruction
 // =================================================================================================
+#if CLEANUP
 static struct result analyze_callee(struct context *ctx, struct mir_instr *callee)
 {
     zone();
@@ -8237,6 +8240,7 @@ static struct result analyze_callee(struct context *ctx, struct mir_instr *calle
     }
     return_zone(PASS);
 }
+#endif
 
 // =================================================================================================
 // Function overloading
@@ -8254,6 +8258,7 @@ static int overload_compar(const void *a, const void *b)
     return pb - pa;
 }
 
+#if CLEANUP
 static struct mir_fn *group_select_overload(struct context            *ctx,
                                             struct mir_instr_call     *call,
                                             const struct mir_fn_group *group,
@@ -8357,6 +8362,7 @@ DONE:
     bassert(selected_fn);
     return selected_fn;
 }
+#endif
 
 // =================================================================================================
 // Function call analyze pass
@@ -8715,7 +8721,7 @@ DONE:
     return_zone(replacement_fn);
 }
 
-static struct result analyze_instr_call2(struct context *ctx, struct mir_instr_call *call)
+struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *call)
 {
     zone();
     bassert(call->callee);
@@ -8961,16 +8967,9 @@ FAILED:
     return_zone(FAIL);
 }
 
+#if CLEANUP
 struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *call)
 {
-    // @Cleanup!!!
-    // @Cleanup!!!
-    // @Cleanup!!!
-    if (call->base.node &&
-        strcmp(call->base.node->location->unit->filepath, "C:/Develop/bl/tests/test.bl") == 0) {
-        return analyze_instr_call2(ctx, call);
-    }
-
     zone();
     bassert(call->callee);
     if (!call->callee_analyzed) {
@@ -9256,7 +9255,7 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
             ANALYZE_PASSED) {
             goto REPORT_OVERLOAD_LOCATION;
         }
-        const bool is_unnamed = callee_arg->id && is_ignored_id(callee_arg->id);
+        const bool is_unnamed = is_argument_unnamed(callee_arg);
         const bool must_be_comptime =
             (is_comptime_call && !is_unnamed) || isflag(callee_arg->flags, FLAG_COMPTIME);
         if (!must_be_comptime) continue;
@@ -9304,6 +9303,7 @@ REPORT_OVERLOAD_LOCATION:
     }
     return_zone(FAIL);
 }
+#endif
 
 struct result analyze_instr_store(struct context *ctx, struct mir_instr_store *store)
 {
@@ -9821,6 +9821,9 @@ struct result analyze_instr(struct context *ctx, struct mir_instr *instr)
             (*analyze_state) = MIR_IS_ANALYZED;
         } else if (state.state == ANALYZE_FAILED) {
             (*analyze_state) = MIR_IS_FAILED;
+#if BL_DEBUG
+            mir_print_instr(stdout, ctx->assembly, instr);
+#endif
         }
     } // PENDING
 
@@ -11146,12 +11149,6 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
     struct id  *id          = decl_node ? &decl_node->data.ident.id : NULL;
     bassert(ast_fn_type->kind == AST_TYPE_FN);
 
-    // @Cleanup!!!
-    // @Cleanup!!!
-    // @Cleanup!!!
-    const bool is_experimental =
-        strcmp(lit_fn->location->unit->filepath, "C:/Develop/bl/tests/test.bl") == 0;
-
     // @Incomplete: Comptime called function should not be exported or intrinsics? This may be
     // checked directly in the parser, but maybe we don't want to introduce any semantic check
     // there.
@@ -11165,12 +11162,6 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
             setflag(functon_generated_flavor_flags, MIR_FN_GENERATED_POLY);
         if (isflag(function_type_flavor, AST_TYPE_FN_FLAVOR_MIXED))
             setflag(functon_generated_flavor_flags, MIR_FN_GENERATED_MIXED);
-
-        if (!is_experimental) {
-            if (isflag(flags, FLAG_COMPTIME)) { // @Cleanup
-                setflag(functon_generated_flavor_flags, MIR_FN_GENERATED_CALLED_IN_COMPTIME);
-            }
-        }
     }
 
     // Function body must be generated during compilation.
@@ -11277,44 +11268,6 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
         append_instr_ret(ctx, ast_block, NULL);
     }
     set_current_block(ctx, init_block);
-
-    if (!is_experimental) {
-        // build MIR for fn arguments
-        ast_nodes_t *ast_args = ast_fn_type->data.type_fn.args;
-        if (ast_args) {
-            struct ast *ast_arg;
-            struct ast *ast_arg_name;
-            for (usize i = sarrlenu(ast_args); i-- > 0;) {
-                ast_arg = sarrpeek(ast_args, i);
-                bassert(ast_arg->kind == AST_DECL_ARG);
-                ast_arg_name = ast_arg->data.decl.name;
-                bassert(ast_arg_name);
-                bassert(ast_arg_name->kind == AST_IDENT && "Expected identificator.");
-                struct id *id    = &ast_arg_name->data.ident.id;
-                const u32  flags = ast_arg->data.decl.flags;
-
-                struct mir_instr *arg = append_instr_arg(ctx, ast_arg, (u32)i);
-
-                // @Note: Should all arguments be immutable in the future? This may allow better
-                // optimizations and also maybe lead to a simpler code.
-                struct mir_instr_decl_var *decl_var =
-                    (struct mir_instr_decl_var *)append_instr_decl_var(
-                        ctx,
-                        &(append_instr_decl_var_args_t){
-                            .node       = ast_arg_name,
-                            .id         = id,
-                            .scope      = ast_arg_name->owner_scope,
-                            .init       = arg,
-                            .is_mutable = !isflag(flags, FLAG_COMPTIME),
-                            .builtin_id = BUILTIN_ID_NONE,
-                            .flags      = flags,
-                        });
-
-                decl_var->var->entry =
-                    register_symbol(ctx, ast_arg_name, id, ast_arg_name->owner_scope, false);
-            }
-        }
-    }
 
     if (isflag(flags, FLAG_TEST_FN)) {
         ++ctx->testing.expected_test_count;
@@ -11848,19 +11801,19 @@ struct mir_instr *ast_decl_arg(struct context *ctx, struct ast *arg)
         type = ast_create_type_resolver_call(ctx, ast_type);
     }
 
-    // @Cleanup!!!
-    // @Cleanup!!!
-    // @Cleanup!!!
-    const bool is_experimental =
-        ast_name && strcmp(ast_name->location->unit->filepath, "C:/Develop/bl/tests/test.bl") == 0;
-
+    struct id          *id    = NULL;
     struct scope_entry *entry = NULL;
 
-    // Arguments may be unnamed.
-    struct id *id = ast_name ? &ast_name->data.ident.id : NULL;
-    if (is_experimental) {
-        // @Incomplete: What about registration of '_' arguments?
-        if (id) entry = register_symbol(ctx, ast_name, id, ast_name->owner_scope, false);
+    // @Incomplete: What about registration of '_' arguments?
+    if (ast_name) {
+        struct scope *scope = ast_name->owner_scope;
+        bassert(scope && "Missing scope for function argument registration!");
+        bassert((scope->kind == SCOPE_FN || scope->kind == SCOPE_FN_LOCAL) &&
+                "Expected function scope!");
+
+        // Arguments may be unnamed.
+        id    = &ast_name->data.ident.id;
+        entry = register_symbol(ctx, ast_name, id, scope, false);
     }
 
     return append_instr_decl_arg(ctx,
@@ -11895,8 +11848,13 @@ struct mir_instr *ast_decl_member(struct context *ctx, struct ast *arg)
                                           .type = result,
                                           .tag  = tag,
                                       });
+
+    struct scope *scope = ast_name->owner_scope;
+    bassert(scope->kind == SCOPE_TYPE_STRUCT);
+
     ((struct mir_instr_decl_member *)result)->member->entry =
-        register_symbol(ctx, ast_name, &ast_name->data.ident.id, ast_name->owner_scope, false);
+        register_symbol(ctx, ast_name, &ast_name->data.ident.id, scope, /* is_builtin */ false);
+
     bassert(result);
     return result;
 }

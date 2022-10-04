@@ -192,8 +192,7 @@ struct mir_fn_generated_recipe {
 enum mir_fn_generated_flavor_flags {
     MIR_FN_GENERATED_NONE               = 0,
     MIR_FN_GENERATED_POLY               = 1 << 1,
-    MIR_FN_GENERATED_CALLED_IN_COMPTIME = 1 << 2, // @Cleanup: remove
-    MIR_FN_GENERATED_MIXED              = 1 << 3,
+    MIR_FN_GENERATED_MIXED              = 1 << 2,
 };
 
 // FN

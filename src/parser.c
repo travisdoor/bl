@@ -68,7 +68,7 @@ struct context {
     struct {
         hash_t                    key;
         enum hash_directive_flags value;
-    } * hash_directive_table;
+    } *hash_directive_table;
 
     struct assembly     *assembly;
     struct unit         *unit;
@@ -111,7 +111,7 @@ static struct ast *parse_type_polymorph(struct context *ctx);
 static struct ast *parse_type_arr(struct context *ctx);
 static struct ast *parse_type_slice(struct context *ctx);
 static struct ast *parse_type_dynarr(struct context *ctx);
-static struct ast *parse_type_fn(struct context *ctx, bool named_args);
+static struct ast *parse_type_fn(struct context *ctx, bool named_args, bool create_scope);
 static struct ast *parse_type_fn_group(struct context *ctx);
 static struct ast *parse_type_fn_return(struct context *ctx);
 static struct ast *parse_type_struct(struct context *ctx);
@@ -1528,12 +1528,10 @@ struct ast *parse_expr_lit_fn(struct context *ctx)
          parent_scope->kind == SCOPE_NAMED)
             ? SCOPE_FN
             : SCOPE_FN_LOCAL;
-    struct scope *scope =
-        scope_create(ctx->scope_arenas, scope_kind, scope_get(ctx), &tok_fn->location);
 
-    scope_push(ctx, scope);
+    scope_push(ctx, scope_create(ctx->scope_arenas, scope_kind, parent_scope, &tok_fn->location));
 
-    struct ast *type = parse_type_fn(ctx, true);
+    struct ast *type = parse_type_fn(ctx, /* named_args */ true, /* create_scope */ false);
     bassert(type);
     fn->data.expr_fn.type = type;
     // parse flags
@@ -1947,7 +1945,7 @@ struct ast *parse_type(struct context *ctx)
     type = parse_type_ptr(ctx);
     // keep order
     if (!type) type = parse_type_fn_group(ctx);
-    if (!type) type = parse_type_fn(ctx, false);
+    if (!type) type = parse_type_fn(ctx, /* named_args */ false, /* create_scope */ true);
     // keep order
 
     if (!type) type = parse_type_polymorph(ctx);
@@ -1979,7 +1977,7 @@ struct ast *parse_type_fn_return(struct context *ctx)
         // eat (
         struct token *tok_begin = tokens_consume(ctx->tokens);
         struct scope *scope     = scope_create(
-                ctx->scope_arenas, SCOPE_TYPE_STRUCT, scope_get(ctx), &tok_begin->location);
+            ctx->scope_arenas, SCOPE_TYPE_STRUCT, scope_get(ctx), &tok_begin->location);
         scope_push(ctx, scope);
 
         struct ast *type_struct =
@@ -2018,7 +2016,7 @@ struct ast *parse_type_fn_return(struct context *ctx)
     return_zone(parse_type(ctx));
 }
 
-struct ast *parse_type_fn(struct context *ctx, bool named_args)
+struct ast *parse_type_fn(struct context *ctx, bool named_args, bool create_scope)
 {
     zone();
     struct token *tok_fn = tokens_consume_if(ctx->tokens, SYM_FN);
@@ -2030,6 +2028,11 @@ struct ast *parse_type_fn(struct context *ctx, bool named_args)
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_fn, scope_get(ctx)));
     }
     struct ast *fn = ast_create_node(ctx->ast_arena, AST_TYPE_FN, tok_fn, scope_get(ctx));
+
+    if (create_scope) {
+        scope_push(ctx, scope_create(ctx->scope_arenas, SCOPE_FN, scope_get(ctx), &tok_fn->location));
+    } 
+
     // parse arg types
     bool        rq    = false;
     u32         index = 0;
@@ -2054,6 +2057,7 @@ NEXT:
         if (tokens_peek_2nd(ctx->tokens)->sym == SYM_RBLOCK) {
             report_error(EXPECTED_NAME, tok_err, CARET_WORD, "Expected type after comma ','.");
             arrpop(ctx->fn_type_stack);
+            if (create_scope) scope_pop(ctx);
             return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_fn, scope_get(ctx)));
         }
     }
@@ -2066,10 +2070,12 @@ NEXT:
                      "Expected end of argument type list ')' or another argument separated "
                      "by comma.");
         arrpop(ctx->fn_type_stack);
+        if (create_scope) scope_pop(ctx);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_fn, scope_get(ctx)));
     }
     fn->data.type_fn.ret_type = parse_type_fn_return((ctx));
     arrpop(ctx->fn_type_stack);
+    if (create_scope) scope_pop(ctx);
     return_zone(fn);
 }
 
