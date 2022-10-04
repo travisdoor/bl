@@ -1570,6 +1570,59 @@ void interp_instr_decl_ref(struct virtual_machine *vm, struct mir_instr_decl_ref
     case SCOPE_ENTRY_VARIANT:
         break;
 
+    case SCOPE_ENTRY_ARG: {
+        struct mir_arg *arg = entry->data.arg;
+        bassert(arg);
+        // Caller is optional, when we call function implicitly there is no call instruction which
+        // we can use, so we need to handle also this situation. In such case we expect all
+        // arguments to be already pushed on the stack.
+        struct mir_instr_call *caller = (struct mir_instr_call *)get_ra(vm)->caller;
+
+        if (caller) {
+            mir_instrs_t     *arg_values     = caller->args;
+            struct mir_instr *curr_arg_value = sarrpeekor(arg_values, arg->index, NULL);
+            bassert(curr_arg_value);
+
+            if (mir_is_comptime(curr_arg_value)) {
+                struct mir_type *type = curr_arg_value->value.type;
+                stack_push(vm, curr_arg_value->value.data, type);
+            } else {
+                // Arguments are located in reverse order right before return address on the
+                // stack so we can find them inside loop adjusting address up on the stack.
+                struct mir_instr *arg_value = NULL;
+                // starting point
+                vm_stack_ptr_t arg_ptr = (vm_stack_ptr_t)vm->stack->ra;
+                for (u32 i = 0; i <= arg->index; ++i) {
+                    arg_value = sarrpeek(arg_values, i);
+                    bassert(arg_value);
+                    if (mir_is_comptime(arg_value)) continue;
+                    arg_ptr -= stack_alloc_size(arg_value->value.type->store_size_bytes);
+                }
+
+                stack_push(vm, (vm_stack_ptr_t)arg_ptr, arg->type);
+            }
+
+            return;
+        }
+
+        // Caller instruction not specified!!!
+        struct mir_fn *fn = ref->base.owner_block->owner_fn;
+        bassert(fn && "Argument instruction cannot determinate current function");
+
+        // All arguments must be already on the stack in reverse order.
+        mir_args_t *args = fn->type->data.fn.args;
+        bassert(args && "Function has no arguments");
+
+        // starting point
+        vm_stack_ptr_t arg_ptr = (vm_stack_ptr_t)vm->stack->ra;
+        for (u32 i = 0; i <= arg->index; ++i) {
+            arg_ptr -= stack_alloc_size(sarrpeek(args, i)->type->store_size_bytes);
+        }
+
+        stack_push(vm, (vm_stack_ptr_t)arg_ptr, arg->type);
+        break;
+    }
+
     default:
         babort("invalid declaration reference");
     }

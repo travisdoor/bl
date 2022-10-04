@@ -34,6 +34,7 @@
 #include "common.h"
 #include "scope.h"
 #include "stb_ds.h"
+#include "vm.h"
 #include <combaseapi.h>
 #include <stdarg.h>
 
@@ -617,8 +618,11 @@ static struct mir_instr *append_instr_switch(struct context         *ctx,
                                              bool                    user_defined_default,
                                              mir_switch_cases_t     *cases);
 
-static struct mir_instr *
-append_instr_load(struct context *ctx, struct ast *node, struct mir_instr *src);
+static struct mir_instr *append_instr_load(struct context   *ctx,
+                                           struct ast       *node,
+                                           struct mir_instr *src,
+                                           const bool        is_deref);
+
 static struct mir_instr *append_instr_type_fn(struct context   *ctx,
                                               struct ast       *node,
                                               struct mir_instr *ret_type,
@@ -1739,10 +1743,16 @@ static inline bool is_load_needed(struct mir_instr *instr)
         //
         // Ex.: j : *s32 = ^ (cast(**s32) i_ptr_ptr);
         //
-        // But I'm not 100% sure that this didn't broke something else...
+        // But I'm not 100% sure that this didn't break something else...
         //
         struct mir_instr_load *load = (struct mir_instr_load *)instr;
         return load->is_deref && is_load_needed(load->src);
+    }
+
+    case MIR_INSTR_DECL_REF: {
+        // Argument types are directly referenced by values. However we should them keep immutable!
+        struct mir_instr_decl_ref *ref = (struct mir_instr_decl_ref *)instr;
+        return ref->scope_entry->kind != SCOPE_ENTRY_ARG;
     }
 
     default:
@@ -3953,10 +3963,12 @@ struct mir_instr *append_instr_member_ptr(struct context      *ctx,
     return tmp;
 }
 
-struct mir_instr *append_instr_load(struct context *ctx, struct ast *node, struct mir_instr *src)
+struct mir_instr *
+append_instr_load(struct context *ctx, struct ast *node, struct mir_instr *src, const bool is_deref)
 {
     struct mir_instr_load *tmp = create_instr(ctx, MIR_INSTR_LOAD, node);
     tmp->src                   = ref_instr(src);
+    tmp->is_deref              = is_deref;
     append_current_block(ctx, &tmp->base);
     return &tmp->base;
 }
@@ -6761,8 +6773,10 @@ struct result analyze_instr_switch(struct context *ctx, struct mir_instr_switch 
 struct result analyze_instr_load(struct context *ctx, struct mir_instr_load *load)
 {
     zone();
+    bassert(load->src);
+
     struct mir_instr *src = load->src;
-    bassert(src);
+
     if (mir_is_pointer_type(src->value.type)) {
         struct mir_type *type = mir_deref_type(src->value.type);
         bassert(type);
@@ -6856,25 +6870,23 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
             if (is_vargs && i != sarrlenu(type_fn->args) - 1) {
                 report_error(INVALID_TYPE,
                              arg->decl_node,
-                             "VArgs function argument must be last in "
-                             "the argument list.");
+                             "VArgs function argument must be the last in the argument list.");
                 return_zone(FAIL);
             }
             if (is_vargs && has_default_args) {
                 struct mir_instr *arg_prev = sarrpeek(type_fn->args, i - 1);
                 report_error(INVALID_TYPE,
                              arg_prev->node,
-                             "Argument with default value cannot be used with VArgs "
-                             "presented in the function argument list.");
+                             "Argument with default value cannot be used with VArgs presented in "
+                             "the function argument list.");
                 return_zone(FAIL);
             }
             if (!arg->default_value && has_default_args) {
                 struct mir_instr *arg_prev = sarrpeek(type_fn->args, i - 1);
                 report_error(INVALID_TYPE,
                              arg_prev->node,
-                             "All arguments with default value must be listed last "
-                             "in the function argument list. Before arguments "
-                             "without default value.");
+                             "All arguments with default value must be listed last in the function "
+                             "argument list. Before arguments without default value.");
                 return_zone(FAIL);
             }
             sarrput(args, arg);
@@ -6888,9 +6900,24 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
             return_zone(FAIL);
         }
 
-        bassert(mir_is_comptime(type_fn->ret_type));
-        ret_type = MIR_CEV_READ_AS(struct mir_type *, &type_fn->ret_type->value);
+        if (!mir_is_comptime(type_fn->ret_type)) {
+            report_error(EXPECTED_COMPTIME,
+                         type_fn->ret_type->node,
+                         "Return type is expected to be compile-time known.");
+            return_zone(FAIL);
+        }
+
+        if (type_fn->ret_type->value.type->kind == MIR_TYPE_PLACEHOLDER) {
+            ret_type = type_fn->ret_type->value.type;
+        } else if (type_fn->ret_type->value.type->kind != MIR_TYPE_TYPE) {
+            report_error(INVALID_TYPE, type_fn->ret_type->node, "Expected type name.");
+            return_zone(FAIL);
+        } else {
+            ret_type = MIR_CEV_READ_AS(struct mir_type *, &type_fn->ret_type->value);
+        }
+
         bmagic_assert(ret_type);
+
         // Disable polymorph master as return type.
         if (ret_type->kind == MIR_TYPE_POLY && ret_type->data.poly.is_master) {
             report_error(INVALID_TYPE,
@@ -6908,6 +6935,7 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
                                                       .has_default_args = has_default_args,
                                                       .is_polymorph     = is_polymorph,
                                                   });
+
     MIR_CEV_WRITE_AS(struct mir_type *, &type_fn->base.value, result_type);
     return_zone(PASS);
 }
@@ -6969,7 +6997,7 @@ struct result analyze_instr_decl_member(struct context *ctx, struct mir_instr_de
         }
 
         if (!mir_is_comptime(decl->tag)) {
-            report_error(EXPECTED_CONST,
+            report_error(EXPECTED_COMPTIME,
                          decl->tag->node,
                          "Struct member tag must be compile-time constant.");
             return_zone(FAIL);
@@ -7131,12 +7159,6 @@ struct result analyze_instr_decl_arg(struct context *ctx, struct mir_instr_decl_
         strcmp(decl->base.node->location->unit->filepath, "C:/Develop/bl/tests/test.bl") == 0;
 
     if (is_experimental) {
-        if (arg->is_recipe)
-            blog("Argument recipe: '%s:%s:%d'.",
-                 arg->id ? arg->id->str : "?",
-                 arg->decl_node ? arg->decl_node->location->unit->filename : "?",
-                 arg->decl_node ? arg->decl_node->location->line : 0);
-
         bassert(arg->entry && "Missing scope entry for function argument.");
         arg->entry->kind     = SCOPE_ENTRY_ARG;
         arg->entry->data.arg = arg;
@@ -7264,7 +7286,7 @@ struct result analyze_instr_type_slice(struct context *ctx, struct mir_instr_typ
     }
 
     if (type_slice->elem_type->value.type->kind != MIR_TYPE_TYPE) {
-        report_error(INVALID_TYPE, type_slice->elem_type->node, "Expected type.");
+        report_error(INVALID_TYPE, type_slice->elem_type->node, "Expected type name.");
         return_zone(FAIL);
     }
 
@@ -7311,7 +7333,7 @@ struct result analyze_instr_type_dynarr(struct context                *ctx,
     }
 
     if (type_dynarr->elem_type->value.type->kind != MIR_TYPE_TYPE) {
-        report_error(INVALID_TYPE, type_dynarr->elem_type->node, "Expected type.");
+        report_error(INVALID_TYPE, type_dynarr->elem_type->node, "Expected type name.");
         return_zone(FAIL);
     }
 
@@ -7350,7 +7372,7 @@ struct result analyze_instr_type_vargs(struct context *ctx, struct mir_instr_typ
         }
 
         if (type_vargs->elem_type->value.type->kind != MIR_TYPE_TYPE) {
-            report_error(INVALID_TYPE, type_vargs->elem_type->node, "Expected type.");
+            report_error(INVALID_TYPE, type_vargs->elem_type->node, "Expected type name.");
             return_zone(FAIL);
         }
 
@@ -7394,7 +7416,7 @@ struct result analyze_instr_type_array(struct context *ctx, struct mir_instr_typ
     }
 
     if (type_arr->elem_type->value.type->kind != MIR_TYPE_TYPE) {
-        report_error(INVALID_TYPE, type_arr->elem_type->node, "Expected type.");
+        report_error(INVALID_TYPE, type_arr->elem_type->node, "Expected type name.");
         return_zone(FAIL);
     }
 
@@ -7497,7 +7519,13 @@ struct result analyze_instr_type_ptr(struct context *ctx, struct mir_instr_type_
         return_zone(FAIL);
     }
 
-    if (type_ptr->type->value.type->kind != MIR_TYPE_TYPE) {
+    struct mir_type *src_type = type_ptr->type->value.type;
+    if (src_type->kind == MIR_TYPE_PLACEHOLDER) {
+        type_ptr->base.value.type = src_type;
+        return_zone(PASS);
+    }
+
+    if (src_type->kind != MIR_TYPE_TYPE) {
         report_error(INVALID_TYPE, type_ptr->type->node, "Expected type name.");
         return_zone(FAIL);
     }
@@ -8820,6 +8848,8 @@ CALL_ANALYZE_BEGIN:
     const usize func_argc = sarrlenu(fn_type->data.fn.args);
     const usize call_argc = sarrlenu(call->args);
 
+    struct mir_type *expected_vargs_elem_type = NULL;
+
     for (usize index = 0; index < MAX(func_argc, call_argc); ++index) {
         struct mir_arg   *fn_arg         = sarrpeekor(fn_type->data.fn.args, index, NULL);
         struct mir_instr *call_arg_instr = sarrpeekor(call->args, index, NULL);
@@ -8831,6 +8861,45 @@ CALL_ANALYZE_BEGIN:
         if (!fn_arg) {
             // We're providing more arguments than the function has.
             goto INVALID_ARGS;
+        }
+
+        if (fn_arg->type->kind == MIR_TYPE_VARGS) {
+            // Handle vargs, note that the vargs argument must be the last one in the function
+            // argument list (this is already checked before we reach this stage).
+            // All following arguments (event 0 is supported) will be converted to the vargs array
+            // and passed to the function.
+            bassert(index + 1 == func_argc && "VArgs must be the last function argument.");
+
+            expected_vargs_elem_type = mir_get_struct_elem_type(fn_arg->type, 1);
+            expected_vargs_elem_type = mir_deref_type(expected_vargs_elem_type);
+            bassert(expected_vargs_elem_type);
+
+            const s32 vargsc = call_argc - (func_argc - 1);
+            bassert(vargsc >= 0);
+
+            mir_instrs_t *values = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+
+            struct mir_instr *vargs = ref_instr(
+                create_instr_vargs_impl(ctx, call->base.node, expected_vargs_elem_type, values));
+
+            for (s32 i = 0; i < vargsc; ++i) {
+                sarrput(values, sarrpeek(call->args, func_argc + i - 1));
+            }
+            insert_instr_before(&call->base, vargs);
+
+            if (analyze_instr_vargs(ctx, (struct mir_instr_vargs *)vargs).state != ANALYZE_PASSED) {
+                // vargs->state = MIR_IS_FAILED; @Cleanup: check this.
+                return_zone(FAIL);
+            }
+            // No evaluation here???
+            vargs->state = MIR_IS_COMPLETE;
+
+            // Erase vargs from arguments.
+            sarrsetlen(call->args, func_argc - 1);
+
+            // Replace the call-side argument last with vargs.
+            sarrput(call->args, vargs);
+            call_arg_instr = vargs;
         }
 
         if (!call_arg_instr) {
@@ -8873,6 +8942,7 @@ CALL_ANALYZE_BEGIN:
                     "Function argument is declared here:");
             goto FAILED;
         }
+        if (expected_vargs_elem_type) break;
     }
 
     bassert(sarrlenu(call->args) == sarrlenu(fn_type->data.fn.args) && "Incorrect call analyze!");
@@ -10916,8 +10986,8 @@ struct mir_instr *ast_expr_deref(struct context *ctx, struct ast *deref)
 {
     struct mir_instr *next = ast(ctx, deref->data.expr_deref.next);
     bassert(next);
-    struct mir_instr_load *load = (struct mir_instr_load *)append_instr_load(ctx, deref, next);
-    load->is_deref              = true;
+    struct mir_instr_load *load =
+        (struct mir_instr_load *)append_instr_load(ctx, deref, next, true);
     return &load->base;
 }
 

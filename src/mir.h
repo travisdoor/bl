@@ -346,7 +346,7 @@ struct mir_type_fn {
 
     // @Cleanup: after new call analyze pass we probably don't need those flags.
     // @Performance: Rewrite to flags.
-    bool is_vargs;
+    bool is_vargs; // @Cleanup: Do we need this?
     // Polymorph function type (not all arguments have known type -> cannot generate type info).
     bool is_polymorph;
     bool has_default_args;
