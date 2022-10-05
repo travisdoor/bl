@@ -11805,7 +11805,7 @@ struct mir_instr *ast_decl_arg(struct context *ctx, struct ast *arg)
     struct scope_entry *entry = NULL;
 
     // @Incomplete: What about registration of '_' arguments?
-    if (ast_name) {
+    if (ast_name && !is_ignored_id(&ast_name->data.ident.id)) {
         struct scope *scope = ast_name->owner_scope;
         bassert(scope && "Missing scope for function argument registration!");
         bassert((scope->kind == SCOPE_FN || scope->kind == SCOPE_FN_LOCAL) &&
