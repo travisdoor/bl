@@ -116,7 +116,7 @@ enum mir_value_address_mode {
     // Value points to memory allocation on the stack or heap but value itself is immutable and
     // cannot be modified.
     MIR_VAM_LVALUE_CONST,
-    // Does not point to allocated memory (ex: const literals).
+    // Does not point to allocated memory (i.e.: const literals).
     MIR_VAM_RVALUE,
 };
 

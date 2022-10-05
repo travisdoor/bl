@@ -1,10 +1,14 @@
-// Analyze state can be removed (only bool is enough)?
-// 
-// ADD FATAL analyze state to handle invalid polymorph generation!
-// ADD FATAL analyze state to handle invalid polymorph generation!
-// ADD FATAL analyze state to handle invalid polymorph generation!
-//
-// Remove INSTR_ARG
+/*
+
+TODO:
+
+- Remove INSTR_ARG
+- Handle failing of ast generation of generated functions properly.
+- Analyze of comptime arguments must be done when they are used.
+- Change syntax of default argument value assignment to ':'.
+- Update documentation.
+
+*/
 
 Data :: struct {
     a: s32;
@@ -13,7 +17,6 @@ Data :: struct {
 }
 
 main :: fn () s32 {
-    /*
     foo();
 
     ptr := &foo;
@@ -44,17 +47,9 @@ main :: fn () s32 {
     variable_args_2(666);
     variable_args_2(666, 10);
     variable_args_2(666, 10, 20);
-    */
 
-    d: s32;
-
-    cool(&d);
-
-    ptr :: @d;
-    //val :: d;
-
-    //tbl: MyTable(s32, bool);
-    //print("tbl = %\n", @tbl);
+    tbl: MyTable(s32, bool);
+    print("tbl = %\n", @tbl);
 
     //with_call_loc(10);
     /*
@@ -69,10 +64,6 @@ main :: fn () s32 {
     */
 
     return 0;
-}
-
-cool :: fn (ptr: *s32) {
-    i : s32 = @ptr;
 }
 
 MyTable :: fn (TKey: type #comptime, TValue: type #comptime) type #comptime {

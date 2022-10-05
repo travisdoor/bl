@@ -63,6 +63,7 @@ Add glwindow and draw modules + some example projects.
 Add #maybe_unused for function arguments.
 Add mixed function signature.
 Improve compile time execution restore after postpone.
+Function arguments are now immutable.
 
 0.9.0 - PRE-RELEASE
 ---------------------------------------------------------------------------------------

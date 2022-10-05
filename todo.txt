@@ -23,8 +23,8 @@ Application context.
 MISC
 [x] Add support of #maybe_unused for function arguments.
 [ ] Nested functions ignore previous using statement in some cases.
-[ ] Create new(s32) somehow.
-[ ] Change function arguments mutability.
+[x] Create new(s32) somehow.
+[x] Change function arguments mutability.
 [ ] Redesign mutability propagation (now immutable struct cannot have its members modified).
 [ ] Consider application context vs thread context (i.e. temporary allocator is by default thread local but application_context is not).
 [ ] Consider #import and #load to be limited only to the file scope.

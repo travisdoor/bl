@@ -1213,6 +1213,13 @@ static inline bool is_incomplete_struct_type(struct mir_type *type)
     return mir_is_composite_type(type) && type->data.strct.is_incomplete;
 }
 
+static inline bool is_decl_ref_to_arg(struct mir_instr *instr)
+{
+    bassert(instr);
+    return (instr->kind == MIR_INSTR_DECL_REF &&
+            ((struct mir_instr_decl_ref *)instr)->scope_entry->kind == SCOPE_ENTRY_ARG);
+}
+
 // Checks whether type is complete type, checks also dependencies. In practice only composite types
 // can be incomplete, but in some cases (RTTI generation) we need to check whole dependency type
 // tree for completeness.
@@ -5458,12 +5465,13 @@ struct result analyze_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_
     bassert(arr_ptr);
     bassert(arr_ptr->value.type);
 
-    if (!mir_is_pointer_type(arr_ptr->value.type)) {
-        report_error(INVALID_TYPE, elem_ptr->arr_ptr->node, "Expected array type or slice.");
-        return_zone(FAIL);
+    // @Note: Originally we've expected only pointer types to be valid here, however now, function
+    // arguments are referenced directly and those are not pointers; thus we should do the deref of
+    // the type conditionally.
+    struct mir_type *arr_type = arr_ptr->value.type;
+    if (mir_is_pointer_type(arr_type)) {
+        arr_type = mir_deref_type(arr_type);
     }
-
-    struct mir_type *arr_type = mir_deref_type(arr_ptr->value.type);
     bassert(arr_type);
 
     switch (arr_type->kind) {
@@ -5549,11 +5557,14 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
         decl_ref->rid                    = rid;
         unref_instr(target_ptr);
         erase_instr_tree(target_ptr, false, false);
+
         return_zone(POSTPONE);
     }
 
+    bool is_target_ptr_to_argument = false;
     if (mir_is_pointer_type(target_type)) {
-        target_type = mir_deref_type(target_type);
+        target_type               = mir_deref_type(target_type);
+        is_target_ptr_to_argument = is_decl_ref_to_arg(target_ptr);
     }
 
     // Array type
@@ -5769,11 +5780,19 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
         bassert(found->kind == SCOPE_ENTRY_MEMBER);
         struct mir_member *member = found->data.member;
 
+        if (additional_load_needed || is_target_ptr_to_argument) {
+            // The parent expression is referenced by pointer, we should change member reference
+            // mutability eventually.
+            if (!mir_is_comptime(target_ptr)) {
+                target_addr_mode = MIR_VAM_LVALUE;
+            }
+        }
+
         // setup member_ptr type
         struct mir_type *member_ptr_type   = create_type_ptr(ctx, member->type);
         member_ptr->base.value.type        = member_ptr_type;
         member_ptr->base.value.addr_mode   = target_addr_mode;
-        member_ptr->base.value.is_comptime = target_ptr->value.is_comptime;
+        member_ptr->base.value.is_comptime = mir_is_comptime(target_ptr);
         member_ptr->scope_entry            = found;
 
         return_zone(PASS);
@@ -6774,7 +6793,9 @@ struct result analyze_instr_load(struct context *ctx, struct mir_instr_load *loa
     zone();
     bassert(load->src);
 
+    bool is_src_ptr_to_argument = false;
     if (load->is_deref) {
+        is_src_ptr_to_argument = is_decl_ref_to_arg(load->src);
         if (analyze_slot(ctx, &analyze_slot_conf_basic, &load->src, NULL) != ANALYZE_PASSED) {
             return_zone(FAIL);
         }
@@ -6785,9 +6806,15 @@ struct result analyze_instr_load(struct context *ctx, struct mir_instr_load *loa
     if (mir_is_pointer_type(src->value.type)) {
         struct mir_type *type = mir_deref_type(src->value.type);
         bassert(type);
+
+        enum mir_value_address_mode addr_mode = src->value.addr_mode;
+        if (is_src_ptr_to_argument && !mir_is_comptime(src)) {
+            addr_mode = MIR_VAM_LVALUE;
+        }
+
         load->base.value.type        = type;
-        load->base.value.is_comptime = src->value.is_comptime;
-        load->base.value.addr_mode   = src->value.addr_mode;
+        load->base.value.is_comptime = mir_is_comptime(src);
+        load->base.value.addr_mode   = addr_mode;
     } else if (src->value.type->kind == MIR_TYPE_TYPE) {
         bassert(mir_is_comptime(load->src));
         struct mir_type *src_type = MIR_CEV_READ_AS(struct mir_type *, &src->value);
@@ -9319,7 +9346,7 @@ struct result analyze_instr_store(struct context *ctx, struct mir_instr_store *s
     }
 
     if (dest->value.addr_mode == MIR_VAM_LVALUE_CONST || dest->value.addr_mode == MIR_VAM_RVALUE) {
-        report_error(INVALID_EXPR, store->base.node, "Cannot assign to immutable.");
+        report_error(INVALID_EXPR, store->base.node, "Cannot assign to immutable constant.");
     }
 
     struct mir_type *dest_type = mir_deref_type(dest->value.type);
