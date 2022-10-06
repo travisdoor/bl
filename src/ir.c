@@ -1771,6 +1771,7 @@ enum state emit_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_ptr *e
     LLVMValueRef     llvm_arr_ptr = elem_ptr->arr_ptr->llvm_value;
     LLVMValueRef     llvm_index   = elem_ptr->index->llvm_value;
     bassert(llvm_arr_ptr && llvm_index);
+    bassert(arr_type);
 
     const bool is_global = mir_is_global(&elem_ptr->base);
 

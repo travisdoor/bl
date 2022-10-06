@@ -36,9 +36,9 @@ main :: fn () s32 {
  
     this_is_called_in_comptime(10, true);
 
-    num : *s32 = new(s32) #maybe_unused;
-    (@num) = 800;
-    call_with_pointer(num);
+    //num : *s32 = new(s32) #maybe_unused;
+    //(@num) = 800;
+    //call_with_pointer(num);
     //to_any(num);
 
     mixed_poly(10);
@@ -48,6 +48,9 @@ main :: fn () s32 {
     variable_args_2(666);
     variable_args_2(666, 10);
     variable_args_2(666, 10, 20);
+
+    v := 10;
+    invalid :: @v;
 
     tbl: MyTable(s32, bool);
     print("tbl = %\n", @tbl);
@@ -68,7 +71,7 @@ main :: fn () s32 {
 }
 
 MyTable :: fn (TKey: type #comptime, TValue: type #comptime) type #comptime {
-    print(">>> Generation table type!\n");
+    //print(">>> Generation table type!\n");
     return struct {
         key: TKey;
         value: TValue;
@@ -108,8 +111,8 @@ poly_default :: fn (v: ?T, c: T = 20) {
 }
 
 this_is_called_in_comptime :: fn (a: s32, b: bool) #comptime {
-    // @Incomplete: internal error.
-    print(">>> this_is_called_in_comptime(%, %)\n", a, b);
+    // @Incomplete: assert!!!
+    //print(">>> this_is_called_in_comptime(%, %)\n", a, b); 
 }
 
 mixed_poly :: fn (v: ?T #comptime) {

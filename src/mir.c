@@ -897,9 +897,11 @@ static ANALYZE_STAGE_FN(set_auto);
 
 static const struct slot_config analyze_slot_conf_dummy = {.count = 0};
 
-static const struct slot_config analyze_slot_conf_basic = {
-    .count  = 2,
-    .stages = {analyze_stage_unroll, analyze_stage_load}};
+static const struct slot_config analyze_slot_conf_basic = {.count  = 2,
+                                                           .stages = {
+                                                               analyze_stage_unroll,
+                                                               analyze_stage_load,
+                                                           }};
 
 static const struct slot_config analyze_slot_conf_default = {.count  = 9,
                                                              .stages = {
@@ -1211,13 +1213,6 @@ static inline struct scope *get_base_type_scope(struct mir_type *struct_type)
 static inline bool is_incomplete_struct_type(struct mir_type *type)
 {
     return mir_is_composite_type(type) && type->data.strct.is_incomplete;
-}
-
-static inline bool is_decl_ref_to_arg(struct mir_instr *instr)
-{
-    bassert(instr);
-    return (instr->kind == MIR_INSTR_DECL_REF &&
-            ((struct mir_instr_decl_ref *)instr)->scope_entry->kind == SCOPE_ENTRY_ARG);
 }
 
 // Checks whether type is complete type, checks also dependencies. In practice only composite types
@@ -1547,6 +1542,35 @@ static inline void push_into_gscope(struct context *ctx, struct mir_instr *instr
 {
     bassert(instr);
     arrput(ctx->assembly->MIR.global_instrs, instr);
+}
+
+static inline bool is_decl_ref_to_arg(struct mir_instr *instr)
+{
+    bassert(instr);
+    return (instr->kind == MIR_INSTR_DECL_REF &&
+            ((struct mir_instr_decl_ref *)instr)->scope_entry->kind == SCOPE_ENTRY_ARG);
+}
+
+// @Incomplete: Comment!
+static inline struct mir_instr *remove_arg_deref(struct mir_instr           **input,
+                                                 enum mir_value_address_mode *out_address_mode)
+{
+    bassert(input && *input);
+    bassert((*input)->state == MIR_IS_COMPLETE);
+    if ((*input)->kind == MIR_INSTR_LOAD) {
+        struct mir_instr_load *load = (struct mir_instr_load *)(*input);
+        if (load->is_deref && is_decl_ref_to_arg(load->src)) {
+            struct mir_instr *orig_src = load->src;
+            bassert(orig_src);
+            erase_instr(*input);
+            (*out_address_mode) =
+                mir_is_comptime(orig_src) ? orig_src->value.addr_mode : MIR_VAM_LVALUE;
+            (*input) = orig_src;
+            return orig_src;
+        }
+    }
+    (*out_address_mode) = (*input)->value.addr_mode;
+    return *input;
 }
 
 // =================================================================================================
@@ -5461,13 +5485,9 @@ struct result analyze_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_
         return_zone(FAIL);
     }
 
-    struct mir_instr *arr_ptr = elem_ptr->arr_ptr;
-    bassert(arr_ptr);
-    bassert(arr_ptr->value.type);
+    enum mir_value_address_mode addr_mode;
+    struct mir_instr           *arr_ptr = remove_arg_deref(&elem_ptr->arr_ptr, &addr_mode);
 
-    // @Note: Originally we've expected only pointer types to be valid here, however now, function
-    // arguments are referenced directly and those are not pointers; thus we should do the deref of
-    // the type conditionally.
     struct mir_type *arr_type = arr_ptr->value.type;
     if (mir_is_pointer_type(arr_type)) {
         arr_type = mir_deref_type(arr_type);
@@ -5519,7 +5539,7 @@ struct result analyze_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_
     }
     }
 
-    elem_ptr->base.value.addr_mode   = arr_ptr->value.addr_mode;
+    elem_ptr->base.value.addr_mode   = addr_mode;
     elem_ptr->base.value.is_comptime = mir_is_comptime(arr_ptr) && mir_is_comptime(elem_ptr->index);
     return_zone(PASS);
 }
@@ -6793,17 +6813,13 @@ struct result analyze_instr_load(struct context *ctx, struct mir_instr_load *loa
     zone();
     bassert(load->src);
 
-#if CLEANUP
     bool is_src_ptr_to_argument = false;
     if (load->is_deref) {
         is_src_ptr_to_argument = is_decl_ref_to_arg(load->src);
-        if (analyze_slot(ctx, &analyze_slot_conf_basic, &load->src, NULL) != ANALYZE_PASSED) {
-            return_zone(FAIL);
-        }
+        //if (analyze_slot(ctx, &analyze_slot_conf_basic, &load->src, NULL) != ANALYZE_PASSED) {
+        //    return_zone(FAIL);
+        //}
     }
-#else
-    const bool is_src_ptr_to_argument = load->is_deref && is_decl_ref_to_arg(load->src);
-#endif
 
     struct mir_instr *src = load->src;
 
@@ -9339,23 +9355,9 @@ REPORT_OVERLOAD_LOCATION:
 struct result analyze_instr_store(struct context *ctx, struct mir_instr_store *store)
 {
     zone();
-    struct mir_instr *dest = store->dest;
-    bassert(dest);
-    bassert(dest->state == MIR_IS_COMPLETE);
 
-    // @Incomplete: Comment!
-    if (dest->kind == MIR_INSTR_LOAD) {
-        struct mir_instr_load *load = (struct mir_instr_load *)dest;
-        if (load->is_deref && is_decl_ref_to_arg(load->src)) {
-            struct mir_instr *orig_src = load->src;
-            erase_instr(dest);
-            dest = store->dest = orig_src;
-
-            if (!mir_is_comptime(dest)) {
-                dest->value.addr_mode = MIR_VAM_LVALUE;
-            }
-        }
-    }
+    enum mir_value_address_mode addr_mode;
+    struct mir_instr           *dest = remove_arg_deref(&store->dest, &addr_mode);
 
     if (!mir_is_pointer_type(dest->value.type)) {
         report_error(
@@ -9363,10 +9365,11 @@ struct result analyze_instr_store(struct context *ctx, struct mir_instr_store *s
         return_zone(FAIL);
     }
 
-    if (dest->value.addr_mode == MIR_VAM_LVALUE_CONST || dest->value.addr_mode == MIR_VAM_RVALUE) {
+    if (addr_mode != MIR_VAM_LVALUE) {
         report_error(INVALID_EXPR, store->base.node, "Cannot assign to immutable constant.");
     }
 
+    bassert(!mir_is_comptime(dest) && "Store destination cannot be compile-time constant!");
     struct mir_type *dest_type = mir_deref_type(dest->value.type);
     bassert(dest_type && "store destination has invalid base type");
 

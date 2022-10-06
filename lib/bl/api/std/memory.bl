@@ -345,8 +345,9 @@ free_slice :: fn (slice: *[]?T, allocator: *Allocator = null, loc := #call_locat
 /// !!! warning
 ///     Function cause panic in case combination of `start` and `end` is out of `slice` range.
 slice_range :: fn (slice: []?T, start: s64, end: s64 = -1) []T #inline {
-    if end < 0 { end = slice.len; }
-    len :: end - start;
+    e := end; 
+    if e < 0 { e = slice.len; }
+    len :: e - start;
     if len < 0 || len > slice.len || start < 0 || start >= slice.len {
          panic("Invalid slice range, wanted <%, %) slice size is %.", start, end, slice.len);
     }

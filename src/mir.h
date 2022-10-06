@@ -917,7 +917,7 @@ static inline bool mir_is_pointer_type(const struct mir_type *type)
 
 static inline struct mir_type *mir_deref_type(const struct mir_type *ptr)
 {
-    if (!mir_is_pointer_type(ptr)) return NULL;
+    bassert(mir_is_pointer_type(ptr) && "Attempt to dereference non-pointer type!");
     return ptr->data.ptr.expr;
 }
 
@@ -965,11 +965,13 @@ static inline struct mir_type *mir_get_fn_arg_type(const struct mir_type *type, 
 // Determinate if the instruction has compile time known value.
 static inline bool mir_is_comptime(const struct mir_instr *instr)
 {
+    bassert(instr);
     return instr->value.is_comptime;
 }
 
 static inline bool mir_is_global_block(const struct mir_instr_block *instr)
 {
+    bassert(instr);
     return instr->owner_fn == NULL;
 }
 

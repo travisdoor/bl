@@ -78,12 +78,13 @@ read :: fn (stream: *Stream, dest: *u8, bytes_to_read: s64) (s64, Error) #inline
 read_data :: fn (stream: *Stream, dest: *[..]u8, bytes_to_read: s64 = std.S64_MAX) (s64, Error) {
     tmp: [512]u8 #noinit;
     read_bytes: s64;
-    loop bytes_to_read > 0 {
-        bytes, err :: read(stream, tmp.ptr, min(tmp.len, bytes_to_read));
+    processed_bytes := bytes_to_read;
+    loop processed_bytes > 0 {
+        bytes, err :: read(stream, tmp.ptr, min(tmp.len, processed_bytes));
         if err { return read_bytes, err; }
         if bytes == 0 { break; }
         read_bytes += bytes;
-        bytes_to_read -= bytes;
+        processed_bytes -= bytes;
         array_push_all(dest, []u8.{ ptr = tmp.ptr, len = bytes });
     }
     return read_bytes, OK;
@@ -94,12 +95,13 @@ read_data :: fn (stream: *Stream, dest: *[..]u8, bytes_to_read: s64 = std.S64_MA
 read_string :: fn (stream: *Stream, dest: *string, bytes_to_read: s64 = std.S64_MAX) (s64, Error) {
     tmp: [512]u8 #noinit;
     read_bytes: s64;
-    loop bytes_to_read > 0 {
-        bytes, err :: read(stream, tmp.ptr, min(tmp.len, bytes_to_read));
+    processed_bytes := bytes_to_read;
+    loop processed_bytes > 0 {
+        bytes, err :: read(stream, tmp.ptr, min(tmp.len, processed_bytes));
         if err { return read_bytes, err; }
         if bytes == 0 { break; }
         read_bytes += bytes;
-        bytes_to_read -= bytes;
+        processed_bytes -= bytes;
         str :: string_view.{ ptr = tmp.ptr, len = bytes };
         str_append(dest, str);
     }

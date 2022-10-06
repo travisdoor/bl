@@ -154,9 +154,10 @@ ensure_space :: fn (arr: *_Array, elem_size: usize, needed_elems: usize, exact: 
 };
 
 impl_push :: fn (arr: *[..]?T, v: T) *T #inline {
+    data      :: v;
     elem_size :: sizeof(T);
-    dest :: impl_push_empty(arr);
-    memcpy(auto dest, auto &v, elem_size);
+    dest      :: impl_push_empty(arr);
+    memcpy(auto dest, auto &data, elem_size);
     return dest;
 }
 

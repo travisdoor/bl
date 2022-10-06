@@ -511,12 +511,12 @@ str_split_by :: fn (str: string_view, delimiter: u8) []string_view {
     ret: []string_view;
     alloc_slice(&ret, count);
     ri: s32;
-    lhs: string_view;
-    rhs: string_view;
-    loop str_split_by_first(str, delimiter, &lhs, &rhs) {
+    lhs, rhs: string_view;
+    rest := str;
+    loop str_split_by_first(rest, delimiter, &lhs, &rhs) {
         ret[ri] = lhs;
         ri += 1;
-        str = rhs;
+        rest = rhs;
     }
     if ri == 0 { ret[ri] = lhs; }
     else       { ret[ri] = rhs; }
@@ -526,13 +526,19 @@ str_split_by :: fn (str: string_view, delimiter: u8) []string_view {
 /// Call the `visitor` callback for each token in the `str` input split by `delimiter`. When the `visitor`
 /// callback returns `false` parsing is stopped.
 ///
+/// **Overloads:**
+/// ```c
+/// fn (str: string_view, delimiter: u8, ctx: *?T, visitor: *fn(token: string_view, ctx: *T) bool)
+/// fn (str: string_view, delimiter: u8, visitor: *fn(token: string_view) bool)
+/// ```
+///
 /// ### Example
 ///
 /// ```c
 /// main :: fn () s32 {
 ///     using std;
 ///     path := "/home/travis/develop/foo";
-///     str_tokenize(path, '/', &fn (token: string_view, _: *u8) bool {
+///     str_tokenize(path, '/', &fn (token: string_view) bool {
 ///         print("TOKEN: %\n", token);
 ///         return true;
 ///     });
@@ -543,19 +549,36 @@ str_split_by :: fn (str: string_view, delimiter: u8) []string_view {
 ///
 /// !!! note
 ///     Callback is not called for empty tokens.
-str_tokenize :: fn (str: string_view, delimiter: u8, visitor: *fn(token: string_view, ctx: *?T) bool, ctx: *T = null) {
-    assert(visitor);
-    lhs: string_view;
-    rhs: string_view;
-    loop str_split_by_first(str, delimiter, &lhs, &rhs) {
-        if lhs.len > 0 {
-            if !visitor(lhs, ctx) { return; }
+str_tokenize :: fn {
+    fn (str: string_view, delimiter: u8, ctx: *?T, visitor: *fn(token: string_view, ctx: *T) bool) {
+        assert(visitor);
+        lhs, rhs: string_view;
+        rest := str;
+        loop str_split_by_first(rest, delimiter, &lhs, &rhs) {
+            if lhs.len > 0 {
+                if !visitor(lhs, ctx) { return; }
+            }
+            rest = rhs;
         }
-        str = rhs;
-    }
-    if rhs.len > 0 {
-        visitor(rhs, ctx);
-    }
+        if rhs.len > 0 {
+            visitor(rhs, ctx);
+        }
+    };
+
+    fn (str: string_view, delimiter: u8, visitor: *fn(token: string_view) bool) {
+        assert(visitor);
+        lhs, rhs: string_view;
+        rest := str;
+        loop str_split_by_first(rest, delimiter, &lhs, &rhs) {
+            if lhs.len > 0 {
+                if !visitor(lhs) { return; }
+            }
+            rest = rhs;
+        }
+        if rhs.len > 0 {
+            visitor(rhs);
+        }
+    };
 }
 
 /// Counts desired character occurrence in the input string.
@@ -752,7 +775,7 @@ get_block_head :: fn (ptr: *u8) *BlockHead #inline {
     return cast(*BlockHead) get_allocation_ptr(ptr);
 }
 
-make_more_room_if_needed :: fn (org_ptr: *u8, size: usize) *u8 {
+make_more_room_if_needed :: fn (orig_ptr: *u8, size: usize) *u8 {
     head      :: get_block_head(orig_ptr);
     allocated :: head.allocated_size;
     allocator :: head.allocator;
