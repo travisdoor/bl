@@ -976,10 +976,9 @@ documentation.
 ## Variable
 
 Variable associate name with value of some type. Variables in BL can be declared as mutable or
-immutable, value of immutable variable cannot be changed and can be set only by variable
-initializer. Type of variable is optional when value is specified. Variables can be declared in
-local or global scope, local variable lives only in particular function during function execution,
-      global variables lives during whole execution.
+immutable, value of immutable variable cannot be changed and must be set only once. Type of variable is optional 
+when value is specified. Variables can be declared in local or global scope, local variable lives only in particular 
+function during function execution, global variables lives during whole execution.
 
 Variables without explicit initialization value are `zero initialized` (set to default value). We
 can suppress this behavior by `#noinit` directive. Global variables must be initialized every time
@@ -1019,7 +1018,7 @@ memset(0) call.
 
 **Example:**
 
-```c
+```rust
 array_compound :: fn () #test {
     // print out all array values
     print_arr :: fn (v: [2]s32) {
@@ -1060,7 +1059,43 @@ Function is chunk of code representing specific piece of program functionality. 
 called with call operator `()`, we can provide any number of arguments into function and get return
 value back on call-side.
 
-Functions can be declared in global or local scope (one function can be nested in other).
+Functions can be declared in global or local scope (one function can be nested in another one).
+
+**Function arguments**
+
+Function arguments in BL are immutable, and does not produce any implicit local stack allocation and
+value duplication in the function body. See the following example:
+
+```rust
+Person :: struct {
+    age: s32;
+}
+
+my_function :: fn (person_1: *Person, person_2: Person, age: s32) {
+    age = 30; // This is invalid 'age' is immutable.
+    person_1 = null; // The same for the 'person_1' argument.
+
+    // The 'person_1' here is immutable (you cannot change the pointer to something else),
+    // however you can modify members using this pointer.
+    // The C equivalent would be something like 'struct Person *const person_1'.
+    person_1.age = age;
+
+    // On the other hand the 'person_2' is passed into the function by value, so the
+    // following expression is invalid; you cannot modify its members.
+    parson_2.age = age;
+
+    // You can use de-reference to modify the whole person data; you do not change
+    // the pointer itself (it still points to the same memory, just content of this
+    // memory is being changed).
+    person: Person;
+    @person_1 = person;
+
+    // In case you want to modify the argument value, you should create a local copy.
+    local_age := age;
+    local_age += 2;
+}
+
+```
 
 ### Named function
 

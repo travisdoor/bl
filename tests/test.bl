@@ -17,10 +17,11 @@ Data :: struct {
 }
 
 main :: fn () s32 {
-    foo();
+    n : s64 = 10;
+    foo(&n);
 
     ptr := &foo;
-    ptr();
+    ptr(&n);
 
     group();
     bar(20);
@@ -79,7 +80,9 @@ my_static_assert :: fn (expr: bool) #comptime {
     unreachable;
 }
 
-foo :: fn () {
+foo :: fn (p: *s64) {
+    tmp := cast(*u64) p;
+    (@tmp) = 0;
 }
 
 group :: fn {
@@ -136,13 +139,15 @@ mixed :: fn (v: s32 #comptime, arr: *[v]s32) {
 mixed_poly_2 :: fn (v: Data #comptime, arr: [v.a]s32) {
     v;
 }
+
+// @Incomplete: Documentation.
+// @Incomplete: Tests.
+new :: fn (T: type #comptime, preferred_allocator: *Allocator = null, loc := #call_location) (ptr: *T, err: Error) #inline {
+    mem, err :: alloc(sizeof(T), alignof(T), preferred_allocator, loc);
+    return auto mem, err; 
+}
 */
 
-new :: fn (T: type #comptime) *T {
-    mem, err :: alloc(sizeof(T));
-    if err { panic(err); }
-    return auto mem; 
-}
 
 /*
 // TODO: Currently we cannot have default value for polymorph master!

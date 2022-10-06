@@ -1761,7 +1761,7 @@ static inline bool is_load_needed(struct mir_instr *instr)
         // @HACK: this solves problem with user-level dereference of pointer to pointer
         // values. We get s32 vs *s32 type mismatch without this.
         //
-        // Ex.: j : *s32 = ^ (cast(**s32) i_ptr_ptr);
+        // Ex.: j : *s32 = @(cast(**s32) i_ptr_ptr);
         //
         // But I'm not 100% sure that this didn't break something else...
         //
@@ -6793,6 +6793,7 @@ struct result analyze_instr_load(struct context *ctx, struct mir_instr_load *loa
     zone();
     bassert(load->src);
 
+#if CLEANUP
     bool is_src_ptr_to_argument = false;
     if (load->is_deref) {
         is_src_ptr_to_argument = is_decl_ref_to_arg(load->src);
@@ -6800,6 +6801,9 @@ struct result analyze_instr_load(struct context *ctx, struct mir_instr_load *loa
             return_zone(FAIL);
         }
     }
+#else
+    const bool is_src_ptr_to_argument = load->is_deref && is_decl_ref_to_arg(load->src);
+#endif
 
     struct mir_instr *src = load->src;
 
@@ -9339,6 +9343,20 @@ struct result analyze_instr_store(struct context *ctx, struct mir_instr_store *s
     bassert(dest);
     bassert(dest->state == MIR_IS_COMPLETE);
 
+    // @Incomplete: Comment!
+    if (dest->kind == MIR_INSTR_LOAD) {
+        struct mir_instr_load *load = (struct mir_instr_load *)dest;
+        if (load->is_deref && is_decl_ref_to_arg(load->src)) {
+            struct mir_instr *orig_src = load->src;
+            erase_instr(dest);
+            dest = store->dest = orig_src;
+
+            if (!mir_is_comptime(dest)) {
+                dest->value.addr_mode = MIR_VAM_LVALUE;
+            }
+        }
+    }
+
     if (!mir_is_pointer_type(dest->value.type)) {
         report_error(
             INVALID_EXPR, store->base.node, "Left hand side of the expression cannot be assigned.");
@@ -9849,7 +9867,9 @@ struct result analyze_instr(struct context *ctx, struct mir_instr *instr)
         } else if (state.state == ANALYZE_FAILED) {
             (*analyze_state) = MIR_IS_FAILED;
 #if BL_DEBUG
+            fprintf(stdout, "Last instruction being analyzed:\n");
             mir_print_instr(stdout, ctx->assembly, instr);
+            fprintf(stdout, "\n\n");
 #endif
         }
     } // PENDING
