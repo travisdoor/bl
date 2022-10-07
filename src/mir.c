@@ -6813,19 +6813,21 @@ struct result analyze_instr_load(struct context *ctx, struct mir_instr_load *loa
     zone();
     bassert(load->src);
 
-    bool is_src_ptr_to_argument = false;
-    if (load->is_deref) {
-        is_src_ptr_to_argument = is_decl_ref_to_arg(load->src);
-        //if (analyze_slot(ctx, &analyze_slot_conf_basic, &load->src, NULL) != ANALYZE_PASSED) {
-        //    return_zone(FAIL);
-        //}
-    }
+    bool              is_src_ptr_to_argument = load->is_deref && is_decl_ref_to_arg(load->src);
+    struct mir_instr *src                    = load->src;
+    struct mir_type  *err_type               = src->value.type;
 
-    struct mir_instr *src = load->src;
+    const bool is_additional_load_needed = is_load_needed(src);
 
     if (mir_is_pointer_type(src->value.type)) {
         struct mir_type *type = mir_deref_type(src->value.type);
         bassert(type);
+
+        if (load->is_deref && is_additional_load_needed && !mir_is_pointer_type(type)) {
+            // @Incomplete: Explain.
+            err_type = type;
+            goto INVALID_SRC;
+        }
 
         enum mir_value_address_mode addr_mode = src->value.addr_mode;
         if (is_src_ptr_to_argument && !mir_is_comptime(src)) {
@@ -6837,26 +6839,28 @@ struct result analyze_instr_load(struct context *ctx, struct mir_instr_load *loa
         load->base.value.addr_mode   = addr_mode;
     } else if (src->value.type->kind == MIR_TYPE_TYPE) {
         bassert(mir_is_comptime(load->src));
-        struct mir_type *src_type = MIR_CEV_READ_AS(struct mir_type *, &src->value);
-        bmagic_assert(src_type);
-        if (!mir_is_pointer_type(src_type) && src_type->kind != MIR_TYPE_POLY) {
-            char *type_name = mir_type2str(src_type, /* prefer_name */ true);
-            report_error(INVALID_TYPE, src->node, "Expected pointer type, got '%s'.", type_name);
-            put_tstr(type_name);
-            return_zone(FAIL);
+        struct mir_type *type = MIR_CEV_READ_AS(struct mir_type *, &src->value);
+        bmagic_assert(type);
+        if (!mir_is_pointer_type(type) && type->kind != MIR_TYPE_POLY) {
+            err_type = type;
+            goto INVALID_SRC;
         }
         load->base.value.type        = src->value.type;
         load->base.value.is_comptime = true;
         load->base.value.addr_mode   = src->value.addr_mode;
     } else {
-        char *type_name = mir_type2str(src->value.type, /* prefer_name */ true);
-        report_error(
-            INVALID_TYPE, src->node, "Expected value of pointer type, got '%s'.", type_name);
-        put_tstr(type_name);
-        return_zone(FAIL);
+        goto INVALID_SRC;
     }
 
     return_zone(PASS);
+
+INVALID_SRC : {
+    bassert(err_type);
+    char *type_name = mir_type2str(err_type, /* prefer_name */ true);
+    report_error(INVALID_TYPE, src->node, "Expected value of pointer type, got '%s'.", type_name);
+    put_tstr(type_name);
+    return_zone(FAIL);
+}
 }
 
 struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_fn *type_fn)
@@ -8927,7 +8931,7 @@ CALL_ANALYZE_BEGIN:
             expected_vargs_elem_type = mir_deref_type(expected_vargs_elem_type);
             bassert(expected_vargs_elem_type);
 
-            const s32 vargsc = call_argc - (func_argc - 1);
+            const s32 vargsc = (s32)(call_argc - (func_argc - 1));
             bassert(vargsc >= 0);
 
             mir_instrs_t *values = arena_safe_alloc(&ctx->assembly->arenas.sarr);

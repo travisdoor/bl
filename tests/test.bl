@@ -49,11 +49,8 @@ main :: fn () s32 {
     variable_args_2(666, 10);
     variable_args_2(666, 10, 20);
 
-    v := 10;
-    invalid :: @v;
-
     tbl: MyTable(s32, bool);
-    print("tbl = %\n", @tbl);
+    print("tbl = %\n", tbl);
 
     //with_call_loc(10);
     /*
