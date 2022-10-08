@@ -359,8 +359,9 @@ static inline void stack_alloc_var(struct virtual_machine *vm, struct mir_var *v
 {
     bassert(var);
     bassert(!var->value.is_comptime && "Cannot allocate compile time constant");
-    bassert(!var->is_global && "This function is not supposed to be used for allocation of global "
-                               "variables, use vm_alloc_global instead.");
+    bassert(isnotflag(var->iflags, MIR_VAR_GLOBAL) &&
+            "This function is not supposed to be used for allocation of global "
+            "variables, use vm_alloc_global instead.");
     vm_stack_ptr_t tmp = stack_push_empty(vm, var->value.type);
     var->vm_ptr.local  = tmp - (vm_stack_ptr_t)vm->stack->ra;
 }
@@ -1737,7 +1738,8 @@ void interp_instr_decl_var(struct virtual_machine *vm, struct mir_instr_decl_var
     struct mir_var *var = decl->var;
     bassert(var);
     bassert(decl->base.value.type);
-    if (var->is_global || var->value.is_comptime || var->ref_count == 0) return;
+    if (isflag(var->iflags, MIR_VAR_GLOBAL) || var->value.is_comptime || var->ref_count == 0)
+        return;
     // initialize variable if there is some init value
     if (decl->init) {
         vm_stack_ptr_t var_ptr = vm_read_var(vm, var);
@@ -2232,11 +2234,16 @@ void eval_instr_arg(struct virtual_machine UNUSED(*vm), struct mir_instr_arg *ar
 {
     struct mir_fn *fn = arg->base.owner_block->owner_fn;
     bmagic_assert(fn);
-    mir_instrs_t *comptime_args = fn->generated.comptime_args;
+    struct mir_arg *arg_data = mir_get_fn_arg(fn->type, arg->i);
+    bassert(arg_data && isflag(arg_data->flags, FLAG_COMPTIME));
+
+    mir_instrs_t *comptime_args = arg_data->generation_call_args;
     bassert(comptime_args &&
             "No compile-time known arguments provided to the function argument evaluator!");
+
     bassert(arg->i < sarrlenu(comptime_args) && arg->i >= 0 &&
             "Argument index is out of the range!");
+
     arg->base.value.data = sarrpeek(comptime_args, arg->i)->value.data;
 }
 
@@ -2296,8 +2303,9 @@ void eval_instr_set_initializer(struct virtual_machine *vm, struct mir_instr_set
     for (usize i = 0; i < sarrlenu(si->dests); ++i) {
         struct mir_instr *dest = sarrpeek(si->dests, i);
         struct mir_var   *var  = ((struct mir_instr_decl_var *)dest)->var;
-        bassert((var->is_global || var->is_struct_typedef) &&
-                "Only globals can be initialized by initializer!");
+        bassert(
+            (isflag(var->iflags, MIR_VAR_GLOBAL) || isflag(var->iflags, MIR_VAR_STRUCT_TYPEDEF)) &&
+            "Only globals can be initialized by initializer!");
         if (var->value.is_comptime) {
             // This is little optimization, we can simply reuse initializer pointer
             // since we are dealing with constant values and variable is immutable
@@ -2655,7 +2663,8 @@ void vm_alloc_global(struct virtual_machine *vm, struct assembly *assembly, stru
 {
     vm->assembly = assembly;
     bassert(var);
-    bassert(var->is_global && "Allocated variable is supposed to be a global variable.");
+    bassert(isflag(var->iflags, MIR_VAR_GLOBAL) &&
+            "Allocated variable is supposed to be a global variable.");
     struct mir_type *type = var->value.type;
     bassert(type);
     // @Cleanup: Consider if we can simplify this and use just one single pointer (local and global
@@ -2681,7 +2690,7 @@ vm_stack_ptr_t vm_read_var(struct virtual_machine *vm, const struct mir_var *var
     vm_stack_ptr_t ptr = NULL;
     if (var->value.is_comptime) {
         ptr = var->value.data;
-    } else if (var->is_global) {
+    } else if (isflag(var->iflags, MIR_VAR_GLOBAL)) {
         ptr = var->vm_ptr.global;
     } else {
         // local

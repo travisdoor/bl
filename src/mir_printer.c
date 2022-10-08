@@ -763,7 +763,7 @@ void print_instr_load(struct context *ctx, struct mir_instr_load *load)
         print_instr_head(ctx, &load->base, "deref");
     else
         print_instr_head(ctx, &load->base, "load");
-    
+
     print_comptime_value_or_id(ctx, load->src);
 }
 
@@ -780,11 +780,11 @@ void print_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl)
 
     const char *name = var->linkage_name ? var->linkage_name : "<UNKNOWN>";
 
-    if (var->is_global) {
+    if (isflag(var->iflags, MIR_VAR_GLOBAL)) {
         // global scope variable
         fprintf(ctx->stream, "\n@%s : ", name);
         print_type(ctx, var->value.type, false, true);
-        fprintf(ctx->stream, " %s ", var->is_mutable ? "=" : ":");
+        fprintf(ctx->stream, " %s ", isflag(var->iflags, MIR_VAR_MUTABLE) ? "=" : ":");
 
         if (var->value.is_comptime) {
             print_const_value(ctx, &var->value);
@@ -798,7 +798,7 @@ void print_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl)
         fprintf(ctx->stream, "%s : ", name);
         print_type(ctx, var->value.type, false, true);
         if (decl->init) {
-            fprintf(ctx->stream, " %s ", var->is_mutable ? "=" : ":");
+            fprintf(ctx->stream, " %s ", isflag(var->iflags, MIR_VAR_MUTABLE) ? "=" : ":");
             print_comptime_value_or_id(ctx, decl->init);
         }
     }

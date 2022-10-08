@@ -190,9 +190,9 @@ struct mir_fn_generated_recipe {
 };
 
 enum mir_fn_generated_flavor_flags {
-    MIR_FN_GENERATED_NONE               = 0,
-    MIR_FN_GENERATED_POLY               = 1 << 1,
-    MIR_FN_GENERATED_MIXED              = 1 << 2,
+    MIR_FN_GENERATED_NONE  = 0,
+    MIR_FN_GENERATED_POLY  = 1 << 1,
+    MIR_FN_GENERATED_MIXED = 1 << 2,
 };
 
 // FN
@@ -211,7 +211,7 @@ struct mir_fn {
 
     // Describe compile-time generated function, set for polymorph, mixed and comptime-called
     // function.
-    u32 generated_flavor;
+    enum mir_fn_generated_flavor_flags generated_flavor;
 
     // This structure is initialized only in case this function is generated from polymorphic
     // function recipe, it's not polymorph anymore (its type is also not polymorph).
@@ -258,7 +258,7 @@ struct mir_fn {
     // about this number as it was thread ID, because every module is generated from MIR in
     // parallel.
     u32                  llvm_module_index;
-    u32                  flags;
+    enum ast_flags       flags;
     enum builtin_id_kind builtin_id;
     // pointer to the first block inside function body
     struct mir_instr_block *first_block;
@@ -309,7 +309,7 @@ struct mir_arg {
     u32                 index;     // @Cleanup: Do we need this or we can use entry?
     bool                is_recipe; // True in case the argument is part of function recipe.
 
-    u32 flags;
+    enum ast_flags flags;
 
     // This is index of this argument in LLVM IR not in MIR, it can be different based on
     // compiler configuration.
@@ -339,7 +339,7 @@ struct mir_type_fn {
     struct mir_type *ret_type;
     mir_args_t      *args;
     hash_t           argument_hash;
-    u32              flags;
+    enum ast_flags   flags;
 
     enum builtin_id_kind builtin_id;
 
@@ -449,6 +449,22 @@ struct mir_variant {
     u64                 value;
 };
 
+enum mir_var_flags {
+    MIR_VAR_MUTABLE        = 1 << 0,
+    MIR_VAR_GLOBAL         = 1 << 1,
+    MIR_VAR_IMPLICIT       = 1 << 2,
+    MIR_VAR_STRUCT_TYPEDEF = 1 << 3,
+    MIR_VAR_ANALYZED       = 1 << 4,
+
+    // We need this to allow the return temporary variable to be mutable even if it contains types;
+    // the type can be returned only from compile-time functions. Value is set 'true' only when the
+    // temporary return variable is created and used only for checking in 'analyze_var'.
+    MIR_VAR_RET_TMP = 1 << 5,
+
+    // Keep this, we sometimes have i.e. type defs in scope of the function.
+    MIR_VAR_EMIT_LLVM = 1 << 6,
+};
+
 // VAR
 struct mir_var {
     struct mir_const_expr_value value; // contains also allocated type
@@ -457,30 +473,17 @@ struct mir_var {
     struct scope               *decl_scope;
     struct scope_entry         *entry;
     struct mir_instr           *initializer_block;
+    LLVMValueRef                llvm_value;
+    const char                 *linkage_name;
+    enum builtin_id_kind        builtin_id;
+    enum ast_flags              flags;  // User flags.
+    enum mir_var_flags          iflags; // Internal flags.
     union {
         vm_stack_ptr_t          global;
         vm_relative_stack_ptr_t local;
     } vm_ptr;
-    LLVMValueRef         llvm_value;
-    const char          *linkage_name;
-    enum builtin_id_kind builtin_id;
-    s32                  ref_count;
 
-    // @Performance: Rewrite to flags.
-    bool is_mutable;
-    bool is_global;
-    bool is_implicit;
-    bool is_struct_typedef;
-    bool is_analyzed;
-
-    // We need this to allow the return temporary variable to be mutable even if it contains types;
-    // the type can be returned only from compile-time functions. Value is set 'true' only when the
-    // temporary return variable is created and used only for checking in 'analyze_var'.
-    bool is_return_temporary;
-
-    bool emit_llvm; // Keep this, we sometimes have i.e. type defs in scope of the function.
-
-    u32 flags;
+    s32 ref_count;
 };
 
 enum mir_instr_state {

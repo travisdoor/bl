@@ -42,7 +42,7 @@ main :: fn () s32 {
     //to_any(num);
 
     mixed_poly(10);
-    mixed_poly(true);
+    mixed_poly(true, 30);
 
     variable_args(666, 777);
     variable_args_2(666);
@@ -52,7 +52,7 @@ main :: fn () s32 {
     tbl: MyTable(s32, bool);
     print("tbl = %\n", tbl);
 
-    //with_call_loc(10);
+    with_call_loc(10);
     /*
     arr: [10]s32;
     mixed(10, &arr);
@@ -68,7 +68,7 @@ main :: fn () s32 {
 }
 
 MyTable :: fn (TKey: type #comptime, TValue: type #comptime) type #comptime {
-    //print(">>> Generation table type!\n");
+    print(">>> Generation table type!\n");
     return struct {
         key: TKey;
         value: TValue;
@@ -107,18 +107,22 @@ poly_default :: fn (v: ?T, c: T = 20) {
     print("poly_default(%, %)\n", v, c);
 }
 
-this_is_called_in_comptime :: fn (a: s32, b: bool) #comptime {
+this_is_called_in_comptime :: fn (a: s32 #maybe_unused, b: bool #maybe_unused) #comptime {
     // @Incomplete: assert!!!
-    //print(">>> this_is_called_in_comptime(%, %)\n", a, b); 
+    print(">>> this_is_called_in_comptime(%, %)\n", a, b); 
 }
 
-mixed_poly :: fn (v: ?T #comptime) {
-    print("mixed_poly(%)\n", v);
+mixed_poly :: fn (v: ?T #comptime, n := 10) #comptime {
+    print("mixed_poly(%, %)\n", v, n);
 }
 
-variable_args :: fn (v: ...s32) {}
+variable_args :: fn (v: ...s32 #maybe_unused) {
+    print("variable_args(%)\n", v);
+}
 
-variable_args_2 :: fn (n: s32, v: ...s32) {}
+variable_args_2 :: fn (n: s32 #maybe_unused, v: ...s32 #maybe_unused) {
+    print("variable_args(%, %)\n", n, v);
+}
 
 to_any :: fn (c: Any) {
     print("to_any(%)\n", c);
@@ -129,8 +133,17 @@ call_with_pointer :: fn (n_ptr: *s32) {
 }
 
 with_call_loc :: fn (n: s32, loc := #call_location) {
-    print("with_call_loc(%, %)\n", n, loc);
+    print("with_call_loc(%, %)\n", n, @loc);
 }
+
+// @Incomplete: Documentation.
+// @Incomplete: Tests.
+new :: fn (T: type #comptime, preferred_allocator: *Allocator = null, loc := #call_location) (ptr: *T, err: Error) #inline {
+    mem, err :: alloc(sizeof(T), alignof(T), preferred_allocator, loc);
+    return auto mem, err; 
+}
+
+ptr := new(s32);
 
 /*
 mixed :: fn (v: s32 #comptime, arr: *[v]s32) {
@@ -140,12 +153,6 @@ mixed_poly_2 :: fn (v: Data #comptime, arr: [v.a]s32) {
     v;
 }
 
-// @Incomplete: Documentation.
-// @Incomplete: Tests.
-new :: fn (T: type #comptime, preferred_allocator: *Allocator = null, loc := #call_location) (ptr: *T, err: Error) #inline {
-    mem, err :: alloc(sizeof(T), alignof(T), preferred_allocator, loc);
-    return auto mem, err; 
-}
 */
 
 

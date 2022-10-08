@@ -81,10 +81,11 @@ struct scope_entry {
 };
 
 enum scope_kind {
+    SCOPE_NONE = 0,
     SCOPE_GLOBAL,
     SCOPE_PRIVATE,
     SCOPE_FN,
-    SCOPE_FN_LOCAL,
+    SCOPE_FN_BODY,
     SCOPE_LEXICAL,
     SCOPE_TYPE_STRUCT,
     SCOPE_TYPE_ENUM,

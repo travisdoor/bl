@@ -30,6 +30,7 @@
 #include "bldebug.h"
 #include "builder.h"
 #include "common.h"
+#include "scope.h"
 #include "tokens_inline_utils.h"
 #include <setjmp.h>
 
@@ -99,7 +100,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
 static struct ast *parse_unrecheable(struct context *ctx);
 static struct ast *parse_debugbreak(struct context *ctx);
 static struct ast *parse_ident_group(struct context *ctx);
-static struct ast *parse_block(struct context *ctx, bool create_scope);
+static struct ast *parse_block(struct context *ctx, enum scope_kind scope_kind);
 static struct ast *parse_decl(struct context *ctx);
 static struct ast *parse_decl_member(struct context *ctx, s32 index);
 static struct ast *parse_decl_arg(struct context *ctx, bool named);
@@ -1025,7 +1026,7 @@ struct ast *parse_stmt_if(struct context *ctx, bool is_static)
         tokens_consume_till(ctx->tokens, SYM_LBLOCK);
     }
 
-    stmt_if->data.stmt_if.true_stmt = parse_block(ctx, true);
+    stmt_if->data.stmt_if.true_stmt = parse_block(ctx, SCOPE_LEXICAL);
     if (!stmt_if->data.stmt_if.true_stmt) {
         struct token *tok_err = tokens_consume(ctx->tokens);
         report_error(EXPECTED_STMT,
@@ -1039,7 +1040,7 @@ struct ast *parse_stmt_if(struct context *ctx, bool is_static)
     if (tokens_consume_if(ctx->tokens, SYM_ELSE)) {
         stmt_if->data.stmt_if.false_stmt = parse_stmt_if(ctx, is_static);
         if (!stmt_if->data.stmt_if.false_stmt)
-            stmt_if->data.stmt_if.false_stmt = parse_block(ctx, true);
+            stmt_if->data.stmt_if.false_stmt = parse_block(ctx, SCOPE_LEXICAL);
         if (!stmt_if->data.stmt_if.false_stmt) {
             struct token *tok_err = tokens_consume(ctx->tokens);
             report_error(EXPECTED_STMT,
@@ -1145,7 +1146,7 @@ NEXT:
     }
 
 SKIP_EXPRS:
-    block = parse_block(ctx, true);
+    block = parse_block(ctx, SCOPE_LEXICAL);
     if (!block && !parse_semicolon_rq(ctx)) {
         struct token *tok_err = tokens_peek(ctx->tokens);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
@@ -1211,7 +1212,7 @@ struct ast *parse_stmt_loop(struct context *ctx)
     }
 
     // block
-    loop->data.stmt_loop.block = parse_block(ctx, false);
+    loop->data.stmt_loop.block = parse_block(ctx, SCOPE_NONE);
     if (!loop->data.stmt_loop.block) {
         struct token *tok_err = tokens_peek(ctx->tokens);
         report_error(EXPECTED_BODY, tok_err, CARET_WORD, "Expected loop body block.");
@@ -1522,14 +1523,8 @@ struct ast *parse_expr_lit_fn(struct context *ctx)
     struct token *tok_fn = tokens_peek(ctx->tokens);
     struct ast   *fn     = ast_create_node(ctx->ast_arena, AST_EXPR_LIT_FN, tok_fn, scope_get(ctx));
 
-    struct scope   *parent_scope = scope_get(ctx);
-    enum scope_kind scope_kind =
-        (parent_scope->kind == SCOPE_GLOBAL || parent_scope->kind == SCOPE_PRIVATE ||
-         parent_scope->kind == SCOPE_NAMED)
-            ? SCOPE_FN
-            : SCOPE_FN_LOCAL;
-
-    scope_push(ctx, scope_create(ctx->scope_arenas, scope_kind, parent_scope, &tok_fn->location));
+    // Create function scope for function signature.
+    scope_push(ctx, scope_create(ctx->scope_arenas, SCOPE_FN, scope_get(ctx), &tok_fn->location));
 
     struct ast *type = parse_type_fn(ctx, /* named_args */ true, /* create_scope */ false);
     bassert(type);
@@ -1562,7 +1557,7 @@ struct ast *parse_expr_lit_fn(struct context *ctx)
     }
 
     // parse block (block is optional function body can be external)
-    fn->data.expr_fn.block = parse_block(ctx, false);
+    fn->data.expr_fn.block = parse_block(ctx, SCOPE_FN_BODY);
 
     scope_pop(ctx);
     return_zone(fn);
@@ -2030,8 +2025,9 @@ struct ast *parse_type_fn(struct context *ctx, bool named_args, bool create_scop
     struct ast *fn = ast_create_node(ctx->ast_arena, AST_TYPE_FN, tok_fn, scope_get(ctx));
 
     if (create_scope) {
-        scope_push(ctx, scope_create(ctx->scope_arenas, SCOPE_FN, scope_get(ctx), &tok_fn->location));
-    } 
+        scope_push(ctx,
+                   scope_create(ctx->scope_arenas, SCOPE_FN, scope_get(ctx), &tok_fn->location));
+    }
 
     // parse arg types
     bool        rq    = false;
@@ -2375,16 +2371,21 @@ struct ast *parse_expr_type(struct context *ctx)
     return NULL;
 }
 
-struct ast *parse_block(struct context *ctx, bool create_scope)
+struct ast *parse_block(struct context *ctx, enum scope_kind scope_kind)
 {
     struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_LBLOCK);
     if (!tok_begin) return NULL;
 
-    if (create_scope) {
+    bool scope_created = false;
+    if (scope_kind != SCOPE_NONE) {
+        bassert((scope_kind == SCOPE_LEXICAL || scope_kind == SCOPE_FN_BODY) &&
+                "Unexpected scope kind, extend this assert in case it's intentional.");
+
         struct scope *scope =
-            scope_create(ctx->scope_arenas, SCOPE_LEXICAL, scope_get(ctx), &tok_begin->location);
+            scope_create(ctx->scope_arenas, scope_kind, scope_get(ctx), &tok_begin->location);
 
         scope_push(ctx, scope);
+        scope_created = true;
     }
     struct ast   *block = ast_create_node(ctx->ast_arena, AST_BLOCK, tok_begin, scope_get(ctx));
     struct token *tok;
@@ -2472,11 +2473,11 @@ NEXT:
         tok = tokens_peek_prev(ctx->tokens);
         report_error(EXPECTED_BODY_END, tok, CARET_AFTER, "Expected end of block '}'.");
         report_note(tok_begin, CARET_WORD, "Block starting here.");
-        if (create_scope) scope_pop(ctx);
+        if (scope_created) scope_pop(ctx);
         return ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx));
     }
 
-    if (create_scope) scope_pop(ctx);
+    if (scope_created) scope_pop(ctx);
     return block;
 }
 
