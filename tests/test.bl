@@ -2,11 +2,11 @@
 
 TODO:
 
-- Remove INSTR_ARG
-- Handle failing of ast generation of generated functions properly.
 - Analyze of comptime arguments must be done when they are used.
 - Change syntax of default argument value assignment to ':'.
 - Update documentation.
+- #maybe_comptime - automatically comptime evaluated in case all the arguments are compile-time known.
+- Properly handle fail of ast_expr_lit_fn while generating recipe implementation.
 
 */
 
@@ -29,17 +29,17 @@ main :: fn () s32 {
 
     poly(10, 20);
     //poly("hello", "world"); // @Incomplete: internal error
-    poly(true, false); 
+    //poly(true, false); 
 
     poly_default(10);
     poly_default(10, 20);
  
     this_is_called_in_comptime(10, true);
 
-    //num : *s32 = new(s32) #maybe_unused;
-    //(@num) = 800;
-    //call_with_pointer(num);
-    //to_any(num);
+    num : *s32 = new(s32) #maybe_unused;
+    (@num) = 800;
+    print("num = %; (@num) = %;\n", num, @num);
+    free(auto num);
 
     mixed_poly(10);
     mixed_poly(true, 30);
@@ -53,6 +53,9 @@ main :: fn () s32 {
     print("tbl = %\n", tbl);
 
     with_call_loc(10);
+
+    arr := [4]s32.{ 10, 20, 30, 40 };
+    comptime_arr_size(4, &arr);
     /*
     arr: [10]s32;
     mixed(10, &arr);
@@ -75,11 +78,6 @@ MyTable :: fn (TKey: type #comptime, TValue: type #comptime) type #comptime {
     };
 }
 
-my_static_assert :: fn (expr: bool) #comptime {
-    if expr { return; }
-    unreachable;
-}
-
 foo :: fn (p: *s64) {
     tmp := cast(*u64) p;
     (@tmp) = 0;
@@ -99,8 +97,9 @@ bar :: fn (j: s32, k: s32 = 666) s32 {
     return j + k;
 }
 
-poly :: fn (v: ?T, c: T) {
+poly :: fn (v: ?T, c: T) T {
     print("poly(%, %)\n", v, c);
+    return v + c;
 }
 
 poly_default :: fn (v: ?T, c: T = 20) {
@@ -108,7 +107,6 @@ poly_default :: fn (v: ?T, c: T = 20) {
 }
 
 this_is_called_in_comptime :: fn (a: s32 #maybe_unused, b: bool #maybe_unused) #comptime {
-    // @Incomplete: assert!!!
     print(">>> this_is_called_in_comptime(%, %)\n", a, b); 
 }
 
@@ -136,22 +134,30 @@ with_call_loc :: fn (n: s32, loc := #call_location) {
     print("with_call_loc(%, %)\n", n, @loc);
 }
 
-// @Incomplete: Documentation.
-// @Incomplete: Tests.
 new :: fn (T: type #comptime, preferred_allocator: *Allocator = null, loc := #call_location) (ptr: *T, err: Error) #inline {
     mem, err :: alloc(sizeof(T), alignof(T), preferred_allocator, loc);
     return auto mem, err; 
 }
 
-ptr := new(s32);
-
-/*
-mixed :: fn (v: s32 #comptime, arr: *[v]s32) {
+// Implement implicit cast from placeholder to number with value 1?
+comptime_arr_size :: fn (v: s32 #comptime, arr: *[v]s32) {
+    print("comptime_arr_size(%, %)\n", v, @arr);
 }
+// @Incomplete: Documentation.
+// @Incomplete: Tests.
+/*
 
 mixed_poly_2 :: fn (v: Data #comptime, arr: [v.a]s32) {
     v;
 }
+
+new :: fn (T: type #comptime, preferred_allocator: *Allocator = null, loc := #call_location) (ptr: *T, err: Error) #inline {
+    mem, err :: alloc(sizeof(T), alignof(T), preferred_allocator, loc);
+    return auto mem, err; 
+}
+
+
+
 
 */
 

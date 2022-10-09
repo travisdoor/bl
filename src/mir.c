@@ -42,8 +42,6 @@
 #pragma warning(disable : 6001)
 #endif
 
-#define CLEANUP 0
-
 #define ARENA_CHUNK_COUNT 512
 #define ARENA_INSTR_CHUNK_COUNT 2048
 #define RESOLVE_TYPE_FN_NAME ".type"
@@ -413,7 +411,9 @@ typedef struct {
     bool                 is_global;
     bool                 is_comptime;
     bool                 is_struct_typedef;
+    bool                 is_arg_temporary;
     enum ast_flags       flags;
+    s32                  arg_index;
 } create_var_args_t;
 
 static struct mir_var *create_var(struct context *ctx, create_var_args_t *args);
@@ -705,6 +705,9 @@ typedef struct {
     bool                 is_struct_typedef;
     enum ast_flags       flags;
     enum builtin_id_kind builtin_id;
+
+    bool is_arg_temporary;
+    s32  arg_index;
 } append_instr_decl_var_args_t;
 
 static struct mir_instr *append_instr_decl_var(struct context               *ctx,
@@ -1008,16 +1011,6 @@ static struct result analyze_instr_msg(struct context *ctx, struct mir_instr_msg
 static void          analyze_report_unresolved(struct context *ctx);
 static void          analyze_report_unused(struct context *ctx);
 
-#if CLEANUP
-// Find or generate implementation of polymorph function template. Function will try to find already
-// generated function based on expected argument list or create new one.
-static struct result generate_function_implementation(struct context             *ctx,
-                                                      struct ast                 *call,
-                                                      struct mir_fn              *fn,
-                                                      mir_instrs_t               *expected_args,
-                                                      struct mir_instr_fn_proto **out_fn_proto);
-#endif
-
 // =================================================================================================
 //  RTTI
 // =================================================================================================
@@ -1135,23 +1128,27 @@ static inline void usage_check_push(struct context *ctx, struct scope_entry *ent
 {
     if (builder.options->no_usage_check) return;
     bassert(entry);
-    struct scope *scope = entry->parent_scope;
-    bassert(scope);
+
     if (!entry->id) return;
     if (!entry->node) return;
-    if (entry->kind != SCOPE_ENTRY_VAR) {
-        if (entry->kind != SCOPE_ENTRY_FN) return;
-    } else if (isflag(entry->data.var->flags, FLAG_MAYBE_UNUSED)) {
-        return;
-    }
 
-    if (entry->kind == SCOPE_ENTRY_FN) {
+    switch (entry->kind) {
+    case SCOPE_ENTRY_FN:
         if (isflag(entry->data.fn->flags, FLAG_TEST_FN)) return;
         if (isflag(entry->data.fn->flags, FLAG_MAYBE_UNUSED)) return;
         if (entry->data.fn->generation_recipe) return;
+        break;
+    case SCOPE_ENTRY_VAR:
+        if (isflag(entry->data.var->flags, FLAG_MAYBE_UNUSED)) return;
+        break;
+    default:
+        return;
     }
+
     // No usage checking in general is done only for symbols in function local scope and symbols
     // in global private scope.
+    struct scope *scope = entry->parent_scope;
+    bassert(scope);
     if (!scope_is_subtree_of_kind(scope, SCOPE_FN) &&
         !scope_is_subtree_of_kind(scope, SCOPE_PRIVATE)) {
         return;
@@ -2385,7 +2382,7 @@ struct mir_type *create_type_placeholder(struct context *ctx)
     struct mir_type *tmp =
         create_type(ctx, MIR_TYPE_PLACEHOLDER, &builtin_ids[BUILTIN_ID_TYPE_PLACEHOLDER]);
     type_init_id(ctx, tmp);
-    type_init_llvm_void(ctx, tmp);
+    type_init_llvm_dummy(ctx, tmp);
     return tmp;
 }
 
@@ -2927,6 +2924,13 @@ struct mir_var *create_var(struct context *ctx, create_var_args_t *args)
     setflagif(tmp->iflags, MIR_VAR_GLOBAL, args->is_global);
     setflagif(tmp->iflags, MIR_VAR_STRUCT_TYPEDEF, args->is_struct_typedef);
     setflag(tmp->iflags, MIR_VAR_EMIT_LLVM);
+
+    if (args->is_arg_temporary) {
+        setflag(tmp->iflags, MIR_VAR_ARG_TMP);
+        tmp->arg_index = args->arg_index;
+    } else {
+        tmp->arg_index = -1;
+    }
 
     tmp->linkage_name = args->id->str;
     tmp->flags        = args->flags;
@@ -4118,6 +4122,8 @@ static struct mir_instr *append_instr_decl_var(struct context               *ctx
                               .flags             = args->flags,
                               .builtin_id        = args->builtin_id,
                               .is_struct_typedef = args->is_struct_typedef,
+                              .is_arg_temporary  = args->is_arg_temporary,
+                              .arg_index         = args->arg_index,
                           });
 
     if (is_global) {
@@ -6225,7 +6231,7 @@ struct result analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_
     }
 
     case SCOPE_ENTRY_ARG: {
-        const struct mir_arg *arg = found->data.arg;
+        struct mir_arg *arg = found->data.arg;
         bassert(arg);
 
         struct mir_type *ref_type = arg->type;
@@ -6233,6 +6239,8 @@ struct result analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_
         if (arg->is_recipe && ref_type->kind != MIR_TYPE_POLY) {
             ref_type = ctx->builtin_types->t_placeholer;
         }
+
+        ++arg->ref_count;
 
         ref->base.value.type        = ref_type;
         ref->base.value.is_comptime = isflag(arg->flags, FLAG_COMPTIME);
@@ -6317,6 +6325,7 @@ struct result analyze_instr_arg(struct context UNUSED(*ctx), struct mir_instr_ar
     } else {
         arg->base.value.addr_mode = MIR_VAM_RVALUE; // @Incomplete: not sure about this.
     }
+    arg_data->ref_count += 1;
     return_zone(PASS);
 }
 
@@ -7039,7 +7048,18 @@ struct result analyze_instr_decl_member(struct context *ctx, struct mir_instr_de
     }
     member->tag = tag_value;
 
+    bassert(decl->type);
     if (analyze_slot(ctx, &analyze_slot_conf_basic, &decl->type, NULL) != ANALYZE_PASSED) {
+        return_zone(FAIL);
+    }
+    if (decl->type->value.type->kind != MIR_TYPE_TYPE &&
+        decl->type->value.type->kind != MIR_TYPE_PLACEHOLDER) {
+        char *type_name = mir_type2str(decl->type->value.type, /* prefer_name */ true);
+        report_error(INVALID_TYPE,
+                     decl->type->node,
+                     "Invalid type of the structure member, expected is 'type', got '%s'",
+                     type_name);
+        put_tstr(type_name);
         return_zone(FAIL);
     }
 
@@ -7223,8 +7243,14 @@ struct result analyze_instr_type_struct(struct context               *ctx,
             }
 
             // solve member type
-            member_type = MIR_CEV_READ_AS(struct mir_type *, &decl_member->type->value);
-            bmagic_assert(member_type);
+            if (decl_member->type->value.type->kind == MIR_TYPE_PLACEHOLDER) {
+                member_type = decl_member->type->value.type;
+            } else {
+                bassert(decl_member->type->value.type->kind == MIR_TYPE_TYPE);
+                member_type = MIR_CEV_READ_AS(struct mir_type *, &decl_member->type->value);
+                bmagic_assert(member_type);
+            }
+
             if (member_type->kind == MIR_TYPE_FN) {
                 report_error(INVALID_TYPE,
                              (*member_instr)->node,
@@ -7425,8 +7451,10 @@ struct result analyze_instr_type_array(struct context *ctx, struct mir_instr_typ
     bassert(type_arr->base.value.type);
     bassert(type_arr->elem_type->state == MIR_IS_COMPLETE);
 
-    if (analyze_slot(ctx, &analyze_slot_conf_default, &type_arr->len, ctx->builtin_types->t_s64) !=
-        ANALYZE_PASSED) {
+    const bool is_len_placeholder = type_arr->len->value.type->kind == MIR_TYPE_PLACEHOLDER;
+    if (!is_len_placeholder &&
+        analyze_slot(ctx, &analyze_slot_conf_default, &type_arr->len, ctx->builtin_types->t_s64) !=
+            ANALYZE_PASSED) {
         return_zone(FAIL);
     }
 
@@ -7446,7 +7474,8 @@ struct result analyze_instr_type_array(struct context *ctx, struct mir_instr_typ
         return_zone(FAIL);
     }
 
-    const s64 len = MIR_CEV_READ_AS(s64, &type_arr->len->value);
+    // We use 1 as default array size in case it's just a placeholder type in the function recipe!
+    const s64 len = is_len_placeholder ? 1 : MIR_CEV_READ_AS(s64, &type_arr->len->value);
     if (len == 0) {
         report_error(INVALID_ARR_SIZE, type_arr->len->node, "Array size cannot be 0.");
         return_zone(FAIL);
@@ -7946,8 +7975,24 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
     // @Cleanup: Duplicate?
     decl->base.value.is_comptime = var->value.is_comptime = is_decl_comptime;
 
-    struct result state = analyze_var(
-        ctx, decl->var, /* check_usage */ isnotflag(var->iflags, MIR_VAR_STRUCT_TYPEDEF));
+    bool do_usage_check = isnotflag(var->iflags, MIR_VAR_STRUCT_TYPEDEF);
+    if (isflag(var->iflags, MIR_VAR_ARG_TMP)) {
+        // @Hack: This is needed because in case the argument is referenced only from the argument
+        // list of the current function, we get unused variable warning later for this variable. So
+        // we disable usage checking in case the argument was referenced more than once. (The first
+        // reference is actually initialization of this variable).
+        bassert(var->arg_index >= 0);
+        bassert(var->decl_scope && var->decl_scope->kind == SCOPE_FN_BODY);
+        bassert(decl->base.owner_block);
+        struct mir_fn *fn = decl->base.owner_block->owner_fn;
+        bmagic_assert(fn);
+
+        struct mir_arg *orig_arg = mir_get_fn_arg(fn->type, var->arg_index);
+        assert(orig_arg);
+        do_usage_check = orig_arg->ref_count < 2;
+    }
+
+    struct result state = analyze_var(ctx, decl->var, do_usage_check);
     if (state.state != ANALYZE_PASSED) return_zone(state);
 
     if (mir_is_comptime(&decl->base) && decl->init) {
@@ -8078,203 +8123,9 @@ static inline hash_t get_current_poly_replacement_hash(struct context *ctx)
     return_zone(hash);
 }
 
-#if CLEANUP
-// Can be used to generate actual function implementation from function generation recipe. This is
-// used in case the function is polymorph (the function type contains polymorph types) or function
-// has some compile time arguments (mixed function). In some cases we need to generate also comptime
-// executed functions (they may contain types in argument list).
-struct result generate_function_implementation(struct context             *ctx,
-                                               struct ast                 *call,
-                                               struct mir_fn              *fn,
-                                               mir_instrs_t               *expected_args,
-                                               struct mir_instr_fn_proto **out_fn_proto)
-{
-    // Polymorph types can be divided into two groups, masters and slaves. The master type is
-    // defined as '?<NAME>', such type acts like type definition (creates scope entry) and
-    // should be replaced by matching argument type deduced from call side of the function. The
-    // slave type on the other hand cannot be directly replaced (based on type of matching
-    // argument), it creates only reference to the master.
-    //
-    // Example:
-    //     sum :: fn (a: ?T, b: T, c: s32) T
-    //     sum(10, 20, 30)
-    //
-    // The type of first argument 'a' is master polymorph type and it's replacement is deduced
-    // from the first call argument type (s32 in the example). All other slaves 'T' are
-    // references to
-    // '?T' so they are replaced by 's32' type even if matching call side argument has different
-    // type
-    //
-    // As an polymorph function is considered also comptime function (executed in compile time) and
-    // mixed function (some of arguments in the argument list are comptime).
-    zone();
-    struct mir_fn_generated_recipe *recipe = fn->generation_recipe;
-    bmagic_assert(recipe);
-    bassert(out_fn_proto);
-
-    struct mir_type *recipe_type = fn->type;
-    bassert(recipe_type && recipe_type->kind == MIR_TYPE_FN);
-    mir_args_t *recipe_args = recipe_type->data.fn.args;
-
-    struct ast *ast_recipe = recipe->ast_lit_fn;
-    bassert(ast_recipe && "Missing struct ast recipe for polymorph function!");
-    bassert(ast_recipe->kind == AST_EXPR_LIT_FN);
-
-    char        *debug_replacement_str = tstr();
-    bool         has_comptime_argument = false;
-    mir_types_t *queue                 = &ctx->fn_generate.replacement_queue;
-
-    const usize argc = sarrlenu(recipe_args);
-    for (usize i = 0; i < argc; ++i) {
-        const bool       is_expected_arg_valid = expected_args && i < sarrlenu(expected_args);
-        struct mir_type *call_arg_type =
-            is_expected_arg_valid ? sarrpeek(expected_args, i)->value.type : NULL;
-        struct mir_arg *recipe_arg = sarrpeek(recipe_args, i);
-        has_comptime_argument |= isflag(recipe_arg->flags, FLAG_COMPTIME);
-        struct mir_type *recipe_arg_type = recipe_arg->type;
-        if (is_expected_arg_valid && is_load_needed(sarrpeek(expected_args, i))) {
-            bassert(call_arg_type);
-            call_arg_type = mir_deref_type(call_arg_type);
-        }
-        struct mir_type *poly_type     = NULL;
-        struct mir_type *matching_type = NULL;
-        poly_type_match(recipe_arg_type, call_arg_type, &poly_type, &matching_type);
-        if (poly_type) {
-            if (!matching_type) {
-                ast_nodes_t *ast_poly_args = ast_recipe->data.expr_fn.type->data.type_fn.args;
-                struct ast  *ast_poly_arg  = sarrpeek(ast_poly_args, i);
-                if (call_arg_type) {
-                    char *recipe_type_name = mir_type2str(recipe_arg_type, /* prefer_name */ true);
-                    char *arg_type_name    = mir_type2str(call_arg_type, /* prefer_name */ true);
-                    report_error(INVALID_POLY_MATCH,
-                                 ast_poly_arg->data.decl.type,
-                                 "Cannot deduce polymorph function argument type '%s'. Expected is "
-                                 "'%s' but call-side argument type is '%s'.",
-                                 poly_type->user_id->str,
-                                 recipe_type_name,
-                                 arg_type_name);
-                    put_tstr(recipe_type_name);
-                    put_tstr(arg_type_name);
-
-                    struct location *call_arg_loc =
-                        sarrpeek(call->data.expr_call.args, i)->location;
-                    if (!call_arg_loc) call_arg_loc = call->location;
-                    builder_msg(MSG_ERR_NOTE, 0, call_arg_loc, CARET_WORD, "Called from here.");
-                } else {
-                    // Missing argument on call side required for polymorph deduction.
-                    report_error(INVALID_POLY_MATCH,
-                                 ast_poly_arg->data.decl.type,
-                                 "Cannot deduce polymorph function argument type '%s'.",
-                                 poly_type->user_id->str);
-                    report_note(call, "Called from here.");
-                }
-                reset_poly_replacement_queue(ctx);
-                put_tstr(debug_replacement_str);
-                return_zone(FAIL);
-            } else {
-                bassert(matching_type->kind != MIR_TYPE_POLY);
-                // Stringify replacement to get better error reports.
-                char *type_name1 = mir_type2str(poly_type, /* prefer_name */ true);
-                char *type_name2 = mir_type2str(matching_type, /* prefer_name */ true);
-                strappend(debug_replacement_str, "%s = %s; ", type_name1, type_name2);
-                sarrput(queue, matching_type);
-                put_tstr(type_name1);
-                put_tstr(type_name2);
-            }
-        }
-    }
-
-    // @Performance: Consider more precise way how to choose if we need cache or not
-    // We do caching only in case the function is not polymorph of comptime function or if it's not
-    // a mixed function (each call can produce different comptime values to be generated).
-    const bool use_cache = isnotflag(fn->flags, FLAG_COMPTIME) && !has_comptime_argument;
-
-    hash_t replacement_hash = 0;
-    s64    index            = -1;
-    if (use_cache) {
-        replacement_hash = get_current_poly_replacement_hash(ctx);
-        index            = hmgeti(recipe->entries, replacement_hash);
-    }
-    if (index == -1) {
-        const hash_t prev_scope_layer         = ctx->fn_generate.current_scope_layer;
-        ctx->fn_generate.current_scope_layer  = ++recipe->scope_layer;
-        ctx->fn_generate.is_generation_active = true;
-
-        // Create name for generated function
-        const char          *original_fn_name     = fn->id ? fn->id->str : IMPL_FN_NAME;
-        const char          *linkage_name         = unique_name(ctx, original_fn_name);
-        const enum ast_flags replacement_fn_flags = fn->flags;
-
-        // Generate new function.
-        struct mir_instr *instr_fn_proto = ast_expr_lit_fn(ctx,
-                                                           ast_recipe,
-                                                           fn->decl_node,
-                                                           linkage_name,
-                                                           fn->is_global,
-                                                           replacement_fn_flags,
-                                                           BUILTIN_ID_NONE);
-
-        bassert(instr_fn_proto && instr_fn_proto->kind == MIR_INSTR_FN_PROTO);
-
-        struct mir_fn *replacement_fn = MIR_CEV_READ_AS(struct mir_fn *, &instr_fn_proto->value);
-        bmagic_assert(replacement_fn);
-        replacement_fn->generated.first_call_node = call;
-
-        if (strlenu(debug_replacement_str)) {
-            char *debug_replacement_str_dup = scdup(&ctx->assembly->string_cache,
-                                                    debug_replacement_str,
-                                                    strlenu(debug_replacement_str));
-
-            replacement_fn->generated.debug_replacement_types = debug_replacement_str_dup;
-        } else {
-            replacement_fn->generated.debug_replacement_types = NULL;
-        }
-
-        ctx->fn_generate.is_generation_active = false;
-        ctx->fn_generate.current_scope_layer  = prev_scope_layer;
-
-        // Feed the output
-        (*out_fn_proto) = (struct mir_instr_fn_proto *)instr_fn_proto;
-        if (use_cache) {
-            hmput(recipe->entries, replacement_hash, (struct mir_instr_fn_proto *)instr_fn_proto);
-        }
-        ctx->assembly->stats.polymorph_count += 1;
-    } else {
-        *out_fn_proto = recipe->entries[index].value;
-    }
-    reset_poly_replacement_queue(ctx);
-    put_tstr(debug_replacement_str);
-    return_zone(PASS);
-}
-#endif
-
 // =================================================================================================
-// Resolve type of called function inside call instruction
+// Function call analyze pass
 // =================================================================================================
-#if CLEANUP
-static struct result analyze_callee(struct context *ctx, struct mir_instr *callee)
-{
-    zone();
-    bassert(callee);
-    struct id *missing_any = lookup_builtins_any(ctx);
-    if (missing_any) return_zone(WAIT(missing_any->hash));
-    if (callee->state != MIR_IS_COMPLETE) {
-        bassert(callee->kind == MIR_INSTR_FN_PROTO);
-        struct mir_instr_fn_proto *fn_proto = (struct mir_instr_fn_proto *)callee;
-        if (!fn_proto->pushed_for_analyze) {
-            fn_proto->pushed_for_analyze = true;
-            analyze_schedule(ctx, callee);
-        }
-        return_zone(POSTPONE);
-    }
-    return_zone(PASS);
-}
-#endif
-
-// =================================================================================================
-// Function overloading
-// =================================================================================================
-
 struct overload_pair {
     s32            priority;
     struct mir_fn *fn;
@@ -8286,119 +8137,9 @@ static int overload_compar(const void *a, const void *b)
     const s32 pb = ((struct overload_pair *)b)->priority;
     return pb - pa;
 }
-
-#if CLEANUP
 static struct mir_fn *group_select_overload(struct context            *ctx,
                                             struct mir_instr_call     *call,
-                                            const struct mir_fn_group *group,
-                                            const mir_types_t         *expected_args)
-{
-    bmagic_assert(group);
-    bassert(expected_args);
-    const mir_fns_t *variants = group->variants;
-    bassert(sarrlenu(variants));
-
-    // Use the first one as fallback.
-    struct mir_fn *selected_fn            = sarrpeek(variants, 0);
-    sarr_t(struct overload_pair, 32) list = SARR_ZERO;
-
-    // Select possible candidates. We iterate over all variants and check if needed arguments are in
-    // the place.
-    //
-    // 1) No arguments are expected
-    //    - Select variants with no arguments.
-    //    - Select variants with defaulted argument at the 1st position.
-    //
-    // 2) At least one argument is excepted
-    //    - Select variants with defaulted argument at Nth position.
-    //    - Select variants with matching argument count.
-    for (usize i = 0; i < sarrlenu(variants); ++i) {
-        struct mir_fn    *fn   = sarrpeek(variants, i);
-        const mir_args_t *args = fn->type->data.fn.args;
-
-        bool is_selected = true;
-        bool is_vargs    = false;
-        for (usize j = 0; j < sarrlenu(args); ++j) {
-            const struct mir_arg *arg         = sarrpeek(args, j);
-            const bool            is_default  = arg->default_value;
-            const bool            is_provided = j < sarrlenu(expected_args);
-
-            is_vargs = arg->type->kind == MIR_TYPE_VARGS;
-            if (is_provided) continue;
-            if (is_default) break;
-            if (is_vargs) break;
-            is_selected = false;
-            break;
-        }
-        if (is_selected && (is_vargs || sarrlenu(expected_args) <= sarrlenu(args))) {
-            struct overload_pair pair = (struct overload_pair){.fn = fn};
-            sarrput(&list, pair);
-        }
-    }
-
-    if (sarrlenu(&list) == 0) goto DONE;
-
-    // Find the best candidate.
-    for (usize i = 0; i < sarrlenu(&list); ++i) {
-        struct overload_pair *pair = &sarrpeek(&list, i);
-        const mir_args_t     *args = pair->fn->type->data.fn.args;
-        for (usize j = 0; j < sarrlenu(expected_args) && j < sarrlenu(args); ++j) {
-            const struct mir_type *t1 = sarrpeek(expected_args, j);
-            const struct mir_type *t2 = sarrpeek(args, j)->type;
-            bassert(t1 && t2);
-            if (type_cmp(t1, t2)) {
-                // Exact type match.
-                pair->priority += 3;
-                continue;
-            }
-            if (can_impl_cast(t1, t2) || can_impl_convert_to(ctx, t1, t2)) {
-                pair->priority += t2 == ctx->builtin_types->t_Any ? 1 : 2;
-                continue;
-            }
-            if (t2->kind == MIR_TYPE_VARGS) {
-                pair->priority += 1;
-            }
-            // TODO What about templated types?
-            break;
-        }
-    }
-
-    // Sort by priority
-    qsort(sarrdata(&list), sarrlenu(&list), sizeof(struct overload_pair), &overload_compar);
-
-    struct overload_pair *selected = &sarrpeek(&list, 0);
-    if (sarrlen(&list) > 1) {
-        struct overload_pair *other = &sarrpeek(&list, 1);
-        if (selected->priority == other->priority) {
-            report_error(
-                AMBIGUOUS,
-                call->base.node,
-                "Function overload is ambiguous. Cannot decide which implementation should be "
-                "used based on call-side argument list.");
-
-            for (usize i = 0; i < sarrlenu(&list); ++i) {
-                other = &sarrpeek(&list, i);
-                if (other->priority != selected->priority) break;
-                report_note(other->fn->decl_node, "Possible overload:");
-                blog("Priority: %d", other->priority);
-            }
-        }
-    }
-    selected_fn = selected->fn;
-
-DONE:
-    sarrfree(&list);
-    bassert(selected_fn);
-    return selected_fn;
-}
-#endif
-
-// =================================================================================================
-// Function call analyze pass
-// =================================================================================================
-static struct mir_fn *group_select_overload2(struct context            *ctx,
-                                             struct mir_instr_call     *call,
-                                             const struct mir_fn_group *group)
+                                            const struct mir_fn_group *group)
 {
     bmagic_assert(group);
     const mir_fns_t *variants = group->variants;
@@ -8840,7 +8581,7 @@ CALL_ANALYZE_BEGIN:
         // usual.
         struct mir_fn *selected_overload_fn;
         // lookup best call candidate in group
-        selected_overload_fn = group_select_overload2(ctx, call, group);
+        selected_overload_fn = group_select_overload(ctx, call, group);
         bmagic_assert(selected_overload_fn);
         replace_callee(call, selected_overload_fn);
         call->state = MIR_CALL_ANALYZE_RESOLVE_CALLEE;
@@ -8964,17 +8705,18 @@ CALL_ANALYZE_BEGIN:
         }
 
         // Check if the provided function argument is compile-time known in case it's required.
-        if ((isflag(fn_arg->flags, FLAG_COMPTIME) || mir_is_comptime(&call->base)) &&
-            !mir_is_comptime(call_arg_instr)) {
+        if (isflag(fn_arg->flags, FLAG_COMPTIME) && !mir_is_comptime(call_arg_instr)) {
             report_error(EXPECTED_COMPTIME,
                          call_arg_instr->node,
                          "Function argument is supposed to be compile-time known.");
-            _report(ctx->analyze.last_analyzed_instr,
-                    MSG_ERR_NOTE,
-                    0,
-                    fn_arg->decl_node,
-                    CARET_WORD,
-                    "Function argument is declared here:");
+            report_note(fn_arg->decl_node, "Function declared here:");
+            goto FAILED;
+        } else if (mir_is_comptime(&call->base) && !mir_is_comptime(call_arg_instr)) {
+            report_error(EXPECTED_COMPTIME,
+                         call_arg_instr->node,
+                         "Function argument is supposed to be compile-time known; the function is "
+                         "executed in compile-time.");
+            report_note(call->called_function->decl_node, "Function declared here:");
             goto FAILED;
         }
         if (expected_vargs_elem_type) break;
@@ -8995,344 +8737,6 @@ INVALID_ARGS:
 FAILED:
     return_zone(FAIL);
 }
-
-#if CLEANUP
-struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *call)
-{
-    zone();
-    bassert(call->callee);
-    if (!call->callee_analyzed) {
-        // First resolve callee type here!
-        const struct result r = analyze_callee(ctx, call->callee);
-        if (r.state != ANALYZE_PASSED) return_zone(r);
-        if (analyze_slot(ctx, &analyze_slot_conf_basic, &call->callee, NULL) != ANALYZE_PASSED) {
-            return_zone(FAIL);
-        }
-        call->callee_analyzed = true;
-    }
-
-    struct mir_type *type = call->callee->value.type;
-    bassert(type && "invalid type of called object");
-
-    const bool is_called_via_pointer = mir_is_pointer_type(type);
-    if (is_called_via_pointer) {
-        // we want to make calls also via pointer to functions so in such case
-        // we need to resolve pointed function
-        type = mir_deref_type(type);
-    }
-    bool is_fn    = type->kind == MIR_TYPE_FN;
-    bool is_group = type->kind == MIR_TYPE_FN_GROUP;
-    if (!is_group && !is_fn) {
-        report_error(
-            EXPECTED_FUNC, call->callee->node, "Expected a function or function group name.");
-        return_zone(FAIL);
-    }
-
-    union fn_or_group {
-        struct mir_fn       *fn;
-        struct mir_fn_group *group;
-        void                *any;
-    };
-
-    union fn_or_group optional_fn_or_group;
-    optional_fn_or_group.any =
-        mir_is_comptime(call->callee) ? MIR_CEV_READ_AS(void *, &call->callee->value) : NULL;
-
-    // Overload resolution.
-    if (is_group && !call->called_function) {
-        // Function group will be replaced with constant function reference. Best callee
-        // candidate selection is based on call arguments not on return type! The best
-        // function is selected but it could be still invalid so we have to validate it as
-        // usual.
-        struct mir_fn_group *group = optional_fn_or_group.group;
-        bmagic_assert(group);
-        struct mir_fn *selected_overload_fn;
-        { // lookup best call candidate in group
-            mir_types_t arg_types = SARR_ZERO;
-            sarrsetlen(&arg_types, sarrlenu(call->args));
-            for (usize i = 0; i < sarrlenu(call->args); ++i) {
-                struct mir_instr *it    = sarrpeek(call->args, i);
-                struct mir_type  *t     = it->value.type;
-                sarrpeek(&arg_types, i) = is_load_needed(it) ? mir_deref_type(t) : t;
-            }
-            selected_overload_fn = group_select_overload(ctx, call, group, &arg_types);
-            sarrfree(&arg_types);
-        }
-        bmagic_assert(selected_overload_fn);
-
-        // Replace callee instruction with constant containing found overload function.
-        erase_instr_tree(call->callee, true, true);
-        struct mir_instr_const *callee_replacement =
-            (struct mir_instr_const *)mutate_instr(call->callee, MIR_INSTR_CONST);
-        callee_replacement->volatile_type   = false;
-        callee_replacement->base.value.data = (vm_stack_ptr_t)&call->callee->value._tmp;
-        callee_replacement->base.node       = selected_overload_fn->decl_node;
-        type = callee_replacement->base.value.type = selected_overload_fn->type;
-        MIR_CEV_WRITE_AS(struct mir_fn *, &callee_replacement->base.value, selected_overload_fn);
-        call->called_function   = selected_overload_fn;
-        optional_fn_or_group.fn = selected_overload_fn;
-        is_fn                   = true;
-        is_group                = false;
-    } else if (is_group) {
-        bassert(call->called_function);
-        optional_fn_or_group.fn = call->called_function;
-        is_fn                   = true;
-        is_group                = false;
-    }
-    bassert(is_fn && !is_group);
-
-    if (optional_fn_or_group.fn) {
-        struct mir_fn *fn = optional_fn_or_group.fn;
-        bmagic_assert(fn);
-
-        for (usize i = 0; i < sarrlenu(call->args) && i < sarrlenu(fn->type->data.fn.args); ++i) {
-            struct mir_instr *call_arg        = sarrpeek(call->args, i);
-            struct mir_type  *call_arg_type   = call_arg->value.type;
-            struct mir_type  *callee_arg_type = sarrpeek(fn->type->data.fn.args, i)->type;
-
-            // Pre-scan of all arguments passed to function call is needed in case we want to
-            // convert some arguments to Any type, because to Any conversion requires generation of
-            // rtti metadata about argument value type, we must check all argument types for it's
-            // completeness.
-            if (!type_cmp(callee_arg_type, ctx->builtin_types->t_Any)) {
-                continue;
-            }
-            if (call_arg_type->kind == MIR_TYPE_PTR &&
-                mir_deref_type(call_arg_type)->kind == MIR_TYPE_TYPE) {
-                call_arg_type = *MIR_CEV_READ_AS(struct mir_type **, &call_arg->value);
-                bmagic_assert(call_arg_type);
-            }
-            struct mir_type *incomplete_type;
-            if (is_incomplete_type(ctx, call_arg_type, &incomplete_type)) {
-                if (incomplete_type->user_id) {
-                    return_zone(WAIT(incomplete_type->user_id->hash));
-                }
-                return_zone(POSTPONE);
-            }
-        }
-        if (fn->generated_flavor) {
-            // We must generate the function implementation here.
-            struct mir_instr_fn_proto *instr_replacement_fn_proto = NULL;
-            runtime_measure_begin(poly);
-
-            struct result state = generate_function_implementation(
-                ctx, call->base.node, fn, call->args, &instr_replacement_fn_proto);
-            if (state.state != ANALYZE_PASSED) {
-                return_zone(FAIL);
-            }
-            ctx->assembly->stats.polymorph_s += runtime_measure_end(poly);
-            bassert(instr_replacement_fn_proto);
-
-            // Mutate callee instruction to direct declaration reference.
-            struct mir_instr_decl_direct_ref *callee_replacement =
-                (struct mir_instr_decl_direct_ref *)mutate_instr(call->callee,
-                                                                 MIR_INSTR_DECL_DIRECT_REF);
-            callee_replacement->ref        = ref_instr(&instr_replacement_fn_proto->base);
-            callee_replacement->base.state = MIR_IS_PENDING;
-
-            // We skip analyze of this instruction, newly generated function is not analyzed yet;
-            // however we've changed kind of callee instruction, so we have to roll-back in analyze
-            // stack by re-submit callee to analyze again.
-            analyze_schedule(ctx, &callee_replacement->base);
-            return_zone(SKIP);
-        }
-    } else {
-        bassert(type->data.fn.is_polymorph == false);
-    }
-
-    struct mir_type *result_type = type->data.fn.ret_type;
-    bassert(result_type && "invalid type of call result");
-    call->base.value.type = result_type;
-
-    // Direct call is call without any reference lookup, usually call to anonymous
-    // function, type resolver or variable initializer. Constant value of callee
-    // instruction must contain pointer to the struct mir_fn object.
-    const bool is_direct_call = call->callee->kind == MIR_INSTR_FN_PROTO;
-    if (is_direct_call) {
-        struct mir_fn *fn = optional_fn_or_group.fn;
-        bmagic_assert(fn);
-        // Direct call of anonymous function.
-        if (fn->ref_count == 0) {
-            ++fn->ref_count;
-        }
-    }
-
-    if (optional_fn_or_group.fn) {
-        struct mir_fn *fn = optional_fn_or_group.fn;
-        bmagic_assert(fn);
-        if (isflag(fn->flags, FLAG_COMPTIME)) {
-            // Every comptime call is evaluated automatically (type resolver also!).
-            call->base.value.is_comptime = true;
-        }
-    }
-
-    // validate arguments
-    usize       callee_argc      = sarrlenu(type->data.fn.args);
-    const usize call_argc        = sarrlenu(call->args);
-    const bool  is_vargs         = type->data.fn.is_vargs;
-    const bool  has_default_args = type->data.fn.has_default_args;
-
-    bool is_last_call_arg_vargs = false;
-    if (call_argc) {
-        struct mir_instr *last_arg = sarrpeek(call->args, call_argc - 1);
-        if (is_load_needed(last_arg)) {
-            is_last_call_arg_vargs = mir_deref_type(last_arg->value.type)->kind == MIR_TYPE_VARGS;
-        }
-    }
-
-    bassert(!(is_vargs && has_default_args));
-    if (is_vargs && !is_last_call_arg_vargs) {
-        // This is gonna be tricky...
-        --callee_argc;
-        if ((call_argc < callee_argc)) {
-            goto INVALID_ARGC;
-        }
-        struct mir_type *vargs_type = mir_get_fn_arg_type(type, (u32)callee_argc);
-        bassert(vargs_type->kind == MIR_TYPE_VARGS && "VArgs is expected to be last!!!");
-        vargs_type = mir_get_struct_elem_type(vargs_type, 1);
-        bassert(vargs_type && mir_is_pointer_type(vargs_type));
-        vargs_type = mir_deref_type(vargs_type);
-
-        // Prepare vargs values.
-        const usize       vargsc = call_argc - callee_argc;
-        mir_instrs_t     *values = arena_safe_alloc(&ctx->assembly->arenas.sarr);
-        struct mir_instr *vargs = create_instr_vargs_impl(ctx, call->base.node, vargs_type, values);
-        ref_instr(vargs);
-        if (vargsc > 0) {
-            // One or more vargs passed.
-            // @INCOMPLETE: check it this is ok!!!
-            for (usize i = 0; i < vargsc; ++i) {
-                sarrput(values, sarrpeek(call->args, callee_argc + i));
-            }
-
-            struct mir_instr *insert_loc = sarrpeek(call->args, callee_argc);
-            insert_instr_after(insert_loc, vargs);
-        } else if (callee_argc > 0) {
-            // No arguments passed into vargs but there are more regular
-            // arguments before vargs.
-            struct mir_instr *insert_loc = sarrpeek(call->args, call_argc - 1);
-            insert_instr_before(insert_loc, vargs);
-        } else {
-            insert_instr_before(&call->base, vargs);
-        }
-
-        if (analyze_instr_vargs(ctx, (struct mir_instr_vargs *)vargs).state != ANALYZE_PASSED) {
-            // @Incomplete: We probably don't want evaluation here, but I don't remember why...
-            vargs->state = MIR_IS_FAILED;
-            return_zone(FAIL);
-        }
-        vargs->state = MIR_IS_COMPLETE;
-        // Erase vargs from arguments. @NOTE: function does nothing when array size is equal
-        // to callee_argc.
-        sarrsetlen(call->args, callee_argc);
-        // Replace last with vargs.
-        sarrput(call->args, vargs);
-    } else if (has_default_args) {
-        // Call have more arguments than a function.
-        if (callee_argc < call_argc) {
-            goto INVALID_ARGC;
-        }
-
-        // Check if all arguments are explicitly provided.
-        if (callee_argc > call_argc) {
-            for (usize i = call_argc; i < callee_argc; ++i) {
-                struct mir_arg *arg = sarrpeek(type->data.fn.args, i);
-                // Missing argument has no default value!
-                if (!arg->default_value) {
-                    // @Incomplete: Consider better error message...
-                    goto INVALID_ARGC;
-                }
-
-                // Create direct reference to default value and insert it into call
-                // argument list. Here we modify call->args array!!!
-                struct mir_instr *insert_location =
-                    sarrlenu(call->args) > 0 ? sarrpeek(call->args, sarrlen(call->args) - 1)
-                                             : &call->base;
-
-                struct mir_instr *call_default_arg;
-                if (arg->default_value->kind == MIR_INSTR_CALL_LOC) {
-                    // Original InstrCallLoc is used only as note that we must generate real one
-                    // containing information about call instruction location.
-                    bassert(call->base.node);
-                    bassert(call->base.node->location);
-                    struct ast *orig_node = arg->default_value->node;
-                    call_default_arg =
-                        create_instr_call_loc(ctx, orig_node, call->base.node->location);
-                } else {
-                    call_default_arg = create_instr_decl_direct_ref(ctx, NULL, arg->default_value);
-                }
-
-                sarrput(call->args, call_default_arg);
-                insert_instr_before(insert_location, call_default_arg);
-                const struct result result = analyze_instr(ctx, call_default_arg);
-                // Default value reference MUST be analyzed before any call to owner
-                // function!
-                if (result.state != ANALYZE_PASSED) return_zone(FAIL);
-            }
-        }
-    } else if (callee_argc != call_argc) {
-        goto INVALID_ARGC;
-    }
-    // validate argument types
-    const bool is_comptime_call       = mir_is_comptime(&call->base);
-    bool       has_comptime_arguments = false;
-    for (usize i = 0; i < callee_argc; ++i) {
-        struct mir_instr **call_arg   = &sarrpeek(call->args, i);
-        struct mir_arg    *callee_arg = sarrpeek(type->data.fn.args, i);
-        bassert(callee_arg);
-        if (analyze_slot(ctx, &analyze_slot_conf_full, call_arg, callee_arg->type) !=
-            ANALYZE_PASSED) {
-            goto REPORT_OVERLOAD_LOCATION;
-        }
-        const bool is_unnamed = is_argument_unnamed(callee_arg);
-        const bool must_be_comptime =
-            (is_comptime_call && !is_unnamed) || isflag(callee_arg->flags, FLAG_COMPTIME);
-        if (!must_be_comptime) continue;
-        has_comptime_arguments = true;
-        // When function is called in compile-time, we must know all arguments in
-        // compile-time also, there is one exception for unnamed arguments (id = '_'); when
-        // argument is unnamed, we know its value cannot be used inside the function, but we
-        // can still use its type (known in compile-time). This allows things like:
-        //
-        //    get_type :: fn (_: ?T) type #comptime { return T; }
-        //
-        if (is_unnamed) continue;
-        if (!mir_is_comptime(*call_arg)) {
-            report_error(EXPECTED_COMPTIME,
-                         (*call_arg)->node,
-                         "Function argument is supposed to be compile-time known.");
-            _report(ctx->analyze.last_analyzed_instr,
-                    MSG_ERR_NOTE,
-                    0,
-                    callee_arg->decl_node,
-                    CARET_WORD,
-                    "Function argument is declared here:");
-            goto REPORT_OVERLOAD_LOCATION;
-        }
-    }
-    // In case the function has compile-time arguments, we must provide the call list to replace
-    // them later with comptime values. These values are evaluated in mir_instr_arg evaluation pass.
-    if (has_comptime_arguments) {
-        // Provide compile time arguments to the function.
-        struct mir_fn *fn = optional_fn_or_group.fn;
-        bmagic_assert(fn);
-        fn->generated.comptime_args = call->args;
-    }
-    return_zone(PASS);
-
-    // ERROR handling
-INVALID_ARGC:
-    report_invalid_call_argument_count(ctx, call->base.node, callee_argc, call_argc);
-    if (optional_fn_or_group.fn && optional_fn_or_group.fn->decl_node) {
-        report_note(optional_fn_or_group.fn->decl_node, "Function is declared here:");
-    }
-REPORT_OVERLOAD_LOCATION:
-    if (is_group) {
-        report_note(call->callee->node, "Overloaded function implementation:");
-    }
-    return_zone(FAIL);
-}
-#endif
 
 struct result analyze_instr_store(struct context *ctx, struct mir_instr_store *store)
 {
@@ -9680,8 +9084,9 @@ struct result analyze_instr(struct context *ctx, struct mir_instr *instr)
     if (!instr) return_zone(PASS);
     struct result state = PASS;
     if (instr->state == MIR_IS_COMPLETE) return_zone(state);
-    enum mir_instr_state *analyze_state = &instr->state;
-    ctx->analyze.last_analyzed_instr    = instr;
+    enum mir_instr_state *analyze_state       = &instr->state;
+    struct mir_instr     *prev_analyzed_instr = ctx->analyze.last_analyzed_instr;
+    ctx->analyze.last_analyzed_instr          = instr;
     if (instr->owner_block) set_current_block(ctx, instr->owner_block);
     bassert((*analyze_state) != MIR_IS_FAILED && "Attempt to analyze already failed instruction?!");
 
@@ -9885,7 +9290,7 @@ struct result analyze_instr(struct context *ctx, struct mir_instr *instr)
         }
     } // ANALYZED
 
-    ctx->analyze.last_analyzed_instr = NULL;
+    ctx->analyze.last_analyzed_instr = prev_analyzed_instr;
     return_zone(state);
 }
 
@@ -11312,8 +10717,8 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
             ast_arg_name = ast_arg->data.decl.name;
             bassert(ast_arg_name);
             bassert(ast_arg_name->kind == AST_IDENT && "Expected identificator.");
-            struct id           *id    = &ast_arg_name->data.ident.id;
-            const enum ast_flags flags = ast_arg->data.decl.flags;
+            struct id           *arg_id = &ast_arg_name->data.ident.id;
+            const enum ast_flags flags  = ast_arg->data.decl.flags;
 
             struct mir_instr *arg = append_instr_arg(ctx, ast_arg, (u32)i);
 
@@ -11322,16 +10727,19 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
                 (struct mir_instr_decl_var *)append_instr_decl_var(
                     ctx,
                     &(append_instr_decl_var_args_t){
-                        .node       = ast_arg_name,
-                        .id         = id,
-                        .scope      = fn->body_scope,
-                        .init       = arg,
-                        .is_mutable = false, // All arguments are forced to be immutable!
-                        .builtin_id = BUILTIN_ID_NONE,
-                        .flags      = flags,
+                        .node             = ast_arg_name,
+                        .id               = arg_id,
+                        .scope            = fn->body_scope,
+                        .init             = arg,
+                        .is_mutable       = false, // All arguments are forced to be immutable!
+                        .builtin_id       = BUILTIN_ID_NONE,
+                        .flags            = flags,
+                        .is_arg_temporary = true,
+                        .arg_index        = (s32)i,
                     });
 
-            decl_var->var->entry = register_symbol(ctx, ast_arg_name, id, fn->body_scope, false);
+            decl_var->var->entry =
+                register_symbol(ctx, ast_arg_name, arg_id, fn->body_scope, false);
         }
     }
 

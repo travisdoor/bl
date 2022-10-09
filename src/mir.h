@@ -308,6 +308,7 @@ struct mir_arg {
     struct scope_entry *entry;
     u32                 index;     // @Cleanup: Do we need this or we can use entry?
     bool                is_recipe; // True in case the argument is part of function recipe.
+    s32                 ref_count;
 
     enum ast_flags flags;
 
@@ -460,9 +461,10 @@ enum mir_var_flags {
     // the type can be returned only from compile-time functions. Value is set 'true' only when the
     // temporary return variable is created and used only for checking in 'analyze_var'.
     MIR_VAR_RET_TMP = 1 << 5,
-
+    // Mark the variable as function argument temporary.
+    MIR_VAR_ARG_TMP = 1 << 6,
     // Keep this, we sometimes have i.e. type defs in scope of the function.
-    MIR_VAR_EMIT_LLVM = 1 << 6,
+    MIR_VAR_EMIT_LLVM = 1 << 7,
 };
 
 // VAR
@@ -482,7 +484,7 @@ struct mir_var {
         vm_stack_ptr_t          global;
         vm_relative_stack_ptr_t local;
     } vm_ptr;
-
+    s32 arg_index;
     s32 ref_count;
 };
 
