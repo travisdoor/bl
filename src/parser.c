@@ -2436,7 +2436,7 @@ NEXT:
         if (AST_IS_OK(tmp)) parse_semicolon_rq(ctx);
         break;
     case SYM_LBLOCK:
-        tmp = parse_block(ctx, true);
+        tmp = parse_block(ctx, SCOPE_LEXICAL);
         break;
     case SYM_UNREACHABLE:
         tmp = parse_unrecheable(ctx);

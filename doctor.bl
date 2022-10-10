@@ -325,7 +325,7 @@ list_dir :: fn (paths: *[..]string_view, dir: string_view) {
     };
 
     data :: VisitData.{ paths = paths };
-    err :: visit_files(dir, VisitOpt.{}, &visitor, &data);
+    err :: visit_files(dir, VisitOpt.{}, &data, &visitor);
     if err {
         print_err("%", err);
         return;

@@ -28,7 +28,7 @@ main :: fn () s32 {
     bar(20, 40);
 
     poly(10, 20);
-    poly("hello", "world");
+    //poly("hello", "world");
     //poly(true, false); 
 
     poly_default(10);
@@ -49,6 +49,10 @@ main :: fn () s32 {
     variable_args_2(666, 10);
     variable_args_2(666, 10, 20);
 
+    v1 := 10;
+    v2 := 20;
+    variable_args(v1, v2);
+
     tbl: MyTable(s32, bool);
     print("tbl = %\n", tbl);
 
@@ -67,7 +71,21 @@ main :: fn () s32 {
     mixed_poly_2(data);
     */
 
+
+    application_context.print_log_fn = &test_logger;
+    debugbreak;
+    print_log("hello", 10, true);
+    application_context.print_log_fn = &__print_log_default;
+
     return 0;
+}
+
+test_logger :: fn (kind: PrintLogKind, file: string_view, line: s32, format: string_view, args: ...) {
+    kind;
+    file;
+    line;
+    format;
+    args;
 }
 
 MyTable :: fn (TKey: type #comptime, TValue: type #comptime) type #comptime {

@@ -1808,12 +1808,13 @@ enum vm_interp_state interp_instr_call(struct virtual_machine *vm, struct mir_in
     }
 
     struct mir_fn *fn = (struct mir_fn *)vm_read_ptr(callee_ptr_type, callee_ptr);
-    bmagic_assert(fn);
     if (!fn) {
         builder_error("Function pointer not set!");
         vm_abort(vm);
         return VM_INTERP_ABORT;
     }
+    bmagic_assert(fn);
+    
     if (!fn->is_fully_analyzed) {
         return VM_INTERP_POSTPONE;
     }
