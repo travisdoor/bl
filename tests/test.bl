@@ -28,7 +28,7 @@ main :: fn () s32 {
     bar(20, 40);
 
     poly(10, 20);
-    //poly("hello", "world"); // @Incomplete: internal error
+    poly("hello", "world");
     //poly(true, false); 
 
     poly_default(10);

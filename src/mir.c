@@ -175,7 +175,6 @@ struct context {
         mir_types_t          complete_check_type_stack;
         struct scope_entry **usage_check_arr;
         struct scope_entry  *unnamed_entry;
-        struct mir_instr    *last_analyzed_instr;
     } analyze;
 
     struct {
@@ -1060,43 +1059,18 @@ static inline struct mir_fn *instr_owner_fn(struct mir_instr *instr)
 }
 
 #define report_error(code, node, format, ...)                                                      \
-    _report(ctx->analyze.last_analyzed_instr,                                                      \
-            MSG_ERR,                                                                               \
-            ERR_##code,                                                                            \
-            (node),                                                                                \
-            CARET_WORD,                                                                            \
-            (format),                                                                              \
-            ##__VA_ARGS__)
+    _report(MSG_ERR, ERR_##code, (node), CARET_WORD, (format), ##__VA_ARGS__)
 
 #define report_error_after(code, node, format, ...)                                                \
-    _report(ctx->analyze.last_analyzed_instr,                                                      \
-            MSG_ERR,                                                                               \
-            ERR_##code,                                                                            \
-            (node),                                                                                \
-            CARET_AFTER,                                                                           \
-            (format),                                                                              \
-            ##__VA_ARGS__)
+    _report(MSG_ERR, ERR_##code, (node), CARET_AFTER, (format), ##__VA_ARGS__)
 
 #define report_warning(node, format, ...)                                                          \
-    _report(ctx->analyze.last_analyzed_instr,                                                      \
-            MSG_WARN,                                                                              \
-            0,                                                                                     \
-            (node),                                                                                \
-            CARET_WORD,                                                                            \
-            (format),                                                                              \
-            ##__VA_ARGS__)
+    _report(MSG_WARN, 0, (node), CARET_WORD, (format), ##__VA_ARGS__)
 
 #define report_note(node, format, ...)                                                             \
-    _report(ctx->analyze.last_analyzed_instr,                                                      \
-            MSG_ERR_NOTE,                                                                          \
-            0,                                                                                     \
-            (node),                                                                                \
-            CARET_WORD,                                                                            \
-            (format),                                                                              \
-            ##__VA_ARGS__)
+    _report(MSG_ERR_NOTE, 0, (node), CARET_WORD, (format), ##__VA_ARGS__)
 
-static inline void _report(struct mir_instr     *current_instr,
-                           enum builder_msg_type type,
+static inline void _report(enum builder_msg_type type,
                            s32                   code,
                            const struct ast     *node,
                            enum builder_cur_pos  cursor_position,
@@ -1108,7 +1082,6 @@ static inline void _report(struct mir_instr     *current_instr,
     va_start(args, format);
     builder_vmsg(type, code, loc, cursor_position, format, args);
     va_end(args);
-    if (type == MSG_ERR) report_poly(current_instr);
 }
 
 static inline struct ast *get_last_instruction_node(struct mir_instr_block *block)
@@ -1539,16 +1512,6 @@ static inline void push_into_gscope(struct context *ctx, struct mir_instr *instr
 {
     bassert(instr);
     arrput(ctx->assembly->MIR.global_instrs, instr);
-}
-
-// @Cleanup???
-// @Cleanup???
-// @Cleanup???
-static inline bool is_decl_ref_to_arg(struct mir_instr *instr)
-{
-    bassert(instr);
-    return (instr->kind == MIR_INSTR_DECL_REF &&
-            ((struct mir_instr_decl_ref *)instr)->scope_entry->kind == SCOPE_ENTRY_ARG);
 }
 
 // =================================================================================================
@@ -9085,8 +9048,6 @@ struct result analyze_instr(struct context *ctx, struct mir_instr *instr)
     struct result state = PASS;
     if (instr->state == MIR_IS_COMPLETE) return_zone(state);
     enum mir_instr_state *analyze_state       = &instr->state;
-    struct mir_instr     *prev_analyzed_instr = ctx->analyze.last_analyzed_instr;
-    ctx->analyze.last_analyzed_instr          = instr;
     if (instr->owner_block) set_current_block(ctx, instr->owner_block);
     bassert((*analyze_state) != MIR_IS_FAILED && "Attempt to analyze already failed instruction?!");
 
@@ -9290,7 +9251,11 @@ struct result analyze_instr(struct context *ctx, struct mir_instr *instr)
         }
     } // ANALYZED
 
-    ctx->analyze.last_analyzed_instr = prev_analyzed_instr;
+    if ((*analyze_state) == MIR_IS_FAILED) {
+        // Report generated function information here in case of analyze failure.
+        report_poly(instr);
+    }
+
     return_zone(state);
 }
 
