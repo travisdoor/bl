@@ -82,7 +82,7 @@ struct config;
 #define isnotflag(_v, _flag) ((bool)(((_v) & (_flag)) != (_flag)))
 #define setflag(_v, _flag) ((_v) |= (_flag))
 #define clrflag(_v, _flag) ((_v) &= ~(_flag))
-#define setiflag(_v, _flag, _toggle) ((_toggle) ? setflag(_v, _flag) : clrflag(_v, _flag))
+#define setflagif(_v, _flag, _toggle) ((_toggle) ? setflag(_v, _flag) : clrflag(_v, _flag))
 
 enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 

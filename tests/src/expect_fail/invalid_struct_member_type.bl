@@ -1,0 +1,5 @@
+// @ERR_INVALID_TYPE@
+A :: 10;
+Invalid :: struct {
+    a: A;
+}

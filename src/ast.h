@@ -46,7 +46,7 @@ enum ast_kind {
 #undef GEN_AST_KINDS
 };
 
-enum ast_flag {
+enum ast_flags {
     FLAG_EXTERN = 1 << 0, // methods marked as extern
     // 1 << 1, free
     FLAG_COMPILER     = 1 << 2,  // compiler internal
@@ -193,10 +193,10 @@ struct ast_stmt_loop {
 };
 
 struct ast_decl {
-    struct ast *name;
-    struct ast *type;
-    struct ast *tag; // Optional.
-    u32         flags;
+    struct ast   *name;
+    struct ast   *type;
+    struct ast   *tag; // Optional.
+    enum ast_flags flags;
 };
 
 struct ast_decl_entity {
@@ -248,9 +248,9 @@ enum ast_type_fn_flavor {
 };
 
 struct ast_type_fn {
-    struct ast  *ret_type;
-    ast_nodes_t *args;
-    u32          flavor; // @Note: see ast_type_fn_flavor
+    struct ast             *ret_type;
+    ast_nodes_t            *args;
+    enum ast_type_fn_flavor flavor; // @Note: see ast_type_fn_flavor
 };
 
 struct ast_type_fn_group {
