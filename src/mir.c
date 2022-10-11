@@ -1277,12 +1277,6 @@ static inline bool is_instr_type_volatile(struct mir_instr *instr)
     }
 }
 
-static inline bool type_cmp(const struct mir_type *first, const struct mir_type *second)
-{
-    bassert(first && second);
-    return first->id.hash == second->id.hash;
-}
-
 static inline bool
 can_impl_convert_to(struct context *ctx, const struct mir_type *from, const struct mir_type *to)
 {
@@ -1304,12 +1298,12 @@ can_impl_convert_to(struct context *ctx, const struct mir_type *from, const stru
     case MIR_TYPE_STRING:
     case MIR_TYPE_DYNARR: {
         from = mir_deref_type(mir_get_struct_elem_type(from, MIR_SLICE_PTR_INDEX));
-        return type_cmp(from, to);
+        return mir_type_cmp(from, to);
     }
 
     case MIR_TYPE_ARRAY:
         from = from->data.array.elem_type;
-        return type_cmp(from, to);
+        return mir_type_cmp(from, to);
     default:
         break;
     }
@@ -1336,7 +1330,7 @@ static inline bool can_impl_cast(const struct mir_type *from, const struct mir_t
     if (from->kind == MIR_TYPE_VARGS && to->kind == MIR_TYPE_SLICE) {
         from = mir_get_struct_elem_type(from, MIR_SLICE_PTR_INDEX);
         to   = mir_get_struct_elem_type(to, MIR_SLICE_PTR_INDEX);
-        return type_cmp(from, to);
+        return mir_type_cmp(from, to);
     }
     if (from->kind != to->kind) return false;
 
@@ -1346,7 +1340,7 @@ static inline bool can_impl_cast(const struct mir_type *from, const struct mir_t
         to   = mir_deref_type(to);
 
         while (from) {
-            if (type_cmp(from, to)) {
+            if (mir_type_cmp(from, to)) {
                 return true;
             } else {
                 from = get_base_type(from);
@@ -3085,7 +3079,7 @@ enum mir_cast_op get_cast_op(struct mir_type *from, struct mir_type *to)
     const usize fsize = from->store_size_bytes;
     const usize tsize = to->store_size_bytes;
 
-    if (type_cmp(from, to)) return MIR_CAST_NONE;
+    if (mir_type_cmp(from, to)) return MIR_CAST_NONE;
 
     // Allow casting of anything to polymorph type. Polymorph types should exist only in
     // polymorph function argument list and should not produce any executable code directly;
@@ -4669,7 +4663,7 @@ enum vm_interp_state evaluate(struct context *ctx, struct mir_instr *instr)
         break;
     }
     if (can_mutate_comptime_to_const(ctx, instr)) {
-        if (type_cmp(instr->value.type, ctx->builtin_types->t_string_literal)) {
+        if (mir_type_cmp(instr->value.type, ctx->builtin_types->t_string_literal)) {
             // This can be dangerous, we allow conversion from string view  to string literal here,
             // this seems fine, however string views used as return type of a compile time function
             // can point to any arbitrary data existing only in compile time.
@@ -6339,7 +6333,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
             result = analyze_resolve_type(ctx, fn_proto->user_type, &user_fn_type);
             if (result.state != ANALYZE_PASSED) return_zone(result);
 
-            if (!type_cmp(fn_type, user_fn_type)) {
+            if (!mir_type_cmp(fn_type, user_fn_type)) {
                 error_types(
                     ctx, &fn_proto->base, fn_type, user_fn_type, fn_proto->user_type->node, NULL);
             }
@@ -7833,7 +7827,7 @@ struct result analyze_instr_ret(struct context *ctx, struct mir_instr_ret *ret)
     }
 
     const bool expected_ret_value =
-        !type_cmp(fn_type->data.fn.ret_type, ctx->builtin_types->t_void);
+        !mir_type_cmp(fn_type->data.fn.ret_type, ctx->builtin_types->t_void);
 
     // return value is not expected, and it's not provided
     if (!expected_ret_value && !value) {
@@ -8160,7 +8154,7 @@ static struct mir_fn *group_select_overload(struct context            *ctx,
             const struct mir_type *t2 = sarrpeek(args, j)->type;
             bassert(t1 && t2);
 
-            if (type_cmp(t1, t2)) {
+            if (mir_type_cmp(t1, t2)) {
                 // Exact type match.
                 pair->priority += 3;
                 continue;
@@ -9027,7 +9021,7 @@ ANALYZE_STAGE_FN(set_volatile_expr)
 
 ANALYZE_STAGE_FN(implicit_cast)
 {
-    if (type_cmp((*input)->value.type, slot_type)) return ANALYZE_STAGE_BREAK;
+    if (mir_type_cmp((*input)->value.type, slot_type)) return ANALYZE_STAGE_BREAK;
     if (!can_impl_cast((*input)->value.type, slot_type)) return ANALYZE_STAGE_CONTINUE;
     *input          = insert_instr_cast(ctx, *input, slot_type);
     struct result r = analyze_instr(ctx, *input);
@@ -9715,7 +9709,7 @@ void rtti_gen_enum_variant(struct context *ctx, vm_stack_ptr_t dest, struct mir_
     struct mir_type *base_enum_type = variant->value_type->data.enm.base_type;
 
     vm_write_string(ctx->vm, dest_name_type, dest_name, make_str_from_c(variant->id->str));
-    if (type_cmp(dest_value_type, base_enum_type)) {
+    if (mir_type_cmp(dest_value_type, base_enum_type)) {
         vm_write_int(dest_value_type, dest_value, variant->value);
     } else {
         vm_do_cast(dest_value,
@@ -10676,6 +10670,9 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
     if (ast_args) {
         struct ast *ast_arg;
         struct ast *ast_arg_name;
+        // @Cleanup: we can use any ordering here???
+        // @Cleanup: we can use any ordering here???
+        // @Cleanup: we can use any ordering here???
         for (usize i = sarrlenu(ast_args); i-- > 0;) {
             ast_arg = sarrpeek(ast_args, i);
             bassert(ast_arg->kind == AST_DECL_ARG);

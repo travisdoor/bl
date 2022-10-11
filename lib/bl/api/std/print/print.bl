@@ -210,6 +210,7 @@ _print_impl :: fn {
         buffer :: buf;
         cursor :: cur;
         if cursor >= buffer.len { return cursor; }
+        debugbreak;
         __print_impl(&buffer, format, args, &cursor);
         return cursor;
     };

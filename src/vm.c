@@ -152,8 +152,17 @@ static struct vm_stack *create_stack(const usize bytes)
     bassert(bytes > 0 && "Invalid stack size!");
     struct vm_stack *stack = bmalloc(sizeof(char) * bytes);
     stack->allocated_bytes = bytes;
+    stack->_expected_types = NULL;
     reset_stack(stack);
     return stack;
+}
+
+static inline void terminate_stack(struct vm_stack *stack)
+{
+#if BL_DEBUG
+    arrfree(stack->_expected_types);
+#endif
+    bfree(stack);
 }
 
 struct vm_stack *reset_stack(struct vm_stack *stack)
@@ -163,6 +172,9 @@ struct vm_stack *reset_stack(struct vm_stack *stack)
     stack->ra         = NULL;
     stack->prev_block = NULL;
     stack->top_ptr    = (u8 *)stack + stack_alloc_size(sizeof(struct vm_stack));
+#if BL_DEBUG
+    arrsetlen(stack->_expected_types, 0);
+#endif
     return stack;
 }
 
@@ -229,6 +241,9 @@ static inline vm_stack_ptr_t stack_push_empty(struct virtual_machine *vm, struct
     const usize size = type->store_size_bytes;
     bassert(size && "pushing zero sized data on stack");
     vm_stack_ptr_t tmp = stack_alloc(vm, size);
+#if BL_DEBUG
+    arrpush(vm->stack->_expected_types, type);
+#endif
     vmdbg_notify_stack_op(VMDBG_PUSH, type, tmp);
     return tmp;
 }
@@ -246,8 +261,22 @@ static inline vm_stack_ptr_t stack_pop(struct virtual_machine *vm, struct mir_ty
 {
     bassert(type);
     const usize size = type->store_size_bytes;
-    bassert(size && "popping zero sized data from stack");
+    bassert(size && "Popping zero sized data from stack.");
     const vm_stack_ptr_t ptr = stack_free(vm, size);
+#if BL_DEBUG
+    {
+        const usize expected_types_count = arrlenu(vm->stack->_expected_types);
+        bassert(expected_types_count > 0 && "Corrupted stack!");
+        struct mir_type *expected_type = arrpop(vm->stack->_expected_types);
+        if (!mir_type_cmp(expected_type, type)) {
+            const char *expected_type_name = mir_type2str(expected_type, true);
+            const char *type_name          = mir_type2str(type, true);
+            babort("Invalid type for the stack operation! Expected is '%s', got '%s'.",
+                   expected_type_name,
+                   type_name);
+        }
+    }
+#endif
     vmdbg_notify_stack_op(VMDBG_POP, type, ptr);
     return ptr;
 }
@@ -255,7 +284,7 @@ static inline vm_stack_ptr_t stack_pop(struct virtual_machine *vm, struct mir_ty
 static inline vm_stack_ptr_t stack_peek(struct virtual_machine *vm, struct mir_type *type)
 {
     usize size = type->store_size_bytes;
-    bassert(size && "peeking zero sized data on stack");
+    bassert(size && "Peeking zero sized data on stack.");
     size               = stack_alloc_size(size);
     vm_stack_ptr_t top = vm->stack->top_ptr - size;
     if (top < (u8 *)(vm->stack->ra + 1)) babort("Stack underflow!!!");
@@ -1486,6 +1515,7 @@ void interp_instr_arg(struct virtual_machine *vm, struct mir_instr_arg *arg)
 
     if (caller) {
         mir_instrs_t *arg_values = caller->args;
+        const usize   argc       = sarrlenu(arg_values);
         bassert(arg_values && arg->i < sarrlenu(arg_values));
         struct mir_instr *curr_arg_value = sarrpeek(arg_values, arg->i);
 
@@ -1498,11 +1528,13 @@ void interp_instr_arg(struct virtual_machine *vm, struct mir_instr_arg *arg)
             struct mir_instr *arg_value = NULL;
             // starting point
             vm_stack_ptr_t arg_ptr = (vm_stack_ptr_t)vm->stack->ra;
-            for (u32 i = 0; i <= arg->i; ++i) {
+            // @Incomplete: comment!!!
+            for (u32 i = argc; i-- > 0;) {
                 arg_value = sarrpeek(arg_values, i);
                 bassert(arg_value);
                 if (mir_is_comptime(arg_value)) continue;
                 arg_ptr -= stack_alloc_size(arg_value->value.type->store_size_bytes);
+                if (arg->i == i) break;
             }
 
             stack_push(vm, (vm_stack_ptr_t)arg_ptr, arg->base.value.type);
@@ -1814,7 +1846,7 @@ enum vm_interp_state interp_instr_call(struct virtual_machine *vm, struct mir_in
         return VM_INTERP_ABORT;
     }
     bmagic_assert(fn);
-    
+
     if (!fn->is_fully_analyzed) {
         return VM_INTERP_POSTPONE;
     }
@@ -2410,18 +2442,15 @@ void vm_terminate(struct virtual_machine *vm)
 {
     data_free(vm);
     arrfree(vm->dcsigtmp);
-
     for (u64 i = 0; i < arrlenu(vm->available_comptime_call_stacks); ++i) {
-        bfree(vm->available_comptime_call_stacks[i]);
+        terminate_stack(vm->available_comptime_call_stacks[i]);
     }
     arrfree(vm->available_comptime_call_stacks);
-
     for (u64 i = 0; i < hmlenu(vm->comptime_call_stacks); ++i) {
-        bfree(vm->comptime_call_stacks[i].stack);
+        terminate_stack(vm->comptime_call_stacks[i].stack);
     }
     hmfree(vm->comptime_call_stacks);
-
-    bfree(vm->main_stack);
+    terminate_stack(vm->main_stack);
 }
 
 void vm_print_backtrace(struct virtual_machine *vm)

@@ -995,6 +995,12 @@ static inline bool mir_type_has_llvm_representation(const struct mir_type *type)
            type->kind != MIR_TYPE_NAMED_SCOPE && type->kind != MIR_TYPE_POLY;
 }
 
+static inline bool mir_type_cmp(const struct mir_type *first, const struct mir_type *second)
+{
+    bassert(first && second);
+    return first->id.hash == second->id.hash;
+}
+
 static inline bool mir_is_zero_initialized(const struct mir_instr_compound *compound)
 {
     bassert(compound);

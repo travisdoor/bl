@@ -75,6 +75,10 @@ struct vm_stack {
     struct vm_frame        *ra;              // current frame beginning (return address)
     struct mir_instr       *pc;              // currently executed instruction (program counter)
     struct mir_instr_block *prev_block;      // used by phi instruction
+
+#if BL_DEBUG
+    array(struct mir_type *) _expected_types;
+#endif
 };
 
 struct vm_bufpage {

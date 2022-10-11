@@ -17,6 +17,7 @@ Data :: struct {
 }
 
 main :: fn () s32 {
+    /*
     n : s64 = 10;
     foo(&n);
 
@@ -60,22 +61,17 @@ main :: fn () s32 {
 
     arr := [4]s32.{ 10, 20, 30, 40 };
     comptime_arr_size(4, &arr);
-    /*
-    arr: [10]s32;
-    mixed(10, &arr);
-
-    arr2: [2]s32;
-    mixed(2, &arr2);
-
-    data :: Data.{};
-    mixed_poly_2(data);
-    */
-
 
     application_context.print_log_fn = &test_logger;
     debugbreak;
     print_log("hello", 10, true);
     application_context.print_log_fn = &__print_log_default;
+    */
+   
+    n1 := 10; 
+    n2 := 20; 
+    debugbreak; 
+    print("mine_function(%, %)\n", n1, n2);
 
     return 0;
 }
