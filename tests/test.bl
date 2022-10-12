@@ -16,10 +16,10 @@ Data :: struct {
     c: s64;
 }
 
-no_address :: fn () #comptime {}
-
 main :: fn () s32 {
-    addr :: &no_address;
+    foo_ptr :: new(Data);
+    free(auto foo_ptr);
+
     /*
     n : s64 = 10;
     foo(&n);
