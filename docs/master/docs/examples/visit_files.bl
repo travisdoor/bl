@@ -17,7 +17,7 @@ main :: fn () s32 {
     defer array_terminate(&list);
     cwd :: get_cwd();
     defer str_delete(&cwd);
-    err :: visit_files(cwd, VisitOpt.{ recursive = true }, &visitor, &list);
+    err :: visit_files(cwd, VisitOpt.{ recursive = true }, &list, &visitor);
     if err { panic(err); }
 
     loop i := 0; i < list.len; i += 1 {

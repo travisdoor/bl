@@ -373,10 +373,11 @@ void vmdbg_notify_stack_op(enum vmdbg_stack_op op, struct mir_type *type, void *
     }
     switch (op) {
     case VMDBG_PUSH_RA:
-    case VMDBG_PUSH:
+    case VMDBG_PUSH: {
         struct stack_context *sctx = get_stack_context();
         arrput(sctx->stackops, (uintptr_t)ptr);
         break;
+    }
     case VMDBG_POP:
         if (!pop_is_valid(ptr)) {
             builder_error("Invalid POP operation on address %p", ptr);

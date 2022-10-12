@@ -5784,14 +5784,19 @@ struct result analyze_instr_addrof(struct context *ctx, struct mir_instr_addrof 
             } else if (isflag(fn->generated_flavor, MIR_FN_GENERATED_MIXED)) {
                 report_error(EXPECTED_DECL,
                              addrof->base.node,
-                             "Cannot take the address of compile time executed function, having "
-                             "compile-time arguments, the implementation may differ based on "
-                             "arguments provided on call side.");
+                             "Cannot take the address of compile-time generated function, the "
+                             "implementation may differ based on call-side arguments.");
                 report_note(fn->decl_node, "Function is declared here:");
             } else {
                 BL_UNREACHABLE;
             }
             return_zone(FAIL);
+        } else if (isflag(fn->flags, FLAG_COMPTIME)) {
+            report_error(EXPECTED_DECL,
+                         addrof->base.node,
+                         "Cannot take the address of compile-time function, such a function exists "
+                         "only in compile-time and does not have any runtime representation.");
+            report_note(fn->decl_node, "Function is declared here:");
         }
 
         // @Note: Here we increase function ref count.
@@ -8585,8 +8590,13 @@ CALL_ANALYZE_BEGIN:
             // We're providing more arguments than the function has.
             goto INVALID_ARGS;
         }
+        
+        bool forward_vargs = false;
+        if (call_arg_instr && is_load_needed(call_arg_instr)) {
+            forward_vargs = mir_deref_type(call_arg_instr->value.type)->kind == MIR_TYPE_VARGS;
+        }
 
-        if (fn_arg->type->kind == MIR_TYPE_VARGS) {
+        if (fn_arg->type->kind == MIR_TYPE_VARGS && !forward_vargs) {
             // Handle vargs, note that the vargs argument must be the last one in the function
             // argument list (this is already checked before we reach this stage).
             // All following arguments (event 0 is supported) will be converted to the vargs array
@@ -8611,7 +8621,7 @@ CALL_ANALYZE_BEGIN:
 
             if (vargsc > 0) {
                 insert_instr_after(sarrpeek(call->args, func_argc-1), vargs);
-            } else if (func_argc) {
+            } else if (call_argc > 0) {
                 insert_instr_before(sarrpeek(call->args, call_argc - 1), vargs);
             } else {
                 insert_instr_before(&call->base, vargs);

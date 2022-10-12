@@ -183,6 +183,17 @@ realloc :: fn (old_ptr: *u8, old_size: usize, size: usize, alignment := DEFAULT_
     return mem, err;
 }
 
+/// Allocates new object of type `T` on heap using `preferred_allocator`, in case the allocator is not specified, the current context
+/// allocator is used.
+/// Use [free](#free) to release allocated memory when it's not needed anymore.
+///
+/// !!! note
+///     Returned memory block is not zero initialized. 
+new :: fn (T: type #comptime, preferred_allocator: *Allocator = null, loc := #call_location) (ptr: *T, err: Error) #inline {
+    mem, err :: alloc(sizeof(T), alignof(T), preferred_allocator, loc);
+    return auto mem, err; 
+}
+
 /// Free memory previously allocated by specific `preferred_allocator`. In case the `preferred_allocator` is null, 
 /// the default application context allocator is used. The `ptr` can be null.
 free :: fn (ptr: *u8, preferred_allocator: *Allocator = null, loc := #call_location) #inline {

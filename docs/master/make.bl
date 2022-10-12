@@ -82,7 +82,7 @@ list_files_recursive :: fn (dirpath: string_view, out: *string) {
         return OK;
     };
 
-    err :: visit_files(dirpath, VisitOpt.{ recursive = true }, &visitor, out);
+    err :: visit_files(dirpath, VisitOpt.{ recursive = true }, out, &visitor);
     if err {
         panic(err);
     }

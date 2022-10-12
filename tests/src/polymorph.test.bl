@@ -103,10 +103,11 @@ test_poly_local_1 :: fn () #test {
 }
 
 recursive :: fn (v: ?T) T {
-    if v < 10 { 
-        v = recursive(v+1);
+    result := v;
+    if result < 10 { 
+        result = recursive(result+1);
     }
-    return v;
+    return result;
 }
 
 test_recursive_poly :: fn () #test {

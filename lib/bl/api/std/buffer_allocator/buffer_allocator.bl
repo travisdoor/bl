@@ -98,13 +98,13 @@ handler :: fn (buf: *BufferAllocator, operation: AllocOp, old_ptr: *u8, old_size
 
 allocate :: fn (buf: *BufferAllocator, size: usize, alignment: usize) (mem: *u8, err: Error) {
     mask :: ~(alignment - 1);
-    size += alignment - 1;
-    needed_size :: buf.used_bytes + size;
+    adjusted_size :: size + alignment - 1;
+    needed_size :: buf.used_bytes + adjusted_size;
     if needed_size > auto buf.mem.len {
         return null, error("The buffer is full! The buffer size is %B and required size is %B.", buf.mem.len, needed_size);
     }
     mem := &buf.mem[auto buf.used_bytes];
-    buf.used_bytes += size;
+    buf.used_bytes += adjusted_size;
     mem = auto ((cast(usize) mem) + alignment - 1 & mask);
     return mem, OK;
 }

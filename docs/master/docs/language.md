@@ -1063,8 +1063,7 @@ Functions can be declared in global or local scope (one function can be nested i
 
 **Function arguments**
 
-Function arguments in BL are immutable, and does not produce any implicit local stack allocation and
-value duplication in the function body. See the following example:
+Function arguments in BL are immutable (argument itself cannot be changed in the function body). See the following example:
 
 ```rust
 Person :: struct {
@@ -1096,6 +1095,8 @@ my_function :: fn (person_1: *Person, person_2: Person, age: s32) {
 }
 
 ```
+
+Function arguments may be "comptime", comptime arguments cause the new function implementation to be generated each time the function is used.
 
 ### Named function
 

@@ -520,7 +520,7 @@ fs_dir_visit1 :: fn () #test {
     defer str_delete(&root);
 
     data: VisitData;
-    err :: visit_files(root, VisitOpt.{}, &visitor, &data);
+    err :: visit_files(root, VisitOpt.{}, &data, &visitor);
     test_ok(err);
     test_eq(data.file_count, 3);
     test_eq(data.directory_count, 3);
@@ -533,7 +533,7 @@ fs_dir_visit2 :: fn () #test {
     defer str_delete(&root);
 
     data: VisitData;
-    err :: visit_files(root, VisitOpt.{ recursive = true }, &visitor, &data);
+    err :: visit_files(root, VisitOpt.{ recursive = true }, &data, &visitor);
     test_ok(err);
     test_eq(data.file_count, 15);
     test_eq(data.directory_count, 5);
@@ -546,7 +546,7 @@ fs_dir_visit_only_txt :: fn () #test {
     defer str_delete(&root);
 
     data := VisitData.{ include_ext = ".txt" };
-    err :: visit_files(root, VisitOpt.{ recursive = true }, &visitor, &data);
+    err :: visit_files(root, VisitOpt.{ recursive = true }, &data, &visitor);
     test_ok(err);
     test_eq(data.file_count, 10);
     test_eq(data.directory_count, 5);
