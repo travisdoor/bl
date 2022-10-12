@@ -1523,13 +1523,11 @@ void interp_instr_arg(struct virtual_machine *vm, struct mir_instr_arg *arg)
             struct mir_type *type = curr_arg_value->value.type;
             stack_push(vm, curr_arg_value->value.data, type);
         } else {
-            // Arguments are located in reverse order right before return address on the
-            // stack so we can find them inside loop adjusting address up on the stack.
             struct mir_instr *arg_value = NULL;
             // starting point
             vm_stack_ptr_t arg_ptr = (vm_stack_ptr_t)vm->stack->ra;
             // @Incomplete: comment!!!
-            for (u32 i = argc; i-- > 0;) {
+            for (usize i = argc; i-- > 0;) {
                 arg_value = sarrpeek(arg_values, i);
                 bassert(arg_value);
                 if (mir_is_comptime(arg_value)) continue;

@@ -1007,6 +1007,16 @@ static inline bool mir_is_zero_initialized(const struct mir_instr_compound *comp
     return compound->values == NULL;
 }
 
+static inline struct mir_fn *mir_instr_owner_fn(struct mir_instr *instr)
+{
+    bassert(instr);
+    if (instr->kind == MIR_INSTR_BLOCK) {
+        return ((struct mir_instr_block *)instr)->owner_fn;
+    }
+    if (!instr->owner_block) return NULL;
+    return instr->owner_block->owner_fn;
+}
+
 bool           mir_is_in_comptime_fn(struct mir_instr *instr);
 void           mir_arenas_init(struct mir_arenas *arenas);
 void           mir_arenas_terminate(struct mir_arenas *arenas);

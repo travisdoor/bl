@@ -63,14 +63,12 @@ main :: fn () s32 {
     comptime_arr_size(4, &arr);
 
     application_context.print_log_fn = &test_logger;
-    debugbreak;
     print_log("hello", 10, true);
     application_context.print_log_fn = &__print_log_default;
     */
    
     n1 := 10; 
     n2 := 20; 
-    debugbreak; 
     print("mine_function(%, %)\n", n1, n2);
 
     return 0;

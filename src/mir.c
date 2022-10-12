@@ -1048,16 +1048,6 @@ static struct mir_var *rtti_gen_fn_group(struct context *ctx, struct mir_type *t
 
 // INLINES
 
-static inline struct mir_fn *instr_owner_fn(struct mir_instr *instr)
-{
-    bassert(instr);
-    if (instr->kind == MIR_INSTR_BLOCK) {
-        return ((struct mir_instr_block *)instr)->owner_fn;
-    }
-    if (!instr->owner_block) return NULL;
-    return instr->owner_block->owner_fn;
-}
-
 #define report_error(code, node, format, ...)                                                      \
     _report(MSG_ERR, ERR_##code, (node), CARET_WORD, (format), ##__VA_ARGS__)
 
@@ -4976,7 +4966,7 @@ static struct result analyze_instr_compound_regular(struct context            *c
             "current function, not explicitly specified one!");
         // Compound expression used as multiple return value has no type specified; function
         // return type must by used.
-        struct mir_fn *fn = instr_owner_fn(&cmp->base);
+        struct mir_fn *fn = mir_instr_owner_fn(&cmp->base);
         bassert(fn && fn->type);
         cmp->base.value.type = fn->type->data.fn.ret_type;
         bassert(cmp->base.value.type);
@@ -7676,7 +7666,7 @@ struct result analyze_instr_call_loc(struct context *ctx, struct mir_instr_call_
 
     const char *filepath = loc->call_location->unit->filepath;
     bassert(filepath);
-    const struct mir_fn *owner_fn = instr_owner_fn(&loc->base);
+    const struct mir_fn *owner_fn = mir_instr_owner_fn(&loc->base);
     loc->function_name            = "";
     if (owner_fn) {
         loc->function_name = owner_fn->full_name;
@@ -9041,7 +9031,7 @@ struct result analyze_instr(struct context *ctx, struct mir_instr *instr)
     if (!instr) return_zone(PASS);
     struct result state = PASS;
     if (instr->state == MIR_IS_COMPLETE) return_zone(state);
-    enum mir_instr_state *analyze_state       = &instr->state;
+    enum mir_instr_state *analyze_state = &instr->state;
     if (instr->owner_block) set_current_block(ctx, instr->owner_block);
     bassert((*analyze_state) != MIR_IS_FAILED && "Attempt to analyze already failed instruction?!");
 
@@ -10935,7 +10925,7 @@ void report_invalid_call_argument_count(struct context *ctx,
 void report_poly(struct mir_instr *instr)
 {
     if (!instr) return;
-    struct mir_fn *owner_fn = instr_owner_fn(instr);
+    struct mir_fn *owner_fn = mir_instr_owner_fn(instr);
     if (!owner_fn) return;
     if (!owner_fn->generated.first_call_node) return;
     if (!owner_fn->generated.first_call_node->location) return;
@@ -11904,7 +11894,7 @@ struct id builtin_ids[_BUILTIN_ID_COUNT] = {
 
 bool mir_is_in_comptime_fn(struct mir_instr *instr)
 {
-    struct mir_fn *owner_fn = instr_owner_fn(instr);
+    struct mir_fn *owner_fn = mir_instr_owner_fn(instr);
     return owner_fn ? isflag(owner_fn->flags, FLAG_COMPTIME) : false;
 }
 
