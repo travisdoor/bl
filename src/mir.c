@@ -8608,7 +8608,14 @@ CALL_ANALYZE_BEGIN:
             for (s32 i = 0; i < vargsc; ++i) {
                 sarrput(values, sarrpeek(call->args, func_argc + i - 1));
             }
-            insert_instr_before(&call->base, vargs);
+
+            if (vargsc > 0) {
+                insert_instr_after(sarrpeek(call->args, func_argc-1), vargs);
+            } else if (func_argc) {
+                insert_instr_before(sarrpeek(call->args, call_argc - 1), vargs);
+            } else {
+                insert_instr_before(&call->base, vargs);
+            }
 
             if (analyze_instr_vargs(ctx, (struct mir_instr_vargs *)vargs).state != ANALYZE_PASSED) {
                 // vargs->state = MIR_IS_FAILED; @Cleanup: check this.

@@ -17,7 +17,6 @@ Data :: struct {
 }
 
 main :: fn () s32 {
-    /*
     n : s64 = 10;
     foo(&n);
 
@@ -65,7 +64,6 @@ main :: fn () s32 {
     application_context.print_log_fn = &test_logger;
     print_log("hello", 10, true);
     application_context.print_log_fn = &__print_log_default;
-    */
    
     n1 := 10; 
     n2 := 20; 
@@ -75,11 +73,7 @@ main :: fn () s32 {
 }
 
 test_logger :: fn (kind: PrintLogKind, file: string_view, line: s32, format: string_view, args: ...) {
-    kind;
-    file;
-    line;
-    format;
-    args;
+    print("test_logger(%, %, %, %, %)\n", kind, file, line, format, args);
 }
 
 MyTable :: fn (TKey: type #comptime, TValue: type #comptime) type #comptime {

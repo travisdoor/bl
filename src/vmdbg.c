@@ -36,11 +36,16 @@ enum state {
     STEPPING,
 };
 
-static enum state              state         = CONTINUE;
-static bool                    mir_mode      = false;
-static bool                    verbose_stack = false;
-static struct virtual_machine *current_vm    = NULL;
-static uintptr_t              *stackops      = NULL;
+struct stack_context {
+    struct vm_stack *key;
+    array(uintptr_t) stackops;
+};
+
+static enum state              state                  = CONTINUE;
+static bool                    mir_mode               = false;
+static bool                    verbose_stack          = false;
+static struct virtual_machine *current_vm             = NULL;
+static hash_table(struct stack_context) stack_context = NULL;
 
 static void print(struct mir_instr *instr)
 {
@@ -92,8 +97,8 @@ static void print_data(struct mir_type *type, vm_stack_ptr_t ptr)
 
         const vm_stack_ptr_t len_ptr =
             vm_get_struct_elem_ptr(current_vm->assembly, type, ptr, MIR_SLICE_LEN_INDEX);
-        const s64 len = (s64)vm_read_int(len_type, len_ptr);
-        s64 limited_len = len;
+        const s64 len         = (s64)vm_read_int(len_type, len_ptr);
+        s64       limited_len = len;
         CLAMP(limited_len, 0, 256);
 
         if (elem_type->kind == MIR_TYPE_PTR) {
@@ -102,15 +107,15 @@ static void print_data(struct mir_type *type, vm_stack_ptr_t ptr)
                 !char_type->data.integer.is_signed) {
                 const vm_stack_ptr_t elem_ptr =
                     vm_get_struct_elem_ptr(current_vm->assembly, type, ptr, MIR_SLICE_PTR_INDEX);
-                const char *str = vm_read_ptr(elem_type, elem_ptr);
+                const char *str = (const char *)vm_read_ptr(elem_type, elem_ptr);
 
                 s64 len_without_new_lines = 0;
                 for (; len_without_new_lines < limited_len; ++len_without_new_lines) {
                     if (str[len_without_new_lines] == '\n') break;
                 }
                 printf("[%lld] \"%.*s", len, (s32)len_without_new_lines, str);
-                const s64 count_of_new_line = limited_len - len_without_new_lines;
-                for (s64 i = 0; i < count_of_new_line; ++i) {
+                const s64 count_of_new_lines = limited_len - len_without_new_lines;
+                for (s64 i = 0; i < count_of_new_lines; ++i) {
                     printf("\\n");
                 }
                 printf("\"");
@@ -229,7 +234,11 @@ void vmdbg_attach(struct virtual_machine *vm)
 
 void vmdbg_detach(void)
 {
-    arrfree(stackops);
+    for (u64 i = 0; i < hmlenu(stack_context); ++i) {
+        arrfree(stack_context[i].stackops);
+    }
+    hmfree(stack_context);
+
     current_vm = NULL;
     state      = CONTINUE;
 }
@@ -256,16 +265,32 @@ void vmdbg_notify_instr(struct mir_instr *instr)
     cmd();
 }
 
+static struct stack_context *get_stack_context(void)
+{
+    bassert(current_vm->stack);
+    struct vm_stack *stack = current_vm->stack;
+    bassert(stack);
+    s64 index = hmgeti(stack_context, stack);
+    if (index == -1) {
+        hmputs(stack_context, ((struct stack_context){.key = stack}));
+        index = hmgeti(stack_context, stack);
+        bassert(index != -1);
+    }
+    return &stack_context[index];
+}
+
 static bool pop_is_valid(void *ptr)
 {
-    if (arrlenu(stackops) == 0) return false;
-    return arrpop(stackops) == (uintptr_t)ptr;
+    struct stack_context *sctx = get_stack_context();
+    if (arrlenu(sctx->stackops) == 0) return false;
+    return arrpop(sctx->stackops) == (uintptr_t)ptr;
 }
 
 static bool rollback_is_valid(void *ptr)
 {
-    while (arrlenu(stackops)) {
-        if (arrpop(stackops) == (uintptr_t)ptr) return true;
+    struct stack_context *sctx = get_stack_context();
+    while (arrlenu(sctx->stackops)) {
+        if (arrpop(sctx->stackops) == (uintptr_t)ptr) return true;
     }
     return false;
 }
@@ -349,7 +374,8 @@ void vmdbg_notify_stack_op(enum vmdbg_stack_op op, struct mir_type *type, void *
     switch (op) {
     case VMDBG_PUSH_RA:
     case VMDBG_PUSH:
-        arrput(stackops, (uintptr_t)ptr);
+        struct stack_context *sctx = get_stack_context();
+        arrput(sctx->stackops, (uintptr_t)ptr);
         break;
     case VMDBG_POP:
         if (!pop_is_valid(ptr)) {
@@ -368,6 +394,12 @@ void vmdbg_notify_stack_op(enum vmdbg_stack_op op, struct mir_type *type, void *
         }
         break;
     }
+}
+
+void vmdbg_notify_stack_swap(void)
+{
+    if (!current_vm) return;
+    printf("     -                       SWAP\n");
 }
 
 void vmdbg_break(void)

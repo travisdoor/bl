@@ -152,16 +152,12 @@ static struct vm_stack *create_stack(const usize bytes)
     bassert(bytes > 0 && "Invalid stack size!");
     struct vm_stack *stack = bmalloc(sizeof(char) * bytes);
     stack->allocated_bytes = bytes;
-    stack->_expected_types = NULL;
     reset_stack(stack);
     return stack;
 }
 
 static inline void terminate_stack(struct vm_stack *stack)
 {
-#if BL_DEBUG
-    arrfree(stack->_expected_types);
-#endif
     bfree(stack);
 }
 
@@ -172,9 +168,6 @@ struct vm_stack *reset_stack(struct vm_stack *stack)
     stack->ra         = NULL;
     stack->prev_block = NULL;
     stack->top_ptr    = (u8 *)stack + stack_alloc_size(sizeof(struct vm_stack));
-#if BL_DEBUG
-    arrsetlen(stack->_expected_types, 0);
-#endif
     return stack;
 }
 
@@ -184,6 +177,7 @@ static inline struct vm_stack *swap_current_stack(struct virtual_machine *vm,
     bassert(stack);
     struct vm_stack *previous_stack = vm->stack;
     vm->stack                       = stack;
+    vmdbg_notify_stack_swap();
     return previous_stack;
 }
 
@@ -241,9 +235,6 @@ static inline vm_stack_ptr_t stack_push_empty(struct virtual_machine *vm, struct
     const usize size = type->store_size_bytes;
     bassert(size && "pushing zero sized data on stack");
     vm_stack_ptr_t tmp = stack_alloc(vm, size);
-#if BL_DEBUG
-    arrpush(vm->stack->_expected_types, type);
-#endif
     vmdbg_notify_stack_op(VMDBG_PUSH, type, tmp);
     return tmp;
 }
@@ -263,20 +254,6 @@ static inline vm_stack_ptr_t stack_pop(struct virtual_machine *vm, struct mir_ty
     const usize size = type->store_size_bytes;
     bassert(size && "Popping zero sized data from stack.");
     const vm_stack_ptr_t ptr = stack_free(vm, size);
-#if BL_DEBUG
-    {
-        const usize expected_types_count = arrlenu(vm->stack->_expected_types);
-        bassert(expected_types_count > 0 && "Corrupted stack!");
-        struct mir_type *expected_type = arrpop(vm->stack->_expected_types);
-        if (!mir_type_cmp(expected_type, type)) {
-            const char *expected_type_name = mir_type2str(expected_type, true);
-            const char *type_name          = mir_type2str(type, true);
-            babort("Invalid type for the stack operation! Expected is '%s', got '%s'.",
-                   expected_type_name,
-                   type_name);
-        }
-    }
-#endif
     vmdbg_notify_stack_op(VMDBG_POP, type, ptr);
     return ptr;
 }
@@ -1513,9 +1490,10 @@ void interp_instr_arg(struct virtual_machine *vm, struct mir_instr_arg *arg)
     // arguments to be already pushed on the stack.
     struct mir_instr_call *caller = (struct mir_instr_call *)get_ra(vm)->caller;
 
+    // Call arguments are in reverse order on the stack.
+
     if (caller) {
         mir_instrs_t *arg_values = caller->args;
-        const usize   argc       = sarrlenu(arg_values);
         bassert(arg_values && arg->i < sarrlenu(arg_values));
         struct mir_instr *curr_arg_value = sarrpeek(arg_values, arg->i);
 
@@ -1526,13 +1504,11 @@ void interp_instr_arg(struct virtual_machine *vm, struct mir_instr_arg *arg)
             struct mir_instr *arg_value = NULL;
             // starting point
             vm_stack_ptr_t arg_ptr = (vm_stack_ptr_t)vm->stack->ra;
-            // @Incomplete: comment!!!
-            for (usize i = argc; i-- > 0;) {
+            for (u32 i = 0; i <= arg->i; ++i) {
                 arg_value = sarrpeek(arg_values, i);
                 bassert(arg_value);
                 if (mir_is_comptime(arg_value)) continue;
                 arg_ptr -= stack_alloc_size(arg_value->value.type->store_size_bytes);
-                if (arg->i == i) break;
             }
 
             stack_push(vm, (vm_stack_ptr_t)arg_ptr, arg->base.value.type);
@@ -2573,13 +2549,13 @@ enum vm_interp_state vm_execute_fn(struct virtual_machine *vm,
     return state;
 }
 
-static void release_snapshot(struct virtual_machine *vm, struct vm_stack *stack)
+static inline void release_snapshot(struct virtual_machine *vm, struct vm_stack *stack)
 {
     bassert(stack);
     arrput(vm->available_comptime_call_stacks, reset_stack(stack));
 }
 
-static void
+static inline void
 store_snapshot(struct virtual_machine *vm, struct vm_stack *stack, struct mir_instr_call *call)
 {
     bassert(hmgeti(vm->comptime_call_stacks, call) == -1);
