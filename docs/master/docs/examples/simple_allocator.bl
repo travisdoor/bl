@@ -51,9 +51,9 @@ allocate :: fn (allocator: *MyAllocator, size: usize, alignment: usize) (mem: *u
     // Alignment mask.
     mask :: ~(alignment - 1);
     // We need some additional space to properly align the allocation.
-    size += alignment - 1;
+    adjusted_size :: size + alignment - 1;
     // Calculate total size needed.
-    needed_size :: allocator.used_bytes + size;
+    needed_size :: allocator.used_bytes + adjusted_size;
     // Check if there is space enough in out buffer.
     if needed_size > auto allocator.buffer.len {
         return null, error("The buffer is full! The buffer size is %B and required size is %B.", allocator.buffer.len, needed_size);
@@ -61,7 +61,7 @@ allocate :: fn (allocator: *MyAllocator, size: usize, alignment: usize) (mem: *u
     // Get free memory pointer.
     mem := &allocator.buffer[auto allocator.used_bytes];
     // Adjust used size.
-    allocator.used_bytes += size;
+    allocator.used_bytes += adjusted_size;
     // Align memory pointer.
     mem = auto ((cast(usize) mem) + alignment - 1 & mask);
     return mem, OK;

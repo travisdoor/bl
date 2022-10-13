@@ -617,10 +617,10 @@ test_tokenize_0 :: fn () #test {
         token_count: s32;
     };
     data: Data;
-    str_tokenize(path, '/', &fn (token: string_view, data: *Data) bool {
+    str_tokenize(path, '/', &data, &fn (token: string_view, data: *Data) bool {
         data.token_count += 1;
         return true;
-    }, &data);
+    });
     test_eq(data.token_count, 0);
 }
 
@@ -631,12 +631,12 @@ test_tokenize_1 :: fn () #test {
         token_count: s32;
     };
     data: Data;
-    str_tokenize(path, '/', &fn (token: string_view, data: *Data) bool {
+    str_tokenize(path, '/', &data, &fn (token: string_view, data: *Data) bool {
         tokens :: [4]string_view.{ "home", "travis", "develop", "foo" };
         test_eq(token, tokens[data.token_count]);
         data.token_count += 1;
         return true;
-    }, &data);
+    });
     test_eq(data.token_count, 4);
 }
 
@@ -647,10 +647,10 @@ test_tokenize_2 :: fn () #test {
         token_count: s32;
     };
     data: Data;
-    str_tokenize(path, '/', &fn (token: string_view, data: *Data) bool {
+    str_tokenize(path, '/', &data, &fn (token: string_view, data: *Data) bool {
         data.token_count += 1;
         return true;
-    }, &data);
+    });
     test_eq(data.token_count, 0);
 }
 
@@ -661,9 +661,9 @@ test_tokenize_3 :: fn () #test {
         token_count: s32;
     };
     data: Data;
-    str_tokenize(path, '/', &fn (token: string_view, data: *Data) bool {
+    str_tokenize(path, '/', &data, &fn (token: string_view, data: *Data) bool {
         data.token_count += 1;
         return true;
-    }, &data);
+    });
     test_eq(data.token_count, 0);
 }

@@ -17,6 +17,10 @@ Data :: struct {
 }
 
 main :: fn () s32 {
+    foo_ptr :: new(Data);
+    free(auto foo_ptr);
+
+    /*
     n : s64 = 10;
     foo(&n);
 
@@ -68,6 +72,7 @@ main :: fn () s32 {
     n1 := 10; 
     n2 := 20; 
     print("mine_function(%, %)\n", n1, n2);
+    */
 
     return 0;
 }
@@ -121,7 +126,7 @@ mixed_poly :: fn (v: ?T #comptime, n := 10) #comptime {
 }
 
 variable_args :: fn (v: ...s32 #maybe_unused) {
-    print("variable_args(%)\n", v);
+    print("variable_args(%)\n", v.len);
 }
 
 variable_args_2 :: fn (n: s32 #maybe_unused, v: ...s32 #maybe_unused) {
@@ -138,11 +143,6 @@ call_with_pointer :: fn (n_ptr: *s32) {
 
 with_call_loc :: fn (n: s32, loc := #call_location) {
     print("with_call_loc(%, %)\n", n, @loc);
-}
-
-new :: fn (T: type #comptime, preferred_allocator: *Allocator = null, loc := #call_location) (ptr: *T, err: Error) #inline {
-    mem, err :: alloc(sizeof(T), alignof(T), preferred_allocator, loc);
-    return auto mem, err; 
 }
 
 // Implement implicit cast from placeholder to number with value 1?

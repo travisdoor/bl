@@ -168,7 +168,8 @@ get_cwd :: fn () string #inline {
     buf: [OS_PATH_MAX]u8;
     if !C.getcwd(auto buf.ptr, auto buf.len) { return std.str_new(); }
     path :: std.str_new(buf.ptr);
-    return remove_last_separator(path);
+    remove_last_separator(&path);
+    return path;
 }
 
 set_cwd :: fn (path: string_view) Error #inline {
@@ -185,7 +186,8 @@ get_home :: fn () string #inline {
     cdir :: cast(*u8) C.getenv(auto tmp.ptr);
     if !cdir { return std.str_new(); }
     path :: std.str_new(cdir);
-    return remove_last_separator(path);
+    remove_last_separator(&path);
+    return path;
 }
 
 get_tmp :: fn () string #inline {
@@ -193,7 +195,8 @@ get_tmp :: fn () string #inline {
     cdir :: cast(*u8) C.getenv(auto tmp.ptr);
     if !cdir { return std.str_new("/tmp"); }
     path :: std.str_new(cdir);
-    return remove_last_separator(path);
+    remove_last_separator(&path);
+    return path;
 }
 
 normalize :: fn (filepath: *string) Error {
@@ -272,13 +275,12 @@ modes_to_flags :: fn (modes: std.OpenFileMode) s32 #inline {
     return flags;
 }
 
-remove_last_separator :: fn (path: string) string {
-    if std.str_is_empty(path) { return path; }
-    if path[path.len-1] == '/' {
-        path[path.len-1] = '\0';
+remove_last_separator :: fn (path: *string) {
+    if std.str_is_empty(@path) { return; }
+    if (@path)[path.len-1] == '/' {
+        (@path)[path.len-1] = '\0';
         path.len -= 1;
     }
-    return path;
 }
 
 is_path_absolute :: fn (path: string) bool #inline {
