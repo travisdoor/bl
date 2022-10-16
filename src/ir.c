@@ -274,6 +274,11 @@ llvm_cache_fn(struct context *ctx, const char *name, LLVMValueRef llvm_fn)
 static inline LLVMTypeRef get_type(struct context *ctx, struct mir_type *t)
 {
     bassert(t->llvm_type && "Invalid type reference for LLVM!");
+    bassert(t->kind != MIR_TYPE_INVALID);
+    bassert(t->kind != MIR_TYPE_TYPE);
+    bassert(t->kind != MIR_TYPE_FN_GROUP);
+    bassert(t->kind != MIR_TYPE_NAMED_SCOPE);
+    bassert(t->kind != MIR_TYPE_PLACEHOLDER);
     if (ctx->generate_debug_info && !t->llvm_meta) {
         DI_type_init(ctx, t);
     }

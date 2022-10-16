@@ -100,6 +100,10 @@ static inline void bl_debug_break(void)
 #define bmagic_member void *_magic;
 #define bmagic_set(O) (O)->_magic = (void *)&(O)->_magic
 
+#define bcalled_once_member(name) s32 _##name##_call_count;
+#define bcalled_once_assert(obj, name)                                                             \
+    bassert((obj)->_##name##_call_count++ == 0 && "Expected to be called only once!")
+
 // =================================================================================================
 #else
 // =================================================================================================
@@ -122,6 +126,9 @@ static inline void bl_debug_break(void)
     while (0) {                                                                                    \
     }                                                                                              \
     (void)0
+
+#define bcalled_once_member(name)
+#define bcalled_once_assert(obj, name) (void)0
 
 // =================================================================================================
 #endif

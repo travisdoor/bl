@@ -103,6 +103,13 @@ default_args_fn_explicit_type :: fn () #test {
     foo(10, 20, 30, 40);
 }
 
+default_args_null_ptr :: fn () #test {
+    my_function :: fn (ptr: *s32 = null) *s32 { 
+        return ptr;
+    };
+    test_null(my_function());
+}
+
 default_args_call_side_location :: fn () #test {
     foo :: fn (expected_file: string_view, expected_line: s32, loc: *CodeLocation = #call_location) {
         test_eq(loc.file, expected_file);
@@ -198,3 +205,4 @@ default_args_callback_inline :: fn () #test {
     };
     test_eq(my_function(), 10);
 }
+

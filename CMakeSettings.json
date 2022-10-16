@@ -54,13 +54,12 @@
       "name": "Release-MSVC",
       "generator": "Ninja",
       "configurationType": "Release",
-      "buildRoot": "${projectDir}\\clang\\${name}",
+      "buildRoot": "${projectDir}\\msvc\\${name}",
       "installRoot": "${projectDir}\\out\\install\\${name}",
       "cmakeCommandArgs": "",
       "buildCommandArgs": "",
       "ctestCommandArgs": "",
-      "inheritEnvironments": [ "msvc_x64_x64" ],
-      "variables": []
+      "inheritEnvironments": [ "msvc_x64_x64" ]
     }
   ]
 }

@@ -23,8 +23,7 @@ MISC :: [5]Test.{
     Test.{ name = "lib/bl/api/build/build_api_test", kind = TestKind.BUILD },
 };
 
-MODULES :: [16]string_view.{
-    "lib/bl/api/std/arg_parser/arg_parser.test.bl",
+MODULES :: [15]string_view.{
     "lib/bl/api/std/array/array.test.bl",
     "lib/bl/api/std/bucket_array/bucket_array.test.bl",
     "lib/bl/api/std/debug_allocator/debug_allocator.test.bl",
@@ -476,6 +475,7 @@ BlError :: enum s32 {
     ERR_UNSUPPORTED_TARGET       = 82;
     ERR_COMPILE_TIME_ABORT       = 83;
     ERR_USER                     = 84;
+    ERR_INVALID_CALL_CONVENTION  = 85;
 }
 
 strtoerr :: fn (s: string_view) s32 {

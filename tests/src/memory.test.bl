@@ -159,6 +159,6 @@ new_test_2 :: fn () #test {
     foo_ptr.a = 10;
     foo_ptr.b = 20;
     test_eq(foo_ptr.a, 10);
-    test_eq(foo_ptr.b, 10);
+    test_eq(foo_ptr.b, 20);
     free(auto foo_ptr);
 }

@@ -1,10 +1,11 @@
 #private
 
-completed_type :: fn () #test {
-    test_eq(sizeof(Foo), sizeof(Reference2));
+complete_type :: fn () #test {
+    test_eq(sizeof(Foo), sizeof(ReferenceFoo));
     my_function(Bar);
 }
 
+/*
 complete_for_any :: fn () #test {
     other_function(BarBar);
 }
@@ -12,10 +13,11 @@ complete_for_any :: fn () #test {
 complete_for_any2 :: fn () #test {
     group_with_any(FooFoo);
 }
+*/
 
 
 my_function :: fn (T: type #comptime) #comptime {
-    static_assert(sizeof(T) == sizeof(Reference1));
+    static_assert(sizeof(T) == sizeof(Reference));
     info1 :: typeinfo(T);
     info2 :: typeinfo(Bar);
 
@@ -38,7 +40,7 @@ group_with_any :: fn {
 }
 
 MyType :: fn (TElem: type #comptime) type #comptime {
-    static_assert(sizeof(TElem) == sizeof(Reference1));
+    static_assert(sizeof(TElem) == sizeof(Reference));
     return struct {
         v: TElem;
     };
@@ -46,6 +48,11 @@ MyType :: fn (TElem: type #comptime) type #comptime {
 
 Foo :: struct {
     data: MyType(Bar);
+    i: s32;
+}
+
+ReferenceFoo :: struct {
+    data: Bar;
     i: s32;
 }
 
@@ -59,15 +66,10 @@ BarBar :: struct {
     bar: Bar;
 }
 
-Reference1 :: struct {
+Reference :: struct {
     foo: *u8;
     a: s32;
     b: s32;
-}
-
-Reference2 :: struct {
-    data: Bar;
-    i: s32;
 }
 
 FooFoo :: struct {

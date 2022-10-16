@@ -176,15 +176,9 @@ struct mir_fn_generated_recipe {
     hash_t scope_layer;
     // Cache of already generated functions (replacement hash -> struct mir_fn*).
     hash_table(struct {
-        hash_t                     key;
-        struct mir_instr_fn_proto *value;
-    }) entries;
-
-    // @Cleanup
-    hash_table(struct {
         hash_t         key;
         struct mir_fn *value;
-    }) entries2;
+    }) entries;
 
     bmagic_member
 };
@@ -227,7 +221,7 @@ struct mir_fn {
         // Comptime arguments may not be provided yet in case the generated function body is
         // analyzed and evaluated. The compile-time value evaluation of comptime instr_arg must wait
         // for it!
-        mir_instrs_t *comptime_args; // @Cleanup
+        // mir_instrs_t *comptime_args; // @Cleanup
 
         // Optional, this is set to first call location used for generation of this function from
         // polymorph recipe.
@@ -306,8 +300,9 @@ struct mir_arg {
     struct ast         *decl_node;
     struct scope       *decl_scope; // @Cleanup: Check if it's needed.
     struct scope_entry *entry;
-    u32                 index;     // @Cleanup: Do we need this or we can use entry?
-    bool                is_recipe; // True in case the argument is part of function recipe.
+    u32                 index;            // @Cleanup: Do we need this or we can use entry?
+    bool                is_inside_recipe; // True in case the argument is part of function recipe.
+    bool                is_inside_declaration;
     s32                 ref_count;
 
     enum ast_flags flags;
@@ -319,8 +314,8 @@ struct mir_arg {
     // Optional default value.
     struct mir_instr *default_value;
 
-    // Optional, set when owning function was generated based on call-side arguments.
-    mir_instrs_t *generation_call_args;
+    // Optional, set only for generated functions.
+    struct mir_instr_call *generation_call;
 
     enum llvm_extern_arg_struct_generation_mode llvm_easgm;
     bmagic_member
@@ -582,6 +577,9 @@ struct mir_instr_sizeof {
     struct mir_instr  base;
     mir_instrs_t     *args; // Used only as temporary for analyze.
     struct mir_instr *expr;
+
+    // Used mainly to skip input expression analyze pass in case the type was incomplete. 
+    struct mir_type  *resolved_type;
 };
 
 struct mir_instr_alignof {
@@ -683,6 +681,7 @@ struct mir_instr_type_fn {
     mir_instrs_t        *args;
     enum builtin_id_kind builtin_id;
     bool                 is_polymorph;
+    bool                 is_inside_declaration;
 };
 
 struct mir_instr_type_fn_group {
@@ -746,30 +745,33 @@ struct mir_instr_type_poly {
     struct id       *T_id;
 };
 
-enum mir_call_analyze {
-    MIR_CALL_ANALYZE_CHECK_ARGS_COMPLETENESS = 0,
-    MIR_CALL_ANALYZE_RESOLVE_CALLEE,
-    MIR_CALL_ANALYZE_CHECK_CALLEE,
-    MIR_CALL_ANALYZE_RESOLVE_OVERLOAD,
-    MIR_CALL_ANALYZE_GENERATED,
-    MIR_CALL_FINALIZE,
-};
+struct context;
+
+typedef struct result (*mir_call_analyze_stage_fn_t)(struct context        *ctx,
+                                                     struct mir_instr_call *call);
 
 // @Note: Call instruction with set base.value.is_comptime will be automatically executed during
 // analyze process.
 struct mir_instr_call {
     struct mir_instr base;
     // Generally any callable instruction.
-    struct mir_instr     *callee;
-    enum mir_call_analyze state;
+    struct mir_instr                  *callee;
+    const mir_call_analyze_stage_fn_t *analyze_pipeline;
 
     // Pointer to called function resolved after overload resolution.
     struct mir_fn *called_function;
-    mir_instrs_t  *args;            // Optional
-    bool           callee_analyzed; // @Cleanup
+    mir_instrs_t  *args; // Optional
 
     // Optional temporary variable for unroll multi-return struct type.
     struct mir_instr *unroll_tmp_var;
+
+    // clang-format off
+    bcalled_once_member(arg_completeness)
+    bcalled_once_member(prescan_args)
+    bcalled_once_member(resolve_overload)
+    bcalled_once_member(generate)
+    bcalled_once_member(finalize)
+    // clang-format on
 };
 
 struct mir_instr_decl_ref {
@@ -918,6 +920,13 @@ static inline bool mir_is_pointer_type(const struct mir_type *type)
 {
     bassert(type);
     return type->kind == MIR_TYPE_PTR;
+}
+
+static inline bool mir_is_placeholder(const struct mir_instr *instr)
+{
+    bassert(instr);
+    bassert(instr->value.type);
+    return instr->value.type->kind == MIR_TYPE_PLACEHOLDER;
 }
 
 static inline struct mir_type *mir_deref_type(const struct mir_type *ptr)

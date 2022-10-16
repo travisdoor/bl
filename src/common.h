@@ -249,13 +249,25 @@ struct id {
     hash_t      hash;
 };
 
+// Reference implementation: https://github.com/haipome/fnv/blob/master/fnv.c
 static inline hash_t strhash(const char *str)
 {
+#if 1
+    // FNV 32-bit hash
+    hash_t hash = 2166136261;
+    char   c;
+    while ((c = *str++)) {
+        hash = hash ^ (u8)c;
+        hash = hash * 16777619;
+    }
+    return hash;
+#else
     hash_t hash = 5381;
     char   c;
     while ((c = *str++))
         hash = ((hash << 5) + hash) + (hash_t)c;
     return hash;
+#endif
 }
 
 static inline hash_t hashcomb(hash_t first, hash_t second)

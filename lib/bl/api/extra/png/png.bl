@@ -35,7 +35,7 @@ COLOR_TYPE_RGBA :: COLOR_TYPE_RGB_ALPHA;
 COLOR_TYPE_GA   :: COLOR_TYPE_GRAY_ALPHA;
 
 sig_cmp :: fn (sig: bytep, start: size_t, num_to_check: size_t) s32 #extern "png_sig_cmp";
-create_read_struct :: fn (user_ver: const_charp, error_ptr: voidp, error_fn: error_ptr, warn_fn: error_ptr) structp #extern "png_create_read_struct";
+create_read_struct :: fn (user_ver: const_charp, errorptr: voidp, error_fn: error_ptr, warn_fn: error_ptr) structp #extern "png_create_read_struct";
 destroy_read_struct :: fn (ptr_ptr: structpp, info_ptr_ptr: infopp, end_info_ptr_ptr: infopp) #extern "png_destroy_read_struct";
 create_info_struct :: fn (ptr: structp) infop #extern "png_create_info_struct";
 set_sig_bytes :: fn (ptr: structp, num_bytes: s32) #extern "png_set_sig_bytes";
