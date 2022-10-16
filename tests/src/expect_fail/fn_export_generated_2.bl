@@ -1,0 +1,2 @@
+// @ERR_INVALID_CALL_CONVENTION@
+foo :: fn (v: ?T) #export;

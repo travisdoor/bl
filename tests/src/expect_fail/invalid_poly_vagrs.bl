@@ -1,0 +1,6 @@
+// @ERR_INVALID_POLY_MATCH@
+foo :: fn (v: ...?T) {}
+main :: fn () s32 {
+	foo();
+	return 0;
+}
