@@ -422,12 +422,12 @@ quat_axis_angle :: fn (axis: v3, angle_rad: f32) quat {
     c :: std.cos(a);
     s :: std.sin(a);
 
-    axis = normalize(axis);
+    normalized_axis :: normalize(axis);
 
     return quat.{
-        s * axis.x,
-        s * axis.y,
-        s * axis.z,
+        s * normalized_axis.x,
+        s * normalized_axis.y,
+        s * normalized_axis.z,
         c
     };
 };
@@ -480,133 +480,83 @@ quat_forward :: fn (q: quat) v3 {
 // sub
 // =================================================================================================
 v2_sub :: fn (a: v2, b: v2) v2 #inline {
-    a.x -= b.x;
-    a.y -= b.y;
-    return a;
+    return v2.{ a.x - b.x, a.y - b.y };
 };
 
 v2_sub_s :: fn (a: v2, v: f32) v2 #inline {
-    a.x -= v;
-    a.y -= v;
-    return a;
+    return v2.{ a.x - v, a.y - v };
 };
 
 v3_sub :: fn (a: v3, b: v3) v3 #inline {
-    a.x -= b.x;
-    a.y -= b.y;
-    a.z -= b.z;
-    return a;
+    return v3.{ a.x - b.x, a.y - b.y, a.z - b.z };
 };
 
 v3_sub_s :: fn (a: v3, b: f32) v3 #inline {
-    a.x -= b;
-    a.y -= b;
-    a.z -= b;
-    return a;
+    return v3.{ a.x - b, a.y - b, a.z - b };
 };
 
 v4_sub :: fn (a: v4, b: v4) v4 #inline {
-    a.x -= b.x;
-    a.y -= b.y;
-    a.z -= b.z;
-    a.w -= b.w;
-    return a;
+    return v4.{ a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w };
 };
 
 v4_sub_s :: fn (a: v4, b: f32) v4 #inline {
-    a.x -= b;
-    a.y -= b;
-    a.z -= b;
-    a.w -= b;
-    return a;
+    return v4.{ a.x - b, a.y - b, a.z - b, a.w - b };
 };
 
 // =================================================================================================
 // add
 // =================================================================================================
 v2_add :: fn (a: v2, b: v2) v2 #inline {
-    a.x += b.x;
-    a.y += b.y;
-    return a;
+    return v2.{ a.x + b.x, a.y + b.y };
 };
 
 v2_add_s :: fn (a: v2, v: f32) v2 #inline {
-    a.x += v;
-    a.y += v;
-    return a;
+    return v2.{ a.x + v, a.y + v };
 };
 
 v3_add :: fn (a: v3, b: v3) v3 #inline 
 {
-    a.x += b.x;
-    a.y += b.y;
-    a.z += b.z;
-    return a;
+    return v3.{ a.x + b.x, a.y + b.y, a.z + b.z };
 };
 
 v3_add_s :: fn (a: v3, b: f32) v3 #inline {
-    a.x += b;
-    a.y += b;
-    a.z += b;
-    return a;
+    return v3.{ a.x + b, a.y + b, a.z + b };
 };
 
 v4_add :: fn (a: v4, b: v4) v4 #inline 
 {
-    a.x += b.x;
-    a.y += b.y;
-    a.z += b.z;
-    a.w += b.w;
-    return a;
+    return v4.{ a.x + b.x, a.y + b.y, a.z + b.z, a.w - b.w };
 };
 
 v4_add_s :: fn (a: v4, b: f32) v4 #inline {
-    a.x += b;
-    a.y += b;
-    a.z += b;
-    a.w += b;
-    return a;
+    return v4.{ a.x + b, a.y + b, a.z + b, a.w - b };
 };
 
 // =================================================================================================
 // mul
 // =================================================================================================
 v2_mul :: fn (a: v2, b: v2) v2 #inline {
-    a.x *= b.x;
-    a.y *= b.y;
-    return a;
+    return v2.{ a.x * b.x, a.y * b.y };
 };
 
 v2_mul_s :: fn (a: v2, v: f32) v2 #inline {
-    a.x *= v;
-    a.y *= v;
-    return a;
+    return v2.{ a.x * v, a.y * v };
 };
 
 v3_mul :: fn (a: v3, b: v3) v3 #inline {
-    a.x *= b.x;
-    a.y *= b.y;
-    a.z *= b.z;
-    return a;
+    return v3.{ a.x * b.x, a.y * b.y, a.z * b.z };
 };
 
-v3_mul_s :: fn (a: v3, s: f32) v3 #inline {
-    a.x *= s;
-    a.y *= s;
-    a.z *= s;
-    return a;
+v3_mul_s :: fn (a: v3, b: f32) v3 #inline {
+    return v3.{ a.x * b, a.y * b, a.z * b };
 };
 
 v4_mul :: fn (a: v4, b: v4) v4 #inline {
-    a.x *= b.x;
-    a.y *= b.y;
-    a.z *= b.z;
-    a.w *= b.w;
-    return a;
+    return v4.{ a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w };
 };
 
-v4_mul_s :: fn (v: v4, s: f32) v4 #inline {
-    return v4.{ v.x * s, v.y * s, v.z * s, v.w * s };
+v4_mul_s :: fn (v: v4, b: f32) v4 #inline {
+    return v4.{ v.x * b, v.y * b, v.z * b, v.w * b };
 }
 
 // =================================================================================================

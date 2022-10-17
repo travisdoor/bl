@@ -1,0 +1,2 @@
+// @ERR_INVALID_TYPE@
+foo :: *fn (v: s32 #comptime);

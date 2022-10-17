@@ -2,25 +2,76 @@
 
 TODO:
 
-- Analyze of comptime arguments must be done when they are used.
 - Change syntax of default argument value assignment to ':'.
 - Update documentation.
-- #maybe_comptime - automatically comptime evaluated in case all the arguments are compile-time known.
+- #comptime - automatically comptime evaluated in case all the arguments are compile-time known.
 - Properly handle fail of ast_expr_lit_fn while generating recipe implementation.
+- Do not call functions in recipe declaration.
+
+Documentation notes:
+- Argument mutability.
+- Comptime arguments.
+- Cannot use previous comptime as default.
+- Polymorph master and vargs no default value. 
 
 */
 
 Data :: struct {
     a: s32;
     b: s32;
-    c: s64;
+    c: s32;
+    d: s32;
+    e: s32;
+}
+
+get_my_type :: fn (T: type #comptime) type #comptime {
+    static_assert(T == s32);
+    print("!!!!!!!!\n");
+    return T;
+}
+
+// foo :: fn (v: s32 #comptime, b := v)
+// foo :: fn (T: type #comptime, b : ?TGuess = T)
+// foo :: fn (T: ?TFirst #comptime, b : ?TSecond = T #comptime)
+
+ma_allocation_callbacks :: struct {
+    pUserData: *u8;
+    onMalloc: *fn (sz: usize, pUserData: *u8) *u8;
+    onRealloc: *fn (p: *u8, sz: usize, pUserData: *u8) *u8;
+    onFree: *fn (p: *u8, pUserData: *u8);
+}
+
+gimme_any :: fn (v: Any) {
+    v;
+}
+
+complete_type :: fn () #comptime {
+    print("IS OK = %\n", sizeof(Foo) == sizeof(Bar));
+}
+
+MyType :: fn (TElem: type #comptime) type #comptime {
+    return struct {
+        v: TElem;
+    };
+}
+
+Foo :: struct {
+    data: MyType(Bar);
+}
+
+Bar :: struct {
+    foo: *Foo;
 }
 
 main :: fn () s32 {
+    //complete_type();
+    gimme_any(10);
+
     foo_ptr :: new(Data);
     free(auto foo_ptr);
+    s32_ptr :: new(s32);
+    free(auto s32_ptr);
 
-    /*
     n : s64 = 10;
     foo(&n);
 
@@ -72,7 +123,6 @@ main :: fn () s32 {
     n1 := 10; 
     n2 := 20; 
     print("mine_function(%, %)\n", n1, n2);
-    */
 
     return 0;
 }

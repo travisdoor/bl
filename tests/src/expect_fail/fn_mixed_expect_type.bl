@@ -1,0 +1,6 @@
+// @ERR_INVALID_TYPE@
+foo :: fn (T: type #comptime, v: T) {}
+main :: fn () s32 {
+	foo(10, 10);
+	return 0;
+}

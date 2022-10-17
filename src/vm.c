@@ -31,6 +31,7 @@
 #include "blmemory.h"
 #include "builder.h"
 #include "common.h"
+#include "mir.h"
 #include "scope.h"
 #include "stb_ds.h"
 #include "vmdbg.h"
@@ -1844,6 +1845,7 @@ void interp_instr_ret(struct virtual_machine *vm, struct mir_instr_ret *ret)
     bassert(fn);
     struct mir_type *ret_type     = fn->type->data.fn.ret_type;
     vm_stack_ptr_t   ret_data_ptr = NULL;
+
     // pop return value from stack
     if (ret->value) {
         bassert(ret_type == ret->value->value.type);
@@ -1859,11 +1861,11 @@ void interp_instr_ret(struct virtual_machine *vm, struct mir_instr_ret *ret)
     // do frame stack rollback
     struct mir_instr_call *pc = pop_ra(vm);
     // post-processing like cleanup and continuing to the another instruction is allowed only in
-    // case the return adress call is not compile-time; i.e. type resolver or any #comptime marked
+    // case the return address call is not compile-time; i.e. type resolver or any #comptime marked
     // top-level executed during evaluation.
     const bool do_post_process = pc && !mir_is_comptime(&pc->base);
 
-    // clean up all arguments from the stack only for non-comptime return adress call (in case we
+    // clean up all arguments from the stack only for non-comptime return address call (in case we
     // have compile-time call here, we suppose it's top-level executed call!
     if (do_post_process) {
         mir_instrs_t *arg_values = pc->args;
@@ -2244,14 +2246,10 @@ void eval_instr_arg(struct virtual_machine UNUSED(*vm), struct mir_instr_arg *ar
     struct mir_arg *arg_data = mir_get_fn_arg(fn->type, arg->i);
     bassert(arg_data && isflag(arg_data->flags, FLAG_COMPTIME));
 
-    mir_instrs_t *comptime_args = arg_data->generation_call_args;
-    bassert(comptime_args &&
-            "No compile-time known arguments provided to the function argument evaluator!");
-
-    bassert(arg->i < sarrlenu(comptime_args) && arg->i >= 0 &&
-            "Argument index is out of the range!");
-
-    arg->base.value.data = sarrpeek(comptime_args, arg->i)->value.data;
+    struct mir_instr_call *call = arg_data->generation_call;
+    bassert(call && "No compile-time known arguments provided to the function argument evaluator!");
+    bassert(arg->i < sarrlenu(call->args) && arg->i >= 0 && "Argument index is out of the range!");
+    arg->base.value.data = sarrpeek(call->args, arg->i)->value.data;
 }
 
 void eval_instr_decl_var(struct virtual_machine UNUSED(*vm), struct mir_instr_decl_var *decl_var)
@@ -2383,10 +2381,9 @@ void eval_instr_decl_ref(struct virtual_machine UNUSED(*vm), struct mir_instr_de
         struct mir_arg *arg = entry->data.arg;
         bassert(arg);
 
-        struct mir_instr *comptime_value = sarrpeekor(arg->generation_call_args, arg->index, NULL);
-
-        if (!comptime_value) break;
-
+        if (!arg->generation_call) break;
+        struct mir_instr *comptime_value = sarrpeekor(arg->generation_call->args, arg->index, NULL);
+        bassert(comptime_value);
         decl_ref->base.value.data = comptime_value->value.data;
         break;
     }

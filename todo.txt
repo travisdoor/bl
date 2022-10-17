@@ -9,7 +9,7 @@ Compile time execution
 [x] Allow comptime artuments (mixed function signature).
 [ ] Use #run to mark function to be executed in compile time on the call side: '#run foo()'.
 [ ] Use #run to mark function executed only in compile time on the declaration side: 'foo :: fn () #run {}'.
-[ ] Not all compile time functions must be generated every time; use regular call in case it's not polymorp or mixed.
+[x] Not all compile time functions must be generated every time; use regular call in case it's not polymorp or mixed.
 [x] Finish incremental execution and re-evaluate stack saving?
 
 Polymorph
@@ -21,11 +21,12 @@ Application context.
 [ ] Accessible via #context directive.
 
 MISC
+[ ] Add blc --init="My Project" command.
 [x] Add support of #maybe_unused for function arguments.
 [ ] Nested functions ignore previous using statement in some cases.
 [x] Create new(s32) somehow.
 [x] Change function arguments mutability.
-[ ] Redesign mutability propagation (now immutable struct cannot have its members modified).
+[x] Redesign mutability propagation (now immutable struct cannot have its members modified).
 [ ] Consider application context vs thread context (i.e. temporary allocator is by default thread local but application_context is not).
 [ ] Consider #import and #load to be limited only to the file scope.
 [ ] Allow creation of scoped constants in structure bodies:
