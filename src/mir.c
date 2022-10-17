@@ -27,15 +27,12 @@
 // =================================================================================================
 
 #include "mir.h"
-#include "ast.h"
 #include "basic_types.h"
 #include "bldebug.h"
 #include "builder.h"
 #include "common.h"
 #include "mir_printer.h"
-#include "scope.h"
 #include "stb_ds.h"
-#include "vm.h"
 #include <stdarg.h>
 
 #ifdef _MSC_VER
@@ -530,7 +527,8 @@ static struct mir_instr *create_instr_call(struct context   *ctx,
                                            struct ast       *node,
                                            struct mir_instr *callee,
                                            mir_instrs_t     *args,
-                                           bool              is_comptime);
+                                           bool              is_comptime,
+                                           bool              is_inside_recipe);
 
 static struct mir_instr *insert_instr_load(struct context *ctx, struct mir_instr *src);
 static struct mir_instr *
@@ -696,7 +694,8 @@ static struct mir_instr *append_instr_call(struct context   *ctx,
                                            struct ast       *node,
                                            struct mir_instr *callee,
                                            mir_instrs_t     *args,
-                                           bool              is_comptime);
+                                           bool              is_comptime,
+                                           bool              is_inside_recipe);
 typedef struct {
     struct ast          *node; // Optional
     struct id           *id;
@@ -3682,7 +3681,8 @@ struct mir_instr *create_instr_call(struct context   *ctx,
                                     struct ast       *node,
                                     struct mir_instr *callee,
                                     mir_instrs_t     *args,
-                                    const bool        is_comptime)
+                                    const bool        is_comptime,
+                                    bool              is_inside_recipe)
 {
     bassert(callee);
     struct mir_instr_call *tmp  = create_instr(ctx, MIR_INSTR_CALL, node);
@@ -3690,6 +3690,7 @@ struct mir_instr *create_instr_call(struct context   *ctx,
     tmp->base.value.is_comptime = is_comptime;
     tmp->args                   = args;
     tmp->callee                 = ref_instr(callee);
+    tmp->is_inside_recipe       = is_inside_recipe;
     // reference all arguments
     for (usize i = 0; i < sarrlenu(args); ++i) {
         ref_instr(sarrpeek(args, i));
@@ -4071,9 +4072,11 @@ struct mir_instr *append_instr_call(struct context   *ctx,
                                     struct ast       *node,
                                     struct mir_instr *callee,
                                     mir_instrs_t     *args,
-                                    const bool        is_comptime)
+                                    const bool        is_comptime,
+                                    const bool        is_inside_recipe)
 {
-    struct mir_instr *tmp = create_instr_call(ctx, node, callee, args, is_comptime);
+    struct mir_instr *tmp =
+        create_instr_call(ctx, node, callee, args, is_comptime, is_inside_recipe);
     append_current_block(ctx, tmp);
     return tmp;
 }
@@ -4629,11 +4632,20 @@ enum vm_interp_state evaluate(struct context *ctx, struct mir_instr *instr)
         // Call instruction must be evaluated and then later converted to constant in case it's
         // supposed to be called in compile time, otherwise we leave it as it is.
         struct mir_instr_call *call = (struct mir_instr_call *)instr;
-        struct mir_fn         *fn   = mir_get_callee(call);
-        if (!fn->is_fully_analyzed) return VM_INTERP_POSTPONE;
-        const enum vm_interp_state state = vm_execute_comptime_call(ctx->vm, ctx->assembly, call);
-        if (state != VM_INTERP_PASSED) {
-            return state;
+
+        // Compile-time evaluated calls should be skipped while in function type recipe!
+        if (!call->is_inside_recipe) {
+            struct mir_fn *fn = mir_get_callee(call);
+            if (!fn->is_fully_analyzed) return VM_INTERP_POSTPONE;
+            const enum vm_interp_state state =
+                vm_execute_comptime_call(ctx->vm, ctx->assembly, call);
+
+            if (state != VM_INTERP_PASSED) {
+                return state;
+            }
+        } else if (call->base.value.type->kind != MIR_TYPE_VOID) {
+            // Replace call type inside recipe by placeholder since the function cannot be called.
+            call->base.value.type = ctx->builtin_types->t_placeholer;
         }
         // Every call instruction has reference count set (at least) to one when it's generated
         // (function call can have some side-effects even if it's result is not used). However once
@@ -7354,6 +7366,12 @@ struct result analyze_instr_type_slice(struct context *ctx, struct mir_instr_typ
         id = &type_slice->base.node->data.ident.id;
     }
 
+    if (mir_is_placeholder(type_slice->elem_type)) {
+        MIR_CEV_WRITE_AS(
+            struct mir_type *, &type_slice->base.value, ctx->builtin_types->t_placeholer);
+        return_zone(PASS);
+    }
+
     if (type_slice->elem_type->value.type->kind != MIR_TYPE_TYPE) {
         report_error(INVALID_TYPE, type_slice->elem_type->node, "Expected type name.");
         return_zone(FAIL);
@@ -7399,6 +7417,12 @@ struct result analyze_instr_type_dynarr(struct context                *ctx,
     struct id *id = NULL;
     if (type_dynarr->base.node && type_dynarr->base.node->kind == AST_IDENT) {
         id = &type_dynarr->base.node->data.ident.id;
+    }
+
+    if (mir_is_placeholder(type_dynarr->elem_type)) {
+        MIR_CEV_WRITE_AS(
+            struct mir_type *, &type_dynarr->base.value, ctx->builtin_types->t_placeholer);
+        return_zone(PASS);
     }
 
     if (type_dynarr->elem_type->value.type->kind != MIR_TYPE_TYPE) {
@@ -7483,6 +7507,12 @@ struct result analyze_instr_type_array(struct context *ctx, struct mir_instr_typ
         report_error(
             EXPECTED_CONST, type_arr->len->node, "Array size must be compile-time constant.");
         return_zone(FAIL);
+    }
+
+    if (mir_is_placeholder(type_arr->elem_type)) {
+        MIR_CEV_WRITE_AS(
+            struct mir_type *, &type_arr->base.value, ctx->builtin_types->t_placeholer);
+        return_zone(PASS);
     }
 
     if (type_arr->elem_type->value.type->kind != MIR_TYPE_TYPE) {
@@ -8403,8 +8433,6 @@ analyze_call_slot(struct context *ctx, struct mir_instr_call *call, struct mir_a
     return_zone(PASS);
 }
 
-static struct result analyze_call_stage_arg_completeness(struct context        *ctx,
-                                                         struct mir_instr_call *call);
 static struct result analyze_call_stage_resolve_called_object(struct context        *ctx,
                                                               struct mir_instr_call *call);
 static struct result analyze_call_stage_validate_called_object(struct context        *ctx,
@@ -8417,7 +8445,6 @@ static struct result analyze_call_stage_generate(struct context *ctx, struct mir
 static struct result analyze_call_stage_finalize(struct context *ctx, struct mir_instr_call *call);
 
 static mir_call_analyze_stage_fn_t analyze_call_default_pipeline[] = {
-    //&analyze_call_stage_arg_completeness,
     &analyze_call_stage_resolve_called_object,
     &analyze_call_stage_validate_called_object,
     &analyze_call_stage_prescan_arguments,
@@ -8442,33 +8469,6 @@ static mir_call_analyze_stage_fn_t analyze_call_generated_pipeline[] = {
     &analyze_call_stage_finalize,
     NULL,
 };
-
-// Check if all arguments passed to the function has complete types. This is in general required
-// only in case the function signature requires conversion to Any type (we generate type info).
-// However let's be safe and do it for all arguments.
-struct result analyze_call_stage_arg_completeness(struct context *ctx, struct mir_instr_call *call)
-{
-    zone();
-    for (usize i = 0; i < sarrlenu(call->args); ++i) {
-        struct mir_instr *call_arg      = sarrpeek(call->args, i);
-        struct mir_type  *call_arg_type = call_arg->value.type;
-        if (call_arg_type->kind == MIR_TYPE_PTR &&
-            mir_deref_type(call_arg_type)->kind == MIR_TYPE_TYPE) {
-            call_arg_type = *MIR_CEV_READ_AS(struct mir_type **, &call_arg->value);
-            bmagic_assert(call_arg_type);
-        }
-        struct mir_type *incomplete_type;
-        if (is_incomplete_type(ctx, call_arg_type, &incomplete_type)) {
-            if (incomplete_type->user_id) {
-                return_zone(WAIT(incomplete_type->user_id->hash));
-            }
-            return_zone(POSTPONE);
-        }
-    }
-
-    bcalled_once_assert(call, arg_completeness);
-    return_zone(PASS);
-}
 
 // Resolve callee of the function and schedule it for analyze if it's not analyzed yet.
 struct result analyze_call_stage_resolve_called_object(struct context        *ctx,
@@ -8779,7 +8779,6 @@ static inline struct result is_argument_complete(struct context *ctx, struct mir
 struct result analyze_call_stage_prescan_arguments(struct context *ctx, struct mir_instr_call *call)
 {
     zone();
-    bcalled_once_assert(call, prescan_args);
     struct mir_type *fn_type = get_called_function_type(call);
     bassert(fn_type->kind == MIR_TYPE_FN);
 
@@ -8828,6 +8827,8 @@ struct result analyze_call_stage_prescan_arguments(struct context *ctx, struct m
             if (!call_arg_instr) return_zone(FAIL);
         }
     }
+    // Completeness type check can cause waiting or postpone!
+    bcalled_once_assert(call, prescan_args);
     return_zone(PASS);
 
 INVALID_ARGS:
@@ -9111,6 +9112,10 @@ ANALYZE_STAGE_FN(set_null)
 
     if (slot_type->kind == MIR_TYPE_NULL) {
         _input->value.type = slot_type;
+        return ANALYZE_STAGE_BREAK;
+    }
+
+    if (slot_type->kind == MIR_TYPE_PLACEHOLDER) {
         return ANALYZE_STAGE_BREAK;
     }
 
@@ -10780,7 +10785,8 @@ struct mir_instr *ast_expr_call(struct context *ctx, struct ast *call)
         }
     }
 
-    return append_instr_call(ctx, call, ast(ctx, ast_callee), args, false);
+    return append_instr_call(
+        ctx, call, ast(ctx, ast_callee), args, false, ctx->ast.is_inside_recipe);
 }
 
 struct mir_instr *ast_expr_elem(struct context *ctx, struct ast *elem)
@@ -11921,8 +11927,8 @@ struct mir_instr *ast_create_type_resolver_call(struct context *ctx, struct ast 
     struct mir_instr *result = ast(ctx, ast_type);
     append_instr_ret(ctx, NULL, result);
     set_current_block(ctx, prev_block);
-    struct mir_instr *call =
-        create_instr_call(ctx, ast_type, fn_proto, NULL, /* is_comptime */ true);
+    struct mir_instr *call = create_instr_call(
+        ctx, ast_type, fn_proto, NULL, /* is_comptime */ true, /* is_inside_recipe */ false);
     return call;
 }
 

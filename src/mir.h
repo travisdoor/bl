@@ -578,8 +578,8 @@ struct mir_instr_sizeof {
     mir_instrs_t     *args; // Used only as temporary for analyze.
     struct mir_instr *expr;
 
-    // Used mainly to skip input expression analyze pass in case the type was incomplete. 
-    struct mir_type  *resolved_type;
+    // Used mainly to skip input expression analyze pass in case the type was incomplete.
+    struct mir_type *resolved_type;
 };
 
 struct mir_instr_alignof {
@@ -765,8 +765,11 @@ struct mir_instr_call {
     // Optional temporary variable for unroll multi-return struct type.
     struct mir_instr *unroll_tmp_var;
 
+    // True if the call is inside the function type recipe, we should not call it while evaluation
+    // is done + we have to replace the result type by placeholder.
+    bool is_inside_recipe;
+
     // clang-format off
-    bcalled_once_member(arg_completeness)
     bcalled_once_member(prescan_args)
     bcalled_once_member(resolve_overload)
     bcalled_once_member(generate)

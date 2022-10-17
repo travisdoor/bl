@@ -5,7 +5,6 @@ complete_type :: fn () #test {
     my_function(Bar);
 }
 
-/*
 complete_for_any :: fn () #test {
     other_function(BarBar);
 }
@@ -13,8 +12,6 @@ complete_for_any :: fn () #test {
 complete_for_any2 :: fn () #test {
     group_with_any(FooFoo);
 }
-*/
-
 
 my_function :: fn (T: type #comptime) #comptime {
     static_assert(sizeof(T) == sizeof(Reference));
