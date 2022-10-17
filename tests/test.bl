@@ -60,7 +60,27 @@ gimme_any :: fn (v: Any) {
 complete_type :: fn () {
     //print("%\n", sizeof(Foo) == sizeof(ReferenceFoo));
     //my_function(Bar);
+    var: Foo;
 }
+
+Foo :: struct {
+    data: MyType(Bar);
+    i: s32;
+}
+
+MyType :: fn (TElem: type #comptime) type #comptime {
+    //assert(sizeof(TElem) > 0);
+    return struct {
+        v: TElem;
+    };
+}
+
+Bar :: struct {
+    foo: *Foo;
+    a: s32;
+    b: s32;
+}
+
 
 /*
 complete_for_any :: fn () #test {
@@ -80,27 +100,9 @@ my_function :: fn (T: type #comptime) #comptime {
     static_assert(info1 == info2);
 }
 
-MyType :: fn (TElem: type #comptime) type #comptime {
-    static_assert(sizeof(TElem) == sizeof(Reference));
-    return struct {
-        v: TElem;
-    };
-}
-
-Foo :: struct {
-    data: MyType(Bar);
-    i: s32;
-}
-
 ReferenceFoo :: struct {
     data: Bar;
     i: s32;
-}
-
-Bar :: struct {
-    foo: *Foo;
-    a: s32;
-    b: s32;
 }
 
 BarBar :: struct {
