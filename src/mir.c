@@ -5941,7 +5941,7 @@ struct result analyze_instr_sizeof(struct context *ctx, struct mir_instr_sizeof 
     // correctly.
     struct mir_type *incomplete_type;
     if (is_incomplete_type(ctx, szof->resolved_type, &incomplete_type)) {
-        blog("sizeof wait for: %s", incomplete_type->user_id->str);
+        blog("sizeof wait for: %s [%u]", incomplete_type->user_id->str, incomplete_type->user_id->hash);
         if (incomplete_type->user_id) return_zone(WAIT(incomplete_type->user_id->hash));
         return_zone(POSTPONE);
     }
@@ -7319,6 +7319,7 @@ struct result analyze_instr_type_struct(struct context               *ctx,
                 .is_multiple_return_type = type_struct->is_multiple_return_type,
             });
 
+        blog("provide: %s [%u]", result_type->user_id->str, result_type->user_id->hash);
         analyze_notify_provided(ctx, result_type->user_id->hash);
     } else {
         result_type =
@@ -8768,7 +8769,7 @@ static inline struct result is_argument_complete(struct context *ctx, struct mir
     struct mir_type *incomplete_type;
     if (is_incomplete_type(ctx, call_arg_type, &incomplete_type)) {
         if (incomplete_type->user_id) {
-            blog("call wait for: %s", incomplete_type->user_id->str);
+            blog("call wait for: %s [%u]", incomplete_type->user_id->str, incomplete_type->user_id->hash);
             return WAIT(incomplete_type->user_id->hash);
         }
         return POSTPONE;

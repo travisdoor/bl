@@ -16,6 +16,18 @@ Documentation notes:
 
 */
 
+// To memory.bl???
+bytes_to_value :: fn (TValue: type #comptime, bytes: []u8) TValue {
+    tmp: TValue;
+    assert(bytes.ptr);
+    memcpy(auto &tmp, bytes.ptr, std.min(sizeof(TValue), auto bytes.len));
+    return tmp;
+}
+
+// Cause error!
+//new_slice :: fn (T: type #comptime) []T {
+//}
+
 Data :: struct {
     a: s32;
     b: s32;
@@ -45,11 +57,31 @@ gimme_any :: fn (v: Any) {
     v;
 }
 
-complete_type :: fn () #comptime {
-    print("IS OK = %\n", sizeof(Foo) == sizeof(Bar));
+complete_type :: fn () {
+    //print("%\n", sizeof(Foo) == sizeof(ReferenceFoo));
+    //my_function(Bar);
+}
+
+/*
+complete_for_any :: fn () #test {
+    other_function(BarBar);
+}
+
+complete_for_any2 :: fn () #test {
+    group_with_any(FooFoo);
+}
+
+my_function :: fn (T: type #comptime) #comptime {
+    static_assert(sizeof(T) == sizeof(Reference));
+    info1 :: typeinfo(T);
+    info2 :: typeinfo(Bar);
+
+    static_assert(sizeof(T) == sizeof(Bar));
+    static_assert(info1 == info2);
 }
 
 MyType :: fn (TElem: type #comptime) type #comptime {
+    static_assert(sizeof(TElem) == sizeof(Reference));
     return struct {
         v: TElem;
     };
@@ -57,13 +89,40 @@ MyType :: fn (TElem: type #comptime) type #comptime {
 
 Foo :: struct {
     data: MyType(Bar);
+    i: s32;
+}
+
+ReferenceFoo :: struct {
+    data: Bar;
+    i: s32;
 }
 
 Bar :: struct {
     foo: *Foo;
+    a: s32;
+    b: s32;
 }
 
+BarBar :: struct {
+    bar: Bar;
+}
+
+Reference :: struct {
+    foo: *u8;
+    a: s32;
+    b: s32;
+}
+
+FooFoo :: struct {
+    bar: BarBar;
+}
+*/
+
 main :: fn () s32 {
+    number: s32 = -666;
+    
+    print(">>> %\n", bytes_to_value(s32, []u8.{ 4, auto &number }));
+
     //complete_type();
     gimme_any(10);
 
