@@ -5924,25 +5924,23 @@ struct result analyze_instr_sizeof(struct context *ctx, struct mir_instr_sizeof 
         szof->expr = sarrpeek(szof->args, 0);
     }
 
-    if (!szof->resolved_type &&
-        analyze_slot(ctx, &analyze_slot_conf_basic, &szof->expr, NULL) != ANALYZE_PASSED) {
-        return_zone(FAIL);
+    if (!szof->resolved_type) {
+        if (analyze_slot(ctx, &analyze_slot_conf_basic, &szof->expr, NULL) == ANALYZE_PASSED) {
+            szof->resolved_type = szof->expr->value.type;
+            if (szof->resolved_type->kind == MIR_TYPE_TYPE) {
+                szof->resolved_type = MIR_CEV_READ_AS(struct mir_type *, &szof->expr->value);
+                bmagic_assert(szof->resolved_type);
+            }
+        } else {
+            return_zone(FAIL);
+        }
     }
-
-    szof->resolved_type = szof->expr->value.type;
     bassert(szof->resolved_type);
 
-    if (szof->resolved_type->kind == MIR_TYPE_TYPE) {
-        szof->resolved_type = MIR_CEV_READ_AS(struct mir_type *, &szof->expr->value);
-        bmagic_assert(szof->resolved_type);
-    }
-
-    // First check if the expression type is complete, otherwise we cannot resolve the size
-    // correctly.
-    struct mir_type *incomplete_type;
-    if (is_incomplete_type(ctx, szof->resolved_type, &incomplete_type)) {
-        blog("sizeof wait for: %s [%u]", incomplete_type->user_id->str, incomplete_type->user_id->hash);
-        if (incomplete_type->user_id) return_zone(WAIT(incomplete_type->user_id->hash));
+    if (is_incomplete_struct_type(szof->resolved_type)) {
+        // No need to do e deep check, only pointers to incomplete types are allowed so far.
+        struct mir_type *incomplete = szof->resolved_type;
+        if (incomplete->user_id) return_zone(WAIT(incomplete->user_id->hash));
         return_zone(POSTPONE);
     }
 
@@ -7319,7 +7317,6 @@ struct result analyze_instr_type_struct(struct context               *ctx,
                 .is_multiple_return_type = type_struct->is_multiple_return_type,
             });
 
-        blog("provide: %s [%u]", result_type->user_id->str, result_type->user_id->hash);
         analyze_notify_provided(ctx, result_type->user_id->hash);
     } else {
         result_type =
@@ -8769,7 +8766,6 @@ static inline struct result is_argument_complete(struct context *ctx, struct mir
     struct mir_type *incomplete_type;
     if (is_incomplete_type(ctx, call_arg_type, &incomplete_type)) {
         if (incomplete_type->user_id) {
-            blog("call wait for: %s [%u]", incomplete_type->user_id->str, incomplete_type->user_id->hash);
             return WAIT(incomplete_type->user_id->hash);
         }
         return POSTPONE;
