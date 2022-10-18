@@ -30,11 +30,7 @@
 #include "bldebug.h"
 #include "builder.h"
 #include "common.h"
-#include "mir.h"
-#include "scope.h"
 #include "stb_ds.h"
-#include "vm.h"
-#include "llvm-c/Core.h"
 #include "llvm-c/Types.h"
 
 #if BL_DEBUG

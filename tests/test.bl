@@ -24,9 +24,13 @@ bytes_to_value :: fn (TValue: type #comptime, bytes: []u8) TValue {
     return tmp;
 }
 
-// Cause error!
-//new_slice :: fn (T: type #comptime) []T {
-//}
+get_type :: fn (T: type #comptime) type #comptime {
+    print("This should not be called for recipe!\n");
+    return T; 
+}
+
+foobar :: fn (v: ?T) get_type(T) {
+}
 
 Data :: struct {
     a: s32;
@@ -36,97 +40,14 @@ Data :: struct {
     e: s32;
 }
 
-get_my_type :: fn (T: type #comptime) type #comptime {
-    static_assert(T == s32);
-    print("!!!!!!!!\n");
-    return T;
-}
-
 // foo :: fn (v: s32 #comptime, b := v)
 // foo :: fn (T: type #comptime, b : ?TGuess = T)
 // foo :: fn (T: ?TFirst #comptime, b : ?TSecond = T #comptime)
 
-ma_allocation_callbacks :: struct {
-    pUserData: *u8;
-    onMalloc: *fn (sz: usize, pUserData: *u8) *u8;
-    onRealloc: *fn (p: *u8, sz: usize, pUserData: *u8) *u8;
-    onFree: *fn (p: *u8, pUserData: *u8);
-}
-
-gimme_any :: fn (v: Any) {
-    v;
-}
-
-complete_type :: fn () {
-    //print("%\n", sizeof(Foo) == sizeof(ReferenceFoo));
-    //my_function(Bar);
-    var: Foo;
-}
-
-Foo :: struct {
-    data: MyType(Bar);
-    i: s32;
-}
-
-MyType :: fn (TElem: type #comptime) type #comptime {
-    //assert(sizeof(TElem) > 0);
-    return struct {
-        v: TElem;
-    };
-}
-
-Bar :: struct {
-    foo: *Foo;
-    a: s32;
-    b: s32;
-}
-
-
-/*
-complete_for_any :: fn () #test {
-    other_function(BarBar);
-}
-
-complete_for_any2 :: fn () #test {
-    group_with_any(FooFoo);
-}
-
-my_function :: fn (T: type #comptime) #comptime {
-    static_assert(sizeof(T) == sizeof(Reference));
-    info1 :: typeinfo(T);
-    info2 :: typeinfo(Bar);
-
-    static_assert(sizeof(T) == sizeof(Bar));
-    static_assert(info1 == info2);
-}
-
-ReferenceFoo :: struct {
-    data: Bar;
-    i: s32;
-}
-
-BarBar :: struct {
-    bar: Bar;
-}
-
-Reference :: struct {
-    foo: *u8;
-    a: s32;
-    b: s32;
-}
-
-FooFoo :: struct {
-    bar: BarBar;
-}
-*/
-
 main :: fn () s32 {
     number: s32 = -666;
-    
+    //foobar(10);
     print(">>> %\n", bytes_to_value(s32, []u8.{ 4, auto &number }));
-
-    //complete_type();
-    gimme_any(10);
 
     foo_ptr :: new(Data);
     free(auto foo_ptr);

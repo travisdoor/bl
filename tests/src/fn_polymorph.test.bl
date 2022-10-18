@@ -135,3 +135,12 @@ test_poly_vargs :: fn () #test {
     test_eq(foo(10), 10);    
     test_eq(foo(10, 20), 30);    
 }
+
+get_type :: fn (T: type #comptime) T #comptime {
+    test_true(false);
+    return T;
+}
+
+foo :: fn (v: ?T) get_type(T) {
+    return v;
+}

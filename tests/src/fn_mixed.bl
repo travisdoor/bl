@@ -128,3 +128,52 @@ mixed_with_default_value_type_2 :: fn () #test {
 	d1: Data  = foo();
 	d2: Data  = foo(Data);
 }
+
+mixed_type_slice :: fn () #test {
+    foo :: fn (T: type #comptime) []T {
+        v: []T;
+        return v;
+    };
+
+    int_slice: []s32 = foo(s32);
+    bool_slice: []bool = foo(bool);
+}
+
+mixed_type_dynamic_array :: fn () #test {
+    foo :: fn (T: type #comptime) [..]T {
+        v: [..]T;
+        return v;
+    };
+
+    int_slice: [..]s32 = foo(s32);
+    bool_slice: [..]bool = foo(bool);
+}
+
+mixed_type_multi_return_value :: fn () #test {
+    foo :: fn (T: type #comptime) (a: T, b: T) {
+        a: T;
+        b: T;
+        return a, b;
+    };
+
+    i1, i2 := foo(s32);
+    b1, b2 := foo(bool);
+}
+
+mixed_type_ptr :: fn () #test {
+    foo :: fn (T: type #comptime) *T {
+        return null;
+    };
+
+    ptr_int: *s32 = foo(s32);
+    ptr_bool: *bool = foo(bool);
+}
+
+mixed_type_array :: fn () #test {
+    foo :: fn (T: type #comptime) *[4]T {
+        return null;
+    };
+
+    ptr_int: *[4]s32 = foo(s32);
+    ptr_bool: *[4]bool = foo(bool);
+}
