@@ -9671,7 +9671,7 @@ void analyze_report_unused(struct context *ctx)
         case SCOPE_NAMED: {
             report_warning(
                 entry->node,
-                "Unused symbol '%s'. Mark the symbol as '#maybe_unused' it it's intentional.",
+                "Unused symbol '%s'. Mark the symbol as '#maybe_unused' if it's intentional.",
                 entry->id->str);
             break;
         }
