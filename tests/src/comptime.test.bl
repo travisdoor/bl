@@ -84,4 +84,3 @@ string_literal :: fn () #test{
     lit :: get();
     test_eq(lit, "This is testing string.");
 }
-

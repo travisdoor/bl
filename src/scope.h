@@ -54,8 +54,6 @@ enum scope_entry_kind {
     SCOPE_ENTRY_VARIANT,
     SCOPE_ENTRY_NAMED_SCOPE,
     SCOPE_ENTRY_UNNAMED, // Special kind used for unnamed entries.
-
-    // @Cleanup: We can use this for all arguments in case they are immutable (not the case yet).
     SCOPE_ENTRY_ARG,
 };
 

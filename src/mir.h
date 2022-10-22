@@ -190,7 +190,7 @@ enum mir_fn_generated_flavor_flags {
 };
 
 // FN
-// @Incomplete: Make smaller version of the function for function recipes.
+// @Performance: Make smaller version of the function for function recipes.
 struct mir_fn {
     // Must be first!!!
     struct mir_instr   *prototype;
@@ -210,19 +210,6 @@ struct mir_fn {
     // This structure is initialized only in case this function is generated from polymorphic
     // function recipe, it's not polymorph anymore (its type is also not polymorph).
     struct {
-        // Optional, in case the function is marked as #comptime, we assume that all input arguments
-        // are compile-time known; also new function specification is generated for every call to
-        // allow passing types and compile-time values inside the function. These values are used
-        // directly inside the function and evaluated by arg instruction. All call-side arguments
-        // must be compile-time known! This array is used also for mixed functions (part of the
-        // argument list is compile time known, in case some arguments are marked as #comptime). Not
-        // all elements in this array are set in such a case.
-        //
-        // Comptime arguments may not be provided yet in case the generated function body is
-        // analyzed and evaluated. The compile-time value evaluation of comptime instr_arg must wait
-        // for it!
-        // mir_instrs_t *comptime_args; // @Cleanup
-
         // Optional, this is set to first call location used for generation of this function from
         // polymorph recipe.
         struct ast *first_call_node;
@@ -298,9 +285,8 @@ struct mir_arg {
     struct mir_type    *type;
     struct id          *id;
     struct ast         *decl_node;
-    struct scope       *decl_scope; // @Cleanup: Check if it's needed.
     struct scope_entry *entry;
-    u32                 index;            // @Cleanup: Do we need this or we can use entry?
+    u32                 index;
     bool                is_inside_recipe; // True in case the argument is part of function recipe.
     bool                is_inside_declaration;
     s32                 ref_count;
@@ -339,9 +325,8 @@ struct mir_type_fn {
 
     enum builtin_id_kind builtin_id;
 
-    // @Cleanup: after new call analyze pass we probably don't need those flags.
     // @Performance: Rewrite to flags.
-    bool is_vargs; // @Cleanup: Do we need this?
+    bool is_vargs;
     // Polymorph function type (not all arguments have known type -> cannot generate type info).
     bool is_polymorph;
     bool has_default_args;

@@ -27,12 +27,8 @@
 // =================================================================================================
 
 #include "vm.h"
-#include "bldebug.h"
-#include "blmemory.h"
 #include "builder.h"
 #include "common.h"
-#include "mir.h"
-#include "scope.h"
 #include "stb_ds.h"
 #include "vmdbg.h"
 

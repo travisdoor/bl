@@ -451,7 +451,6 @@ static struct mir_member              *create_member(struct context  *ctx,
 typedef struct {
     struct ast            *node;
     struct id             *id;
-    struct scope          *scope;
     struct mir_type       *type;
     struct mir_instr      *value;
     struct scope_entry    *entry;
@@ -2984,7 +2983,6 @@ struct mir_arg *create_arg(struct context *ctx, create_arg_args_t *args)
     tmp->decl_node             = args->node;
     tmp->id                    = args->id;
     tmp->type                  = args->type;
-    tmp->decl_scope            = args->scope;
     tmp->default_value         = args->value;
     tmp->index                 = args->index;
     tmp->entry                 = args->entry;
@@ -4194,7 +4192,6 @@ static struct mir_instr *append_instr_decl_arg(struct context               *ctx
                               .id                    = args->id,
                               .value                 = args->value,
                               .flags                 = args->flags,
-                              .scope                 = args->node ? args->node->owner_scope : NULL,
                               .index                 = args->index,
                               .entry                 = args->entry,
                               .generation_call       = args->generation_call,
@@ -10815,9 +10812,6 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
     struct id  *id          = decl_node ? &decl_node->data.ident.id : NULL;
     bassert(ast_fn_type->kind == AST_TYPE_FN);
 
-    // @Incomplete: Comptime called function should not be exported or intrinsics? This may be
-    // checked directly in the parser, but maybe we don't want to introduce any semantic check
-    // there.
     const enum ast_type_fn_flavor function_type_flavor = ast_fn_type->data.type_fn.flavor;
 
     enum mir_fn_generated_flavor_flags functon_generated_flavor_flags = MIR_FN_GENERATED_NONE;
@@ -11518,7 +11512,6 @@ struct mir_instr *ast_decl_arg(struct context *ctx, struct ast *arg)
     struct id          *id    = NULL;
     struct scope_entry *entry = NULL;
 
-    // @Incomplete: What about registration of '_' arguments?
     if (ast_name && !is_ignored_id(&ast_name->data.ident.id)) {
         struct scope *scope = ast_name->owner_scope;
         bassert(scope && "Missing scope for function argument registration!");
