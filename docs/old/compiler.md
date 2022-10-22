@@ -71,8 +71,7 @@ Options:
 
 ## Configuration
 
-Use `bl-config` tool to change compiler configuration. This tool generates configuration file
-`etc/bl.conf` containing all required information needed by compiler during compilation.
+Use `blc --configure` tool to change compiler configuration. This tool generates configuration file `etc/bl.yaml` containing all required information needed by compiler during compilation.
 
 ## Execution status
 

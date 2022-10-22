@@ -1,23 +1,7 @@
 body {
-  line-height: 1.3;
-  font-family: Georgia, Roboto, "Segoe UI", sans-serif;
-  background-color: white;
-}
-pre, .rst-content tt {
-  background: #546e7a0f;
+  line-height: 1.4;
+  font-size: 16px;
 }
 code {
-  font-family: Fira Code, Consolas, Menlo, monospace;
-  font-size: 80%;
-}
-.wm-page-content {
-  margin-left: 20px;
-  max-width: 1000px;
-}
-.admonition {
-  background: #ffc9c9;
-  color: #ae8787;
-}
-.wm-toc-pane {
-    max-width: 250px;
+  font-family: Consolas, Menlo, monospace;
 }

@@ -1096,8 +1096,6 @@ my_function :: fn (person_1: *Person, person_2: Person, age: s32) {
 
 ```
 
-Function arguments may be "comptime", comptime arguments cause the new function implementation to be generated each time the function is used.
-
 ### Named function
 
 Function associated with name can be later called by this name. In this case we treat function like
@@ -1492,13 +1490,49 @@ is_equal :: fn { // function group
 }
 ```
 
-!!! note
-    Compiler error is reported in case content of the polymorph generated for some type
-    specification is not semantically valid. (i.e. we can't compare strings directly by `==` operator)
+**Limitations:**
 
-!!! warning
-    Getting address (by `&` operator) of polymorphic function recipe is not possible,
-    polymorphic recipe as it is does not represent any allocated memory in program binary.
+   - Polymorph master type cannot have a default value. 
+   - Type-checking is very limited since we don't know types of the arguments in advance.
+   - Polymorph functions does not represent any stack allocated memory (we cannot get its address).
+   - Don't follow C calling conventions:
+       - Cannot be `extern`.
+       - Cannot be `export`.
+
+
+### Mixed Function
+
+Function arguments may be `comptime`, `comptime` arguments cause the new function implementation to be generated each time the function is used. Function having `comptime` arguments is called a "mixed function". All `comptime` arguments are internally evaluated and replaced by constant values.
+
+All `comptime` arguments **must** be compile-time known when the function is called.
+
+```rust
+gimme_size :: fn (SIZE: s32 #comptime) {
+    // 'SIZE' is compile-time known constant here.
+    my_array: [SIZE]s32;
+    // ...
+} 
+
+// We can pass even types as compile-time known arguments.
+// The compile-time known argument 'T' can be referenced from the function type once it's declared
+// in the argument list.
+get_slice :: fn (T: type #comptime) []T {
+    the_slice: []T;
+    // ...
+    return the_slice; 
+}
+
+```
+
+**Limitations:**
+
+   - Compile-time known argument cannot be used as default value. 
+   - Type-checking is very limited since we don't know `comptime` arguments in advance.
+   - Mixed functions does not represent any stack allocated memory (we cannot get its address).
+   - Don't follow C calling conventions:
+       - Cannot be `extern`.
+       - Cannot be `export`.
+
 
 ### Multiple Return Values
 
