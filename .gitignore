@@ -20,3 +20,4 @@ compile_commands.json
 /clang/
 .cache
 /tests/out*
+/vs

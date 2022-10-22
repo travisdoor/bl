@@ -231,10 +231,6 @@ enum stage_state {
 #define ANALYZE_STAGE_FN(N) enum stage_state analyze_stage_##N(ANALYZE_STAGE_ARGS)
 typedef enum stage_state (*analyze_stage_fn_t)(ANALYZE_STAGE_ARGS);
 
-struct slot_config {
-    analyze_stage_fn_t stages[];
-};
-
 // Arena destructor for functions.
 static void fn_dtor(struct mir_fn *fn)
 {
@@ -884,7 +880,7 @@ static struct result        analyze_instr(struct context *ctx, struct mir_instr 
     _analyze_slot((ctx), (conf), (input), (slot_type), true)
 
 static enum result_state _analyze_slot(struct context           *ctx,
-                                       const struct slot_config *conf,
+                                       const analyze_stage_fn_t *conf,
                                        struct mir_instr        **input,
                                        struct mir_type          *slot_type,
                                        bool                      is_initializer);
@@ -900,39 +896,39 @@ static ANALYZE_STAGE_FN(set_volatile_expr);
 static ANALYZE_STAGE_FN(set_null);
 static ANALYZE_STAGE_FN(set_auto);
 
-static const struct slot_config analyze_slot_conf_dummy = {.stages = {NULL}};
+static const analyze_stage_fn_t analyze_slot_conf_dummy[] = {NULL};
 
-static const struct slot_config analyze_slot_conf_basic = {.stages = {
-                                                               analyze_stage_unroll,
-                                                               analyze_stage_load,
-                                                               NULL,
-                                                           }};
+static const analyze_stage_fn_t analyze_slot_conf_basic[] = {
+    analyze_stage_unroll,
+    analyze_stage_load,
+    NULL,
+};
 
-static const struct slot_config analyze_slot_conf_default = {.stages = {
-                                                                 analyze_stage_unroll,
-                                                                 analyze_stage_set_volatile_expr,
-                                                                 analyze_stage_set_null,
-                                                                 analyze_stage_set_auto,
-                                                                 analyze_stage_arrtoslice,
-                                                                 analyze_stage_toslice,
-                                                                 analyze_stage_load,
-                                                                 analyze_stage_implicit_cast,
-                                                                 analyze_stage_report_type_mismatch,
-                                                                 NULL,
-                                                             }};
+static const analyze_stage_fn_t analyze_slot_conf_default[] = {
+    analyze_stage_unroll,
+    analyze_stage_set_volatile_expr,
+    analyze_stage_set_null,
+    analyze_stage_set_auto,
+    analyze_stage_arrtoslice,
+    analyze_stage_toslice,
+    analyze_stage_load,
+    analyze_stage_implicit_cast,
+    analyze_stage_report_type_mismatch,
+    NULL,
+};
 
-static const struct slot_config analyze_slot_conf_full = {.stages = {
-                                                              analyze_stage_set_volatile_expr,
-                                                              analyze_stage_set_null,
-                                                              analyze_stage_set_auto,
-                                                              analyze_stage_toany,
-                                                              analyze_stage_arrtoslice,
-                                                              analyze_stage_toslice,
-                                                              analyze_stage_load,
-                                                              analyze_stage_implicit_cast,
-                                                              analyze_stage_report_type_mismatch,
-                                                              NULL,
-                                                          }};
+static const analyze_stage_fn_t analyze_slot_conf_full[] = {
+    analyze_stage_set_volatile_expr,
+    analyze_stage_set_null,
+    analyze_stage_set_auto,
+    analyze_stage_toany,
+    analyze_stage_arrtoslice,
+    analyze_stage_toslice,
+    analyze_stage_load,
+    analyze_stage_implicit_cast,
+    analyze_stage_report_type_mismatch,
+    NULL,
+};
 
 // This function produce analyze of implicit call to the type resolver function in MIR and set
 // out_type when analyze passed without problems. When analyze does not pass postpone is returned
@@ -4872,8 +4868,8 @@ struct result analyze_instr_phi(struct context *ctx, struct mir_instr_phi *phi)
                 continue;
             }
         } else {
-            const struct slot_config *conf =
-                type ? &analyze_slot_conf_default : &analyze_slot_conf_basic;
+            const analyze_stage_fn_t *conf =
+                type ? analyze_slot_conf_default : analyze_slot_conf_basic;
             if (analyze_slot(ctx, conf, value_ref, type) != ANALYZE_PASSED) return_zone(FAIL);
         }
         if (!type) type = (*value_ref)->value.type;
@@ -4893,7 +4889,7 @@ struct result analyze_instr_phi(struct context *ctx, struct mir_instr_phi *phi)
 struct result analyze_instr_using(struct context *ctx, struct mir_instr_using *using)
 {
     zone();
-    if (analyze_slot(ctx, &analyze_slot_conf_basic, &using->scope_expr, NULL) != ANALYZE_PASSED)
+    if (analyze_slot(ctx, analyze_slot_conf_basic, &using->scope_expr, NULL) != ANALYZE_PASSED)
         return_zone(FAIL);
     struct mir_instr *scope_expr = using->scope_expr;
     bassert(scope_expr);
@@ -5022,7 +5018,7 @@ static struct result analyze_instr_compound_regular(struct context            *c
     } else if (!cmp->base.value.type) {
         // Generate load instruction if needed
         bassert(cmp->type->state == MIR_IS_COMPLETE);
-        if (analyze_slot(ctx, &analyze_slot_conf_basic, &cmp->type, NULL) != ANALYZE_PASSED)
+        if (analyze_slot(ctx, analyze_slot_conf_basic, &cmp->type, NULL) != ANALYZE_PASSED)
             return_zone(FAIL);
 
         struct mir_instr *instr_type = cmp->type;
@@ -5077,7 +5073,7 @@ static struct result analyze_instr_compound_regular(struct context            *c
             }
 
             if (analyze_slot(
-                    ctx, &analyze_slot_conf_default, value_ref, type->data.array.elem_type) !=
+                    ctx, analyze_slot_conf_default, value_ref, type->data.array.elem_type) !=
                 ANALYZE_PASSED)
                 return_zone(FAIL);
 
@@ -5166,7 +5162,7 @@ static struct result analyze_instr_compound_regular(struct context            *c
 
             sarrput(value_member_mapping, last_member_index);
             member_type = mir_get_struct_elem_type(type, (usize)last_member_index);
-            if (analyze_slot(ctx, &analyze_slot_conf_default, value_ref, member_type) !=
+            if (analyze_slot(ctx, analyze_slot_conf_default, value_ref, member_type) !=
                 ANALYZE_PASSED)
                 return_zone(FAIL);
 
@@ -5205,8 +5201,7 @@ static struct result analyze_instr_compound_regular(struct context            *c
             return_zone(FAIL);
         }
         struct mir_instr        **value_ref = &sarrpeek(values, 0);
-        const struct slot_config *conf =
-            type ? &analyze_slot_conf_default : &analyze_slot_conf_basic;
+        const analyze_stage_fn_t *conf = type ? analyze_slot_conf_default : analyze_slot_conf_basic;
         if (analyze_slot(ctx, conf, value_ref, type) != ANALYZE_PASSED) return_zone(FAIL);
         cmp->base.value.is_comptime = (*value_ref)->value.is_comptime;
     }
@@ -5330,8 +5325,8 @@ struct result analyze_instr_set_initializer(struct context                   *ct
     // initialization value slot analyze pass.
     const bool is_default = !si->src;
     if (!is_default) {
-        const struct slot_config *config =
-            type ? &analyze_slot_conf_default : &analyze_slot_conf_basic;
+        const analyze_stage_fn_t *config =
+            type ? analyze_slot_conf_default : analyze_slot_conf_basic;
 
         if (analyze_slot(ctx, config, &si->src, type) != ANALYZE_PASSED) {
             return_zone(FAIL);
@@ -5450,7 +5445,7 @@ struct result analyze_instr_vargs(struct context *ctx, struct mir_instr_vargs *v
     for (usize i = 0; i < valc && is_valid; ++i) {
         value = &sarrpeek(values, i);
 
-        if (analyze_slot(ctx, &analyze_slot_conf_full, value, vargs->type) != ANALYZE_PASSED)
+        if (analyze_slot(ctx, analyze_slot_conf_full, value, vargs->type) != ANALYZE_PASSED)
             return_zone(FAIL);
     }
 
@@ -5461,8 +5456,7 @@ struct result analyze_instr_vargs(struct context *ctx, struct mir_instr_vargs *v
 struct result analyze_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_ptr *elem_ptr)
 {
     zone();
-    if (analyze_slot(
-            ctx, &analyze_slot_conf_default, &elem_ptr->index, ctx->builtin_types->t_s64) !=
+    if (analyze_slot(ctx, analyze_slot_conf_default, &elem_ptr->index, ctx->builtin_types->t_s64) !=
         ANALYZE_PASSED) {
         return_zone(FAIL);
     }
@@ -5623,7 +5617,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
     // Sub type member.
     if (target_type->kind == MIR_TYPE_TYPE) {
         // generate load instruction if needed
-        if (analyze_slot(ctx, &analyze_slot_conf_basic, &member_ptr->target_ptr, NULL) !=
+        if (analyze_slot(ctx, analyze_slot_conf_basic, &member_ptr->target_ptr, NULL) !=
             ANALYZE_PASSED) {
             return_zone(FAIL);
         }
@@ -5878,8 +5872,8 @@ analyze_instr_cast(struct context *ctx, struct mir_instr_cast *cast, bool analyz
             if (result.state != ANALYZE_PASSED) return_zone(result);
         }
 
-        const struct slot_config *config =
-            cast->base.is_implicit ? &analyze_slot_conf_dummy : &analyze_slot_conf_basic;
+        const analyze_stage_fn_t *config =
+            cast->base.is_implicit ? analyze_slot_conf_dummy : analyze_slot_conf_basic;
 
         if (analyze_slot(ctx, config, &cast->expr, dest_type) != ANALYZE_PASSED) {
             return_zone(FAIL);
@@ -5934,7 +5928,7 @@ struct result analyze_instr_sizeof(struct context *ctx, struct mir_instr_sizeof 
     }
 
     if (!szof->resolved_type) {
-        if (analyze_slot(ctx, &analyze_slot_conf_basic, &szof->expr, NULL) == ANALYZE_PASSED) {
+        if (analyze_slot(ctx, analyze_slot_conf_basic, &szof->expr, NULL) == ANALYZE_PASSED) {
             szof->resolved_type = szof->expr->value.type;
             if (szof->resolved_type->kind == MIR_TYPE_TYPE) {
                 szof->resolved_type = MIR_CEV_READ_AS(struct mir_type *, &szof->expr->value);
@@ -5975,7 +5969,7 @@ struct result analyze_instr_alignof(struct context *ctx, struct mir_instr_aligno
         alof->expr = sarrpeek(alof->args, 0);
     }
 
-    if (analyze_slot(ctx, &analyze_slot_conf_basic, &alof->expr, NULL) != ANALYZE_PASSED) {
+    if (analyze_slot(ctx, analyze_slot_conf_basic, &alof->expr, NULL) != ANALYZE_PASSED) {
         return_zone(FAIL);
     }
 
@@ -6002,7 +5996,7 @@ struct result analyze_instr_typeof(struct context *ctx, struct mir_instr_typeof 
         type_of->expr = sarrpeek(type_of->args, 0);
     }
     bassert(type_of->base.value.type == ctx->builtin_types->t_type);
-    if (analyze_slot(ctx, &analyze_slot_conf_basic, &type_of->expr, NULL) != ANALYZE_PASSED) {
+    if (analyze_slot(ctx, analyze_slot_conf_basic, &type_of->expr, NULL) != ANALYZE_PASSED) {
         return_zone(FAIL);
     }
     const struct mir_type *expr_type = type_of->expr->value.type;
@@ -6033,7 +6027,7 @@ struct result analyze_instr_type_info(struct context *ctx, struct mir_instr_type
         if (missing_rtti_type_id) {
             return_zone(WAIT(missing_rtti_type_id->hash));
         }
-        if (analyze_slot(ctx, &analyze_slot_conf_basic, &type_info->expr, NULL) != ANALYZE_PASSED) {
+        if (analyze_slot(ctx, analyze_slot_conf_basic, &type_info->expr, NULL) != ANALYZE_PASSED) {
             return_zone(FAIL);
         }
         struct mir_type *type = type_info->expr->value.type;
@@ -6629,7 +6623,7 @@ struct result analyze_instr_fn_group(struct context *ctx, struct mir_instr_fn_gr
     sarrsetlen(&validation_queue, vc);
     for (usize i = 0; i < vc; ++i) {
         struct mir_instr **variant_ref = &sarrpeek(variants, i);
-        if (analyze_slot(ctx, &analyze_slot_conf_basic, variant_ref, NULL) != ANALYZE_PASSED) {
+        if (analyze_slot(ctx, analyze_slot_conf_basic, variant_ref, NULL) != ANALYZE_PASSED) {
             result = FAIL;
             goto FINALLY;
         }
@@ -6681,7 +6675,7 @@ struct result analyze_instr_cond_br(struct context *ctx, struct mir_instr_cond_b
     zone();
     bassert(br->cond && br->then_block && br->else_block);
     bassert(br->cond->state == MIR_IS_COMPLETE);
-    if (analyze_slot(ctx, &analyze_slot_conf_default, &br->cond, ctx->builtin_types->t_bool) !=
+    if (analyze_slot(ctx, analyze_slot_conf_default, &br->cond, ctx->builtin_types->t_bool) !=
         ANALYZE_PASSED) {
         return_zone(FAIL);
     }
@@ -6707,7 +6701,7 @@ struct result analyze_instr_br(struct context UNUSED(*ctx), struct mir_instr_br 
 struct result analyze_instr_switch(struct context *ctx, struct mir_instr_switch *sw)
 {
     zone();
-    if (analyze_slot(ctx, &analyze_slot_conf_basic, &sw->value, NULL) != ANALYZE_PASSED) {
+    if (analyze_slot(ctx, analyze_slot_conf_basic, &sw->value, NULL) != ANALYZE_PASSED) {
         return_zone(FAIL);
     }
 
@@ -6741,7 +6735,7 @@ struct result analyze_instr_switch(struct context *ctx, struct mir_instr_switch 
             return_zone(FAIL);
         }
 
-        if (analyze_slot(ctx, &analyze_slot_conf_default, &c->on_value, expected_case_type) !=
+        if (analyze_slot(ctx, analyze_slot_conf_default, &c->on_value, expected_case_type) !=
             ANALYZE_PASSED) {
             hmfree(presented);
             return_zone(FAIL);
@@ -6885,7 +6879,7 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
                 (struct mir_instr_decl_arg **)&sarrpeek(type_fn->args, i);
             bassert(mir_is_comptime(&(*arg_ref)->base));
 
-            if (analyze_slot(ctx, &analyze_slot_conf_basic, (struct mir_instr **)arg_ref, NULL) !=
+            if (analyze_slot(ctx, analyze_slot_conf_basic, (struct mir_instr **)arg_ref, NULL) !=
                 ANALYZE_PASSED) {
                 return_zone(FAIL);
             }
@@ -6943,7 +6937,7 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
 
     struct mir_type *ret_type = NULL;
     if (type_fn->ret_type) {
-        if (analyze_slot(ctx, &analyze_slot_conf_basic, &type_fn->ret_type, NULL) !=
+        if (analyze_slot(ctx, analyze_slot_conf_basic, &type_fn->ret_type, NULL) !=
             ANALYZE_PASSED) {
             return_zone(FAIL);
         }
@@ -7005,7 +6999,7 @@ struct result analyze_instr_type_fn_group(struct context                 *ctx,
     sarrsetlen(variant_types, varc);
     for (usize i = 0; i < varc; ++i) {
         struct mir_instr **variant_ref = &sarrpeek(variants, i);
-        if (analyze_slot(ctx, &analyze_slot_conf_basic, variant_ref, NULL) != ANALYZE_PASSED) {
+        if (analyze_slot(ctx, analyze_slot_conf_basic, variant_ref, NULL) != ANALYZE_PASSED) {
             return_zone(FAIL);
         }
         struct mir_instr *variant = *variant_ref;
@@ -7039,7 +7033,7 @@ struct result analyze_instr_decl_member(struct context *ctx, struct mir_instr_de
 
     // Analyze struct member tag.
     if (decl->tag) {
-        if (analyze_slot(ctx, &analyze_slot_conf_default, &decl->tag, ctx->builtin_types->t_u64) !=
+        if (analyze_slot(ctx, analyze_slot_conf_default, &decl->tag, ctx->builtin_types->t_u64) !=
             ANALYZE_PASSED) {
             return_zone(FAIL);
         }
@@ -7057,7 +7051,7 @@ struct result analyze_instr_decl_member(struct context *ctx, struct mir_instr_de
     member->tag = tag_value;
 
     bassert(decl->type);
-    if (analyze_slot(ctx, &analyze_slot_conf_basic, &decl->type, NULL) != ANALYZE_PASSED) {
+    if (analyze_slot(ctx, analyze_slot_conf_basic, &decl->type, NULL) != ANALYZE_PASSED) {
         return_zone(FAIL);
     }
     if (decl->type->value.type->kind != MIR_TYPE_TYPE && !mir_is_placeholder(decl->type)) {
@@ -7104,7 +7098,7 @@ struct result analyze_instr_decl_variant(struct context                *ctx,
                          "Enum variant value must be compile time known.");
             return_zone(FAIL);
         }
-        if (analyze_slot(ctx, &analyze_slot_conf_default, &variant_instr->value, base_type) !=
+        if (analyze_slot(ctx, analyze_slot_conf_default, &variant_instr->value, base_type) !=
             ANALYZE_PASSED) {
             return_zone(FAIL);
         }
@@ -7174,7 +7168,7 @@ struct result analyze_instr_decl_arg(struct context *ctx, struct mir_instr_decl_
             struct result result = analyze_resolve_type(ctx, decl->type, &arg->type);
             if (result.state != ANALYZE_PASSED) return_zone(result);
         } else {
-            if (analyze_slot(ctx, &analyze_slot_conf_basic, &decl->type, NULL) != ANALYZE_PASSED) {
+            if (analyze_slot(ctx, analyze_slot_conf_basic, &decl->type, NULL) != ANALYZE_PASSED) {
                 return_zone(FAIL);
             }
             arg->type = MIR_CEV_READ_AS(struct mir_type *, &decl->type->value);
@@ -7254,7 +7248,7 @@ struct result analyze_instr_type_struct(struct context               *ctx,
         members = arena_safe_alloc(&ctx->assembly->arenas.sarr);
         for (usize i = 0; i < sarrlenu(type_struct->members); ++i) {
             member_instr = &sarrpeek(type_struct->members, i);
-            if (analyze_slot(ctx, &analyze_slot_conf_basic, member_instr, NULL) != ANALYZE_PASSED) {
+            if (analyze_slot(ctx, analyze_slot_conf_basic, member_instr, NULL) != ANALYZE_PASSED) {
                 return_zone(FAIL);
             }
             decl_member = (struct mir_instr_decl_member *)*member_instr;
@@ -7353,7 +7347,7 @@ struct result analyze_instr_type_slice(struct context *ctx, struct mir_instr_typ
     zone();
     bassert(type_slice->elem_type);
 
-    if (analyze_slot(ctx, &analyze_slot_conf_basic, &type_slice->elem_type, NULL) !=
+    if (analyze_slot(ctx, analyze_slot_conf_basic, &type_slice->elem_type, NULL) !=
         ANALYZE_PASSED) {
         return_zone(FAIL);
     }
@@ -7406,7 +7400,7 @@ struct result analyze_instr_type_dynarr(struct context                *ctx,
 
     bassert(type_dynarr->elem_type);
 
-    if (analyze_slot(ctx, &analyze_slot_conf_basic, &type_dynarr->elem_type, NULL) !=
+    if (analyze_slot(ctx, analyze_slot_conf_basic, &type_dynarr->elem_type, NULL) !=
         ANALYZE_PASSED) {
         return_zone(FAIL);
     }
@@ -7456,7 +7450,7 @@ struct result analyze_instr_type_vargs(struct context *ctx, struct mir_instr_typ
     zone();
     struct mir_type *elem_type = NULL;
     if (type_vargs->elem_type) {
-        if (analyze_slot(ctx, &analyze_slot_conf_basic, &type_vargs->elem_type, NULL) !=
+        if (analyze_slot(ctx, analyze_slot_conf_basic, &type_vargs->elem_type, NULL) !=
             ANALYZE_PASSED) {
             return_zone(FAIL);
         }
@@ -7490,12 +7484,12 @@ struct result analyze_instr_type_array(struct context *ctx, struct mir_instr_typ
     bassert(type_arr->elem_type->state == MIR_IS_COMPLETE);
 
     if (!mir_is_placeholder(type_arr->len) &&
-        analyze_slot(ctx, &analyze_slot_conf_default, &type_arr->len, ctx->builtin_types->t_s64) !=
+        analyze_slot(ctx, analyze_slot_conf_default, &type_arr->len, ctx->builtin_types->t_s64) !=
             ANALYZE_PASSED) {
         return_zone(FAIL);
     }
 
-    if (analyze_slot(ctx, &analyze_slot_conf_basic, &type_arr->elem_type, NULL) != ANALYZE_PASSED) {
+    if (analyze_slot(ctx, analyze_slot_conf_basic, &type_arr->elem_type, NULL) != ANALYZE_PASSED) {
         return_zone(FAIL);
     }
 
@@ -7607,7 +7601,7 @@ struct result analyze_instr_type_ptr(struct context *ctx, struct mir_instr_type_
     zone();
     bassert(type_ptr->type);
 
-    if (analyze_slot(ctx, &analyze_slot_conf_basic, &type_ptr->type, NULL) != ANALYZE_PASSED) {
+    if (analyze_slot(ctx, analyze_slot_conf_basic, &type_ptr->type, NULL) != ANALYZE_PASSED) {
         return_zone(FAIL);
     }
 
@@ -7681,19 +7675,19 @@ struct result analyze_instr_binop(struct context *ctx, struct mir_instr_binop *b
 
         if (can_propagate_RtoL) {
             // Propagate right hand side expression type to the left.
-            if (analyze_slot(ctx, &analyze_slot_conf_default, &binop->lhs, rhs_type) !=
+            if (analyze_slot(ctx, analyze_slot_conf_default, &binop->lhs, rhs_type) !=
                 ANALYZE_PASSED)
                 return_zone(FAIL);
 
-            if (analyze_slot(ctx, &analyze_slot_conf_basic, &binop->rhs, NULL) != ANALYZE_PASSED)
+            if (analyze_slot(ctx, analyze_slot_conf_basic, &binop->rhs, NULL) != ANALYZE_PASSED)
                 return_zone(FAIL);
         } else {
             // Propagate left hand side expression type to the right.
-            if (analyze_slot(ctx, &analyze_slot_conf_basic, &binop->lhs, NULL) != ANALYZE_PASSED)
+            if (analyze_slot(ctx, analyze_slot_conf_basic, &binop->lhs, NULL) != ANALYZE_PASSED)
                 return_zone(FAIL);
 
             if (analyze_slot(ctx,
-                             lhs_is_null ? &analyze_slot_conf_basic : &analyze_slot_conf_default,
+                             lhs_is_null ? analyze_slot_conf_basic : analyze_slot_conf_default,
                              &binop->rhs,
                              lhs_is_null ? NULL : binop->lhs->value.type) != ANALYZE_PASSED)
                 return_zone(FAIL);
@@ -7795,7 +7789,7 @@ struct result analyze_instr_msg(struct context *ctx, struct mir_instr_msg *msg)
         msg->expr = sarrpeek(msg->args, 0);
     }
     if (analyze_slot(
-            ctx, &analyze_slot_conf_basic, &msg->expr, ctx->builtin_types->t_string_literal) !=
+            ctx, analyze_slot_conf_basic, &msg->expr, ctx->builtin_types->t_string_literal) !=
         ANALYZE_PASSED) {
         return_zone(FAIL);
     }
@@ -7824,8 +7818,8 @@ struct result analyze_instr_unop(struct context *ctx, struct mir_instr_unop *uno
 {
     zone();
     struct mir_type *expected_type = unop->op == UNOP_NOT ? ctx->builtin_types->t_bool : NULL;
-    const struct slot_config *conf =
-        unop->op == UNOP_NOT ? &analyze_slot_conf_default : &analyze_slot_conf_basic;
+    const analyze_stage_fn_t *conf =
+        unop->op == UNOP_NOT ? analyze_slot_conf_default : analyze_slot_conf_basic;
 
     if (analyze_slot(ctx, conf, &unop->expr, expected_type) != ANALYZE_PASSED) {
         return_zone(FAIL);
@@ -7903,7 +7897,7 @@ struct result analyze_instr_ret(struct context *ctx, struct mir_instr_ret *ret)
     bassert(fn_type->kind == MIR_TYPE_FN);
 
     if (ret->value) {
-        if (analyze_slot(ctx, &analyze_slot_conf_default, &ret->value, fn_type->data.fn.ret_type) !=
+        if (analyze_slot(ctx, analyze_slot_conf_default, &ret->value, fn_type->data.fn.ret_type) !=
             ANALYZE_PASSED) {
             return_zone(FAIL);
         }
@@ -7988,12 +7982,12 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
         // fulfill possible array to slice cast.
         if (var->value.type) {
             if (analyze_slot_initializer(
-                    ctx, &analyze_slot_conf_default, &decl->init, var->value.type) !=
+                    ctx, analyze_slot_conf_default, &decl->init, var->value.type) !=
                 ANALYZE_PASSED) {
                 return_zone(FAIL);
             }
         } else {
-            if (analyze_slot_initializer(ctx, &analyze_slot_conf_basic, &decl->init, NULL) !=
+            if (analyze_slot_initializer(ctx, analyze_slot_conf_basic, &decl->init, NULL) !=
                 ANALYZE_PASSED) {
                 return_zone(FAIL);
             }
@@ -8412,7 +8406,7 @@ analyze_call_slot(struct context *ctx, struct mir_instr_call *call, struct mir_a
 
     struct mir_instr **call_arg_instr_ref = &sarrpeek(call->args, fn_arg->index);
     struct mir_type   *expected_arg_type  = fn_arg->type;
-    if (analyze_slot(ctx, &analyze_slot_conf_full, call_arg_instr_ref, expected_arg_type) !=
+    if (analyze_slot(ctx, analyze_slot_conf_full, call_arg_instr_ref, expected_arg_type) !=
         ANALYZE_PASSED) {
         return_zone(FAIL);
     }
@@ -8484,7 +8478,7 @@ struct result analyze_call_stage_resolve_called_object(struct context        *ct
         }
         return_zone(POSTPONE);
     }
-    if (analyze_slot(ctx, &analyze_slot_conf_basic, &call->callee, NULL) != ANALYZE_PASSED) {
+    if (analyze_slot(ctx, analyze_slot_conf_basic, &call->callee, NULL) != ANALYZE_PASSED) {
         return_zone(FAIL);
     }
     return_zone(PASS);
@@ -8978,7 +8972,7 @@ struct result analyze_instr_store(struct context *ctx, struct mir_instr_store *s
     struct mir_type *dest_type = mir_deref_type(dest->value.type);
     bassert(dest_type && "store destination has invalid base type");
 
-    if (analyze_slot(ctx, &analyze_slot_conf_default, &store->src, dest_type) != ANALYZE_PASSED) {
+    if (analyze_slot(ctx, analyze_slot_conf_default, &store->src, dest_type) != ANALYZE_PASSED) {
         return_zone(FAIL);
     }
 
@@ -9046,14 +9040,14 @@ struct result analyze_instr_block(struct context *ctx, struct mir_instr_block *b
 }
 
 enum result_state _analyze_slot(struct context           *ctx,
-                                const struct slot_config *conf,
+                                const analyze_stage_fn_t *conf,
                                 struct mir_instr        **input,
                                 struct mir_type          *slot_type,
                                 bool                      is_initializer)
 {
     s32 index = 0;
-    while (conf->stages[index]) {
-        enum stage_state state = conf->stages[index++](ctx, input, slot_type, is_initializer);
+    while (conf[index]) {
+        enum stage_state state = conf[index++](ctx, input, slot_type, is_initializer);
         switch (state) {
         case ANALYZE_STAGE_BREAK:
             return ANALYZE_PASSED;
