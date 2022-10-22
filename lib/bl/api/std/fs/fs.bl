@@ -44,7 +44,7 @@ OpenFileMode :: enum #flags {
 ///
 /// ### Example
 ///
-/// ```c
+/// ```rust
 /// {% include "../examples/open_file.bl" %}
 /// ```
 ///
@@ -81,9 +81,9 @@ remove_file :: fn (filepath: string_view) Error #inline {
 ///
 /// The destination file is created if it does not exist.
 ///
-/// !!! note
-///     `src` and `dest` path can be relative path to current working path set by
-///     [set_cwd](#stdset_cwd).
+/// > **Note:**
+/// The `src` and `dest` path can be relative path to current working path set by
+/// [set_cwd](#stdset_cwd).
 copy_file :: fn (src: string_view, dest: string_view, override := false) Error #inline {
     return _fs_impl.copy(src, dest, override);
 }
@@ -184,13 +184,13 @@ Info :: struct {
 /// When the `filter` callback is specified, it's called for each visited file or directory. Returning `true`
 /// means the entry should be deleted.
 ///
-/// !!! warning
-///     When some files are excluded by the `filter` function the parent directory cannot be removed (it's not empty).
-///     Be careful excluding directories.
+/// > **Warning:**
+/// When some files are excluded by the `filter` function the parent directory cannot be removed (it's not empty).
+/// Be careful excluding directories.
 ///
-/// !!! note
-///     This function recursively remove all nested folders and files in specified sub tree
-///     so it can be expensive.
+/// > **Note:**
+/// This function recursively remove all nested folders and files in specified sub tree
+/// so it can be expensive.
 ///
 remove_all_dir :: fn {
     impl_remove_all_dir;
@@ -280,8 +280,8 @@ path_normalize :: fn (filepath: *string) Error #inline {
 /// | /                       | /           | -            |
 /// | C:/                     | C:/         | -            |
 ///
-/// !!! note
-///     Returned components may not be zero terminated.
+/// > **Note:**
+/// Returned components may not be zero terminated.
 path_split :: fn (filepath: string_view) (head: string_view, tail: string_view) {
     if str_is_empty(filepath) { return str_empty, str_empty; }
 
@@ -308,8 +308,8 @@ path_split :: fn (filepath: string_view) (head: string_view, tail: string_view) 
 /// | /                       | /                  | -            |
 /// | C:/                     | C:/                | -            |
 ///
-/// !!! note
-///     Returned components may not be zero terminated.
+/// > **Note:**
+/// Returned components may not be zero terminated.
 path_splitext :: fn (filepath: string_view) (head: string_view, ext: string_view) {
     if str_is_empty(filepath) { return str_empty, str_empty; }
     head, ext: string_view;

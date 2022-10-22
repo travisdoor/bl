@@ -18,11 +18,11 @@
 //! expensive on large tables. However, `keys` and `values` arrays stays as it is and reallocates as regular
 //! dynamic arrays (in case there is no preallocated space left).
 //!
-//! !!! warning
-//!     Table data array ordering corresponds to the order of inserts until any element is erased from the table.
+//! > **Warning:**
+//! Table data array ordering corresponds to the order of inserts until any element is erased from the table.
 //!
-//! !!! warning
-//!     The key types are limited to numbers, strings and pointers (this may change in the future).
+//! > **Warning:**
+//! The key types are limited to numbers, strings and pointers (this may change in the future).
 //!
 //! ### Example
 //!
@@ -102,8 +102,8 @@ tbl_typeof_value :: fn (TTable: type #comptime) type #comptime {
 ///
 /// Function returns pointer to the newly inserted value in the `values` array.
 ///
-/// !!! note
-///     When no value is explicitly inserted, returned pointer points to non-initialized memory.
+/// > **Note:**
+/// When no value is explicitly inserted, returned pointer points to non-initialized memory.
 tbl_insert :: fn { impl_insert_empty; impl_insert; }
 
 /// Lookup entry associated with the `key` and returns pointer its value or `null` when no such `key`
@@ -138,8 +138,8 @@ tbl_lookup_index :: fn (tbl: *?T, key: tbl_typeof_key(T)) s32 #inline {
 /// Erase an entry associated with `key` from the table and returns `true` in case the entry was
 /// found.
 ///
-/// !!! note
-///     Ordering of the values and keys may change.
+/// > **Note:**
+/// Ordering of the values and keys may change.
 tbl_erase :: fn (tbl: *?T, key: tbl_typeof_key(T)) bool #inline {
     assert(tbl);
     erase_slot_index, erase_entry_index :: lookup_indices(tbl, calculate_hash(key), key);

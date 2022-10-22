@@ -138,8 +138,7 @@ random_number :: fn (min := 0, max := 1) s32 #inline {
     return C.rand() % (max + 1 - min) + min;
 }
 
-/// Polymorph slice sorting utility.
-/// @INCOMPLETE
+/// Slice sorting utility.
 sort :: fn (list: []?T, cmp: *fn(a: *T, b: *T) bool) {
     assert(cmp);
     loop i := 0; i < list.len; i += 1 {

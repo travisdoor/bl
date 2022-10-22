@@ -94,13 +94,13 @@ default_allocator :: Allocator.{ handler = &default_allocator_handler };
 /// }
 /// ```
 ///
-/// !!! note
-///     The temporary allocator internally use [pool allocator](pool.md#pool_allocator), see the documentation for
-///     more details.
+/// > **Note:**
+/// The temporary allocator internally use [pool allocator](pool.md#pool_allocator), see the documentation for
+/// more details.
 ///
-/// !!! important
-///     Temporary allocator instance is thread-local, [temporary_release](#temporary_release) should be called
-///     at-exit of all threads if it's used.
+/// > **Note:**
+/// Temporary allocator instance is thread-local, [temporary_release](#temporary_release) should be called
+/// at-exit of all threads if it's used.
 default_temporary_allocator :: Allocator.{ handler = &temporary_allocator_handler };
 
 /// Specify allocator opratation.
@@ -159,12 +159,12 @@ alloc :: fn (size: usize, alignment := DEFAULT_ALIGNMENT, preferred_allocator: *
 ///
 /// The allocation `alignment` can be specified but must be the same as previous one in case we try to reallocate.
 ///
-/// !!! note
-///     When called with null `old_ptr`, this function behaves the same as [alloc](#alloc) and the `old_size` is ignored.
+/// > **Note:**
+/// When called with null `old_ptr`, this function behaves the same as [alloc](#alloc) and the `old_size` is ignored.
 ///
-/// !!! warning
-///     The exact behaviour depends on the allocator used, in some cases reallocation is not implemented and new allocation
-///     is done everytime.
+/// > **Warning:**
+/// The exact behavior depends on the allocator used, in some cases reallocation is not implemented and new allocation
+/// is done every time.
 realloc :: fn (old_ptr: *u8, old_size: usize, size: usize, alignment := DEFAULT_ALIGNMENT, preferred_allocator: *Allocator = null, loc := #call_location) (mem: *u8, err: Error) #inline {
     allocator := preferred_allocator;
     if !allocator { allocator = application_context.allocator; }
@@ -187,8 +187,8 @@ realloc :: fn (old_ptr: *u8, old_size: usize, size: usize, alignment := DEFAULT_
 /// allocator is used.
 /// Use [free](#free) to release allocated memory when it's not needed anymore.
 ///
-/// !!! note
-///     Returned memory block is not zero initialized. 
+/// > **Note:**
+/// Returned memory block is not zero initialized. 
 new :: fn (T: type #comptime, preferred_allocator: *Allocator = null, loc := #call_location) (ptr: *T, err: Error) #inline {
     mem, err :: alloc(sizeof(T), alignof(T), preferred_allocator, loc);
     return auto mem, err; 
@@ -271,8 +271,8 @@ is_aligned :: fn (ptr: *?T, alignment: usize) bool #inline {
 /// Align pointer `p` to `alignment` and return adjusted pointer and number of bytes needed for 
 /// adjustment.
 ///
-/// !!! warning
-///     Cause panic when alignment is not power of two.
+/// > **Warning:**
+/// Cause panic when alignment is not power of two.
 align_ptr_up :: fn (p: *u8, alignment: usize) (p: *u8, adjustment: usize)
 {
     if is_aligned(p, alignment) { return p, 0; }
@@ -310,8 +310,8 @@ align_ptr_up :: fn (p: *u8, alignment: usize) (p: *u8, adjustment: usize)
 /// }
 /// ```
 ///
-/// !!! note
-///     Zero initialization of allocated memory block can be expensive in case of large number of elements.
+/// > **Note:**
+/// Zero initialization of allocated memory block can be expensive in case of large number of elements.
 alloc_slice :: fn (slice: *[]?T, n: s64, zero_initialized := true, allocator: *Allocator = null, loc := #call_location) Error {
     if n < 0 { panic("Attempt to allocate % elements in slice!", n); }
     if n == 0  {
@@ -330,8 +330,9 @@ alloc_slice :: fn (slice: *[]?T, n: s64, zero_initialized := true, allocator: *A
 }
 
 /// Release slice memory allocated by [alloc_slice](#alloc_slice) call.
-/// !!! warning
-///     The `allocator` must match the allocator used in ``alloc_slice``.
+///
+/// > **Warning:**
+/// The `allocator` must match the allocator used in ``alloc_slice``.
 free_slice :: fn (slice: *[]?T, allocator: *Allocator = null, loc := #call_location) {
     if slice.ptr {
         free(auto slice.ptr, allocator, loc);
@@ -353,8 +354,8 @@ free_slice :: fn (slice: *[]?T, allocator: *Allocator = null, loc := #call_locat
 /// end <= slice.len
 /// ```
 ///
-/// !!! warning
-///     Function cause panic in case combination of `start` and `end` is out of `slice` range.
+/// > **Warning:**
+/// Function cause panic in case combination of `start` and `end` is out of `slice` range.
 slice_range :: fn (slice: []?T, start: s64, end: s64 = -1) []T #inline {
     e := end; 
     if e < 0 { e = slice.len; }
@@ -368,11 +369,11 @@ slice_range :: fn (slice: []?T, start: s64, end: s64 = -1) []T #inline {
 /// Reduce allocated memory in temporary allocator storage, but keeps biggest allocated chunk
 /// for the later use.
 ///
-/// !!! warning
-///     All resources previously allocated by this allocator became invalid after reset.
+/// > **Warning:**
+/// All resources previously allocated by this allocator became invalid after reset.
 ///
-/// !!! note
-///     Call this method i.e. in every event loop (update) iteration.
+/// > **Note:**
+/// Call this method i.e. in every event loop (update) iteration.
 temporary_reset :: fn () #inline {
     // @Incomplete: use allocator from application context!!!
     // @Incomplete: use allocator from application context!!!
@@ -382,11 +383,11 @@ temporary_reset :: fn () #inline {
 
 /// Release all memory allocated by temporary allocator.
 ///
-/// !!! warning
-///     All resources previously allocated by this allocator became invalid after release.
+/// > **Warning:**
+/// All resources previously allocated by this allocator became invalid after release.
 ///
-/// !!! note
-///     This method is implicitly called at exit of executable (after main).
+/// > **Note:**
+/// This method is implicitly called at exit of executable (after main).
 temporary_release :: fn () #inline {
     // @Incomplete: use allocator from application context!!!
     // @Incomplete: use allocator from application context!!!

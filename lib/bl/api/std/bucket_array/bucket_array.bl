@@ -22,8 +22,8 @@
 //! {% include "../examples/bucket_array.bl" %}
 //! ```
 //!
-//! !!! note
-//!     Organizing data into buckets leads to less allocations, faster free and better memory locality.
+//! > **Note:**
+//! Organizing data into buckets leads to less allocations, faster free and better memory locality.
 
 #scope std
 
@@ -96,8 +96,8 @@ bucket_array_terminate :: fn (arr: *?TArr) {
 /// fn (arr: *?TArr) *bucket_array_typeof_elem(TArr)
 /// ```
 ///
-/// !!! note
-///     New memory is allocated only in case there is no free slot left in the preallocated buckets.
+/// > **Note:**
+/// New memory is allocated only in case there is no free slot left in the preallocated buckets.
 bucket_array_push :: fn { impl_push_empty; impl_push; }
 
 /// Erase previously pushed value from the `arr`, and asserts in case the value was already erased.

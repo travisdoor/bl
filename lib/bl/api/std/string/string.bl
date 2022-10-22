@@ -27,10 +27,10 @@
 //!
 //! BL strings are zero terminated except of sub-string view function (terminator cannot be added 
 //! because we cannot modify original string).
-//! 
-//! !!! note
-//!     String manipulation functions are related only to dynamic strings and cannot be used
-//!     with string literals since those are constants allocated on stack.
+//!
+//! > **Note:** 
+//! String manipulation functions are related only to dynamic strings and cannot be used
+//! with string literals since those are constants allocated on stack.
 
 /// Overloaded function creating new dynamic string instance. Created string is guaranteed to be 
 /// zero terminated.
@@ -347,8 +347,8 @@ strtof64 :: fn (str: string_view, count := -1) (f64, Error) {
 /// Token destination pointers `lhs` and `rhs` are optional. The `di` output variable is set to 
 /// index of the split position when it's not `null`.
 /// 
-/// !!! warning
-///     `lhs` and `rhs` sub strings are not guaranteed to be zero terminated.
+/// > **Warning:**
+/// `lhs` and `rhs` sub strings are not guaranteed to be zero terminated.
 ///
 /// ### Example
 ///
@@ -394,8 +394,8 @@ str_split_by_last :: fn (str: string_view, delimiter: u8, lhs: *string_view, rhs
 /// 
 /// Token destination pointers `lhs` and `rhs` are optional. 
 /// 
-/// !!! warning
-///     `lhs` and `rhs` sub strings are not guaranteed to be zero terminated.
+/// > **Warning:**
+/// `lhs` and `rhs` sub strings are not guaranteed to be zero terminated.
 ///
 /// ### Example
 ///
@@ -430,8 +430,8 @@ str_split_at_index :: fn (str: string_view, index: s32, lhs: *string_view = null
 /// 
 /// Token destination pointers `lhs` and `rhs` are optional. 
 /// 
-/// !!! warning
-///     `lhs` and `rhs` sub strings are not guaranteed to be zero terminated.
+/// > **Warning:**
+/// `lhs` and `rhs` sub strings are not guaranteed to be zero terminated.
 ///
 /// ### Example
 ///
@@ -479,8 +479,8 @@ str_split_by_first :: fn (str: string_view, delimiter: u8, lhs: *string_view, rh
 /// fn (str: *string, index: s32, v: string_view) bool
 /// ```
 ///
-/// !!! note
-///     Function does nothing (return `false`) when `v` string is empty.
+/// > **Note:**
+/// Function does nothing (return `false`) when `v` string is empty.
 str_insert :: fn { _string_insert; _char_insert; };
 
 /// Erase one character at `index` position and return true when character was erased. The '`index` 
@@ -501,11 +501,11 @@ str_erase :: fn (str: *string, index: s32) bool {
 
 /// Split the `str` input string by delimiter and return new slice containing all found sub-strings. 
 /// 
-/// !!! warning
-///     String slice should be terminated by `free_slice` call.
+/// > **Warning:**
+/// String slice should be terminated by `free_slice` call.
 ///
-/// !!! warning
-///     Slice elements are not guaranteed to be zero terminated.
+/// > **Warning:**
+/// Slice elements are not guaranteed to be zero terminated.
 str_split_by :: fn (str: string_view, delimiter: u8) []string_view {
     count :: str_count_of(str, delimiter) + 1;
     ret: []string_view;
@@ -547,8 +547,8 @@ str_split_by :: fn (str: string_view, delimiter: u8) []string_view {
 /// }
 /// ```
 ///
-/// !!! note
-///     Callback is not called for empty tokens.
+/// > **Note:**
+/// Callback is not called for empty tokens.
 str_tokenize :: fn {
     fn (str: string_view, delimiter: u8, ctx: *?T, visitor: *fn(token: string_view, ctx: *T) bool) {
         assert(visitor);
@@ -693,8 +693,8 @@ str_is_null_or_empty :: fn (s: string_view) bool #inline { return s.ptr == null 
 /// Starting index `start` must be greater than 0 and less than `str.len`. `len` specifies optional 
 /// length of substring. When not specified, length from `start` to the end of the `str` is used.
 /// 
-/// !!! warning
-///     Result sub-string is not guaranteed to be zero terminated.
+/// > **Warning:**
+/// Result sub-string is not guaranteed to be zero terminated.
 str_sub :: fn (str: string_view, start: s64, len : s64 = -1) string_view #inline {
     s := str;
     l := len;

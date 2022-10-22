@@ -72,7 +72,7 @@ print :: fn (format: string_view, args: ...) s32 {
     w := _print_impl(buf, format, args);
     std.write(os_stdout(), buf.ptr, auto w);
     return w;
-};
+}
 
 /// Write string to the error output (stderr).
 /// See also [print](#print).
@@ -81,7 +81,7 @@ eprint :: fn (format: string_view, args: ...) s32 {
     w := _print_impl(buf, format, args);
     std.write(os_stderr(), buf.ptr, auto w);
     return w;
-};
+}
 
 /// Write formatted input to the buffer. When passed buffer has not enough space to handle whole
 /// resulting string and terminal character, function will print just part tting into the buffer.
@@ -89,8 +89,8 @@ eprint :: fn (format: string_view, args: ...) s32 {
 /// Returns count of characters written into buffer, this count does not include terminal character 
 /// written at the end of the result string.
 ///
-/// !!! note
-///     String written into the buffer is always zero terminated.
+/// > **Note:**
+/// String written into the buffer is always zero terminated.
 /// 
 /// See also [print](#print).
 bprint :: fn (buf: []u8, format: string_view, args: ...) s32 {
@@ -105,11 +105,11 @@ bprint :: fn (buf: []u8, format: string_view, args: ...) s32 {
 
 /// Write formatted input to the new string using `application_context.temporary_allocator`.
 ///
-/// !!! note
-///     There is no need to explicitly release memory used by temporary string.
+/// > **Note:**
+/// There is no need to explicitly release memory used by temporary string.
 /// 
-/// !!! note
-///     Created string is always zero terminated.
+/// > **Note:**
+/// Created string is always zero terminated.
 ///
 /// See also [print](#print).
 tprint :: fn (format: string_view, args: ...) string #inline {
@@ -120,11 +120,11 @@ tprint :: fn (format: string_view, args: ...) string #inline {
 
 /// Write formatted input to the new heap-allocated string. 
 /// 
-/// !!! note
-///     Use `std.str_delete` to free memory used by string.
+/// > **Note:**
+/// Use `std.str_delete` to free memory used by string.
 ///
-/// !!! note
-///     Created string is always zero terminated.
+/// > **Note:**
+/// Created string is always zero terminated.
 ///
 /// See also [print](#print).
 sprint :: fn (format: string_view, args: ...) string {
