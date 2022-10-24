@@ -54,9 +54,9 @@ array_terminate :: fn (_arr: *[..]?T) #inline {
 /// there is not enough memory allocated to store all values.
 /// Returns pointer to the new appended element.
 ///
-/// !!! note
-///     When there is no element to push provided, function will just allocate memory for
-///     a new empty element without any initialization.
+/// > **Note:**
+/// When there is no element to push provided, function will just allocate memory for
+/// a new empty element without any initialization.
 array_push :: fn { impl_push_empty; impl_push; }
 
 /// Append all `data` at the dynamic array end. New heap allocation is done here only in cases when
@@ -131,26 +131,33 @@ get_elem_ptr :: fn (arr: *_Array, elem_size: usize, i: s64) *u8 #inline {
 };
 
 ensure_space :: fn (arr: *_Array, elem_size: usize, needed_elems: usize, exact: bool, alignement: usize) {
-    if needed_elems == 0 { return; }
+    if needed_elems == 0                   { return; }
     if arr.allocated_elems >= needed_elems { return; }
+
+    // Allocated larger block for later use.
+    extended_needed_elems := needed_elems;
     if arr.allocated_elems == 0 {
-        if !exact { needed_elems = std.max(ALLOC_BLOCK_SIZE, needed_elems); }
+        if !exact { extended_needed_elems = std.max(ALLOC_BLOCK_SIZE, extended_needed_elems); }
     } else {
-        needed_elems *= 2;
+        extended_needed_elems *= 2;
     }
-    assert(needed_elems > 0);
-    prev_bytes :: arr.allocated_elems * elem_size;
-    needed_bytes :: needed_elems * elem_size;
+
+    assert(extended_needed_elems > 0);
+
+    prev_bytes   :: arr.allocated_elems * elem_size;
+    needed_bytes :: extended_needed_elems * elem_size;
     mem, err :: realloc(arr.ptr, prev_bytes, needed_bytes, alignement, arr.allocator);
     if err { panic(err); }
+
     arr.ptr = mem;
-    arr.allocated_elems = needed_elems;
+    arr.allocated_elems = extended_needed_elems;
 };
 
 impl_push :: fn (arr: *[..]?T, v: T) *T #inline {
+    data      :: v;
     elem_size :: sizeof(T);
-    dest :: impl_push_empty(arr);
-    memcpy(auto dest, auto &v, elem_size);
+    dest      :: impl_push_empty(arr);
+    memcpy(auto dest, auto &data, elem_size);
     return dest;
 }
 

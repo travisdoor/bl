@@ -26,7 +26,7 @@
 // SOFTWARE.
 // =================================================================================================
 
-//! # Build system
+//! # Build System
 //! 
 //! `#load "build/build.bl"`
 //! 
@@ -336,7 +336,7 @@ get_output_dir :: fn (target: *Target) string_view {
 ModuleImportPolicy :: enum s32 {
     /// Use system modules but prefer local ones in module directory. This option disables any 
     /// copying and version check. Local module directory can contain custom project related 
-    /// modules you don't want to expose to the whole system.
+    /// modules you don't want to expose to the whole system. This is the **default** option.
     SYSTEM = 0;
  
     /// Bundle only missing modules from system into the local module folder and ignore if there is 

@@ -77,12 +77,14 @@ list_files_recursive :: fn (dirpath: string_view, out: *string) {
             return OK;
         }
         if str_match(ext, ".bl") {
-            str_append(data, tprint("\"%\" ", info.filepath));
+            filepath :: tprint("\"%\" ", info.filepath);
+            print("%\n", filepath);
+            str_append(data, filepath);
         }
         return OK;
     };
 
-    err :: visit_files(dirpath, VisitOpt.{ recursive = true }, &visitor, out);
+    err :: visit_files(dirpath, VisitOpt.{ recursive = true }, out, &visitor);
     if err {
         panic(err);
     }
@@ -100,24 +102,44 @@ cmd :: fn (fmt: string_view, args: ...) Error {
 CONFIG ::
     "site_name: Biscuit Language\n"
     "theme:\n"
-    "    name: windmill\n"
+    "    name: materia\n"
     "plugins:\n"
+    "    - search\n"
     "    - include-markdown\n"
     "markdown_extensions:\n"
     "    - admonition\n"
     "extra_css:\n"
-    "    - extra.css\n"
+    "    - extra.css\n" 
     "extra:\n"
     "    version: 0.10.0\n"
-    "    article_nav_top: false\n"
-    "    article_nav_bottom: false\n"
     "nav:\n"
     "    - Home: index.md\n"
     "    - installation.md\n"
-    "    - language.md\n"
-    "    - compiler.md\n"
+    "    - The Baker's Book:\n"
+    "          - book/introduction.md\n"
+    "          - book/hello_world.md\n"
+    "          - book/hello_project.md\n"
+    "          - book/variables.md\n"
+    "          - book/types.md\n"
+    "          - book/functions.md\n"
+    "          - book/comments.md\n"
+    "          - book/literals.md\n"
+    "          - book/operators.md\n"
+    "          - book/control_flow.md\n"
+    "          - book/scopes.md\n"
+    "          - book/modules.md\n"
+    "          - book/libraries.md\n"
+    "          - book/typeinfo.md\n"
+    "          - book/compiler_builtins.md\n"
+    "          - book/documentation.md\n"
+    "          - book/compiler.md\n"
+    "          - book/script_mode.md\n"
+    "          - book/unit_testing.md\n"
+    "          - book/compile_time_debugger.md\n"
     "    - how-to.md\n"
     "    - Modules:\n"
+    "      - build:\n"
+    "        - modules/build.md\n"
     "      - std:\n"
     "        - modules/a.md\n"
     "        - modules/array.md\n"
@@ -127,7 +149,6 @@ CONFIG ::
     "        - modules/pool.md\n"
     "        - modules/buffer_allocator.md\n"
     "        - modules/debug_allocator.md\n"
-    "        - modules/build.md\n"
     "        - modules/debug.md\n"
     "        - modules/dlib.md\n"
     "        - modules/error.md\n"
@@ -144,7 +165,6 @@ CONFIG ::
     "      - extra:\n"
     "        - modules/argparse.md\n"
     "        - modules/draw.md\n"
-    "        - modules/gl.md\n"
     "        - modules/glm.md\n"
     "        - modules/glwindow.win32.md\n"
     "      - misc/os.md\n"

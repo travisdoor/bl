@@ -1,4 +1,4 @@
-version: 1
+version: 20220923
 src: "png.bl"
 
 x86_64-pc-windows-msvc:

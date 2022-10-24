@@ -84,24 +84,28 @@ struct vm_bufpage {
 };
 
 struct vm_snapshot {
-    // Top level comptime call used as lookup key.
-    struct mir_instr_call  *key;
-    void                   *data;
-    usize                   data_size;
-    vm_stack_ptr_t          top_ptr;
-    struct vm_frame        *ra;
-    struct mir_instr       *pc;
-    struct mir_instr_block *prev_block;
+    struct mir_instr_call *key;
+    struct vm_stack       *stack;
 };
 
 struct virtual_machine {
     struct vm_stack   *stack;
-    struct vm_bufpage *data; // Compile time values + global variables.
+    struct vm_stack   *main_stack; // Owner pointer of the main execution stack.
+    struct vm_bufpage *data;       // Compile time values + global variables.
     struct assembly   *assembly;
     array(char) dcsigtmp;
     bool aborted;
 
-    struct vm_snapshot *snapshot_cache;
+    // Cache of unused compile-time call executed stacks available for reuse.
+    array(struct vm_stack *) available_comptime_call_stacks;
+
+    // Contains cached small stacks used for compile time execution of function calls. The function
+    // call in compile time can hit incomplete function in such a case the execution must wait until
+    // the function is analyzed. This cache is used to restore previous execution.
+    //
+    // When the call is successfully completed the cached entry must be removed from the table and
+    // returned back to 'available_comptime_call_stacks' array.
+    hash_table(struct vm_snapshot) comptime_call_stacks;
 };
 
 enum mir_value_address_mode {
@@ -112,7 +116,7 @@ enum mir_value_address_mode {
     // Value points to memory allocation on the stack or heap but value itself is immutable and
     // cannot be modified.
     MIR_VAM_LVALUE_CONST,
-    // Does not point to allocated memory (ex: const literals).
+    // Does not point to allocated memory (i.e.: const literals).
     MIR_VAM_RVALUE,
 };
 
@@ -134,6 +138,9 @@ bool vm_eval_instr(struct virtual_machine *vm, struct assembly *assembly, struct
 
 // Execute top level call instruction, called function must be fully analyzed. Return value is set
 // into call value data pointer.
+//
+// Internally a new small execution stack can be allocated in case none is available; this stack can
+// be reused in case the execution chain hits incomplete function.
 enum vm_interp_state vm_execute_comptime_call(struct virtual_machine *vm,
                                               struct assembly        *assembly,
                                               struct mir_instr_call  *call);

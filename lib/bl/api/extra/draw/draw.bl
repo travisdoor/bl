@@ -67,8 +67,8 @@
 ///
 /// The `gl_init` function is called internally.
 ///
-/// !!! note
-///     Window resizing is not supported right now.
+/// > **Note:**
+/// Window resizing is not supported right now.
 init :: fn (viewport_width: s32, viewport_height: s32) Error {
     gl_init();
     current_gl_major_version, current_gl_minor_version :: gl_get_version_numbers();
@@ -209,7 +209,12 @@ text :: fn (position_x: f32, position_y: f32, text: string_view, text_color: glm
     using glm;
     if text.len == 0 { return; }
     is_subpixel :: context.font.mode == FontAntialiasing.SUBPIXEL;
-    if is_subpixel { position_x = std.ceil(position_x); position_y = std.ceil(position_y); }
+    fixed_position_x := position_x;
+    fixed_position_y := position_y;
+    if is_subpixel { 
+        fixed_position_x = std.ceil(position_x); 
+        fixed_position_y = std.ceil(position_y); 
+    }
     aw :: cast(f32) context.font.atlas.width;
     ah :: cast(f32) context.font.atlas.height;
     directing_glyph_info :: get_glyph_utf32(context.font, cast(u32) 'X');
@@ -234,8 +239,8 @@ text :: fn (position_x: f32, position_y: f32, text: string_view, text_color: glm
         if w < std.F32_EPSILON || h < std.F32_EPSILON { continue; }
 
         base_index :: cast(u32) vertex_buffer.len;
-        gx :: position_x + x2;
-        gy :: position_y - y2;
+        gx :: fixed_position_x + x2;
+        gy :: fixed_position_y - y2;
         array_push_all(&vertex_buffer, [4]v2.{
             v2.{ gx    , gy     },
             v2.{ gx + w, gy     },
@@ -451,8 +456,11 @@ font_init_at_size :: fn (font: *Font, directory: string_view, filename: string_v
     std.tbl_init(&font.char_table, 256);
 
     // Use default char set if not specified.
-    if char_set.len == 0 { char_set = font_default_char_set(); }
-    get_char_table(font, char_set);
+    if char_set.len == 0 { 
+        get_char_table(font, font_default_char_set());
+    } else {
+        get_char_table(font, char_set);
+    }
     prepare_atlas(font, face);
     gen_glyphs(font, face);
     return OK;

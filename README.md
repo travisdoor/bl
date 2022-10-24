@@ -7,31 +7,37 @@
 
 [![Twitter URL](https://img.shields.io/twitter/url/https/twitter.com/MTravisDoor.svg?style=social&label=Follow%20%40MTravisDoor)](https://twitter.com/MTravisDoor)
 
-The Biscuit Language (BL) is simple imperative programming language using LLVM backend implemented in C. 
-Language syntax and all it's features are still in development. Biscuit is designed to be simple, fast and explicit.
+The Biscuit Language (BL) is a simple imperative programming language using LLVM backend and compiler implemented in C. 
+Language syntax and all its features are still in development. Biscuit is designed to be simple, fast and explicit.
 
 Project homepage: [biscuitlang.org](https://biscuitlang.org) 
 Contact email: [biscuitlang@gmail.com](mailto:biscuitlang@gmail.com)
 
-# Features & descriptions
-* Simple small language.
-* ABI compatibility with C libraries.
-* Opensource.
-* Game development oriented.
-* Compilation to native binary.
-* Integrated interpreter.
-* Offer testing tools out of the box.
-* Rich type info in runtime.
-* Debuggable in gdb, lldb and Visual Studio.
-* Explicit function overload.
+# Features
+* Strongly typed.
+* Embedded rich runtime type information.
+* Polymorphic functions and structures (generics).
+* Simple structure inheritance. 
+* Compile-time execution (experimental).
+* Compile-time function arguments; allow passing types as values (experimental).
+* C ABI compatible (C library functions can be directly called).
+* Runtime debugging is possible in Visual Studio/gdb/lldb.
+* Explicit function overloading.
 * Integrated build system.
-* Integrated module import system.
-* Multiplatform (Windows, macOS, Linux)
-* Fast compilation.
-* Integrated tools for automatic documentation.
+* Module management.
+* Unit testing system.
+* Automatic documentation generation.
+* Defer statement.
+* Multiple return values.
+* Custom memory allocators.
+* Basic support for game development via `extra` packages.
+* Supports Windows, Linux and macOS.
+* Nested functions.
+* Clean and simple JAI-like syntax.
+* And more...
 
 # Installation
-See installation guide [here](https://biscuitlang.org/#installation).
+See the installation guide [here](https://biscuitlang.org/#installation).
 
 # Example
 ```rust
@@ -56,6 +62,6 @@ See more examples [here](https://biscuitlang.org/#how-to/).
 
 ### Space Shooter
 
-Source code [here](https://github.com/travisdoor/bl/blob/gunner-example/how-to/gunner/main.bl).
+Source code [here](https://https://github.com/travisdoor/bl/tree/comptime-mixed-functions/how-to/glwindow_gunner).
 
 <div style="text-align:center"><img src="how-to/gunner/gunner.gif" /></div>

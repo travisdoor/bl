@@ -165,7 +165,8 @@ get_cwd :: fn () string #inline {
     if written == 0 { return std.str_new(); }
     out :: std.str_new(buf.ptr);
     std.str_replace_all(&out, '\\', '/');
-    return remove_last_separator(out);
+    remove_last_separator(&out);
+    return out;
 }
 
 set_cwd :: fn (path: string_view) Error #inline {
@@ -183,7 +184,8 @@ get_home :: fn () string #inline {
     if !cdir { return std.str_new(); }
     out :: std.str_new(cdir);
     std.str_replace_all(&out, '\\', '/');
-    return remove_last_separator(out);
+    remove_last_separator(&out);
+    return out;
 }
 
 get_tmp :: fn () string #inline {
@@ -192,7 +194,8 @@ get_tmp :: fn () string #inline {
     if written == 0 { return std.str_new(); }
     out :: std.str_new(buf.ptr);
     std.str_replace_all(&out, '\\', '/');
-    return remove_last_separator(out);
+    remove_last_separator(&out);
+    return out;
 }
 
 normalize :: fn (filepath: *string) Error {
@@ -266,11 +269,10 @@ modes_to_flags :: fn (modes: std.OpenFileMode) (access: u32, create: u32, append
     return access, create, append;
 }
 
-remove_last_separator :: fn (path: string) string {
-    if std.str_is_empty(path) { return path; }
-    if path[path.len-1] == '/' {
-        path[path.len-1] = '\0';
+remove_last_separator :: fn (path: *string) #inline {
+    if std.str_is_empty(@path) { return; }
+    if (@path)[path.len-1] == '/' {
+        (@path)[path.len-1] = '\0';
         path.len -= 1;
     }
-    return path;
 }

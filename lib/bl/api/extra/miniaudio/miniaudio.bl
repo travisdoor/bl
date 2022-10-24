@@ -35,7 +35,7 @@ ma_vfs :: u8;
 ma_handle :: C.void_ptr;
 ma_vfs_file :: ma_handle;
 
-MA_ATOMIC :: fn (alignment: usize, T: type) type #comptime {
+MA_ATOMIC :: fn (alignment: usize, T: type #comptime) type #comptime {
     // @Incomplete: we cannot specify type alignment now in the language, so do just some validation for now.
     alignment;
     assert(alignof(T) == alignment);

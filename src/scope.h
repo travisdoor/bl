@@ -54,6 +54,7 @@ enum scope_entry_kind {
     SCOPE_ENTRY_VARIANT,
     SCOPE_ENTRY_NAMED_SCOPE,
     SCOPE_ENTRY_UNNAMED, // Special kind used for unnamed entries.
+    SCOPE_ENTRY_ARG,
 };
 
 union scope_entry_data {
@@ -62,6 +63,7 @@ union scope_entry_data {
     struct mir_var     *var;
     struct mir_member  *member;
     struct mir_variant *variant;
+    struct mir_arg     *arg;
     struct scope       *scope;
 };
 
@@ -77,10 +79,11 @@ struct scope_entry {
 };
 
 enum scope_kind {
+    SCOPE_NONE = 0,
     SCOPE_GLOBAL,
     SCOPE_PRIVATE,
     SCOPE_FN,
-    SCOPE_FN_LOCAL,
+    SCOPE_FN_BODY,
     SCOPE_LEXICAL,
     SCOPE_TYPE_STRUCT,
     SCOPE_TYPE_ENUM,

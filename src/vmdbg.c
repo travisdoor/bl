@@ -36,11 +36,16 @@ enum state {
     STEPPING,
 };
 
-static enum state              state         = CONTINUE;
-static bool                    mir_mode      = false;
-static bool                    verbose_stack = false;
-static struct virtual_machine *current_vm    = NULL;
-static uintptr_t              *stackops      = NULL;
+struct stack_context {
+    struct vm_stack *key;
+    array(uintptr_t) stackops;
+};
+
+static enum state              state                  = CONTINUE;
+static bool                    mir_mode               = false;
+static bool                    verbose_stack          = false;
+static struct virtual_machine *current_vm             = NULL;
+static hash_table(struct stack_context) stack_context = NULL;
 
 static void print(struct mir_instr *instr)
 {
@@ -57,6 +62,96 @@ static void print(struct mir_instr *instr)
             printf("  ");
             mir_print_instr(stdout, current_vm->assembly, instr->next);
         }
+    }
+}
+
+static void print_data(struct mir_type *type, vm_stack_ptr_t ptr)
+{
+    printf("(%p) ", ptr);
+    if (!type) return;
+
+    switch (type->kind) {
+    case MIR_TYPE_INT: {
+        printf("%llu", vm_read_int(type, ptr));
+        return;
+    }
+    case MIR_TYPE_REAL: {
+        if (type->data.real.bitcount == 32)
+            printf("%f", vm_read_float(type, ptr));
+        else if (type->data.real.bitcount == 64)
+            printf("%f", vm_read_double(type, ptr));
+        return;
+    }
+    case MIR_TYPE_PTR: {
+        printf("%p", vm_read_ptr(type, ptr));
+        return;
+    }
+    case MIR_TYPE_STRING: {
+        const str_t str = vm_read_string(current_vm, type, ptr);
+        printf("\"%.*s\"", (s32)str.len, str.ptr);
+        return;
+    }
+    case MIR_TYPE_SLICE: {
+        struct mir_type *len_type  = mir_get_struct_elem_type(type, MIR_SLICE_LEN_INDEX);
+        struct mir_type *elem_type = mir_get_struct_elem_type(type, MIR_SLICE_PTR_INDEX);
+
+        const vm_stack_ptr_t len_ptr =
+            vm_get_struct_elem_ptr(current_vm->assembly, type, ptr, MIR_SLICE_LEN_INDEX);
+        const s64 len         = (s64)vm_read_int(len_type, len_ptr);
+        s64       limited_len = len;
+        CLAMP(limited_len, 0, 256);
+
+        if (elem_type->kind == MIR_TYPE_PTR) {
+            struct mir_type *char_type = mir_deref_type(elem_type);
+            if (char_type->kind == MIR_TYPE_INT && char_type->data.integer.bitcount == 8 &&
+                !char_type->data.integer.is_signed) {
+                const vm_stack_ptr_t elem_ptr =
+                    vm_get_struct_elem_ptr(current_vm->assembly, type, ptr, MIR_SLICE_PTR_INDEX);
+                const char *str = (const char *)vm_read_ptr(elem_type, elem_ptr);
+
+                s64 len_without_new_lines = 0;
+                for (; len_without_new_lines < limited_len; ++len_without_new_lines) {
+                    if (str[len_without_new_lines] == '\n') break;
+                }
+                printf("[%lld] \"%.*s", len, (s32)len_without_new_lines, str);
+                const s64 count_of_new_lines = limited_len - len_without_new_lines;
+                for (s64 i = 0; i < count_of_new_lines; ++i) {
+                    printf("\\n");
+                }
+                printf("\"");
+                return;
+            }
+        }
+    }
+    default:
+        break;
+    }
+}
+
+static void print_variable(struct mir_var *var)
+{
+    bassert(var);
+    char *type_name     = var->value.type ? mir_type2str(var->value.type, true) : "<UNKNOWN_TYPE>";
+    vm_stack_ptr_t data = vm_read_var(current_vm, var);
+    printf("%-32s%-32s", var->linkage_name, type_name);
+    print_data(var->value.type, data);
+    printf("\n");
+    if (var->value.type) put_tstr(type_name);
+}
+
+static void print_local_variables(struct mir_instr *instr)
+{
+    bassert(instr);
+    const struct mir_fn *fn = mir_instr_owner_fn(instr);
+    if (!fn) return;
+
+    printf("%-32s%-32s%-32s\n", "Name", "Type", "Value");
+    for (usize i = 0; i < arrlenu(fn->variables); ++i) {
+        struct mir_var *var = fn->variables[i];
+        if (!var) {
+            continue;
+        }
+        print_variable(var);
     }
 }
 
@@ -88,6 +183,9 @@ NEXT:
     } else if (CMD("p", "print")) {
         print(current_vm->stack->pc);
         goto NEXT;
+    } else if (CMD("pl", "print-locals")) {
+        print_local_variables(current_vm->stack->pc);
+        goto NEXT;
     } else if (CMD("bt", "backtrace")) {
         vm_print_backtrace(current_vm);
         goto NEXT;
@@ -109,6 +207,7 @@ NEXT:
                "  n, next                             = Step to next instruction.\n"
                "  c, continue                         = Continue execution.\n"
                "  p, print                            = Print current instruction.\n"
+               "  pl, print-locals                    = Print local variables.\n"
                "  bt, backtrace                       = Print current backtrace.\n"
                "  vs=<on|off>, verbose-stack=<on|off> = Log stack operations.\n"
                "  mir=<on|off>, mir-mode=<on|off>     = Enable/disable MIR instruction level "
@@ -135,7 +234,11 @@ void vmdbg_attach(struct virtual_machine *vm)
 
 void vmdbg_detach(void)
 {
-    arrfree(stackops);
+    for (u64 i = 0; i < hmlenu(stack_context); ++i) {
+        arrfree(stack_context[i].stackops);
+    }
+    hmfree(stack_context);
+
     current_vm = NULL;
     state      = CONTINUE;
 }
@@ -162,16 +265,32 @@ void vmdbg_notify_instr(struct mir_instr *instr)
     cmd();
 }
 
+static struct stack_context *get_stack_context(void)
+{
+    bassert(current_vm->stack);
+    struct vm_stack *stack = current_vm->stack;
+    bassert(stack);
+    s64 index = hmgeti(stack_context, stack);
+    if (index == -1) {
+        hmputs(stack_context, ((struct stack_context){.key = stack}));
+        index = hmgeti(stack_context, stack);
+        bassert(index != -1);
+    }
+    return &stack_context[index];
+}
+
 static bool pop_is_valid(void *ptr)
 {
-    if (arrlenu(stackops) == 0) return false;
-    return arrpop(stackops) == (uintptr_t)ptr;
+    struct stack_context *sctx = get_stack_context();
+    if (arrlenu(sctx->stackops) == 0) return false;
+    return arrpop(sctx->stackops) == (uintptr_t)ptr;
 }
 
 static bool rollback_is_valid(void *ptr)
 {
-    while (arrlenu(stackops)) {
-        if (arrpop(stackops) == (uintptr_t)ptr) return true;
+    struct stack_context *sctx = get_stack_context();
+    while (arrlenu(sctx->stackops)) {
+        if (arrpop(sctx->stackops) == (uintptr_t)ptr) return true;
     }
     return false;
 }
@@ -254,9 +373,11 @@ void vmdbg_notify_stack_op(enum vmdbg_stack_op op, struct mir_type *type, void *
     }
     switch (op) {
     case VMDBG_PUSH_RA:
-    case VMDBG_PUSH:
-        arrput(stackops, (uintptr_t)ptr);
+    case VMDBG_PUSH: {
+        struct stack_context *sctx = get_stack_context();
+        arrput(sctx->stackops, (uintptr_t)ptr);
         break;
+    }
     case VMDBG_POP:
         if (!pop_is_valid(ptr)) {
             builder_error("Invalid POP operation on address %p", ptr);
@@ -274,6 +395,12 @@ void vmdbg_notify_stack_op(enum vmdbg_stack_op op, struct mir_type *type, void *
         }
         break;
     }
+}
+
+void vmdbg_notify_stack_swap(void)
+{
+    if (!current_vm) return;
+    printf("     -                       SWAP\n");
 }
 
 void vmdbg_break(void)

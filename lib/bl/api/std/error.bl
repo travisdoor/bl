@@ -26,11 +26,20 @@
 // SOFTWARE.
 // =================================================================================================
 
-//! # Error handling
+//! # Error Handling
 //! 
 //! `#load "std/error.bl"`
 //! 
-//! ```
+//! There is no support for *exceptions* of any kind in BL, however, there are a few features in the 
+//! language helping with error handling such as [defer](/book/control_flow/#defer) and 
+//! [multiple return values](/book/functions/#return-value). In general, every possibly failing 
+//! function should return an error state in case of failure containing an error code and some 
+//! message describing the problem. This style is widely adopted by the *standard library* and may 
+//! be used in the *user* code as well.
+//! 
+//! The error state is represented by the following data structure:
+//!
+//! ```rust
 //! _Error :: struct {
 //!     msg: string_view;
 //!     code: s32;
@@ -39,13 +48,15 @@
 //! Error :: *_Error;
 //! ```
 //! 
-//! Universal error state representation used across the API.
-//! 
 //! ### Example
 //!
 //! ```c
 //! {% include "../examples/error_handling.bl" %}
 //! ```
+//! 
+//! As already mentioned, the [defer](/book/control_flow/#defer) statement may be helpful in situations
+//! where we need to free some memory or do any kind of resource cleanup before the failing function
+//! returns the error state.
 
 _Error :: struct {
     msg: string_view;

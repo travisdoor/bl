@@ -1,4 +1,4 @@
-version: 11
+version: 20220923
 src: "winapi.bl"
 
 # @Incomplete <2022-08-12 Fri>: The dbghelp.lib should be linked only in debug mode! But we cannot do it now because there is not

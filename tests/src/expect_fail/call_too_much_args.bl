@@ -1,0 +1,6 @@
+// @ERR_INVALID_ARG_COUNT@
+foo :: fn () {}
+main :: fn () s32 {
+	foo(10);
+    return 0;
+}

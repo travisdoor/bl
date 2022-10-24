@@ -82,6 +82,7 @@ struct config;
 #define isnotflag(_v, _flag) ((bool)(((_v) & (_flag)) != (_flag)))
 #define setflag(_v, _flag) ((_v) |= (_flag))
 #define clrflag(_v, _flag) ((_v) &= ~(_flag))
+#define setflagif(_v, _flag, _toggle) ((_toggle) ? setflag(_v, _flag) : clrflag(_v, _flag))
 
 enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 
@@ -93,6 +94,16 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 // Return size of of static array.
 #define static_arrlenu(A) (sizeof(A) / sizeof((A)[0]))
 #define is_str_valid_nonempty(S) ((S) && (S)[0] != '\0')
+
+#ifndef MIN
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#endif
+#ifndef MAX
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#endif
+#ifndef CLAMP
+#define CLAMP(v, min, max) ((v) < (min) ? (v) = (min) : ((v) > (max) ? (v) = (max) : (v)))
+#endif
 
 // =================================================================================================
 // STB utils
@@ -172,6 +183,7 @@ typedef sarr_t(u8, 1) sarr_any_t;
 #define sarrlen(A) ((s64)((A) ? (A)->len : 0))
 #define sarrdata(A) ((A)->cap ? ((A)->_data) : ((A)->_buf))
 #define sarrpeek(A, I) (sarrdata(A)[I])
+#define sarrpeekor(A, I, D) ((I) < sarrlenu(A) ? sarrdata(A)[I] : (D))
 #define sarrclear(A) ((A)->len = 0)
 #define sarrfree(A) ((A)->cap ? bfree((A)->_data) : (void)0, (A)->len = 0, (A)->cap = 0)
 #define sarrsetlen(A, L)                                                                           \
@@ -237,13 +249,25 @@ struct id {
     hash_t      hash;
 };
 
+// Reference implementation: https://github.com/haipome/fnv/blob/master/fnv.c
 static inline hash_t strhash(const char *str)
 {
+#if 1
+    // FNV 32-bit hash
+    hash_t hash = 2166136261;
+    char   c;
+    while ((c = *str++)) {
+        hash = hash ^ (u8)c;
+        hash = hash * 16777619;
+    }
+    return hash;
+#else
     hash_t hash = 5381;
     char   c;
     while ((c = *str++))
         hash = ((hash << 5) + hash) + (hash_t)c;
     return hash;
+#endif
 }
 
 static inline hash_t hashcomb(hash_t first, hash_t second)
@@ -268,6 +292,7 @@ static inline bool is_ignored_id(const struct id *id)
 // =================================================================================================
 // Utils
 // =================================================================================================
+
 enum search_flags {
     SEARCH_FLAG_ABS         = 0,
     SEARCH_FLAG_WDIR        = 1,

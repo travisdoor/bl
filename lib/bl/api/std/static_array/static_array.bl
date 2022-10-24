@@ -18,7 +18,7 @@
 ///     len: s64;
 /// }
 /// ```
-StaticArray :: fn (TElem: type, elem_count: s64) type #comptime {
+StaticArray :: fn (TElem: type #comptime, elem_count: s64 #comptime) type #comptime {
     return struct {
         data: [elem_count]TElem;
         len: s64;
@@ -60,7 +60,7 @@ sarray_clear :: fn (arr: *?TArr) #inline {
 }
 
 /// Return type of the element.
-sarray_typeof_elem :: fn (TArr: type) type #comptime {
+sarray_typeof_elem :: fn (TArr: type #comptime) type #comptime {
     return @TArr.data.ptr;
 }
 

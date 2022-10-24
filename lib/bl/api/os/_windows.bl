@@ -135,9 +135,9 @@ os_get_backtrace :: fn (skip_frames := 0, max_frame_count := 64) []CodeLocation 
     line: IMAGEHLP_LINE64;
     displacementLine: DWORD;
 
-    skip_frames += 1; // Ignore this function frame.
+    skip_frames_without_current :: skip_frames + 1; // Ignore this function frame.
     array_init(&trace, 0, allocator);
-    loop i := skip_frames; i < available_frame_count; i += 1 {
+    loop i := skip_frames_without_current; i < available_frame_count; i += 1 {
         SymFromAddr(process, auto (stack[i]), null, symbol);
         SymGetLineFromAddr64(process, auto (stack[i]), &displacementLine, &line);
         frame := array_push(&trace);

@@ -1,0 +1,49 @@
+Color :: enum {
+    RED;    // default value 0
+    GREEN;  // default value 1
+    BLUE    // default value 2
+};
+
+// Enum declaration (base type is u8)
+Day :: enum u8 {
+    SAT = 1; // first value explicitly set to 1
+    SUN;     // implicitly set to previous value + 1 -> 2
+    MON;     // 3
+    TUE;     // ...
+    WED;
+    THU;
+    FRI
+};
+
+EntityKind :: enum {
+    // All values explicitly defined.
+    PLAYER = 10;
+    ENEMY  = 32;
+    NPC    = 78;
+}
+
+main :: fn () s32 {
+    // Print types:
+    print("Color      = %\n", Color);
+    print("Day        = %\n", Day);
+    print("EntityKind = %\n", EntityKind);
+
+    day := Day.MON;
+    print("day = %\n", day);
+
+    // We can use 'enum_count' helper function to get count
+    // of all possible values.
+    day_count :: enum_count(Day);
+    print("We have % possible days.\n", day_count);
+
+    // The 'using' can expose all possible variants of enum
+    // into the current scope.
+    using Day;
+    switch day {
+        MON { print("It's Monday!\n"); }
+        FRI { print("It's Friday!\n"); }
+        default { print("It's some other day!\n") ; }
+    }
+
+    return 0;
+}

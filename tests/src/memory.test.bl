@@ -139,3 +139,26 @@ slice_on_heap :: fn () #test {
         slice[i].i = i;
     }
 }
+
+new_test_1 :: fn () #test {
+    s32_ptr :: new(s32);
+    test_not_null(s32_ptr);
+    (@s32_ptr) = 10;
+    test_eq(@s32_ptr, 10);
+    free(auto s32_ptr);
+}
+
+Foo :: struct {
+    a: s32;
+    b: s32;
+}
+
+new_test_2 :: fn () #test {
+    foo_ptr :: new(Foo);
+    test_not_null(foo_ptr);
+    foo_ptr.a = 10;
+    foo_ptr.b = 20;
+    test_eq(foo_ptr.a, 10);
+    test_eq(foo_ptr.b, 20);
+    free(auto foo_ptr);
+}

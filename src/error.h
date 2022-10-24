@@ -118,6 +118,7 @@ enum error {
     ERR_UNSUPPORTED_TARGET       = 82,
     ERR_COMPILE_TIME_ABORT       = 83,
     ERR_USER                     = 84,
+    ERR_INVALID_CALL_CONVENTION  = 85,
 };
 
 #endif // BL_ERROR_H

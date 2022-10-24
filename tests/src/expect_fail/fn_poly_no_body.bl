@@ -1,0 +1,2 @@
+// @ERR_EXPECTED_BODY@
+foo :: fn (v: ?T);

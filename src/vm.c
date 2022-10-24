@@ -59,7 +59,8 @@ static void
 dyncall_push_arg(struct virtual_machine *vm, vm_stack_ptr_t val_ptr, struct mir_type *type);
 static enum vm_interp_state execute_function(struct virtual_machine *vm,
                                              struct mir_fn          *fn,
-                                             struct mir_instr_call  *optional_call);
+                                             struct mir_instr_call  *optional_call,
+                                             const bool              resume);
 static enum vm_interp_state interp_instr(struct virtual_machine *vm, struct mir_instr *instr);
 static void
 interp_extern_call(struct virtual_machine *vm, struct mir_fn *fn, struct mir_instr_call *call);
@@ -141,6 +142,42 @@ static inline void eval_abort(struct virtual_machine *vm)
 // =================================================================================================
 #define stack_alloc_size(s) ((s) + (VM_MAX_ALIGNMENT - ((s) % VM_MAX_ALIGNMENT)))
 
+static inline struct vm_stack *reset_stack(struct vm_stack *stack);
+
+static struct vm_stack *create_stack(const usize bytes)
+{
+    bassert(bytes > 0 && "Invalid stack size!");
+    struct vm_stack *stack = bmalloc(sizeof(char) * bytes);
+    stack->allocated_bytes = bytes;
+    reset_stack(stack);
+    return stack;
+}
+
+static inline void terminate_stack(struct vm_stack *stack)
+{
+    bfree(stack);
+}
+
+struct vm_stack *reset_stack(struct vm_stack *stack)
+{
+    bassert(stack && stack->allocated_bytes > 0);
+    stack->pc         = NULL;
+    stack->ra         = NULL;
+    stack->prev_block = NULL;
+    stack->top_ptr    = (u8 *)stack + stack_alloc_size(sizeof(struct vm_stack));
+    return stack;
+}
+
+static inline struct vm_stack *swap_current_stack(struct virtual_machine *vm,
+                                                  struct vm_stack        *stack)
+{
+    bassert(stack);
+    struct vm_stack *previous_stack = vm->stack;
+    vm->stack                       = stack;
+    vmdbg_notify_stack_swap();
+    return previous_stack;
+}
+
 static inline vm_stack_ptr_t stack_alloc(struct virtual_machine *vm, usize size)
 {
     bassert(size && "trying to allocate 0 bytes on stack");
@@ -148,7 +185,7 @@ static inline vm_stack_ptr_t stack_alloc(struct virtual_machine *vm, usize size)
     vm_stack_ptr_t mem = vm->stack->top_ptr;
     vm->stack->top_ptr += size;
     if (vm->stack->top_ptr > ((u8 *)(vm->stack)) + vm->stack->allocated_bytes) {
-        builder_error("Stack overflow!!!");
+        builder_error("Internal execution stack overflow.");
         vm_abort(vm);
     }
     bassert(is_aligned(mem, VM_MAX_ALIGNMENT));
@@ -160,8 +197,10 @@ static inline vm_stack_ptr_t stack_free(struct virtual_machine *vm, usize size)
 {
     size                   = stack_alloc_size(size);
     vm_stack_ptr_t new_top = vm->stack->top_ptr - size;
-    if (new_top < (u8 *)(vm->stack->ra + 1))
-        babort("Stack underflow!!!"); // @Incomplete: use vm_abort
+    if (new_top < (u8 *)(vm->stack->ra + 1)) {
+        builder_error("Internal execution stack underflow.");
+        vm_abort(vm);
+    }
     vm->stack->top_ptr = new_top;
     return new_top;
 }
@@ -210,7 +249,7 @@ static inline vm_stack_ptr_t stack_pop(struct virtual_machine *vm, struct mir_ty
 {
     bassert(type);
     const usize size = type->store_size_bytes;
-    bassert(size && "popping zero sized data from stack");
+    bassert(size && "Popping zero sized data from stack.");
     const vm_stack_ptr_t ptr = stack_free(vm, size);
     vmdbg_notify_stack_op(VMDBG_POP, type, ptr);
     return ptr;
@@ -219,7 +258,7 @@ static inline vm_stack_ptr_t stack_pop(struct virtual_machine *vm, struct mir_ty
 static inline vm_stack_ptr_t stack_peek(struct virtual_machine *vm, struct mir_type *type)
 {
     usize size = type->store_size_bytes;
-    bassert(size && "peeking zero sized data on stack");
+    bassert(size && "Peeking zero sized data on stack.");
     size               = stack_alloc_size(size);
     vm_stack_ptr_t top = vm->stack->top_ptr - size;
     if (top < (u8 *)(vm->stack->ra + 1)) babort("Stack underflow!!!");
@@ -323,8 +362,9 @@ static inline void stack_alloc_var(struct virtual_machine *vm, struct mir_var *v
 {
     bassert(var);
     bassert(!var->value.is_comptime && "Cannot allocate compile time constant");
-    bassert(!var->is_global && "This function is not supposed to be used for allocation of global "
-                               "variables, use vm_alloc_global instead.");
+    bassert(isnotflag(var->iflags, MIR_VAR_GLOBAL) &&
+            "This function is not supposed to be used for allocation of global "
+            "variables, use vm_alloc_global instead.");
     vm_stack_ptr_t tmp = stack_push_empty(vm, var->value.type);
     var->vm_ptr.local  = tmp - (vm_stack_ptr_t)vm->stack->ra;
 }
@@ -1022,57 +1062,6 @@ void interp_extern_call(struct virtual_machine *vm, struct mir_fn *fn, struct mi
     }
 }
 
-static void save_snapshot(struct virtual_machine *vm, struct mir_instr_call *call)
-{
-    zone();
-    bwarn("Try to save stack snapshot! This is not completed yet!");
-    bassert(call);
-
-    vm_stack_ptr_t          prev_top   = vm->stack->top_ptr;
-    struct vm_frame        *prev_ra    = vm->stack->ra;
-    struct mir_instr       *prev_pc    = vm->stack->pc;
-    struct mir_instr_block *prev_block = vm->stack->prev_block;
-
-    while (pop_ra(vm) != call)
-        ;
-    vm_stack_ptr_t  curr_top       = vm->stack->top_ptr;
-    const ptrdiff_t snapshot_bytes = ((ptrdiff_t)prev_top) - ((ptrdiff_t)curr_top);
-    bassert(snapshot_bytes > 0);
-    if (snapshot_bytes == 0) return_zone();
-    blog("snapshot size = %d", snapshot_bytes);
-
-    // @Performace: Saving of whole executed stack can be expensive; but we keep it for now; an
-    // alternative solution would be freeze the execution state and continue pushing data of other
-    // functions, but this would make restoring more complicated (we can resume only the last
-    // executed 'top' function in such case).
-    vm_stack_ptr_t buf = bmalloc(sizeof(u8) * snapshot_bytes);
-    memcpy(buf, curr_top, snapshot_bytes);
-
-    bassert(hmgeti(vm->snapshot_cache, call) == -1 && "Snapshot is already stored.");
-    struct vm_snapshot snapshot;
-    snapshot.key        = call;
-    snapshot.data       = buf;
-    snapshot.data_size  = (usize)snapshot_bytes;
-    snapshot.top_ptr    = prev_top;
-    snapshot.ra         = prev_ra;
-    snapshot.pc         = prev_pc;
-    snapshot.prev_block = prev_block;
-
-    hmputs(vm->snapshot_cache, snapshot);
-    return_zone();
-}
-
-static struct mir_instr *try_load_snapshot(struct virtual_machine *vm, struct mir_instr_call *call)
-{
-    if (!call) return NULL;
-    const s64 index = hmgeti(vm->snapshot_cache, call);
-    if (index == -1) return NULL;
-    struct vm_snapshot *snapshot = &vm->snapshot_cache[index];
-    bfree(snapshot->data);
-    hmdel(vm->snapshot_cache, call);
-    return NULL; // @Incomplete
-}
-
 // Execute top level function directly.
 // - Expects all arguments already on stack.
 // - Return value can be eventually pushed on the stack after execution.
@@ -1080,30 +1069,30 @@ static struct mir_instr *try_load_snapshot(struct virtual_machine *vm, struct mi
 //   return value on the stack even if the function is supposed to return one.
 enum vm_interp_state execute_function(struct virtual_machine *vm,
                                       struct mir_fn          *fn,
-                                      struct mir_instr_call  *optional_call)
+                                      struct mir_instr_call  *optional_call,
+                                      const bool              resume)
 {
-    try_load_snapshot(vm, optional_call); // @Incomplete
-    struct mir_instr       *fn_entry_instr    = fn->first_block->entry_instr;
     const struct mir_instr *fn_terminal_instr = &fn->terminal_instr->base;
     // Reset eventual previous failed state.
     vm->aborted = false;
-    // push terminal frame on stack
-    push_ra(vm, optional_call);
-    // allocate local variables
-    stack_alloc_local_vars(vm, fn);
-    // setup entry instruction
-    set_pc(vm, fn_entry_instr);
+    if (!resume) {
+        struct mir_instr *fn_entry_instr = fn->first_block->entry_instr;
+        // push terminal frame on stack
+        push_ra(vm, optional_call);
+        // allocate local variables
+        stack_alloc_local_vars(vm, fn);
+        // setup entry instruction
+        set_pc(vm, fn_entry_instr);
+    }
     // iterate over entry block of executable
     struct mir_instr    *instr, *prev;
     enum vm_interp_state state = VM_INTERP_PASSED;
     while (true) {
         instr = get_pc(vm);
         prev  = instr;
-        if (instr && state == VM_INTERP_PASSED) {
-            state = interp_instr(vm, instr);
-        } else {
-            break;
-        }
+        if (!instr) break;
+        state = interp_instr(vm, instr);
+        if (state != VM_INTERP_PASSED) break;
         // When we reach terminal instruction of this function, we must stop the execution,
         // otherwise when the interpreted call lives in scope of other function, interpreter will
         // continue with execution.
@@ -1112,15 +1101,12 @@ enum vm_interp_state execute_function(struct virtual_machine *vm,
         if (!get_pc(vm) || get_pc(vm) == prev) set_pc(vm, instr->next);
     }
     switch (state) {
-    case VM_INTERP_PASSED:
-        break;
-    case VM_INTERP_POSTPONE:
-        save_snapshot(vm, optional_call);
-        break;
     case VM_INTERP_ABORT:
         // @Incomplete: endless loop?
         while (pop_ra(vm) != optional_call)
             ;
+        break;
+    default:
         break;
     }
     return state;
@@ -1501,6 +1487,8 @@ void interp_instr_arg(struct virtual_machine *vm, struct mir_instr_arg *arg)
     // arguments to be already pushed on the stack.
     struct mir_instr_call *caller = (struct mir_instr_call *)get_ra(vm)->caller;
 
+    // Call arguments are in reverse order on the stack.
+
     if (caller) {
         mir_instrs_t *arg_values = caller->args;
         bassert(arg_values && arg->i < sarrlenu(arg_values));
@@ -1510,9 +1498,6 @@ void interp_instr_arg(struct virtual_machine *vm, struct mir_instr_arg *arg)
             struct mir_type *type = curr_arg_value->value.type;
             stack_push(vm, curr_arg_value->value.data, type);
         } else {
-            // Arguments are located in reverse order right before return address on the
-            // stack
-            // so we can find them inside loop adjusting address up on the stack.
             struct mir_instr *arg_value = NULL;
             // starting point
             vm_stack_ptr_t arg_ptr = (vm_stack_ptr_t)vm->stack->ra;
@@ -1588,6 +1573,59 @@ void interp_instr_decl_ref(struct virtual_machine *vm, struct mir_instr_decl_ref
     case SCOPE_ENTRY_MEMBER:
     case SCOPE_ENTRY_VARIANT:
         break;
+
+    case SCOPE_ENTRY_ARG: {
+        struct mir_arg *arg = entry->data.arg;
+        bassert(arg);
+        // Caller is optional, when we call function implicitly there is no call instruction which
+        // we can use, so we need to handle also this situation. In such case we expect all
+        // arguments to be already pushed on the stack.
+        struct mir_instr_call *caller = (struct mir_instr_call *)get_ra(vm)->caller;
+
+        if (caller) {
+            mir_instrs_t     *arg_values     = caller->args;
+            struct mir_instr *curr_arg_value = sarrpeekor(arg_values, arg->index, NULL);
+            bassert(curr_arg_value);
+
+            if (mir_is_comptime(curr_arg_value)) {
+                struct mir_type *type = curr_arg_value->value.type;
+                stack_push(vm, curr_arg_value->value.data, type);
+            } else {
+                // Arguments are located in reverse order right before return address on the
+                // stack so we can find them inside loop adjusting address up on the stack.
+                struct mir_instr *arg_value = NULL;
+                // starting point
+                vm_stack_ptr_t arg_ptr = (vm_stack_ptr_t)vm->stack->ra;
+                for (u32 i = 0; i <= arg->index; ++i) {
+                    arg_value = sarrpeek(arg_values, i);
+                    bassert(arg_value);
+                    if (mir_is_comptime(arg_value)) continue;
+                    arg_ptr -= stack_alloc_size(arg_value->value.type->store_size_bytes);
+                }
+
+                stack_push(vm, (vm_stack_ptr_t)arg_ptr, arg->type);
+            }
+
+            return;
+        }
+
+        // Caller instruction not specified!!!
+        struct mir_fn *fn = ref->base.owner_block->owner_fn;
+        bassert(fn && "Argument instruction cannot determinate current function");
+
+        // All arguments must be already on the stack in reverse order.
+        mir_args_t *args = fn->type->data.fn.args;
+        bassert(args && "Function has no arguments");
+
+        // starting point
+        vm_stack_ptr_t arg_ptr = (vm_stack_ptr_t)vm->stack->ra;
+        for (u32 i = 0; i <= arg->index; ++i) {
+            arg_ptr -= stack_alloc_size(sarrpeek(args, i)->type->store_size_bytes);
+        }
+
+        stack_push(vm, (vm_stack_ptr_t)arg_ptr, arg->type);
+        break;
+    }
 
     default:
         babort("invalid declaration reference");
@@ -1703,7 +1741,8 @@ void interp_instr_decl_var(struct virtual_machine *vm, struct mir_instr_decl_var
     struct mir_var *var = decl->var;
     bassert(var);
     bassert(decl->base.value.type);
-    if (var->is_global || var->value.is_comptime || var->ref_count == 0) return;
+    if (isflag(var->iflags, MIR_VAR_GLOBAL) || var->value.is_comptime || var->ref_count == 0)
+        return;
     // initialize variable if there is some init value
     if (decl->init) {
         vm_stack_ptr_t var_ptr = vm_read_var(vm, var);
@@ -1772,12 +1811,13 @@ enum vm_interp_state interp_instr_call(struct virtual_machine *vm, struct mir_in
     }
 
     struct mir_fn *fn = (struct mir_fn *)vm_read_ptr(callee_ptr_type, callee_ptr);
-    bmagic_assert(fn);
     if (!fn) {
         builder_error("Function pointer not set!");
         vm_abort(vm);
         return VM_INTERP_ABORT;
     }
+    bmagic_assert(fn);
+
     if (!fn->is_fully_analyzed) {
         return VM_INTERP_POSTPONE;
     }
@@ -1801,6 +1841,7 @@ void interp_instr_ret(struct virtual_machine *vm, struct mir_instr_ret *ret)
     bassert(fn);
     struct mir_type *ret_type     = fn->type->data.fn.ret_type;
     vm_stack_ptr_t   ret_data_ptr = NULL;
+
     // pop return value from stack
     if (ret->value) {
         bassert(ret_type == ret->value->value.type);
@@ -1816,11 +1857,11 @@ void interp_instr_ret(struct virtual_machine *vm, struct mir_instr_ret *ret)
     // do frame stack rollback
     struct mir_instr_call *pc = pop_ra(vm);
     // post-processing like cleanup and continuing to the another instruction is allowed only in
-    // case the return adress call is not compile-time; i.e. type resolver or any #comptime marked
+    // case the return address call is not compile-time; i.e. type resolver or any #comptime marked
     // top-level executed during evaluation.
     const bool do_post_process = pc && !mir_is_comptime(&pc->base);
 
-    // clean up all arguments from the stack only for non-comptime return adress call (in case we
+    // clean up all arguments from the stack only for non-comptime return address call (in case we
     // have compile-time call here, we suppose it's top-level executed call!
     if (do_post_process) {
         mir_instrs_t *arg_values = pc->args;
@@ -2198,11 +2239,13 @@ void eval_instr_arg(struct virtual_machine UNUSED(*vm), struct mir_instr_arg *ar
 {
     struct mir_fn *fn = arg->base.owner_block->owner_fn;
     bmagic_assert(fn);
-    bassert(isflag(fn->flags, FLAG_COMPTIME));
-    mir_instrs_t *comptime_args = fn->comptime_call_args;
-    if (comptime_args && arg->i < sarrlenu(comptime_args)) {
-        arg->base.value.data = sarrpeek(comptime_args, arg->i)->value.data;
-    }
+    struct mir_arg *arg_data = mir_get_fn_arg(fn->type, arg->i);
+    bassert(arg_data && isflag(arg_data->flags, FLAG_COMPTIME));
+
+    struct mir_instr_call *call = arg_data->generation_call;
+    bassert(call && "No compile-time known arguments provided to the function argument evaluator!");
+    bassert(arg->i < sarrlenu(call->args) && arg->i >= 0 && "Argument index is out of the range!");
+    arg->base.value.data = sarrpeek(call->args, arg->i)->value.data;
 }
 
 void eval_instr_decl_var(struct virtual_machine UNUSED(*vm), struct mir_instr_decl_var *decl_var)
@@ -2261,8 +2304,9 @@ void eval_instr_set_initializer(struct virtual_machine *vm, struct mir_instr_set
     for (usize i = 0; i < sarrlenu(si->dests); ++i) {
         struct mir_instr *dest = sarrpeek(si->dests, i);
         struct mir_var   *var  = ((struct mir_instr_decl_var *)dest)->var;
-        bassert((var->is_global || var->is_struct_typedef) &&
-                "Only globals can be initialized by initializer!");
+        bassert(
+            (isflag(var->iflags, MIR_VAR_GLOBAL) || isflag(var->iflags, MIR_VAR_STRUCT_TYPEDEF)) &&
+            "Only globals can be initialized by initializer!");
         if (var->value.is_comptime) {
             // This is little optimization, we can simply reuse initializer pointer
             // since we are dealing with constant values and variable is immutable
@@ -2329,6 +2373,17 @@ void eval_instr_decl_ref(struct virtual_machine UNUSED(*vm), struct mir_instr_de
         MIR_CEV_WRITE_AS(struct scope_entry *, &decl_ref->base.value, entry);
         break;
 
+    case SCOPE_ENTRY_ARG: {
+        struct mir_arg *arg = entry->data.arg;
+        bassert(arg);
+
+        if (!arg->generation_call) break;
+        struct mir_instr *comptime_value = sarrpeekor(arg->generation_call->args, arg->index, NULL);
+        bassert(comptime_value);
+        decl_ref->base.value.data = comptime_value->value.data;
+        break;
+    }
+
     default:
         BL_UNIMPLEMENTED;
     }
@@ -2346,27 +2401,23 @@ void eval_instr_decl_direct_ref(struct virtual_machine            UNUSED(*vm),
 // =================================================================================================
 void vm_init(struct virtual_machine *vm, usize stack_size)
 {
-    if (stack_size == 0) babort("invalid frame stack size");
-    struct vm_stack *stack = bmalloc(sizeof(char) * stack_size);
-    stack->allocated_bytes = stack_size;
-    stack->pc              = NULL;
-    stack->ra              = NULL;
-    stack->prev_block      = NULL;
-    const usize size       = stack_alloc_size(sizeof(struct vm_stack));
-    stack->top_ptr         = (u8 *)stack + size;
-
-    vm->stack = stack;
+    vm->main_stack = create_stack(stack_size);
+    swap_current_stack(vm, vm->main_stack);
 }
 
 void vm_terminate(struct virtual_machine *vm)
 {
     data_free(vm);
     arrfree(vm->dcsigtmp);
-    for (u64 i = 0; i < hmlenu(vm->snapshot_cache); ++i) {
-        bfree(vm->snapshot_cache[i].data);
+    for (u64 i = 0; i < arrlenu(vm->available_comptime_call_stacks); ++i) {
+        terminate_stack(vm->available_comptime_call_stacks[i]);
     }
-    hmfree(vm->snapshot_cache);
-    bfree(vm->stack);
+    arrfree(vm->available_comptime_call_stacks);
+    for (u64 i = 0; i < hmlenu(vm->comptime_call_stacks); ++i) {
+        terminate_stack(vm->comptime_call_stacks[i].stack);
+    }
+    hmfree(vm->comptime_call_stacks);
+    terminate_stack(vm->main_stack);
 }
 
 void vm_print_backtrace(struct virtual_machine *vm)
@@ -2387,13 +2438,13 @@ void vm_print_backtrace(struct virtual_machine *vm)
             break;
         }
         struct mir_fn *fn = instr->owner_block->owner_fn;
-        if (fn && is_str_valid_nonempty(fn->debug_poly_replacement)) {
+        if (fn && is_str_valid_nonempty(fn->generated.debug_replacement_types)) {
             builder_msg(MSG_ERR_NOTE,
                         0,
                         instr->node->location,
                         CARET_NONE,
                         "Called from following location with polymorph replacement: %s",
-                        fn->debug_poly_replacement);
+                        fn->generated.debug_replacement_types);
         } else {
             builder_msg(MSG_ERR_NOTE, 0, instr->node->location, CARET_NONE, "Called from:");
         }
@@ -2472,7 +2523,7 @@ enum vm_interp_state vm_execute_fn(struct virtual_machine *vm,
             stack_push(vm, value->data, value->type);
         }
     }
-    enum vm_interp_state state = execute_function(vm, fn, NULL);
+    enum vm_interp_state state = execute_function(vm, fn, NULL, false);
     if (state == VM_INTERP_PASSED) {
         vm_stack_ptr_t return_ptr = NULL;
         if (fn_does_return(fn)) {
@@ -2491,6 +2542,55 @@ enum vm_interp_state vm_execute_fn(struct virtual_machine *vm,
     return state;
 }
 
+static inline void release_snapshot(struct virtual_machine *vm, struct vm_stack *stack)
+{
+    bassert(stack);
+    arrput(vm->available_comptime_call_stacks, reset_stack(stack));
+}
+
+static inline void
+store_snapshot(struct virtual_machine *vm, struct vm_stack *stack, struct mir_instr_call *call)
+{
+    bassert(hmgeti(vm->comptime_call_stacks, call) == -1);
+    hmputs(vm->comptime_call_stacks,
+           ((struct vm_snapshot){
+               .key   = call,
+               .stack = stack,
+           }));
+}
+
+struct get_snapshot_result {
+    struct vm_stack *stack;
+    bool             resume;
+};
+
+// Tries to find stack used for previous execution (in case the call was postponed). If there is
+// no such stack, new one is created or reused from cache.
+static struct get_snapshot_result get_snapshot(struct virtual_machine *vm,
+                                               struct mir_instr_call  *call)
+{
+    bassert(call);
+    struct get_snapshot_result result = {0};
+
+    const s64 index = hmgeti(vm->comptime_call_stacks, call);
+    if (index != -1) {
+        result.stack = vm->comptime_call_stacks[index].stack;
+        hmdel(vm->comptime_call_stacks, call);
+        result.resume = true;
+        return result;
+    }
+
+    if (arrlenu(vm->available_comptime_call_stacks)) {
+        result.stack = arrpop(vm->available_comptime_call_stacks);
+        bassert(result.stack && result.stack->allocated_bytes == VM_COMPTIME_CALL_STACK_SIZE);
+    } else {
+        result.stack = create_stack(VM_COMPTIME_CALL_STACK_SIZE);
+        vm->assembly->stats.comptime_call_stacks_count += 1;
+    }
+    bassert(result.stack);
+    return result;
+}
+
 enum vm_interp_state vm_execute_comptime_call(struct virtual_machine *vm,
                                               struct assembly        *assembly,
                                               struct mir_instr_call  *call)
@@ -2504,15 +2604,24 @@ enum vm_interp_state vm_execute_comptime_call(struct virtual_machine *vm,
     if (isflag(fn->flags, FLAG_EXTERN)) {
         babort("External function cannot be #comptime for now!");
     }
-    mir_instrs_t *args = call->args;
-    bassert(sarrlenu(args) == sarrlenu(fn->type->data.fn.args));
-    // Push all arguments in reverse order on the stack.
-    for (usize i = sarrlenu(args); i-- > 0;) {
-        struct mir_const_expr_value *value = &sarrpeek(args, i)->value;
-        stack_push(vm, value->data, value->type);
+
+    // Compile-time calls use custom execution stack since its execution can be postponed.
+    struct get_snapshot_result snapshot       = get_snapshot(vm, call);
+    struct vm_stack           *previous_stack = swap_current_stack(vm, snapshot.stack);
+
+    if (!snapshot.resume) {
+        // In case we're resuming, arguments are already on the stack.
+        mir_instrs_t *args = call->args;
+        bassert(sarrlenu(args) == sarrlenu(fn->type->data.fn.args));
+        // Push all arguments in reverse order on the stack.
+        for (usize i = sarrlenu(args); i-- > 0;) {
+            struct mir_const_expr_value *value = &sarrpeek(args, i)->value;
+            stack_push(vm, value->data, value->type);
+        }
     }
-    enum vm_interp_state state = execute_function(vm, fn, call);
-    if (state == VM_INTERP_PASSED) {
+    enum vm_interp_state state = execute_function(vm, fn, call, snapshot.resume);
+    switch (state) {
+    case VM_INTERP_PASSED:
         // Pop return value.
         if (fn_does_return(fn)) {
             struct mir_type *ret_type = fn->type->data.fn.ret_type;
@@ -2529,12 +2638,21 @@ enum vm_interp_state vm_execute_comptime_call(struct virtual_machine *vm,
         } else {
             call->base.value.data = NULL;
         }
-        // Cleanup previously pushed args from the stack.
-        for (usize i = 0; i < sarrlenu(args); ++i) {
-            struct mir_const_expr_value *value = &sarrpeek(args, i)->value;
-            stack_pop(vm, value->type);
-        }
+        // @Note: No cleanup is needed here, the stack is dedicated to this call and gets cleaned
+        // when it's reused eventually.
+        release_snapshot(vm, snapshot.stack);
+        break;
+
+    case VM_INTERP_POSTPONE:
+        store_snapshot(vm, snapshot.stack, call);
+        break;
+
+    case VM_INTERP_ABORT:
+        release_snapshot(vm, snapshot.stack);
+        break;
     }
+
+    swap_current_stack(vm, previous_stack);
     return_zone(state);
 }
 
@@ -2542,7 +2660,8 @@ void vm_alloc_global(struct virtual_machine *vm, struct assembly *assembly, stru
 {
     vm->assembly = assembly;
     bassert(var);
-    bassert(var->is_global && "Allocated variable is supposed to be a global variable.");
+    bassert(isflag(var->iflags, MIR_VAR_GLOBAL) &&
+            "Allocated variable is supposed to be a global variable.");
     struct mir_type *type = var->value.type;
     bassert(type);
     // @Cleanup: Consider if we can simplify this and use just one single pointer (local and global
@@ -2568,7 +2687,7 @@ vm_stack_ptr_t vm_read_var(struct virtual_machine *vm, const struct mir_var *var
     vm_stack_ptr_t ptr = NULL;
     if (var->value.is_comptime) {
         ptr = var->value.data;
-    } else if (var->is_global) {
+    } else if (isflag(var->iflags, MIR_VAR_GLOBAL)) {
         ptr = var->vm_ptr.global;
     } else {
         // local

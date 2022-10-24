@@ -56,16 +56,16 @@
 //! Dump memory leaks end.
 //! ```
 //!
-//! !!! note
-//!     Debug allocator can be used as global application allocator to catch all possible memory leaks
-//!     and other issues.
+//! > **Note:**
+//! Debug allocator can be used as global application allocator to catch all possible memory leaks
+//! and other issues.
 //! 
-//! !!! note
-//!     Debug allocator is thread safe.
+//! > **Note:**
+//! Debug allocator is thread safe.
 //!
-//! !!! note
-//!     Memory freed by this allocator is set to 0xdddddddd, if you see such a patern in the debugger, you
-//!     are probably trying to used already freed data.
+//! > **Note:**
+//! Memory freed by this allocator is set to 0xdddddddd, if you see such a patern in the debugger, you
+//! are probably trying to used already freed data.
 
 DebugAllocator :: struct #base Allocator {
     mutex: std.Mutex;
@@ -132,13 +132,13 @@ debug_allocator_get_allocation_size :: fn (dbgalloc: *DebugAllocator, ptr: *u8) 
 /// Dump memory leaks end.
 /// ``` 
 /// 
-/// !!! note
-///     Printed report contains all remaining (not freed) allocations in time when function was
-///     called. Memory leaks can contain false-positives when function is called before execution end.
+/// > **Note:**
+/// Printed report contains all remaining (not freed) allocations in time when function was
+/// called. Memory leaks can contain false-positives when function is called before execution end.
 /// 
-/// !!! note
-///     Allocation serail ID can be used by [debug_allocator_break](#debug_allocator_break) to interrupt
-///     execution before memory is allocated and eventually localize allocation in debbuger.
+/// > **Note:**
+/// Allocation serail ID can be used by [debug_allocator_break](#debug_allocator_break) to interrupt
+/// execution before memory is allocated and eventually localize allocation in debbuger.
 print_memory_report :: fn (dbgalloc: *DebugAllocator, dump_leaks := false) {
     std.mutex_lock(&dbgalloc.mutex);
     defer std.mutex_unlock(&dbgalloc.mutex);

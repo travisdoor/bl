@@ -156,7 +156,6 @@ getarg(s32 argc, char *argv[], struct getarg_opt *opts, s32 *optindex, const cha
         }
 
         struct getarg_opt *opt;
-        s32                i = 0;
         while ((opt = opts++)->name) {
             if (strcmp(arg, opt->name) == 0) {
                 switch (opt->kind) {
@@ -207,7 +206,6 @@ getarg(s32 argc, char *argv[], struct getarg_opt *opts, s32 *optindex, const cha
                 }
                 return opt->id;
             }
-            ++i;
         }
         builder_error("Unknown argument '%s'", arg);
         return '?';
@@ -472,9 +470,9 @@ int main(s32 argc, char *argv[])
             .help       = "Disable checking of unused symbols.",
         },
         {
-            .name       = "--time-report",
-            .property.b = &opt.builder.time_report,
-            .help       = "Print compilation time report.",
+            .name       = "--stats",
+            .property.b = &opt.builder.stats,
+            .help       = "Print compilation statistics.",
         },
         {
             .name       = "--lex-dump",
@@ -705,7 +703,8 @@ SKIP:
     }
 
     if (opt.target->kind != ASSEMBLY_BUILD_PIPELINE && !has_input_files) {
-        builder_error("No input files.");
+        builder_error("No input files, use 'blc my-source-file.bl' or 'blc -build' in case the "
+                      "'build.bl' is present.");
         EXIT(EXIT_FAILURE);
     }
 

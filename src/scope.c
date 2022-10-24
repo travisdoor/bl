@@ -100,6 +100,7 @@ struct scope *scope_create(struct scope_arenas *arenas,
                            struct scope        *parent,
                            struct location     *loc)
 {
+    bassert(kind != SCOPE_NONE && "Invalid scope kind.");
     struct scope *scope = arena_safe_alloc(&arenas->scopes);
     scope->parent       = parent;
     scope->kind         = kind;
@@ -176,14 +177,9 @@ struct scope_entry *scope_lookup(struct scope *scope, scope_lookup_args_t *args)
             }
         }
         // Lookup in parent.
-        if (args->in_tree) {
-            if (args->out_of_local && scope->kind == SCOPE_FN_LOCAL) {
-                *(args->out_of_local) = true;
-            }
-            scope = scope->parent;
-        } else {
-            break;
-        }
+        if (!args->in_tree) break;
+        if (args->out_of_local) *(args->out_of_local) = scope->kind == SCOPE_FN;
+        scope = scope->parent;
     }
     if (!found && args->out_ambiguous) {
         // Maybe we have some result coming from used scopes, and it can also be ambiguous (same
@@ -246,14 +242,16 @@ const char *scope_kind_name(const struct scope *scope)
 {
     if (!scope) return "<INVALID>";
     switch (scope->kind) {
+    case SCOPE_NONE:
+        return "None";
     case SCOPE_GLOBAL:
         return "Global";
     case SCOPE_PRIVATE:
         return "Private";
     case SCOPE_FN:
         return "Function";
-    case SCOPE_FN_LOCAL:
-        return "LocalFunction";
+    case SCOPE_FN_BODY:
+        return "Function";
     case SCOPE_LEXICAL:
         return "Lexical";
     case SCOPE_TYPE_STRUCT:

@@ -1,5 +1,6 @@
 #ifdef GEN_BUILTIN_NAMES
     BUILTIN_ID_TYPE_TYPE,
+    BUILTIN_ID_TYPE_PLACEHOLDER,
     BUILTIN_ID_TYPE_NAMED_SCOPE,
     BUILTIN_ID_TYPE_S8,
     BUILTIN_ID_TYPE_S16,
@@ -70,6 +71,7 @@
 
 #ifdef GEN_BUILTIN_IDS
     {.str = "type",                  .hash = 0},
+    {.str = ".placeholer",           .hash = 0},
     {.str = "scope",                 .hash = 0},
     {.str = "s8",                    .hash = 0},
     {.str = "s16",                   .hash = 0},

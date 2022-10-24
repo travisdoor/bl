@@ -44,6 +44,7 @@ void vmdbg_attach(struct virtual_machine *vm);
 void vmdbg_detach(void);
 void vmdbg_notify_instr(struct mir_instr *instr);
 void vmdbg_notify_stack_op(enum vmdbg_stack_op op, struct mir_type *type, void *ptr);
+void vmdbg_notify_stack_swap(void);
 void vmdbg_break(void);
 
 #endif

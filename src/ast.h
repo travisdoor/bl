@@ -46,7 +46,7 @@ enum ast_kind {
 #undef GEN_AST_KINDS
 };
 
-enum ast_flag {
+enum ast_flags {
     FLAG_EXTERN = 1 << 0, // methods marked as extern
     // 1 << 1, free
     FLAG_COMPILER     = 1 << 2,  // compiler internal
@@ -193,10 +193,10 @@ struct ast_stmt_loop {
 };
 
 struct ast_decl {
-    struct ast *name;
-    struct ast *type;
-    struct ast *tag; // Optional.
-    u32         flags;
+    struct ast   *name;
+    struct ast   *type;
+    struct ast   *tag; // Optional.
+    enum ast_flags flags;
 };
 
 struct ast_decl_entity {
@@ -214,6 +214,7 @@ struct ast_decl_member {
 struct ast_decl_arg {
     struct ast_decl base;
     struct ast     *value;
+    u32             index;
 };
 
 struct ast_decl_variant {
@@ -238,10 +239,18 @@ struct ast_type_dynarr {
     struct ast *elem_type;
 };
 
+enum ast_type_fn_flavor {
+    AST_TYPE_FN_FLAVOR_NONE = 0,
+    // Function type contains polymorph types.
+    AST_TYPE_FN_FLAVOR_POLYMORPH = 1 << 1,
+    // Function type contains comptime arguments.
+    AST_TYPE_FN_FLAVOR_MIXED = 1 << 2,
+};
+
 struct ast_type_fn {
-    struct ast  *ret_type;
-    ast_nodes_t *args;
-    bool         is_polymorph;
+    struct ast             *ret_type;
+    ast_nodes_t            *args;
+    enum ast_type_fn_flavor flavor; // @Note: see ast_type_fn_flavor
 };
 
 struct ast_type_fn_group {

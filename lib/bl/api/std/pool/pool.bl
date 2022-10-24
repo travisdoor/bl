@@ -95,15 +95,17 @@ handler :: fn (pool: *PoolAllocator, operation: AllocOp, old_ptr: *u8, old_size:
 
 allocate :: fn (pool: *PoolAllocator, size: usize, alignment: usize) (mem: *u8, err: Error) {
     assert(size > 0);
+
     mask :: ~(alignment - 1);
-    size += alignment - 1;
-    if pool.space < size {
-        err :: ensure_space(pool, size);
+    allocation_size := size + alignment - 1;
+
+    if pool.space < allocation_size {
+        err :: ensure_space(pool, allocation_size);
         if err { return null, err; }
     }
     mem := pool.top;
-    pool.top = auto (cast(usize) pool.top + size);
-    pool.space -= size;
+    pool.top = auto (cast(usize) pool.top + allocation_size);
+    pool.space -= allocation_size;
     mem = auto ((cast(usize) mem) + alignment - 1 & mask);
     return mem, OK;
 }

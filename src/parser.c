@@ -65,7 +65,7 @@ struct context {
     struct {
         hash_t                    key;
         enum hash_directive_flags value;
-    } * hash_directive_table;
+    } *hash_directive_table;
 
     struct assembly     *assembly;
     struct unit         *unit;
@@ -96,7 +96,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
 static struct ast *parse_unrecheable(struct context *ctx);
 static struct ast *parse_debugbreak(struct context *ctx);
 static struct ast *parse_ident_group(struct context *ctx);
-static struct ast *parse_block(struct context *ctx, bool create_scope);
+static struct ast *parse_block(struct context *ctx, enum scope_kind scope_kind);
 static struct ast *parse_decl(struct context *ctx);
 static struct ast *parse_decl_member(struct context *ctx, s32 index);
 static struct ast *parse_decl_arg(struct context *ctx, bool named);
@@ -108,7 +108,7 @@ static struct ast *parse_type_polymorph(struct context *ctx);
 static struct ast *parse_type_arr(struct context *ctx);
 static struct ast *parse_type_slice(struct context *ctx);
 static struct ast *parse_type_dynarr(struct context *ctx);
-static struct ast *parse_type_fn(struct context *ctx, bool named_args);
+static struct ast *parse_type_fn(struct context *ctx, bool named_args, bool create_scope);
 static struct ast *parse_type_fn_group(struct context *ctx);
 static struct ast *parse_type_fn_return(struct context *ctx);
 static struct ast *parse_type_struct(struct context *ctx);
@@ -162,6 +162,22 @@ static inline struct ast *_parse_ident(struct context *ctx)
     struct ast *ident = ast_create_node(ctx->ast_arena, AST_IDENT, tok_ident, scope_get(ctx));
     id_init(&ident->data.ident.id, tok_ident->value.str.ptr);
     return_zone(ident);
+}
+
+// Set function type flavor flag of current parent function type being parsed. Asserts in case there
+// is no current function type in the fn_type_stack.
+static inline void set_parent_function_type_flavor(struct context               *ctx,
+                                                   const enum ast_type_fn_flavor flavor)
+{
+    bassert(
+        arrlenu(ctx->fn_type_stack) &&
+        "No parent function type to be set as polymorph type, this should be an compiler error!");
+    for (usize i = arrlenu(ctx->fn_type_stack); i-- > 0;) {
+        struct ast *fn_type = ctx->fn_type_stack[i];
+        bassert(fn_type && fn_type->kind == AST_TYPE_FN);
+        if (isflag(fn_type->data.type_fn.flavor, flavor)) return;
+        setflag(fn_type->data.type_fn.flavor, flavor);
+    }
 }
 
 static inline bool rq_semicolon_after_decl_entity(struct ast *node)
@@ -829,11 +845,25 @@ struct ast *parse_decl_arg(struct context *ctx, bool named)
             ast_create_node(ctx->ast_arena, AST_BAD, tokens_peek(ctx->tokens), scope_get(ctx)));
     }
 
-    // Parse hash directive flags foo : s32 = 0 #maybe_unused.
-    u32                       flags           = 0;
-    enum hash_directive_flags found_directive = HD_NONE;
-    parse_hash_directive(ctx, HD_MAYBE_UNUSED, &found_directive);
-    hash_directive_to_flags(found_directive, &flags);
+    // Parse hash directives.
+    u32 flags    = 0;
+    u32 accepted = HD_COMPTIME | HD_MAYBE_UNUSED;
+    while (true) {
+        enum hash_directive_flags found = HD_NONE;
+        parse_hash_directive(ctx, accepted, &found);
+        if (!hash_directive_to_flags(found, &flags)) break;
+        accepted &= ~found;
+    }
+
+    if (isflag(flags, FLAG_COMPTIME)) {
+        // Currently compile time arguments cause changing of parent function generation to act like
+        // a generated function, this is needed due to how compile time arguments replacement work.
+        // Basically all comptime arguments are removed from a function signature in LLVM (kept for
+        // analyze in MIR), its value (provided on call side) is used as compile time constant
+        // in function body. That's why we need to generate each function specialization the same
+        // way as polymorph functions does.
+        set_parent_function_type_flavor(ctx, AST_TYPE_FN_FLAVOR_MIXED);
+    }
 
     struct ast *arg = ast_create_node(ctx->ast_arena, AST_DECL_ARG, tok_begin, scope_get(ctx));
     arg->data.decl_arg.value = value;
@@ -992,7 +1022,7 @@ struct ast *parse_stmt_if(struct context *ctx, bool is_static)
         tokens_consume_till(ctx->tokens, SYM_LBLOCK);
     }
 
-    stmt_if->data.stmt_if.true_stmt = parse_block(ctx, true);
+    stmt_if->data.stmt_if.true_stmt = parse_block(ctx, SCOPE_LEXICAL);
     if (!stmt_if->data.stmt_if.true_stmt) {
         struct token *tok_err = tokens_consume(ctx->tokens);
         report_error(EXPECTED_STMT,
@@ -1006,7 +1036,7 @@ struct ast *parse_stmt_if(struct context *ctx, bool is_static)
     if (tokens_consume_if(ctx->tokens, SYM_ELSE)) {
         stmt_if->data.stmt_if.false_stmt = parse_stmt_if(ctx, is_static);
         if (!stmt_if->data.stmt_if.false_stmt)
-            stmt_if->data.stmt_if.false_stmt = parse_block(ctx, true);
+            stmt_if->data.stmt_if.false_stmt = parse_block(ctx, SCOPE_LEXICAL);
         if (!stmt_if->data.stmt_if.false_stmt) {
             struct token *tok_err = tokens_consume(ctx->tokens);
             report_error(EXPECTED_STMT,
@@ -1112,7 +1142,7 @@ NEXT:
     }
 
 SKIP_EXPRS:
-    block = parse_block(ctx, true);
+    block = parse_block(ctx, SCOPE_LEXICAL);
     if (!block && !parse_semicolon_rq(ctx)) {
         struct token *tok_err = tokens_peek(ctx->tokens);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
@@ -1178,7 +1208,7 @@ struct ast *parse_stmt_loop(struct context *ctx)
     }
 
     // block
-    loop->data.stmt_loop.block = parse_block(ctx, false);
+    loop->data.stmt_loop.block = parse_block(ctx, SCOPE_NONE);
     if (!loop->data.stmt_loop.block) {
         struct token *tok_err = tokens_peek(ctx->tokens);
         report_error(EXPECTED_BODY, tok_err, CARET_WORD, "Expected loop body block.");
@@ -1489,18 +1519,10 @@ struct ast *parse_expr_lit_fn(struct context *ctx)
     struct token *tok_fn = tokens_peek(ctx->tokens);
     struct ast   *fn     = ast_create_node(ctx->ast_arena, AST_EXPR_LIT_FN, tok_fn, scope_get(ctx));
 
-    struct scope   *parent_scope = scope_get(ctx);
-    enum scope_kind scope_kind =
-        (parent_scope->kind == SCOPE_GLOBAL || parent_scope->kind == SCOPE_PRIVATE ||
-         parent_scope->kind == SCOPE_NAMED)
-            ? SCOPE_FN
-            : SCOPE_FN_LOCAL;
-    struct scope *scope =
-        scope_create(ctx->scope_arenas, scope_kind, scope_get(ctx), &tok_fn->location);
+    // Create function scope for function signature.
+    scope_push(ctx, scope_create(ctx->scope_arenas, SCOPE_FN, scope_get(ctx), &tok_fn->location));
 
-    scope_push(ctx, scope);
-
-    struct ast *type = parse_type_fn(ctx, true);
+    struct ast *type = parse_type_fn(ctx, /* named_args */ true, /* create_scope */ false);
     bassert(type);
     fn->data.expr_fn.type = type;
     // parse flags
@@ -1531,7 +1553,7 @@ struct ast *parse_expr_lit_fn(struct context *ctx)
     }
 
     // parse block (block is optional function body can be external)
-    fn->data.expr_fn.block = parse_block(ctx, false);
+    fn->data.expr_fn.block = parse_block(ctx, SCOPE_FN_BODY);
 
     scope_pop(ctx);
     return_zone(fn);
@@ -1788,16 +1810,6 @@ struct ast *parse_ref_nested(struct context *ctx, struct ast *prev)
     return_zone(ref);
 }
 
-static inline void set_polymorph(struct context *ctx)
-{
-    for (usize i = arrlenu(ctx->fn_type_stack); i-- > 0;) {
-        struct ast *fn_type = ctx->fn_type_stack[i];
-        bassert(fn_type && fn_type->kind == AST_TYPE_FN);
-        if (fn_type->data.type_fn.is_polymorph) return;
-        fn_type->data.type_fn.is_polymorph = true;
-    }
-}
-
 struct ast *parse_type_polymorph(struct context *ctx)
 {
     zone();
@@ -1812,7 +1824,7 @@ struct ast *parse_type_polymorph(struct context *ctx)
         tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
     }
-    set_polymorph(ctx);
+    set_parent_function_type_flavor(ctx, AST_TYPE_FN_FLAVOR_POLYMORPH);
     struct ast *ident = parse_ident(ctx);
     if (!ident) {
         struct token *tok_err = tokens_peek(ctx->tokens);
@@ -1924,7 +1936,7 @@ struct ast *parse_type(struct context *ctx)
     type = parse_type_ptr(ctx);
     // keep order
     if (!type) type = parse_type_fn_group(ctx);
-    if (!type) type = parse_type_fn(ctx, false);
+    if (!type) type = parse_type_fn(ctx, /* named_args */ false, /* create_scope */ true);
     // keep order
 
     if (!type) type = parse_type_polymorph(ctx);
@@ -1995,7 +2007,7 @@ struct ast *parse_type_fn_return(struct context *ctx)
     return_zone(parse_type(ctx));
 }
 
-struct ast *parse_type_fn(struct context *ctx, bool named_args)
+struct ast *parse_type_fn(struct context *ctx, bool named_args, bool create_scope)
 {
     zone();
     struct token *tok_fn = tokens_consume_if(ctx->tokens, SYM_FN);
@@ -2007,14 +2019,23 @@ struct ast *parse_type_fn(struct context *ctx, bool named_args)
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_fn, scope_get(ctx)));
     }
     struct ast *fn = ast_create_node(ctx->ast_arena, AST_TYPE_FN, tok_fn, scope_get(ctx));
+
+    if (create_scope) {
+        scope_push(ctx,
+                   scope_create(ctx->scope_arenas, SCOPE_FN, scope_get(ctx), &tok_fn->location));
+    }
+
     // parse arg types
-    bool        rq = false;
+    bool        rq    = false;
+    u32         index = 0;
     struct ast *tmp;
     arrput(ctx->fn_type_stack, fn);
 NEXT:
     tmp = parse_decl_arg(ctx, named_args);
     if (tmp) {
         if (tmp->kind == AST_BAD) return tmp;
+        // Setup argument index -> order in the function type argument list.
+        tmp->data.decl_arg.index = index++;
         if (!fn->data.type_fn.args) {
             fn->data.type_fn.args = arena_safe_alloc(&ctx->assembly->arenas.sarr);
         }
@@ -2028,6 +2049,7 @@ NEXT:
         if (tokens_peek_2nd(ctx->tokens)->sym == SYM_RBLOCK) {
             report_error(EXPECTED_NAME, tok_err, CARET_WORD, "Expected type after comma ','.");
             arrpop(ctx->fn_type_stack);
+            if (create_scope) scope_pop(ctx);
             return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_fn, scope_get(ctx)));
         }
     }
@@ -2040,10 +2062,12 @@ NEXT:
                      "Expected end of argument type list ')' or another argument separated "
                      "by comma.");
         arrpop(ctx->fn_type_stack);
+        if (create_scope) scope_pop(ctx);
         return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_fn, scope_get(ctx)));
     }
     fn->data.type_fn.ret_type = parse_type_fn_return((ctx));
     arrpop(ctx->fn_type_stack);
+    if (create_scope) scope_pop(ctx);
     return_zone(fn);
 }
 
@@ -2092,7 +2116,7 @@ struct ast *parse_type_struct(struct context *ctx)
     const bool is_union = tok_struct->sym == SYM_UNION;
 
     // parse flags
-    u32         accepted  = is_union ? 0 : HD_COMPILER | HD_BASE;
+    u32         accepted  = is_union ? 0 : HD_COMPILER | HD_BASE | HD_MAYBE_UNUSED;
     u32         flags     = 0;
     struct ast *base_type = NULL;
     while (true) {
@@ -2343,16 +2367,21 @@ struct ast *parse_expr_type(struct context *ctx)
     return NULL;
 }
 
-struct ast *parse_block(struct context *ctx, bool create_scope)
+struct ast *parse_block(struct context *ctx, enum scope_kind scope_kind)
 {
     struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_LBLOCK);
     if (!tok_begin) return NULL;
 
-    if (create_scope) {
+    bool scope_created = false;
+    if (scope_kind != SCOPE_NONE) {
+        bassert((scope_kind == SCOPE_LEXICAL || scope_kind == SCOPE_FN_BODY) &&
+                "Unexpected scope kind, extend this assert in case it's intentional.");
+
         struct scope *scope =
-            scope_create(ctx->scope_arenas, SCOPE_LEXICAL, scope_get(ctx), &tok_begin->location);
+            scope_create(ctx->scope_arenas, scope_kind, scope_get(ctx), &tok_begin->location);
 
         scope_push(ctx, scope);
+        scope_created = true;
     }
     struct ast   *block = ast_create_node(ctx->ast_arena, AST_BLOCK, tok_begin, scope_get(ctx));
     struct token *tok;
@@ -2403,7 +2432,7 @@ NEXT:
         if (AST_IS_OK(tmp)) parse_semicolon_rq(ctx);
         break;
     case SYM_LBLOCK:
-        tmp = parse_block(ctx, true);
+        tmp = parse_block(ctx, SCOPE_LEXICAL);
         break;
     case SYM_UNREACHABLE:
         tmp = parse_unrecheable(ctx);
@@ -2440,11 +2469,11 @@ NEXT:
         tok = tokens_peek_prev(ctx->tokens);
         report_error(EXPECTED_BODY_END, tok, CARET_AFTER, "Expected end of block '}'.");
         report_note(tok_begin, CARET_WORD, "Block starting here.");
-        if (create_scope) scope_pop(ctx);
+        if (scope_created) scope_pop(ctx);
         return ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx));
     }
 
-    if (create_scope) scope_pop(ctx);
+    if (scope_created) scope_pop(ctx);
     return block;
 }
 

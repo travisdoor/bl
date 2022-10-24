@@ -44,7 +44,7 @@ OpenFileMode :: enum #flags {
 ///
 /// ### Example
 ///
-/// ```c
+/// ```rust
 /// {% include "../examples/open_file.bl" %}
 /// ```
 ///
@@ -81,9 +81,9 @@ remove_file :: fn (filepath: string_view) Error #inline {
 ///
 /// The destination file is created if it does not exist.
 ///
-/// !!! note
-///     `src` and `dest` path can be relative path to current working path set by
-///     [set_cwd](#stdset_cwd).
+/// > **Note:**
+/// The `src` and `dest` path can be relative path to current working path set by
+/// [set_cwd](#stdset_cwd).
 copy_file :: fn (src: string_view, dest: string_view, override := false) Error #inline {
     return _fs_impl.copy(src, dest, override);
 }
@@ -136,7 +136,7 @@ create_all_dir :: fn (dirpath: string_view) Error {
     assert(dirpath.len > 0);
     if dirpath[0] == '/' { str_append(&data.path, "/"); }
 
-    str_tokenize(dirpath, '/', &fn (sub_path: string_view, data: *Data) bool {
+    str_tokenize(dirpath, '/', &data, &fn (sub_path: string_view, data: *Data) bool {
         if data.path.len > 0 && data.path[data.path.len] != '/' { str_append(&data.path, "/"); }
         str_append(&data.path, sub_path);
         existing, err :: is_existing_directory(data.path);
@@ -152,7 +152,7 @@ create_all_dir :: fn (dirpath: string_view) Error {
             }
         }
         return true;
-    }, &data);
+    });
     return data.last_error;
 }
 
@@ -184,17 +184,18 @@ Info :: struct {
 /// When the `filter` callback is specified, it's called for each visited file or directory. Returning `true`
 /// means the entry should be deleted.
 ///
-/// !!! warning
-///     When some files are excluded by the `filter` function the parent directory cannot be removed (it's not empty).
-///     Be careful excluding directories.
+/// > **Warning:**
+/// When some files are excluded by the `filter` function the parent directory cannot be removed (it's not empty).
+/// Be careful excluding directories.
 ///
-/// !!! note
-///     This function recursively remove all nested folders and files in specified sub tree
-///     so it can be expensive.
+/// > **Note:**
+/// This function recursively remove all nested folders and files in specified sub tree
+/// so it can be expensive.
 ///
 remove_all_dir :: fn {
     impl_remove_all_dir;
     impl_remove_all_dir_with_filter;
+    impl_remove_all_dir_with_filter_and_context;
 }
 
 /// Visit file options used in [visit_files](visit_files).
@@ -208,14 +209,34 @@ VisitOpt :: struct {
 /// Visit all files and directories in `dirpath` with specified `visitor` callback called for each found
 /// file entry. Optional context `ctx` pointer can be passed into the function.
 ///
+/// **Overloads:**
+/// ```c
+/// fn (dirpath: string_view, opt: VisitOpt, ctx: *?T, visitor: *fn(info: *Info, ctx: *T) Error) Error #inline
+/// fn (dirpath: string_view, opt: VisitOpt, visitor: *fn(info: *Info) Error) Error #inline
+/// ``e
+///
 /// ### Example
 ///
 /// ```c
 /// {% include "../examples/visit_files.bl" %}
 /// ```
-visit_files :: fn (dirpath: string_view, opt: VisitOpt, visitor: *fn(info: *Info, ctx: *?T) Error, ctx: *T = null) Error #inline {
-    assert(visitor);
-    return _fs_impl.visit_files(dirpath, opt.recursive, opt.leaf_first, auto visitor, auto ctx);
+visit_files :: fn {
+    fn (dirpath: string_view, opt: VisitOpt, ctx: *?T, visitor: *fn(info: *Info, ctx: *T) Error) Error #inline {
+        assert(visitor);
+        return _fs_impl.visit_files(dirpath, opt.recursive, opt.leaf_first, auto visitor, auto ctx);
+    };
+
+    fn (dirpath: string_view, opt: VisitOpt, visitor: *fn(info: *Info) Error) Error #inline {
+        assert(visitor);
+        // @Note: We use wrapper function instead of making the '_fs_impl.visit_files' generic.
+        visitor_wrapper :: fn (info: *std.Info, ctx: *u8) Error {
+            assert(ctx);
+            orig_visitor :: cast(*fn(info: *Info) Error) ctx;
+            return orig_visitor(info);
+        };
+
+        return _fs_impl.visit_files(dirpath, opt.recursive, opt.leaf_first, &visitor_wrapper, auto visitor);
+    };
 }
 
 /// Check whether `path` points to valid directory. Returns error in case the check failed.
@@ -259,8 +280,8 @@ path_normalize :: fn (filepath: *string) Error #inline {
 /// | /                       | /           | -            |
 /// | C:/                     | C:/         | -            |
 ///
-/// !!! note
-///     Returned components may not be zero terminated.
+/// > **Note:**
+/// Returned components may not be zero terminated.
 path_split :: fn (filepath: string_view) (head: string_view, tail: string_view) {
     if str_is_empty(filepath) { return str_empty, str_empty; }
 
@@ -287,8 +308,8 @@ path_split :: fn (filepath: string_view) (head: string_view, tail: string_view) 
 /// | /                       | /                  | -            |
 /// | C:/                     | C:/                | -            |
 ///
-/// !!! note
-///     Returned components may not be zero terminated.
+/// > **Note:**
+/// Returned components may not be zero terminated.
 path_splitext :: fn (filepath: string_view) (head: string_view, ext: string_view) {
     if str_is_empty(filepath) { return str_empty, str_empty; }
     head, ext: string_view;
@@ -333,18 +354,26 @@ FILE_STREAM_VTABLE :: StreamVTable.{
     seek  = auto &_fs_impl.seek,
 };
 
-default_filter : *fn (_: *Info, _: *u8) bool : null;
-
 impl_remove_all_dir :: fn (dirpath: string_view, remove_root := true) Error #inline {
-    return impl_remove_all_dir_with_filter(dirpath, remove_root, default_filter);
+    dummy_ctx: *u8;
+    return impl_remove_all_dir_with_filter_and_context(dirpath, remove_root, dummy_ctx, null);
 }
 
-impl_remove_all_dir_with_filter :: fn (dirpath: string_view, remove_root: bool, filter: *fn(info: *Info, ctx: *?T) bool, ctx: *T = null) Error {
+impl_remove_all_dir_with_filter :: fn (dirpath: string_view, remove_root: bool, filter: *fn(info: *Info) bool) Error #inline {
+    assert(filter);
+    filter_wrapper :: fn (info: *Info, ctx: *fn(info: *Info) bool) bool {
+        return ctx(info);
+    };
+
+    return impl_remove_all_dir_with_filter_and_context(dirpath, remove_root, filter, &filter_wrapper);
+}
+
+impl_remove_all_dir_with_filter_and_context :: fn (dirpath: string_view, remove_root: bool, ctx: *?T, filter: *fn(info: *Info, ctx: *T) bool) Error {
     if str_is_empty(dirpath) { return OK; }
 
     Data :: struct {
-        filter: *fn(info: *Info, ctx: *u8) bool;
-        ctx: *u8;
+        filter: *fn(info: *Info, ctx: *T) bool;
+        ctx: *T;
     };
 
     visitor :: fn (info: *Info, data: *Data) Error {
@@ -358,7 +387,7 @@ impl_remove_all_dir_with_filter :: fn (dirpath: string_view, remove_root: bool, 
     };
 
     data :: Data.{ filter, ctx };
-    err :: visit_files(dirpath, VisitOpt.{ recursive = true, leaf_first = true }, &visitor, &data);
+    err :: visit_files(dirpath, VisitOpt.{ recursive = true, leaf_first = true }, &data, &visitor);
     if err { return err; }
     if remove_root { return _fs_impl.remove_dir(dirpath); }
     return OK;
