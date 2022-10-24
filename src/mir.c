@@ -5518,7 +5518,8 @@ struct result analyze_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_
     }
     }
 
-    elem_ptr->base.value.addr_mode   = arr_ptr->value.addr_mode;
+    elem_ptr->base.value.addr_mode =
+        mir_is_comptime(arr_ptr) ? arr_ptr->value.addr_mode : MIR_VAM_LVALUE;
     elem_ptr->base.value.is_comptime = mir_is_comptime(arr_ptr) && mir_is_comptime(elem_ptr->index);
     return_zone(PASS);
 }
