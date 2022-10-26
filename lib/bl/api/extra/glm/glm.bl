@@ -136,19 +136,19 @@ mat4_zero :: fn (out_mat: *mat4) #inline {
 }
 
 mat4_perspective :: fn (fov_rad: f32, aspect: f32, near: f32, far: f32, out_mat: *mat4) #inline {
-    mat4_zero(out_mat);
-    f1 :: 1.0f / std.tan(fov_rad * 0.5f);
-    f2 :: 1.0f / (near - far);
+    mat4_identity(out_mat);
 
-    (@out_mat)[0][0] = f1 / aspect;
-    (@out_mat)[1][1] = f1;
-    (@out_mat)[2][2] = (near + far) * f2;
-    (@out_mat)[2][3] =-1.0f;
-    (@out_mat)[3][2] = 2.0f * near * far * f2;
-};
+    thf :: std.tan(fov_rad * 0.5f );
+
+    (@out_mat)[0][0] = 1.f / (aspect * thf);
+    (@out_mat)[1][1] = 1.f / thf; 
+    (@out_mat)[2][2] = - (far + near) / (far - near);
+    (@out_mat)[2][3] = - 1.f;
+    (@out_mat)[3][2] = - (2.f * far * near) / (far - near);
+}
 
 mat4_ortho :: fn (left: f32, right: f32, bottom: f32, top: f32, near: f32, far: f32, out_mat: *mat4) {
-    mat4_zero(out_mat);
+    mat4_identity(out_mat);
   
     rl :: 1.0f / (right - left);
     tb :: 1.0f / (top   - bottom);
@@ -164,22 +164,24 @@ mat4_ortho :: fn (left: f32, right: f32, bottom: f32, top: f32, near: f32, far: 
 }
 
 mat4_look_at :: fn (eye: v3, target: v3, up: v3, out_mat: *mat4) #inline {
-    z := sub(target, eye);
-    z = normalize(z);
+    mat4_identity(out_mat);
+    f :: normalize(sub(target, eye));
+    s :: normalize(cross(f, up));
+    u :: cross(s, f);
 
-    z = mul(z, -1.f);
-    x := cross(up, z);
-    x = normalize(x);
-    y := cross(z, x);
-
-    mat4_init(
-        x.x, x.y, x.z, dot(eye, x),
-        y.x, y.y, y.z, -dot(eye, y),
-        z.x, z.y, z.z, -dot(eye, z),
-        0.f, 0.f, 0.f, 1.f,
-        out_mat
-    );
-};
+    (@out_mat)[0][0] = s.x;
+    (@out_mat)[1][0] = s.y;
+    (@out_mat)[2][0] = s.z;
+    (@out_mat)[0][1] = u.x;
+    (@out_mat)[1][1] = u.y;
+    (@out_mat)[2][1] = u.z;
+    (@out_mat)[0][2] =-f.x;
+    (@out_mat)[1][2] =-f.y;
+    (@out_mat)[2][2] =-f.z;
+    (@out_mat)[3][0] =-dot(s, eye);
+    (@out_mat)[3][1] =-dot(u, eye);
+    (@out_mat)[3][2] = dot(f, eye);
+}
 
 mat4_mul :: fn (a: *mat4, b: *mat4, out_mat: *mat4) {
     a00 :: (@a)[0][0]; a01 :: (@a)[0][1]; a02 :: (@a)[0][2]; a03 :: (@a)[0][3];

@@ -53,6 +53,13 @@ set_flag :: fn (flags: *?T, flag: T) T #inline {
     return @flags;
 }
 
+set_flags :: fn (flags: *?T, flags_to_be_set: ...T) T #inline {
+    loop i := 0; i < flags_to_be_set.len; i += 1 {
+        set_flag(flags, flags_to_be_set[i]);
+    }
+    return @flags;
+}
+
 /// Clear `flag` in `flags` input. This function is valid for numeric and enum types (checked by assert).
 clr_flag :: fn (flags: *?T, flag: T) T #inline {
     assert(flags);
@@ -68,6 +75,13 @@ clr_flag :: fn (flags: *?T, flag: T) T #inline {
         @flags &= ~flag;
     } else {
         compiler_error("Expected number or enumerator type.");
+    }
+    return @flags;
+}
+
+clr_flags :: fn (flags: *?T, flags_to_be_cleared: ...T) T #inline {
+    loop i := 0; i < flags_to_be_cleared.len; i += 1 {
+        clr_flag(flags, flags_to_be_cleared[i]);
     }
     return @flags;
 }
@@ -101,8 +115,8 @@ make_flags :: fn (f1: ?T, other: ...T) T {
 }
 
 /// Produce right-shift of input `ptr` by count of `bytes`.
-ptr_shift_bytes :: fn (ptr: *?T, bytes: s64) *u8 #inline {
-    return cast(*u8) (cast(s64) ptr + bytes);
+ptr_shift_bytes :: fn (ptr: *?T, bytes: s64) *T #inline {
+    return auto (cast(s64) ptr + bytes);
 };
 
 /// Calculates pointer difference `a` - `b`.
