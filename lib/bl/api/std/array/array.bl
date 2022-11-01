@@ -95,7 +95,12 @@ array_reserve :: fn (_arr: *[..]?T, n: s64) #inline {
     ensure_space(arr, sizeof(T), auto n, true, alignof(T));
 }
 
-/// Erase element on index `i`. Call to this function can cause reorderingof an dynamic array.
+array_resize :: fn (_arr: *[..]?T, n: s64) #inline {
+    array_reserve(_arr, n);
+    _arr.len = n;
+}
+
+/// Erase element on index `i`. Call to this function can cause reordering of an dynamic array.
 /// Allocated memory is kept even if we erase entire dynamic array. Function invoke panic in case
 /// of index overflow.
 array_erase :: fn (_arr: *[..]?T, i: s64) {

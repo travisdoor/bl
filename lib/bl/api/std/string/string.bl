@@ -244,6 +244,7 @@ str_to_s64 :: fn (str: string_view, count := -1) s64 #obsolete "Use strtos64 ins
 /// string in case the `count` is not specified.
 ///
 /// Returns error when:
+///
 ///     - The input string is empty and `count` greater than zero.
 ///     - Converted number cause overflow of s64.
 ///     - The input string contains invalid characters.
@@ -289,6 +290,7 @@ strtos64 :: fn (str: string_view, count := -1) (s64, Error) {
 /// string in case the `count` is not specified.
 ///
 /// Returns error when:
+///
 ///     - The input string is empty and `count` greater than zero.
 ///     - The input string contains invalid characters.
 strtof64 :: fn (str: string_view, count := -1) (f64, Error) {

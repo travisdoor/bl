@@ -248,7 +248,7 @@ init :: fn () {
     using win32;
     if SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2) == 0 {
         _, error_message ::os_get_last_error();
-        print_warn("Cannot set process DPI avareness with error: %", error_message);
+        print_warn("Cannot set process DPI awareness with error: %", error_message);
     }
 }
 

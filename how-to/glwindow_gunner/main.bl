@@ -168,7 +168,7 @@ main :: fn () s32 {
 
         // Process user input events here.
         loop i := 0; i < glwindow.frame_events.len; i += 1 {
-            // Frame events are listed in this global array. Here you get mixture of event cooming from all active
+            // Frame events are listed in this global array. Here you get mixture of event coming from all active
             // windows, in such a case you can compare event.sender with window handle to distinguish them.
             event :: &glwindow.frame_events[i];
             using glwindow;
