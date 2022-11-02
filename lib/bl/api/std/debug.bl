@@ -129,7 +129,7 @@ __print_log_default :: fn (kind: PrintLogKind, file: string_view, line: s32, for
         PrintLogKind.PANIC   { tag = "panic";  output_stream = os_stderr(); }
     }
     if file.len > 0 {
-        w = bprint(slice_range(buf, w), "% [%:%]: ", tag, file, line);
+        w = bprint(buf, "% [%:%]: ", tag, file, line);
     } else {
         w = bprint(buf, "%: ", tag);
     }
