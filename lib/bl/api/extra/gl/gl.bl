@@ -220,6 +220,7 @@ GL_ACTIVE_TEXTURE                : u32 : 0x84E0;
 GL_CLIENT_ACTIVE_TEXTURE         : u32 : 0x84E1;
 GL_MAX_TEXTURE_UNITS             : u32 : 0x84E2;
 GL_MULTISAMPLE                   : u32 : 0x809D;
+GL_SHADER_STORAGE_BUFFER         : u32 : 0x90D2;
 
 GL_ARRAY_BUFFER                         : u32 : 0x8892;
 GL_ELEMENT_ARRAY_BUFFER                 : u32 : 0x8893;
@@ -252,6 +253,7 @@ GL_BUFFER_USAGE                         : u32 : 0x8765;
 GL_BUFFER_ACCESS                        : u32 : 0x88BB;
 GL_BUFFER_MAPPED                        : u32 : 0x88BC;
 GL_BUFFER_MAP_POINTER                   : u32 : 0x88BD;
+GL_UNIFORM_BUFFER                       : u32 : 0x8A11;
 
 GL_CURRENT_COLOR                 : u32 : 0x0B00;
 GL_CURRENT_INDEX                 : u32 : 0x0B01;
@@ -571,6 +573,8 @@ _Gl :: struct {
     UseProgram: *fn (program: u32);
     GenBuffers: *fn (n: s32, buffers: *u32);
     BindBuffer: *fn (target: u32, buffer: u32);
+    BindBufferBase: *fn (target: GLenum, index: GLuint, buffer: GLuint);
+    BindBufferRange: *fn (target: GLenum, index: GLuint, buffer: GLuint, offset: GLintptr, size: GLsizeiptr);
     BufferData: *fn (target: u32, size: usize, data: *u8, usage: u32);
     BindVertexArray: *fn (array: u32);
     DeleteVertexArrays: *fn (n: s32, arrays: *u32);

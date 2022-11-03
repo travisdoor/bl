@@ -80,12 +80,12 @@ tbl_terminate :: fn (tbl: *?T) {
     zeromem(auto tbl, sizeof(T));
 }
 
-/// Resolve type of key from table type in compiletime.
+/// Resolve type of key from table type in compile-time.
 tbl_typeof_key :: fn (TTable: type #comptime) type #comptime {
     return @TTable.keys.ptr;
 }
 
-/// Resolve type of value from table type in compiletime.
+/// Resolve type of value from table type in compile-time.
 tbl_typeof_value :: fn (TTable: type #comptime) type #comptime {
     return @TTable.values.ptr;
 }

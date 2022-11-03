@@ -91,6 +91,12 @@ lerp :: fn (a: ?T, b: T, fraction: T) T  #inline {
     return a + fraction * (b - a);
 }
 
+smooth_step :: fn (a: ?T, b: T, fraction: T) T  #inline {
+    two: T : auto 2;
+    three: T : auto 3;
+    return lerp(a, b, fraction * fraction * (three - two * fraction));
+}
+
 clamp :: fn (v: ?T, minimum: T, maximum: T) T { 
     #if typeinfo(T).kind == TypeKind.INT {
         if v <= minimum { return minimum; }
