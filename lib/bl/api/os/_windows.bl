@@ -218,7 +218,7 @@ __os_start :: fn () #entry {
     command_line_arguments.ptr = args.ptr;
 
     if !_std_io_initialized { init_std_io(); }
-    std.temporary_release();
+    temporary_release();
 
     out :: cast(s32) main();
     C.free(auto args.ptr); 

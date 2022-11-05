@@ -642,6 +642,7 @@ _Gl :: struct {
     DeleteFramebuffers: *fn (n: GLsizei, framebuffers: *GLuint);
     BindFramebuffer: *fn (target: GLenum, framebuffer: GLuint);
     FramebufferTexture2D: *fn (target: GLenum, attachment: GLenum, textarget: GLenum, texture: GLuint, level: GLint);
+    FramebufferTexture: *fn (target: GLenum, attachment: GLenum, texture: GLuint, level: GLint);
     CheckFramebufferStatus: *fn (target: GLenum) GLenum;
     DrawBuffers: *fn (n: GLsizei, bufs: *GLenum);
     ClearBufferuiv: *fn (buffer: GLenum, drawBuffer: GLint, value: *GLuint);
