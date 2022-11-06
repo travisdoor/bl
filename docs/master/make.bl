@@ -10,7 +10,7 @@ working_directory: string_view;
 output_directory: string_view;
 
 main :: fn () s32 {
-    defer std.temporary_release();
+    defer temporary_release();
     working_directory = get_working_directory();
     output_directory = get_full_path(OUT_DIR);
     print("Generate BL documentation in '%'.\n", working_directory);

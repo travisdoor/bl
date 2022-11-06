@@ -772,6 +772,8 @@ struct mir_instr_decl_ref {
 
     // Set only for decl_refs inside struct member type resolver.
     bool accept_incomplete_type;
+    // Set in case the named scope was specified explicitly. 
+    bool is_explicit;
 };
 
 struct mir_instr_decl_direct_ref {

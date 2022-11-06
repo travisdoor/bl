@@ -14,8 +14,6 @@ Documentation notes:
 - Cannot use previous comptime as default.
 - Polymorph master and vargs no default value. 
 
-*/
-
 // To memory.bl???
 bytes_to_value :: fn (TValue: type #comptime, bytes: []u8) TValue {
     tmp: TValue;
@@ -23,192 +21,21 @@ bytes_to_value :: fn (TValue: type #comptime, bytes: []u8) TValue {
     memcpy(auto &tmp, bytes.ptr, std.min(sizeof(TValue), auto bytes.len));
     return tmp;
 }
-
-get_type :: fn (T: type #comptime) type #comptime {
-    print("This should not be called for recipe!\n");
-    return T; 
-}
-
-foobar :: fn (v: ?T) get_type(T) {
-}
-
-Data :: struct {
-    a: s32;
-    b: s32;
-    c: s32;
-    d: s32;
-    e: s32;
-}
-
-// foo :: fn (v: s32 #comptime, b := v)
-// foo :: fn (T: type #comptime, b : ?TGuess = T)
-// foo :: fn (T: ?TFirst #comptime, b : ?TSecond = T #comptime)
+*/
 
 main :: fn () s32 {
-    number: s32 = -666;
-    //foobar(10);
-    print(">>> %\n", bytes_to_value(s32, []u8.{ 4, auto &number }));
-
-    foo_ptr :: new(Data);
-    free(auto foo_ptr);
-    s32_ptr :: new(s32);
-    free(auto s32_ptr);
-
-    n : s64 = 10;
-    foo(&n);
-
-    ptr := &foo;
-    ptr(&n);
-
-    group();
-    bar(20);
-    bar(20, 40);
-
-    poly(10, 20);
-    //poly("hello", "world");
-    //poly(true, false); 
-
-    poly_default(10);
-    poly_default(10, 20);
- 
-    this_is_called_in_comptime(10, true);
-
-    num : *s32 = new(s32) #maybe_unused;
-    (@num) = 800;
-    print("num = %; (@num) = %;\n", num, @num);
-    free(auto num);
-
-    mixed_poly(10);
-    mixed_poly(true, 30);
-
-    variable_args(666, 777);
-    variable_args_2(666);
-    variable_args_2(666, 10);
-    variable_args_2(666, 10, 20);
-
-    v1 := 10;
-    v2 := 20;
-    variable_args(v1, v2);
-
-    tbl: MyTable(s32, bool);
-    print("tbl = %\n", tbl);
-
-    with_call_loc(10);
-
-    arr := [4]s32.{ 10, 20, 30, 40 };
-    comptime_arr_size(4, &arr);
-
-    application_context.print_log_fn = &test_logger;
-    print_log("hello", 10, true);
-    application_context.print_log_fn = &__print_log_default;
-   
-    n1 := 10; 
-    n2 := 20; 
-    print("mine_function(%, %)\n", n1, n2);
-
+    foo: draw.Shader;
     return 0;
 }
 
-test_logger :: fn (kind: PrintLogKind, file: string_view, line: s32, format: string_view, args: ...) {
-    print("test_logger(%, %, %, %, %)\n", kind, file, line, format, args);
-}
+#scope draw
 
-MyTable :: fn (TKey: type #comptime, TValue: type #comptime) type #comptime {
-    print(">>> Generation table type!\n");
-    return struct {
-        key: TKey;
-        value: TValue;
-    };
-}
-
-foo :: fn (p: *s64) {
-    tmp := cast(*u64) p;
-    (@tmp) = 0;
-}
-
-group :: fn {
-    fn () {
-        print("group()\n");
-    };
-    fn (i: s32) {
-        print("group(%)\n", i);
-    };
-}
-
-bar :: fn (j: s32, k: s32 = 666) s32 {
-    print("bar(%, %)\n", j, k);
-    return j + k;
-}
-
-poly :: fn (v: ?T, c: T) T {
-    print("poly(%, %)\n", v, c);
-    return v + c;
-}
-
-poly_default :: fn (v: ?T, c: T = 20) {
-    print("poly_default(%, %)\n", v, c);
-}
-
-this_is_called_in_comptime :: fn (a: s32 #maybe_unused, b: bool #maybe_unused) #comptime {
-    print(">>> this_is_called_in_comptime(%, %)\n", a, b); 
-}
-
-mixed_poly :: fn (v: ?T #comptime, n := 10) #comptime {
-    print("mixed_poly(%, %)\n", v, n);
-}
-
-variable_args :: fn (v: ...s32 #maybe_unused) {
-    print("variable_args(%)\n", v.len);
-}
-
-variable_args_2 :: fn (n: s32 #maybe_unused, v: ...s32 #maybe_unused) {
-    print("variable_args(%, %)\n", n, v);
-}
-
-to_any :: fn (c: Any) {
-    print("to_any(%)\n", c);
-}
-
-call_with_pointer :: fn (n_ptr: *s32) {
-    print("call_with_pointer(%, %)\n", n_ptr, @n_ptr);
-}
-
-with_call_loc :: fn (n: s32, loc := #call_location) {
-    print("with_call_loc(%, %)\n", n, @loc);
-}
-
-// Implement implicit cast from placeholder to number with value 1?
-comptime_arr_size :: fn (v: s32 #comptime, arr: *[v]s32) {
-    print("comptime_arr_size(%, %)\n", v, @arr);
-}
-// @Incomplete: Documentation.
-// @Incomplete: Tests.
-/*
-
-mixed_poly_2 :: fn (v: Data #comptime, arr: [v.a]s32) {
-    v;
-}
-
-new :: fn (T: type #comptime, preferred_allocator: *Allocator = null, loc := #call_location) (ptr: *T, err: Error) #inline {
-    mem, err :: alloc(sizeof(T), alignof(T), preferred_allocator, loc);
-    return auto mem, err; 
+Shader :: struct {
+    i: s32;
 }
 
 
-
-
-*/
-
-
-/*
-// TODO: Currently we cannot have default value for polymorph master!
-poly_default_2 :: fn (v: ?T = 10) {
-    v;
-    c;
-}
-*/
-
-/* uncommnet while fixing using propagation into local functions.
+/* un-comment while fixing using propagation into local functions.
 list_dir :: fn (paths: *[..]string_view, dir: string_view) {
     using std;
     foo :: fn (i: *Info) {};

@@ -151,7 +151,7 @@ __os_start :: fn (argc: s64, argv: **u8, _: **u8) s32 #entry {
     if is_allocated {
         C.free(auto command_line_arguments.ptr);
     }
-    std.temporary_release();
+    temporary_release();
     return out;
 }
 

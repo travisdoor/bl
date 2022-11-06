@@ -5555,6 +5555,8 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
         decl_ref->accept_incomplete_type = false;
         decl_ref->parent_unit            = parent_unit;
         decl_ref->rid                    = rid;
+        // Do not lookup in parent scope tree!
+        decl_ref->is_explicit = true;
         unref_instr(target_ptr);
         erase_instr_tree(target_ptr, false, false);
 
@@ -6079,7 +6081,7 @@ static struct result lookup_ref(struct context                  *ctx,
     scope_lookup_args_t lookup_args = {
         .layer         = ref->scope_layer,
         .id            = ref->rid,
-        .in_tree       = true,
+        .in_tree       = !ref->is_explicit,
         .out_of_local  = out_of_local,
         .out_ambiguous = &ambiguous,
     };
@@ -9628,7 +9630,7 @@ void analyze_report_unresolved(struct context *ctx)
                 if (scope_lookup(ref->scope,
                                  &(scope_lookup_args_t){
                                      .id      = ref->rid,
-                                     .in_tree = true,
+                                     .in_tree = !ref->is_explicit,
                                  })) {
                     continue;
                 }
