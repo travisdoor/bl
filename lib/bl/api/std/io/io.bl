@@ -59,6 +59,21 @@ write_string :: fn (stream: *Stream, str: string_view, bytes_to_write := std.S64
     return write(stream, str.ptr, min(str.len, bytes_to_write));
 }
 
+write_all :: fn (stream: *Stream, src: *u8, bytes_to_write: s64) Error {
+    tmp :: []u8.{ bytes_to_write, src };
+    written_bytes: s64;
+    loop written_bytes < bytes_to_write {
+        bytes, err :: write(stream, &tmp[written_bytes], tmp.len - written_bytes);
+        if err { return err; }
+        if bytes == 0 {
+            return error("Unable to write all data!");
+        }
+        written_bytes += bytes;
+    }
+    assert(written_bytes == bytes_to_write);
+    return OK;
+}
+
 // =================================================================================================
 // Reading
 // =================================================================================================
@@ -73,40 +88,55 @@ read :: fn (stream: *Stream, dest: *u8, bytes_to_read: s64) (s64, Error) #inline
     return stream.vtable.read(stream, dest, bytes_to_read);
 }
 
-/// Read `bytes_to_read` count of bytes from the stream into `dest` dynamic array. Returns count of actually
-/// read bytes or an error.
-read_data :: fn (stream: *Stream, dest: *[..]u8, bytes_to_read: s64 = std.S64_MAX) (s64, Error) {
-    tmp: [512]u8 #noinit;
-    read_bytes: s64;
+/// Read `bytes_to_read` count of bytes from the stream into `dest` dynamic array. Internal buffer size may
+/// be customized by `buffer_size` argument.
+/// Return an error in case reading failed.
+read_data :: fn (stream: *Stream, dest: *[..]u8, bytes_to_read: s64 = std.S64_MAX, buffer_size := 512 #comptime) Error {
+    tmp: [buffer_size]u8 #noinit;
     processed_bytes := bytes_to_read;
     loop processed_bytes > 0 {
         bytes, err :: read(stream, tmp.ptr, min(tmp.len, processed_bytes));
-        if err { return read_bytes, err; }
+        if err { return err; }
         if bytes == 0 { break; }
-        read_bytes += bytes;
         processed_bytes -= bytes;
         array_push_all(dest, []u8.{ ptr = tmp.ptr, len = bytes });
     }
-    return read_bytes, OK;
+    return OK;
 }
 
-/// Read `bytes_to_read` count of bytes from the stream into `dest` stream. Returns count of actually
-/// read bytes or an error.
-read_string :: fn (stream: *Stream, dest: *string, bytes_to_read: s64 = std.S64_MAX) (s64, Error) {
-    tmp: [512]u8 #noinit;
-    read_bytes: s64;
+/// Read `bytes_to_read` count of bytes from the stream into `dest`. Internal buffer size may be
+/// customized by `buffer_size` argument.
+/// Return and error in case reading failed.
+read_string :: fn (stream: *Stream, dest: *string, bytes_to_read: s64 = std.S64_MAX, buffer_size := 512 #comptime) Error {
+    tmp: [buffer_size]u8 #noinit;
     processed_bytes := bytes_to_read;
     loop processed_bytes > 0 {
         bytes, err :: read(stream, tmp.ptr, min(tmp.len, processed_bytes));
-        if err { return read_bytes, err; }
+        if err { return err; }
         if bytes == 0 { break; }
-        read_bytes += bytes;
         processed_bytes -= bytes;
         str :: string_view.{ ptr = tmp.ptr, len = bytes };
         str_append(dest, str);
     }
-    return read_bytes, OK;
+    return OK;
 }
+
+read_all :: fn (stream: *Stream, dest: *u8, bytes_to_read: s64, buffer_size := 512 #comptime) Error {
+    dest_buf :: []u8.{ bytes_to_read, dest };
+    tmp: [buffer_size]u8 #noinit;
+    read_bytes: s64;
+    loop read_bytes < bytes_to_read {
+        bytes, err :: read(stream, tmp.ptr, min(tmp.len, bytes_to_read - read_bytes));
+        if err { return err; }
+        if bytes == 0 {
+            return error("Unable to read all data!");
+        }
+        memcpy(&dest_buf[read_bytes], tmp.ptr, auto bytes);
+        read_bytes += bytes;
+    }
+    assert(read_bytes == bytes_to_read);
+    return OK;
+}    
 
 // =================================================================================================
 // Other

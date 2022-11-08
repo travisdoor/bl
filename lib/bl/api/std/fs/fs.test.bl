@@ -124,9 +124,8 @@ fs_read_string_test :: fn () #test {
     test_ok(err1);
     tmp := str_new();
     defer str_delete(&tmp);
-    read_bytes, err2 := read_string(&stream, &tmp);
+    err2 := read_string(&stream, &tmp);
     test_ok(err2);
-    test_eq(tmp.len, read_bytes);
     test_true(tmp.len > 0);
 }
 
@@ -137,10 +136,21 @@ fs_read_bytes_test :: fn () #test {
     test_ok(err1);
     data: [..]u8;
     defer array_terminate(&data);
-    read_bytes, err2 := read_data(&stream, &data);
+    err2 :: read_data(&stream, &data);
     test_ok(err2);
     test_not_null(data.ptr);
-    test_eq(data.len, read_bytes);
+}
+
+fs_read_bytes_test_custom_buffer_size :: fn () #test {
+    using std;
+    stream, err1 :: open_file(#file, OpenFileMode.READ);
+    defer close_file(&stream);
+    test_ok(err1);
+    data: [..]u8;
+    defer array_terminate(&data);
+    err2 :: read_data(&stream, &data, S64_MAX, 32);
+    test_ok(err2);
+    test_not_null(data.ptr);
 }
 
 fs_file_stream_create_invalid :: fn () #test {
@@ -205,9 +215,8 @@ fs_file_stream_create_and_reuse :: fn () #test {
         test_ok(err);
         tmp := str_new();
         defer str_delete(&tmp);
-        read_bytes, err2 :: read_string(&stream, &tmp);
+        err2 :: read_string(&stream, &tmp);
         test_ok(err2);
-        test_eq(read_bytes, tmp.len);
         test_eq(tmp, "Hello!Hello!");
     }
 }
@@ -224,10 +233,8 @@ fs_file_read_empty :: fn () #test {
     test_ok(err);
     tmp := str_new();
     defer str_delete(&tmp);
-    read_bytes, err2 :: read_string(&stream, &tmp);
+    err2 :: read_string(&stream, &tmp);
     test_ok(err2);
-    test_eq(read_bytes, 0);
-    test_eq(read_bytes, tmp.len);
     test_eq(tmp, "");
 }
 
@@ -259,9 +266,8 @@ fs_file_stream_create_twice_and_override :: fn () #test {
         test_ok(err);
         tmp := str_new();
         defer str_delete(&tmp);
-        read_bytes, err2 :: read_string(&stream, &tmp);
+        err2 :: read_string(&stream, &tmp);
         test_ok(err2);
-        test_eq(read_bytes, tmp.len);
         test_eq(tmp, "Hello!");
     }
 }
@@ -296,7 +302,7 @@ fs_write_raw :: fn () #test {
         defer close_file(&stream);
         tmp := str_new();
         defer str_delete(&tmp);
-        _, err :: read_string(&stream, &tmp);
+        err :: read_string(&stream, &tmp);
         test_ok(err);
         test_eq(tmp, content);
     }
@@ -321,10 +327,9 @@ fs_write_string :: fn () #test {
         defer close_file(&stream);
         tmp := str_new();
         defer str_delete(&tmp);
-        len, err :: read_string(&stream, &tmp);
+        err :: read_string(&stream, &tmp);
         test_ok(err);
         test_eq(tmp, content);
-        test_eq(len, tmp.len);
     }
 }
 
