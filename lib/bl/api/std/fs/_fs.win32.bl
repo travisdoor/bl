@@ -12,17 +12,16 @@ exist :: fn (filepath: string_view) bool #inline {
 
 open :: fn (filepath: string_view, mode: std.OpenFileMode) (File, Error) {
     if std.str_is_empty(filepath) { return null, error(ERR_INVALID_HANDLE, "File path is empty!"); }
-    access, create, append :: modes_to_flags(mode);
+    access, create :: modes_to_flags(mode);
     handle :: win32.CreateFile(std.strtoc(filepath), access, 0, null, create, win32.FILE_ATTRIBUTE_NORMAL, null);
     if handle == win32.INVALID_HANDLE_VALUE {
         ec, estr :: os_get_last_error();
         return null, error(ec, "Cannot open file '%': %", filepath, estr);
     }
-    write :: is_flag(access, win32.GENERIC_WRITE);
-    if write && !append {
-        win32.SetEndOfFile(handle);
-    } else if write {
+    if is_flag(access, win32.FILE_APPEND_DATA) {
         win32.SetFilePointer(handle, 0, null, win32.FILE_END);
+    } else if is_flag(access, win32.GENERIC_WRITE) {
+        win32.SetEndOfFile(handle);
     }
     return handle, OK;
 }
@@ -256,17 +255,18 @@ seek :: fn (stream: *std.FileStream, locator: std.StreamLocator, offset: s64) (s
 }
 
 #private
-modes_to_flags :: fn (modes: std.OpenFileMode) (access: u32, create: u32, append: bool) #inline {
+modes_to_flags :: fn (modes: std.OpenFileMode) (access: u32, create: u32) #inline {
+    using win32;
+    
     access: u32;
     create: u32;
-    append: bool;
-    if is_flag(modes, std.OpenFileMode.READ) { access = access | win32.GENERIC_READ; }
-    if is_flag(modes, std.OpenFileMode.WRITE) { access = access | win32.GENERIC_WRITE; }
-    if is_flag(modes, std.OpenFileMode.APPEND) { access = access | win32.GENERIC_WRITE; append = true; }
-    if is_flag(modes, std.OpenFileMode.CREATE) { create = win32.OPEN_ALWAYS; }
+    if is_flag(modes, std.OpenFileMode.READ) { access = access | GENERIC_READ; }
+    if is_flag(modes, std.OpenFileMode.WRITE) { access = access | GENERIC_WRITE; }
+    if is_flag(modes, std.OpenFileMode.APPEND) { access = access | FILE_APPEND_DATA; }
+    if is_flag(modes, std.OpenFileMode.CREATE) { create = OPEN_ALWAYS; }
     if access == 0 { access = win32.GENERIC_READ; }
     if create == 0 { create = win32.OPEN_EXISTING; }
-    return access, create, append;
+    return access, create;
 }
 
 remove_last_separator :: fn (path: *string) #inline {
