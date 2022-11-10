@@ -647,6 +647,8 @@ _Gl :: struct {
     DrawBuffers: *fn (n: GLsizei, bufs: *GLenum);
     ClearBufferuiv: *fn (buffer: GLenum, drawBuffer: GLint, value: *GLuint);
     GetString: *fn (name: GLenum) *GLubyte;
+    MapBuffer: *fn (target: GLenum, access: GLenum) *u8;
+    UnmapBuffer: *fn (target: GLenum) GLboolean;
 }
 
 gl: _Gl;

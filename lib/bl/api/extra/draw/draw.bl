@@ -654,7 +654,10 @@ delete_gl_buffers :: fn () {
 // Texture
 // =================================================================================================
 gl_init_texture_2d :: fn (texture: *Texture, texture_data: *u8) {
-    if texture.handle == 0 { gl.GenTextures(1, &texture.handle); }
+    if texture.handle != 0 { 
+        gl_terminate_texture(texture);
+    }
+    gl.GenTextures(1, &texture.handle); 
     gl.BindTexture(GL_TEXTURE_2D, texture.handle);
     defer gl.BindTexture(GL_TEXTURE_2D, 0);
     gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
@@ -692,6 +695,7 @@ gl_init_texture_2d :: fn (texture: *Texture, texture_data: *u8) {
 
 gl_terminate_texture :: fn (texture: *Texture) {
     gl.DeleteTextures(1, &texture.handle);
+    zeromem(auto texture, sizeof(Texture));
 }
 
 // =================================================================================================
