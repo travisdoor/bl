@@ -16,15 +16,38 @@ Add hash table.
 Add buffer allocator.
 Add using statement for scopes and enums.
 Add implicit conversion from string to slice []u8.
-Documentation format changed to markdown.
+Add naming of compound members for structs.
+Add release-with-debug-info target.
+Add realloc_slice.
+Add type alignment into the type info.
+Add #obsolete directive.
+Add silent-run compiler argument.
+Add call-stack getter for Windows and improve assert and panic reports.
+Add function name into code location.
+Add glwindow and draw modules + some example projects.
+Add #maybe_unused for function arguments.
+Add mixed function signature.
+Add Static Array and Bucket Array
 Fix crash on unnamed function argument RTTI generation.
-Fix crash when invlid type of default argument value is provided by user.
+Fix crash when invalid type of default argument value is provided by user.
 Fix invalid conversion of enum variants to Any.
 Fix DI locations using Code View.
 Fix generation of unused LLVM IR code paths.
 Fix missing usage check for symbols in named scope.
 Fix DWARF generation for local anonymous functions.
 Fix DI Generation of global variables using CodeView.
+Fix evaluation of multi-return and struct comptime functions.
+Fix conversion of constants into slice.
+Fix 0 size reported from sizeof for incomplete types.
+Fix implicit conversion of alignof to Any.
+Fix array type decomposition.
+Fix bug related to unresolved types waiting for self.
+Fix invalid binary operation volatile type borrowing for explicitly not matching types.
+Fix argparse issues in doctor.
+Fix emitting of string literals produced by compile time functions.
+Fix invalid resolving of named-scope nested symbols via explicit operator.
+Fix resume of postponed stack based call interpretations in compile-time. 
+Documentation format changed to markdown.
 Test cases are no longer reported as unused during compilation.
 Update dyncall to version 1.2 (due to experimental support of M1 Macs).
 Redesign allocator structure.
@@ -34,37 +57,15 @@ Redesign libc importing into modules.
 Redesign of bl-config + using YAML as main config format.
 Move file read/write into io module.
 Tags are now simple unsigned numbers.
-Fix evaluation of multi-return and struct comptime functions.
-Fix conversion of constants into slice.
 Change constant string representation from 'string' to 'string_view' aka []u8.
 Change syntax of compound initializers.
-Add naming of compound members for structs.
-Fix 0 size reported from sizeof for incomplete types.
-Fix implicit conversion of alignof to Any.
 Redesign memory allocators.
-Fix array type decomposition.
 Simplify error handling API.
-Add Static Array and Bucket Array
 Redesign hash table implementation.
-Fix bug related to unresolved types waiting for self.
 Simplified memory allocation API.
-Add release-with-debug-info target.
 Rename slice_init and slice_terminate to alloc_slice and free_slice.
-Add realloc_slice.
-Add type alignment into the type info.
-Add #obsolete directive.
-Fix invalid binary operation volatile type borrowing for explicitly not matching types.
-Fix argparse issues in doctor.
-Fix emitting of string literals produced by compile time functions.
-Add silent-run compiler argument.
-Add call-stack getter for Windows and improve assert and panic reports.
-Add function name into code location.
-Add glwindow and draw modules + some example projects.
-Add #maybe_unused for function arguments.
-Add mixed function signature.
 Improve compile time execution restore after postpone.
 Function arguments are now immutable.
-Fix invalid resolving of named-scope nested symbols via explicit operator.
 
 0.9.0 - PRE-RELEASE
 ---------------------------------------------------------------------------------------

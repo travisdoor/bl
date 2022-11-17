@@ -407,8 +407,7 @@ number_type :: fn (size_bytes: usize, is_signed: bool) type #comptime {
         8 { if is_signed { return s64; } return u64; }
         default;
     }
-    // Unsupported number type!
-    unreachable;
+    panic("Unsupported number type!");
     return s32;
 }
 
