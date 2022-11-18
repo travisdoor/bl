@@ -1819,6 +1819,11 @@ enum vm_interp_state interp_instr_call(struct virtual_machine *vm, struct mir_in
     bmagic_assert(fn);
 
     if (!fn->is_fully_analyzed) {
+        // In case the fetched callee value is coming from the stack, we have to push it back to the
+        // stack get proper address on next try!
+        if (!call->callee->value.is_comptime) {
+            stack_push(vm, callee_ptr, callee_ptr_type);
+        }
         return VM_INTERP_POSTPONE;
     }
     bassert(fn->type);

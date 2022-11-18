@@ -407,21 +407,36 @@ number_type :: fn (size_bytes: usize, is_signed: bool) type #comptime {
         8 { if is_signed { return s64; } return u64; }
         default;
     }
-    // Unsupported number type!
-    unreachable;
+    panic("Unsupported number type!");
     return s32;
 }
 
-/// Check in compile-time whether structure type `TStruct` contains member called `name`.
-has_member :: fn (TStruct: type #comptime, name: string_view) bool #comptime {
+/// Check in compile-time whether structure type `TStruct` contains member called `member_name`.
+has_member :: fn (TStruct: type #comptime, member_name: string_view) bool #comptime {
     info :: cast(*TypeInfoStruct) typeinfo(TStruct);
     if info.kind != TypeKind.STRUCT { return false; }
     loop i := 0; i < info.members.len; i += 1 {
-        if std.str_match(info.members[i].name, name) {
+        if std.str_match(info.members[i].name, member_name) {
             return true;
         }
     }
     return false;
+}
+
+// Resolve structure member `member_name` offset in bytes inside the `TStruct` memory layout.
+member_offset_bytes :: fn (TStruct: type #comptime, member_name: string_view) usize #comptime {
+    info :: cast(*TypeInfoStruct) typeinfo(TStruct);
+    if info.kind != TypeKind.STRUCT {
+        panic("TStruct is supposed to be a structure type.");
+    }
+    loop i := 0; i < info.members.len; i += 1 {
+        member :: &info.members[i];
+        if std.str_match(member.name, member_name) {
+            return auto member.offset_bytes;
+        }
+    }
+    panic("No such member '%' in the structure '%'.", member_name, TStruct);
+    return 0;
 }
 
 #private

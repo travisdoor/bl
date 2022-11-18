@@ -45,8 +45,9 @@
 /// }
 /// ```
 Table :: fn (TKey: type #comptime, TValue: type #comptime) type #comptime {
-    // The key type must be string, number, pointer or string_view.
-    static_assert(TKey == string || is_number(TKey) || is_pointer(TKey) || TKey == string_view);
+    if TKey != string  && TKey != string_view && (!is_number(TKey)) && (!is_pointer(TKey)) {
+        panic("Table key value must be string, string_view, number or pointer type!");
+    }
     return struct {
         slots: []Slot;
         // @Performance: mdorazil <2022-06-13> Maybe we don't want to use dynamic arrays

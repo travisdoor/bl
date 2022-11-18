@@ -352,3 +352,13 @@ has_member_1 :: fn () #test {
     test_true(has_member(Foo, "first"));
     test_true(has_member(Foo, "second"));
 }
+
+member_offset :: fn () #test {
+    Foo :: struct {
+        first: s32;
+        second: s32;
+    };
+
+    test_eq(member_offset_bytes(Foo, "first"), 0);
+    test_eq(member_offset_bytes(Foo, "second"), sizeof(Foo.first));
+}

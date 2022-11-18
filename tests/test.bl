@@ -24,15 +24,16 @@ bytes_to_value :: fn (TValue: type #comptime, bytes: []u8) TValue {
 */
 
 main :: fn () s32 {
-    foo: draw.Shader;
+    member_offset_bytes(Foo, "a");
+    member_offset_bytes(Foo, "12");
     return 0;
 }
 
-#scope draw
-
-Shader :: struct {
-    i: s32;
+Foo :: struct {
+    a: s32;
+    b: s32;
 }
+
 
 
 /* un-comment while fixing using propagation into local functions.
