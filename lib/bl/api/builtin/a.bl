@@ -439,4 +439,9 @@ member_offset_bytes :: fn (TStruct: type #comptime, member_name: string_view) us
     return 0;
 }
 
+// Resolve pointer to a structure member relative to the structure `base_ptr`.
+member_ptr :: fn (base_ptr: *u8, member: *TypeInfoStructMember) *u8 #inline {
+    return ptr_shift_bytes(base_ptr, member.offset_bytes);
+}
+
 #private
