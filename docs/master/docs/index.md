@@ -12,13 +12,13 @@ yet. Biscuit is designed to be simple, fast and explicit.
 - Integrated interpreter.
 - Offer testing tools out of the box.
 - Rich type info in runtime.
-- Debuggable in gdb, lldb and Visual Studio.
+- Debugging in gdb, lldb and Visual Studio.
 
 ## Current master (0.10.0)
 
 The latest unstable version of the compiler.
 
-- [Documentation](language.md)
+- [Documentation](book/introduction/)
 - [Source Code](https://github.com/travisdoor/bl)
 
 ### Changelog
