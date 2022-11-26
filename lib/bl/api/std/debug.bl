@@ -37,12 +37,17 @@
 /// Print debug log using current application_context `print_log_fn` function.
 print_log :: fn (format: string_view, args: ...) #inline {
     application_context.print_log_fn(PrintLogKind.MESSAGE, "", 0, format, args);
-};
+}
+
+/// Print debug info using current application_context `print_log_fn` function.
+print_info :: fn (format: string_view, args: ...) #inline {
+    application_context.print_log_fn(PrintLogKind.INFO, "", 0, format, args);
+}
 
 /// Print debug warning using current application_context `print_log_fn` function.
 print_warn :: fn (format: string_view, args: ...) #inline {
     application_context.print_log_fn(PrintLogKind.WARNING, "", 0, format, args);
-};
+}
 
 /// Print debug error using current application_context.print_log_fn function.
 print_err :: fn { print_err_e; print_err_msg; }
@@ -88,8 +93,10 @@ panic :: fn { panic_empty; panic_error; panic_msg; }
 
 /// Kinds of log messages.
 PrintLogKind :: enum u8 {
-    /// Ordinary debug log message.
+    /// Debug log message.
     MESSAGE;
+    /// Informative log message.
+    INFO;
     /// Warning log message.
     WARNING;
     /// Error log message.
@@ -123,6 +130,7 @@ __print_log_default :: fn (kind: PrintLogKind, file: string_view, line: s32, for
     w: s32;
     switch kind {
         PrintLogKind.MESSAGE { tag = "log"; }
+        PrintLogKind.INFO    { tag = "info"; }
         PrintLogKind.WARNING { tag = "warning"; }
         PrintLogKind.ERROR   { tag = "error";  output_stream = os_stderr(); }
         PrintLogKind.ASSERT  { tag = "assert"; output_stream = os_stderr(); }
