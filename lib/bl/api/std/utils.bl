@@ -114,16 +114,6 @@ make_flags :: fn (f1: ?T, other: ...T) T {
     return result;
 }
 
-/// Produce right-shift of input `ptr` by count of `bytes`.
-ptr_shift_bytes :: fn (ptr: *?T, bytes: s64) *T #inline {
-    return auto (cast(s64) ptr + bytes);
-};
-
-/// Calculates pointer difference `a` - `b`.
-ptr_diff :: fn (a: *?T1, b: *?T2) s64 #inline {
-    return (cast(s64) a) - (cast(s64) b); 
-}
-
 /// Reads environment variable specified by `var` name. Result is empty in case no such variable was 
 /// found or has no content. It's caller responsibility to delete result string.
 env_get :: fn (var: string_view) string {

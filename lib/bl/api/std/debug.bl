@@ -86,8 +86,8 @@ __assert_default :: fn (message: string_view, loc: *CodeLocation) {
 /// ```
 /// panic(); // abort without any messages
 /// panic(error); // abort with [Error](#error).
-/// panic("oops!"); // abort with message prited out.
-/// panic("Failed with error: %", errn); // first argument passed acts like formating string
+/// panic("oops!"); // abort with message printed out.
+/// panic("Failed with error: %", errn); // first argument passed acts like formatting string
 /// ```
 panic :: fn { panic_empty; panic_error; panic_msg; }
 
@@ -107,7 +107,8 @@ PrintLogKind :: enum u8 {
     PANIC;
 };
 
-/// Print current stack trace into stdout. Does nothing in release modes.
+/// Print current stack trace into stdout. Does nothing in release modes (stack trace information is
+/// available only when the debug info is in place).
 print_backtrace :: fn (skip_frames := 0) #inline {
     trace: []CodeLocation;
 #if IS_DEBUG {

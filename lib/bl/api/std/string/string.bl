@@ -746,7 +746,7 @@ chartostr :: fn (char: u8) string_view #inline {
 
 make_string :: fn (data: string_view, cap: s64, allocator: *Allocator) string {
     tmp : string #noinit;
-    tmp.ptr = realloc_block(null, 0, auto cap, allocator);
+    tmp.ptr = realloc_block(null, auto cap, allocator);
     tmp.len = data.len;
     memcpy(tmp.ptr, data.ptr, auto data.len);
     set_terminator(&tmp);
@@ -782,18 +782,17 @@ make_more_room_if_needed :: fn (orig_ptr: *u8, size: usize) *u8 {
     allocated :: head.allocated_size;
     allocator :: head.allocator;
     if size > allocated { 
-        return realloc_block(orig_ptr, allocated, size, allocator); 
+        return realloc_block(orig_ptr, size, allocator); 
     } 
     return orig_ptr;
 }
 
-realloc_block :: fn (old_ptr: *u8, old_size: usize, size: usize, allocator: *Allocator) *u8 {
+realloc_block :: fn (ptr: *u8, size: usize, allocator: *Allocator) *u8 {
     d             :: size / STRING_BLOCK_SIZE + 1;
     extended_size :: d * STRING_BLOCK_SIZE;
 
     mem, err :: realloc(
-        get_allocation_ptr(old_ptr),
-        get_allocation_size(old_size),
+        get_allocation_ptr(ptr),
         get_allocation_size(extended_size),
         alignof(u8),
         allocator
