@@ -15,12 +15,13 @@ SKIP :: [1]Test.{
     }
 };
 
-MISC :: [5]Test.{
+MISC :: [6]Test.{
     Test.{ name = "docs/master/make.bl",       kind = TestKind.COMPILE },
     Test.{ name = "how-to/gunner",             kind = TestKind.BUILD, platform = Platform.WINDOWS },
     Test.{ name = "how-to/glwindow_gunner",    kind = TestKind.BUILD, platform = Platform.WINDOWS },
     Test.{ name = "how-to/glwindow_creation",  kind = TestKind.BUILD, platform = Platform.WINDOWS },
     Test.{ name = "tests/build_api_test",      kind = TestKind.BUILD },
+    Test.{ name = "tests/library",             kind = TestKind.BUILD, platform = Platform.WINDOWS },
 };
 
 MODULES :: [14]string_view.{
