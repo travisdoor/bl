@@ -835,6 +835,9 @@ LLVMValueRef emit_fn_proto(struct context *ctx, struct mir_fn *fn, bool schedule
         LLVMAddAttributeAtIndex(fn->llvm_value, (unsigned)LLVMAttributeFunctionIndex, llvm_attr);
     }
     if (isflag(fn->flags, FLAG_EXPORT)) {
+        bassert(fn->is_global && "Exported function is supposed to be global!");
+        LLVMSetVisibility(fn->llvm_value, LLVMDefaultVisibility);
+        LLVMSetDLLStorageClass(fn->llvm_value, LLVMDLLExportStorageClass);
     } else if (isnotflag(fn->flags, FLAG_EXTERN) && isnotflag(fn->flags, FLAG_INTRINSIC)) {
         LLVMSetVisibility(fn->llvm_value, LLVMHiddenVisibility);
     }
