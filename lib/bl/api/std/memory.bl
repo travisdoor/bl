@@ -431,7 +431,7 @@ default_allocator_handler :: fn (
 #if PLATFORM == Platform.WINDOWS {
             mem = C.aligned_realloc(ptr, size, alignment);
 } else {
-            mem = C.realloc(ptr, new_size);
+            mem = C.realloc(ptr, size);
 }
             if !mem { return null, error("Bad reallocation."); }
             return mem, OK;
