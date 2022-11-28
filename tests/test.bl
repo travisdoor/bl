@@ -1,3 +1,5 @@
+#import "std/async"
+
 /*
 
 TODO:
@@ -16,21 +18,43 @@ bytes_to_value :: fn (TValue: type #comptime, bytes: []u8) TValue {
     return tmp;
 }
 */
-
-main :: fn () s32 {
-    member_offset_bytes(Foo, "a");
-    member_offset_bytes(Foo, "12");
-    return 0;
-}
-
-Foo :: struct {
-    a: s32;
-    b: s32;
-}
-
 /* un-comment while fixing using propagation into local functions.
 list_dir :: fn (paths: *[..]string_view, dir: string_view) {
     using std;
     foo :: fn (i: *Info) {};
 }
 */
+
+main :: fn () s32 {
+    using std;
+    one: Async(s32, string_view);
+    two: Async(s32, string_view);
+
+    async(&one, 5, &fn (count: s32) string_view {
+        loop i := 0; i < count; i += 1 {
+            tprint("Fooo");
+            os_sleep_ms(5);
+        }
+        return "ONE IS DONE";
+    });
+    
+    async(&two, 10, &fn (count: s32) string_view {
+        loop i := 0; i < count; i += 1 {
+            tprint("Booo");
+            os_sleep_ms(1);
+        }
+        return "TWO IS DONE";
+    });
+
+    result_one :: async_wait(&one);
+    print("Result = %\n", result_one);
+    
+    result_two :: async_wait(&two);
+    print("Result = %\n", result_two);
+
+    print("DONE\n");
+    return 0;
+}
+
+number : s32 = 10 #thread_local;
+

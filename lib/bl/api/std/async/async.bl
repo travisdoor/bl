@@ -1,0 +1,66 @@
+//! # Async Job System 
+//! 
+//! ```
+//! #import "std/async"
+//! ```
+//! 
+//! Async module provides high-level interface for thread manipulation. In general, it's suitable for longer running
+//! parallel tasks expecting some input context and results returned back to the caller.
+//!
+//! > **Warning:**
+//! This module is in experimental state, new features or API changes may come in the future. 
+
+#import "std/thread"
+
+#scope std
+
+/// Asynchronous task context holder holding internally created thread instance, input and output data of the worker
+/// function. Instance of this type is supposed to be initialized exclusively in [async](#async) function call and its
+/// content is internal.
+Async :: fn (TWorkerContext: type #comptime, TResult: type #comptime) type #comptime {
+    return struct {
+        thread: Thread;
+        result: TResult;
+        worker_context: TWorkerContext;
+        worker: *fn (ctx: TWorkerContext) TResult;
+    };
+}
+
+/// Setup the async `ctx` context structure and starts internally a new thread executing the `worker` function. The 
+/// worker runtime context must be specified as `worker_context`. The execution (worker return) result value is not
+/// returned immediately since call to this function is not blocking. Use [async_wait](#async_wait) to get the cached 
+/// result value back.
+async :: fn (
+    ctx: *?TAsync, 
+    worker_context: async_typeof_worker_context(TAsync), 
+    worker: *fn (ctx: async_typeof_worker_context(TAsync)) async_typeof_result(TAsync)
+) {
+    ctx.worker = worker;
+    ctx.worker_context = worker_context;
+
+    thread, thread_err :: thread_create(auto &fn (ctx: *TAsync) s32 {
+        ctx.result = ctx.worker(ctx.worker_context);
+        temporary_release();
+        return 0;
+    }, auto ctx);
+
+    if thread_err { panic(thread_err); }
+    ctx.thread = thread;
+}
+
+/// Wait for the async job, executed by [async](#async) call, to finish. This function blocks until the underlying job's
+/// thread exits. The result value is returned on success.
+async_wait :: fn (ctx: *?TAsync) async_typeof_result(TAsync) #inline {
+    _, err :: thread_join(ctx.thread);
+    if err { panic(err); }
+    return ctx.result;
+}
+
+#private
+async_typeof_worker_context :: fn (TAsync: type #comptime) type #comptime {
+    return TAsync.worker_context;
+}
+
+async_typeof_result :: fn (TAsync: type #comptime) type #comptime {
+    return TAsync.result;
+}

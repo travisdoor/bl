@@ -1,31 +1,3 @@
-// =================================================================================================
-// bl
-//
-// File:   memory.bl
-// Author: Martin Dorazil
-// Date:   13/8/19
-//
-// Copyright 2018 Martin Dorazil
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-// =================================================================================================
-
 //! # Memory
 //! 
 //! ```
@@ -56,7 +28,7 @@ DEFAULT_ALIGNMENT : usize : alignof(f64);
 /// Default memory allocator using libc malloc internally.
 default_allocator :: Allocator.{ handler = &default_allocator_handler };
 
-/// Default temporary allocator instance using pool internally.
+/// Default temporary allocator instance using pool internally (by default set into the application context).
 ///
 /// The temporary allocator (used i.e. by [tprint](print.md#tprint) function) is useful in cases we
 /// don't need to keep allocated memory for a long period of time. In general in such a case we allocate,
@@ -70,6 +42,10 @@ default_allocator :: Allocator.{ handler = &default_allocator_handler };
 ///
 /// When temporary allocator is not needed anymore, [temporary_release](temporary_release) shall be called to
 /// free all internally preallocated blocks.
+///
+/// Underlying allocator works with thread-local data storage (it's safe to use it in threads without any synchronization
+/// required). But, when used from thread, each thread-local instance must be terminated by [temporary_release](#temporary_release)
+/// call. In case you use `async` module the release is called automatically when internal threads exits.
 ///
 /// ### Example
 ///
@@ -97,10 +73,6 @@ default_allocator :: Allocator.{ handler = &default_allocator_handler };
 /// > **Note:**
 /// The temporary allocator internally use [pool allocator](pool.md#pool_allocator), see the documentation for
 /// more details.
-///
-/// > **Note:**
-/// Temporary allocator instance is thread-local, [temporary_release](#temporary_release) should be called
-/// at-exit of all threads if it's used.
 default_temporary_allocator :: Allocator.{ handler = &temporary_allocator_handler };
 
 /// Specify allocator opratation.
@@ -362,8 +334,8 @@ slice_range :: fn (slice: []?T, start: s64, end: s64 = -1) []T #inline {
     return []T.{len, auto ptr_shift_bytes(slice.ptr, start * cast(s64) sizeof(T))};
 }
 
-/// Reduce allocated memory in temporary allocator storage, but keeps biggest allocated chunk
-/// for the later use.
+/// Reduce allocated memory in application context temporary allocator storage, but keeps biggest allocated chunk for 
+/// the later use.
 ///
 /// > **Warning:**
 /// All resources previously allocated by this allocator became invalid after reset.
@@ -371,13 +343,10 @@ slice_range :: fn (slice: []?T, start: s64, end: s64 = -1) []T #inline {
 /// > **Note:**
 /// Call this method i.e. in every event loop (update) iteration.
 temporary_reset :: fn () #inline {
-    // @Incomplete: use allocator from application context!!!
-    // @Incomplete: use allocator from application context!!!
-    // @Incomplete: use allocator from application context!!!
-    std.pool_reset(&temporary_pool);
+    std.pool_reset(auto application_context.temporary_allocator);
 }
 
-/// Release all memory allocated by temporary allocator.
+/// Release all memory allocated by the application context temporary allocator.
 ///
 /// > **Warning:**
 /// All resources previously allocated by this allocator became invalid after release.
@@ -385,10 +354,7 @@ temporary_reset :: fn () #inline {
 /// > **Note:**
 /// This method is implicitly called at exit of executable (after main).
 temporary_release :: fn () #inline {
-    // @Incomplete: use allocator from application context!!!
-    // @Incomplete: use allocator from application context!!!
-    // @Incomplete: use allocator from application context!!!
-    std.pool_release(&temporary_pool);
+    std.pool_release(auto application_context.temporary_allocator);
 }
 
 /// Produce right-shift of input `ptr` by count of `bytes`.
