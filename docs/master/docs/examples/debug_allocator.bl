@@ -7,7 +7,7 @@ main :: fn () s32 {
     // Initialize debug allocator with current context allocator.
     debug_allocator = debug_allocator_make(application_context.allocator);
     // Always cleanup at the end of the scope.
-    defer debug_allocator_terminate(&debug_allocator);
+    defer debug_allocator_release(&debug_allocator);
 
     // Some leaking memory.
     alloc(128, DEFAULT_ALIGNMENT, &debug_allocator);

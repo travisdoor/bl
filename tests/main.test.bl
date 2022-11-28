@@ -7,7 +7,7 @@ debug_allocator: std.DebugAllocator;
 main :: fn () s32 {
     using std;
     debug_allocator = debug_allocator_make(application_context.allocator);
-    defer debug_allocator_terminate(&debug_allocator);
+    defer debug_allocator_release(&debug_allocator);
     application_context.allocator = &debug_allocator;
     application_context.print_log_fn = &my_logger;
 

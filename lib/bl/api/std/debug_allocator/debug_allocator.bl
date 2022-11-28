@@ -43,6 +43,14 @@
 //! Each allocation takes more space due to meta data beeing stored. This allocator also should not be
 //! used in production code since it's way much slower than regular allocators.
 //!
+//! ### Supported Operation
+//! 
+//!     - [x] Allocate
+//!     - [x] Reallocate
+//!     - [x] Free
+//!     - [x] Release
+//!     - [ ] Reset
+//!
 //! ### Example
 //!
 //! ```c
@@ -56,16 +64,16 @@
 //! Dump memory leaks end.
 //! ```
 //!
-//! > **Note:**
-//! Debug allocator can be used as global application allocator to catch all possible memory leaks
-//! and other issues.
+//! !!! note
+//!     Debug allocator can be used as global application allocator to catch all possible memory leaks
+//!     and other issues.
 //! 
-//! > **Note:**
-//! Debug allocator is thread safe.
+//! !!! note
+//!     Debug allocator is thread safe.
 //!
-//! > **Note:**
-//! Memory freed by this allocator is set to 0xdddddddd, if you see such a pattern in the debugger, you
-//! are probably trying to use already freed memory.
+//! !!! note
+//!     Memory freed by this allocator is set to 0xdddddddd, if you see such a pattern in the debugger, you
+//!     are probably trying to use already freed memory.
 
 DebugAllocator :: struct #base Allocator {
     mutex: std.Mutex;
@@ -87,9 +95,8 @@ debug_allocator_make :: fn (allocator: *Allocator) DebugAllocator {
 }
 
 /// Release debug allocator resources.
-debug_allocator_terminate :: fn (dbgalloc: *DebugAllocator) {
-    std.tbl_terminate(&dbgalloc.alloc_table);
-    std.mutex_terminate(&dbgalloc.mutex);
+debug_allocator_release :: fn (dbgalloc: *DebugAllocator) #inline {
+    release_allocator(auto dbgalloc);
 }
 
 /// Invoke `debug_break` before allocation with defined serial ID.
@@ -132,13 +139,13 @@ debug_allocator_get_allocation_size :: fn (dbgalloc: *DebugAllocator, ptr: *u8) 
 /// Dump memory leaks end.
 /// ``` 
 /// 
-/// > **Note:**
-/// Printed report contains all remaining (not freed) allocations in time when function was
-/// called. Memory leaks can contain false-positives when function is called before execution end.
+/// !!! note
+///     Printed report contains all remaining (not freed) allocations in time when function was
+///     called. Memory leaks can contain false-positives when function is called before execution end.
 /// 
-/// > **Note:**
-/// Allocation serail ID can be used by [debug_allocator_break](#debug_allocator_break) to interrupt
-/// execution before memory is allocated and eventually localize allocation in debbuger.
+/// !!! note
+///     Allocation serail ID can be used by [debug_allocator_break](#debug_allocator_break) to interrupt
+///     execution before memory is allocated and eventually localize allocation in debbuger.
 print_memory_report :: fn (dbgalloc: *DebugAllocator, dump_leaks := false) {
     std.mutex_lock(&dbgalloc.mutex);
     defer std.mutex_unlock(&dbgalloc.mutex);
@@ -207,7 +214,14 @@ handler :: fn (dbgalloc: *DebugAllocator, operation: AllocOp, ptr: *u8, size: us
                 free(ptr, dbgalloc.allocator);
             }
         }
-        default { panic(); }
+        RELEASE {
+            std.tbl_terminate(&dbgalloc.alloc_table);
+            std.mutex_terminate(&dbgalloc.mutex);
+        }
+        RESET {
+            panic("Unsupported operation: %.", operation);
+        }
+        default { panic("Unknown operation."); }
     }
     return null, OK;
 }

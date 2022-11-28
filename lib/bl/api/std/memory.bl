@@ -26,6 +26,15 @@
 DEFAULT_ALIGNMENT : usize : alignof(f64);
 
 /// Default memory allocator using libc malloc internally.
+///
+/// ### Supported Operation
+/// 
+///     - [x] Allocate
+///     - [x] Reallocate
+///     - [x] Free
+///     - [ ] Release
+///     - [ ] Reset
+///
 default_allocator :: Allocator.{ handler = &default_allocator_handler };
 
 /// Default temporary allocator instance using pool internally (by default set into the application context).
@@ -70,9 +79,9 @@ default_allocator :: Allocator.{ handler = &default_allocator_handler };
 /// }
 /// ```
 ///
-/// > **Note:**
-/// The temporary allocator internally use [pool allocator](pool.md#pool_allocator), see the documentation for
-/// more details.
+/// !!! note
+///     The temporary allocator internally use [pool allocator](pool.md#pool_allocator), see the documentation for
+///     more details.
 default_temporary_allocator :: Allocator.{ handler = &temporary_allocator_handler };
 
 /// Specify allocator opratation.
@@ -83,6 +92,10 @@ AllocOp :: enum {
     REALLOCATE;
     /// Free of previously allocated memory. This operation is optional (i.e. for pools).
     FREE;
+    /// Reset the allocated resources, but keep them for later use.
+    RESET;
+    /// Release all resources but keep the allocator instance in initialized state.
+    RELEASE;
 }
 
 /// Allocator handle function type.
@@ -172,6 +185,20 @@ free :: fn (ptr: *u8, preferred_allocator: *Allocator = null, loc := #call_locat
     allocator.handler(allocator, AllocOp.FREE, ptr, 0 /* size */, 0 /* alignment */, loc.file, loc.line);
 }
 
+/// Invoke the reset operation on the `allocator`. If supported, the `allocator` should reset its internal state (make
+/// all allocation invalid) and reuse already allocated memory eventually for following allocations.
+reset_allocator :: fn (allocator: *Allocator, loc := #call_location) #inline {
+    assert(allocator.handler);
+    allocator.handler(allocator, AllocOp.RESET, null, 0, 0, loc.file, loc.line);
+}
+
+/// Invoke the release operation on the `allocator`. If supported the allocator should release all resources and free
+/// all allocated memory. 
+release_allocator :: fn (allocator: *Allocator, loc := #call_location) #inline {
+    assert(allocator.handler);
+    allocator.handler(allocator, AllocOp.RELEASE, null, 0, 0, loc.file, loc.line);
+}
+
 /// Copy memory of defined `size` from `source` to `destination`. Destination and source size must be at least
 /// `size` bytes.
 memcpy :: fn (destination: *u8, source: *u8, size: usize) {
@@ -239,8 +266,8 @@ is_aligned :: fn (ptr: *?T, alignment: usize) bool #inline {
 /// Align pointer `p` to `alignment` and return adjusted pointer and number of bytes needed for 
 /// adjustment.
 ///
-/// > **Warning:**
-/// Cause panic when alignment is not power of two.
+/// !!! warning
+///     Cause panic when alignment is not power of two.
 align_ptr_up :: fn (p: *u8, alignment: usize) (p: *u8, adjustment: usize)
 {
     if is_aligned(p, alignment) { return p, 0; }
@@ -278,8 +305,8 @@ align_ptr_up :: fn (p: *u8, alignment: usize) (p: *u8, adjustment: usize)
 /// }
 /// ```
 ///
-/// > **Note:**
-/// Zero initialization of allocated memory block can be expensive in case of large number of elements.
+/// !!! note
+///     Zero initialization of allocated memory block can be expensive in case of large number of elements.
 alloc_slice :: fn (slice: *[]?T, n: s64, zero_initialized := true, allocator: *Allocator = null, loc := #call_location) Error {
     if n < 0 { panic("Attempt to allocate % elements in slice!", n); }
     if n == 0  {
@@ -299,8 +326,8 @@ alloc_slice :: fn (slice: *[]?T, n: s64, zero_initialized := true, allocator: *A
 
 /// Release slice memory allocated by [alloc_slice](#alloc_slice) call.
 ///
-/// > **Warning:**
-/// The `allocator` must match the allocator used in ``alloc_slice``.
+/// !!! warning
+///     The `allocator` must match the allocator used in ``alloc_slice``.
 free_slice :: fn (slice: *[]?T, allocator: *Allocator = null, loc := #call_location) {
     if slice.ptr {
         free(auto slice.ptr, allocator, loc);
@@ -322,8 +349,8 @@ free_slice :: fn (slice: *[]?T, allocator: *Allocator = null, loc := #call_locat
 /// end <= slice.len
 /// ```
 ///
-/// > **Warning:**
-/// Function cause panic in case combination of `start` and `end` is out of `slice` range.
+/// !!! warning
+///     Function cause panic in case combination of `start` and `end` is out of `slice` range.
 slice_range :: fn (slice: []?T, start: s64, end: s64 = -1) []T #inline {
     e := end; 
     if e < 0 { e = slice.len; }
@@ -337,24 +364,24 @@ slice_range :: fn (slice: []?T, start: s64, end: s64 = -1) []T #inline {
 /// Reduce allocated memory in application context temporary allocator storage, but keeps biggest allocated chunk for 
 /// the later use.
 ///
-/// > **Warning:**
-/// All resources previously allocated by this allocator became invalid after reset.
+/// !!! warning
+///     All resources previously allocated by this allocator became invalid after reset.
 ///
-/// > **Note:**
-/// Call this method i.e. in every event loop (update) iteration.
+/// !!! note
+///     Call this method i.e. in every event loop (update) iteration.
 temporary_reset :: fn () #inline {
-    std.pool_reset(auto application_context.temporary_allocator);
+    reset_allocator(application_context.temporary_allocator);
 }
 
 /// Release all memory allocated by the application context temporary allocator.
 ///
-/// > **Warning:**
-/// All resources previously allocated by this allocator became invalid after release.
+/// !!! warning
+///     All resources previously allocated by this allocator became invalid after release.
 ///
-/// > **Note:**
-/// This method is implicitly called at exit of executable (after main).
+/// !!! note
+///     This method is implicitly called at exit of executable (after main).
 temporary_release :: fn () #inline {
-    std.pool_release(auto application_context.temporary_allocator);
+    release_allocator(application_context.temporary_allocator);
 }
 
 /// Produce right-shift of input `ptr` by count of `bytes`.
@@ -409,8 +436,12 @@ default_allocator_handler :: fn (
             C.free(ptr);
 }
         }
+        
+        RESET, RELEASE {
+            panic("Unsupported operation: %.", operation);
+        }
 
-        default { panic(); }
+        default { panic("Unknown operation."); }
     }
     return null, OK;
 }

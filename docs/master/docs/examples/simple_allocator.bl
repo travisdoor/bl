@@ -42,6 +42,11 @@ my_allocator_handler :: fn (
         FREE {
             print("Free called from %:%.", file, line);
         }
+        RESET, RELEASE {
+            panic("Unsupported operation: %.", operation);
+        }
+
+        default { panic("Unknown operation."); }
     }
     return null, OK;
 }

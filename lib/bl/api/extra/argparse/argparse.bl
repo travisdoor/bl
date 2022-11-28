@@ -77,11 +77,11 @@ terminate :: fn (parser: *Parser) {
 /// name is optional. The `help` is optional user friendly hint message printed with help. In case `is_required` is
 /// `true`, the argument must be provided by user every time.
 ///
-/// > **Note:**
-/// String values must be allocated before any parsing is done.
+/// !!! note
+///     String values must be allocated before any parsing is done.
 ///
-/// > **Warning:**
-/// Argument parser internally does NOT duplicate any argument related metadata (i.e. long name).
+/// !!! warning
+///     Argument parser internally does NOT duplicate any argument related metadata (i.e. long name).
 add :: fn (parser: *Parser, target: *?T, long: string_view, short := "", help := "", is_required := false) {
     add_impl(parser, typeinfo(T), auto target, long, short, help, is_required, /* is_positional = */ false);
 }

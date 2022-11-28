@@ -144,14 +144,6 @@ test_str_compare2 :: fn () #test {
     test_false(std.str_match("b", "", 1)); 
 }
 
-test_str_to_s64 :: fn () #test {
-    test_eq(std.str_to_s64(""), 0);
-    test_eq(std.str_to_s64("1"), 1);
-    test_eq(std.str_to_s64("654132"), 654132);
-    test_eq(std.str_to_s64("-1"), -1);
-    test_eq(std.str_to_s64("-654132"), -654132);
-}
-
 test_strtos64 :: fn () #test {
     using std;
     {
@@ -252,54 +244,6 @@ test_strtof64 :: fn () #test {
         v, err :: strtof64("-.");
         test_not_ok(err);
     }
-}
-
-test_str_to_f32 :: fn () #test {
-    test_eq(std.str_to_f32(""), 0.f);
-    test_eq(std.str_to_f32("1.1"), 1.1f);
-    test_eq(std.str_to_f32("654132.02"), 654132.02f);
-    test_eq(std.str_to_f32("-1.0"), -1.f);
-    test_eq(std.str_to_f32("-654.132"), -654.132f);
-}
-
-test_str_to_lower :: fn () #test {
-    tmp := std.str_new();
-    defer std.str_delete(&tmp);
-
-    std.str_clear(&tmp);
-    std.str_append(&tmp, "");
-    std.str_to_lower(tmp);
-    test_eq(tmp, "");
-
-    std.str_clear(&tmp);
-    std.str_append(&tmp, "AaAaa AAa ");
-    std.str_to_lower(tmp);
-    test_eq(tmp, "aaaaa aaa ");
-
-    std.str_clear(&tmp);
-    std.str_append(&tmp, "0123456789~!@#$%^&*()_+");
-    std.str_to_lower(tmp);
-    test_eq(tmp, "0123456789~!@#$%^&*()_+");
-}
-
-test_str_to_upper :: fn () #test {
-    tmp := std.str_new();
-    defer std.str_delete(&tmp);
-
-    std.str_clear(&tmp);
-    std.str_append(&tmp, "");
-    std.str_to_upper(tmp);
-    test_eq(tmp, "");
-
-    std.str_clear(&tmp);
-    std.str_append(&tmp, "AaAaa AAa ");
-    std.str_to_upper(tmp);
-    test_eq(tmp, "AAAAA AAA ");
-
-    std.str_clear(&tmp);
-    std.str_append(&tmp, "0123456789~!@#$%^&*()_+");
-    std.str_to_upper(tmp);
-    test_eq(tmp, "0123456789~!@#$%^&*()_+");
 }
 
 test_str_replace1 :: fn () #test {

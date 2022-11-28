@@ -7,8 +7,8 @@
 //! Async module provides high-level interface for thread manipulation. In general, it's suitable for longer running
 //! parallel tasks expecting some input context and results returned back to the caller.
 //!
-//! > **Warning:**
-//! This module is in experimental state, new features or API changes may come in the future. 
+//! !!! warning 
+//!     This module is in experimental state, new features or API changes may come in the future. 
 
 #import "std/thread"
 

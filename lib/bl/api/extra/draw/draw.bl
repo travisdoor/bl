@@ -67,8 +67,8 @@
 ///
 /// The `gl_init` function is called internally.
 ///
-/// > **Note:**
-/// Window resizing is not supported right now.
+/// !!! note
+///     Window resizing is not supported right now.
 init :: fn (viewport_width: s32, viewport_height: s32) Error {
     gl_init();
     current_gl_major_version, current_gl_minor_version :: gl_get_version_numbers();
