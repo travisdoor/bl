@@ -28,6 +28,7 @@ my_logger :: fn (kind: PrintLogKind, file: string_view, line: s32, format: strin
     w: s32;
     switch kind {
         PrintLogKind.MESSAGE { return; }
+        PrintLogKind.INFO    { return; }
         PrintLogKind.WARNING { return; }
         PrintLogKind.ERROR   { tag = "error";  output_stream = os_stderr(); }
         PrintLogKind.ASSERT  { tag = "assert"; output_stream = os_stderr(); }

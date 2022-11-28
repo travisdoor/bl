@@ -4,26 +4,22 @@ MyAllocator :: struct #base Allocator {
 }
 
 allocator_make :: fn (buffer: []u8) MyAllocator {
-    allocator: MyAllocator;
-    allocator.handler = auto &my_allocator_handler;
-    allocator.buffer = buffer;
-    allocator.used_bytes = 0;
-    return allocator;
+    return MyAllocator.{
+        base = Allocator.{ auto &my_allocator_handler },
+        buffer = buffer,
+        used_bytes = 0,
+    };
 }
 
 my_allocator_handler :: fn (
     allocator: *MyAllocator,
     // Operation specify whether we do allocation or free.
     operation: AllocOp,
-    // This is pointer to allocation to be freed, this value is set only when
-    // operation is free.
-    old_ptr: *u8,
-    // Size of previous allocation (used for realloc).
-    old_size: usize,
-    // Count of bytes to be allocated, this value is set only when operation
-    // is allocation.
-    new_size: usize,
-    // Allocation allignment,
+    // Pointer to the previously allocated memory. 
+    ptr: *u8,
+    // Count of bytes to be allocated.
+    size: usize,
+    // Allocation allignment.
     alignment: usize,
     // Source file where allocator was called.
     file: string_view,
@@ -33,16 +29,19 @@ my_allocator_handler :: fn (
     using AllocOp;
     switch operation {
         ALLOCATE   {
-            return allocate(allocator, new_size, alignment);
+            print("Allocate %B called from %:%.", size, file, line);
+            return allocate(allocator, size, alignment);
         }
         REALLOCATE {
-            mem, err :: allocate(allocator, new_size, alignment);
-            if err { return mem, err; }
-            if !old_ptr { return mem, OK; }
-            memcpy(mem, old_ptr, old_size);
-            return mem, OK;
+            // To properly support reallocation, we have to store additional metadata
+            // containing the size of the previous allocated memory associated with input
+            // ptr pointer.
+            // This is not implemented in this example to keep things simple.
+            panic("Rellocation is not supported.");
         }
-        FREE; // Nothing here
+        FREE {
+            print("Free called from %:%.", file, line);
+        }
     }
     return null, OK;
 }
@@ -67,16 +66,21 @@ allocate :: fn (allocator: *MyAllocator, size: usize, alignment: usize) (mem: *u
     return mem, OK;
 }
 
+User :: struct {
+    name: string_view;
+    age: s32;
+}
+
 main :: fn () s32 {
     buffer: [2048]u8;
     allocator :: allocator_make(buffer);
 
-    str :: std.str_new("abc", &allocator);
-    defer std.str_delete(&str);
+    user :: new(User, true, &allocator);
+    user.name = "Martin.";
+    user.age = 32;
 
-    loop i := 0; i < 100; i += 1 {
-        std.str_append(&str, i);
-    }
+    print("User = %\n", @user);
 
+    free(auto user);
     return 0;
 }

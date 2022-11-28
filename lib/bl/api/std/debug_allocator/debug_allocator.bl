@@ -64,8 +64,8 @@
 //! Debug allocator is thread safe.
 //!
 //! > **Note:**
-//! Memory freed by this allocator is set to 0xdddddddd, if you see such a patern in the debugger, you
-//! are probably trying to used already freed data.
+//! Memory freed by this allocator is set to 0xdddddddd, if you see such a pattern in the debugger, you
+//! are probably trying to use already freed memory.
 
 DebugAllocator :: struct #base Allocator {
     mutex: std.Mutex;
@@ -76,7 +76,7 @@ DebugAllocator :: struct #base Allocator {
     break_on: u64;
 }
 
-/// Create new debug allocator instace using `allocator` to allocate memory.
+/// Create new debug allocator instance using `allocator` to allocate memory.
 debug_allocator_make :: fn (allocator: *Allocator) DebugAllocator {
     dbgalloc: DebugAllocator;
     dbgalloc.handler = auto &handler;
@@ -178,39 +178,33 @@ Meta :: struct {
     line: s32;
 }
 
-handler :: fn (dbgalloc: *DebugAllocator, operation: AllocOp, old_ptr: *u8, old_size: usize, new_size: usize, alignment: usize, file: string_view, line: s32) (mem: *u8, err: Error) {
+handler :: fn (dbgalloc: *DebugAllocator, operation: AllocOp, ptr: *u8, size: usize, alignment: usize, file: string_view, line: s32) (mem: *u8, err: Error) {
     using AllocOp;
     switch operation {
         ALLOCATE {
-            mem, err :: alloc(new_size, alignment, dbgalloc.allocator);
+            mem, err :: alloc(size, alignment, dbgalloc.allocator);
             if err { return mem, err; }
-            add_allocation(dbgalloc, mem, new_size, alignment, file, line);
+            add_allocation(dbgalloc, mem, size, alignment, file, line);
             return mem, err;
         }
         REALLOCATE {
-            if old_ptr {
-                previously_allocated_size, previous_alignment :: remove_allocation(dbgalloc, old_ptr);
-                if previously_allocated_size != old_size {
-                    panic("Invalid size of previously allocated memory block during reallocation, expected is %B but current is %B. Not all original data would be copied!", previously_allocated_size, old_size);
-                }
+            if ptr {
+                _, previous_alignment :: remove_allocation(dbgalloc, ptr);
                 if previous_alignment != alignment {
-                    panic("Alignment of reallocated memory block must be the same as previous one! Previous alignment is %B and current is %B.", previous_alignment, alignment);
+                    panic("Alignment of reallocated memory block must be the same as the previous one!"
+                          " Previous alignment is %B and current is %B.", previous_alignment, alignment);
                 }
             }
-            mem, err :: realloc(old_ptr, old_size, new_size, alignment, dbgalloc.allocator);
+            mem, err :: realloc(ptr, size, alignment, dbgalloc.allocator);
             if err { return mem, err; }
-            add_allocation(dbgalloc, mem, new_size, alignment, file, line);
-            if old_ptr != mem {
-
-            }
+            add_allocation(dbgalloc, mem, size, alignment, file, line);
             return mem, OK;
         }
         FREE {
-            if old_ptr {
-                previously_allocated_size :: remove_allocation(dbgalloc, old_ptr);
-                invalidate_memory(old_ptr, previously_allocated_size);
-                free(old_ptr, dbgalloc.allocator);
-
+            if ptr {
+                previously_allocated_size :: remove_allocation(dbgalloc, ptr);
+                invalidate_memory(ptr, previously_allocated_size);
+                free(ptr, dbgalloc.allocator);
             }
         }
         default { panic(); }

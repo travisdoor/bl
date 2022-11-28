@@ -33,6 +33,7 @@ allocation_default_copy :: fn () #test {
     loop i := 0; i < TEST_COUNT; i += 1 {
         mem, err :: alloc(sizeof(s32), alignof(s32), &pool);
         test_ok(err);
+        test_true(is_aligned(mem, alignof(s32)));
         num := cast(*s32) mem;
         @num = i;
         data[i] = num;
@@ -58,6 +59,7 @@ allocation_1 :: fn () #test {
     loop i := 0; i < TEST_COUNT; i += 1 {
         mem, err :: alloc(sizeof(s32), alignof(s32), &pool);
         test_ok(err);
+        test_true(is_aligned(mem, alignof(s32)));
         num := cast(*s32) mem;
         @num = i;
         data[i] = num;
@@ -85,6 +87,7 @@ allocation_2 :: fn () #test {
     loop i := 0; i < TEST_COUNT; i += 1 {
         mem, err :: alloc(sizeof(s32), alignof(s32), &pool);
         test_ok(err);
+        test_true(is_aligned(mem, alignof(s32)));
         num := cast(*s32) mem;
         @num = i;
         data[i] = num;
@@ -101,6 +104,7 @@ allocation_2 :: fn () #test {
     loop i := 0; i < TEST_COUNT; i += 1 {
         mem, err :: alloc(sizeof(s32), alignof(s32), &pool);
         test_ok(err);
+        test_true(is_aligned(mem, alignof(s32)));
         num := cast(*s32) mem;
         @num = i;
         data[i] = num;
@@ -114,6 +118,76 @@ allocation_2 :: fn () #test {
     test_eq(alloc_count, 2);
     test_eq(free_count, 2);
 
+}
+
+reallocation :: fn () #test {
+    using std;
+    defer test_allocator_reset();
+
+    pool :: pool_make(&test_allocator, POOL_DEFAULT_SIZE);
+    defer pool_release(&pool);
+
+    ptr: *u8;
+    {
+        mem, err :: alloc(sizeof(Data), alignof(Data), &pool);
+        test_ok(err);
+        test_true(is_aligned(mem, alignof(Data)));
+
+        data :: cast(*Data) mem;
+        data.i = 666;
+        ptr = mem;
+    } 
+
+    {
+        mem, err :: realloc(ptr, sizeof(Data) * 2, alignof(Data), &pool);
+        test_ok(err);
+        test_true(is_aligned(mem, alignof(Data)));
+
+        data :: cast(*Data) mem;
+        test_eq(data.i, 666);
+    } 
+}
+
+allocation_with_custom_alignment :: fn () #test {
+    using std;
+
+    pool :: pool_make(&test_allocator, POOL_DEFAULT_SIZE);
+    defer pool_release(&pool);
+    {
+        mem, err :: alloc(sizeof(s32), alignof(s32), &pool);
+        test_ok(err);
+        test_true(is_aligned(mem, alignof(s32)));
+    } 
+    {
+        mem, err :: alloc(sizeof(s32), alignof(u8), &pool);
+        test_ok(err);
+        test_true(is_aligned(mem, alignof(u8)));
+    } 
+    {
+        mem, err :: alloc(sizeof(u8), alignof(u64), &pool);
+        test_ok(err);
+        test_true(is_aligned(mem, alignof(u64)));
+    } 
+    {
+        mem, err :: alloc(sizeof(u8), 16, &pool);
+        test_ok(err);
+        test_true(is_aligned(mem, 16));
+    }
+    {
+        mem, err :: alloc(sizeof(u8), 64, &pool);
+        test_ok(err);
+        test_true(is_aligned(mem, 64));
+    }
+    {
+        mem, err :: alloc(sizeof(u8), 1, &pool);
+        test_ok(err);
+        test_true(is_aligned(mem, 1));
+    }
+    {
+        mem, err :: alloc(sizeof(u64), 1, &pool);
+        test_ok(err);
+        test_true(is_aligned(mem, 1));
+    }
 }
 
 some_data :: [50]string_view.{
@@ -208,20 +282,20 @@ test_allocator_reset :: fn () {
     free_count  = 0;
 }
 
-handler :: fn (_: *Allocator, operation: AllocOp, old_ptr: *u8, old_size: usize, new_size: usize, _: usize, _: string_view, _: s32) (mem: *u8, err: Error) {
+handler :: fn (_: *Allocator, operation: AllocOp, ptr: *u8, size: usize, _: usize, _: string_view, _: s32) (mem: *u8, err: Error) {
     using AllocOp;
     switch operation {
         ALLOCATE {
             alloc_count += 1;
-            return alloc(new_size);
+            return alloc(size);
         }
         REALLOCATE {
             alloc_count += 1;
-            return realloc(old_ptr, old_size, new_size);
+            return realloc(ptr, size);
         }
         FREE {
             free_count += 1;
-            free(old_ptr);
+            free(ptr);
         }
         default { panic(); }
     }

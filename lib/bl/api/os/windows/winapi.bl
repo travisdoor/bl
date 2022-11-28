@@ -978,6 +978,29 @@ DEVMODEA :: struct {
     dmPanningHeight: DWORD;
 }
 
+COORD :: struct {
+    X: C.short;
+    Y: C.short;
+}
+PCOORD :: *COORD;
+
+SMALL_RECT :: struct {
+    Left: C.short;
+    Top: C.short;
+    Right: C.short;
+    Bottom: C.short;
+}
+PSMALL_RECT :: *SMALL_RECT;
+
+CONSOLE_SCREEN_BUFFER_INFO :: struct {
+    dwSize: COORD;
+    dwCursorPosition: COORD;
+    wAttributes: WORD;
+    srWindow: SMALL_RECT;
+    dwMaximumWindowSize: COORD;
+}
+PCONSOLE_SCREEN_BUFFER_INFO :: *CONSOLE_SCREEN_BUFFER_INFO;
+
 ReleaseMutex :: fn (hMutex: HANDLE) BOOL #extern "ReleaseMutex";
 GetTickCount :: fn () DWORD #extern "GetTickCount";
 QueryPerformanceCounter :: fn (lpPerformanceCount: *LARGE_INTEGER) BOOL #extern "QueryPerformanceCounter";
@@ -1072,3 +1095,5 @@ SetWindowPos :: fn (hWnd: HWND, hWndInsertAfter: HWND, X: C.int, Y: C.int, cx: C
 GetClientRect :: fn (hWnd: HWND, lpRect: LPRECT) BOOL #extern "GetClientRect";
 SetCapture :: fn (hWnd: HWND) HWND #extern "SetCapture";
 ChangeDisplaySettingsA :: fn (lpDevMode: *DEVMODEA, dwFlags: DWORD) LONG #extern "ChangeDisplaySettingsA";
+GetConsoleScreenBufferInfo :: fn (hConsoleOutput: HANDLE , lpConsoleScreenBufferInfo: PCONSOLE_SCREEN_BUFFER_INFO) BOOL #extern "GetConsoleScreenBufferInfo";
+SetConsoleTextAttribute :: fn (hConsoleOutput: HANDLE, wAttributes: WORD) BOOL #extern "SetConsoleTextAttribute";

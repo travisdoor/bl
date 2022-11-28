@@ -15,15 +15,16 @@ SKIP :: [1]Test.{
     }
 };
 
-MISC :: [5]Test.{
+MISC :: [6]Test.{
     Test.{ name = "docs/master/make.bl",       kind = TestKind.COMPILE },
     Test.{ name = "how-to/gunner",             kind = TestKind.BUILD, platform = Platform.WINDOWS },
     Test.{ name = "how-to/glwindow_gunner",    kind = TestKind.BUILD, platform = Platform.WINDOWS },
     Test.{ name = "how-to/glwindow_creation",  kind = TestKind.BUILD, platform = Platform.WINDOWS },
     Test.{ name = "tests/build_api_test",      kind = TestKind.BUILD },
+    Test.{ name = "tests/library",             kind = TestKind.BUILD, platform = Platform.WINDOWS },
 };
 
-MODULES :: [15]string_view.{
+MODULES :: [14]string_view.{
     "lib/bl/api/std/array/array.test.bl",
     "lib/bl/api/std/bucket_array/bucket_array.test.bl",
     "lib/bl/api/std/debug_allocator/debug_allocator.test.bl",
@@ -35,7 +36,7 @@ MODULES :: [15]string_view.{
     "lib/bl/api/std/sync/sync.test.bl",
     "lib/bl/api/std/thread/thread.test.bl",
     "lib/bl/api/std/pool/pool.test.bl",
-    "lib/bl/api/std/buffer_allocator/buffer_allocator.test.bl",
+    //"lib/bl/api/std/buffer_allocator/buffer_allocator.test.bl",
     "lib/bl/api/std/table/table.test.bl",
     "lib/bl/api/std/static_array/static_array.test.bl",
     "lib/bl/api/extra/argparse/argparse.test.bl",

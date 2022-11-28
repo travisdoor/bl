@@ -1,0 +1,11 @@
+build :: fn () #build_entry {
+    lib := add_library("lib");
+    add_unit(lib, "lib.bl");
+    compile(lib);
+
+    exe := add_executable("test");
+    add_unit(exe, "main.bl");
+    add_lib_path(exe, ".");
+    link_library(exe, "lib");
+    compile(exe);
+}

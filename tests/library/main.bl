@@ -1,0 +1,6 @@
+say_hello :: fn () #extern;
+
+main :: fn () s32 {
+	say_hello();
+	return 0;
+}

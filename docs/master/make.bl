@@ -102,7 +102,8 @@ cmd :: fn (fmt: string_view, args: ...) Error {
 CONFIG ::
     "site_name: Biscuit Language\n"
     "theme:\n"
-    "    name: materia\n"
+    "    name: slate\n"
+    "    # spacelab, sandstone, slate\n"
     "plugins:\n"
     "    - search\n"
     "    - include-markdown\n"
@@ -147,7 +148,6 @@ CONFIG ::
     "        - modules/bucket_array.md\n"
     "        - modules/table.md\n"
     "        - modules/pool.md\n"
-    "        - modules/buffer_allocator.md\n"
     "        - modules/debug_allocator.md\n"
     "        - modules/debug.md\n"
     "        - modules/dlib.md\n"
