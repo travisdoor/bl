@@ -589,9 +589,9 @@ free :: fn (ptr: void_ptr) #extern;
 
 ### export
 
-Functions with an export directive are exported from the binary and available to be called from other libraries or executables. The `#export` directive can be optionally followed by the linkage name of the exported symbol. If the linkage name is not specified, the function name is used instead. 
+Functions with an `export` directive are exported from the binary when program is compiled as a shared library (with `-shared` flag). So the function may be called from the other libraries or executables after successful linking. The `#export` directive can be optionally followed by the linkage name of the exported symbol. If the linkage name is not specified, the function name is used instead. 
 
-The export functions must strictly follow *C call conventions*.
+The export functions must strictly follow *C call conventions*. That means, the function cannot be polymorphic (generated in compile time).
 
 ```rust
 my_add :: fn (a: s32, b: s32) s32 #export "add" {

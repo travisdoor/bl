@@ -258,7 +258,7 @@ test_file :: fn (results: *[..]Result, filepath: string_view, kind: TestKind) {
         }
 
         BUILD {
-            if os_execute(tprint("% % --work-dir=\"%\" -build", compiler, "--no-warning --silent --no-bin", filepath)) != 0 {
+            if os_execute(tprint("% % --work-dir=\"%\" -build", compiler, "--no-warning --silent", filepath)) != 0 {
                 set_flag(&result.state, FAILED_COMPILE);
             }
             report(result);

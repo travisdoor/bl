@@ -391,7 +391,6 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     case HD_NO_INLINE:
     case HD_THREAD_LOCAL:
     case HD_ENTRY:
-    case HD_EXPORT:
     case HD_MAYBE_UNUSED:
     case HD_COMPTIME:
     case HD_COMPILER: {
@@ -506,6 +505,17 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
     case HD_EXTERN: {
         BL_TRACY_MESSAGE("HD_FLAG", "#extern");
         // Extern flag extension could be linkage name as string
+        struct token *tok_ext = tokens_consume_if(ctx->tokens, SYM_STRING);
+        if (!tok_ext) return_zone(NULL);
+        // Parse extension token.
+        struct ast *ext = ast_create_node(ctx->ast_arena, AST_IDENT, tok_ext, scope_get(ctx));
+        id_init(&ext->data.ident.id, tok_ext->value.str.ptr);
+        return_zone(ext);
+    }
+
+    case HD_EXPORT: {
+        BL_TRACY_MESSAGE("HD_FLAG", "#export");
+        // Export flag extension could be linkage name as string
         struct token *tok_ext = tokens_consume_if(ctx->tokens, SYM_STRING);
         if (!tok_ext) return_zone(NULL);
         // Parse extension token.
@@ -1536,7 +1546,8 @@ struct ast *parse_expr_lit_fn(struct context *ctx)
             enum hash_directive_flags found        = HD_NONE;
             struct ast               *hd_extension = parse_hash_directive(ctx, accepted, &found);
             if (!hash_directive_to_flags(found, &flags)) break;
-            if ((found == HD_EXTERN || found == HD_INTRINSIC) && hd_extension) {
+            if ((found == HD_EXTERN || found == HD_INTRINSIC || found == HD_EXPORT) &&
+                hd_extension) {
                 // Use extern flag extension on function declaration.
                 bassert(hd_extension->kind == AST_IDENT && "Expected ident as #extern extension.");
                 bassert(curr_decl->data.decl_entity.explicit_linkage_name == NULL);

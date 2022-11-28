@@ -2,17 +2,11 @@
 
 TODO:
 
-- Change syntax of default argument value assignment to ':'.
-- Update documentation.
 - #comptime - automatically comptime evaluated in case all the arguments are compile-time known.
-- Properly handle fail of ast_expr_lit_fn while generating recipe implementation.
-- Do not call functions in recipe declaration.
+- Introduce calling conventions.
 
-Documentation notes:
-- Argument mutability.
-- Comptime arguments.
-- Cannot use previous comptime as default.
-- Polymorph master and vargs no default value. 
+- Change syntax of default argument value assignment to ':'.
+- Properly handle fail of ast_expr_lit_fn while generating recipe implementation.
 
 // To memory.bl???
 bytes_to_value :: fn (TValue: type #comptime, bytes: []u8) TValue {
@@ -33,8 +27,6 @@ Foo :: struct {
     a: s32;
     b: s32;
 }
-
-
 
 /* un-comment while fixing using propagation into local functions.
 list_dir :: fn (paths: *[..]string_view, dir: string_view) {

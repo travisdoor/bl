@@ -1,3 +1,7 @@
 say_hello :: fn () #export {
-	print_log("Hello from dll!");
+	print_log("Hello!");
+}
+
+say_bye :: fn () #export "my_exported_function" {
+	print_log("Bye!");
 }

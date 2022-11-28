@@ -1,6 +1,8 @@
 say_hello :: fn () #extern;
+say_bye :: fn () #extern "my_exported_function";
 
 main :: fn () s32 {
 	say_hello();
+	say_bye();
 	return 0;
 }
