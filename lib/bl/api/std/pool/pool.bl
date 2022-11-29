@@ -7,6 +7,14 @@
 //! Pool allocator is simple growing allocator grouping all allocated memory into memory blocks
 //! of `POOL_DEFAULT_SIZE` bytes by default.
 //!
+//! ### Supported Operation
+//! 
+//!     - [x] Allocate
+//!     - [-] Reallocate (Always allocates and copy data into a new block.)
+//!     - [-] Free (Keeps memory for later use.)
+//!     - [x] Release
+//!     - [x] Reset
+//!
 //! - In case there is no space left in the current block new one is allocated.
 //! - Allocated data remains valid until the `reset` or `release` is called.
 //! - If required allocation size is greater then the current block size, the new block is allocated
@@ -15,6 +23,10 @@
 //! - The pool allocator never frees data when `free` is called, you should call `reset` instead
 //!   when all previously allocated data can be freed.
 //! - All preallocated blocks are kept (even after the `reset` is called) for later use.
+//!
+//! !!! note
+//!     This allocator is used as a default temporary allocator in the application context.
+//!
 POOL_DEFAULT_SIZE : usize : 65536; // 64kB
 
 /// Pool allocator type.
@@ -56,14 +68,7 @@ pool_make :: fn (allocator: *Allocator, block_size := POOL_DEFAULT_SIZE) PoolAll
 
 /// Release all allocated memory used by `pool` (allocated in `pool.allocator`).
 pool_release :: fn (pool: *PoolAllocator) {
-    reset(pool);
-    loop i := 0; i < pool.unused_blocks.len; i += 1 {
-        free(pool.unused_blocks[i], pool.allocator);
-    }
-    array_clear(&pool.unused_blocks);
-    array_terminate(&pool.used_blocks);
-    array_terminate(&pool.unused_blocks);
-    array_terminate(&pool.obsolete_blocks);
+    release(pool);
 }
 
 /// Invalidate all allocations but keep preallocated memory block for later use.
@@ -96,9 +101,15 @@ handler :: fn (
             memcpy(mem, ptr, std.min(previously_allocated_size, size));
             return mem, OK;
         }
+        RESET {
+            reset(pool);
+        }
+        RELEASE {
+            release(pool);
+        }
         FREE;
 
-        default { panic(); }
+        default { panic("Unknown operation."); }
     }
     return null, OK;
 }
@@ -156,6 +167,17 @@ reset :: fn (pool: *PoolAllocator) {
         free(pool.obsolete_blocks[i], pool.allocator);
     }
     array_clear(&pool.obsolete_blocks);
+}
+
+release :: fn (pool: *PoolAllocator) {
+    reset(pool);
+    loop i := 0; i < pool.unused_blocks.len; i += 1 {
+        free(pool.unused_blocks[i], pool.allocator);
+    }
+    array_clear(&pool.unused_blocks);
+    array_terminate(&pool.used_blocks);
+    array_terminate(&pool.unused_blocks);
+    array_terminate(&pool.obsolete_blocks);
 }
 
 ensure_space :: fn (pool: *PoolAllocator, size: usize) Error {

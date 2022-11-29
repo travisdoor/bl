@@ -315,9 +315,8 @@ PrintLogFn :: * fn (kind: PrintLogKind, file: string_view, line: s32, format: st
 AbortFn :: * fn ();
 AssertFn :: * fn (message: string_view, loc: *CodeLocation);
 
-/// Default implicit context type. Implicit context is compiler internal global variable 
-/// containing basic context for whole assembly. This variable is mutable and can 
-/// be modified by user code. 
+/// Global application context. This structure provides possibility to override common operations done on the compiler
+/// internal level or on the user code level.
 Context :: struct {
     /// Print log callback.
     print_log_fn: PrintLogFn;
@@ -325,9 +324,12 @@ Context :: struct {
     abort_fn: AbortFn;
     /// Assert handler callback.
     assert_fn: AssertFn;
-    /// Default memory allocator used across the application.
+    /// Global memory allocator used across the application.
     allocator: *Allocator;
-    // Default temporary allocator.
+
+    /// Global temporary allocator. This allocator is implicitly used i.e. by `tprint` function. The default implementation
+    /// is thread save (be careful replacing this allocator with a custom implementation, it may be called from other 
+    /// threads depending on use case).
     temporary_allocator: *Allocator;
 
     _assert_handled: bool;

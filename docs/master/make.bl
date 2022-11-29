@@ -144,6 +144,7 @@ CONFIG ::
     "      - std:\n"
     "        - modules/a.md\n"
     "        - modules/array.md\n"
+    "        - modules/async.md\n"
     "        - modules/static_array.md\n"
     "        - modules/bucket_array.md\n"
     "        - modules/table.md\n"

@@ -185,10 +185,6 @@ alloc_count := 0;
 free_count := 0;
 
 test_allocator :: Allocator.{ handler = &handler };
-test_allocator_reset :: fn () {
-    alloc_count = 0;
-    free_count  = 0;
-}
 
 handler :: fn (_: *Allocator, operation: AllocOp, ptr: *u8, size: usize, _: usize, _: string_view, _: s32) (mem: *u8, err: Error) {
     using AllocOp;
@@ -205,13 +201,21 @@ handler :: fn (_: *Allocator, operation: AllocOp, ptr: *u8, size: usize, _: usiz
             free_count += 1;
             free(ptr);
         }
-        default { panic(); }
+        RESET {
+            alloc_count = 0;
+            free_count  = 0;
+        }
+        RELEASE {
+            panic("Unsupported operation: %.", operation);
+        }
+
+        default { panic("Unknown operation."); }
     }
     return null, OK;
 }
 
 test_custom_allocator :: fn () #test {
-    defer test_allocator_reset();
+    defer reset_allocator(&test_allocator);
 
     arr: [..]s32;
     array_init(&arr, 0, &test_allocator);
