@@ -1,5 +1,7 @@
 # Installation
 
+Currently only installation from the source code is possible.
+
 **Supported targets:**
 
 * `x86_64-pc-windows-msvc`

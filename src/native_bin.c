@@ -75,7 +75,7 @@ static void copy_user_libs(struct assembly *assembly)
 
 void native_bin_run(struct assembly *assembly)
 {
-    builder_log("Running native linker...");
+    builder_log("Running native runtime linker...");
     LinkerFn linker = NULL;
 #if BL_PLATFORM_WIN
     linker = &lld_link;

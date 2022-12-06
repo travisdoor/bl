@@ -51,12 +51,12 @@ The *global* options are applied to the module on all target platforms.
 
 ### Global or Platform-Specific Options
 
-All following options may be applied globally or just for a specific target platform.
+All the following options may be applied globally or just for a specific target platform.
 
 - `src: "<FILE1[;FILE2;...]>"` - List of source file paths relative to the module *root* directory separated by **platform-specific** separator (`:` on Windows and `;` on Unix).
-- `linker_opt: "<OPTIONS>"` - Additional linker options.
+- `linker_opt: "<OPTIONS>"` - Additional runtime linker options.
 - `linker_lib_path: "<DIR1;[DIR2;...]>"` - Additional linker lookup directories relative to the module *root* directory.
-- `link: "<LIB1[;LIB2;...]>` - Libraries to link.
+- `link: "<LIB1[;LIB2;...]>` - Libraries to link. Note that libraries listed here are dynamically loaded during compilation (may be executed in compile-time).
 
 ```yaml
 # The version is required to be global.

@@ -149,12 +149,50 @@ Target :: struct { // !!! ABI sync TargetOptions !!!
     vmdbg_enabled: bool;
     /// Specify MIR instruction ID to break on if virtual machine debugger is attached.
     vmdbg_break_on: s32;
+    /// Enable experimental build targets.
+    enable_experimental_targets: bool; 
+    /// Target triple according to LLVM.
+    triple: TargetTriple;
 }
 
 /// Specification of compiler output binary kind.
 TargetKind :: enum {
     EXECUTABLE    = 0;
     SHARED_LIBRARY = 1;
+}
+
+TargetArch :: enum s32 {
+    UNKNOWN = 0;
+    X86_64  = 1;
+    AARCH64 = 2;
+    ARM64   = 3;
+}
+
+TargetVendor :: enum s32 {
+    UNKNOWN = 0;
+    PC      = 1;
+    APPLE   = 2;
+}
+
+TargetSystem :: enum s32 {
+    UNKNOWN = 0;
+    WINDOWS = 1;
+    DARWIN  = 2;
+    LINUX   = 3;
+}
+
+TargetEnvironment :: enum s32 {
+    UNKNOWN = 0;
+    MSVC    = 1;
+    GNU     = 2;
+    MUSL    = 3;
+}
+
+TargetTriple :: struct {
+    arch: TargetArch;
+    vendor: TargetVendor;
+    os: TargetSystem;
+    env: TargetEnvironment;
 }
 
 /// Specify target build mode. Every [Target](#target) can be compiled with various configuration 
@@ -373,16 +411,35 @@ get_module_import_policy :: fn (target: *Target) ModuleImportPolicy {
     return auto __get_module_import_policy(target);    
 }
 
+/// Returns target triple of the current host machine.
+get_default_triple :: fn () TargetTriple {
+    result: TargetTriple;
+    __get_default_triple(&result);
+    return result;
+}
+
+/// Converts target triple to string.
+///
+/// !!! note
+///     The result string is allocated using current temporary allocator.
+triple_to_string :: fn (triple: TargetTriple) string_view {
+    buf: [128]C.char #noinit;
+    len :: __triple_to_string(&triple, buf.ptr, auto buf.len);
+    return tprint("%", std.ctostr(buf.ptr, len));
+}
+
 #private
-__add_target :: fn (name: *C.char, kind: s32) *Target #extern;
+__add_target :: fn (name: *C.char, kind: C.int) *Target #extern;
 __add_unit :: fn (target: *Target, filepath: *C.char) #extern;
-__compile :: fn (target: *Target) s32 #extern;
-__compile_all :: fn () s32 #extern;
+__compile :: fn (target: *Target) C.int #extern;
+__compile_all :: fn () C.int #extern;
 __add_lib_path :: fn (target: *Target, path: *C.char) #extern;
 __link_library :: fn (target: *Target, name: *C.char) #extern;
 __append_linker_options :: fn (target: *Target, option: *C.char) #extern;
 __set_output_dir :: fn (target: *Target, dir: *C.char) #extern;
 __get_output_dir :: fn (target: *Target) *C.char #extern;
-__set_module_dir :: fn (target: *Target, dir: *C.char, policy: s32) #extern;
+__set_module_dir :: fn (target: *Target, dir: *C.char, policy: C.int) #extern;
 __get_module_dir :: fn (target: *Target) *C.char #extern;
-__get_module_import_policy :: fn (target: *Target) s32 #extern;
+__get_module_import_policy :: fn (target: *Target) C.int #extern;
+__get_default_triple :: fn (triple: *TargetTriple) #extern;
+__triple_to_string :: fn (triple: *TargetTriple, buf: *C.char, buf_len: C.int) C.int #extern;

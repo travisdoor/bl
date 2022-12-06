@@ -128,6 +128,8 @@ struct native_lib {
     char         *dir;
     // Disable appending of this library to the linker options.
     bool is_internal;
+    // Library may be loaded only in runtime.
+    bool runtime_only;
 };
 
 // ABI sync!!! Keep this updated with target representation in build.bl.
@@ -199,7 +201,7 @@ struct assembly {
         struct {
             u64             key;
             struct mir_var *value;
-        } * rtti_table; // Map type ids to RTTI variables.
+        } *rtti_table; // Map type ids to RTTI variables.
         array(struct mir_instr *) exported_instrs;
     } MIR;
 
@@ -272,7 +274,7 @@ void           target_set_module_dir(struct target            *target,
                                      enum module_import_policy policy);
 bool           target_is_triple_valid(struct target_triple *triple);
 bool           target_init_default_triple(struct target_triple *triple);
-char          *target_triple_to_string(const struct target_triple *triple);
+s32            target_triple_to_string(const struct target_triple *triple, char *buf, s32 buf_len);
 
 struct assembly *assembly_new(const struct target *target);
 void             assembly_delete(struct assembly *assembly);

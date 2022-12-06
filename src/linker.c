@@ -148,11 +148,14 @@ void linker_run(struct assembly *assembly)
     zone();
     struct context ctx;
     ctx.assembly = assembly;
-    builder_log("Running runtime linker...");
+    builder_log("Running compile-time linker...");
     set_lib_paths(&ctx);
 
     for (usize i = 0; i < arrlenu(assembly->libs); ++i) {
         struct native_lib *lib = &assembly->libs[i];
+        if (lib->runtime_only) {
+            builder_log("Library with 'runtime_only' flag '%s' skipped.", lib->user_name);
+        }
         if (!link_lib(&ctx, lib)) {
             char      error_buffer[256];
             const s32 error_len = get_last_error(error_buffer, static_arrlenu(error_buffer));

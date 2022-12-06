@@ -54,7 +54,7 @@ pool_default :: PoolAllocator.{
 /// Make new pool allocator instance. The `allocator` is the allocator used internally to allocate
 /// block memory. The `block_size` is size of each preallocated block in Bytes (note that the block
 /// size can grow over time when bigger continuous memory allocations are required).
-pool_make :: fn (allocator: *Allocator, block_size := POOL_DEFAULT_SIZE) PoolAllocator #inline {
+pool_make :: fn (allocator: *Allocator = null, block_size := POOL_DEFAULT_SIZE) PoolAllocator #inline {
     pool: PoolAllocator;
     pool.handler = auto &handler;
     pool.block_size = block_size;

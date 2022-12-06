@@ -714,10 +714,10 @@ const char *read_config(struct config       *config,
 {
     bassert(config && target && path);
     char *fullpath = tstr();
-    char *triple   = target_triple_to_string(&target->triple);
-    strprint(fullpath, "/%s/%s", triple, path);
+    char triple_str[128];
+    target_triple_to_string(&target->triple, triple_str, static_arrlenu(triple_str));
+    strprint(fullpath, "/%s/%s", triple_str, path);
     const char *result = confreads(config, fullpath, default_value);
-    bfree(triple);
     put_tstr(fullpath);
     return result;
 }
