@@ -438,29 +438,6 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
         return_zone(import);
     }
 
-    case HD_LINK: {
-        BL_TRACY_MESSAGE("HD_FLAG", "#link");
-        struct token *tok_path = tokens_consume(ctx->tokens);
-        if (!token_is(tok_path, SYM_STRING)) {
-            report_error(INVALID_DIRECTIVE,
-                         tok_path,
-                         CARET_WORD,
-                         "Expected path \"some/path\" after 'link' directive.");
-            return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_directive, scope_get(ctx)));
-        }
-
-        struct ast *link = ast_create_node(ctx->ast_arena, AST_LINK, tok_directive, scope_get(ctx));
-        link->data.link.lib = tok_path->value.str.ptr;
-
-        assembly_add_native_lib_safe(ctx->assembly, tok_path->value.str.ptr, tok_path);
-
-        report_warning(tok_directive,
-                       CARET_WORD,
-                       "Link directive is deprecated and will be removed in next release. Please "
-                       "use build system to link dependencies or module import.");
-        return_zone(link);
-    }
-
     case HD_FILE: {
         BL_TRACY_MESSAGE("HD_FLAG", "#file");
         struct ast *file =
@@ -2512,7 +2489,7 @@ NEXT:
     }
 
     // load, import, link, test, private - enabled in global scope
-    const int enabled_hd = HD_LOAD | HD_LINK | HD_PRIVATE | HD_IMPORT | HD_SCOPE;
+    const int enabled_hd = HD_LOAD | HD_PRIVATE | HD_IMPORT | HD_SCOPE;
     if ((tmp = parse_hash_directive(ctx, enabled_hd, NULL))) {
         arrput(ublock->data.ublock.nodes, tmp);
         goto NEXT;

@@ -119,9 +119,15 @@ static bool link_lib(struct context *ctx, struct native_lib *lib)
     if (!lib) babort("invalid lib");
     if (!lib->user_name) babort("invalid lib name");
 
-    if (!search_library(ctx, lib->user_name, &lib->filename, &lib->dir, &lib->filepath))
+    if (!search_library(ctx, lib->user_name, &lib->filename, &lib->dir, &lib->filepath)) {
         return false;
+    }
 
+    if (lib->runtime_only) {
+        builder_log("- Library with 'runtime_only' flag '%s' skipped.", lib->user_name);
+        return true;
+    }
+    
     lib->handle = dlLoadLibrary(lib->filepath);
     return lib->handle;
 }
@@ -153,9 +159,6 @@ void linker_run(struct assembly *assembly)
 
     for (usize i = 0; i < arrlenu(assembly->libs); ++i) {
         struct native_lib *lib = &assembly->libs[i];
-        if (lib->runtime_only) {
-            builder_log("Library with 'runtime_only' flag '%s' skipped.", lib->user_name);
-        }
         if (!link_lib(&ctx, lib)) {
             char      error_buffer[256];
             const s32 error_len = get_last_error(error_buffer, static_arrlenu(error_buffer));

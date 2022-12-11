@@ -35,3 +35,25 @@ mutex_try_lock :: fn (mutex: *Mutex) bool #inline {
 mutex_unlock :: fn (mutex: *Mutex) #inline {
     _sync_impl.unlock(mutex);
 }
+
+Semaphore :: _sync_impl.Semaphore;
+
+semaphore_init :: fn (semaphore: *Semaphore, value: u32) #inline {
+    _sync_impl.sem_init(semaphore, value);
+}
+
+semaphore_terminate :: fn (semaphore: Semaphore) #inline {
+    _sync_impl.sem_terminate(semaphore);
+}
+
+semaphore_wait :: fn (semaphore: Semaphore) #inline {
+    _sync_impl.sem_wait(semaphore);
+}
+
+semaphore_trywait :: fn (semaphore: Semaphore) bool #inline {
+    return _sync_impl.sem_try_wait(semaphore);
+}
+
+semaphore_post :: fn (semaphore: Semaphore) #inline {
+    _sync_impl.sem_post(semaphore);
+}

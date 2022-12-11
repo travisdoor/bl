@@ -1,4 +1,7 @@
 #import "std/async"
+#import "std/async"
+#import "std/async"
+#import "std/async"
 
 /*
 
@@ -26,35 +29,6 @@ list_dir :: fn (paths: *[..]string_view, dir: string_view) {
 */
 
 main :: fn () s32 {
-    using std;
-    one: Async(s32, string_view);
-    two: Async(s32, string_view);
-
-    async(&one, 5, &fn (count: s32) string_view {
-        loop i := 0; i < count; i += 1 {
-            tprint("Fooo");
-            os_sleep_ms(5);
-        }
-        return "ONE IS DONE";
-    });
-    
-    async(&two, 10, &fn (count: s32) string_view {
-        loop i := 0; i < count; i += 1 {
-            tprint("Booo");
-            os_sleep_ms(1);
-        }
-        return "TWO IS DONE";
-    });
-
-    result_one :: async_wait(&one);
-    print("Result = %\n", result_one);
-    
-    result_two :: async_wait(&two);
-    print("Result = %\n", result_two);
-
-    print("DONE\n");
     return 0;
 }
-
-number : s32 = 10 #thread_local;
 

@@ -1,31 +1,3 @@
-// =================================================================================================
-// bl
-//
-// File:   windows_api.bl 
-// Author: Martin Dorazil
-// Date:   26/2/20
-//
-// Copyright 2018 Martin Dorazil
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-// =================================================================================================
-
 #scope win32
 
 TRUE :: 1;
@@ -83,6 +55,7 @@ UINT_PTR     :: *C.uint;
 LARGE_INTEGER :: C.longlong;
 PLARGE_INTEGER :: *LARGE_INTEGER;
 LONG         :: C.long;
+LPLONG       :: *LONG;
 LONGLONG     :: C.longlong;
 PLONG        :: *LONG;
 WORD         :: C.ushort;
@@ -484,7 +457,7 @@ INVALID_FILE_SIZE :: cast(DWORD) 0xFFFFFFFF;
 INVALID_SET_FILE_POINTER :: cast(DWORD) -1;
 INVALID_FILE_ATTRIBUTES :: cast(DWORD) -1;
 
-WAIT_TIMEOUT :: 258;
+WAIT_TIMEOUT : DWORD : 258;
 WAIT_FAILED : DWORD : 0xFFFFFFFF;
 WAIT_OBJECT_0 :: 0;
 LIST_ENTRY :: struct {
@@ -586,6 +559,8 @@ WaitForMultipleObjects :: fn (
     bWaitAll: BOOL,
     dwMilliseconds: DWORD        
 ) DWORD #extern "WaitForMultipleObjects";
+CreateSemaphoreA :: fn (lpSemaphoreAttributes: LPSECURITY_ATTRIBUTES, lInitialCount: LONG, lMaximumCount: LONG, lpName: LPCSTR) HANDLE #extern "CreateSemaphoreA";
+ReleaseSemaphore :: fn (hSemaphore: HANDLE, lReleaseCount: LONG, lpPreviousCount: LPLONG) BOOL #extern "ReleaseSemaphore";
 GetCommandLineW     :: fn () LPWSTR #extern "GetCommandLineW";
 CommandLineToArgvW  :: fn (lpCmdLine: LPCWSTR, pNumArgs: *s32) *LPWSTR #extern "CommandLineToArgvW";
 LocalFree           :: fn (hMem: HLOCAL) HLOCAL #extern "LocalFree";

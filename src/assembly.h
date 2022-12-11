@@ -284,7 +284,8 @@ void      assembly_add_lib_path_safe(struct assembly *assembly, const char *path
 void      assembly_append_linker_options_safe(struct assembly *assembly, const char *opt);
 void      assembly_add_native_lib_safe(struct assembly *assembly,
                                        const char      *lib_name,
-                                       struct token    *link_token);
+                                       struct token    *link_token,
+                                       bool             runtime_only);
 bool      assembly_import_module(struct assembly *assembly,
                                  const char      *modulepath,
                                  struct token    *import_from);

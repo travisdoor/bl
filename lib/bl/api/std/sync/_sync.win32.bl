@@ -3,6 +3,7 @@
 #scope _sync_impl
 
 Mutex :: win32.RTL_CRITICAL_SECTION;
+Semaphore :: win32.HANDLE;
 
 init :: fn (mutex: *Mutex) #inline {
     win32.InitializeCriticalSection(mutex);
@@ -22,4 +23,28 @@ try_lock :: fn (mutex: *Mutex) bool #inline {
 
 unlock :: fn (mutex: *Mutex) #inline {
     win32.LeaveCriticalSection(mutex);
+}
+
+sem_init :: fn (semaphore: *Semaphore, value: u32) {
+    (@semaphore) = win32.CreateSemaphoreA(null, auto value, auto value, null);
+}
+
+sem_terminate :: fn (semaphore: Semaphore) {
+    win32.CloseHandle(semaphore);
+}
+
+sem_wait :: fn (semaphore: Semaphore) {
+    using win32;
+    WaitForSingleObject(semaphore, INFINITE);
+}
+
+sem_try_wait :: fn (semaphore: Semaphore) bool {
+    using win32;
+    result :: WaitForSingleObject(semaphore, 0);
+    return result != WAIT_TIMEOUT;
+}
+
+sem_post :: fn (semaphore: Semaphore) {
+    using win32;
+    ReleaseSemaphore(semaphore, 1, null);
 }
