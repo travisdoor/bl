@@ -192,8 +192,10 @@ static void parse_triple(const char *llvm_triple, struct target_triple *out_trip
 
 static void llvm_init(struct assembly *assembly)
 {
-    // init LLVM
-    char *triple    = target_triple_to_string(&assembly->target->triple);
+    const s32 triple_len = target_triple_to_string(&assembly->target->triple, NULL, 0);
+    char *triple = bmalloc(triple_len);
+    target_triple_to_string(&assembly->target->triple, triple, triple_len);
+
     char *cpu       = /*LLVMGetHostCPUName()*/ "";
     char *features  = /*LLVMGetHostCPUFeatures()*/ "";
     char *error_msg = NULL;
@@ -539,17 +541,17 @@ void target_set_module_dir(struct target *target, const char *dir, enum module_i
 
 bool target_is_triple_valid(struct target_triple *triple)
 {
-    char  *str      = target_triple_to_string(triple);
+    char triple_str[128];
+    target_triple_to_string(triple, triple_str, static_arrlenu(triple_str));
     bool   is_valid = false;
     char **list     = builder_get_supported_targets();
     char **it       = list;
     for (; *it; it++) {
-        if (strcmp(str, *it) == 0) {
+        if (strcmp(triple_str, *it) == 0) {
             is_valid = true;
             break;
         }
     }
-    free(str);
     bfree(list);
     return is_valid;
 }
@@ -567,27 +569,23 @@ bool target_init_default_triple(struct target_triple *triple)
     return true;
 }
 
-char *target_triple_to_string(const struct target_triple *triple)
+s32 target_triple_to_string(const struct target_triple *triple, char *buf, s32 buf_len)
 {
     const char *arch, *vendor, *os, *env;
     arch = vendor = os = env = "";
+    s32 len                  = 0;
     if (triple->arch < static_arrlenu(arch_names)) arch = arch_names[triple->arch];
     if (triple->vendor < static_arrlenu(vendor_names)) vendor = vendor_names[triple->vendor];
     if (triple->os < static_arrlenu(os_names)) os = os_names[triple->os];
     if (triple->env < static_arrlenu(env_names)) env = env_names[triple->env];
-    char *str = NULL;
-    usize len = 0;
     if (triple->env == ENV_unknown) {
         len = snprintf(NULL, 0, "%s-%s-%s", arch, vendor, os) + 1;
-        str = bmalloc(len);
-        snprintf(str, len, "%s-%s-%s", arch, vendor, os);
+        if (buf) snprintf(buf, MIN(buf_len, len), "%s-%s-%s", arch, vendor, os);
     } else {
         len = snprintf(NULL, 0, "%s-%s-%s-%s", arch, vendor, os, env) + 1;
-        str = bmalloc(len);
-        snprintf(str, len, "%s-%s-%s-%s", arch, vendor, os, env);
+        if (buf) snprintf(buf, MIN(buf_len, len), "%s-%s-%s-%s", arch, vendor, os, env);
     }
-    bassert(str);
-    return str;
+    return len;
 }
 
 struct assembly *assembly_new(const struct target *target)

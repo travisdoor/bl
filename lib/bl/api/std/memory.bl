@@ -169,10 +169,31 @@ realloc :: fn (ptr: *u8, size: usize, alignment := DEFAULT_ALIGNMENT, preferred_
 /// Use [free](#free) to release allocated memory when it's not needed anymore.
 new :: fn (T: type #comptime, noinit := false, preferred_allocator: *Allocator = null, loc := #call_location) (ptr: *T, err: Error) #inline {
     mem, err :: alloc(sizeof(T), alignof(T), preferred_allocator, loc);
+    if err { return auto mem, err; }
     if !noinit {
         zeromem(mem, sizeof(T));
     }
-    return auto mem, err; 
+    return auto mem, OK; 
+}
+
+/// Allocates new slice of 'element_count' elements of 'TElement' type. 
+///
+/// Newly allocated memory block is zero initialized by default unless the `noinit` is `true`.
+///
+/// Use [free_slice](#free_slice) to release allocated memory when it's not needed anymore.
+new_slice :: fn (TElement: type #comptime, element_count: s64, noinit := false, preferred_allocator: *Allocator = null, loc := #call_location) (slice: []TElement, err: Error) {
+    assert(element_count >= 0, "Invalid element count!");
+    slice: []TElement;
+    if element_count == 0 { return slice, OK; }
+    bytes :: sizeof(TElement) * cast(usize) element_count;
+    mem, err :: alloc(bytes, alignof(TElement), preferred_allocator, loc);
+    if err { return slice, err; }
+    if !noinit {
+        zeromem(mem, bytes);
+    }
+    slice.ptr = auto mem;
+    slice.len = element_count;
+    return slice, OK;
 }
 
 /// Free memory previously allocated by specific `preferred_allocator`. In case the `preferred_allocator` is null, 
@@ -183,6 +204,18 @@ free :: fn (ptr: *u8, preferred_allocator: *Allocator = null, loc := #call_locat
     assert(allocator.handler);
     if !ptr { return; }
     allocator.handler(allocator, AllocOp.FREE, ptr, 0 /* size */, 0 /* alignment */, loc.file, loc.line);
+}
+
+/// Release slice memory allocated by [alloc_slice](#alloc_slice) or [new_slice](#new_slice) call.
+///
+/// !!! warning
+///     The `allocator` must match the allocator used by 'alloc_slice' or 'new_slice'.
+free_slice :: fn (slice: *[]?T, allocator: *Allocator = null, loc := #call_location) {
+    if slice.ptr {
+        free(auto slice.ptr, allocator, loc);
+        slice.ptr = null;
+    }
+    slice.len = 0;
 }
 
 /// Invoke the reset operation on the `allocator`. If supported, the `allocator` should reset its internal state (make
@@ -322,18 +355,6 @@ alloc_slice :: fn (slice: *[]?T, n: s64, zero_initialized := true, allocator: *A
     slice.len = n;
     if zero_initialized { zeromem(auto slice.ptr, bytes); }
     return OK;
-}
-
-/// Release slice memory allocated by [alloc_slice](#alloc_slice) call.
-///
-/// !!! warning
-///     The `allocator` must match the allocator used in ``alloc_slice``.
-free_slice :: fn (slice: *[]?T, allocator: *Allocator = null, loc := #call_location) {
-    if slice.ptr {
-        free(auto slice.ptr, allocator, loc);
-        slice.ptr = null;
-    }
-    slice.len = 0;
 }
 
 /// Create slice subset defined as range `<start-index, end-index)`. Notice that `end` index

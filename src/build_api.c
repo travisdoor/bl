@@ -96,3 +96,11 @@ BL_EXPORT s32 __get_module_import_policy(struct target *target)
     bmagic_assert(target);
     return target->module_policy;
 }
+
+BL_EXPORT void __get_default_triple(struct target_triple *triple) {
+    target_init_default_triple(triple);
+}
+
+BL_EXPORT s32 __triple_to_string(struct target_triple *triple, char *buf, s32 buf_len) {
+    return target_triple_to_string(triple, buf, buf_len);
+}

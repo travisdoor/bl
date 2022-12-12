@@ -1,6 +1,8 @@
 #import "std/test"
 
 build :: fn () #build_entry {
+    defer temporary_release();
+
     exe := add_executable("build_api_test");
     test_eq(exe.kind, TargetKind.EXECUTABLE);
     test_eq(exe.build_mode, BuildMode.DEBUG);
@@ -13,6 +15,9 @@ build :: fn () #build_entry {
     parent_dir: string_view;
     std.str_split_by_last(get_output_dir(exe), '/', null, &parent_dir);
     test_eq(parent_dir, "build_api_test");
+
+    expected_triple :: get_default_triple();
+    test_eq(triple_to_string(exe.triple), triple_to_string(expected_triple));
 
     // @Incomplete: add more test here.
 }
