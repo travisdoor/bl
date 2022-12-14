@@ -166,6 +166,8 @@ mat4_init_look_at :: fn (m: *mat4, eye: v3, target: v3, up: v3) #inline {
     (@m)[3][2] = dot(f, eye);
 }
 
+/// Multiply matrix `a` with matrix `b` and writes the result into `result`. `a` or `b` can be used
+/// also as the `result`.
 mat4_mul :: fn (a: *mat4, b: *mat4, result: *mat4) {
     a00 :: (@a)[0][0]; a01 :: (@a)[0][1]; a02 :: (@a)[0][2]; a03 :: (@a)[0][3];
     a10 :: (@a)[1][0]; a11 :: (@a)[1][1]; a12 :: (@a)[1][2]; a13 :: (@a)[1][3];
@@ -432,7 +434,7 @@ euler_to_quat :: fn (euler: v3) quat #inline {
     qy :: quat_axis_angle(v3.{ y = 1.f }, euler.y);
     qz :: quat_axis_angle(v3.{ z = 1.f }, euler.z);
 
-    return quat_mul(qx, quat_mul(qy, qz));
+    return quat_mul(quat_mul(qz, qy), qx);
 }
 
 quat_imag :: fn (q: quat) v3 #inline {
