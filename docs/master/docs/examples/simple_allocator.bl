@@ -16,7 +16,7 @@ my_allocator_handler :: fn (
     // Operation specify whether we do allocation or free.
     operation: AllocOp,
     // Pointer to the previously allocated memory. 
-    ptr: *u8,
+    _: *u8,
     // Count of bytes to be allocated.
     size: usize,
     // Allocation allignment.
@@ -86,6 +86,6 @@ main :: fn () s32 {
 
     print("User = %\n", @user);
 
-    free(auto user);
+    free(auto user, &allocator);
     return 0;
 }

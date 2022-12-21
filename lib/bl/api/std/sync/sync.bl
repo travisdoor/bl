@@ -5,55 +5,58 @@
 //! Multiplatform implementation of various thread synchronization tools.
 //! 
 //! !!! todo
-//!     This module is experimental and not fully supported across all platforms.
+//!     Improve documentation.
 
 #scope std
 
 /// Mutex type.
 Mutex :: _sync_impl.Mutex;
+Semaphore :: _sync_impl.Semaphore;
 
 /// Initialize mutex. Call [mutex_terminate](#mutex_terminate) when mutex is no longer needed.
-mutex_init :: fn (mutex: *Mutex) #inline {
-    _sync_impl.init(mutex);
+mutex_init :: fn (mutex: *Mutex) Error #inline {
+    return _sync_impl.mutex_init(mutex);
 }
 
 /// Terminate mutex.
-mutex_terminate :: fn (mutex: *Mutex) #inline {
-    _sync_impl.terminate(mutex);
+mutex_terminate :: fn (mutex: *Mutex) Error #inline {
+    return _sync_impl.mutex_terminate(mutex);
 }
 
 /// Lock mutex and enter critical section.
-mutex_lock :: fn (mutex: *Mutex) #inline {
-    _sync_impl.lock(mutex);
+mutex_lock :: fn (mutex: *Mutex) Error #inline {
+    return _sync_impl.mutex_lock(mutex);
 }
 
-mutex_try_lock :: fn (mutex: *Mutex) bool #inline {
-    return _sync_impl.try_lock(mutex);
+/// Try to lock the `mutex`. Returns `true` in case the mutex was locked or `false` if `mutex`
+/// is already locked or en error occurred.
+mutex_try_lock :: fn (mutex: *Mutex) (bool, Error) #inline {
+    return _sync_impl.mutex_try_lock(mutex);
 }
 
 /// Unlock previously locked mutex and leave critical section.
-mutex_unlock :: fn (mutex: *Mutex) #inline {
-    _sync_impl.unlock(mutex);
+mutex_unlock :: fn (mutex: *Mutex) Error #inline {
+    return _sync_impl.mutex_unlock(mutex);
 }
 
-Semaphore :: _sync_impl.Semaphore;
-
-semaphore_init :: fn (semaphore: *Semaphore, value: u32) #inline {
-    _sync_impl.sem_init(semaphore, value);
+/// Initialize `semaphore` object with `value`.
+semaphore_init :: fn (semaphore: *Semaphore, value: u32) Error #inline {
+    return _sync_impl.semaphore_init(semaphore, value);
 }
 
-semaphore_terminate :: fn (semaphore: Semaphore) #inline {
-    _sync_impl.sem_terminate(semaphore);
+/// Terminate `semaphore` object.
+semaphore_terminate :: fn (semaphore: *Semaphore) Error #inline {
+    return _sync_impl.semaphore_terminate(semaphore);
 }
 
-semaphore_wait :: fn (semaphore: Semaphore) #inline {
-    _sync_impl.sem_wait(semaphore);
+semaphore_wait :: fn (semaphore: *Semaphore) Error #inline {
+    return _sync_impl.semaphore_wait(semaphore);
 }
 
-semaphore_trywait :: fn (semaphore: Semaphore) bool #inline {
-    return _sync_impl.sem_try_wait(semaphore);
+semaphore_trywait :: fn (semaphore: *Semaphore) (bool, Error) #inline {
+    return _sync_impl.semaphore_try_wait(semaphore);
 }
 
-semaphore_post :: fn (semaphore: Semaphore) #inline {
-    _sync_impl.sem_post(semaphore);
+semaphore_post :: fn (semaphore: *Semaphore) Error #inline {
+    return _sync_impl.semaphore_post(semaphore);
 }

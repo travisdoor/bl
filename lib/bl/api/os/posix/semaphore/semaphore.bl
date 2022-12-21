@@ -1,0 +1,11 @@
+sem_t :: C.int;
+
+SEM_VALUE_MAX :: 32767;
+SEM_FAILED :: cast(*sem_t) (-1);
+
+sem_init :: fn (s: *sem_t, shader: C.int, v: C.uint) C.int #extern "sem_init";
+sem_destroy :: fn (s: *sem_t) C.int #extern "sem_destroy";
+sem_post :: fn (s: *sem_t) C.int #extern "sem_post";
+sem_trywait :: fn (s: *sem_t) C.int #extern "sem_trywait";
+sem_wait :: fn (s: *sem_t) C.int #extern "sem_wait";
+

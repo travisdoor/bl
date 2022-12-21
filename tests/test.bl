@@ -1,7 +1,4 @@
-#import "std/async"
-#import "std/async"
-#import "std/async"
-#import "std/async"
+#import "std/sync"
 
 /*
 

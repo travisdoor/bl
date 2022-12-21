@@ -101,6 +101,13 @@ os_get_last_error :: fn () (s32, string_view) #inline {
     return ec, str;
 }
 
+os_get_last_error2 :: fn () Error #inline {
+    ec :: C.errno();
+    str := std.str_view_empty;
+    if ec != 0 { str = std.ctostr(C.strerror(ec)); }
+    return error(ec, str);
+}
+
 os_get_backtrace :: fn (skip_frames := 0 #maybe_unused, max_frame_count := 64 #maybe_unused) []CodeLocation {
     // @Incomplete <2022-08-21 Sun>: Here we tried to use 'backtrace' from the C library, but is seems not
     // working correctly. Documentation claims that '-rdynamic' linker flag must be used, but still, the

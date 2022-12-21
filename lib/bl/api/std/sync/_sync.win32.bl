@@ -5,46 +5,46 @@
 Mutex :: win32.RTL_CRITICAL_SECTION;
 Semaphore :: win32.HANDLE;
 
-init :: fn (mutex: *Mutex) #inline {
+mutex_init :: fn (mutex: *Mutex) #inline {
     win32.InitializeCriticalSection(mutex);
 }
 
-terminate :: fn (mutex: *Mutex) #inline {
+mutex_terminate :: fn (mutex: *Mutex) #inline {
     win32.DeleteCriticalSection(mutex);
 }
 
-lock :: fn (mutex: *Mutex) #inline {
+mutex_lock :: fn (mutex: *Mutex) #inline {
     win32.EnterCriticalSection(mutex);
 }
 
-try_lock :: fn (mutex: *Mutex) bool #inline {
+mutex_try_lock :: fn (mutex: *Mutex) bool #inline {
     return win32.TryEnterCriticalSection(mutex) != 0;
 }
 
-unlock :: fn (mutex: *Mutex) #inline {
+mutex_unlock :: fn (mutex: *Mutex) #inline {
     win32.LeaveCriticalSection(mutex);
 }
 
-sem_init :: fn (semaphore: *Semaphore, value: u32) {
+semaphore_init :: fn (semaphore: *Semaphore, value: u32) {
     (@semaphore) = win32.CreateSemaphoreA(null, auto value, auto value, null);
 }
 
-sem_terminate :: fn (semaphore: Semaphore) {
+semaphore_terminate :: fn (semaphore: Semaphore) {
     win32.CloseHandle(semaphore);
 }
 
-sem_wait :: fn (semaphore: Semaphore) {
+semaphore_wait :: fn (semaphore: Semaphore) {
     using win32;
     WaitForSingleObject(semaphore, INFINITE);
 }
 
-sem_try_wait :: fn (semaphore: Semaphore) bool {
+semaphore_try_wait :: fn (semaphore: Semaphore) bool {
     using win32;
     result :: WaitForSingleObject(semaphore, 0);
     return result != WAIT_TIMEOUT;
 }
 
-sem_post :: fn (semaphore: Semaphore) {
+semaphore_post :: fn (semaphore: Semaphore) {
     using win32;
     ReleaseSemaphore(semaphore, 1, null);
 }
