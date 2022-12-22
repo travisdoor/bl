@@ -5,7 +5,7 @@
 #scope _sync_impl
 
 Mutex :: pthread_mutex_t;
-Condition :: 0;
+Condition :: pthread_cond_t;
 
 mutex_init :: fn (mutex: *Mutex) Error #inline {
     state :: pthread_mutex_init(mutex, null);
@@ -56,13 +56,28 @@ mutex_unlock :: fn (mutex: *Mutex) Error #inline {
 }
 
 condition_init :: fn (condition: *Condition) Error #inline {
+    state :: pthread_cond_init(condition, null);
+    if state != 0 {
+        estr :: cast(*u8) C.strerror(state);
+        return error("Cannot initialize condition variable: '%' (%).", estr, state);
+    }
     return OK;
 }
 
 condition_wait :: fn (condition: *Condition, mutex: *Mutex) Error #inline {
+    state :: pthread_cond_wait(condition, mutex);
+    if state != 0 {
+        estr :: cast(*u8) C.strerror(state);
+        return error("Cannot wait for condition variable: '%' (%).", estr, state);
+    }
     return OK;
 }
 
 condition_signal :: fn (condition: *Condition) Error #inline {
+    state :: pthread_cond_signal(condition);
+    if state != 0 {
+        estr :: cast(*u8) C.strerror(state);
+        return error("Cannot signal condition variable: '%' (%).", estr, state);
+    }
     return OK;
 }
