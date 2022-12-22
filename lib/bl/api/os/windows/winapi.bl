@@ -485,6 +485,14 @@ RTL_CRITICAL_SECTION :: struct {
     SpinCount: ULONG_PTR;
 }
 LPCRITICAL_SECTION :: *RTL_CRITICAL_SECTION;
+PCRITICAL_SECTION :: *RTL_CRITICAL_SECTION;
+
+RTL_CONDITION_VARIABLE :: struct {
+    Ptr: PVOID;
+}
+PRTL_CONDITION_VARIABLE :: *RTL_CONDITION_VARIABLE;
+CONDITION_VARIABLE :: RTL_CONDITION_VARIABLE;
+PCONDITION_VARIABLE :: PRTL_CONDITION_VARIABLE;
 
 POINT :: struct {
     x: LONG;
@@ -1007,6 +1015,9 @@ DeleteCriticalSection :: fn (lpCriticalSection: LPCRITICAL_SECTION) #extern "Del
 EnterCriticalSection  :: fn (lpCriticalSection: LPCRITICAL_SECTION) #extern "EnterCriticalSection";
 LeaveCriticalSection  :: fn (lpCriticalSection: LPCRITICAL_SECTION) #extern "LeaveCriticalSection";
 TryEnterCriticalSection :: fn (lpCriticalSection: LPCRITICAL_SECTION ) BOOL #extern "TryEnterCriticalSection";
+SleepConditionVariableCS :: fn (ConditionVariable: PCONDITION_VARIABLE, CriticalSection: PCRITICAL_SECTION, dwMilliseconds: DWORD) BOOL #extern "SleepConditionVariableCS";
+WakeConditionVariable :: fn (ConditionVariable: PCONDITION_VARIABLE) #extern "WakeConditionVariable"
+InitializeConditionVariable :: fn (ConditionVariable: PCONDITION_VARIABLE) #extern "InitializeConditionVariable";
 GetFileInformationByHandle :: fn (hFile: HANDLE, lpFileInformation: LPBY_HANDLE_FILE_INFORMATION) BOOL #extern "GetFileInformationByHandle";
 GetOverlappedResult :: fn (hFile: HANDLE, lpOverlapped: LPOVERLAPPED, lpNumberOfBytesTransferred: LPDWORD, bWait: BOOL) BOOL #extern "GetOverlappedResult";
 ResetEvent :: fn (hEvent: HANDLE) BOOL #extern "ResetEvent";

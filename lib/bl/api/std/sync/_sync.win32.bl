@@ -3,48 +3,44 @@
 #scope _sync_impl
 
 Mutex :: win32.RTL_CRITICAL_SECTION;
-Semaphore :: win32.HANDLE;
+Condition :: win32.CONDITION_VARIABLE;
 
-mutex_init :: fn (mutex: *Mutex) #inline {
+mutex_init :: fn (mutex: *Mutex) Error #inline {
     win32.InitializeCriticalSection(mutex);
+    return OK;
 }
 
-mutex_terminate :: fn (mutex: *Mutex) #inline {
+mutex_terminate :: fn (mutex: *Mutex) Error #inline {
     win32.DeleteCriticalSection(mutex);
+    return OK;
 }
 
-mutex_lock :: fn (mutex: *Mutex) #inline {
+mutex_lock :: fn (mutex: *Mutex) Error #inline {
     win32.EnterCriticalSection(mutex);
+    return OK;
 }
 
-mutex_try_lock :: fn (mutex: *Mutex) bool #inline {
-    return win32.TryEnterCriticalSection(mutex) != 0;
+mutex_try_lock :: fn (mutex: *Mutex) (bool, Error) #inline {
+    return win32.TryEnterCriticalSection(mutex) != 0, OK;
 }
 
-mutex_unlock :: fn (mutex: *Mutex) #inline {
+mutex_unlock :: fn (mutex: *Mutex) Error #inline {
     win32.LeaveCriticalSection(mutex);
+    return OK;
 }
 
-semaphore_init :: fn (semaphore: *Semaphore, value: u32) {
-    (@semaphore) = win32.CreateSemaphoreA(null, auto value, auto value, null);
+condition_init :: fn (condition: *Condition) Error #inline {
+    win32.InitializeConditionVariable(condition);
+    return OK;
 }
 
-semaphore_terminate :: fn (semaphore: Semaphore) {
-    win32.CloseHandle(semaphore);
-}
-
-semaphore_wait :: fn (semaphore: Semaphore) {
+condition_wait :: fn (condition: *Condition, mutex: *Mutex) Error #inline {
     using win32;
-    WaitForSingleObject(semaphore, INFINITE);
+    SleepConditionVariableCS(condition, mutex, INFINITE);
+    return OK;
 }
 
-semaphore_try_wait :: fn (semaphore: Semaphore) bool {
-    using win32;
-    result :: WaitForSingleObject(semaphore, 0);
-    return result != WAIT_TIMEOUT;
-}
-
-semaphore_post :: fn (semaphore: Semaphore) {
-    using win32;
-    ReleaseSemaphore(semaphore, 1, null);
+condition_signal :: fn (condition: *Condition) Error #inline {
+    win32.WakeConditionVariable(condition);
+    return OK;
 }

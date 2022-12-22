@@ -5,7 +5,7 @@
 #scope _sync_impl
 
 Mutex :: pthread_mutex_t;
-Semaphore :: *sem_t;
+Condition :: 0;
 
 mutex_init :: fn (mutex: *Mutex) Error #inline {
     state :: pthread_mutex_init(mutex, null);
@@ -55,53 +55,14 @@ mutex_unlock :: fn (mutex: *Mutex) Error #inline {
     return OK;
 }
 
-semaphore_init :: fn (semaphore: *Semaphore, value: u32, _name: string_view = "", loc := #call_location) Error {
-    name := _name;
-    if name.len == 0 {
-        name = tprint("/%", loc.hash);
-    }
-    assert(name.len > 0);
-    sem_unlink(std.strtoc(name));
-    sem :: sem_open(std.strtoc(name), C.O_CREAT | C.O_EXCL, auto C.S_IRWXU, value);
-    if sem == SEM_FAILED {
-        return os_get_last_error2();
-    }
-    (@semaphore) = sem;
+condition_init :: fn (condition: *Condition) Error #inline {
     return OK;
 }
 
-semaphore_terminate :: fn (semaphore: Semaphore) Error {
-    state :: sem_close(semaphore);
-    if state == -1 {
-        return os_get_last_error2();
-    }
+condition_wait :: fn (condition: *Condition, mutex: *Mutex) Error #inline {
     return OK;
 }
 
-semaphore_wait :: fn (semaphore: Semaphore) Error {
-    state :: sem_wait(semaphore);
-    if state == -1 {
-        return os_get_last_error2();
-    }
-    return OK;
-}
-
-semaphore_try_wait :: fn (semaphore: Semaphore) (bool, Error) {
-    state :: sem_trywait(semaphore);
-    if state == -1 {
-        ec :: C.errno();
-        if ec == C.EAGAIN {
-            return false, OK;
-        }
-        return false, os_get_last_error2();
-    }
-    return true, OK;
-}
-
-semaphore_post :: fn (semaphore: Semaphore) Error {
-    state :: sem_post(semaphore);
-    if state == -1 {
-        return os_get_last_error2();
-    }
+condition_signal :: fn (condition: *Condition) Error #inline {
     return OK;
 }

@@ -11,7 +11,13 @@
 
 /// Mutex type.
 Mutex :: _sync_impl.Mutex;
-Semaphore :: _sync_impl.Semaphore;
+Condition :: _sync_impl.Condition;
+
+Semaphore :: struct {
+    mutex: Mutex;
+    cond: Condition;
+    value: u32;
+}
 
 /// Initialize mutex. Call [mutex_terminate](#mutex_terminate) when mutex is no longer needed.
 mutex_init :: fn (mutex: *Mutex) Error #inline {
@@ -40,23 +46,60 @@ mutex_unlock :: fn (mutex: *Mutex) Error #inline {
 }
 
 /// Initialize `semaphore` object with `value`.
-semaphore_init :: fn (semaphore: *Semaphore, value: u32, name: string_view = "", loc := #call_location) Error #inline {
-    return _sync_impl.semaphore_init(semaphore, value, name, loc);
+semaphore_init :: fn (sem: *Semaphore, v: u32 = 0) Error #inline {
+    err: Error;
+    err = mutex_init(&sem.mutex);
+    if err { return err; }
+    err = condition_init(&sem.cond);
+    if err { return err; }
+    sem.value = v;
+    return OK;
 }
 
 /// Terminate `semaphore` object.
-semaphore_terminate :: fn (semaphore: Semaphore) Error #inline {
-    return _sync_impl.semaphore_terminate(semaphore);
+semaphore_terminate :: fn (sem: *Semaphore) Error #inline {
+    err: Error;
+    err = mutex_terminate(&sem.mutex);
+    if err { return err; }
+    err = condition_terminate(&sem.cond);
+    return err;
 }
 
-semaphore_wait :: fn (semaphore: Semaphore) Error #inline {
-    return _sync_impl.semaphore_wait(semaphore);
+semaphore_wait :: fn (sem: *Semaphore) Error #inline {
+    mutex_lock(&sem.mutex);
+    defer mutex_unlock(&sem.mutex);
+
+    loop sem.value == 0 {
+        condition_wait(&sem.cond, &sem.mutex);
+    }
+    sem.value -= 1;
+    if sem.value > 0 {
+        condition_signal(&sem.cond);
+    }
+    return OK;
 }
 
-semaphore_trywait :: fn (semaphore: Semaphore) (bool, Error) #inline {
-    return _sync_impl.semaphore_try_wait(semaphore);
+semaphore_post :: fn (sem: *Semaphore) Error #inline {
+    mutex_lock(&sem.mutex);
+    defer mutex_unlock(&sem.mutex);
+    sem.value += 1;
+    condition_signal(&sem.cond);
+    return OK;
 }
 
-semaphore_post :: fn (semaphore: Semaphore) Error #inline {
-    return _sync_impl.semaphore_post(semaphore);
+condition_init :: fn (condition: *Condition) Error #inline {
+    return _sync_impl.condition_init(condition);
+}
+
+condition_terminate :: fn (_: *Condition) Error #inline {
+    // Maybe we need something on other platforms?
+    return OK;
+}
+
+condition_wait :: fn (condition: *Condition, mutex: *Mutex) Error #inline {
+    return _sync_impl.condition_wait(condition, mutex);
+}
+
+condition_signal :: fn (condition: *Condition) Error #inline {
+    return _sync_impl.condition_signal(condition);
 }
