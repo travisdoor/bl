@@ -40,23 +40,23 @@ mutex_unlock :: fn (mutex: *Mutex) Error #inline {
 }
 
 /// Initialize `semaphore` object with `value`.
-semaphore_init :: fn (semaphore: *Semaphore, value: u32) Error #inline {
-    return _sync_impl.semaphore_init(semaphore, value);
+semaphore_init :: fn (semaphore: *Semaphore, value: u32, name: string_view = "", loc := #call_location) Error #inline {
+    return _sync_impl.semaphore_init(semaphore, value, name, loc);
 }
 
 /// Terminate `semaphore` object.
-semaphore_terminate :: fn (semaphore: *Semaphore) Error #inline {
+semaphore_terminate :: fn (semaphore: Semaphore) Error #inline {
     return _sync_impl.semaphore_terminate(semaphore);
 }
 
-semaphore_wait :: fn (semaphore: *Semaphore) Error #inline {
+semaphore_wait :: fn (semaphore: Semaphore) Error #inline {
     return _sync_impl.semaphore_wait(semaphore);
 }
 
-semaphore_trywait :: fn (semaphore: *Semaphore) (bool, Error) #inline {
+semaphore_trywait :: fn (semaphore: Semaphore) (bool, Error) #inline {
     return _sync_impl.semaphore_try_wait(semaphore);
 }
 
-semaphore_post :: fn (semaphore: *Semaphore) Error #inline {
+semaphore_post :: fn (semaphore: Semaphore) Error #inline {
     return _sync_impl.semaphore_post(semaphore);
 }
