@@ -36,6 +36,10 @@ current :: fn () Handle #inline {
     return win32.GetCurrentThread();
 }
 
+current_id :: fn () u64 #inline {
+    return auto win32.GetCurrentThreadId();
+}
+
 exit :: fn (exit_code: s32) Error {
     thread :: current();
     if win32.TerminateThread(thread, auto exit_code) == 1 {

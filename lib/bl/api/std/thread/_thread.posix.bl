@@ -32,6 +32,10 @@ current :: fn () Handle #inline {
     return pthread_self();
 }
 
+current_id :: fn () u64 #inline {
+    return auto pthread_self();
+}
+
 exit :: fn (exit_code: s32) Error {
     pthread_exit(auto exit_code);
     return OK;

@@ -603,6 +603,7 @@ CreateThread :: fn (
 ) HANDLE #extern "CreateThread";
 
 GetCurrentThread :: fn () HANDLE #extern "GetCurrentThread";
+GetCurrentThreadId :: fn () DWORD #extern "GetCurrentThreadId";
 GetCurrentProcess :: fn () HANDLE #extern "GetCurrentProcess";
 TerminateThread :: fn (handle: HANDLE, exit_code: DWORD) BOOL #extern "TerminateThread";
 GetExitCodeThread :: fn (hThread: HANDLE, lpExitCode: LPDWORD) BOOL #extern "GetExitCodeThread";
