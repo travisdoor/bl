@@ -100,7 +100,7 @@ init :: fn (viewport_width: s32, viewport_height: s32) Error {
     err = shader_init(&text_alpha_shader, SHADER_TEXT_ALPHA_SOURCE, "text-alpha");
     if err { return err; }
 
-    glm.mat4_ortho(0.f, auto viewport_width, auto viewport_height, 0.f, 0.f, 1.f, &view_matrix);
+    glm.mat4_init_ortho(&view_matrix, 0.f, auto viewport_width, auto viewport_height, 0.f, 0.f, 1.f);
 
     err = font_library_init();
     if err { return err; }

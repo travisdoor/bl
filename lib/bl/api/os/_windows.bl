@@ -112,6 +112,11 @@ os_get_last_error :: fn () (s32, string_view) #inline {
     return ec, std.ctostr(_last_error_msg_buffer.ptr, auto msg_len);
 }
 
+os_get_last_error2 :: fn () Error #inline {
+    ec, estr :: os_get_last_error();
+    return error(ec, estr);
+}
+
 os_get_backtrace :: fn (skip_frames := 0, max_frame_count := 64) []CodeLocation {
     trace: [..]CodeLocation;
     if max_frame_count < 1 { return trace; }

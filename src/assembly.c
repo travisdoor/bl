@@ -193,7 +193,7 @@ static void parse_triple(const char *llvm_triple, struct target_triple *out_trip
 static void llvm_init(struct assembly *assembly)
 {
     const s32 triple_len = target_triple_to_string(&assembly->target->triple, NULL, 0);
-    char *triple = bmalloc(triple_len);
+    char     *triple     = bmalloc(triple_len);
     target_triple_to_string(&assembly->target->triple, triple, triple_len);
 
     char *cpu       = /*LLVMGetHostCPUName()*/ "";
@@ -360,7 +360,12 @@ static void import_lib_path(import_elem_context_t *ctx, const char *dirpath)
 
 static void import_link(import_elem_context_t *ctx, const char *lib)
 {
-    assembly_add_native_lib_safe(ctx->assembly, lib, NULL);
+    assembly_add_native_lib_safe(ctx->assembly, lib, NULL, false);
+}
+
+static void import_link_runtime_only(import_elem_context_t *ctx, const char *lib)
+{
+    assembly_add_native_lib_safe(ctx->assembly, lib, NULL, true);
 }
 
 static bool import_module(struct assembly *assembly,
@@ -402,6 +407,10 @@ static bool import_module(struct assembly *assembly,
                    read_config(config, assembly->target, "link", ""),
                    ENVPATH_SEPARATOR,
                    (process_tokens_fn_t)&import_link);
+    process_tokens(&ctx,
+                   read_config(config, assembly->target, "link-runtime", ""),
+                   ENVPATH_SEPARATOR,
+                   (process_tokens_fn_t)&import_link_runtime_only);
 
     return_zone(true);
 }
@@ -649,7 +658,7 @@ struct assembly *assembly_new(const struct target *target)
 
     // Duplicate default libs
     for (usize i = 0; i < arrlenu(target->default_libs); ++i)
-        assembly_add_native_lib_safe(assembly, target->default_libs[i], NULL);
+        assembly_add_native_lib_safe(assembly, target->default_libs[i], NULL, false);
 
     // Append custom linker options
     assembly_append_linker_options_safe(assembly, target->default_custom_linker_opt);
@@ -739,7 +748,8 @@ DONE:
 
 void assembly_add_native_lib_safe(struct assembly *assembly,
                                   const char      *lib_name,
-                                  struct token    *link_token)
+                                  struct token    *link_token,
+                                  bool             runtime_only)
 {
     AssemblySyncImpl *sync = assembly->sync;
     pthread_spin_lock(&sync->link_lock);
@@ -754,6 +764,7 @@ void assembly_add_native_lib_safe(struct assembly *assembly,
     lib.hash              = hash;
     lib.user_name         = strdup(lib_name);
     lib.linked_from       = link_token;
+    lib.runtime_only      = runtime_only;
     arrput(assembly->libs, lib);
 DONE:
     pthread_spin_unlock(&sync->link_lock);

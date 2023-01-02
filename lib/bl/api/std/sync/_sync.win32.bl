@@ -3,23 +3,44 @@
 #scope _sync_impl
 
 Mutex :: win32.RTL_CRITICAL_SECTION;
+Condition :: win32.CONDITION_VARIABLE;
 
-init :: fn (mutex: *Mutex) #inline {
+mutex_init :: fn (mutex: *Mutex) Error #inline {
     win32.InitializeCriticalSection(mutex);
+    return OK;
 }
 
-terminate :: fn (mutex: *Mutex) #inline {
+mutex_terminate :: fn (mutex: *Mutex) Error #inline {
     win32.DeleteCriticalSection(mutex);
+    return OK;
 }
 
-lock :: fn (mutex: *Mutex) #inline {
+mutex_lock :: fn (mutex: *Mutex) Error #inline {
     win32.EnterCriticalSection(mutex);
+    return OK;
 }
 
-try_lock :: fn (mutex: *Mutex) bool #inline {
-    return win32.TryEnterCriticalSection(mutex) != 0;
+mutex_try_lock :: fn (mutex: *Mutex) (bool, Error) #inline {
+    return win32.TryEnterCriticalSection(mutex) != 0, OK;
 }
 
-unlock :: fn (mutex: *Mutex) #inline {
+mutex_unlock :: fn (mutex: *Mutex) Error #inline {
     win32.LeaveCriticalSection(mutex);
+    return OK;
+}
+
+condition_init :: fn (condition: *Condition) Error #inline {
+    win32.InitializeConditionVariable(condition);
+    return OK;
+}
+
+condition_wait :: fn (condition: *Condition, mutex: *Mutex) Error #inline {
+    using win32;
+    SleepConditionVariableCS(condition, mutex, INFINITE);
+    return OK;
+}
+
+condition_signal :: fn (condition: *Condition) Error #inline {
+    win32.WakeConditionVariable(condition);
+    return OK;
 }

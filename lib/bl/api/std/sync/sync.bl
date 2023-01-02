@@ -5,33 +5,101 @@
 //! Multiplatform implementation of various thread synchronization tools.
 //! 
 //! !!! todo
-//!     This module is experimental and not fully supported across all platforms.
+//!     Improve documentation.
 
 #scope std
 
 /// Mutex type.
 Mutex :: _sync_impl.Mutex;
+Condition :: _sync_impl.Condition;
+
+Semaphore :: struct {
+    mutex: Mutex;
+    cond: Condition;
+    value: u32;
+}
 
 /// Initialize mutex. Call [mutex_terminate](#mutex_terminate) when mutex is no longer needed.
-mutex_init :: fn (mutex: *Mutex) #inline {
-    _sync_impl.init(mutex);
+mutex_init :: fn (mutex: *Mutex) Error #inline {
+    return _sync_impl.mutex_init(mutex);
 }
 
 /// Terminate mutex.
-mutex_terminate :: fn (mutex: *Mutex) #inline {
-    _sync_impl.terminate(mutex);
+mutex_terminate :: fn (mutex: *Mutex) Error #inline {
+    return _sync_impl.mutex_terminate(mutex);
 }
 
 /// Lock mutex and enter critical section.
-mutex_lock :: fn (mutex: *Mutex) #inline {
-    _sync_impl.lock(mutex);
+mutex_lock :: fn (mutex: *Mutex) Error #inline {
+    return _sync_impl.mutex_lock(mutex);
 }
 
-mutex_try_lock :: fn (mutex: *Mutex) bool #inline {
-    return _sync_impl.try_lock(mutex);
+/// Try to lock the `mutex`. Returns `true` in case the mutex was locked or `false` if `mutex`
+/// is already locked or en error occurred.
+mutex_try_lock :: fn (mutex: *Mutex) (bool, Error) #inline {
+    return _sync_impl.mutex_try_lock(mutex);
 }
 
 /// Unlock previously locked mutex and leave critical section.
-mutex_unlock :: fn (mutex: *Mutex) #inline {
-    _sync_impl.unlock(mutex);
+mutex_unlock :: fn (mutex: *Mutex) Error #inline {
+    return _sync_impl.mutex_unlock(mutex);
+}
+
+/// Initialize `semaphore` object with `value`.
+semaphore_init :: fn (sem: *Semaphore, v: u32 = 0) Error #inline {
+    err: Error;
+    err = mutex_init(&sem.mutex);
+    if err { return err; }
+    err = condition_init(&sem.cond);
+    if err { return err; }
+    sem.value = v;
+    return OK;
+}
+
+/// Terminate `semaphore` object.
+semaphore_terminate :: fn (sem: *Semaphore) Error #inline {
+    err: Error;
+    err = mutex_terminate(&sem.mutex);
+    if err { return err; }
+    err = condition_terminate(&sem.cond);
+    return err;
+}
+
+semaphore_wait :: fn (sem: *Semaphore) Error #inline {
+    mutex_lock(&sem.mutex);
+    defer mutex_unlock(&sem.mutex);
+
+    loop sem.value == 0 {
+        condition_wait(&sem.cond, &sem.mutex);
+    }
+    sem.value -= 1;
+    if sem.value > 0 {
+        condition_signal(&sem.cond);
+    }
+    return OK;
+}
+
+semaphore_post :: fn (sem: *Semaphore) Error #inline {
+    mutex_lock(&sem.mutex);
+    defer mutex_unlock(&sem.mutex);
+    sem.value += 1;
+    condition_signal(&sem.cond);
+    return OK;
+}
+
+condition_init :: fn (condition: *Condition) Error #inline {
+    return _sync_impl.condition_init(condition);
+}
+
+condition_terminate :: fn (_: *Condition) Error #inline {
+    // Maybe we need something on other platforms?
+    return OK;
+}
+
+condition_wait :: fn (condition: *Condition, mutex: *Mutex) Error #inline {
+    return _sync_impl.condition_wait(condition, mutex);
+}
+
+condition_signal :: fn (condition: *Condition) Error #inline {
+    return _sync_impl.condition_signal(condition);
 }

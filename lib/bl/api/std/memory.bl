@@ -206,7 +206,8 @@ free :: fn (ptr: *u8, preferred_allocator: *Allocator = null, loc := #call_locat
     allocator.handler(allocator, AllocOp.FREE, ptr, 0 /* size */, 0 /* alignment */, loc.file, loc.line);
 }
 
-/// Release slice memory allocated by [alloc_slice](#alloc_slice) or [new_slice](#new_slice) call.
+/// Release slice memory allocated by [alloc_slice](#alloc_slice) or [new_slice](#new_slice) call. The input slice is
+/// set to the zero initialized state.
 ///
 /// !!! warning
 ///     The `allocator` must match the allocator used by 'alloc_slice' or 'new_slice'.

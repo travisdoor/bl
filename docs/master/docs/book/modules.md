@@ -39,6 +39,9 @@ To import the `thread` module use the *root* directory path:
 
 See also [Module Import Policy](/modules/build/#moduleimportpolicy).
 
+!!! note
+    Modules will be redesigned in the future to support the full set of features required by the build system. The long-term plan is to have the module configuration written directly in BL.
+
 ## List of module config entries
 
 The configuration file entries may be *global* or *platform-specific*, see the following sections.
