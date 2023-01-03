@@ -224,6 +224,24 @@ allocation_real_data :: fn () #test {
     pool_release(&pool);
 }
 
+allocation_real_data_small_blocks :: fn () #test {
+    using std;
+
+    pool :: pool_make(application_context.allocator, 32);
+
+    TEST_COUNT :: 1000;
+    tmp: [TEST_COUNT]string #noinit;
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        tmp[i] = std.str_new(some_data[i % some_data.len], &pool);
+    }
+
+    loop i := 0; i < TEST_COUNT; i += 1 {
+        test_eq(some_data[i % some_data.len], tmp[i]);
+    }
+
+    pool_release(&pool);
+}
+
 allocation_speed_pool :: fn () #test {
     using std;
 

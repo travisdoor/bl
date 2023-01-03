@@ -7,7 +7,7 @@
 //! Pool allocator is simple growing allocator grouping all allocated memory into memory blocks
 //! of `POOL_DEFAULT_SIZE` bytes by default.
 //!
-//! ### Supported Operation
+//! ### Supported Operations
 //! 
 //!     - [x] Allocate
 //!     - [-] Reallocate (Always allocates and copy data into a new block.)
