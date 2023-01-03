@@ -45,3 +45,8 @@ thread_exit :: fn (exit_code: s32 = 0) Error #inline {
 thread_current :: fn () Thread #inline {
     return _thread_impl.current();
 }
+
+/// Gets current thread ID.
+get_thread_id :: fn () u64 #inline {
+    return _thread_impl.current_id();
+}
