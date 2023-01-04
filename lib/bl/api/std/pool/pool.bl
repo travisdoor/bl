@@ -157,7 +157,6 @@ set_usable_allocation_size :: fn (ptr: *u8, size: usize) #inline {
 reset :: fn (pool: *PoolAllocator) {
     if pool.current_block {
         array_push(&pool.unused_blocks, pool.current_block);
-        pool.current_block = null;
     }
     loop i := 0; i < pool.used_blocks.len; i += 1 {
         array_push(&pool.unused_blocks, pool.used_blocks[i]);
@@ -167,6 +166,9 @@ reset :: fn (pool: *PoolAllocator) {
         free(pool.obsolete_blocks[i], pool.allocator);
     }
     array_clear(&pool.obsolete_blocks);
+    pool.current_block = null;
+    pool.space = 0;
+    pool.top = null;
 }
 
 release :: fn (pool: *PoolAllocator) {
