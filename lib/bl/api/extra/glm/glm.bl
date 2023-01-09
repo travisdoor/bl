@@ -650,17 +650,17 @@ v4_normalize :: fn (v: v4) v4 #inline {
 // compare 
 // =================================================================================================
 // @Incomplete: epsilon with default value?
-v2_compare :: fn (a: v2, b: v2, epsilon: f32) bool #inline {
+v2_compare :: fn (a: v2, b: v2, epsilon := std.F32_EPSILON) bool #inline {
     return std.compare(a.x, b.x, epsilon) && std.compare(a.y, b.y, epsilon);
 }
 
-v3_compare :: fn (a: v3, b: v3, epsilon: f32) bool {
+v3_compare :: fn (a: v3, b: v3, epsilon := std.F32_EPSILON) bool {
     return std.compare(a.x, b.x, epsilon)
         && std.compare(a.y, b.y, epsilon)
         && std.compare(a.z, b.z, epsilon);
 }
 
-v4_compare :: fn (a: v4, b: v4, epsilon: f32) bool {
+v4_compare :: fn (a: v4, b: v4, epsilon := std.F32_EPSILON) bool {
     return std.compare(a.x, b.x, epsilon)
         && std.compare(a.y, b.y, epsilon)
         && std.compare(a.z, b.z, epsilon)
