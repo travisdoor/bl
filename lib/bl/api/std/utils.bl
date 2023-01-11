@@ -53,6 +53,7 @@ set_flag :: fn (flags: *?T, flag: T) T #inline {
     return @flags;
 }
 
+/// Set all `flags_to_be_set` in `flags`.
 set_flags :: fn (flags: *?T, flags_to_be_set: ...T) T #inline {
     loop i := 0; i < flags_to_be_set.len; i += 1 {
         set_flag(flags, flags_to_be_set[i]);
@@ -79,6 +80,7 @@ clr_flag :: fn (flags: *?T, flag: T) T #inline {
     return @flags;
 }
 
+/// Clear all `flags_to_be_cleared` in `flags`.
 clr_flags :: fn (flags: *?T, flags_to_be_cleared: ...T) T #inline {
     loop i := 0; i < flags_to_be_cleared.len; i += 1 {
         clr_flag(flags, flags_to_be_cleared[i]);
@@ -106,6 +108,15 @@ is_flag :: fn (flags: ?T, flag: T) bool #inline {
     return result;
 }
 
+/// Check whether all `flags_to_check` are set in `flags`.
+is_all_flags :: fn (flags: ?T, flags_to_check: ...T) bool #inline {
+    loop i := 0; i < flags_to_check.len; i += 1 {
+        if !is_flag(flags, flags_to_check[i]) { return false; }
+    }
+    return true;
+}
+
+/// Create new flags from combination of `other` flags.
 make_flags :: fn (f1: ?T, other: ...T) T {
     result := f1;
     loop i := 0; i < other.len; i += 1 {

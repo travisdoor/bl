@@ -57,6 +57,19 @@ flags_1 :: fn () #test {
     test_false(is_flag(f, F1));
     test_false(is_flag(f, F2));
     test_false(is_flag(f, F3));
+
+    set_flags(&f, F1, F2);
+    test_true(is_flag(f, F1));
+    test_true(is_flag(f, F2));
+    test_false(is_flag(f, F3));
+
+    test_true(is_all_flags(f, F1, F2));
+    test_true(is_all_flags(f, F2));
+
+    clr_flags(&f, F1, F2);
+    test_false(is_flag(f, F1));
+    test_false(is_flag(f, F2));
+    test_false(is_flag(f, F3));
 }
 
 flags_enum :: fn () #test {
