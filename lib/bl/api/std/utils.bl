@@ -116,6 +116,15 @@ is_all_flags :: fn (flags: ?T, flags_to_check: ...T) bool #inline {
     return true;
 }
 
+/// Check whether at least one of `flags_to_check` is set in `flags`.
+is_one_or_more_flags :: fn (flags: ?T, flags_to_check: ...T) bool #inline {
+    set_count: s32;
+    loop i := 0; i < flags_to_check.len; i += 1 {
+        if is_flag(flags, flags_to_check[i]) { set_count += 1; }
+    }
+    return set_count > 0;
+}
+
 /// Create new flags from combination of `other` flags.
 make_flags :: fn (f1: ?T, other: ...T) T {
     result := f1;
@@ -263,6 +272,59 @@ utf8_to_utf32_single_char :: fn (utf8: string_view) (utf32: u32, decoded_bytes: 
         return (b[0] << 18) | (b[1] << 12) | (b[2] << 6) | b[3], 4, OK;
     }
     return 0, 0, error("Unable to convert UTF8 to UTF32, invalid encoding.");
+}
+
+/// Converts UTF32 encoded string to UTF8.
+utf32_to_utf8 :: fn (utf32_str: []u32, out_utf8_str: *string) Error {
+    assert(out_utf8_str);
+    if utf32_str.len == 0 { return OK; }
+    std.str_reserve(out_utf8_str, utf32_str.len);
+    loop i := 0; i < utf32_str.len; i += 1 {
+        err :: utf32_to_utf8_single_char(utf32_str[i], out_utf8_str);
+        if err { return err; }
+    }
+    return OK;
+}
+
+/// Appends the `out_utf8_str` string with *utf8* characters converted from `utf32_str` input.
+utf32_to_utf8_single_char :: fn (utf32_char: u32, out_utf8_str: *string) Error {
+    append :: fn (str: *string, char: u32) #inline {
+        tmp :: string_view.{ len = 1, ptr = auto &char };
+        std.str_append(str, tmp);
+    };
+    
+    if utf32_char <= 0x7F {
+        append(out_utf8_str, utf32_char);
+    } else if (utf32_char <= 0x7FF) {
+        append(out_utf8_str, 0xC0 | (utf32_char >> 6));
+        append(out_utf8_str, 0x80 | (utf32_char & 0x3F));
+    } else if (utf32_char <= 0xFFFF) {
+        append(out_utf8_str, 0xE0 | (utf32_char >> 12));
+        append(out_utf8_str, 0x80 | ((utf32_char >> 6) & 0x3F));
+        append(out_utf8_str, 0x80 | (utf32_char & 0x3F));
+    } else if (utf32_char <= 0x1FFFFF) {
+        append(out_utf8_str, 0xF0 | (utf32_char >> 18));
+        append(out_utf8_str, 0x80 | ((utf32_char >> 12) & 0x3F));
+        append(out_utf8_str, 0x80 | ((utf32_char >> 6) & 0x3F));
+        append(out_utf8_str, 0x80 | (utf32_char & 0x3F));
+    } else if (utf32_char <= 0x3FFFFFF) {
+        append(out_utf8_str, 0xF8 | (utf32_char >> 24));
+        append(out_utf8_str, 0x80 | (utf32_char >> 18));
+        append(out_utf8_str, 0x80 | ((utf32_char >> 12) & 0x3F));
+        append(out_utf8_str, 0x80 | ((utf32_char >> 6) & 0x3F));
+        append(out_utf8_str, 0x80 | (utf32_char & 0x3F));
+    } else if (utf32_char <= 0x7FFFFFFF) {
+        append(out_utf8_str, 0xFC | (utf32_char >> 30));
+        append(out_utf8_str, 0x80 | ((utf32_char >> 24) & 0x3F));
+        append(out_utf8_str, 0x80 | ((utf32_char >> 18) & 0x3F));
+        append(out_utf8_str, 0x80 | ((utf32_char >> 12) & 0x3F));
+        append(out_utf8_str, 0x80 | ((utf32_char >> 6) & 0x3F));
+        append(out_utf8_str, 0x80 | (utf32_char & 0x3F));
+    } else {
+        return error("Invalid UTF32 character code: %.", utf32_char);
+    }
+
+    return OK;
 }
 
 reinterpret_read_any :: fn (T: type #comptime, value: Any) T #inline {

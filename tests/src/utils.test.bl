@@ -70,6 +70,14 @@ flags_1 :: fn () #test {
     test_false(is_flag(f, F1));
     test_false(is_flag(f, F2));
     test_false(is_flag(f, F3));
+
+    test_false(is_one_or_more_flags(f, F1, F2, F3));
+    set_flags(&f, F1, F2);
+    test_true(is_one_or_more_flags(f, F1));
+    test_true(is_one_or_more_flags(f, F2));
+    test_true(is_one_or_more_flags(f, F1, F2));
+    test_true(is_one_or_more_flags(f, F1, F3));
+    test_false(is_one_or_more_flags(f, F3));
 }
 
 flags_enum :: fn () #test {
@@ -126,4 +134,87 @@ flags_make:: fn () {
     test_eq(make_flags(F1), 1);
     test_eq(make_flags(F1, F2), F1 | F2);
     test_eq(make_flags(F1, F3), F1 | F3);
+}
+
+utf8_to_utf32_single_char_1 :: fn () #test {
+    utf32, _,  err :: utf8_to_utf32_single_char("a");
+    test_ok(err);
+    test_eq(utf32, 0x00000061);
+}
+
+utf8_to_utf32_single_char_2 :: fn () #test {
+    utf32, _,  err :: utf8_to_utf32_single_char("ó");
+    test_ok(err);
+    test_eq(utf32, 0x000000f3);
+}
+
+utf8_to_utf32_single_char_3 :: fn () #test {
+    utf32, _,  err :: utf8_to_utf32_single_char("は");
+    test_ok(err);
+    test_eq(utf32, 0x0000306f);
+}
+
+utf8_to_utf32_test_1 :: fn () #test {
+    buf: [..]u32;
+    defer array_terminate(&buf);
+
+    err :: utf8_to_utf32("Příliš žluťoučký kůň úpěl ďábelské ódy.", &buf);
+    test_ok(err);
+
+    UTF32_CHARS :: [39]u32.{
+        0x00000050, 0x00000159, 0x000000ed, 0x0000006c, 0x00000069, 0x00000161, 0x00000020,
+        0x0000017e, 0x0000006c, 0x00000075, 0x00000165, 0x0000006f, 0x00000075, 0x0000010d,
+        0x0000006b, 0x000000fd, 0x00000020, 0x0000006b, 0x0000016f, 0x00000148, 0x00000020,
+        0x000000fa, 0x00000070, 0x0000011b, 0x0000006c, 0x00000020, 0x0000010f, 0x000000e1,
+        0x00000062, 0x00000065, 0x0000006c, 0x00000073, 0x0000006b, 0x000000e9, 0x00000020,
+        0x000000f3, 0x00000064, 0x00000079, 0x0000002e };
+
+    test_eq(buf.len, UTF32_CHARS.len);
+    loop i := 0; i < buf.len; i += 1 {
+        test_eq(buf[i], UTF32_CHARS[i]);
+    }
+}
+
+utf32_to_utf8_single_char_1 :: fn () #test {
+    buf := std.str_new();
+    defer std.str_delete(&buf);
+
+    err :: utf32_to_utf8_single_char(0x00000061, &buf);
+    test_ok(err);
+    test_eq(buf, "a");
+}
+
+utf32_to_utf8_single_char_2 :: fn () #test {
+    buf := std.str_new();
+    defer std.str_delete(&buf);
+
+    err :: utf32_to_utf8_single_char(0x000000f3, &buf);
+    test_ok(err);
+    test_eq(buf, "ó");
+}
+
+utf32_to_utf8_single_char_3 :: fn () #test {
+    buf := std.str_new();
+    defer std.str_delete(&buf);
+
+    err :: utf32_to_utf8_single_char(0x0000306f, &buf);
+    test_ok(err);
+    test_eq(buf, "は");
+}
+
+utf32_to_utf8_test_1 :: fn () #test {
+    UTF32_CHARS :: [39]u32.{
+        0x00000050, 0x00000159, 0x000000ed, 0x0000006c, 0x00000069, 0x00000161, 0x00000020,
+        0x0000017e, 0x0000006c, 0x00000075, 0x00000165, 0x0000006f, 0x00000075, 0x0000010d,
+        0x0000006b, 0x000000fd, 0x00000020, 0x0000006b, 0x0000016f, 0x00000148, 0x00000020,
+        0x000000fa, 0x00000070, 0x0000011b, 0x0000006c, 0x00000020, 0x0000010f, 0x000000e1,
+        0x00000062, 0x00000065, 0x0000006c, 0x00000073, 0x0000006b, 0x000000e9, 0x00000020,
+        0x000000f3, 0x00000064, 0x00000079, 0x0000002e };
+
+    buf := std.str_new();
+    defer std.str_delete(&buf);
+
+    err :: utf32_to_utf8(UTF32_CHARS, &buf);
+    test_ok(err);
+    test_eq(buf, "Příliš žluťoučký kůň úpěl ďábelské ódy.");
 }
