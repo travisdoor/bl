@@ -49,7 +49,8 @@ Fix invalid binary operation volatile type borrowing for explicitly not matching
 Fix argparse issues in doctor.
 Fix emitting of string literals produced by compile time functions.
 Fix invalid resolving of named-scope nested symbols via explicit operator.
-Fix resume of postponed stack based call interpretations in compile-time. 
+Fix resume of postponed stack based call interpretations in compile-time.
+Fix missing completeness check for value types converted to generic vargs (vargs of Any).
 Documentation format changed to markdown.
 Test cases are no longer reported as unused during compilation.
 Update dyncall to version 1.2 (due to experimental support of M1 Macs).
