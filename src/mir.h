@@ -368,7 +368,7 @@ struct mir_type_struct {
     // member is stored at same memory offset.
     bool is_union;
     // Set true only for incomplete forward declarations of the struct.
-    bool is_incomplete;
+    bool is_incomplete_fwd_struct;
     // Set true for struct type used as multiple return temporary.
     bool is_multiple_return_type;
     // Set true for string literals (represented as slice of u8 values).

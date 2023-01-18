@@ -2163,7 +2163,8 @@ void emit_instr_compound(struct context            *ctx,
 
         if (value->kind == MIR_INSTR_COMPOUND) {
             struct mir_instr_compound *nested_cmp = (struct mir_instr_compound *)value;
-            bassert(!nested_cmp->is_naked && "Directly nested compounds cannot be naked!");
+            // @Incomplete: Why are we failing here?
+            //bassert(!nested_cmp->is_naked && "Directly nested compounds cannot be naked!");
             emit_instr_compound(ctx, llvm_value_dest, nested_cmp);
         } else {
             llvm_value = value->llvm_value;

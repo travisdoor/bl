@@ -1178,10 +1178,20 @@ static inline struct scope *get_base_type_scope(struct mir_type *struct_type)
     return base_type->data.strct.scope;
 }
 
+// Checks whether the input type is vargs type converting to Any (v: ...). This information might be
+// useful in case we need to do some pre-scan of values to check its type completeness.
+static inline bool is_vargs_converting_to_any(struct context *ctx, struct mir_type *type)
+{
+    bassert(type);
+    if (type->kind != MIR_TYPE_VARGS) return false;
+    return mir_type_cmp(mir_get_struct_elem_type(type, MIR_SLICE_PTR_INDEX),
+                        ctx->builtin_types->t_Any_ptr);
+}
+
 // Determinate if type is incomplete struct type.
 static inline bool is_incomplete_struct_type(struct mir_type *type)
 {
-    return mir_is_composite_type(type) && type->data.strct.is_incomplete;
+    return mir_is_composite_type(type) && type->data.strct.is_incomplete_fwd_struct;
 }
 
 // Checks whether type is complete type, checks also dependencies. In practice only composite types
@@ -2405,17 +2415,17 @@ static struct mir_type *complete_type_struct(struct context *ctx, complete_type_
     struct mir_type *incomplete_type = MIR_CEV_READ_AS(struct mir_type *, &args->fwd_decl->value);
     bmagic_assert(incomplete_type);
     bassert(incomplete_type->kind == MIR_TYPE_STRUCT && "Incomplete type is not struct type!");
-    bassert(incomplete_type->data.strct.is_incomplete &&
+    bassert(incomplete_type->data.strct.is_incomplete_fwd_struct &&
             "Incomplete struct type is not marked as incomplete!");
 
-    incomplete_type->data.strct.members                 = args->members;
-    incomplete_type->data.strct.scope                   = args->scope;
-    incomplete_type->data.strct.scope_layer             = args->scope_layer;
-    incomplete_type->data.strct.base_type               = args->base_type;
-    incomplete_type->data.strct.is_packed               = args->is_packed;
-    incomplete_type->data.strct.is_union                = args->is_union;
-    incomplete_type->data.strct.is_multiple_return_type = args->is_multiple_return_type;
-    incomplete_type->data.strct.is_incomplete           = false;
+    incomplete_type->data.strct.members                  = args->members;
+    incomplete_type->data.strct.scope                    = args->scope;
+    incomplete_type->data.strct.scope_layer              = args->scope_layer;
+    incomplete_type->data.strct.base_type                = args->base_type;
+    incomplete_type->data.strct.is_packed                = args->is_packed;
+    incomplete_type->data.strct.is_union                 = args->is_union;
+    incomplete_type->data.strct.is_multiple_return_type  = args->is_multiple_return_type;
+    incomplete_type->data.strct.is_incomplete_fwd_struct = false;
 
 #if TRACY_ENABLE
     {
@@ -2435,9 +2445,9 @@ create_type_struct_incomplete(struct context *ctx, struct id *user_id, bool is_u
     // @Incomplete
     // @Incomplete
     (void)has_base;
-    struct mir_type *type          = create_type(ctx, MIR_TYPE_STRUCT, user_id);
-    type->data.strct.is_incomplete = true;
-    type->data.strct.is_union      = is_union;
+    struct mir_type *type                     = create_type(ctx, MIR_TYPE_STRUCT, user_id);
+    type->data.strct.is_incomplete_fwd_struct = true;
+    type->data.strct.is_union                 = is_union;
 
     type_init_id(ctx, type);
     type_init_llvm_struct(ctx, type);
@@ -2780,7 +2790,7 @@ void type_init_llvm_array(struct context *ctx, struct mir_type *type)
 
 void type_init_llvm_struct(struct context *ctx, struct mir_type *type)
 {
-    if (type->data.strct.is_incomplete) {
+    if (type->data.strct.is_incomplete_fwd_struct) {
         bassert(type->user_id && "Missing user id for incomplete struct type.");
         type->llvm_type = LLVMStructCreateNamed(ctx->assembly->llvm.ctx, type->user_id->str);
         return;
@@ -5440,11 +5450,8 @@ struct result analyze_instr_vargs(struct context *ctx, struct mir_instr_vargs *v
     }
 
     struct mir_instr **value;
-    bool               is_valid = true;
-
-    for (usize i = 0; i < valc && is_valid; ++i) {
+    for (usize i = 0; i < valc; ++i) {
         value = &sarrpeek(values, i);
-
         if (analyze_slot(ctx, analyze_slot_conf_full, value, vargs->type) != ANALYZE_PASSED)
             return_zone(FAIL);
     }
@@ -6042,6 +6049,7 @@ struct result analyze_instr_type_info(struct context *ctx, struct mir_instr_type
         type_info->rtti_type = type;
     }
     struct mir_type *incomplete_type;
+    // In case the required type is incomplete, we have to wait!
     if (is_incomplete_type(ctx, type_info->rtti_type, &incomplete_type)) {
         if (incomplete_type->user_id) return_zone(WAIT(incomplete_type->user_id->hash));
         return_zone(POSTPONE);
@@ -8749,6 +8757,8 @@ DONE:
     return_zone(PASS);
 }
 
+// Check whether the call-side argument is of complete type, this is used in case we need to convert
+// the argument to Any value -> RTTI is involved.
 static inline struct result is_argument_complete(struct context *ctx, struct mir_instr *call_arg)
 {
     struct mir_type *call_arg_type = call_arg->value.type;
@@ -8799,6 +8809,15 @@ struct result analyze_call_stage_prescan_arguments(struct context *ctx, struct m
         if (fn_arg->type->kind == MIR_TYPE_VARGS) {
             bassert(isnotflag(fn_arg->flags, FLAG_COMPTIME) && "Comptime vargs are not supported!");
             bassert(index + 1 == func_argc && "VArgs must be the last function argument.");
+            if (is_vargs_converting_to_any(ctx, fn_arg->type)) {
+                for (; index < call_argc; ++index) {
+                    struct mir_instr *call_arg_instr = sarrpeekor(call->args, index, NULL);
+                    if (!call_arg_instr) break;
+
+                    struct result result = is_argument_complete(ctx, call_arg_instr);
+                    if (result.state != ANALYZE_PASSED) return result;
+                }
+            }
             break;
         }
 
