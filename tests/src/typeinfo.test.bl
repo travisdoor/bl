@@ -347,7 +347,6 @@ has_member_1 :: fn () #test {
         second: s32;
     };
 
-    test_false(has_member(s32, "foo"));
     test_false(has_member(Foo, "foo"));
     test_true(has_member(Foo, "first"));
     test_true(has_member(Foo, "second"));
@@ -360,5 +359,5 @@ member_offset :: fn () #test {
     };
 
     test_eq(member_offset_bytes(Foo, "first"), 0);
-    test_eq(member_offset_bytes(Foo, "second"), sizeof(Foo.first));
+    test_eq(member_offset_bytes(Foo, "second"), cast(s64) sizeof(Foo.first));
 }

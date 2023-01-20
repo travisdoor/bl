@@ -413,10 +413,16 @@ number_type :: fn (size_bytes: usize, is_signed: bool) type #comptime {
     return s32;
 }
 
+// !!!
+// @Incomplete: Following funcitons might be comptime, but we may use them also with runtime known arguments,
+// change this after #comptime semantic will be "optional" based on arguments + #run directive will be supported
+// by the compiler.
+// !!!
+
 /// Check in compile-time whether structure type `TStruct` contains member called `member_name`.
-has_member :: fn (TStruct: type #comptime, member_name: string_view) bool #comptime {
+has_member :: fn (TStruct: type #comptime, member_name: string_view) bool {
     info :: cast(*TypeInfoStruct) typeinfo(TStruct);
-    if info.kind != TypeKind.STRUCT { return false; }
+    static_assert(info.kind == TypeKind.STRUCT);
     loop i := 0; i < info.members.len; i += 1 {
         if std.str_match(info.members[i].name, member_name) {
             return true;
@@ -426,15 +432,13 @@ has_member :: fn (TStruct: type #comptime, member_name: string_view) bool #compt
 }
 
 // Resolve structure member `member_name` offset in bytes inside the `TStruct` memory layout.
-member_offset_bytes :: fn (TStruct: type #comptime, member_name: string_view) usize #comptime {
+member_offset_bytes :: fn (TStruct: type #comptime, member_name: string_view) s64 {
     info :: cast(*TypeInfoStruct) typeinfo(TStruct);
-    if info.kind != TypeKind.STRUCT {
-        panic("TStruct is supposed to be a structure type.");
-    }
+    static_assert(info.kind == TypeKind.STRUCT);
     loop i := 0; i < info.members.len; i += 1 {
         member :: &info.members[i];
         if std.str_match(member.name, member_name) {
-            return auto member.offset_bytes;
+            return member.offset_bytes;
         }
     }
     panic("No such member '%' in the structure '%'.", member_name, TStruct);
@@ -442,8 +446,16 @@ member_offset_bytes :: fn (TStruct: type #comptime, member_name: string_view) us
 }
 
 // Resolve pointer to a structure member relative to the structure `base_ptr`.
-member_ptr :: fn (base_ptr: *u8, member: *TypeInfoStructMember) *u8 #inline {
-    return ptr_shift_bytes(base_ptr, member.offset_bytes);
+member_ptr :: fn {
+    fn (base_ptr: *u8, member: *TypeInfoStructMember) *u8 #inline {
+        return ptr_shift_bytes(base_ptr, member.offset_bytes);
+    };
+
+    fn (TMember: type #comptime, base_ptr: *?T, member_name: string_view) *TMember #inline {
+        if !has_member(T, member_name) { return null; }
+        offset :: member_offset_bytes(T, member_name);
+        return auto ptr_shift_bytes(base_ptr, offset);
+    };
 }
 
 #private
