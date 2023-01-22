@@ -323,6 +323,14 @@ The _enum_ represents an integer type with a limited set of possible named value
 {% include "../examples/enums.bl" %}
 ```
 
+### Nested Enum Type
+
+An enumerator can be nested in any _struct_ in case we want to explicitly associate the enumeration with some data type.
+
+```rust
+{% include "../examples/enum_nested.bl" %}
+```
+
 ## Enum Flags Type
 
 An enumerator can be used as a definition of bit flags by adding #flags directive to the type definition. This directive slightly changes the way how the enumerator values are generated. By default, the enumerator starts with zero variant (if it's not explicitly changed by the programmer) and every following enumerator variant has a value set to the previous one plus one. The flags enumerator starts with the first variant set to 1 and the following variants are set to the left-bit-shifted value of the previous one.
@@ -342,6 +350,7 @@ Enumerators marked as flags are also serialized as a combination of atomic flags
 
 !!! note
      It's possible to do an implicit casting of flags enumerators to its base type.
+     
 
 ## Type Casting
 

@@ -631,19 +631,12 @@ LLVMMetadataRef DI_scope_init(struct context *ctx, struct scope *scope)
             ctx->llvm_di_builder, llvm_parent_scope, llvm_unit, (u32)scope->location->line, 0);
         break;
     }
-    case SCOPE_PRIVATE:
-    case SCOPE_NAMED: {
-        scope->llvm_meta = ctx->assembly->gscope->llvm_meta;
-        break;
-    }
-    case SCOPE_FN:
-        // Use global scope as workaround here, in case we return unnamed struct type from compile
-        // time function (which is not generated in IR) we do not have any scope which can be used.
+    default:
+        // Use global scope as fallback if there is no other option!
+        // babort("Unsupported scope '%s' for DI generation", scope_kind_name(scope));
         bassert(ctx->assembly->gscope);
         scope->llvm_meta = ctx->assembly->gscope->llvm_meta;
         break;
-    default:
-        babort("Unsupported scope '%s' for DI generation", scope_kind_name(scope));
     }
     bassert(scope->llvm_meta);
     return scope->llvm_meta;

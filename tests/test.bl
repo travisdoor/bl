@@ -1,5 +1,16 @@
 main :: fn () s32 {
+    v: PickerContext.mode;
+
+    print("v = %\n", v);
     return 0;
+}
+
+PickerContext :: struct {
+    mode: enum {
+        FOO;
+        BAR;
+    };
+    entity: u32;
 }
 
 /*
