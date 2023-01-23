@@ -111,3 +111,36 @@ enum_flags_4 :: fn () #test {
     info :: cast(*TypeInfoEnum) typeinfo(F);
     test_true(info.is_flags);
 }
+
+enum_nested :: fn () #test {
+    Struct :: struct {
+        a: s32;
+        my_enum: enum {
+            A = 10;
+            B = 20;
+            C = 30;
+        };
+        b: s32;
+    };
+
+    v: Struct;
+
+    e: Struct.my_enum;
+    test_eq(typeinfo(e).kind, TypeKind.ENUM);
+
+    e = Struct.my_enum.A;
+    test_eq(cast(s32)e, 10);
+
+    switch e {
+        Struct.my_enum.A {}
+        Struct.my_enum.B {}
+        Struct.my_enum.C {}
+    }
+
+    using Struct.my_enum;
+    switch e {
+        A {}
+        B {}
+        C {}
+    }
+}

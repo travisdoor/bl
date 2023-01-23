@@ -176,6 +176,7 @@ Info :: struct {
 /// can be specified as needed.
 ///
 /// **Overloads:**
+///
 /// ```c
 /// fn (dirpath: string_view, remove_root := true) Error #inline
 /// fn (dirpath: string_view, remove_root: bool, filter: *fn(info: *Info, ctx: *?T) bool, ctx: *T = null) Error
@@ -210,10 +211,11 @@ VisitOpt :: struct {
 /// file entry. Optional context `ctx` pointer can be passed into the function.
 ///
 /// **Overloads:**
+///
 /// ```c
 /// fn (dirpath: string_view, opt: VisitOpt, ctx: *?T, visitor: *fn(info: *Info, ctx: *T) Error) Error #inline
 /// fn (dirpath: string_view, opt: VisitOpt, visitor: *fn(info: *Info) Error) Error #inline
-/// ``e
+/// ```
 ///
 /// ### Example
 ///
