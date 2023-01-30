@@ -431,6 +431,18 @@ has_member :: fn (TStruct: type #comptime, member_name: string_view) bool {
     return false;
 }
 
+// @Cleanup
+has_member2 :: fn (TStruct: type #comptime, member_name: string_view) bool #comptime {
+    info :: cast(*TypeInfoStruct) typeinfo(TStruct);
+    static_assert(info.kind == TypeKind.STRUCT);
+    loop i := 0; i < info.members.len; i += 1 {
+        if std.str_match(info.members[i].name, member_name) {
+            return true;
+        }
+    }
+    return false;
+}
+
 // Resolve structure member `member_name` offset in bytes inside the `TStruct` memory layout.
 member_offset_bytes :: fn (TStruct: type #comptime, member_name: string_view) s64 {
     info :: cast(*TypeInfoStruct) typeinfo(TStruct);

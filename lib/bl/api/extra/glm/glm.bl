@@ -269,6 +269,14 @@ mat4_mul_v4 :: fn (mat: *mat4, v: v4) v4 #inline {
     return out;
 }
 
+mat4_mul_v3 :: fn (mat: *mat4, v: v3) v3 #inline {
+    out: v3 #noinit;
+    out.x = (@mat)[0][0] * v.x + (@mat)[1][0] * v.y + (@mat)[2][0] * v.z + (@mat)[3][0];
+    out.y = (@mat)[0][1] * v.x + (@mat)[1][1] * v.y + (@mat)[2][1] * v.z + (@mat)[3][1];
+    out.z = (@mat)[0][2] * v.x + (@mat)[1][2] * v.y + (@mat)[2][2] * v.z + (@mat)[3][2];
+    return out;
+}
+
 /// Initialize `m` matrix as translation matrix. 
 mat4_init_translation :: fn (m: *mat4, v: v3) #inline {
     mat4_init(
