@@ -432,7 +432,7 @@ mat4_get_quat :: fn (m: *mat4) quat {
 
 quat_normalize :: fn (q: quat) quat #inline {
     return normalize(q);
-};
+}
 
 quat_axis_angle :: fn (axis: v3, angle_rad: f32) quat {
     a :: angle_rad * 0.5f;
@@ -447,7 +447,25 @@ quat_axis_angle :: fn (axis: v3, angle_rad: f32) quat {
         s * normalized_axis.z,
         c
     };
-};
+}
+
+quat_to_euler :: fn (q: quat) v3 {
+    euler: v3 #noinit;
+
+    sinr_cosp :: 2.f * (q.w * q.x + q.y * q.z);
+    cosr_cosp :: 1.f - 2.f * (q.x * q.x + q.y * q.y);
+    euler.x = std.atan2(sinr_cosp, cosr_cosp);
+
+    sinp :: std.sqrt(1.f + 2.f * (q.w * q.y - q.x * q.z));
+    cosp :: std.sqrt(1.f - 2.f * (q.w * q.y - q.x * q.z));
+    euler.y = 2.f * std.atan2(sinp, cosp) - std.F32_HALF_PI;
+
+    siny_cosp :: 2.f * (q.w * q.z + q.x * q.y);
+    cosy_cosp :: 1.f - 2.f * (q.y * q.y + q.z * q.z);
+    euler.z = std.atan2(siny_cosp, cosy_cosp);
+
+    return euler;
+}
 
 euler_to_quat :: fn (euler: v3) quat #inline {
     qx :: quat_axis_angle(v3.{ x = 1.f }, euler.x);
@@ -467,10 +485,10 @@ quat_real :: fn (q: quat) f32 #inline {
 
 quat_mul :: fn (q1: quat, q2: quat) quat {
     return quat.{
-            q1.w * q2.x + q1.x * q2.w + q1.y * q2.z - q1.z * q2.y,
-            q1.w * q2.y - q1.x * q2.z + q1.y * q2.w + q1.z * q2.x,
-            q1.w * q2.z + q1.x * q2.y - q1.y * q2.x + q1.z * q2.w,
-            q1.w * q2.w - q1.x * q2.x - q1.y * q2.y - q1.z * q2.z,
+        q1.w * q2.x + q1.x * q2.w + q1.y * q2.z - q1.z * q2.y,
+        q1.w * q2.y - q1.x * q2.z + q1.y * q2.w + q1.z * q2.x,
+        q1.w * q2.z + q1.x * q2.y - q1.y * q2.x + q1.z * q2.w,
+        q1.w * q2.w - q1.x * q2.x - q1.y * q2.y - q1.z * q2.z,
     };
 }
 
