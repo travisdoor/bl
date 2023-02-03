@@ -74,6 +74,7 @@ copysign  :: fn { C.copysignf; C.copysign; }
 asin      :: fn { C.asinf; C.asin; }
 acos      :: fn { C.acosf; C.acos; }
 tan       :: fn { C.tanf; C.tan; }
+atan      :: fn { C.atanf; C.atan; }
 
 abs :: fn { f32_abs; f64_abs; s64_abs; }
 compare :: fn { f32_compare; f64_compare; }

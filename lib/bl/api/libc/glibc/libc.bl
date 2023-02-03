@@ -68,6 +68,8 @@ acosf :: fn (n: f32) f32 #extern "acosf";
 acos :: fn (n: f64) f64 #extern "acos";
 tanf :: fn (x: f32) f32 #extern "tanf";
 tan :: fn (x: f64) f64 #extern "tan";
+atanf :: fn (y: f32) f32 #extern "atanf";
+atan :: fn (y: f64) f64 #extern "atan";
 atan2f :: fn (y: f32, x: f32) f32 #extern "atan2f";
 atan2 :: fn (y: f64, x: f64) f64 #extern "atan2";
 copysignf :: fn (x: f32, y: f32) f32 #extern "copysingf";
