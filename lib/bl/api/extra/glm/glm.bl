@@ -449,22 +449,32 @@ quat_axis_angle :: fn (axis: v3, angle_rad: f32) quat {
     };
 }
 
-quat_to_euler :: fn (q: quat) v3 {
-    euler: v3 #noinit;
+quat_to_euler :: fn (q1: quat) v3 {
+    using std;
 
-    sinr_cosp :: 2.f * (q.w * q.x + q.y * q.z);
-    cosr_cosp :: 1.f - 2.f * (q.x * q.x + q.y * q.y);
-    euler.x = std.atan2(sinr_cosp, cosr_cosp);
-
-    sinp :: std.sqrt(1.f + 2.f * (q.w * q.y - q.x * q.z));
-    cosp :: std.sqrt(1.f - 2.f * (q.w * q.y - q.x * q.z));
-    euler.y = 2.f * std.atan2(sinp, cosp) - std.F32_HALF_PI;
-
-    siny_cosp :: 2.f * (q.w * q.z + q.x * q.y);
-    cosy_cosp :: 1.f - 2.f * (q.y * q.y + q.z * q.z);
-    euler.z = std.atan2(siny_cosp, cosy_cosp);
-
-    return euler;
+    test := q1.x*q1.y + q1.z*q1.w;
+    if test > 0.499f {
+        return v3.{
+            0.f,
+            2.f * atan2(q1.x,q1.w),
+            F32_HALF_PI,
+        };
+    }
+    if test < -0.499f {
+        return v3. {
+            0.f,
+            -2.f * atan2(q1.x,q1.w),
+            -F32_HALF_PI,
+        };
+    }
+    sqx := q1.x*q1.x;
+    sqy := q1.y*q1.y;
+    sqz := q1.z*q1.z;
+    return v3.{
+	atan2(2.f*q1.x*q1.w-2.f*q1.y*q1.z , 1.f - 2.f*sqx - 2.f*sqz),
+        atan2(2.f*q1.y*q1.w-2.f*q1.x*q1.z , 1.f - 2.f*sqy - 2.f*sqz),
+	asin(2.f*test),
+    };
 }
 
 euler_to_quat :: fn (euler: v3) quat #inline {
