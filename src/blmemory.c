@@ -44,25 +44,25 @@
 
 void *bl_realloc_impl(void *ptr, const size_t size, const char UNUSED(*filename), s32 UNUSED(line))
 {
-    zone();
-    void *mem = realloc(ptr, size);
-    if (!mem) abort();
-    TracyCFree(ptr);
-    TracyCAlloc(mem, size);
-    return_zone(mem);
+	zone();
+	void *mem = realloc(ptr, size);
+	if (!mem) abort();
+	TracyCFree(ptr);
+	TracyCAlloc(mem, size);
+	return_zone(mem);
 }
 
 void *bl_malloc_impl(const size_t size, const char UNUSED(*filename), s32 UNUSED(line))
 {
-    zone();
-    void *mem = malloc(size);
-    if (!mem) abort();
-    TracyCAlloc(mem, size);
-    return_zone(mem);
+	zone();
+	void *mem = malloc(size);
+	if (!mem) abort();
+	TracyCAlloc(mem, size);
+	return_zone(mem);
 }
 
 void bl_free_impl(void *ptr, const char UNUSED(*filename), s32 UNUSED(line))
 {
-    TracyCFree(ptr);
-    free(ptr);
+	TracyCFree(ptr);
+	free(ptr);
 }

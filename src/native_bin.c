@@ -42,60 +42,60 @@ s32 lld_ld(struct assembly *assembly);
 
 static void copy_user_libs(struct assembly *assembly)
 {
-    char                *dest_path = tstr();
-    const struct target *target    = assembly->target;
-    const char          *out_dir   = target->out_dir;
-    for (usize i = 0; i < arrlenu(assembly->libs); ++i) {
-        struct native_lib *lib = &assembly->libs[i];
-        if (lib->is_internal) continue;
-        if (!lib->user_name) continue;
-        char *lib_dest_name = lib->filename;
+	char                *dest_path = tstr();
+	const struct target *target    = assembly->target;
+	const char          *out_dir   = target->out_dir;
+	for (usize i = 0; i < arrlenu(assembly->libs); ++i) {
+		struct native_lib *lib = &assembly->libs[i];
+		if (lib->is_internal) continue;
+		if (!lib->user_name) continue;
+		char *lib_dest_name = lib->filename;
 #if BL_PLATFORM_LINUX || BL_PLATFORM_MACOS
-        struct stat statbuf;
-        lstat(lib->filepath, &statbuf);
-        if (S_ISLNK(statbuf.st_mode)) {
-            char buf[PATH_MAX] = {0};
-            if (readlink(lib->filepath, buf, static_arrlenu(buf)) == -1) {
-                builder_error("Cannot follow symlink '%s' with error: %d", lib->filepath, errno);
-                continue;
-            }
-            lib_dest_name = buf;
-        }
+		struct stat statbuf;
+		lstat(lib->filepath, &statbuf);
+		if (S_ISLNK(statbuf.st_mode)) {
+			char buf[PATH_MAX] = {0};
+			if (readlink(lib->filepath, buf, static_arrlenu(buf)) == -1) {
+				builder_error("Cannot follow symlink '%s' with error: %d", lib->filepath, errno);
+				continue;
+			}
+			lib_dest_name = buf;
+		}
 #endif
 
-        strprint(dest_path, "%s/%s", out_dir, lib_dest_name);
-        if (file_exists(dest_path)) continue;
-        builder_info("Copy '%s' to '%s'.", lib->filepath, dest_path);
-        if (!copy_file(lib->filepath, dest_path)) {
-            builder_error("Cannot copy '%s' to '%s'.", lib->filepath, dest_path);
-        }
-    }
-    put_tstr(dest_path);
+		strprint(dest_path, "%s/%s", out_dir, lib_dest_name);
+		if (file_exists(dest_path)) continue;
+		builder_info("Copy '%s' to '%s'.", lib->filepath, dest_path);
+		if (!copy_file(lib->filepath, dest_path)) {
+			builder_error("Cannot copy '%s' to '%s'.", lib->filepath, dest_path);
+		}
+	}
+	put_tstr(dest_path);
 }
 
 void native_bin_run(struct assembly *assembly)
 {
-    builder_log("Running native runtime linker...");
-    LinkerFn linker = NULL;
+	builder_log("Running native runtime linker...");
+	LinkerFn linker = NULL;
 #if BL_PLATFORM_WIN
-    linker = &lld_link;
+	linker = &lld_link;
 #elif BL_PLATFORM_LINUX || BL_PLATFORM_MACOS
-    linker = &lld_ld;
+	linker = &lld_ld;
 #else
 #error "Unknown platform"
 #endif
 
-    const char *out_dir = assembly->target->out_dir;
-    zone();
-    if (linker(assembly) != 0) {
-        builder_msg(MSG_ERR, ERR_LIB_NOT_FOUND, NULL, CARET_WORD, "Native link execution failed.");
-        goto DONE;
-    }
+	const char *out_dir = assembly->target->out_dir;
+	zone();
+	if (linker(assembly) != 0) {
+		builder_msg(MSG_ERR, ERR_LIB_NOT_FOUND, NULL, CARET_WORD, "Native link execution failed.");
+		goto DONE;
+	}
 
-    if (assembly->target->copy_deps) {
-        builder_log("Copy assembly dependencies into '%s'.", out_dir);
-        copy_user_libs(assembly);
-    }
+	if (assembly->target->copy_deps) {
+		builder_log("Copy assembly dependencies into '%s'.", out_dir);
+		copy_user_libs(assembly);
+	}
 DONE:
-    return_zone();
+	return_zone();
 }

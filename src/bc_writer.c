@@ -33,22 +33,22 @@
 
 void bc_writer_run(struct assembly *assembly)
 {
-    zone();
-    char                *export_file = tstr();
-    const struct target *target      = assembly->target;
-    const char          *name        = target->name;
-    strprint(export_file, "%s/%s.ll", target->out_dir, name);
-    char *str = LLVMPrintModuleToString(assembly->llvm.modules[0]);
-    FILE *f   = fopen(export_file, "w");
-    if (f == NULL) {
-        builder_error("Cannot open file %s", export_file);
-        put_tstr(export_file);
-        return_zone();
-    }
-    fprintf(f, "%s\n", str);
-    fclose(f);
-    LLVMDisposeMessage(str);
-    builder_info("Byte code written into %s", export_file);
-    put_tstr(export_file);
-    return_zone();
+	zone();
+	char                *export_file = tstr();
+	const struct target *target      = assembly->target;
+	const char          *name        = target->name;
+	strprint(export_file, "%s/%s.ll", target->out_dir, name);
+	char *str = LLVMPrintModuleToString(assembly->llvm.modules[0]);
+	FILE *f   = fopen(export_file, "w");
+	if (f == NULL) {
+		builder_error("Cannot open file %s", export_file);
+		put_tstr(export_file);
+		return_zone();
+	}
+	fprintf(f, "%s\n", str);
+	fclose(f);
+	LLVMDisposeMessage(str);
+	builder_info("Byte code written into %s", export_file);
+	put_tstr(export_file);
+	return_zone();
 }

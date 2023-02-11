@@ -36,20 +36,20 @@ typedef void (*arena_elem_dtor_t)(void *);
 struct arena_chunk;
 
 struct arena {
-    struct arena_chunk     *first_chunk;
-    struct arena_chunk     *current_chunk;
-    usize                   elem_size_bytes;
-    s32                     elem_alignment;
-    s32                     elems_per_chunk;
-    arena_elem_dtor_t       elem_dtor;
-    struct arena_sync_impl *sync;
+	struct arena_chunk     *first_chunk;
+	struct arena_chunk     *current_chunk;
+	usize                   elem_size_bytes;
+	s32                     elem_alignment;
+	s32                     elems_per_chunk;
+	arena_elem_dtor_t       elem_dtor;
+	struct arena_sync_impl *sync;
 };
 
 void arena_init(struct arena     *arena,
-                usize             elem_size_bytes,
-                s32               elem_alignment,
-                s32               elems_per_chunk,
-                arena_elem_dtor_t elem_dtor);
+				usize             elem_size_bytes,
+				s32               elem_alignment,
+				s32               elems_per_chunk,
+				arena_elem_dtor_t elem_dtor);
 
 void arena_terminate(struct arena *arena);
 

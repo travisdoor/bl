@@ -36,77 +36,77 @@
 
 hash_t unit_hash(const char *filepath, struct token *load_from)
 {
-    struct unit *parent_unit = load_from ? load_from->location.unit : NULL;
-    char        *real_path   = NULL;
-    search_source_file(
-        filepath, SEARCH_FLAG_ALL, parent_unit ? parent_unit->dirpath : NULL, &real_path, NULL);
-    const hash_t hash = strhash(real_path ? real_path : filepath);
-    free(real_path);
-    return hash;
+	struct unit *parent_unit = load_from ? load_from->location.unit : NULL;
+	char        *real_path   = NULL;
+	search_source_file(
+		filepath, SEARCH_FLAG_ALL, parent_unit ? parent_unit->dirpath : NULL, &real_path, NULL);
+	const hash_t hash = strhash(real_path ? real_path : filepath);
+	free(real_path);
+	return hash;
 }
 
 // public
 struct unit *unit_new(const char *filepath, struct token *load_from)
 {
-    struct unit *parent_unit = load_from ? load_from->location.unit : NULL;
-    struct unit *unit        = bmalloc(sizeof(struct unit));
-    memset(unit, 0, sizeof(struct unit));
-    search_source_file(filepath,
-                       SEARCH_FLAG_ALL,
-                       parent_unit ? parent_unit->dirpath : NULL,
-                       &unit->filepath,
-                       &unit->dirpath);
-    unit->name         = strdup(filepath);
-    char tmp[PATH_MAX] = {0};
-    if (get_filename_from_filepath(tmp, static_arrlenu(tmp), filepath)) {
-        unit->filename = strdup(tmp);
-    } else {
-        babort("invalid file");
-    }
-    unit->loaded_from = load_from;
-    unit->hash        = strhash(unit->filepath ? unit->filepath : unit->name);
-    tokens_init(&unit->tokens);
-    return unit;
+	struct unit *parent_unit = load_from ? load_from->location.unit : NULL;
+	struct unit *unit        = bmalloc(sizeof(struct unit));
+	memset(unit, 0, sizeof(struct unit));
+	search_source_file(filepath,
+					   SEARCH_FLAG_ALL,
+					   parent_unit ? parent_unit->dirpath : NULL,
+					   &unit->filepath,
+					   &unit->dirpath);
+	unit->name         = strdup(filepath);
+	char tmp[PATH_MAX] = {0};
+	if (get_filename_from_filepath(tmp, static_arrlenu(tmp), filepath)) {
+		unit->filename = strdup(tmp);
+	} else {
+		babort("invalid file");
+	}
+	unit->loaded_from = load_from;
+	unit->hash        = strhash(unit->filepath ? unit->filepath : unit->name);
+	tokens_init(&unit->tokens);
+	return unit;
 }
 
 void unit_delete(struct unit *unit)
 {
-    for (usize i = 0; i < arrlenu(unit->large_string_cache); ++i) {
-        arrfree(unit->large_string_cache[i]);
-    }
-    arrfree(unit->large_string_cache);
-    arrfree(unit->ublock_ast);
-    scfree(&unit->string_cache);
-    bfree(unit->src);
-    free(unit->filepath);
-    free(unit->dirpath);
-    free(unit->name);
-    free(unit->filename);
-    tokens_terminate(&unit->tokens);
-    bfree(unit);
+	for (usize i = 0; i < arrlenu(unit->large_string_cache); ++i) {
+		arrfree(unit->large_string_cache[i]);
+	}
+	arrfree(unit->large_string_cache);
+	arrfree(unit->ublock_ast);
+	scfree(&unit->string_cache);
+	bfree(unit->src);
+	free(unit->filepath);
+	free(unit->dirpath);
+	free(unit->name);
+	free(unit->filename);
+	tokens_terminate(&unit->tokens);
+	bfree(unit);
 }
 
 const char *unit_get_src_ln(struct unit *unit, s32 line, long *len)
 {
-    if (line < 1) return NULL;
-    const char *c     = unit->src;
-    const char *begin = c;
-    while (true) {
-        if (*c == '\n') {
-            --line;
-            if (line == 0) break;
-            begin = c + 1;
-        }
-        if (*c == '\0') {
-            --line;
-            break;
-        }
-        ++c;
-    }
-    if (line > 0) return NULL;
-    if (len) {
-        (*len) = (long)(c - begin);
-        bassert(*len >= 0);
-    }
-    return begin;
+	if (line < 1) return NULL;
+	const char *c     = unit->src;
+	const char *begin = c;
+	while (true) {
+		if (*c == '\n') {
+			--line;
+			if (line == 0) break;
+			begin = c + 1;
+		}
+		if (*c == '\0') {
+			--line;
+			break;
+		}
+		++c;
+	}
+	if (line > 0) return NULL;
+	if (len) {
+		(*len) = (long)(c - begin);
+		bassert(*len >= 0);
+	}
+	return begin;
 }

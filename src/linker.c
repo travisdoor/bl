@@ -31,167 +31,167 @@
 #include "stb_ds.h"
 
 #define link_error(code, tok, pos, format, ...)                                                    \
-    {                                                                                              \
-        if (tok)                                                                                   \
-            builder_msg(MSG_ERR, (code), &(tok)->location, (pos), (format), ##__VA_ARGS__);        \
-        else                                                                                       \
-            builder_error((format), ##__VA_ARGS__);                                                \
-    }                                                                                              \
-    (void)0
+	{                                                                                              \
+		if (tok)                                                                                   \
+			builder_msg(MSG_ERR, (code), &(tok)->location, (pos), (format), ##__VA_ARGS__);        \
+		else                                                                                       \
+			builder_error((format), ##__VA_ARGS__);                                                \
+	}                                                                                              \
+	(void)0
 
 struct context {
-    struct assembly *assembly;
+	struct assembly *assembly;
 };
 
 static bool search_library(struct context *ctx,
-                           const char     *lib_name,
-                           char          **out_lib_name,
-                           char          **out_lib_dir,
-                           char          **out_lib_filepath)
+						   const char     *lib_name,
+						   char          **out_lib_name,
+						   char          **out_lib_dir,
+						   char          **out_lib_filepath)
 {
-    char *lib_filepath                = tstr();
-    char  lib_name_full[LIB_NAME_MAX] = {0};
-    bool  found                       = false;
-    platform_lib_name(lib_name, lib_name_full, static_arrlenu(lib_name_full));
-    builder_log("- Looking for: '%s'", lib_name_full);
-    for (usize i = 0; i < arrlenu(ctx->assembly->lib_paths); ++i) {
-        char *dir = ctx->assembly->lib_paths[i];
-        builder_log("- Search in: '%s'", dir);
-        strprint(lib_filepath, "%s/%s", dir, lib_name_full);
-        if (file_exists(lib_filepath)) {
-            builder_log("  Found: '%s'", lib_filepath);
-            if (out_lib_name) (*out_lib_name) = strdup(lib_name_full);
-            if (out_lib_dir) (*out_lib_dir) = strdup(dir);
-            if (out_lib_filepath) (*out_lib_filepath) = strdup(lib_filepath);
-            found = true;
-            goto DONE;
-        }
-    }
+	char *lib_filepath                = tstr();
+	char  lib_name_full[LIB_NAME_MAX] = {0};
+	bool  found                       = false;
+	platform_lib_name(lib_name, lib_name_full, static_arrlenu(lib_name_full));
+	builder_log("- Looking for: '%s'", lib_name_full);
+	for (usize i = 0; i < arrlenu(ctx->assembly->lib_paths); ++i) {
+		char *dir = ctx->assembly->lib_paths[i];
+		builder_log("- Search in: '%s'", dir);
+		strprint(lib_filepath, "%s/%s", dir, lib_name_full);
+		if (file_exists(lib_filepath)) {
+			builder_log("  Found: '%s'", lib_filepath);
+			if (out_lib_name) (*out_lib_name) = strdup(lib_name_full);
+			if (out_lib_dir) (*out_lib_dir) = strdup(dir);
+			if (out_lib_filepath) (*out_lib_filepath) = strdup(lib_filepath);
+			found = true;
+			goto DONE;
+		}
+	}
 
 DONE:
-    if (!found) builder_log("  Not found: '%s'", lib_filepath);
-    put_tstr(lib_filepath);
-    return found;
+	if (!found) builder_log("  Not found: '%s'", lib_filepath);
+	put_tstr(lib_filepath);
+	return found;
 }
 
 static void set_lib_paths(struct context *ctx)
 {
-    char        tmp[PATH_MAX] = {0};
-    const char *lib_path =
-        read_config(builder.config, ctx->assembly->target, "linker_lib_path", "");
-    if (!strlen(lib_path)) return;
+	char        tmp[PATH_MAX] = {0};
+	const char *lib_path =
+		read_config(builder.config, ctx->assembly->target, "linker_lib_path", "");
+	if (!strlen(lib_path)) return;
 
-    s64         len;
-    const char *begin = lib_path;
-    const char *c     = lib_path;
-    bool        done  = false;
+	s64         len;
+	const char *begin = lib_path;
+	const char *c     = lib_path;
+	bool        done  = false;
 
-    while (!done) {
-        done = *(c++) == '\0';
-        if (done || *c == ENVPATH_SEPARATORC) {
-            len = c - begin;
-            if (len - 1 > 0) {
-                strncpy(tmp, begin, len);
-                tmp[len] = '\0';
-                if (file_exists(tmp)) {
-                    char *dup = malloc(sizeof(char) * len + 1);
-                    if (!dup) babort("Bad alloc!");
-                    memcpy(dup, begin, len);
-                    dup[len] = '\0';
+	while (!done) {
+		done = *(c++) == '\0';
+		if (done || *c == ENVPATH_SEPARATORC) {
+			len = c - begin;
+			if (len - 1 > 0) {
+				strncpy(tmp, begin, len);
+				tmp[len] = '\0';
+				if (file_exists(tmp)) {
+					char *dup = malloc(sizeof(char) * len + 1);
+					if (!dup) babort("Bad alloc!");
+					memcpy(dup, begin, len);
+					dup[len] = '\0';
 
 #if BL_PLATFORM_WIN
-                    win_path_to_unix(dup, len);
+					win_path_to_unix(dup, len);
 #endif
 
-                    arrput(ctx->assembly->lib_paths, dup);
-                } else {
-                    builder_warning("Invalid LIB_PATH entry value '%s'.", tmp);
-                }
+					arrput(ctx->assembly->lib_paths, dup);
+				} else {
+					builder_warning("Invalid LIB_PATH entry value '%s'.", tmp);
+				}
 
-                begin = c + 1;
-            }
-        }
-    }
+				begin = c + 1;
+			}
+		}
+	}
 }
 
 static bool link_lib(struct context *ctx, struct native_lib *lib)
 {
-    if (!lib) babort("invalid lib");
-    if (!lib->user_name) babort("invalid lib name");
+	if (!lib) babort("invalid lib");
+	if (!lib->user_name) babort("invalid lib name");
 
-    if (!search_library(ctx, lib->user_name, &lib->filename, &lib->dir, &lib->filepath)) {
-        return false;
-    }
+	if (!search_library(ctx, lib->user_name, &lib->filename, &lib->dir, &lib->filepath)) {
+		return false;
+	}
 
-    if (lib->runtime_only) {
-        builder_log("- Library with 'runtime_only' flag '%s' skipped.", lib->user_name);
-        return true;
-    }
-    
-    lib->handle = dlLoadLibrary(lib->filepath);
-    return lib->handle;
+	if (lib->runtime_only) {
+		builder_log("- Library with 'runtime_only' flag '%s' skipped.", lib->user_name);
+		return true;
+	}
+	
+	lib->handle = dlLoadLibrary(lib->filepath);
+	return lib->handle;
 }
 
 static bool link_working_environment(struct context *ctx, const char *lib_name)
 {
-    DLLib *handle = dlLoadLibrary(lib_name);
-    if (!handle) return false;
+	DLLib *handle = dlLoadLibrary(lib_name);
+	if (!handle) return false;
 
-    struct native_lib native_lib;
-    native_lib.handle      = handle;
-    native_lib.linked_from = NULL;
-    native_lib.user_name   = NULL;
-    native_lib.filename    = NULL;
-    native_lib.filepath    = NULL;
-    native_lib.is_internal = true;
+	struct native_lib native_lib;
+	native_lib.handle      = handle;
+	native_lib.linked_from = NULL;
+	native_lib.user_name   = NULL;
+	native_lib.filename    = NULL;
+	native_lib.filepath    = NULL;
+	native_lib.is_internal = true;
 
-    arrput(ctx->assembly->libs, native_lib);
-    return true;
+	arrput(ctx->assembly->libs, native_lib);
+	return true;
 }
 
 void linker_run(struct assembly *assembly)
 {
-    zone();
-    struct context ctx;
-    ctx.assembly = assembly;
-    builder_log("Running compile-time linker...");
-    set_lib_paths(&ctx);
+	zone();
+	struct context ctx;
+	ctx.assembly = assembly;
+	builder_log("Running compile-time linker...");
+	set_lib_paths(&ctx);
 
-    for (usize i = 0; i < arrlenu(assembly->libs); ++i) {
-        struct native_lib *lib = &assembly->libs[i];
-        if (!link_lib(&ctx, lib)) {
-            char      error_buffer[256];
-            const s32 error_len = get_last_error(error_buffer, static_arrlenu(error_buffer));
-            link_error(ERR_LIB_NOT_FOUND,
-                       lib->linked_from,
-                       CARET_WORD,
-                       "Cannot load library '%s' with error: %s",
-                       lib->user_name,
-                       error_len ? error_buffer : "UNKNOWN");
-        }
-    }
+	for (usize i = 0; i < arrlenu(assembly->libs); ++i) {
+		struct native_lib *lib = &assembly->libs[i];
+		if (!link_lib(&ctx, lib)) {
+			char      error_buffer[256];
+			const s32 error_len = get_last_error(error_buffer, static_arrlenu(error_buffer));
+			link_error(ERR_LIB_NOT_FOUND,
+					   lib->linked_from,
+					   CARET_WORD,
+					   "Cannot load library '%s' with error: %s",
+					   lib->user_name,
+					   error_len ? error_buffer : "UNKNOWN");
+		}
+	}
 
 #if BL_PLATFORM_WIN
-    if (!link_working_environment(&ctx, MSVC_CRT)) {
-        struct token *dummy = NULL;
-        link_error(ERR_LIB_NOT_FOUND, dummy, CARET_WORD, "Cannot link " MSVC_CRT);
-        return_zone();
-    }
-    if (!link_working_environment(&ctx, KERNEL32)) {
-        struct token *dummy = NULL;
-        link_error(ERR_LIB_NOT_FOUND, dummy, CARET_WORD, "Cannot link " KERNEL32);
-        return_zone();
-    }
-    if (!link_working_environment(&ctx, SHLWAPI)) {
-        struct token *dummy = NULL;
-        link_error(ERR_LIB_NOT_FOUND, dummy, CARET_WORD, "Cannot link " SHLWAPI);
-        return_zone();
-    }
+	if (!link_working_environment(&ctx, MSVC_CRT)) {
+		struct token *dummy = NULL;
+		link_error(ERR_LIB_NOT_FOUND, dummy, CARET_WORD, "Cannot link " MSVC_CRT);
+		return_zone();
+	}
+	if (!link_working_environment(&ctx, KERNEL32)) {
+		struct token *dummy = NULL;
+		link_error(ERR_LIB_NOT_FOUND, dummy, CARET_WORD, "Cannot link " KERNEL32);
+		return_zone();
+	}
+	if (!link_working_environment(&ctx, SHLWAPI)) {
+		struct token *dummy = NULL;
+		link_error(ERR_LIB_NOT_FOUND, dummy, CARET_WORD, "Cannot link " SHLWAPI);
+		return_zone();
+	}
 #endif
-    if (!link_working_environment(&ctx, NULL)) {
-        struct token *dummy = NULL;
-        link_error(ERR_LIB_NOT_FOUND, dummy, CARET_WORD, "Cannot link working environment.");
-        return_zone();
-    }
-    return_zone();
+	if (!link_working_environment(&ctx, NULL)) {
+		struct token *dummy = NULL;
+		link_error(ERR_LIB_NOT_FOUND, dummy, CARET_WORD, "Cannot link working environment.");
+		return_zone();
+	}
+	return_zone();
 }

@@ -72,60 +72,60 @@ void print_trace_impl(void);
 static inline void bl_debug_break(void)
 {
 #if BL_PLATFORM_WIN
-    __debugbreak();
+	__debugbreak();
 #elif BL_PLATFORM_MACOS
-    __builtin_debugtrap();
+	__builtin_debugtrap();
 #else
-    raise(SIGTRAP);
+	raise(SIGTRAP);
 #endif
 }
 
 #define BL_DEBUG_BREAK bl_debug_break()
 
 #define bassert(e)                                                                                 \
-    if (!(e)) {                                                                                    \
-        log_impl(LOG_ASSERT, __FILENAME__, __LINE__, #e);                                          \
-        print_trace();                                                                             \
-        BL_DEBUG_BREAK;                                                                            \
-        abort();                                                                                   \
-    }                                                                                              \
-    (void)0
+	if (!(e)) {                                                                                    \
+		log_impl(LOG_ASSERT, __FILENAME__, __LINE__, #e);                                          \
+		print_trace();                                                                             \
+		BL_DEBUG_BREAK;                                                                            \
+		abort();                                                                                   \
+	}                                                                                              \
+	(void)0
 
 #define bmagic_assert(O)                                                                           \
-    {                                                                                              \
-        bassert(O && "Invalid reference!");                                                        \
-        bassert((O)->_magic == (void *)&(O)->_magic && "Invalid magic!");                          \
-    }                                                                                              \
-    (void)0
+	{                                                                                              \
+		bassert(O && "Invalid reference!");                                                        \
+		bassert((O)->_magic == (void *)&(O)->_magic && "Invalid magic!");                          \
+	}                                                                                              \
+	(void)0
 #define bmagic_member void *_magic;
 #define bmagic_set(O) (O)->_magic = (void *)&(O)->_magic
 
 #define bcalled_once_member(name) s32 _##name##_call_count;
 #define bcalled_once_assert(obj, name)                                                             \
-    bassert((obj)->_##name##_call_count++ == 0 && "Expected to be called only once!")
+	bassert((obj)->_##name##_call_count++ == 0 && "Expected to be called only once!")
 
 // =================================================================================================
 #else
 // =================================================================================================
 #define BL_DEBUG_BREAK                                                                             \
-    while (0) {                                                                                    \
-    }
+	while (0) {                                                                                    \
+	}
 
 #define bassert(e)                                                                                 \
-    while (0) {                                                                                    \
-    }                                                                                              \
-    (void)0
+	while (0) {                                                                                    \
+	}                                                                                              \
+	(void)0
 
 #define bmagic_assert(O)                                                                           \
-    while (0) {                                                                                    \
-    }                                                                                              \
-    (void)0
+	while (0) {                                                                                    \
+	}                                                                                              \
+	(void)0
 
 #define bmagic_member
 #define bmagic_set(O)                                                                              \
-    while (0) {                                                                                    \
-    }                                                                                              \
-    (void)0
+	while (0) {                                                                                    \
+	}                                                                                              \
+	(void)0
 
 #define bcalled_once_member(name)
 #define bcalled_once_assert(obj, name) (void)0
@@ -136,96 +136,96 @@ static inline void bl_debug_break(void)
 #if defined(BL_DEBUG)
 // =================================================================================================
 #define blog(format, ...)                                                                          \
-    {                                                                                              \
-        log_impl(LOG_MSG, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                          \
-    }                                                                                              \
-    (void)0
+	{                                                                                              \
+		log_impl(LOG_MSG, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                          \
+	}                                                                                              \
+	(void)0
 
 #define bwarn(format, ...)                                                                         \
-    {                                                                                              \
-        log_impl(LOG_WARNING, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                      \
-    }                                                                                              \
-    (void)0
+	{                                                                                              \
+		log_impl(LOG_WARNING, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                      \
+	}                                                                                              \
+	(void)0
 // =================================================================================================
 #else
 // =================================================================================================
 #define blog(format, ...)                                                                          \
-    while (0) {                                                                                    \
-    }                                                                                              \
-    (void)0
+	while (0) {                                                                                    \
+	}                                                                                              \
+	(void)0
 
 #define bwarn(format, ...)                                                                         \
-    while (0) {                                                                                    \
-    }                                                                                              \
-    (void)0
+	while (0) {                                                                                    \
+	}                                                                                              \
+	(void)0
 // =================================================================================================
 #endif
 
 #define babort(format, ...)                                                                        \
-    {                                                                                              \
-        log_impl(LOG_ABORT, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                        \
-        print_trace();                                                                             \
-        BL_DEBUG_BREAK;                                                                            \
-        abort();                                                                                   \
-    }                                                                                              \
-    (void)0
+	{                                                                                              \
+		log_impl(LOG_ABORT, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                        \
+		print_trace();                                                                             \
+		BL_DEBUG_BREAK;                                                                            \
+		abort();                                                                                   \
+	}                                                                                              \
+	(void)0
 
 #define babort_issue(N)                                                                            \
-    {                                                                                              \
-        log_impl(LOG_ABORT_ISSUE,                                                                  \
-                 __FILENAME__,                                                                     \
-                 __LINE__,                                                                         \
-                 "Issue: https://github.com/travisdoor/bl/issues/%d",                              \
-                 N);                                                                               \
-        print_trace();                                                                             \
-        BL_DEBUG_BREAK;                                                                            \
-        abort();                                                                                   \
-    }                                                                                              \
-    (void)0
+	{                                                                                              \
+		log_impl(LOG_ABORT_ISSUE,                                                                  \
+				 __FILENAME__,                                                                     \
+				 __LINE__,                                                                         \
+				 "Issue: https://github.com/travisdoor/bl/issues/%d",                              \
+				 N);                                                                               \
+		print_trace();                                                                             \
+		BL_DEBUG_BREAK;                                                                            \
+		abort();                                                                                   \
+	}                                                                                              \
+	(void)0
 
 #define BL_UNIMPLEMENTED                                                                           \
-    {                                                                                              \
-        log_impl(LOG_ABORT, __FILENAME__, __LINE__, "unimplemented");                              \
-        print_trace();                                                                             \
-        BL_DEBUG_BREAK;                                                                            \
-        abort();                                                                                   \
-    }                                                                                              \
-    (void)0
+	{                                                                                              \
+		log_impl(LOG_ABORT, __FILENAME__, __LINE__, "unimplemented");                              \
+		print_trace();                                                                             \
+		BL_DEBUG_BREAK;                                                                            \
+		abort();                                                                                   \
+	}                                                                                              \
+	(void)0
 
 #define BL_UNREACHABLE                                                                             \
-    {                                                                                              \
-        log_impl(LOG_ABORT, __FILENAME__, __LINE__, "unreachable");                                \
-        print_trace();                                                                             \
-        BL_DEBUG_BREAK;                                                                            \
-        abort();                                                                                   \
-    }                                                                                              \
-    (void)0
+	{                                                                                              \
+		log_impl(LOG_ABORT, __FILENAME__, __LINE__, "unreachable");                                \
+		print_trace();                                                                             \
+		BL_DEBUG_BREAK;                                                                            \
+		abort();                                                                                   \
+	}                                                                                              \
+	(void)0
 
 #ifdef TRACY_ENABLE
 #define BL_TRACY_MESSAGE(tag, format, ...)                                                         \
-    {                                                                                              \
-        char buf[256];                                                                             \
-        snprintf(buf, static_arrlenu(buf), "#%s " format, tag, ##__VA_ARGS__);                     \
-        TracyCMessageC(buf, strlen(buf), strhash(tag));                                            \
-    }                                                                                              \
-    (void)0
+	{                                                                                              \
+		char buf[256];                                                                             \
+		snprintf(buf, static_arrlenu(buf), "#%s " format, tag, ##__VA_ARGS__);                     \
+		TracyCMessageC(buf, strlen(buf), strhash(tag));                                            \
+	}                                                                                              \
+	(void)0
 #else
 #define BL_TRACY_MESSAGE(tag, format, ...)                                                         \
-    while (0) {                                                                                    \
-    }                                                                                              \
-    (void)0
+	while (0) {                                                                                    \
+	}                                                                                              \
+	(void)0
 #endif
 
 #define zone()                                                                                     \
-    TracyCZone(_tctx, true);                                                                       \
-    (void)0
+	TracyCZone(_tctx, true);                                                                       \
+	(void)0
 
 #define _BL_VARGS(...) __VA_ARGS__
 #define return_zone(...)                                                                           \
-    {                                                                                              \
-        TracyCZoneEnd(_tctx) return _BL_VARGS(__VA_ARGS__);                                        \
-    }                                                                                              \
-    (void)0
+	{                                                                                              \
+		TracyCZoneEnd(_tctx) return _BL_VARGS(__VA_ARGS__);                                        \
+	}                                                                                              \
+	(void)0
 
 #ifdef __cplusplus
 }

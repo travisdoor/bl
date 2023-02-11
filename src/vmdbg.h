@@ -34,10 +34,10 @@ struct mir_instr;
 struct mir_type;
 
 enum vmdbg_stack_op {
-    VMDBG_PUSH_RA,
-    VMDBG_POP_RA,
-    VMDBG_PUSH,
-    VMDBG_POP,
+	VMDBG_PUSH_RA,
+	VMDBG_POP_RA,
+	VMDBG_PUSH,
+	VMDBG_POP,
 };
 
 void vmdbg_attach(struct virtual_machine *vm);

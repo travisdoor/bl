@@ -31,18 +31,18 @@
 
 void ir_opt_run(struct assembly *assembly)
 {
-    zone();
-    LLVMModuleRef             llvm_module     = assembly->llvm.modules[0];
-    LLVMTargetMachineRef      llvm_tm         = assembly->llvm.TM;
-    const LLVMCodeGenOptLevel opt_level       = opt_to_LLVM(assembly->target->opt);
-    LLVMPassManagerBuilderRef llvm_pm_builder = LLVMPassManagerBuilderCreate();
-    LLVMPassManagerBuilderSetOptLevel(llvm_pm_builder, (unsigned)opt_level);
-    LLVMPassManagerRef llvm_pm = LLVMCreatePassManager();
-    LLVMAddAnalysisPasses(llvm_tm, llvm_pm);
-    LLVMPassManagerBuilderPopulateModulePassManager(llvm_pm_builder, llvm_pm);
-    LLVMPassManagerBuilderPopulateLTOPassManager(llvm_pm_builder, llvm_pm, true, true);
-    LLVMRunPassManager(llvm_pm, llvm_module);
-    LLVMDisposePassManager(llvm_pm);
-    LLVMPassManagerBuilderDispose(llvm_pm_builder);
-    return_zone();
+	zone();
+	LLVMModuleRef             llvm_module     = assembly->llvm.modules[0];
+	LLVMTargetMachineRef      llvm_tm         = assembly->llvm.TM;
+	const LLVMCodeGenOptLevel opt_level       = opt_to_LLVM(assembly->target->opt);
+	LLVMPassManagerBuilderRef llvm_pm_builder = LLVMPassManagerBuilderCreate();
+	LLVMPassManagerBuilderSetOptLevel(llvm_pm_builder, (unsigned)opt_level);
+	LLVMPassManagerRef llvm_pm = LLVMCreatePassManager();
+	LLVMAddAnalysisPasses(llvm_tm, llvm_pm);
+	LLVMPassManagerBuilderPopulateModulePassManager(llvm_pm_builder, llvm_pm);
+	LLVMPassManagerBuilderPopulateLTOPassManager(llvm_pm_builder, llvm_pm, true, true);
+	LLVMRunPassManager(llvm_pm, llvm_module);
+	LLVMDisposePassManager(llvm_pm);
+	LLVMPassManagerBuilderDispose(llvm_pm_builder);
+	return_zone();
 }

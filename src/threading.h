@@ -39,28 +39,28 @@ typedef atomic_flag pthread_spinlock_t;
 
 static inline int pthread_spin_init(pthread_spinlock_t *l, int pshared)
 {
-    (void)pshared;
-    *l = (pthread_spinlock_t)ATOMIC_FLAG_INIT;
-    return 0;
+	(void)pshared;
+	*l = (pthread_spinlock_t)ATOMIC_FLAG_INIT;
+	return 0;
 }
 
 static inline int pthread_spin_destroy(pthread_spinlock_t *l)
 {
-    (void)l;
-    return 0;
+	(void)l;
+	return 0;
 }
 
 static inline int pthread_spin_lock(pthread_spinlock_t *l)
 {
-    while (atomic_flag_test_and_set_explicit(l, memory_order_acquire))
-        ;
-    return 0;
+	while (atomic_flag_test_and_set_explicit(l, memory_order_acquire))
+		;
+	return 0;
 }
 
 static inline int pthread_spin_unlock(pthread_spinlock_t *l)
 {
-    atomic_flag_clear_explicit(l, memory_order_release);
-    return 0;
+	atomic_flag_clear_explicit(l, memory_order_release);
+	return 0;
 }
 #elif BL_PLATFORM_WIN
 // clang-format off
