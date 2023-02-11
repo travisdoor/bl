@@ -601,10 +601,13 @@ void builder_print_location(FILE *stream, struct location *loc, s32 col, s32 len
 		char buf[256];
 		s32	 written_bytes = 0;
 		for (s32 i = 0; i < col + len - 1; ++i) {
-			written_bytes += snprintf(buf + written_bytes,
-									  static_arrlenu(buf) - written_bytes,
-									  "%s",
-									  i >= col - 1 ? "^" : " ");
+			// We need to do this to properly handle tab indentation.
+			char insert = line_str[i];
+			if (insert != ' ' && insert != '\t') insert = ' ';
+			if (i >= col - 1) insert = '^';
+
+			written_bytes +=
+				snprintf(buf + written_bytes, static_arrlenu(buf) - written_bytes, "%c", insert);
 		}
 		fprintf(stream, "\n%*s | ", padding, "");
 		color_print(stream, BL_GREEN, "%s", buf);

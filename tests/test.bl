@@ -7,7 +7,7 @@ PickerContext :: struct {
 		FOO;
 		BAR;
 	};
-		entity: u322;
+	entity: u32;
 }
 
 /*
