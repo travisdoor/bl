@@ -77,37 +77,37 @@ HRESULT      :: C.void_ptr;
 DPI_AWARENESS_CONTEXT :: *u8;
 
 DPI_AWARENESS :: enum {
-    DPI_AWARENESS_INVALID           = -1;
-    DPI_AWARENESS_UNAWARE           = 0;
-    DPI_AWARENESS_SYSTEM_AWARE      = 1;
-    DPI_AWARENESS_PER_MONITOR_AWARE = 2;
+	DPI_AWARENESS_INVALID           = -1;
+	DPI_AWARENESS_UNAWARE           = 0;
+	DPI_AWARENESS_SYSTEM_AWARE      = 1;
+	DPI_AWARENESS_PER_MONITOR_AWARE = 2;
 }
 
 DEVICE_SCALE_FACTOR :: enum {
-    DEVICE_SCALE_FACTOR_INVALID = 0;
-    SCALE_100_PERCENT = 100;
-    SCALE_120_PERCENT = 120;
-    SCALE_125_PERCENT = 125;
-    SCALE_140_PERCENT = 140;
-    SCALE_150_PERCENT = 150;
-    SCALE_160_PERCENT = 160;
-    SCALE_175_PERCENT = 175;
-    SCALE_180_PERCENT = 180;
-    SCALE_200_PERCENT = 200;
-    SCALE_225_PERCENT = 225;
-    SCALE_250_PERCENT = 250;
-    SCALE_300_PERCENT = 300;
-    SCALE_350_PERCENT = 350;
-    SCALE_400_PERCENT = 400;
-    SCALE_450_PERCENT = 450;
-    SCALE_500_PERCENT = 500;
+	DEVICE_SCALE_FACTOR_INVALID = 0;
+	SCALE_100_PERCENT = 100;
+	SCALE_120_PERCENT = 120;
+	SCALE_125_PERCENT = 125;
+	SCALE_140_PERCENT = 140;
+	SCALE_150_PERCENT = 150;
+	SCALE_160_PERCENT = 160;
+	SCALE_175_PERCENT = 175;
+	SCALE_180_PERCENT = 180;
+	SCALE_200_PERCENT = 200;
+	SCALE_225_PERCENT = 225;
+	SCALE_250_PERCENT = 250;
+	SCALE_300_PERCENT = 300;
+	SCALE_350_PERCENT = 350;
+	SCALE_400_PERCENT = 400;
+	SCALE_450_PERCENT = 450;
+	SCALE_500_PERCENT = 500;
 }
 
 MONITOR_DPI_TYPE :: enum {
-    MDT_EFFECTIVE_DPI = 0;
-    MDT_ANGULAR_DPI = 1;
-    MDT_RAW_DPI = 2;
-    MDT_DEFAULT = MDT_EFFECTIVE_DPI;
+	MDT_EFFECTIVE_DPI = 0;
+	MDT_ANGULAR_DPI = 1;
+	MDT_RAW_DPI = 2;
+	MDT_DEFAULT = MDT_EFFECTIVE_DPI;
 }
 
 DPI_AWARENESS_CONTEXT_UNAWARE               :: cast(DPI_AWARENESS_CONTEXT) 0xffffffffffffffff;
@@ -323,58 +323,58 @@ HICON :: *C.int;
 HBRUSH :: *C.int;
 
 WNDCLASSA :: struct {
-    style: UINT;
-    lpfnWndProc: WNDPROC;
-    cbClsExtra: C.int;
-    cbWndExtra: C.int;
-    hInstance: HINSTANCE;
-    hIcon: HICON;
-    hCursor: HCURSOR;
-    hbrBackground: HBRUSH;
-    lpszMenuName: LPCSTR;
-    lpszClassName: LPCSTR;
+	style: UINT;
+	lpfnWndProc: WNDPROC;
+	cbClsExtra: C.int;
+	cbWndExtra: C.int;
+	hInstance: HINSTANCE;
+	hIcon: HICON;
+	hCursor: HCURSOR;
+	hbrBackground: HBRUSH;
+	lpszMenuName: LPCSTR;
+	lpszClassName: LPCSTR;
 }
 
 WNDCLASSEXA :: struct {
-    cbSize: UINT;
-    style: UINT;
-    lpfnWndProc: WNDPROC;
-    cbClsExtra: C.int;
-    cbWndExtra: C.int;
-    hInstance: HINSTANCE;
-    hIcon: HICON;
-    hCursor: HCURSOR;
-    hbrBackground: HBRUSH;
-    lpszMenuName: LPCSTR;
-    lpszClassName: LPCSTR;
-    hIconSm: HICON;
+	cbSize: UINT;
+	style: UINT;
+	lpfnWndProc: WNDPROC;
+	cbClsExtra: C.int;
+	cbWndExtra: C.int;
+	hInstance: HINSTANCE;
+	hIcon: HICON;
+	hCursor: HCURSOR;
+	hbrBackground: HBRUSH;
+	lpszMenuName: LPCSTR;
+	lpszClassName: LPCSTR;
+	hIconSm: HICON;
 }
 
 SYMBOL_INFO :: struct {
-    SizeOfStruct: ULONG;
-    TypeIndex: ULONG;
-    Reserved: [2]ULONG64;
-    Index: ULONG;
-    Size: ULONG;
-    ModBase: ULONG64;
-    Flags: ULONG;
-    Value: ULONG64;
-    Address: ULONG64;
-    Register: ULONG;
-    Scope: ULONG;
-    Tag: ULONG;
-    NameLen: ULONG;
-    MaxNameLen: ULONG;
-    Name: [1]CHAR;
+	SizeOfStruct: ULONG;
+	TypeIndex: ULONG;
+	Reserved: [2]ULONG64;
+	Index: ULONG;
+	Size: ULONG;
+	ModBase: ULONG64;
+	Flags: ULONG;
+	Value: ULONG64;
+	Address: ULONG64;
+	Register: ULONG;
+	Scope: ULONG;
+	Tag: ULONG;
+	NameLen: ULONG;
+	MaxNameLen: ULONG;
+	Name: [1]CHAR;
 }
 PSYMBOL_INFO :: *SYMBOL_INFO;
 
 IMAGEHLP_LINE64 :: struct {
-    SizeOfStruct: DWORD;
-    Key: PVOID;
-    LineNumber: DWORD;
-    FileName: PCHAR;
-    Address: DWORD64;
+	SizeOfStruct: DWORD;
+	Key: PVOID;
+	LineNumber: DWORD;
+	FileName: PCHAR;
+	Address: DWORD64;
 }
 PIMAGEHLP_LINE64 :: *IMAGEHLP_LINE64;
 
@@ -406,47 +406,47 @@ OPENFILENAMEA :: struct {
 LPOPENFILENAMEA :: *OPENFILENAMEA;
 
 FILE_NOTIFY_INFORMATION :: struct {
-    NextEntryOffset: DWORD;
-    Action: DWORD;
-    FileNameLength: DWORD;
-    FileName: [1]WCHAR;
+	NextEntryOffset: DWORD;
+	Action: DWORD;
+	FileNameLength: DWORD;
+	FileName: [1]WCHAR;
 }
 OVERLAPPED :: struct {
-    Internal: ULONG_PTR;
-    InternalHigh: ULONG_PTR;
-    Pointer: PVOID;
-    hEvent: HANDLE;
+	Internal: ULONG_PTR;
+	InternalHigh: ULONG_PTR;
+	Pointer: PVOID;
+	hEvent: HANDLE;
 }
 FILETIME :: struct {
-    dwLowDateTime: DWORD;
-    dwHighDateTime: DWORD;
+	dwLowDateTime: DWORD;
+	dwHighDateTime: DWORD;
 }
 PFILETIME :: FILETIME;
 LPFILETIME :: *FILETIME;
 FIND_DATA :: struct {
-    dwFileAttributes: DWORD;
-    ftCreationTime: FILETIME;
-    ftLastAccessTime: FILETIME;
-    ftLastWriteTime: FILETIME;
-    nFileSizeHigh: DWORD;
-    nFileSizeLow: DWORD;
-    dwReserved0: DWORD;
-    dwReserved1: DWORD;
-    cFileName: [MAX_PATH]CHAR;
-    cAlternateFileName: [14]CHAR;
+	dwFileAttributes: DWORD;
+	ftCreationTime: FILETIME;
+	ftLastAccessTime: FILETIME;
+	ftLastWriteTime: FILETIME;
+	nFileSizeHigh: DWORD;
+	nFileSizeLow: DWORD;
+	dwReserved0: DWORD;
+	dwReserved1: DWORD;
+	cFileName: [MAX_PATH]CHAR;
+	cAlternateFileName: [14]CHAR;
 }
 
 BY_HANDLE_FILE_INFORMATION :: struct {
-    dwFileAttributes: DWORD;
-    ftCreationTime: FILETIME;
-    ftLastAccessTime: FILETIME;
-    ftLastWriteTime: FILETIME;
-    dwVolumeSerialNumber: DWORD;
-    nFileSizeHigh: DWORD;
-    nFileSizeLow: DWORD;
-    nNumberOfLinks: DWORD;
-    nFileIndexHigh: DWORD;
-    nFileIndexLow: DWORD;
+	dwFileAttributes: DWORD;
+	ftCreationTime: FILETIME;
+	ftLastAccessTime: FILETIME;
+	ftLastWriteTime: FILETIME;
+	dwVolumeSerialNumber: DWORD;
+	nFileSizeHigh: DWORD;
+	nFileSizeLow: DWORD;
+	nNumberOfLinks: DWORD;
+	nFileIndexHigh: DWORD;
+	nFileIndexLow: DWORD;
 }
 LPBY_HANDLE_FILE_INFORMATION :: *BY_HANDLE_FILE_INFORMATION;
 FIND_DATAA :: FIND_DATA;
@@ -465,38 +465,38 @@ LIST_ENTRY :: struct {
    Blink: *LIST_ENTRY;
 } 
 RTL_CRITICAL_SECTION_DEBUG :: struct {
-    Type: WORD;
-    CreatorBackTraceIndex: WORD;
-    CriticalSection: *RTL_CRITICAL_SECTION;
-    ProcessLocksList: LIST_ENTRY;
-    EntryCount: DWORD;
-    ContentionCount: DWORD;
-    Flags: DWORD;
-    CreatorBackTraceIndexHigh: WORD;
-    SpareWORD: WORD;
+	Type: WORD;
+	CreatorBackTraceIndex: WORD;
+	CriticalSection: *RTL_CRITICAL_SECTION;
+	ProcessLocksList: LIST_ENTRY;
+	EntryCount: DWORD;
+	ContentionCount: DWORD;
+	Flags: DWORD;
+	CreatorBackTraceIndexHigh: WORD;
+	SpareWORD: WORD;
 }
 PRTL_CRITICAL_SECTION_DEBUG :: *RTL_CRITICAL_SECTION_DEBUG;
 RTL_CRITICAL_SECTION :: struct {
-    DebugInfo: PRTL_CRITICAL_SECTION_DEBUG;
-    LockCount: LONG;
-    RecursionCount: LONG;
-    OwningThread: HANDLE; 
-    LockSemaphore: HANDLE;
-    SpinCount: ULONG_PTR;
+	DebugInfo: PRTL_CRITICAL_SECTION_DEBUG;
+	LockCount: LONG;
+	RecursionCount: LONG;
+	OwningThread: HANDLE; 
+	LockSemaphore: HANDLE;
+	SpinCount: ULONG_PTR;
 }
 LPCRITICAL_SECTION :: *RTL_CRITICAL_SECTION;
 PCRITICAL_SECTION :: *RTL_CRITICAL_SECTION;
 
 RTL_CONDITION_VARIABLE :: struct {
-    Ptr: PVOID;
+	Ptr: PVOID;
 }
 PRTL_CONDITION_VARIABLE :: *RTL_CONDITION_VARIABLE;
 CONDITION_VARIABLE :: RTL_CONDITION_VARIABLE;
 PCONDITION_VARIABLE :: PRTL_CONDITION_VARIABLE;
 
 POINT :: struct {
-    x: LONG;
-    y: LONG;
+	x: LONG;
+	y: LONG;
 }
 
 LPPOINT :: *POINT;
@@ -514,37 +514,37 @@ FindClose :: fn (hFindFile: HANDLE) BOOL #extern "FindClose";
 FindNextFile :: fn (hFindFile: HANDLE, lpFindFileData: LP_FIND_DATAA) BOOL #extern "FindNextFileA";
 GetFileAttributesA :: fn (lpFileName: LPCSTR) DWORD #extern "GetFileAttributesA";
 CreateFile :: fn (
-    lpFileName: LPCSTR,
-    dwDesiredAccess: DWORD,
-    dwShareMode: DWORD,
-    lpSecurityAttributes: LPSECURITY_ATTRIBUTES,
-    dwCreationDisposition: DWORD,
-    dwFlagsAndAttributes: DWORD,
-    hTemplateFile: HANDLE
+	lpFileName: LPCSTR,
+	dwDesiredAccess: DWORD,
+	dwShareMode: DWORD,
+	lpSecurityAttributes: LPSECURITY_ATTRIBUTES,
+	dwCreationDisposition: DWORD,
+	dwFlagsAndAttributes: DWORD,
+	hTemplateFile: HANDLE
 ) *u8 #extern "CreateFileA"; 
 CreateDirectoryA :: fn (
-    lpPathName: LPCSTR,
-    lpSecurityAttributes: LPSECURITY_ATTRIBUTES,
+	lpPathName: LPCSTR,
+	lpSecurityAttributes: LPSECURITY_ATTRIBUTES,
 ) BOOL #extern "CreateDirectoryA";
 ReadDirectoryChanges :: fn (
-    hDirectory: HANDLE,
-    lpBuffer: LPVOID,
-    nBufferLength: DWORD,
-    bWatchSubtree: BOOL,
-    dwNotifyFilter: DWORD,
-    lpBytesReturned: LPDWORD,
-    lpOverlapped: LPOVERLAPPED,
-    lpCompletionRoutine: LPOVERLAPPED_COMPLETION_ROUTINE 
+	hDirectory: HANDLE,
+	lpBuffer: LPVOID,
+	nBufferLength: DWORD,
+	bWatchSubtree: BOOL,
+	dwNotifyFilter: DWORD,
+	lpBytesReturned: LPDWORD,
+	lpOverlapped: LPOVERLAPPED,
+	lpCompletionRoutine: LPOVERLAPPED_COMPLETION_ROUTINE 
 ) s32 #extern "ReadDirectoryChangesW";
 WideCharToMultiByte :: fn (
-    CodePage: UINT,
-    dwFlags: *DWORD,
-    lpWideCharStr: *LPCWCH,
-    cchWideChar: s32,
-    lpMultiByteStr: LPSTR,
-    cbMultiByte: s32,
-    lpDefaultChar: *LPCCH,
-    lpUsedDefaultChar: *LPBOOL
+	CodePage: UINT,
+	dwFlags: *DWORD,
+	lpWideCharStr: *LPCWCH,
+	cchWideChar: s32,
+	lpMultiByteStr: LPSTR,
+	cbMultiByte: s32,
+	lpDefaultChar: *LPCCH,
+	lpUsedDefaultChar: *LPBOOL
 ) s32 #extern "WideCharToMultiByte";
 CreateEvent :: fn (
   lpEventAttributes: LPSECURITY_ATTRIBUTES,
@@ -562,10 +562,10 @@ FindNextChangeNotification :: fn (hChangeHandle: HANDLE) BOOL #extern "FindNextC
 FindCloseChangeNotification :: fn (hChangeHandle: HANDLE) BOOL #extern "FindCloseChangeNotification";
 WaitForSingleObject :: fn (hHandle: HANDLE, dwMilliseconds: DWORD) DWORD #extern "WaitForSingleObject";
 WaitForMultipleObjects :: fn (
-    nCount: DWORD,
-    lpHandles: *HANDLE,
-    bWaitAll: BOOL,
-    dwMilliseconds: DWORD        
+	nCount: DWORD,
+	lpHandles: *HANDLE,
+	bWaitAll: BOOL,
+	dwMilliseconds: DWORD        
 ) DWORD #extern "WaitForMultipleObjects";
 CreateSemaphoreA :: fn (lpSemaphoreAttributes: LPSECURITY_ATTRIBUTES, lInitialCount: LONG, lMaximumCount: LONG, lpName: LPCSTR) HANDLE #extern "CreateSemaphoreA";
 ReleaseSemaphore :: fn (hSemaphore: HANDLE, lReleaseCount: LONG, lpPreviousCount: LPLONG) BOOL #extern "ReleaseSemaphore";
@@ -585,21 +585,21 @@ IsDebuggerPresent   :: fn () BOOL #extern "IsDebuggerPresent";
 CheckRemoteDebuggerPresent :: fn (hProcess: HANDLE, pbDebuggerPresent: PBOOL) BOOL #extern "CheckRemoteDebuggerPresent";
 GetModuleFileNameA  :: fn (hModule: HMODULE, lpFilename: LPSTR, nSize: DWORD) DWORD #extern "GetModuleFileNameA";
 SECURITY_ATTRIBUTES :: struct {
-    nLength: DWORD;
-    lpSecurityDescriptor: LPVOID;
-    bInheritHandle: BOOL;
+	nLength: DWORD;
+	lpSecurityDescriptor: LPVOID;
+	bInheritHandle: BOOL;
 } 
 PSECURITY_ATTRIBUTES  :: *SECURITY_ATTRIBUTES;
 LPSECURITY_ATTRIBUTES :: *SECURITY_ATTRIBUTES;
 LPTHREAD_START_ROUTINE :: *fn (args: LPVOID) DWORD;
 
 CreateThread :: fn (
-    lpThreadAttributes: LPSECURITY_ATTRIBUTES,
-    dwStackSize: SIZE_T,
-    lpStartAddress: LPTHREAD_START_ROUTINE,
-    lpParameter: LPVOID,
-    dwCreationFlags: DWORD,
-    lpThreadId: LPDWORD 
+	lpThreadAttributes: LPSECURITY_ATTRIBUTES,
+	dwStackSize: SIZE_T,
+	lpStartAddress: LPTHREAD_START_ROUTINE,
+	lpParameter: LPVOID,
+	dwCreationFlags: DWORD,
+	lpThreadId: LPDWORD 
 ) HANDLE #extern "CreateThread";
 
 GetCurrentThread :: fn () HANDLE #extern "GetCurrentThread";
@@ -609,21 +609,21 @@ TerminateThread :: fn (handle: HANDLE, exit_code: DWORD) BOOL #extern "Terminate
 GetExitCodeThread :: fn (hThread: HANDLE, lpExitCode: LPDWORD) BOOL #extern "GetExitCodeThread";
 
 CreateMutexA :: fn (
-    lpMutexAttributes: LPSECURITY_ATTRIBUTES,
-    bInitialOwner: BOOL,
-    lpName: LPCSTR
+	lpMutexAttributes: LPSECURITY_ATTRIBUTES,
+	bInitialOwner: BOOL,
+	lpName: LPCSTR
 ) HANDLE #extern "CreateMutexA";
 
 HMENU :: *C.int;
 CW_USEDEFAULT : C.int : 0x80000000;
 
 MSG :: struct {
-    hwnd: HWND;
-    message: UINT;
-    wParam: WPARAM;
-    lParam: LPARAM;
-    time: DWORD;
-    pt: POINT;
+	hwnd: HWND;
+	message: UINT;
+	wParam: WPARAM;
+	lParam: LPARAM;
+	time: DWORD;
+	pt: POINT;
 }
 LPMSG :: *MSG;
 
@@ -763,10 +763,10 @@ VK_F23           : u32 : 0x86;
 VK_F24           : u32 : 0x87;
 
 RECT :: struct {
-    left: LONG;
-    top: LONG;
-    right: LONG;
-    bottom: LONG;
+	left: LONG;
+	top: LONG;
+	right: LONG;
+	bottom: LONG;
 }
 LPRECT :: *RECT;
 
@@ -811,32 +811,32 @@ PFD_STEREO_DONTCARE       : u32 : 0x80000000;
 
 
 PIXELFORMATDESCRIPTOR :: struct {
-    nSize: WORD;
-    nVersion: WORD;
-    dwFlags: DWORD;
-    iPixelType: BYTE;
-    cColorBits: BYTE;
-    cRedBits: BYTE;
-    cRedShift: BYTE;
-    cGreenBits: BYTE;
-    cGreenShift: BYTE;
-    cBlueBits: BYTE;
-    cBlueShift: BYTE;
-    cAlphaBits: BYTE;
-    cAlphaShift: BYTE;
-    cAccumBits: BYTE;
-    cAccumRedBits: BYTE;
-    cAccumGreenBits: BYTE;
-    cAccumBlueBits: BYTE;
-    cAccumAlphaBits: BYTE;
-    cDepthBits: BYTE;
-    cStencilBits: BYTE;
-    cAuxBuffers: BYTE;
-    iLayerType: BYTE;
-    bReserved: BYTE;
-    dwLayerMask: DWORD;
-    dwVisibleMask: DWORD;
-    dwDamageMask: DWORD;
+	nSize: WORD;
+	nVersion: WORD;
+	dwFlags: DWORD;
+	iPixelType: BYTE;
+	cColorBits: BYTE;
+	cRedBits: BYTE;
+	cRedShift: BYTE;
+	cGreenBits: BYTE;
+	cGreenShift: BYTE;
+	cBlueBits: BYTE;
+	cBlueShift: BYTE;
+	cAlphaBits: BYTE;
+	cAlphaShift: BYTE;
+	cAccumBits: BYTE;
+	cAccumRedBits: BYTE;
+	cAccumGreenBits: BYTE;
+	cAccumBlueBits: BYTE;
+	cAccumAlphaBits: BYTE;
+	cDepthBits: BYTE;
+	cStencilBits: BYTE;
+	cAuxBuffers: BYTE;
+	iLayerType: BYTE;
+	bReserved: BYTE;
+	dwLayerMask: DWORD;
+	dwVisibleMask: DWORD;
+	dwDamageMask: DWORD;
 };
 LPPIXELFORMATDESCRIPTOR :: *PIXELFORMATDESCRIPTOR;
 
@@ -914,74 +914,74 @@ CCHDEVICENAME :: 32;
 CCHFORMNAME :: 32;
 
 DEVMODEA :: struct {
-    dmDeviceName: [CCHDEVICENAME]BYTE;
-    dmSpecVersion: WORD;
-    dmDriverVersion: WORD;
-    dmSize: WORD;
-    dmDriverExtra: WORD;
-    dmFields: DWORD;
-    DUMMYUNIONNAME: union {
-      DUMMYSTRUCTNAME: struct {
-        dmOrientation: s16;
-        dmPaperSize: s16;
-        dmPaperLength: s16;
-        dmPaperWidth: s16;
-        dmScale: s16;
-        dmCopies: s16;
-        dmDefaultSource: s16;
-        dmPrintQuality: s16;
-      };
-      DUMMYSTRUCTNAME2: struct {
-        dmPosition: POINTL;
-        dmDisplayOrientation: DWORD;
-        dmDisplayFixedOutput: DWORD;
-      };
-    };
-    dmColor: s16;
-    dmDuplex: s16;
-    dmYResolution: s16;
-    dmTTOption: s16;
-    dmCollate: s16;
-    dmFormName: [CCHFORMNAME]BYTE;
-    dmLogPixels: WORD;
-    dmBitsPerPel: DWORD;
-    dmPelsWidth: DWORD;
-    dmPelsHeight: DWORD;
-    DUMMYUNIONNAME2: union {
-        dmDisplayFlags: DWORD;
-        dmNup: DWORD;
-    };
-    dmDisplayFrequency: DWORD;
-    dmICMMethod: DWORD;
-    dmICMIntent: DWORD;
-    dmMediaType: DWORD;
-    dmDitherType: DWORD;
-    dmReserved1: DWORD;
-    dmReserved2: DWORD;
-    dmPanningWidth: DWORD;
-    dmPanningHeight: DWORD;
+	dmDeviceName: [CCHDEVICENAME]BYTE;
+	dmSpecVersion: WORD;
+	dmDriverVersion: WORD;
+	dmSize: WORD;
+	dmDriverExtra: WORD;
+	dmFields: DWORD;
+	DUMMYUNIONNAME: union {
+	  DUMMYSTRUCTNAME: struct {
+		dmOrientation: s16;
+		dmPaperSize: s16;
+		dmPaperLength: s16;
+		dmPaperWidth: s16;
+		dmScale: s16;
+		dmCopies: s16;
+		dmDefaultSource: s16;
+		dmPrintQuality: s16;
+	  };
+	  DUMMYSTRUCTNAME2: struct {
+		dmPosition: POINTL;
+		dmDisplayOrientation: DWORD;
+		dmDisplayFixedOutput: DWORD;
+	  };
+	};
+	dmColor: s16;
+	dmDuplex: s16;
+	dmYResolution: s16;
+	dmTTOption: s16;
+	dmCollate: s16;
+	dmFormName: [CCHFORMNAME]BYTE;
+	dmLogPixels: WORD;
+	dmBitsPerPel: DWORD;
+	dmPelsWidth: DWORD;
+	dmPelsHeight: DWORD;
+	DUMMYUNIONNAME2: union {
+		dmDisplayFlags: DWORD;
+		dmNup: DWORD;
+	};
+	dmDisplayFrequency: DWORD;
+	dmICMMethod: DWORD;
+	dmICMIntent: DWORD;
+	dmMediaType: DWORD;
+	dmDitherType: DWORD;
+	dmReserved1: DWORD;
+	dmReserved2: DWORD;
+	dmPanningWidth: DWORD;
+	dmPanningHeight: DWORD;
 }
 
 COORD :: struct {
-    X: C.short;
-    Y: C.short;
+	X: C.short;
+	Y: C.short;
 }
 PCOORD :: *COORD;
 
 SMALL_RECT :: struct {
-    Left: C.short;
-    Top: C.short;
-    Right: C.short;
-    Bottom: C.short;
+	Left: C.short;
+	Top: C.short;
+	Right: C.short;
+	Bottom: C.short;
 }
 PSMALL_RECT :: *SMALL_RECT;
 
 CONSOLE_SCREEN_BUFFER_INFO :: struct {
-    dwSize: COORD;
-    dwCursorPosition: COORD;
-    wAttributes: WORD;
-    srWindow: SMALL_RECT;
-    dwMaximumWindowSize: COORD;
+	dwSize: COORD;
+	dwCursorPosition: COORD;
+	wAttributes: WORD;
+	srWindow: SMALL_RECT;
+	dwMaximumWindowSize: COORD;
 }
 PCONSOLE_SCREEN_BUFFER_INFO :: *CONSOLE_SCREEN_BUFFER_INFO;
 
@@ -1051,7 +1051,7 @@ GetDC :: fn (hWnd: HWND) HDC #extern "GetDC";
 ChoosePixelFormat :: fn (hdc: HDC, ppfd: *PIXELFORMATDESCRIPTOR) C.int #extern "ChoosePixelFormat";
 RegisterClassExA :: fn (lpWndClass: *WNDCLASSEXA) WORD #extern "RegisterClassExA";
 CreateWindowA :: fn (lpClassName: LPCSTR, lpWindowName: LPCSTR, dwStyle: DWORD, X: C.int, Y: C.int, nWidth: C.int, nHeight: C.int, hWndParent: HWND, hMenu: HMENU, hInstance: HINSTANCE, lpParam: LPVOID) HWND #inline {
-    return CreateWindowExA(0, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
+	return CreateWindowExA(0, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
 }
 SetPixelFormat :: fn (hdc: HDC, format: C.int, ppfd: *PIXELFORMATDESCRIPTOR) BOOL #extern "SetPixelFormat";
 DescribePixelFormat :: fn (hdc: HDC, iPixelFormat: C.int, nBytes: UINT, ppfd: LPPIXELFORMATDESCRIPTOR) C.int #extern "DescribePixelFormat";
@@ -1062,11 +1062,11 @@ SwapBuffers :: fn (context: HDC) BOOL #extern "SwapBuffers";
 MessageBoxA :: fn (hWnd: HWND, lpText: LPCSTR, lpCaption: LPCSTR, uType: UINT) C.int #extern "MessageBoxA";
 
 GET_X_LPARAM :: fn (lp: LPARAM) C.int #inline {
-    return auto (cast(usize)lp & 0xffff);
+	return auto (cast(usize)lp & 0xffff);
 }
 
 GET_Y_LPARAM :: fn (lp: LPARAM) C.int #inline {
-    return auto ((cast(usize)lp >> 16) & 0xffff);
+	return auto ((cast(usize)lp >> 16) & 0xffff);
 }
 
 AdjustWindowRect :: fn (lpRect: LPRECT, dwStyle: DWORD, bMenu: BOOL) BOOL #extern "AdjustWindowRect";

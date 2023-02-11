@@ -15,7 +15,7 @@
 // =================================================================================================
 
 FileStream :: struct #base Stream {
-    handle: _fs_impl.File;
+	handle: _fs_impl.File;
 }
 
 /// Invalid file handle. This can be used for file handle validation.
@@ -23,14 +23,14 @@ FILE_INVALID :: _fs_impl.FILE_INVALID;
 
 /// Specify operation with opened file.
 OpenFileMode :: enum #flags {
-    /// Open file for reading.
-    READ;
-    /// Open file for writing and truncate its content.
-    WRITE;
-    /// Open file for appending (keeps current content).
-    APPEND;
-    /// Create file if it does not exist.
-    CREATE;
+	/// Open file for reading.
+	READ;
+	/// Open file for writing and truncate its content.
+	WRITE;
+	/// Open file for appending (keeps current content).
+	APPEND;
+	/// Create file if it does not exist.
+	CREATE;
 }
 
 /// Open an file specified by `filepath`. Function return file stream and `OK` status when file was
@@ -49,31 +49,31 @@ OpenFileMode :: enum #flags {
 /// ```
 ///
 open_file :: fn (filepath: string_view, mode: OpenFileMode = OpenFileMode.READ) (FileStream, Error) #inline {
-    stream: FileStream #noinit;
-    stream.vtable = &FILE_STREAM_VTABLE;
-    stream.handle = FILE_INVALID;
-    file, open_err :: _fs_impl.open(filepath, mode);
-    if open_err { return stream, open_err; }
-    stream.handle = file;
-    return stream, OK;
+	stream: FileStream #noinit;
+	stream.vtable = &FILE_STREAM_VTABLE;
+	stream.handle = FILE_INVALID;
+	file, open_err :: _fs_impl.open(filepath, mode);
+	if open_err { return stream, open_err; }
+	stream.handle = file;
+	return stream, OK;
 }
 
 /// Close previously openned file stream.
 close_file :: fn (stream: *FileStream) #inline {
-    _fs_impl.close(stream.handle);
-    stream.handle = FILE_INVALID;
+	_fs_impl.close(stream.handle);
+	stream.handle = FILE_INVALID;
 }
 
 /// Create new file if it does not exists. Otherwise does nothing.
 create_file :: fn (filepath: string_view) Error {
-    stream, create_err :: open_file(filepath, OpenFileMode.CREATE);
-    close_file(&stream);
-    return create_err;
+	stream, create_err :: open_file(filepath, OpenFileMode.CREATE);
+	close_file(&stream);
+	return create_err;
 }
 
 /// Try to remove file specified by `filepath` and return `OK` on success, otherwise return error.
 remove_file :: fn (filepath: string_view) Error #inline {
-    return _fs_impl.remove(filepath);
+	return _fs_impl.remove(filepath);
 }
 
 /// Copy existing file from `src` to `dest` and override existing file in destination if `override` 
@@ -85,27 +85,27 @@ remove_file :: fn (filepath: string_view) Error #inline {
 ///     The `src` and `dest` path can be relative path to current working path set by
 ///     [set_cwd](#stdset_cwd).
 copy_file :: fn (src: string_view, dest: string_view, override := false) Error #inline {
-    return _fs_impl.copy(src, dest, override);
+	return _fs_impl.copy(src, dest, override);
 }
 
 /// Returns file id.
 file_uid :: fn {
-    fn (stream: *FileStream) (u64, Error) {
-        assert(stream);
-        return _fs_impl.get_uid(stream.handle);
-    };
-    _fs_impl.get_uid_by_name;
+	fn (stream: *FileStream) (u64, Error) {
+		assert(stream);
+		return _fs_impl.get_uid(stream.handle);
+	};
+	_fs_impl.get_uid_by_name;
 }
 
 /// Returns size in bytes of `stream` file or an error.
 file_size :: fn (stream: *FileStream) (s64, Error) {
-    original_position, e1 :: seek(stream);
-    if e1 { return 0, e1; }
-    size, e2 :: seek(stream, StreamLocator.END);
-    if e2 { return 0, e2; }
-    _, e3 :: seek(stream, StreamLocator.BEGIN, original_position);
-    if e3 { return 0, e3; }
-    return size, OK;
+	original_position, e1 :: seek(stream);
+	if e1 { return 0, e1; }
+	size, e2 :: seek(stream, StreamLocator.END);
+	if e2 { return 0, e2; }
+	_, e3 :: seek(stream, StreamLocator.BEGIN, original_position);
+	if e3 { return 0, e3; }
+	return size, OK;
 }
 
 // =================================================================================================
@@ -115,60 +115,60 @@ file_size :: fn (stream: *FileStream) (s64, Error) {
 /// Create new directory and return `OK` on success. This function does not create directories 
 /// recursively.
 create_dir :: fn (dirpath: string_view) Error #inline {
-    return _fs_impl.create_dir(dirpath);
+	return _fs_impl.create_dir(dirpath);
 }
 
 create_all_dir :: fn (dirpath: string_view) Error {
-    if str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Directory path is empty!"); }
-    is_valid, err :: is_existing_directory(dirpath);
-    if err      { return err; }
-    if is_valid { return OK;  }
+	if str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Directory path is empty!"); }
+	is_valid, err :: is_existing_directory(dirpath);
+	if err      { return err; }
+	if is_valid { return OK;  }
 
-    Data :: struct {
-        path: string;
-        last_error: Error;
-    };
+	Data :: struct {
+		path: string;
+		last_error: Error;
+	};
 
-    data: Data;
-    data.path = str_new();
-    defer str_delete(&data.path);
-    // Handle unix root.
-    assert(dirpath.len > 0);
-    if dirpath[0] == '/' { str_append(&data.path, "/"); }
+	data: Data;
+	data.path = str_new();
+	defer str_delete(&data.path);
+	// Handle unix root.
+	assert(dirpath.len > 0);
+	if dirpath[0] == '/' { str_append(&data.path, "/"); }
 
-    str_tokenize(dirpath, '/', &data, &fn (sub_path: string_view, data: *Data) bool {
-        if data.path.len > 0 && data.path[data.path.len] != '/' { str_append(&data.path, "/"); }
-        str_append(&data.path, sub_path);
-        existing, err :: is_existing_directory(data.path);
-        if err {
-            data.last_error = err;
-            return false;
-        }
-        if !existing {
-            create_err :: _fs_impl.create_dir(data.path);
-            if create_err {
-                data.last_error = create_err;
-                return false;
-            }
-        }
-        return true;
-    });
-    return data.last_error;
+	str_tokenize(dirpath, '/', &data, &fn (sub_path: string_view, data: *Data) bool {
+		if data.path.len > 0 && data.path[data.path.len] != '/' { str_append(&data.path, "/"); }
+		str_append(&data.path, sub_path);
+		existing, err :: is_existing_directory(data.path);
+		if err {
+			data.last_error = err;
+			return false;
+		}
+		if !existing {
+			create_err :: _fs_impl.create_dir(data.path);
+			if create_err {
+				data.last_error = create_err;
+				return false;
+			}
+		}
+		return true;
+	});
+	return data.last_error;
 }
 
 /// Remove directory specified by `dirpath` and return `OK` on success, otherwise return an error.
 remove_dir :: fn (dirpath: string_view) Error #inline {
-    return _fs_impl.remove_dir(dirpath);
+	return _fs_impl.remove_dir(dirpath);
 }
 
 /// Filesystem entry description.
 Info :: struct {
-    /// `True` in case the entry is a directory.
-    is_directory: bool;
-    /// File or directory name.
-    filename: string_view;
-    /// File or directory full path.
-    filepath: string_view;
+	/// `True` in case the entry is a directory.
+	is_directory: bool;
+	/// File or directory name.
+	filename: string_view;
+	/// File or directory full path.
+	filepath: string_view;
 }
 
 /// Remove (even non-empty) directory specified by `dirpath` and return `OK` on success, otherwise return
@@ -194,17 +194,17 @@ Info :: struct {
 ///     so it can be expensive.
 ///
 remove_all_dir :: fn {
-    impl_remove_all_dir;
-    impl_remove_all_dir_with_filter;
-    impl_remove_all_dir_with_filter_and_context;
+	impl_remove_all_dir;
+	impl_remove_all_dir_with_filter;
+	impl_remove_all_dir_with_filter_and_context;
 }
 
 /// Visit file options used in [visit_files](visit_files).
 VisitOpt :: struct {
-    /// Visit all subfolders when `true`.
-    recursive: bool;
-    /// Visit the most nested files first.
-    leaf_first: bool;
+	/// Visit all subfolders when `true`.
+	recursive: bool;
+	/// Visit the most nested files first.
+	leaf_first: bool;
 }
 
 /// Visit all files and directories in `dirpath` with specified `visitor` callback called for each found
@@ -223,27 +223,27 @@ VisitOpt :: struct {
 /// {% include "../examples/visit_files.bl" %}
 /// ```
 visit_files :: fn {
-    fn (dirpath: string_view, opt: VisitOpt, ctx: *?T, visitor: *fn(info: *Info, ctx: *T) Error) Error #inline {
-        assert(visitor);
-        return _fs_impl.visit_files(dirpath, opt.recursive, opt.leaf_first, auto visitor, auto ctx);
-    };
+	fn (dirpath: string_view, opt: VisitOpt, ctx: *?T, visitor: *fn(info: *Info, ctx: *T) Error) Error #inline {
+		assert(visitor);
+		return _fs_impl.visit_files(dirpath, opt.recursive, opt.leaf_first, auto visitor, auto ctx);
+	};
 
-    fn (dirpath: string_view, opt: VisitOpt, visitor: *fn(info: *Info) Error) Error #inline {
-        assert(visitor);
-        // @Note: We use wrapper function instead of making the '_fs_impl.visit_files' generic.
-        visitor_wrapper :: fn (info: *std.Info, ctx: *u8) Error {
-            assert(ctx);
-            orig_visitor :: cast(*fn(info: *Info) Error) ctx;
-            return orig_visitor(info);
-        };
+	fn (dirpath: string_view, opt: VisitOpt, visitor: *fn(info: *Info) Error) Error #inline {
+		assert(visitor);
+		// @Note: We use wrapper function instead of making the '_fs_impl.visit_files' generic.
+		visitor_wrapper :: fn (info: *std.Info, ctx: *u8) Error {
+			assert(ctx);
+			orig_visitor :: cast(*fn(info: *Info) Error) ctx;
+			return orig_visitor(info);
+		};
 
-        return _fs_impl.visit_files(dirpath, opt.recursive, opt.leaf_first, &visitor_wrapper, auto visitor);
-    };
+		return _fs_impl.visit_files(dirpath, opt.recursive, opt.leaf_first, &visitor_wrapper, auto visitor);
+	};
 }
 
 /// Check whether `path` points to valid directory. Returns error in case the check failed.
 is_directory :: fn (path: string_view) (bool, Error) #inline {
-    return _fs_impl.is_directory(path);
+	return _fs_impl.is_directory(path);
 }
 
 // =================================================================================================
@@ -252,12 +252,12 @@ is_directory :: fn (path: string_view) (bool, Error) #inline {
 
 /// Checks whether `name` is valid file name on current platform.
 validate_filename :: fn (name: string_view) bool #inline {
-    return _fs_impl.validate_filename(name);
+	return _fs_impl.validate_filename(name);
 }
 
 /// Check whether file or directory exists.
 file_exist :: fn (filepath: string_view) bool #inline {
-    return _fs_impl.exist(filepath);
+	return _fs_impl.exist(filepath);
 }
 
 /// Try to normalize `filepath`, basically try to remove all relative path nodes `..` and `.`. Path 
@@ -265,7 +265,7 @@ file_exist :: fn (filepath: string_view) bool #inline {
 /// directory. Function return `OK` on success or proper error on fail. Original string is not 
 /// modified when error occurs.
 path_normalize :: fn (filepath: *string) Error #inline {
-    return _fs_impl.normalize(filepath);
+	return _fs_impl.normalize(filepath);
 }
 
 /// Split input `filepath` into head and tail components. The `tail` is the last `filepath` component
@@ -285,16 +285,16 @@ path_normalize :: fn (filepath: *string) Error #inline {
 /// !!! note
 ///     Returned components may not be zero terminated.
 path_split :: fn (filepath: string_view) (head: string_view, tail: string_view) {
-    if str_is_empty(filepath) { return str_empty, str_empty; }
+	if str_is_empty(filepath) { return str_empty, str_empty; }
 
-    head, tail: string_view;
-    if !str_split_by_last(filepath, '/', &head, &tail) {
-        tail = head;
-        head= str_empty;
-    } else {
-        head.len += 1;
-    }
-    return head, tail;
+	head, tail: string_view;
+	if !str_split_by_last(filepath, '/', &head, &tail) {
+		tail = head;
+		head= str_empty;
+	} else {
+		head.len += 1;
+	}
+	return head, tail;
 }
 
 /// Split input `filepath` into `head` and `ext` components. The `ext` is the file extension  and the `head` is
@@ -313,95 +313,95 @@ path_split :: fn (filepath: string_view) (head: string_view, tail: string_view) 
 /// !!! note
 ///     Returned components may not be zero terminated.
 path_splitext :: fn (filepath: string_view) (head: string_view, ext: string_view) {
-    if str_is_empty(filepath) { return str_empty, str_empty; }
-    head, ext: string_view;
-    index: s32;
-    if str_split_by_last(filepath, '.', &head, &ext, &index) {
-        ext.ptr = &filepath[index];
-        ext.len += 1;
-    }
-    return head, ext;
+	if str_is_empty(filepath) { return str_empty, str_empty; }
+	head, ext: string_view;
+	index: s32;
+	if str_split_by_last(filepath, '.', &head, &ext, &index) {
+		ext.ptr = &filepath[index];
+		ext.len += 1;
+	}
+	return head, ext;
 }
 
 // @Incomplete: use temporary allocator
 /// Try to obtain current working directory, result must be released by `std.str_delete`. Path does 
 /// not contain last path separator.
 get_cwd :: fn () string #inline {
-    return _fs_impl.get_cwd();
+	return _fs_impl.get_cwd();
 }
 
 /// Sets current working directory and return `OK` on success, otherwise return error.
 set_cwd :: fn (path: string_view) Error #inline {
-    return _fs_impl.set_cwd(path);
+	return _fs_impl.set_cwd(path);
 }
 
 // @Incomplete: use temporary allocator
 /// Try to obtain system home directory, result must be released by `std.str_delete`. Path does not 
 /// contain last path separator.
 get_home :: fn () string #inline {
-    return _fs_impl.get_home();
+	return _fs_impl.get_home();
 }
 
 // @Incomplete: use temporary allocator
 /// Try to obtain system temporary directory, result must be released by `std.str_delete`. Path does 
 /// not contain last path separator.
 get_tmp :: fn () string #inline {
-    return _fs_impl.get_tmp();
+	return _fs_impl.get_tmp();
 }
 
 #private
 FILE_STREAM_VTABLE :: StreamVTable.{
-    read  = auto &_fs_impl.read,
-    write = auto &_fs_impl.write,
-    seek  = auto &_fs_impl.seek,
+	read  = auto &_fs_impl.read,
+	write = auto &_fs_impl.write,
+	seek  = auto &_fs_impl.seek,
 };
 
 impl_remove_all_dir :: fn (dirpath: string_view, remove_root := true) Error #inline {
-    dummy_ctx: *u8;
-    return impl_remove_all_dir_with_filter_and_context(dirpath, remove_root, dummy_ctx, null);
+	dummy_ctx: *u8;
+	return impl_remove_all_dir_with_filter_and_context(dirpath, remove_root, dummy_ctx, null);
 }
 
 impl_remove_all_dir_with_filter :: fn (dirpath: string_view, remove_root: bool, filter: *fn(info: *Info) bool) Error #inline {
-    assert(filter);
-    filter_wrapper :: fn (info: *Info, ctx: *fn(info: *Info) bool) bool {
-        return ctx(info);
-    };
+	assert(filter);
+	filter_wrapper :: fn (info: *Info, ctx: *fn(info: *Info) bool) bool {
+		return ctx(info);
+	};
 
-    return impl_remove_all_dir_with_filter_and_context(dirpath, remove_root, filter, &filter_wrapper);
+	return impl_remove_all_dir_with_filter_and_context(dirpath, remove_root, filter, &filter_wrapper);
 }
 
 impl_remove_all_dir_with_filter_and_context :: fn (dirpath: string_view, remove_root: bool, ctx: *?T, filter: *fn(info: *Info, ctx: *T) bool) Error {
-    if str_is_empty(dirpath) { return OK; }
+	if str_is_empty(dirpath) { return OK; }
 
-    Data :: struct {
-        filter: *fn(info: *Info, ctx: *T) bool;
-        ctx: *T;
-    };
+	Data :: struct {
+		filter: *fn(info: *Info, ctx: *T) bool;
+		ctx: *T;
+	};
 
-    visitor :: fn (info: *Info, data: *Data) Error {
-        if (!data.filter) || data.filter(info, data.ctx) {
-            if (info.is_directory) {
-                return _fs_impl.remove_dir(info.filepath);
-            }
-            return _fs_impl.remove(info.filepath);
-        }
-        return OK;
-    };
+	visitor :: fn (info: *Info, data: *Data) Error {
+		if (!data.filter) || data.filter(info, data.ctx) {
+			if (info.is_directory) {
+				return _fs_impl.remove_dir(info.filepath);
+			}
+			return _fs_impl.remove(info.filepath);
+		}
+		return OK;
+	};
 
-    data :: Data.{ filter, ctx };
-    err :: visit_files(dirpath, VisitOpt.{ recursive = true, leaf_first = true }, &data, &visitor);
-    if err { return err; }
-    if remove_root { return _fs_impl.remove_dir(dirpath); }
-    return OK;
+	data :: Data.{ filter, ctx };
+	err :: visit_files(dirpath, VisitOpt.{ recursive = true, leaf_first = true }, &data, &visitor);
+	if err { return err; }
+	if remove_root { return _fs_impl.remove_dir(dirpath); }
+	return OK;
 }
 
 // Checks if the path points to an existing filesystem entry + checks if it's a directory.
 is_existing_directory :: fn (path: string_view) (bool, Error) {
-    if _fs_impl.exist(path) {
-        is_valid, err :: _fs_impl.is_directory(path);
-        if err { return false, err; }
-        if !is_valid { return false, error("Not a directory '%'.", path); }
-        return true, OK;
-    }
-    return false, OK;
+	if _fs_impl.exist(path) {
+		is_valid, err :: _fs_impl.is_directory(path);
+		if err { return false, err; }
+		if !is_valid { return false, error("Not a directory '%'.", path); }
+		return true, OK;
+	}
+	return false, OK;
 }

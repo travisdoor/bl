@@ -40,22 +40,22 @@ CFRunLoopMode :: CFStringRef;
 Boolean :: u8;
 
 CFStringEncoding :: enum u32 {
-    MacRoman = 0;
-    WindowsLatin1 = 0x0500;
-    ISOLatin1 = 0x0201;
-    NextStepLatin = 0x0B01;
-    ASCII = 0x0600; 
-    Unicode = 0x0100;
-    UTF8 = 0x08000100;
-    NonLossyASCII = 0x0BFF;
+	MacRoman = 0;
+	WindowsLatin1 = 0x0500;
+	ISOLatin1 = 0x0201;
+	NextStepLatin = 0x0B01;
+	ASCII = 0x0600; 
+	Unicode = 0x0100;
+	UTF8 = 0x08000100;
+	NonLossyASCII = 0x0BFF;
 
-    UTF16 = 0x0100; 
-    UTF16BE = 0x10000100;
-    UTF16LE = 0x14000100;
+	UTF16 = 0x0100; 
+	UTF16BE = 0x10000100;
+	UTF16LE = 0x14000100;
 
-    UTF32 = 0x0c000100;
-    UTF32BE = 0x18000100;
-    UTF32LE = 0x1c000100;
+	UTF32 = 0x0c000100;
+	UTF32BE = 0x18000100;
+	UTF32LE = 0x1c000100;
 };
 
 kFSEventStreamEventFlagNone               : u32 : 0x00000000;
@@ -105,10 +105,10 @@ CFAllocatorReleaseCallBack :: * fn (info: *u8);
 CFAllocatorCopyDescriptionCallBack :: * fn (info: *u8) CFStringRef;
 
 CFArrayCreate :: fn (
-    allocator: CFAllocatorRef,
-    values: **u8,
-    numValues: CFIndex,
-    callBacks: *CFArrayCallBacks
+	allocator: CFAllocatorRef,
+	values: **u8,
+	numValues: CFIndex,
+	callBacks: *CFArrayCallBacks
 ) CFArrayRef #extern "CFArrayCreate";
 
 CFRunLoopGetCurrent :: fn () CFRunLoopRef #extern "CFRunLoopGetCurrent";
@@ -116,9 +116,9 @@ CFRunLoopCopyCurrentMode :: fn (rl: CFRunLoopRef) CFRunLoopMode #extern "CFRunLo
 CFRelease :: fn (cf: CFTypeRef) #extern "CFRelease";
 
 CFStringCreateWithCString :: fn (
-    alloc: CFAllocatorRef,
-    cStr: *u8,
-    encoding: CFStringEncoding
+	alloc: CFAllocatorRef,
+	cStr: *u8,
+	encoding: CFStringEncoding
 ) CFStringRef #extern "CFStringCreateWithCString";
 
 FSEventStreamContext :: struct {
@@ -130,34 +130,34 @@ FSEventStreamContext :: struct {
 };
 
 FSEventStreamCallback :: * fn (
-    streamRef: ConstFSEventStreamRef,
-    clientCallBackInfo: *u8,
-    numEvents: usize,
-    eventPaths: *u8,
-    eventFlags: *FSEventStreamEventFlags,
-    eventIds: *FSEventStreamEventId
+	streamRef: ConstFSEventStreamRef,
+	clientCallBackInfo: *u8,
+	numEvents: usize,
+	eventPaths: *u8,
+	eventFlags: *FSEventStreamEventFlags,
+	eventIds: *FSEventStreamEventId
 ); 
 
 FSEventStreamCreate :: fn (
-    allocator: CFAllocatorRef,
-    callback: FSEventStreamCallback,
-    context: *FSEventStreamContext,
-    pathsToWatch: CFArrayRef,
-    sinceWhen: FSEventStreamEventId,
-    latency: CFTimeInterval,
-    flags: FSEventStreamCreateFlags   
+	allocator: CFAllocatorRef,
+	callback: FSEventStreamCallback,
+	context: *FSEventStreamContext,
+	pathsToWatch: CFArrayRef,
+	sinceWhen: FSEventStreamEventId,
+	latency: CFTimeInterval,
+	flags: FSEventStreamCreateFlags   
 ) FSEventStreamRef #extern "FSEventStreamCreate"; 
 
 FSEventStreamScheduleWithRunLoop :: fn (
-    streamRef: FSEventStreamRef,
-    runLoop: CFRunLoopRef,
-    runLoopMode: CFStringRef
+	streamRef: FSEventStreamRef,
+	runLoop: CFRunLoopRef,
+	runLoopMode: CFStringRef
 ) #extern "FSEventStreamScheduleWithRunLoop";
 
 FSEventStreamUnscheduleFromRunLoop :: fn (
-    streamRef: FSEventStreamRef,
-    runLoop: CFRunLoopRef,
-    runLoopMode: CFStringRef
+	streamRef: FSEventStreamRef,
+	runLoop: CFRunLoopRef,
+	runLoopMode: CFStringRef
 ) #extern "FSEventStreamUnscheduleFromRunLoop";
 
 FSEventStreamStart :: fn (streamRef: FSEventStreamRef) Boolean #extern "FSEventStreamStart";
@@ -168,8 +168,8 @@ FSEventStreamRelease :: fn (streamRef: FSEventStreamRef) #extern "FSEventStreamR
 NSGetExecutablePath :: fn (buf: *C.char, bufsize: *C.uint) C.int #extern "_NSGetExecutablePath";
 
 MachTimebaseInfo :: struct {
-    numer: C.uint;
-    denom: C.uint;
+	numer: C.uint;
+	denom: C.uint;
 }
 
 mach_timebase_info :: fn (info: *MachTimebaseInfo) C.int #extern "mach_timebase_info";

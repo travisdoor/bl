@@ -74,43 +74,43 @@ LOAD_TARGET_LCD    :: (RENDER_MODE_LCD    & 15) << 16;
 LOAD_TARGET_LCD_V  :: (RENDER_MODE_LCD_V  & 15) << 16;
 
 Encoding :: enum {
-    ENCODING_NONE = 0;
-    ENCODING_MS_SYMBOL = 1;
-    ENCODING_UNICODE = 2;
-    ENCODING_SJIS = 3;
-    ENCODING_PRC = 4;
-    ENCODING_BIG5 = 5;
-    ENCODING_WANSUNG = 6;
-    ENCODING_JOHAB = 7;
-    ENCODING_GB2312 = 4;
-    ENCODING_MS_SJIS = 3;
-    ENCODING_MS_GB2312 = 4;
-    ENCODING_MS_BIG5 = 5;
-    ENCODING_MS_WANSUNG = 6;
-    ENCODING_MS_JOHAB = 7;
-    ENCODING_ADOBE_STANDARD = 8;
-    ENCODING_ADOBE_EXPERT = 9;
-    ENCODING_ADOBE_CUSTOM = 10;
-    ENCODING_ADOBE_LATIN_1 = 11;
-    ENCODING_OLD_LATIN_2 = 12;
-    ENCODING_APPLE_ROMAN = 13;
+	ENCODING_NONE = 0;
+	ENCODING_MS_SYMBOL = 1;
+	ENCODING_UNICODE = 2;
+	ENCODING_SJIS = 3;
+	ENCODING_PRC = 4;
+	ENCODING_BIG5 = 5;
+	ENCODING_WANSUNG = 6;
+	ENCODING_JOHAB = 7;
+	ENCODING_GB2312 = 4;
+	ENCODING_MS_SJIS = 3;
+	ENCODING_MS_GB2312 = 4;
+	ENCODING_MS_BIG5 = 5;
+	ENCODING_MS_WANSUNG = 6;
+	ENCODING_MS_JOHAB = 7;
+	ENCODING_ADOBE_STANDARD = 8;
+	ENCODING_ADOBE_EXPERT = 9;
+	ENCODING_ADOBE_CUSTOM = 10;
+	ENCODING_ADOBE_LATIN_1 = 11;
+	ENCODING_OLD_LATIN_2 = 12;
+	ENCODING_APPLE_ROMAN = 13;
 };
 
 Glyph_Format :: enum {
-    GLYPH_FORMAT_NONE = 0;
-    GLYPH_FORMAT_COMPOSITE = 1668246896;
-    GLYPH_FORMAT_BITMAP = 1651078259;
-    GLYPH_FORMAT_OUTLINE = 1869968492;
-    GLYPH_FORMAT_PLOTTER = 1886154612;
+	GLYPH_FORMAT_NONE = 0;
+	GLYPH_FORMAT_COMPOSITE = 1668246896;
+	GLYPH_FORMAT_BITMAP = 1651078259;
+	GLYPH_FORMAT_OUTLINE = 1869968492;
+	GLYPH_FORMAT_PLOTTER = 1886154612;
 };
 
 Size_Request_Type_ :: enum {
-    SIZE_REQUEST_TYPE_NOMINAL = -1;
-    SIZE_REQUEST_TYPE_REAL_DIM = 1;
-    SIZE_REQUEST_TYPE_BBOX = 2;
-    SIZE_REQUEST_TYPE_CELL = 3;
-    SIZE_REQUEST_TYPE_SCALES = 4;
-    SIZE_REQUEST_TYPE_MAX = 5;
+	SIZE_REQUEST_TYPE_NOMINAL = -1;
+	SIZE_REQUEST_TYPE_REAL_DIM = 1;
+	SIZE_REQUEST_TYPE_BBOX = 2;
+	SIZE_REQUEST_TYPE_CELL = 3;
+	SIZE_REQUEST_TYPE_SCALES = 4;
+	SIZE_REQUEST_TYPE_MAX = 5;
 };
 
 Render_Mode :: s32; 
@@ -122,9 +122,9 @@ RENDER_MODE_LCD_V :: 4;
 RENDER_MODE_MAX :: 5;
 
 Kerning_Mode_ :: enum {
-    KERNING_DEFAULT = 0;
-    KERNING_UNFITTED = 1;
-    KERNING_UNSCALED = 2;
+	KERNING_DEFAULT = 0;
+	KERNING_UNFITTED = 1;
+	KERNING_UNSCALED = 2;
 };
 
 Library :: *u8;
@@ -137,166 +137,166 @@ SubGlyph :: *u8;
 Slot_Internal :: *u8;
 
 Color :: struct {
-    blue: Byte;
-    green: Byte;
-    red: Byte;
-    alpha: Byte;
+	blue: Byte;
+	green: Byte;
+	red: Byte;
+	alpha: Byte;
 } 
 
 Face :: struct {
-    num_faces: Long;
-    face_index: Long;
-    face_flags: Long;
-    style_flags: Long;
-    num_glyphs: Long;
-    family_name: *String;
-    style_name: *String;
-    num_fixed_sizes: Int;
-    available_sizes: *Bitmap_Size;
-    num_charmaps: Int;
-    charmaps: **CharMap;
-    generic: Generic;
-    bbox: BBox;
-    units_per_EM: UShort;
-    ascender: Short;
-    descender: Short;
-    height: Short;
-    max_advance_width: Short;
-    max_advance_height: Short;
-    underline_position: Short;
-    underline_thickness: Short;
-    glyph: *GlyphSlot;
-    size: Size;
-    charmap: *CharMap;
-    driver: Driver;
-    memory: Memory;
-    stream: Stream;
-    sizes_list: ListRec;
-    autohint: Generic;   
-    extensions: *u8; 
-    internal: Face_Internal;
+	num_faces: Long;
+	face_index: Long;
+	face_flags: Long;
+	style_flags: Long;
+	num_glyphs: Long;
+	family_name: *String;
+	style_name: *String;
+	num_fixed_sizes: Int;
+	available_sizes: *Bitmap_Size;
+	num_charmaps: Int;
+	charmaps: **CharMap;
+	generic: Generic;
+	bbox: BBox;
+	units_per_EM: UShort;
+	ascender: Short;
+	descender: Short;
+	height: Short;
+	max_advance_width: Short;
+	max_advance_height: Short;
+	underline_position: Short;
+	underline_thickness: Short;
+	glyph: *GlyphSlot;
+	size: Size;
+	charmap: *CharMap;
+	driver: Driver;
+	memory: Memory;
+	stream: Stream;
+	sizes_list: ListRec;
+	autohint: Generic;   
+	extensions: *u8; 
+	internal: Face_Internal;
 } 
 
 GlyphSlot :: struct {
-    library: Library;
-    face: *Face;
-    next: *GlyphSlot;
-    glyph_index: UInt;
-    generic: Generic;
-    metrics: Glyph_Metrics;
-    linearHoriAdvance: Fixed;
-    linearVertAdvance: Fixed;
-    advance: Vector;
-    format: Glyph_Format;
-    bitmap: Bitmap;
-    bitmap_left: Int;
-    bitmap_top: Int;
-    outline: Outline;
-    num_subglyphs: UInt;
-    subglyphs: SubGlyph;
-    control_data: *u8;
-    control_len: s64;
-    lsb_delta: Pos;
-    rsb_delta: Pos;
-    other: *u8;
-    internal: Slot_Internal;
+	library: Library;
+	face: *Face;
+	next: *GlyphSlot;
+	glyph_index: UInt;
+	generic: Generic;
+	metrics: Glyph_Metrics;
+	linearHoriAdvance: Fixed;
+	linearVertAdvance: Fixed;
+	advance: Vector;
+	format: Glyph_Format;
+	bitmap: Bitmap;
+	bitmap_left: Int;
+	bitmap_top: Int;
+	outline: Outline;
+	num_subglyphs: UInt;
+	subglyphs: SubGlyph;
+	control_data: *u8;
+	control_len: s64;
+	lsb_delta: Pos;
+	rsb_delta: Pos;
+	other: *u8;
+	internal: Slot_Internal;
 }
 
 Glyph_Metrics :: struct {
-    width: Pos;
-    height: Pos;
-    horiBearingX: Pos;
-    horiBearingY: Pos;
-    horiAdvance: Pos;
-    vertBearingX: Pos;
-    vertBearingY: Pos;
-    vertAdvance: Pos;
+	width: Pos;
+	height: Pos;
+	horiBearingX: Pos;
+	horiBearingY: Pos;
+	horiAdvance: Pos;
+	vertBearingX: Pos;
+	vertBearingY: Pos;
+	vertAdvance: Pos;
 }
 
 GlyphRec :: struct {
-    library: *Library;
-    clazz: *u8;
-    format: Glyph_Format;
-    advance: Vector;
+	library: *Library;
+	clazz: *u8;
+	format: Glyph_Format;
+	advance: Vector;
 }
 
 Glyph :: *GlyphRec;
 
 ListNode :: struct {
-    prev: *ListNode;
-    next: *ListNode;
-    data: *u8;
+	prev: *ListNode;
+	next: *ListNode;
+	data: *u8;
 } 
 
 ListRec :: struct {
-    head: *ListNode;
-    tail: *ListNode;
+	head: *ListNode;
+	tail: *ListNode;
 }
 
 Bitmap_Size :: struct {
-    height: Short;
-    width: Short;
-    size: Pos;
-    x_ppem: Pos;
-    y_ppem: Pos;
+	height: Short;
+	width: Short;
+	size: Pos;
+	x_ppem: Pos;
+	y_ppem: Pos;
 }
 
 Bitmap :: struct {
-    rows: u32;
-    width: u32;
-    pitch: s32;
-    buffer: *u8;
-    num_grays: u16;
-    pixel_mode: u8;
-    palette_mode: u8;
-    palette: *u8;
+	rows: u32;
+	width: u32;
+	pitch: s32;
+	buffer: *u8;
+	num_grays: u16;
+	pixel_mode: u8;
+	palette_mode: u8;
+	palette: *u8;
 }
 
 Outline :: struct {
-    n_contours: s16;
-    n_points: s16;
-    points: *Vector;
-    tags: *s8;
-    contours: *s16;
-    flags: s32;
+	n_contours: s16;
+	n_points: s16;
+	points: *Vector;
+	tags: *s8;
+	contours: *s16;
+	flags: s32;
 };
 
 CharMap :: struct {
-    face: *Face;
-    encoding: Encoding;
-    platform_id: UShort;
-    encoding_id: UShort;
+	face: *Face;
+	encoding: Encoding;
+	platform_id: UShort;
+	encoding_id: UShort;
 }
 
 Generic :: struct {
-    data: *u8;
-    finalizer: *u8;
+	data: *u8;
+	finalizer: *u8;
 }
 
 Vector :: struct {
-    x: Pos;
-    y: Pos;
+	x: Pos;
+	y: Pos;
 }
 
 BBox :: struct {
-    xMin: Pos; 
-    yMin: Pos; 
-    xMax: Pos; 
-    yMax: Pos; 
+	xMin: Pos; 
+	yMin: Pos; 
+	xMax: Pos; 
+	yMax: Pos; 
 }
 
 Matrix :: struct {
-    xx: Fixed;
-    xy: Fixed;
-    yx: Fixed;
-    yy: Fixed;
+	xx: Fixed;
+	xy: Fixed;
+	yx: Fixed;
+	yy: Fixed;
 }
 
 BitmapGlyphRec :: struct {
-    root: GlyphRec;
-    left: Int;
-    top: Int;
-    bitmap: Bitmap;
+	root: GlyphRec;
+	left: Int;
+	top: Int;
+	bitmap: Bitmap;
 }
 
 BitmapGlyph :: *BitmapGlyphRec;
@@ -330,9 +330,9 @@ Property_Set :: fn (library: Library, module_name: *String, property_name: *Stri
 Select_Charmap :: fn (face: *Face, encoding: UInt) Error #extern "FT_Select_Charmap";
 
 ENC_TAG :: fn (a: u8, b: u8, c: u8, d: u8) UInt #inline {
-    return 
-        (cast(UInt)(a) << 24) |
-        (cast(UInt)(b) << 16) |
-        (cast(UInt)(c) <<  8) |
-        (cast(UInt)(d));
+	return 
+		(cast(UInt)(a) << 24) |
+		(cast(UInt)(b) << 16) |
+		(cast(UInt)(c) <<  8) |
+		(cast(UInt)(d));
 }

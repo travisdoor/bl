@@ -6,273 +6,273 @@ File :: *u8;
 FILE_INVALID : File : null;
 
 exist :: fn (filepath: string_view) bool #inline {
-    if filepath.len == 0 { return false; }
-    return win32.PathFileExistsA(std.strtoc(filepath)) > 0;
+	if filepath.len == 0 { return false; }
+	return win32.PathFileExistsA(std.strtoc(filepath)) > 0;
 }
 
 open :: fn (filepath: string_view, mode: std.OpenFileMode) (File, Error) {
-    if std.str_is_empty(filepath) { return null, error(ERR_INVALID_HANDLE, "File path is empty!"); }
-    access, create :: modes_to_flags(mode);
-    handle :: win32.CreateFile(std.strtoc(filepath), access, 0, null, create, win32.FILE_ATTRIBUTE_NORMAL, null);
-    if handle == win32.INVALID_HANDLE_VALUE {
-        ec, estr :: os_get_last_error();
-        return null, error(ec, "Cannot open file '%': %", filepath, estr);
-    }
-    if is_flag(access, win32.FILE_APPEND_DATA) {
-        win32.SetFilePointer(handle, 0, null, win32.FILE_END);
-    } else if is_flag(access, win32.GENERIC_WRITE) {
-        win32.SetEndOfFile(handle);
-    }
-    return handle, OK;
+	if std.str_is_empty(filepath) { return null, error(ERR_INVALID_HANDLE, "File path is empty!"); }
+	access, create :: modes_to_flags(mode);
+	handle :: win32.CreateFile(std.strtoc(filepath), access, 0, null, create, win32.FILE_ATTRIBUTE_NORMAL, null);
+	if handle == win32.INVALID_HANDLE_VALUE {
+		ec, estr :: os_get_last_error();
+		return null, error(ec, "Cannot open file '%': %", filepath, estr);
+	}
+	if is_flag(access, win32.FILE_APPEND_DATA) {
+		win32.SetFilePointer(handle, 0, null, win32.FILE_END);
+	} else if is_flag(access, win32.GENERIC_WRITE) {
+		win32.SetEndOfFile(handle);
+	}
+	return handle, OK;
 }
 
 remove :: fn (filepath: string_view) Error #inline {
-    if std.str_is_empty(filepath) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
-    tmp :: win32.DeleteFileA(std.strtoc(filepath));
-    if tmp == 0 {
-        ec, estr :: os_get_last_error();
-        return error(ec, "Cannot remove file '%': %", filepath, estr);
-    }
-    return OK;
+	if std.str_is_empty(filepath) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
+	tmp :: win32.DeleteFileA(std.strtoc(filepath));
+	if tmp == 0 {
+		ec, estr :: os_get_last_error();
+		return error(ec, "Cannot remove file '%': %", filepath, estr);
+	}
+	return OK;
 }
 
 copy :: fn (src: string_view, dest: string_view, override: bool) Error {
-    if std.str_is_empty(src) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
-    if std.str_is_empty(dest) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
-    fail_if_exist := 1;
-    if  override { fail_if_exist = 0; }
-    if win32.CopyFileA(std.strtoc(src), std.strtoc(dest), fail_if_exist) == 0 {
-        ec, estr :: os_get_last_error();
-        return error(ec, "Cannot copy file '%' to '%': %", src, dest, estr);
-    }
-    return OK;
+	if std.str_is_empty(src) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
+	if std.str_is_empty(dest) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
+	fail_if_exist := 1;
+	if  override { fail_if_exist = 0; }
+	if win32.CopyFileA(std.strtoc(src), std.strtoc(dest), fail_if_exist) == 0 {
+		ec, estr :: os_get_last_error();
+		return error(ec, "Cannot copy file '%' to '%': %", src, dest, estr);
+	}
+	return OK;
 }
 
 close :: fn (handle: File) #inline {
-    if !handle { return; }
-    win32.CloseHandle(handle);
+	if !handle { return; }
+	win32.CloseHandle(handle);
 }
 
 get_uid :: fn (handle: File) (u64, Error) {
-    tmp: win32.BY_HANDLE_FILE_INFORMATION;
-    if win32.GetFileInformationByHandle(auto handle, &tmp) == 0 {
-        ec, estr :: os_get_last_error();
-        return 0, error(ec, "Cannot get file information: %", estr);
-    }
-    uid :: ((cast(u64) tmp.nFileIndexHigh) << 32) + (cast(u64) tmp.nFileIndexLow);
-    return uid, OK;
+	tmp: win32.BY_HANDLE_FILE_INFORMATION;
+	if win32.GetFileInformationByHandle(auto handle, &tmp) == 0 {
+		ec, estr :: os_get_last_error();
+		return 0, error(ec, "Cannot get file information: %", estr);
+	}
+	uid :: ((cast(u64) tmp.nFileIndexHigh) << 32) + (cast(u64) tmp.nFileIndexLow);
+	return uid, OK;
 }
 
 get_uid_by_name :: fn (filepath: string_view) (u64, Error) {
-    file, err1 :: open(filepath, std.OpenFileMode.READ);
-    defer close(file);
-    if err1 { return 0, err1; }
-    return get_uid(file);
+	file, err1 :: open(filepath, std.OpenFileMode.READ);
+	defer close(file);
+	if err1 { return 0, err1; }
+	return get_uid(file);
 }
 
 create_dir :: fn (dirpath: string_view) Error {
-    if std.str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot create directory, dirpath is empty."); }
-    if win32.CreateDirectoryA(std.strtoc(dirpath), null) == 0 {
-        ec, estr :: os_get_last_error();
-        return error(ec, "Cannot create directory '%': %", dirpath, estr);
-    }
-    return OK;
+	if std.str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot create directory, dirpath is empty."); }
+	if win32.CreateDirectoryA(std.strtoc(dirpath), null) == 0 {
+		ec, estr :: os_get_last_error();
+		return error(ec, "Cannot create directory '%': %", dirpath, estr);
+	}
+	return OK;
 }
 
 remove_dir :: fn (dirpath: string_view) Error {
-    if std.str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot remove directory, dirpath is empty."); }
-    if win32.RemoveDirectoryA(std.strtoc(dirpath)) == 0 {
-        ec, estr :: os_get_last_error();
-        return error(ec, "Cannot remove directory '%': %", dirpath, estr);
-    }
-    return OK;
+	if std.str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot remove directory, dirpath is empty."); }
+	if win32.RemoveDirectoryA(std.strtoc(dirpath)) == 0 {
+		ec, estr :: os_get_last_error();
+		return error(ec, "Cannot remove directory '%': %", dirpath, estr);
+	}
+	return OK;
 }
 
 is_directory :: fn (path: string_view) (bool, Error) #inline {
-    if std.str_is_empty(path) { return false, error(ERR_INVALID_HANDLE, "Path is empty."); }
-    attributes :: win32.GetFileAttributesA(std.strtoc(path));
-    if attributes == win32.INVALID_FILE_ATTRIBUTES {
-        ec, estr :: os_get_last_error();
-        return false, error(ec, "Cannot check directory '%': %", path, estr);
-    }
-    return is_flag(attributes, auto win32.FILE_ATTRIBUTE_DIRECTORY), OK;
+	if std.str_is_empty(path) { return false, error(ERR_INVALID_HANDLE, "Path is empty."); }
+	attributes :: win32.GetFileAttributesA(std.strtoc(path));
+	if attributes == win32.INVALID_FILE_ATTRIBUTES {
+		ec, estr :: os_get_last_error();
+		return false, error(ec, "Cannot check directory '%': %", path, estr);
+	}
+	return is_flag(attributes, auto win32.FILE_ATTRIBUTE_DIRECTORY), OK;
 }
 
 visit_files :: fn (dirpath: string_view, is_recursive: bool, leaf_first: bool, visitor: *fn(info: *std.Info, ctx: *u8) Error, ctx: *u8 = null) Error #inline {
-    using std;
-    if dirpath.len > (win32.MAX_PATH-3) { return error("Path too long!"); }
-    directory := str_new(dirpath);
-    defer str_delete(&directory);
-    err :: normalize(&directory);
-    if err { return err; }
+	using std;
+	if dirpath.len > (win32.MAX_PATH-3) { return error("Path too long!"); }
+	directory := str_new(dirpath);
+	defer str_delete(&directory);
+	err :: normalize(&directory);
+	if err { return err; }
 
-    tmp :: str_new(directory);
-    defer str_delete(&tmp);
-    str_append(&tmp, "\\*");
+	tmp :: str_new(directory);
+	defer str_delete(&tmp);
+	str_append(&tmp, "\\*");
 
-    find_data: win32.FIND_DATA;
-    handle :: win32.FindFirstFile(strtoc(tmp), &find_data);
-    if handle == win32.INVALID_HANDLE_VALUE {
-        ec, estr :: os_get_last_error();
-        return error(ec, "Cannot list directory '%': %", dirpath, estr);
-    }
-    defer win32.FindClose(handle);
+	find_data: win32.FIND_DATA;
+	handle :: win32.FindFirstFile(strtoc(tmp), &find_data);
+	if handle == win32.INVALID_HANDLE_VALUE {
+		ec, estr :: os_get_last_error();
+		return error(ec, "Cannot list directory '%': %", dirpath, estr);
+	}
+	defer win32.FindClose(handle);
 
-    filepath :: str_new();
-    defer str_delete(&filepath);
-    loop {
-        info: Info;
-        if is_flag(find_data.dwFileAttributes, auto win32.FILE_ATTRIBUTE_DIRECTORY) {
-            info.is_directory = true;
-        }
-        filename :: ctostr(auto find_data.cFileName.ptr);
-        // We skip these, but maybe in some cases we need them???
-        if (!str_match(filename, ".")) && (!str_match(filename, "..")) {
-            str_clear_concat(&filepath, directory, "/", filename);
-            info.filename = filename;
-            info.filepath = filepath;
-            if !leaf_first {
-                visit_err :: visitor(&info, ctx);
-                if visit_err { return visit_err; }
-            }
-            if is_recursive && info.is_directory {
-                err :: _fs_impl.visit_files(filepath, is_recursive, leaf_first, visitor, ctx);
-                if err { return err; }
-            }
-            if leaf_first {
-                visit_err :: visitor(&info, ctx);
-                if visit_err { return visit_err; }
-            }
-        }
-        if win32.FindNextFile(handle, &find_data) == 0 { break; }
-    }
-    return OK;
+	filepath :: str_new();
+	defer str_delete(&filepath);
+	loop {
+		info: Info;
+		if is_flag(find_data.dwFileAttributes, auto win32.FILE_ATTRIBUTE_DIRECTORY) {
+			info.is_directory = true;
+		}
+		filename :: ctostr(auto find_data.cFileName.ptr);
+		// We skip these, but maybe in some cases we need them???
+		if (!str_match(filename, ".")) && (!str_match(filename, "..")) {
+			str_clear_concat(&filepath, directory, "/", filename);
+			info.filename = filename;
+			info.filepath = filepath;
+			if !leaf_first {
+				visit_err :: visitor(&info, ctx);
+				if visit_err { return visit_err; }
+			}
+			if is_recursive && info.is_directory {
+				err :: _fs_impl.visit_files(filepath, is_recursive, leaf_first, visitor, ctx);
+				if err { return err; }
+			}
+			if leaf_first {
+				visit_err :: visitor(&info, ctx);
+				if visit_err { return visit_err; }
+			}
+		}
+		if win32.FindNextFile(handle, &find_data) == 0 { break; }
+	}
+	return OK;
 }
 
 validate_filename :: fn (name: string_view) bool {
-    if name.len == 0 { return false; }
-    invalid :: "<>:\"/\\|?*\t";
-    loop i := 0; i < invalid.len; i += 1 {
-        if std.str_count_of(name, invalid[i]) > 0 { return false; }
-    }
-    return true;
+	if name.len == 0 { return false; }
+	invalid :: "<>:\"/\\|?*\t";
+	loop i := 0; i < invalid.len; i += 1 {
+		if std.str_count_of(name, invalid[i]) > 0 { return false; }
+	}
+	return true;
 }
 
 get_cwd :: fn () string #inline {
-    buf: [OS_PATH_MAX]u8;
-    written :: win32.GetCurrentDirectoryA(auto buf.len, auto buf.ptr);
-    if written == 0 { return std.str_new(); }
-    out :: std.str_new(buf.ptr);
-    std.str_replace_all(&out, '\\', '/');
-    remove_last_separator(&out);
-    return out;
+	buf: [OS_PATH_MAX]u8;
+	written :: win32.GetCurrentDirectoryA(auto buf.len, auto buf.ptr);
+	if written == 0 { return std.str_new(); }
+	out :: std.str_new(buf.ptr);
+	std.str_replace_all(&out, '\\', '/');
+	remove_last_separator(&out);
+	return out;
 }
 
 set_cwd :: fn (path: string_view) Error #inline {
-    if std.str_is_empty(path) { return error(ERR_INVALID_HANDLE, "Path is empty!"); }
-    if win32.SetCurrentDirectoryA(std.strtoc(path)) == 0 {
-        ec, estr :: os_get_last_error();
-        return error(ec, "Cannot set current directory to '%': %", path, estr);
-    }
-    return OK;
+	if std.str_is_empty(path) { return error(ERR_INVALID_HANDLE, "Path is empty!"); }
+	if win32.SetCurrentDirectoryA(std.strtoc(path)) == 0 {
+		ec, estr :: os_get_last_error();
+		return error(ec, "Cannot set current directory to '%': %", path, estr);
+	}
+	return OK;
 }
 
 get_home :: fn () string #inline {
-    tmp :: "USERPROFILE";
-    cdir :: cast(*u8) C.getenv(auto tmp.ptr);
-    if !cdir { return std.str_new(); }
-    out :: std.str_new(cdir);
-    std.str_replace_all(&out, '\\', '/');
-    remove_last_separator(&out);
-    return out;
+	tmp :: "USERPROFILE";
+	cdir :: cast(*u8) C.getenv(auto tmp.ptr);
+	if !cdir { return std.str_new(); }
+	out :: std.str_new(cdir);
+	std.str_replace_all(&out, '\\', '/');
+	remove_last_separator(&out);
+	return out;
 }
 
 get_tmp :: fn () string #inline {
-    buf: [OS_PATH_MAX]u8;
-    written :: win32.GetTempPathA(auto buf.len, auto buf.ptr);
-    if written == 0 { return std.str_new(); }
-    out :: std.str_new(buf.ptr);
-    std.str_replace_all(&out, '\\', '/');
-    remove_last_separator(&out);
-    return out;
+	buf: [OS_PATH_MAX]u8;
+	written :: win32.GetTempPathA(auto buf.len, auto buf.ptr);
+	if written == 0 { return std.str_new(); }
+	out :: std.str_new(buf.ptr);
+	std.str_replace_all(&out, '\\', '/');
+	remove_last_separator(&out);
+	return out;
 }
 
 normalize :: fn (filepath: *string) Error {
-    if !filepath { return error(ERR_INVALID_HANDLE, "File path is null!"); }
-    if std.str_is_empty(@filepath) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
-    buf : [OS_PATH_MAX]s8 #noinit;
-    if win32.GetFullPathNameA(std.strtoc(@filepath), auto buf.len, buf.ptr, null) == 0 {
-        ec, estr :: os_get_last_error();
-        return error(ec, "Cannot normalize '%': %", @filepath, estr);
-    }
-    if win32.PathFileExistsA(std.strtoc(@filepath)) == 0 {
-        ec, estr :: os_get_last_error();
-        return error(ec, "Cannot normalize '%': %", @filepath, estr);
-    }
-    std.str_clear(filepath);
-    std.str_append(filepath, std.ctostr(buf.ptr));
-    std.str_replace_all(filepath, '\\', '/'); // Fix to unix
-    return OK;
+	if !filepath { return error(ERR_INVALID_HANDLE, "File path is null!"); }
+	if std.str_is_empty(@filepath) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
+	buf : [OS_PATH_MAX]s8 #noinit;
+	if win32.GetFullPathNameA(std.strtoc(@filepath), auto buf.len, buf.ptr, null) == 0 {
+		ec, estr :: os_get_last_error();
+		return error(ec, "Cannot normalize '%': %", @filepath, estr);
+	}
+	if win32.PathFileExistsA(std.strtoc(@filepath)) == 0 {
+		ec, estr :: os_get_last_error();
+		return error(ec, "Cannot normalize '%': %", @filepath, estr);
+	}
+	std.str_clear(filepath);
+	std.str_append(filepath, std.ctostr(buf.ptr));
+	std.str_replace_all(filepath, '\\', '/'); // Fix to unix
+	return OK;
 }
 
 read :: fn (stream: *std.FileStream, dest: *u8, size: s64) (s64, Error) {
-    if !dest { return 0, error(ERR_INVALID_HANDLE, "Cannot read, destination is invalid."); }
-    read_bytes: win32.DWORD #noinit;
-    if win32.ReadFile(stream.handle, dest, auto size, &read_bytes, null) == 0 {
-        ec, estr :: os_get_last_error();
-        return 0, error(ec, "Cannot read file: %", estr);
-    }
-    return auto read_bytes, OK;
+	if !dest { return 0, error(ERR_INVALID_HANDLE, "Cannot read, destination is invalid."); }
+	read_bytes: win32.DWORD #noinit;
+	if win32.ReadFile(stream.handle, dest, auto size, &read_bytes, null) == 0 {
+		ec, estr :: os_get_last_error();
+		return 0, error(ec, "Cannot read file: %", estr);
+	}
+	return auto read_bytes, OK;
 }
 
 write :: fn (stream: *std.FileStream, src: *u8, size: s64) (s64, Error) {
-    if !src { return 0, error(ERR_INVALID_HANDLE, "Cannot write, source is invalid."); }
-    written_bytes: win32.DWORD #noinit;
-    if win32.WriteFile(stream.handle, src, auto size, &written_bytes, null) == 0 {
-        ec, estr :: os_get_last_error();
-        return 0, error(ec, "Cannot write: %", estr);
-    }
-    return auto written_bytes, OK;
+	if !src { return 0, error(ERR_INVALID_HANDLE, "Cannot write, source is invalid."); }
+	written_bytes: win32.DWORD #noinit;
+	if win32.WriteFile(stream.handle, src, auto size, &written_bytes, null) == 0 {
+		ec, estr :: os_get_last_error();
+		return 0, error(ec, "Cannot write: %", estr);
+	}
+	return auto written_bytes, OK;
 }
 
 seek :: fn (stream: *std.FileStream, locator: std.StreamLocator, offset: s64) (s64, Error) {
-    move_method := win32.FILE_CURRENT;
-    using std.StreamLocator;
-    switch locator {
-        CURRENT;
-        BEGIN { move_method = win32.FILE_BEGIN; }
-        END { move_method = win32.FILE_END; }
-    }
-    of: union { part: struct { low: s32; high: s32; }; offset: s64 };
-    of.offset = offset;
-    result :: win32.SetFilePointer(stream.handle, of.part.low, &of.part.high, move_method);
-    if result == win32.INVALID_SET_FILE_POINTER {
-        ec, estr :: os_get_last_error();
-        return 0, error(ec, "Cannot get file pointer: %", estr);
-    }
-    of.part.low = auto result;
-    return of.offset, OK;
+	move_method := win32.FILE_CURRENT;
+	using std.StreamLocator;
+	switch locator {
+		CURRENT;
+		BEGIN { move_method = win32.FILE_BEGIN; }
+		END { move_method = win32.FILE_END; }
+	}
+	of: union { part: struct { low: s32; high: s32; }; offset: s64 };
+	of.offset = offset;
+	result :: win32.SetFilePointer(stream.handle, of.part.low, &of.part.high, move_method);
+	if result == win32.INVALID_SET_FILE_POINTER {
+		ec, estr :: os_get_last_error();
+		return 0, error(ec, "Cannot get file pointer: %", estr);
+	}
+	of.part.low = auto result;
+	return of.offset, OK;
 }
 
 #private
 modes_to_flags :: fn (modes: std.OpenFileMode) (access: u32, create: u32) #inline {
-    using win32;
-    
-    access: u32;
-    create: u32;
-    if is_flag(modes, std.OpenFileMode.READ) { access = access | GENERIC_READ; }
-    if is_flag(modes, std.OpenFileMode.WRITE) { access = access | GENERIC_WRITE; }
-    if is_flag(modes, std.OpenFileMode.APPEND) { access = access | FILE_APPEND_DATA; }
-    if is_flag(modes, std.OpenFileMode.CREATE) { create = OPEN_ALWAYS; }
-    if access == 0 { access = win32.GENERIC_READ; }
-    if create == 0 { create = win32.OPEN_EXISTING; }
-    return access, create;
+	using win32;
+	
+	access: u32;
+	create: u32;
+	if is_flag(modes, std.OpenFileMode.READ) { access = access | GENERIC_READ; }
+	if is_flag(modes, std.OpenFileMode.WRITE) { access = access | GENERIC_WRITE; }
+	if is_flag(modes, std.OpenFileMode.APPEND) { access = access | FILE_APPEND_DATA; }
+	if is_flag(modes, std.OpenFileMode.CREATE) { create = OPEN_ALWAYS; }
+	if access == 0 { access = win32.GENERIC_READ; }
+	if create == 0 { create = win32.OPEN_EXISTING; }
+	return access, create;
 }
 
 remove_last_separator :: fn (path: *string) #inline {
-    if std.str_is_empty(@path) { return; }
-    if (@path)[path.len-1] == '/' {
-        (@path)[path.len-1] = '\0';
-        path.len -= 1;
-    }
+	if std.str_is_empty(@path) { return; }
+	if (@path)[path.len-1] == '/' {
+		(@path)[path.len-1] = '\0';
+		path.len -= 1;
+	}
 }

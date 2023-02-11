@@ -5,26 +5,26 @@
 Library :: *u8;
 
 open :: fn (lib_name: string_view) (Library, Error) {
-    clib: *u8 = null;
-    if lib_name.len > 0 { clib = lib_name.ptr; }
-    handle :: _dlopen(clib, RTLD_LAZY);
-    if !handle {
-        return null, error(std.ctostr(_dlerror()));
-    }
-    return handle, OK;
+	clib: *u8 = null;
+	if lib_name.len > 0 { clib = lib_name.ptr; }
+	handle :: _dlopen(clib, RTLD_LAZY);
+	if !handle {
+		return null, error(std.ctostr(_dlerror()));
+	}
+	return handle, OK;
 }
 
 sym :: fn (lib: Library, sym_name: string_view) (*u8, Error) {
-    handle :: _dlsym(lib, std.strtoc(sym_name));
-    if !handle {
-        return null, error(std.ctostr(_dlerror()));
-    }
-    return handle, OK;
+	handle :: _dlsym(lib, std.strtoc(sym_name));
+	if !handle {
+		return null, error(std.ctostr(_dlerror()));
+	}
+	return handle, OK;
 }
 
 close :: fn (lib: Library) {
-    if !lib { return; }
-    _dlclose(lib);
+	if !lib { return; }
+	_dlclose(lib);
 }
 
 #private

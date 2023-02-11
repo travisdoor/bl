@@ -345,30 +345,30 @@ MonitorFun :: *fn (_0: *Monitor, _1: s32);
 JoystickFun :: *fn (_0: s32, _1: s32);
 
 VidMode :: struct {
-    width: s32;
-    height: s32;
-    redBits: s32;
-    greenBits: s32;
-    blueBits: s32;
-    refreshRate: s32;
+	width: s32;
+	height: s32;
+	redBits: s32;
+	greenBits: s32;
+	blueBits: s32;
+	refreshRate: s32;
 };
 
 GammaRamp :: struct {
-    red: *u16;
-    green: *u16;
-    blue: *u16;
-    size: u32;
+	red: *u16;
+	green: *u16;
+	blue: *u16;
+	size: u32;
 };
 
 Image :: struct {
-    width: s32;
-    height: s32;
-    pixels: *u8;
+	width: s32;
+	height: s32;
+	pixels: *u8;
 };
 
 GamepadState :: struct {
-    buttons: [15]u8;
-    axes: [6]f32;
+	buttons: [15]u8;
+	axes: [6]f32;
 };
 
 Init :: fn () s32 #extern "glfwInit";

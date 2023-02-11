@@ -76,43 +76,43 @@ wglUseFontBitmapsA :: fn (_: win32.HDC, _: win32.DWORD, _: win32.DWORD, _: win32
 wglUseFontBitmapsW :: fn (_: win32.HDC, _: win32.DWORD, _: win32.DWORD, _: win32.DWORD) win32.BOOL #extern "wglUseFontBitmapsW";
 
 WGL :: struct {
-    using win32;
+	using win32;
 
-    ChoosePixelFormatARB: *fn (hdc: HDC, piAttribIList: *C.int, pfAttribFList: *f32, nMaxFormats: UINT, piFormats: *C.int, nNumFormats: *UINT) BOOL;
-    CreateContextAttribsARB: *fn (hDC: HDC, hshareContext: HGLRC, attribList: *C.int) HGLRC;
-    SwapIntervalEXT: *fn (v: C.int) BOOL;
+	ChoosePixelFormatARB: *fn (hdc: HDC, piAttribIList: *C.int, pfAttribFList: *f32, nMaxFormats: UINT, piFormats: *C.int, nNumFormats: *UINT) BOOL;
+	CreateContextAttribsARB: *fn (hDC: HDC, hshareContext: HGLRC, attribList: *C.int) HGLRC;
+	SwapIntervalEXT: *fn (v: C.int) BOOL;
 }
 
 wgl: WGL;
 
 // Initialize internal `__wgl` global structure containing pointers to loaded
 wgl_init :: fn () {
-    wgl.ChoosePixelFormatARB    = auto __gl_get_proc("wglChoosePixelFormatARB");
-    wgl.CreateContextAttribsARB = auto __gl_get_proc("wglCreateContextAttribsARB");
-    wgl.SwapIntervalEXT         = auto __gl_get_proc("wglSwapIntervalEXT");
+	wgl.ChoosePixelFormatARB    = auto __gl_get_proc("wglChoosePixelFormatARB");
+	wgl.CreateContextAttribsARB = auto __gl_get_proc("wglCreateContextAttribsARB");
+	wgl.SwapIntervalEXT         = auto __gl_get_proc("wglSwapIntervalEXT");
 }
 
 __gl_get_proc :: fn (proc_name: string_view) *u8 {
-    if proc_name.len == 0 { return null; }
-    p := wglGetProcAddress(std.strtoc(proc_name));
-    ip :: cast(s64) p;
-    if ip != 0 && ip != 0x1 && ip != 0x2 && ip != 0x3 { return p; }
+	if proc_name.len == 0 { return null; }
+	p := wglGetProcAddress(std.strtoc(proc_name));
+	ip :: cast(s64) p;
+	if ip != 0 && ip != 0x1 && ip != 0x2 && ip != 0x3 { return p; }
 
-    // @Performance: open for each symbol???
-    // @Performance: open for each symbol???
-    // @Performance: open for each symbol???
-    module, err1 :: std.library_open("opengl32");
-    if err1 {
-        panic("[GL]: %", err1);
-        return null;
-    }
-    defer std.library_close(module);
+	// @Performance: open for each symbol???
+	// @Performance: open for each symbol???
+	// @Performance: open for each symbol???
+	module, err1 :: std.library_open("opengl32");
+	if err1 {
+		panic("[GL]: %", err1);
+		return null;
+	}
+	defer std.library_close(module);
 
-    sym, err2 :: std.library_get_symbol(module, proc_name);
-    if err2 {
-        print_err("[GL]: % (%)", err2, proc_name);
-        return null;
-    }
-    return sym;
+	sym, err2 :: std.library_get_symbol(module, proc_name);
+	if err2 {
+		print_err("[GL]: % (%)", err2, proc_name);
+		return null;
+	}
+	return sym;
 }
 

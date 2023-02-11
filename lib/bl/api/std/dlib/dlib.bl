@@ -13,15 +13,15 @@ Library :: _dlib_impl.Library;
 /// When `lib_name` is empty, current binary will be loaded. Use `library_close` call to close 
 /// library when it's not needed anymore.
 library_open :: fn (lib_name := std.str_view_empty) (Library, Error) #inline {
-    return _dlib_impl.open(lib_name);
+	return _dlib_impl.open(lib_name);
 }
 
 /// Resolve named symbol in library and return pointer to it.
 library_get_symbol :: fn (lib: Library, sym_name: string_view) (*u8, Error) #inline {
-    return _dlib_impl.sym(lib, sym_name);
+	return _dlib_impl.sym(lib, sym_name);
 }
 
 /// Close library opened by `lirary_open` call.
 library_close :: fn (lib: Library) #inline {
-    _dlib_impl.close(lib);
+	_dlib_impl.close(lib);
 }

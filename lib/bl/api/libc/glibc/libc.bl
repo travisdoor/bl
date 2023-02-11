@@ -101,11 +101,11 @@ backtrace_symbols :: fn (array: *void_ptr, size: int) **char #extern "backtrace_
 
 DIR :: u8;
 dirent_t :: struct {
-    d_ino: ulong; 
-    d_off: long; 
-    d_reclen: ushort;
-    d_type: uchar; 
-    d_name: [256]char;
+	d_ino: ulong; 
+	d_off: long; 
+	d_reclen: ushort;
+	d_type: uchar; 
+	d_name: [256]char;
 }
 
 DT_UNKNOWN ::  0;
@@ -160,50 +160,50 @@ __S_IFLNK  : uint : 0xA000;
 __S_IFSOCK : uint : 0xC000;
 
 S_ISDIR :: fn (mode: uint) bool #inline {
-    return (mode & __S_IFMT) == __S_IFDIR;    
+	return (mode & __S_IFMT) == __S_IFDIR;    
 }
 
 S_ISREG :: fn (mode: uint) bool #inline {
-    return (mode & __S_IFMT) == __S_IFREG;    
+	return (mode & __S_IFMT) == __S_IFREG;    
 }
 
 
 stat_t :: struct {
-    st_dev: dev_t;
-    st_ino: ino_t;
-    st_nlink: nlink_t;
-    st_mode: mode_t;
-    st_uid: uid_t;
-    st_gid: gid_t;
-    _0: int;
-    st_rdev: dev_t;
-    st_size: off_t;
-    st_blksize: blksize_t;
-    st_blocks: blkcnt_t;
-    st_atime: time_t;
-    st_atime_nsec: syscall_ulong_t;
-    st_mtime: time_t;
-    st_mtime_nsec: syscall_ulong_t;
-    st_ctime: time_t;
-    st_ctime_nsec: syscall_ulong_t;
-    _1: [3]long;
+	st_dev: dev_t;
+	st_ino: ino_t;
+	st_nlink: nlink_t;
+	st_mode: mode_t;
+	st_uid: uid_t;
+	st_gid: gid_t;
+	_0: int;
+	st_rdev: dev_t;
+	st_size: off_t;
+	st_blksize: blksize_t;
+	st_blocks: blkcnt_t;
+	st_atime: time_t;
+	st_atime_nsec: syscall_ulong_t;
+	st_mtime: time_t;
+	st_mtime_nsec: syscall_ulong_t;
+	st_ctime: time_t;
+	st_ctime_nsec: syscall_ulong_t;
+	_1: [3]long;
 }
 
 mkdir :: fn (path: *char, mode: int) int #extern "mkdir";
 
 stat :: fn (path: *char, buf: *stat_t) int #inline {
-    return stat_v(STAT_VER, path, buf);
+	return stat_v(STAT_VER, path, buf);
 }
 
 fstat :: fn (fd: int, buf: *stat_t) int #inline {
-    return fstat_v(STAT_VER, fd, buf);
+	return fstat_v(STAT_VER, fd, buf);
 }
 
 errno_location :: fn () *int #extern "__errno_location";
 
 // Function instead of global variable.
 errno :: fn () int #inline {
-    return @errno_location();
+	return @errno_location();
 }
 
 EPERM :: 1;

@@ -3,17 +3,17 @@
 #private
 
 single_job :: fn () #test {
-    using std;
+	using std;
 
-    one: Async(s32, s32);
+	one: Async(s32, s32);
 
-    async(&one, 5, &fn (count: s32) s32 {
-        loop i := 0; i < count; i += 1 {
-            os_sleep_ms(100);
-        }
-        return count;
-    });
-    
-    result :: async_wait(&one);
-    test_eq(result, 5);
+	async(&one, 5, &fn (count: s32) s32 {
+		loop i := 0; i < count; i += 1 {
+			os_sleep_ms(100);
+		}
+		return count;
+	});
+	
+	result :: async_wait(&one);
+	test_eq(result, 5);
 }

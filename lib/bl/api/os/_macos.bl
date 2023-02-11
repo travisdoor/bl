@@ -34,7 +34,7 @@
 #load "std/error.bl"
 
 OsStdIoStream :: struct #base std.Stream {
-    handle: C.int;
+	handle: C.int;
 }
 
 OS_NAME :: "MacOS";
@@ -49,137 +49,137 @@ ERR_INVALID_HANDLE :: C.EBADF;
 ERR_DIRECTORY      :: C.EISDIR;
 
 os_stdin :: fn () *OsStdIoStream {
-    return &_std_in;
+	return &_std_in;
 }
 
 os_stdout :: fn () *OsStdIoStream {
-    return &_std_out;
+	return &_std_out;
 }
 
 os_stderr :: fn () *OsStdIoStream {
-    return &_std_err;
+	return &_std_err;
 }
 
 os_sleep_ms :: fn (ms: u32) {
-    C.usleep(ms * 1000);
+	C.usleep(ms * 1000);
 }
 
 os_tick_ms :: fn () u64 #inline {
-    return auto os_ftick_ms();
+	return auto os_ftick_ms();
 }
 
 os_ftick_ms :: fn () f64 #inline {
-    convfact: macos.MachTimebaseInfo;
-    if macos.mach_timebase_info(&convfact) != 0 {
-        tick :: macos.mach_absolute_time();
-        return cast(f64)((tick * convfact.numer) / (convfact.denom * 1000000));
-    } else {
-        tv: C.timeval;
-        C.gettimeofday(&tv, null);
-        s :: cast(f64) tv.tv_sec;
-        u :: cast(f64) tv.tv_usec;
-        return (s * 1000.0) + (u / 1000.0); 
-    }
+	convfact: macos.MachTimebaseInfo;
+	if macos.mach_timebase_info(&convfact) != 0 {
+		tick :: macos.mach_absolute_time();
+		return cast(f64)((tick * convfact.numer) / (convfact.denom * 1000000));
+	} else {
+		tv: C.timeval;
+		C.gettimeofday(&tv, null);
+		s :: cast(f64) tv.tv_sec;
+		u :: cast(f64) tv.tv_usec;
+		return (s * 1000.0) + (u / 1000.0); 
+	}
 }
 
 os_get_exec_path :: fn () string {
-    buf : [OS_PATH_MAX]u8 #noinit;
-    buf_len := cast(u32) buf.len;
-    if macos.NSGetExecutablePath(auto buf.ptr, &buf_len) == -1 { return std.str_new(); }
+	buf : [OS_PATH_MAX]u8 #noinit;
+	buf_len := cast(u32) buf.len;
+	if macos.NSGetExecutablePath(auto buf.ptr, &buf_len) == -1 { return std.str_new(); }
 
-    return std.str_new(buf.ptr);
+	return std.str_new(buf.ptr);
 }
 
 os_execute :: fn (command: string_view) s32 {
-    return WEXITSTATUS(C.system(std.strtoc(command)));
+	return WEXITSTATUS(C.system(std.strtoc(command)));
 }
 
 os_get_last_error :: fn () (s32, string_view) #inline {
-    ec :: C.errno();
-    str := std.str_view_empty;
-    if ec != 0 { str = std.ctostr(C.strerror(ec)); }
-    return ec, str;
+	ec :: C.errno();
+	str := std.str_view_empty;
+	if ec != 0 { str = std.ctostr(C.strerror(ec)); }
+	return ec, str;
 }
 
 os_get_last_error2 :: fn () Error #inline {
-    ec :: C.errno();
-    str := std.str_view_empty;
-    if ec != 0 { str = std.ctostr(C.strerror(ec)); }
-    return error(ec, str);
+	ec :: C.errno();
+	str := std.str_view_empty;
+	if ec != 0 { str = std.ctostr(C.strerror(ec)); }
+	return error(ec, str);
 }
 
 os_get_backtrace :: fn (skip_frames := 0 #maybe_unused, max_frame_count := 64 #maybe_unused) []CodeLocation {
-    // @Incomplete <2022-08-21 Sun>: Here we tried to use 'backtrace' from the C library, but is seems not
-    // working correctly. Documentation claims that '-rdynamic' linker flag must be used, but still, the
-    // resulting array does not contain any captured frames.
-    //
-    // We can eventually try to use some 3rd party solution (libunwind) or implement stack tracing internally
-    // in the compiler.
+	// @Incomplete <2022-08-21 Sun>: Here we tried to use 'backtrace' from the C library, but is seems not
+	// working correctly. Documentation claims that '-rdynamic' linker flag must be used, but still, the
+	// resulting array does not contain any captured frames.
+	//
+	// We can eventually try to use some 3rd party solution (libunwind) or implement stack tracing internally
+	// in the compiler.
 
-    trace: [..]CodeLocation;
-    return trace;
+	trace: [..]CodeLocation;
+	return trace;
 }
 __os_debug_break :: fn () #inline #compiler {
-    // @Incomplete: I'm not sure what to do here.
-    //_posix_raise(SIGTRAP);
+	// @Incomplete: I'm not sure what to do here.
+	//_posix_raise(SIGTRAP);
 }
 
 __os_write :: fn (fd: s32, buf: *u8, count: usize) s32 {
-    return auto C.write(auto fd, auto buf, count);
+	return auto C.write(auto fd, auto buf, count);
 }
 
 __os_abort :: fn () #compiler {
-    #if IS_DEBUG { __os_debug_break(); }
-    if application_context.abort_fn {
-        application_context.abort_fn();
-    } else {
-        __os_abort_default();
-    }
+	#if IS_DEBUG { __os_debug_break(); }
+	if application_context.abort_fn {
+		application_context.abort_fn();
+	} else {
+		__os_abort_default();
+	}
 }
 
 __os_abort_default :: fn () {
-    if !IS_COMPTIME_RUN { print_backtrace(); }
-    C.raise(C.SIGABRT);
+	if !IS_COMPTIME_RUN { print_backtrace(); }
+	C.raise(C.SIGABRT);
 }
 
 __MAX_ARGS_WITHOUT_ALLOC :: 8;
 
 __os_start :: fn (argc: s64, argv: **u8, _: **u8) #entry {
-    args :: []*u8.{argc, argv};
-    tmp: [__MAX_ARGS_WITHOUT_ALLOC]string_view #noinit;
-    is_allocated :: args.len > tmp.len;
+	args :: []*u8.{argc, argv};
+	tmp: [__MAX_ARGS_WITHOUT_ALLOC]string_view #noinit;
+	is_allocated :: args.len > tmp.len;
 
-    command_line_arguments.len = args.len;
+	command_line_arguments.len = args.len;
 
-    if is_allocated {
-        command_line_arguments.ptr = auto C.malloc(sizeof(string_view) * auto args.len);
-        if command_line_arguments.ptr == null { __os_abort(); }
-    } else {
-        command_line_arguments.ptr = tmp.ptr;
-    }
+	if is_allocated {
+		command_line_arguments.ptr = auto C.malloc(sizeof(string_view) * auto args.len);
+		if command_line_arguments.ptr == null { __os_abort(); }
+	} else {
+		command_line_arguments.ptr = tmp.ptr;
+	}
 
-    loop i := 0; i < args.len; i += 1 {
-        command_line_arguments[i] = string_view.{auto C.strlen(auto args[i]), args[i]};
-    }
+	loop i := 0; i < args.len; i += 1 {
+		command_line_arguments[i] = string_view.{auto C.strlen(auto args[i]), args[i]};
+	}
 
-    out :: cast(s32) main();
+	out :: cast(s32) main();
 
-    if is_allocated {
-        C.free(auto command_line_arguments.ptr);
-    }
-    temporary_release();
+	if is_allocated {
+		C.free(auto command_line_arguments.ptr);
+	}
+	temporary_release();
 
-    C.exit(out);
+	C.exit(out);
 }
 
 #private
 
 STD_IN_STREAM_VTABLE :: std.StreamVTable.{
-    read = auto &std_io_read
+	read = auto &std_io_read
 };
 
 STD_OUT_STREAM_VTABLE :: std.StreamVTable.{
-    write = auto &std_io_write,
+	write = auto &std_io_write,
 };
 
 _std_in  :: OsStdIoStream.{ std.Stream.{ vtable = &STD_IN_STREAM_VTABLE },  C.STDIN  };
@@ -189,28 +189,28 @@ _std_err :: OsStdIoStream.{ std.Stream.{ vtable = &STD_OUT_STREAM_VTABLE }, C.ST
 // @Duplicate: The same as fs.write, but we want to keep implicitly loaded OS interface small. We
 //             can eventually put file stream operations into separate file.
 std_io_write :: fn (stream: *OsStdIoStream, src: *u8, size: s64) (s64, Error) {
-    if !src { return 0, error(ERR_INVALID_HANDLE, "Cannot write, source is invalid."); }
-    written_bytes :: C.write(stream.handle, auto src, auto size);
-    if written_bytes < 0 {
-        ec, estr :: os_get_last_error();
-        return 0, error(ec, "Cannot write to file: %.", estr);
-    }
-    return auto written_bytes, OK;
+	if !src { return 0, error(ERR_INVALID_HANDLE, "Cannot write, source is invalid."); }
+	written_bytes :: C.write(stream.handle, auto src, auto size);
+	if written_bytes < 0 {
+		ec, estr :: os_get_last_error();
+		return 0, error(ec, "Cannot write to file: %.", estr);
+	}
+	return auto written_bytes, OK;
 }
 
 // @Duplicate: The same as fs.write, but we want to keep implicitly loaded OS interface small. We
 //             can eventually put file stream operations into separate file.
 std_io_read :: fn (stream: *OsStdIoStream, dest: *u8, size: s64) (s64, Error) {
-    if !dest { return 0, error(ERR_INVALID_HANDLE, "Cannot read, destination is invalid."); }
-    read_bytes :: C.read(stream.handle, auto dest, auto size);
-    if read_bytes < 0 {
-        ec, estr :: os_get_last_error();
-        return 0, error(ec, "Cannot read file: %", estr);
-    }
-    return auto read_bytes, OK;
+	if !dest { return 0, error(ERR_INVALID_HANDLE, "Cannot read, destination is invalid."); }
+	read_bytes :: C.read(stream.handle, auto dest, auto size);
+	if read_bytes < 0 {
+		ec, estr :: os_get_last_error();
+		return 0, error(ec, "Cannot read file: %", estr);
+	}
+	return auto read_bytes, OK;
 }
 
 WEXITSTATUS :: fn (x: s32) s32 #inline {
-    return (x >> 8) & 0x000000ff;
+	return (x >> 8) & 0x000000ff;
 }
 
