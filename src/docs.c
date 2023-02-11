@@ -116,7 +116,7 @@ void doc_decl_entity(struct context *ctx, struct ast *decl)
 
 	// @Performance: we can do it better I guess.
 	if (text && (strstr(text, "@INCOMPLETE") || strstr(text, "@Incomplete") ||
-				 strstr(text, "@incomplete"))) {
+	             strstr(text, "@incomplete"))) {
 		builder_msg(MSG_WARN, 0, ident->location, CARET_WORD, "Found incomplete documentation!");
 	}
 
@@ -124,7 +124,7 @@ void doc_decl_entity(struct context *ctx, struct ast *decl)
 	if (decl->owner_scope->kind != SCOPE_GLOBAL && decl->owner_scope->kind != SCOPE_NAMED) return;
 
 	const char *scope_name =
-		decl->owner_scope->kind == SCOPE_NAMED ? decl->owner_scope->name : NULL;
+	    decl->owner_scope->kind == SCOPE_NAMED ? decl->owner_scope->name : NULL;
 
 	char *full_name = tstr();
 	if (scope_name) {

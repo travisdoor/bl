@@ -222,12 +222,12 @@ static void llvm_init(struct assembly *assembly)
 		break;
 	}
 	LLVMTargetMachineRef llvm_tm = LLVMCreateTargetMachine(llvm_target,
-														   triple,
-														   cpu,
-														   features,
-														   opt_to_LLVM(assembly->target->opt),
-														   reloc_mode,
-														   LLVMCodeModelDefault);
+	                                                       triple,
+	                                                       cpu,
+	                                                       features,
+	                                                       opt_to_LLVM(assembly->target->opt),
+	                                                       reloc_mode,
+	                                                       LLVMCodeModelDefault);
 
 	LLVMTargetDataRef llvm_td = LLVMCreateTargetDataLayout(llvm_tm);
 	assembly->llvm.ctx        = llvm_context;
@@ -347,11 +347,11 @@ static void import_lib_path(import_elem_context_t *ctx, const char *dirpath)
 	strprint(path, "%s/%s", ctx->modulepath, dirpath);
 	if (!dir_exists(path)) {
 		builder_msg(MSG_ERR,
-					ERR_FILE_NOT_FOUND,
-					TOKEN_OPTIONAL_LOCATION(ctx->import_from),
-					CARET_WORD,
-					"Cannot find module imported library path '%s'.",
-					path);
+		            ERR_FILE_NOT_FOUND,
+		            TOKEN_OPTIONAL_LOCATION(ctx->import_from),
+		            CARET_WORD,
+		            "Cannot find module imported library path '%s'.",
+		            path);
 	} else {
 		assembly_add_lib_path_safe(ctx->assembly, path);
 	}
@@ -369,9 +369,9 @@ static void import_link_runtime_only(import_elem_context_t *ctx, const char *lib
 }
 
 static bool import_module(struct assembly *assembly,
-						  struct config   *config,
-						  const char      *modulepath,
-						  struct token    *import_from)
+                          struct config   *config,
+                          const char      *modulepath,
+                          struct token    *import_from)
 {
 	zone();
 	import_elem_context_t ctx = {assembly, import_from, modulepath};
@@ -382,35 +382,35 @@ static bool import_module(struct assembly *assembly,
 	// Global
 	assembly_append_linker_options_safe(assembly, confreads(config, "/linker_opt", ""));
 	process_tokens(&ctx,
-				   confreads(config, "/src", ""),
-				   ENVPATH_SEPARATOR,
-				   (process_tokens_fn_t)&import_source);
+	               confreads(config, "/src", ""),
+	               ENVPATH_SEPARATOR,
+	               (process_tokens_fn_t)&import_source);
 	process_tokens(&ctx,
-				   confreads(config, "/linker_lib_path", ""),
-				   ENVPATH_SEPARATOR,
-				   (process_tokens_fn_t)&import_lib_path);
+	               confreads(config, "/linker_lib_path", ""),
+	               ENVPATH_SEPARATOR,
+	               (process_tokens_fn_t)&import_lib_path);
 	process_tokens(
-		&ctx, confreads(config, "/link", ""), ENVPATH_SEPARATOR, (process_tokens_fn_t)&import_link);
+	    &ctx, confreads(config, "/link", ""), ENVPATH_SEPARATOR, (process_tokens_fn_t)&import_link);
 
 	// Platform specific
 	assembly_append_linker_options_safe(assembly,
-										read_config(config, assembly->target, "linker_opt", ""));
+	                                    read_config(config, assembly->target, "linker_opt", ""));
 	process_tokens(&ctx,
-				   read_config(config, assembly->target, "src", ""),
-				   ENVPATH_SEPARATOR,
-				   (process_tokens_fn_t)&import_source);
+	               read_config(config, assembly->target, "src", ""),
+	               ENVPATH_SEPARATOR,
+	               (process_tokens_fn_t)&import_source);
 	process_tokens(&ctx,
-				   read_config(config, assembly->target, "linker_lib_path", ""),
-				   ENVPATH_SEPARATOR,
-				   (process_tokens_fn_t)&import_lib_path);
+	               read_config(config, assembly->target, "linker_lib_path", ""),
+	               ENVPATH_SEPARATOR,
+	               (process_tokens_fn_t)&import_lib_path);
 	process_tokens(&ctx,
-				   read_config(config, assembly->target, "link", ""),
-				   ENVPATH_SEPARATOR,
-				   (process_tokens_fn_t)&import_link);
+	               read_config(config, assembly->target, "link", ""),
+	               ENVPATH_SEPARATOR,
+	               (process_tokens_fn_t)&import_link);
 	process_tokens(&ctx,
-				   read_config(config, assembly->target, "link-runtime", ""),
-				   ENVPATH_SEPARATOR,
-				   (process_tokens_fn_t)&import_link_runtime_only);
+	               read_config(config, assembly->target, "link-runtime", ""),
+	               ENVPATH_SEPARATOR,
+	               (process_tokens_fn_t)&import_link_runtime_only);
 
 	return_zone(true);
 }
@@ -450,7 +450,7 @@ struct target *target_new(const char *name)
 	target->copy_deps = false;
 #endif
 	target->triple = (struct target_triple){
-		.arch = ARCH_unknown, .vendor = VENDOR_unknown, .os = OS_unknown, .env = ENV_unknown};
+	    .arch = ARCH_unknown, .vendor = VENDOR_unknown, .os = OS_unknown, .env = ENV_unknown};
 	return target;
 }
 
@@ -614,10 +614,10 @@ struct assembly *assembly_new(const struct target *target)
 	scope_arenas_init(&assembly->arenas.scope);
 	ast_arena_init(&assembly->arenas.ast);
 	arena_init(&assembly->arenas.sarr,
-			   sarr_total_size,
-			   16, // Is this correct?
-			   EXPECTED_ARRAY_COUNT,
-			   (arena_elem_dtor_t)sarr_dtor);
+	           sarr_total_size,
+	           16, // Is this correct?
+	           EXPECTED_ARRAY_COUNT,
+	           (arena_elem_dtor_t)sarr_dtor);
 	assembly->gscope = scope_create(&assembly->arenas.scope, SCOPE_GLOBAL, NULL, NULL);
 
 	dl_init(assembly);
@@ -747,9 +747,9 @@ DONE:
 }
 
 void assembly_add_native_lib_safe(struct assembly *assembly,
-								  const char      *lib_name,
-								  struct token    *link_token,
-								  bool             runtime_only)
+                                  const char      *lib_name,
+                                  struct token    *link_token,
+                                  bool             runtime_only)
 {
 	AssemblySyncImpl *sync = assembly->sync;
 	pthread_spin_lock(&sync->link_lock);
@@ -780,17 +780,17 @@ static inline bool module_exist(const char *module_dir, const char *modulepath)
 }
 
 bool assembly_import_module(struct assembly *assembly,
-							const char      *modulepath,
-							struct token    *import_from)
+                            const char      *modulepath,
+                            struct token    *import_from)
 {
 	zone();
 	bool state = false;
 	if (!is_str_valid_nonempty(modulepath)) {
 		builder_msg(MSG_ERR,
-					ERR_FILE_NOT_FOUND,
-					TOKEN_OPTIONAL_LOCATION(import_from),
-					CARET_WORD,
-					"Module name is empty.");
+		            ERR_FILE_NOT_FOUND,
+		            TOKEN_OPTIONAL_LOCATION(import_from),
+		            CARET_WORD,
+		            "Module name is empty.");
 		goto DONE;
 	}
 
@@ -847,9 +847,9 @@ bool assembly_import_module(struct assembly *assembly,
 			}
 			// Copy module from system to module directory.
 			builder_info("%s module '%s' in '%s'.",
-						 (check_version && local_found) ? "Update" : "Import",
-						 modulepath,
-						 module_dir);
+			             (check_version && local_found) ? "Update" : "Import",
+			             modulepath,
+			             module_dir);
 			if (!copy_dir(system_path, local_path)) {
 				builder_error("Cannot import module '%s'.", modulepath);
 			}
@@ -866,10 +866,10 @@ bool assembly_import_module(struct assembly *assembly,
 		state = import_module(assembly, config, local_path, import_from);
 	} else {
 		builder_msg(MSG_ERR,
-					ERR_FILE_NOT_FOUND,
-					TOKEN_OPTIONAL_LOCATION(import_from),
-					CARET_WORD,
-					"Module not found.");
+		            ERR_FILE_NOT_FOUND,
+		            TOKEN_OPTIONAL_LOCATION(import_from),
+		            CARET_WORD,
+		            "Module not found.");
 	}
 	put_tstr(local_path);
 	confdelete(config);

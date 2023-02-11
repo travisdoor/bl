@@ -46,10 +46,10 @@ struct arena {
 };
 
 void arena_init(struct arena     *arena,
-				usize             elem_size_bytes,
-				s32               elem_alignment,
-				s32               elems_per_chunk,
-				arena_elem_dtor_t elem_dtor);
+                usize             elem_size_bytes,
+                s32               elem_alignment,
+                s32               elems_per_chunk,
+                arena_elem_dtor_t elem_dtor);
 
 void arena_terminate(struct arena *arena);
 

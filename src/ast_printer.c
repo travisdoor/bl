@@ -49,12 +49,12 @@ static inline void _print_head(struct ast *node, s32 pad, FILE *stream)
 {
 	if (node->location)
 		fprintf(stream,
-				"\n%*s%s <%d:%d>",
-				pad * 2,
-				"",
-				ast_get_name(node),
-				node->location->line,
-				node->location->col);
+		        "\n%*s%s <%d:%d>",
+		        pad * 2,
+		        "",
+		        ast_get_name(node),
+		        node->location->line,
+		        node->location->col);
 	else
 		fprintf(stream, "\n%*s%s <IMPLICIT>", pad * 2, "", ast_get_name(node));
 
@@ -333,9 +333,9 @@ void print_decl_entity(struct ast *entity, s32 pad, FILE *stream)
 	print_head(entity, pad, stream);
 
 	fprintf(stream,
-			"'%s' '%s'",
-			entity->data.decl.name->data.ident.id.str,
-			entity->data.decl_entity.mut ? "mutable" : "immutable");
+	        "'%s' '%s'",
+	        entity->data.decl.name->data.ident.id.str,
+	        entity->data.decl_entity.mut ? "mutable" : "immutable");
 
 	print_flags(entity->data.decl.flags, stream);
 	print_node((struct ast *)entity->data.decl.type, pad + 1, stream);

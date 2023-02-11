@@ -76,7 +76,7 @@ static void append_libs(struct assembly *assembly, char **buf)
 static void append_default_opt(struct assembly *assembly, char **buf)
 {
 	const bool is_debug = assembly->target->opt == ASSEMBLY_OPT_DEBUG ||
-						  assembly->target->opt == ASSEMBLY_OPT_RELEASE_WITH_DEBUG_INFO;
+	                      assembly->target->opt == ASSEMBLY_OPT_RELEASE_WITH_DEBUG_INFO;
 	if (is_debug) strappend(*buf, "%s ", FLAG_DEBUG);
 	const char *default_opt = "";
 	switch (assembly->target->kind) {
@@ -101,7 +101,7 @@ static void append_custom_opt(struct assembly *assembly, char **buf)
 static void append_linker_exec(struct assembly *assembly, char **buf)
 {
 	const char *custom_linker =
-		read_config(builder.config, assembly->target, "linker_executable", "");
+	    read_config(builder.config, assembly->target, "linker_executable", "");
 	if (strlen(custom_linker)) {
 		strappend(*buf, "\"%s\" ", custom_linker);
 		return;

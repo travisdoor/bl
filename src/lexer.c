@@ -40,7 +40,8 @@
 	{                                                                                              \
 		builder_msg(MSG_ERR, ERR_##code, NULL, CARET_NONE, (format), ##__VA_ARGS__);               \
 		longjmp((ctx)->jmp_error, ERR_##code);                                                     \
-	}(void)0
+	}                                                                                              \
+	(void)0
 
 struct context {
 	struct assembly *assembly;
@@ -67,10 +68,10 @@ bool scan_comment(struct context *ctx, struct token *tok, const char *term)
 {
 	if (tok->sym == SYM_SHEBANG && ctx->line != 1) {
 		report_error(INVALID_TOKEN,
-					 "%s %d:%d Shebang is allowed only on the first line of the file.",
-					 ctx->unit->name,
-					 ctx->line,
-					 ctx->col);
+		             "%s %d:%d Shebang is allowed only on the first line of the file.",
+		             ctx->unit->name,
+		             ctx->line,
+		             ctx->col);
 	}
 	const usize len = strlen(term);
 	while (true) {
@@ -80,10 +81,10 @@ bool scan_comment(struct context *ctx, struct token *tok, const char *term)
 		} else if (*ctx->c == '\0' && strcmp(term, "\n") != 0) {
 			// Unterminated comment
 			report_error(UNTERMINATED_COMMENT,
-						 "%s %d:%d unterminated comment block.",
-						 ctx->unit->name,
-						 ctx->line,
-						 ctx->col);
+			             "%s %d:%d unterminated comment block.",
+			             ctx->unit->name,
+			             ctx->line,
+			             ctx->col);
 		}
 		if (*ctx->c == SYM_EOF) return true;
 		if (strncmp(ctx->c, term, len) == 0) break;
@@ -190,10 +191,10 @@ bool scan_string(struct context *ctx, struct token *tok)
 		}
 		case '\0': {
 			report_error(UNTERMINATED_STRING,
-						 "%s %d:%d unterminated string.",
-						 ctx->unit->name,
-						 ctx->line,
-						 ctx->col);
+			             "%s %d:%d unterminated string.",
+			             ctx->unit->name,
+			             ctx->line,
+			             ctx->col);
 		}
 		case '\\':
 			// special character
@@ -210,8 +211,8 @@ bool scan_string(struct context *ctx, struct token *tok)
 	}
 DONE:
 	tok->value.str =
-		make_str(scdup(&ctx->unit->string_cache, sarrdata(&ctx->strtmp), sarrlenu(&ctx->strtmp)),
-				 sarrlenu(&ctx->strtmp));
+	    make_str(scdup(&ctx->unit->string_cache, sarrdata(&ctx->strtmp), sarrlenu(&ctx->strtmp)),
+	             sarrlenu(&ctx->strtmp));
 
 	tok->location.len = len;
 	tok->location.col += 1;
@@ -233,14 +234,14 @@ bool scan_char(struct context *ctx, struct token *tok)
 	switch (*ctx->c) {
 	case '\'': {
 		report_error(
-			EMPTY, "%s %d:%d expected character in ''.", ctx->unit->name, ctx->line, ctx->col);
+		    EMPTY, "%s %d:%d expected character in ''.", ctx->unit->name, ctx->line, ctx->col);
 	}
 	case '\0': {
 		report_error(UNTERMINATED_STRING,
-					 "%s %d:%d unterminated character.",
-					 ctx->unit->name,
-					 ctx->line,
-					 ctx->col);
+		             "%s %d:%d unterminated character.",
+		             ctx->unit->name,
+		             ctx->line,
+		             ctx->col);
 	}
 	case '\\':
 		// special character
@@ -257,10 +258,10 @@ bool scan_char(struct context *ctx, struct token *tok)
 	// eat '
 	if (*ctx->c != '\'') {
 		report_error(UNTERMINATED_STRING,
-					 "%s %d:%d unterminated character expected '.",
-					 ctx->unit->name,
-					 ctx->line,
-					 ctx->col);
+		             "%s %d:%d unterminated character expected '.",
+		             ctx->unit->name,
+		             ctx->line,
+		             ctx->col);
 	}
 	ctx->c++;
 
@@ -328,10 +329,10 @@ bool scan_number(struct context *ctx, struct token *tok)
 
 			if (base != 10) {
 				report_error(INVALID_TOKEN,
-							 "%s %d:%d invalid suffix.",
-							 ctx->unit->name,
-							 ctx->line,
-							 ctx->col + len);
+				             "%s %d:%d invalid suffix.",
+				             ctx->unit->name,
+				             ctx->line,
+				             ctx->col + len);
 			}
 
 			len++;
@@ -472,10 +473,10 @@ SCAN:
 				goto SCAN;
 			case SYM_RBCOMMENT: {
 				report_error(INVALID_TOKEN,
-							 "%s %d:%d unexpected token.",
-							 ctx->unit->name,
-							 ctx->line,
-							 ctx->col);
+				             "%s %d:%d unexpected token.",
+				             ctx->unit->name,
+				             ctx->line,
+				             ctx->col);
 			}
 			default:
 				ctx->col += (s32)len;
@@ -495,12 +496,12 @@ SCAN:
 
 	// When symbol is unknown report error
 	report_error(INVALID_TOKEN,
-				 "%s %d:%d Unexpected token '%c' (%d)",
-				 ctx->unit->name,
-				 ctx->line,
-				 ctx->col,
-				 *ctx->c,
-				 *ctx->c);
+	             "%s %d:%d Unexpected token '%c' (%d)",
+	             ctx->unit->name,
+	             ctx->line,
+	             ctx->col,
+	             *ctx->c,
+	             *ctx->c);
 PUSH_TOKEN:
 	tok.location.unit = ctx->unit;
 	tokens_push(ctx->tokens, tok);
@@ -511,13 +512,13 @@ PUSH_TOKEN:
 void lexer_run(struct assembly *assembly, struct unit *unit)
 {
 	struct context ctx = {
-		.assembly = assembly,
-		.tokens   = &unit->tokens,
-		.unit     = unit,
-		.c        = unit->src,
-		.line     = 1,
-		.col      = 1,
-		.strtmp   = SARR_ZERO,
+	    .assembly = assembly,
+	    .tokens   = &unit->tokens,
+	    .unit     = unit,
+	    .c        = unit->src,
+	    .line     = 1,
+	    .col      = 1,
+	    .strtmp   = SARR_ZERO,
 	};
 
 	zone();

@@ -46,12 +46,12 @@
 #ifndef WIN_PTHREADS
 #define WIN_PTHREADS
 
+#include <Windows.h>
 #include <errno.h>
 #include <process.h>
 #include <setjmp.h>
 #include <sys/timeb.h>
 #include <time.h>
-#include <Windows.h>
 
 //#define ETIMEDOUT	110
 //#define ENOTSUP		134
@@ -432,7 +432,7 @@ static inline int pthread_rwlock_tryrdlock(pthread_rwlock_t *l)
 	if ((uintptr_t)state & 14) return EBUSY;
 
 	if (_InterlockedCompareExchangePointer((void *)l, (void *)((uintptr_t)state + 16), state) ==
-		state)
+	    state)
 		return 0;
 
 	return EBUSY;
@@ -776,7 +776,7 @@ pthread_create(pthread_t *th, pthread_attr_t *attr, void *(*func)(void *), void 
 	_ReadWriteBarrier();
 
 	tv->h = (HANDLE)_beginthreadex(
-		NULL, ssize, (_beginthreadex_proc_type)pthread_create_wrapper, tv, 0, NULL);
+	    NULL, ssize, (_beginthreadex_proc_type)pthread_create_wrapper, tv, 0, NULL);
 
 	/* Failed */
 	if (!tv->h) return 1;

@@ -38,25 +38,25 @@ void file_loader_run(struct assembly *UNUSED(assembly), struct unit *unit)
 	const char *path = unit->filepath;
 	if (!path) {
 		builder_msg(MSG_ERR,
-					ERR_FILE_NOT_FOUND,
-					TOKEN_OPTIONAL_LOCATION(unit->loaded_from),
-					CARET_WORD,
-					"File not found '%s'.",
-					unit->filename);
+		            ERR_FILE_NOT_FOUND,
+		            TOKEN_OPTIONAL_LOCATION(unit->loaded_from),
+		            CARET_WORD,
+		            "File not found '%s'.",
+		            unit->filename);
 		return_zone();
 	}
 
 	HANDLE f = CreateFileA(
-		path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	    path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (f == INVALID_HANDLE_VALUE) {
 		get_last_error(error_buf, static_arrlenu(error_buf));
 		builder_msg(MSG_ERR,
-					ERR_FILE_NOT_FOUND,
-					TOKEN_OPTIONAL_LOCATION(unit->loaded_from),
-					CARET_WORD,
-					"Cannot open file '%s': %s",
-					path,
-					error_buf);
+		            ERR_FILE_NOT_FOUND,
+		            TOKEN_OPTIONAL_LOCATION(unit->loaded_from),
+		            CARET_WORD,
+		            "Cannot open file '%s': %s",
+		            path,
+		            error_buf);
 		return_zone();
 	}
 
@@ -64,11 +64,11 @@ void file_loader_run(struct assembly *UNUSED(assembly), struct unit *unit)
 	if (bytes == INVALID_FILE_SIZE) {
 		CloseHandle(f);
 		builder_msg(MSG_ERR,
-					ERR_FILE_NOT_FOUND,
-					TOKEN_OPTIONAL_LOCATION(unit->loaded_from),
-					CARET_WORD,
-					"Cannot get size of file '%s'.",
-					path);
+		            ERR_FILE_NOT_FOUND,
+		            TOKEN_OPTIONAL_LOCATION(unit->loaded_from),
+		            CARET_WORD,
+		            "Cannot get size of file '%s'.",
+		            path);
 		return_zone();
 	}
 	char *data = bmalloc(bytes + 1);
@@ -78,12 +78,12 @@ void file_loader_run(struct assembly *UNUSED(assembly), struct unit *unit)
 		CloseHandle(f);
 		get_last_error(error_buf, static_arrlenu(error_buf));
 		builder_msg(MSG_ERR,
-					ERR_FILE_NOT_FOUND,
-					TOKEN_OPTIONAL_LOCATION(unit->loaded_from),
-					CARET_WORD,
-					"Cannot read file '%s': %s",
-					path,
-					error_buf);
+		            ERR_FILE_NOT_FOUND,
+		            TOKEN_OPTIONAL_LOCATION(unit->loaded_from),
+		            CARET_WORD,
+		            "Cannot read file '%s': %s",
+		            path,
+		            error_buf);
 		return_zone();
 	}
 	bassert(rbytes == bytes);
@@ -98,22 +98,22 @@ void file_loader_run(struct assembly *UNUSED(assembly), struct unit *unit)
 	zone();
 	if (!unit->filepath) {
 		builder_msg(MSG_ERR,
-					ERR_FILE_NOT_FOUND,
-					TOKEN_OPTIONAL_LOCATION(unit->loaded_from),
-					CARET_WORD,
-					"File not found '%s'.",
-					unit->name);
+		            ERR_FILE_NOT_FOUND,
+		            TOKEN_OPTIONAL_LOCATION(unit->loaded_from),
+		            CARET_WORD,
+		            "File not found '%s'.",
+		            unit->name);
 		return_zone();
 	}
 
 	FILE *f = fopen(unit->filepath, "rb");
 	if (f == NULL) {
 		builder_msg(MSG_ERR,
-					ERR_FILE_READ,
-					TOKEN_OPTIONAL_LOCATION(unit->loaded_from),
-					CARET_WORD,
-					"Cannot read file '%s'.",
-					unit->name);
+		            ERR_FILE_READ,
+		            TOKEN_OPTIONAL_LOCATION(unit->loaded_from),
+		            CARET_WORD,
+		            "Cannot read file '%s'.",
+		            unit->name);
 
 		return_zone();
 	}
@@ -123,11 +123,11 @@ void file_loader_run(struct assembly *UNUSED(assembly), struct unit *unit)
 	if (fsize == 0) {
 		fclose(f);
 		builder_msg(MSG_ERR,
-					ERR_FILE_EMPTY,
-					TOKEN_OPTIONAL_LOCATION(unit->loaded_from),
-					CARET_WORD,
-					"Invalid or empty source file '%s'.",
-					unit->name);
+		            ERR_FILE_EMPTY,
+		            TOKEN_OPTIONAL_LOCATION(unit->loaded_from),
+		            CARET_WORD,
+		            "Invalid or empty source file '%s'.",
+		            unit->name);
 
 		return_zone();
 	}

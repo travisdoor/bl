@@ -80,7 +80,7 @@ const char *supported_targets_experimental[] = {
 // =================================================================================================
 static int
 compile_unit(struct unit *unit, struct assembly *assembly, const unit_stage_fn_t *pipeline);
-static int	compile_assembly(struct assembly *assembly, const assembly_stage_fn_t *pipeline);
+static int  compile_assembly(struct assembly *assembly, const assembly_stage_fn_t *pipeline);
 static bool llvm_initialized = false;
 
 // =================================================================================================
@@ -88,18 +88,18 @@ static bool llvm_initialized = false;
 // =================================================================================================
 struct threading_impl {
 	struct assembly *assembly;
-	pthread_t		  *workers;
+	pthread_t       *workers;
 	array(struct unit *) queue;
-	volatile s32  active;		// count of currently active workers
-	volatile s32  will_exit;	// true when main thread will exit
+	volatile s32  active;       // count of currently active workers
+	volatile s32  will_exit;    // true when main thread will exit
 	volatile bool is_compiling; // true when async compilation is running
 
 	pthread_spinlock_t str_tmp_lock;
-	pthread_mutex_t	   log_mutex;
-	pthread_mutex_t	   queue_mutex;
-	pthread_cond_t	   queue_condition;
-	pthread_mutex_t	   active_mutex;
-	pthread_cond_t	   active_condition;
+	pthread_mutex_t    log_mutex;
+	pthread_mutex_t    queue_mutex;
+	pthread_cond_t     queue_condition;
+	pthread_mutex_t    active_mutex;
+	pthread_cond_t     active_condition;
 
 	const unit_stage_fn_t *unit_pipeline;
 };
@@ -191,7 +191,7 @@ static void *worker(void UNUSED(*args))
 
 static void start_threads()
 {
-	const s32			   cpu_count = cpu_thread_count();
+	const s32              cpu_count = cpu_thread_count();
 	struct threading_impl *threading = builder.threading;
 	arraddnptr(threading->workers, cpu_count);
 	for (s32 i = 0; i < cpu_count; ++i) {
@@ -207,10 +207,10 @@ static void async_compile(struct assembly *assembly, const unit_stage_fn_t *unit
 		async_push(unit);
 	}
 
-	threading->assembly		 = assembly;
+	threading->assembly      = assembly;
 	threading->unit_pipeline = unit_pipeline;
-	threading->active		 = 0;
-	threading->is_compiling	 = true;
+	threading->active        = 0;
+	threading->is_compiling  = true;
 	pthread_cond_broadcast(&threading->queue_condition);
 
 	while (true) {
@@ -250,7 +250,7 @@ static void llvm_init(void)
 	LLVMInitializeAArch64AsmPrinter();
 
 	bassert(LLVMIsMultithreaded() &&
-			"LLVM must be compiled in multi-thread mode with flag 'LLVM_ENABLE_THREADS'");
+	        "LLVM must be compiled in multi-thread mode with flag 'LLVM_ENABLE_THREADS'");
 
 	llvm_initialized = true;
 }
@@ -265,7 +265,7 @@ int compile_unit(struct unit *unit, struct assembly *assembly, const unit_stage_
 	bassert(pipeline && "Invalid unit pipeline!");
 	if (unit->loaded_from) {
 		builder_log(
-			"Compile: %s (loaded from '%s')", unit->name, unit->loaded_from->location.unit->name);
+		    "Compile: %s (loaded from '%s')", unit->name, unit->loaded_from->location.unit->name);
 	} else {
 		builder_log("Compile: %s", unit->name);
 	}
@@ -361,38 +361,38 @@ static void setup_assembly_pipeline(struct assembly *assembly, array(assembly_st
 static void print_stats(struct assembly *assembly)
 {
 	const f64 total_s = assembly->stats.parsing_lexing_s + assembly->stats.mir_s +
-						assembly->stats.llvm_s + assembly->stats.linking_s;
+	                    assembly->stats.llvm_s + assembly->stats.linking_s;
 
 	builder_info(
-		"--------------------------------------------------------------------------------\n"
-		"Compilation stats for '%s'\n"
-		"--------------------------------------------------------------------------------\n"
-		"Time:\n"
-		"  Lexing & Parsing: %10.3f seconds    %3.0f%%\n"
-		"  MIR:              %10.3f seconds    %3.0f%%\n"
-		"  LLVM IR:          %10.3f seconds    %3.0f%%\n"
-		"  Linking:          %10.3f seconds    %3.0f%%\n\n"
-		"  Polymorph:        %10lld generated in %.3f seconds\n\n"
-		"  Total:            %10.3f seconds\n"
-		"  Lines:              %8d\n"
-		"  Speed:            %10.0f lines/second\n\n"
-		"MISC:\n"
-		"  Allocated stack snapshot count: %lld\n",
-		assembly->target->name,
-		assembly->stats.parsing_lexing_s,
-		assembly->stats.parsing_lexing_s / total_s * 100.,
-		assembly->stats.mir_s,
-		assembly->stats.mir_s / total_s * 100.,
-		assembly->stats.llvm_s,
-		assembly->stats.llvm_s / total_s * 100.,
-		assembly->stats.linking_s,
-		assembly->stats.linking_s / total_s * 100.,
-		assembly->stats.polymorph_count,
-		assembly->stats.polymorph_s,
-		total_s,
-		builder.total_lines,
-		((f64)builder.total_lines) / total_s,
-		assembly->stats.comptime_call_stacks_count);
+	    "--------------------------------------------------------------------------------\n"
+	    "Compilation stats for '%s'\n"
+	    "--------------------------------------------------------------------------------\n"
+	    "Time:\n"
+	    "  Lexing & Parsing: %10.3f seconds    %3.0f%%\n"
+	    "  MIR:              %10.3f seconds    %3.0f%%\n"
+	    "  LLVM IR:          %10.3f seconds    %3.0f%%\n"
+	    "  Linking:          %10.3f seconds    %3.0f%%\n\n"
+	    "  Polymorph:        %10lld generated in %.3f seconds\n\n"
+	    "  Total:            %10.3f seconds\n"
+	    "  Lines:              %8d\n"
+	    "  Speed:            %10.0f lines/second\n\n"
+	    "MISC:\n"
+	    "  Allocated stack snapshot count: %lld\n",
+	    assembly->target->name,
+	    assembly->stats.parsing_lexing_s,
+	    assembly->stats.parsing_lexing_s / total_s * 100.,
+	    assembly->stats.mir_s,
+	    assembly->stats.mir_s / total_s * 100.,
+	    assembly->stats.llvm_s,
+	    assembly->stats.llvm_s / total_s * 100.,
+	    assembly->stats.linking_s,
+	    assembly->stats.linking_s / total_s * 100.,
+	    assembly->stats.polymorph_count,
+	    assembly->stats.polymorph_s,
+	    total_s,
+	    builder.total_lines,
+	    ((f64)builder.total_lines) / total_s,
+	    assembly->stats.comptime_call_stacks_count);
 }
 
 static void clear_stats(struct assembly *assembly)
@@ -402,10 +402,10 @@ static void clear_stats(struct assembly *assembly)
 
 static int compile(struct assembly *assembly)
 {
-	s32 state			= COMPILE_OK;
+	s32 state           = COMPILE_OK;
 	builder.total_lines = 0;
 
-	unit_stage_fn_t		*unit_pipeline	   = NULL;
+	unit_stage_fn_t     *unit_pipeline     = NULL;
 	assembly_stage_fn_t *assembly_pipeline = NULL;
 	setup_unit_pipeline(assembly, &unit_pipeline);
 	setup_assembly_pipeline(assembly, &assembly_pipeline);
@@ -454,9 +454,9 @@ void builder_init(const struct builder_options *options, const char *exec_dir)
 	bassert(exec_dir && "Invalid executable directory!");
 	memset(&builder, 0, sizeof(struct builder));
 	builder.threading = threading_new();
-	builder.options	  = options;
+	builder.options   = options;
 	builder.errorc = builder.max_error = builder.test_failc = 0;
-	builder.last_script_mode_run_status						= 0;
+	builder.last_script_mode_run_status                     = 0;
 
 	builder.exec_dir = strdup(exec_dir);
 
@@ -494,8 +494,8 @@ char **builder_get_supported_targets(void)
 {
 	const bool ex = builder.options->enable_experimental_targets;
 
-	const usize l1	= static_arrlenu(supported_targets);
-	const usize l2	= static_arrlenu(supported_targets_experimental);
+	const usize l1  = static_arrlenu(supported_targets);
+	const usize l2  = static_arrlenu(supported_targets_experimental);
 	const usize len = ex ? (l1 + l2 + 1) : l1 + 1; // +1 for terminator
 
 	char **dest = bmalloc(len * sizeof(char *));
@@ -548,7 +548,7 @@ struct target *_builder_add_target(const char *name, bool is_default)
 {
 	struct target *target = NULL;
 	if (is_default) {
-		target				   = target_new(name);
+		target                 = target_new(name);
 		builder.default_target = target;
 	} else {
 		target = target_dup(name, builder.default_target);
@@ -583,7 +583,7 @@ s32 builder_compile(const struct target *target)
 
 void builder_print_location(FILE *stream, struct location *loc, s32 col, s32 len)
 {
-	long	  line_len = 0;
+	long      line_len = 0;
 	const s32 padding  = snprintf(NULL, 0, "%+d", loc->line) + 2;
 	// Line one
 	const char *line_str = unit_get_src_ln(loc->unit, loc->line - 1, &line_len);
@@ -594,12 +594,12 @@ void builder_print_location(FILE *stream, struct location *loc, s32 col, s32 len
 	line_str = unit_get_src_ln(loc->unit, loc->line, &line_len);
 	if (line_str && line_len) {
 		color_print(
-			stream, BL_YELLOW, "\n>%*d | %.*s", padding - 1, loc->line, (int)line_len, line_str);
+		    stream, BL_YELLOW, "\n>%*d | %.*s", padding - 1, loc->line, (int)line_len, line_str);
 	}
 	// Line cursors
 	if (len > 0) {
 		char buf[256];
-		s32	 written_bytes = 0;
+		s32  written_bytes = 0;
 		for (s32 i = 0; i < col + len - 1; ++i) {
 			// We need to do this to properly handle tab indentation.
 			char insert = line_str[i];
@@ -607,7 +607,7 @@ void builder_print_location(FILE *stream, struct location *loc, s32 col, s32 len
 			if (i >= col - 1) insert = '^';
 
 			written_bytes +=
-				snprintf(buf + written_bytes, static_arrlenu(buf) - written_bytes, "%c", insert);
+			    snprintf(buf + written_bytes, static_arrlenu(buf) - written_bytes, "%c", insert);
 		}
 		fprintf(stream, "\n%*s | ", padding, "");
 		color_print(stream, BL_GREEN, "%s", buf);
@@ -639,11 +639,11 @@ static inline bool should_report(enum builder_msg_type type)
 }
 
 void builder_vmsg(enum builder_msg_type type,
-				  s32					code,
-				  struct location	  *src,
-				  enum builder_cur_pos	pos,
-				  const char			 *format,
-				  va_list				args)
+                  s32                   code,
+                  struct location      *src,
+                  enum builder_cur_pos  pos,
+                  const char           *format,
+                  va_list               args)
 {
 	struct threading_impl *threading = builder.threading;
 	pthread_mutex_lock(&threading->log_mutex);
@@ -658,10 +658,10 @@ void builder_vmsg(enum builder_msg_type type,
 
 	if (src) {
 		const char *filepath =
-			builder.options->full_path_reports ? src->unit->filepath : src->unit->filename;
+		    builder.options->full_path_reports ? src->unit->filepath : src->unit->filename;
 		s32 line = src->line;
-		s32 col	 = src->col;
-		s32 len	 = src->len;
+		s32 col  = src->col;
+		s32 len  = src->len;
 		switch (pos) {
 		case CARET_AFTER:
 			col += len;
@@ -724,11 +724,11 @@ DONE:
 }
 
 void builder_msg(enum builder_msg_type type,
-				 s32				   code,
-				 struct location		 *src,
-				 enum builder_cur_pos  pos,
-				 const char			*format,
-				 ...)
+                 s32                   code,
+                 struct location      *src,
+                 enum builder_cur_pos  pos,
+                 const char           *format,
+                 ...)
 {
 	va_list args;
 	va_start(args, format);

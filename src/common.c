@@ -181,10 +181,10 @@ char *strtoupper(char *str)
 }
 
 bool search_source_file(const char *filepath,
-						const u32   flags,
-						const char *wdir,
-						char      **out_filepath,
-						char      **out_dirpath)
+                        const u32   flags,
+                        const char *wdir,
+                        char      **out_filepath,
+                        char      **out_dirpath)
 {
 	char *tmp = tstr();
 	if (!filepath) goto NOT_FOUND;
@@ -342,9 +342,9 @@ bool brealpath(const char *file, char *out, s32 out_len)
 		DWORD ec = GetLastError();
 		if (ec == ERROR_FILENAME_EXCED_RANGE)
 			builder_error("Cannot get full path of '%s', resulting path is too long. (expected "
-						  "maximum %d characters)",
-						  file,
-						  PATH_MAX);
+			              "maximum %d characters)",
+			              file,
+			              PATH_MAX);
 		return false;
 	}
 	if (!file_exists(out)) return false;
@@ -581,13 +581,13 @@ s32 get_last_error(char *buf, s32 buf_len)
 	const s32 error_code = GetLastError();
 	if (error_code == 0) return 0;
 	const DWORD msg_len = FormatMessageA(
-		FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_MAX_WIDTH_MASK,
-		NULL,
-		error_code,
-		0,
-		buf,
-		buf_len,
-		NULL);
+	    FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_MAX_WIDTH_MASK,
+	    NULL,
+	    error_code,
+	    0,
+	    buf,
+	    buf_len,
+	    NULL);
 	return msg_len;
 #else
 	babort("Cannot get last error!");
@@ -636,7 +636,7 @@ void color_print(FILE *stream, s32 color, const char *format, ...)
 
 	if (color != BL_NO_COLOR) {
 		HANDLE handle =
-			stream == stderr ? GetStdHandle(STD_ERROR_HANDLE) : GetStdHandle(STD_OUTPUT_HANDLE);
+		    stream == stderr ? GetStdHandle(STD_ERROR_HANDLE) : GetStdHandle(STD_OUTPUT_HANDLE);
 		CONSOLE_SCREEN_BUFFER_INFO console_info;
 		GetConsoleScreenBufferInfo(handle, &console_info);
 		WORD saved_attributes = console_info.wAttributes;
@@ -708,13 +708,13 @@ char *execute(const char *cmd)
 }
 
 const char *read_config(struct config       *config,
-						const struct target *target,
-						const char          *path,
-						const char          *default_value)
+                        const struct target *target,
+                        const char          *path,
+                        const char          *default_value)
 {
 	bassert(config && target && path);
 	char *fullpath = tstr();
-	char triple_str[128];
+	char  triple_str[128];
 	target_triple_to_string(&target->triple, triple_str, static_arrlenu(triple_str));
 	strprint(fullpath, "/%s/%s", triple_str, path);
 	const char *result = confreads(config, fullpath, default_value);

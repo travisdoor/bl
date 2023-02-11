@@ -123,8 +123,8 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 #define _qother(Q) ((Q)->q[(Q)->qi ^ 1])
 #define qmaybeswap(Q)                                                                              \
 	((Q)->i >= arrlen(_qcurrent(Q))                                                                \
-		 ? (arrsetlen(_qcurrent(Q), 0), (Q)->qi ^= 1, (Q)->i = 0, arrlen(_qcurrent(Q)) > 0)        \
-		 : (true))
+	     ? (arrsetlen(_qcurrent(Q), 0), (Q)->qi ^= 1, (Q)->i = 0, arrlen(_qcurrent(Q)) > 0)        \
+	     : (true))
 #define qfree(Q) (arrfree((Q)->q[0]), arrfree((Q)->q[1]))
 #define qpush_back(Q, V) arrput(_qother(Q), (V))
 #define qpop_front(Q) (_qcurrent(Q)[(Q)->i++])
@@ -311,10 +311,10 @@ enum search_flags {
 //
 // Function returns true and modify output variables if file was found otherwise returns false.
 bool search_source_file(const char *filepath,
-						const u32   flags,
-						const char *wdir,
-						char      **out_filepath,
-						char      **out_dirpath);
+                        const u32   flags,
+                        const char *wdir,
+                        char      **out_filepath,
+                        char      **out_dirpath);
 
 static inline bool is_aligned(const void *p, usize alignment)
 {
@@ -376,9 +376,9 @@ void        color_print(FILE *stream, s32 color, const char *format, ...);
 s32         cpu_thread_count(void);
 char       *execute(const char *cmd);
 const char *read_config(struct config       *config,
-						const struct target *target,
-						const char          *path,
-						const char          *default_value);
+                        const struct target *target,
+                        const char          *path,
+                        const char          *default_value);
 
 typedef void (*process_tokens_fn_t)(void *ctx, const char *token);
 s32   process_tokens(void *ctx, const char *input, const char *delimiter, process_tokens_fn_t fn);

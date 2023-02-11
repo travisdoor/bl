@@ -39,7 +39,7 @@ hash_t unit_hash(const char *filepath, struct token *load_from)
 	struct unit *parent_unit = load_from ? load_from->location.unit : NULL;
 	char        *real_path   = NULL;
 	search_source_file(
-		filepath, SEARCH_FLAG_ALL, parent_unit ? parent_unit->dirpath : NULL, &real_path, NULL);
+	    filepath, SEARCH_FLAG_ALL, parent_unit ? parent_unit->dirpath : NULL, &real_path, NULL);
 	const hash_t hash = strhash(real_path ? real_path : filepath);
 	free(real_path);
 	return hash;
@@ -52,10 +52,10 @@ struct unit *unit_new(const char *filepath, struct token *load_from)
 	struct unit *unit        = bmalloc(sizeof(struct unit));
 	memset(unit, 0, sizeof(struct unit));
 	search_source_file(filepath,
-					   SEARCH_FLAG_ALL,
-					   parent_unit ? parent_unit->dirpath : NULL,
-					   &unit->filepath,
-					   &unit->dirpath);
+	                   SEARCH_FLAG_ALL,
+	                   parent_unit ? parent_unit->dirpath : NULL,
+	                   &unit->filepath,
+	                   &unit->dirpath);
 	unit->name         = strdup(filepath);
 	char tmp[PATH_MAX] = {0};
 	if (get_filename_from_filepath(tmp, static_arrlenu(tmp), filepath)) {

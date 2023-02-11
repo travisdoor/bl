@@ -46,7 +46,7 @@ void token_printer_run(struct assembly *UNUSED(assembly), struct unit *unit)
 			fprintf(stdout, "\n%d: ", line);
 		}
 		fprintf(
-			stdout, "['%s' %i:%i], ", sym_strings[tok->sym], tok->location.line, tok->location.col);
+		    stdout, "['%s' %i:%i], ", sym_strings[tok->sym], tok->location.line, tok->location.col);
 	}
 	fprintf(stdout, "\n");
 }

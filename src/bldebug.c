@@ -59,12 +59,12 @@ void log_impl(log_msg_kind_t t, const char *file, s32 line, const char *msg, ...
 		break;
 	case LOG_ABORT:
 		color_print(stderr,
-					BL_RED,
-					"internal compiler error [%s:%d]: %s (Please report the issue on "
-					"'https://github.com/travisdoor/bl/issues')\n",
-					file,
-					line,
-					buffer);
+		            BL_RED,
+		            "internal compiler error [%s:%d]: %s (Please report the issue on "
+		            "'https://github.com/travisdoor/bl/issues')\n",
+		            file,
+		            line,
+		            buffer);
 		break;
 	case LOG_WARNING:
 		color_print(stderr, BL_YELLOW, "warning [%s:%d]: %s\n", file, line, buffer);

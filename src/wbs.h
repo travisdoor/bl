@@ -93,7 +93,7 @@ static bool _lookup_program_files(struct wbs *ctx)
 	char *program_files_path = getenv("ProgramFiles(x86)");
 	if (!program_files_path || !strlen(program_files_path)) {
 		builder_error(
-			"The 'ProgramFiles(x86)' environment variable not found or not set properly!");
+		    "The 'ProgramFiles(x86)' environment variable not found or not set properly!");
 		return false;
 	}
 
@@ -110,10 +110,10 @@ static bool _lookup_vs(struct wbs *ctx)
 		strprint(vspath, "%s/%s", ctx->program_files_path, BUILD_TOOLS);
 		if (!dir_exists(vspath)) {
 			builder_error("Visual Studio installation or MS Build Tools not found. Download & "
-						  "install MS Build Tools from "
-						  "https://visualstudio.microsoft.com/visual-cpp-build-tools. (Expected "
-						  "location is '%s')",
-						  vspath);
+			              "install MS Build Tools from "
+			              "https://visualstudio.microsoft.com/visual-cpp-build-tools. (Expected "
+			              "location is '%s')",
+			              vspath);
 			put_tstr(vspath);
 			return false;
 		}

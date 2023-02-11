@@ -57,7 +57,7 @@ static inline struct arena_chunk *alloc_chunk(struct arena *arena)
 {
 	zone();
 	const usize chunk_size =
-		sizeof(struct arena_chunk) + total_elem_size(arena) * arena->elems_per_chunk;
+	    sizeof(struct arena_chunk) + total_elem_size(arena) * arena->elems_per_chunk;
 	struct arena_chunk *chunk = bmalloc(chunk_size);
 	if (!chunk) babort("bad alloc");
 	bl_zeromem(chunk, chunk_size);
@@ -88,10 +88,10 @@ static inline struct arena_chunk *free_chunk(struct arena *arena, struct arena_c
 }
 
 void arena_init(struct arena     *arena,
-				usize             elem_size_bytes,
-				s32               elem_alignment,
-				s32               elems_per_chunk,
-				arena_elem_dtor_t elem_dtor)
+                usize             elem_size_bytes,
+                s32               elem_alignment,
+                s32               elems_per_chunk,
+                arena_elem_dtor_t elem_dtor)
 {
 	arena->elem_size_bytes = elem_size_bytes;
 	arena->elems_per_chunk = elems_per_chunk;

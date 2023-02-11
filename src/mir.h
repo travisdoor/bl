@@ -733,7 +733,7 @@ struct mir_instr_type_poly {
 struct context;
 
 typedef struct result (*mir_call_analyze_stage_fn_t)(struct context        *ctx,
-													 struct mir_instr_call *call);
+                                                     struct mir_instr_call *call);
 
 // @Note: Call instruction with set base.value.is_comptime will be automatically executed during
 // analyze process.
@@ -772,7 +772,7 @@ struct mir_instr_decl_ref {
 
 	// Set only for decl_refs inside struct member type resolver.
 	bool accept_incomplete_type;
-	// Set in case the named scope was specified explicitly. 
+	// Set in case the named scope was specified explicitly.
 	bool is_explicit;
 };
 
@@ -991,7 +991,7 @@ static inline bool mir_type_has_llvm_representation(const struct mir_type *type)
 {
 	bassert(type);
 	return type->kind != MIR_TYPE_TYPE && type->kind != MIR_TYPE_FN_GROUP &&
-		   type->kind != MIR_TYPE_NAMED_SCOPE && type->kind != MIR_TYPE_POLY;
+	       type->kind != MIR_TYPE_NAMED_SCOPE && type->kind != MIR_TYPE_POLY;
 }
 
 static inline bool mir_type_cmp(const struct mir_type *first, const struct mir_type *second)

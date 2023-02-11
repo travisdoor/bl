@@ -111,18 +111,18 @@ void builder_async_submit_unit(struct unit *unit);
 #define builder_error(format, ...) builder_msg(MSG_ERR, -1, NULL, CARET_NONE, format, ##__VA_ARGS__)
 
 void builder_vmsg(enum builder_msg_type type,
-				  s32                   code,
-				  struct location      *src,
-				  enum builder_cur_pos  pos,
-				  const char           *format,
-				  va_list               args);
+                  s32                   code,
+                  struct location      *src,
+                  enum builder_cur_pos  pos,
+                  const char           *format,
+                  va_list               args);
 
 void builder_msg(enum builder_msg_type type,
-				 s32                   code,
-				 struct location      *src,
-				 enum builder_cur_pos  pos,
-				 const char           *format,
-				 ...);
+                 s32                   code,
+                 struct location      *src,
+                 enum builder_cur_pos  pos,
+                 const char           *format,
+                 ...);
 
 char *tstr(void);
 char *tstrdup(const char *str);

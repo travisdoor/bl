@@ -115,9 +115,9 @@ struct config *confload(const char *filepath)
 			break;
 		default:
 			bwarn("%s:%d:%d: YAML Unknown token type!",
-				  filepath,
-				  token.start_mark.line,
-				  token.start_mark.column);
+			      filepath,
+			      token.start_mark.line,
+			      token.start_mark.column);
 			break;
 		}
 		yaml_token_delete(&token);

@@ -193,9 +193,9 @@ struct ast_stmt_loop {
 };
 
 struct ast_decl {
-	struct ast   *name;
-	struct ast   *type;
-	struct ast   *tag; // Optional.
+	struct ast    *name;
+	struct ast    *type;
+	struct ast    *tag; // Optional.
 	enum ast_flags flags;
 };
 
@@ -393,9 +393,9 @@ struct ast {
 void        ast_arena_init(struct arena *arena);
 void        ast_arena_terminate(struct arena *arena);
 struct ast *ast_create_node(struct arena *arena,
-							enum ast_kind c,
-							struct token *tok,
-							struct scope *parent_scope);
+                            enum ast_kind c,
+                            struct token *tok,
+                            struct scope *parent_scope);
 const char *ast_binop_to_str(enum binop_kind op);
 const char *ast_unop_to_str(enum unop_kind op);
 const char *ast_get_name(const struct ast *n);

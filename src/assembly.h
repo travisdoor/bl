@@ -122,10 +122,10 @@ struct native_lib {
 	hash_t        hash;
 	DLLib        *handle;
 	struct token *linked_from;
-	char         *user_name;
-	char         *filename;
-	char         *filepath;
-	char         *dir;
+	char	     *user_name;
+	char	     *filename;
+	char	     *filepath;
+	char	     *dir;
 	// Disable appending of this library to the linker options.
 	bool is_internal;
 	// Library may be loaded only in runtime.
@@ -201,7 +201,7 @@ struct assembly {
 		struct {
 			u64             key;
 			struct mir_var *value;
-		} *rtti_table; // Map type ids to RTTI variables.
+		} * rtti_table; // Map type ids to RTTI variables.
 		array(struct mir_instr *) exported_instrs;
 	} MIR;
 
@@ -270,8 +270,8 @@ void           target_append_linker_options(struct target *target, const char *o
 void           target_set_vm_args(struct target *target, s32 argc, char **argv);
 void           target_set_output_dir(struct target *target, const char *dirpath);
 void           target_set_module_dir(struct target            *target,
-									 const char               *dir,
-									 enum module_import_policy policy);
+                                     const char               *dir,
+                                     enum module_import_policy policy);
 bool           target_is_triple_valid(struct target_triple *triple);
 bool           target_init_default_triple(struct target_triple *triple);
 s32            target_triple_to_string(const struct target_triple *triple, char *buf, s32 buf_len);
@@ -283,12 +283,12 @@ assembly_add_unit_safe(struct assembly *assembly, const char *filepath, struct t
 void      assembly_add_lib_path_safe(struct assembly *assembly, const char *path);
 void      assembly_append_linker_options_safe(struct assembly *assembly, const char *opt);
 void      assembly_add_native_lib_safe(struct assembly *assembly,
-									   const char      *lib_name,
-									   struct token    *link_token,
-									   bool             runtime_only);
+                                       const char      *lib_name,
+                                       struct token    *link_token,
+                                       bool             runtime_only);
 bool      assembly_import_module(struct assembly *assembly,
-								 const char      *modulepath,
-								 struct token    *import_from);
+                                 const char      *modulepath,
+                                 struct token    *import_from);
 DCpointer assembly_find_extern(struct assembly *assembly, const char *symbol);
 
 #define assembly_has_rtti(assembly, type_id) (hmgeti((assembly)->MIR.rtti_table, type_id) != -1)

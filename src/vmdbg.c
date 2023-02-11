@@ -96,7 +96,7 @@ static void print_data(struct mir_type *type, vm_stack_ptr_t ptr)
 		struct mir_type *elem_type = mir_get_struct_elem_type(type, MIR_SLICE_PTR_INDEX);
 
 		const vm_stack_ptr_t len_ptr =
-			vm_get_struct_elem_ptr(current_vm->assembly, type, ptr, MIR_SLICE_LEN_INDEX);
+		    vm_get_struct_elem_ptr(current_vm->assembly, type, ptr, MIR_SLICE_LEN_INDEX);
 		const s64 len         = (s64)vm_read_int(len_type, len_ptr);
 		s64       limited_len = len;
 		CLAMP(limited_len, 0, 256);
@@ -104,9 +104,9 @@ static void print_data(struct mir_type *type, vm_stack_ptr_t ptr)
 		if (elem_type->kind == MIR_TYPE_PTR) {
 			struct mir_type *char_type = mir_deref_type(elem_type);
 			if (char_type->kind == MIR_TYPE_INT && char_type->data.integer.bitcount == 8 &&
-				!char_type->data.integer.is_signed) {
+			    !char_type->data.integer.is_signed) {
 				const vm_stack_ptr_t elem_ptr =
-					vm_get_struct_elem_ptr(current_vm->assembly, type, ptr, MIR_SLICE_PTR_INDEX);
+				    vm_get_struct_elem_ptr(current_vm->assembly, type, ptr, MIR_SLICE_PTR_INDEX);
 				const char *str = (const char *)vm_read_ptr(elem_type, elem_ptr);
 
 				s64 len_without_new_lines = 0;
@@ -203,15 +203,15 @@ NEXT:
 		goto NEXT;
 	} else if (CMD("h", "help")) {
 		printf("  h, help                             = Show this help.\n"
-			   "  q, quit                             = Stop debugging.\n"
-			   "  n, next                             = Step to next instruction.\n"
-			   "  c, continue                         = Continue execution.\n"
-			   "  p, print                            = Print current instruction.\n"
-			   "  pl, print-locals                    = Print local variables.\n"
-			   "  bt, backtrace                       = Print current backtrace.\n"
-			   "  vs=<on|off>, verbose-stack=<on|off> = Log stack operations.\n"
-			   "  mir=<on|off>, mir-mode=<on|off>     = Enable/disable MIR instruction level "
-			   "debugging.\n");
+		       "  q, quit                             = Stop debugging.\n"
+		       "  n, next                             = Step to next instruction.\n"
+		       "  c, continue                         = Continue execution.\n"
+		       "  p, print                            = Print current instruction.\n"
+		       "  pl, print-locals                    = Print local variables.\n"
+		       "  bt, backtrace                       = Print current backtrace.\n"
+		       "  vs=<on|off>, verbose-stack=<on|off> = Log stack operations.\n"
+		       "  mir=<on|off>, mir-mode=<on|off>     = Enable/disable MIR instruction level "
+		       "debugging.\n");
 		goto NEXT;
 	} else {
 		builder_error("Invalid command.");
@@ -306,42 +306,42 @@ void vmdbg_notify_stack_op(enum vmdbg_stack_op op, struct mir_type *type, void *
 		case VMDBG_PUSH_RA:
 			if (vm->stack->pc) {
 				color_print(stdout,
-							BL_RED,
-							"%6zu %20s  PUSH RA (%p)\n",
-							(size_t)vm->stack->pc->id,
-							mir_instr_name(vm->stack->pc),
-							ptr);
+				            BL_RED,
+				            "%6zu %20s  PUSH RA (%p)\n",
+				            (size_t)vm->stack->pc->id,
+				            mir_instr_name(vm->stack->pc),
+				            ptr);
 			} else {
 				color_print(stdout, BL_RED, "     - %20s  PUSH RA\n", "Terminal");
 			}
 			break;
 		case VMDBG_POP_RA:
 			color_print(stdout,
-						BL_BLUE,
-						"%6llu %20s  POP RA  (%p)\n",
-						vm->stack->pc->id,
-						mir_instr_name(vm->stack->pc),
-						ptr);
+			            BL_BLUE,
+			            "%6llu %20s  POP RA  (%p)\n",
+			            vm->stack->pc->id,
+			            mir_instr_name(vm->stack->pc),
+			            ptr);
 			break;
 		case VMDBG_PUSH: {
 			unsigned long long size      = type->store_size_bytes;
 			char              *type_name = mir_type2str(type, true);
 			if (vm->stack->pc) {
 				color_print(stdout,
-							BL_RED,
-							"%6llu %20s  PUSH    (%lluB, %p) %s\n",
-							(unsigned long long)vm->stack->pc->id,
-							mir_instr_name(vm->stack->pc),
-							size,
-							ptr,
-							type_name);
+				            BL_RED,
+				            "%6llu %20s  PUSH    (%lluB, %p) %s\n",
+				            (unsigned long long)vm->stack->pc->id,
+				            mir_instr_name(vm->stack->pc),
+				            size,
+				            ptr,
+				            type_name);
 			} else {
 				color_print(stdout,
-							BL_RED,
-							"     -                       PUSH    (%lluB, %p) %s\n",
-							size,
-							ptr,
-							type_name);
+				            BL_RED,
+				            "     -                       PUSH    (%lluB, %p) %s\n",
+				            size,
+				            ptr,
+				            type_name);
 			}
 			put_tstr(type_name);
 			break;
@@ -351,20 +351,20 @@ void vmdbg_notify_stack_op(enum vmdbg_stack_op op, struct mir_type *type, void *
 			char              *type_name = mir_type2str(type, true);
 			if (vm->stack->pc) {
 				color_print(stdout,
-							BL_BLUE,
-							"%6llu %20s  POP     (%lluB, %p) %s\n",
-							vm->stack->pc->id,
-							mir_instr_name(vm->stack->pc),
-							size,
-							ptr,
-							type_name);
+				            BL_BLUE,
+				            "%6llu %20s  POP     (%lluB, %p) %s\n",
+				            vm->stack->pc->id,
+				            mir_instr_name(vm->stack->pc),
+				            size,
+				            ptr,
+				            type_name);
 			} else {
 				color_print(stdout,
-							BL_BLUE,
-							"     -                       POP     (%lluB, %p) %s\n",
-							size,
-							ptr,
-							type_name);
+				            BL_BLUE,
+				            "     -                       POP     (%lluB, %p) %s\n",
+				            size,
+				            ptr,
+				            type_name);
 			}
 			put_tstr(type_name);
 			break;

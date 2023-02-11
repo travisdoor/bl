@@ -44,10 +44,10 @@ struct context {
 };
 
 static bool search_library(struct context *ctx,
-						   const char     *lib_name,
-						   char          **out_lib_name,
-						   char          **out_lib_dir,
-						   char          **out_lib_filepath)
+                           const char     *lib_name,
+                           char          **out_lib_name,
+                           char          **out_lib_dir,
+                           char          **out_lib_filepath)
 {
 	char *lib_filepath                = tstr();
 	char  lib_name_full[LIB_NAME_MAX] = {0};
@@ -78,7 +78,7 @@ static void set_lib_paths(struct context *ctx)
 {
 	char        tmp[PATH_MAX] = {0};
 	const char *lib_path =
-		read_config(builder.config, ctx->assembly->target, "linker_lib_path", "");
+	    read_config(builder.config, ctx->assembly->target, "linker_lib_path", "");
 	if (!strlen(lib_path)) return;
 
 	s64         len;
@@ -127,7 +127,7 @@ static bool link_lib(struct context *ctx, struct native_lib *lib)
 		builder_log("- Library with 'runtime_only' flag '%s' skipped.", lib->user_name);
 		return true;
 	}
-	
+
 	lib->handle = dlLoadLibrary(lib->filepath);
 	return lib->handle;
 }
@@ -163,11 +163,11 @@ void linker_run(struct assembly *assembly)
 			char      error_buffer[256];
 			const s32 error_len = get_last_error(error_buffer, static_arrlenu(error_buffer));
 			link_error(ERR_LIB_NOT_FOUND,
-					   lib->linked_from,
-					   CARET_WORD,
-					   "Cannot load library '%s' with error: %s",
-					   lib->user_name,
-					   error_len ? error_buffer : "UNKNOWN");
+			           lib->linked_from,
+			           CARET_WORD,
+			           "Cannot load library '%s' with error: %s",
+			           lib->user_name,
+			           error_len ? error_buffer : "UNKNOWN");
 		}
 	}
 

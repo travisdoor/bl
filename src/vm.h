@@ -142,22 +142,22 @@ bool vm_eval_instr(struct virtual_machine *vm, struct assembly *assembly, struct
 // Internally a new small execution stack can be allocated in case none is available; this stack can
 // be reused in case the execution chain hits incomplete function.
 enum vm_interp_state vm_execute_comptime_call(struct virtual_machine *vm,
-											  struct assembly        *assembly,
-											  struct mir_instr_call  *call);
+                                              struct assembly        *assembly,
+                                              struct mir_instr_call  *call);
 
 enum vm_interp_state vm_execute_fn(struct virtual_machine *vm,
-								   struct assembly        *assembly,
-								   struct mir_fn          *fn,
-								   mir_const_values_t     *optional_args,
-								   vm_stack_ptr_t         *optional_return);
+                                   struct assembly        *assembly,
+                                   struct mir_fn          *fn,
+                                   mir_const_values_t     *optional_args,
+                                   vm_stack_ptr_t         *optional_return);
 
 void vm_provide_command_line_arguments(struct virtual_machine *vm, s32 argc, char *argv[]);
 void vm_override_var(struct virtual_machine *vm, struct mir_var *var, u64 value);
 void vm_do_cast(vm_stack_ptr_t   dest,
-				vm_stack_ptr_t   src,
-				struct mir_type *dest_type,
-				struct mir_type *src_type,
-				s32              op);
+                vm_stack_ptr_t   src,
+                struct mir_type *dest_type,
+                struct mir_type *src_type,
+                s32              op);
 
 void vm_alloc_global(struct virtual_machine *vm, struct assembly *assembly, struct mir_var *var);
 
@@ -186,20 +186,20 @@ void      vm_write_double(const struct mir_type *type, vm_stack_ptr_t dest, f64 
 void      vm_write_float(const struct mir_type *type, vm_stack_ptr_t dest, f32 i);
 void      vm_write_ptr(const struct mir_type *type, vm_stack_ptr_t dest, vm_stack_ptr_t ptr);
 void      vm_write_string(struct virtual_machine *vm,
-						  const struct mir_type  *type,
-						  vm_stack_ptr_t          dest,
-						  str_t                   str);
+                          const struct mir_type  *type,
+                          vm_stack_ptr_t          dest,
+                          str_t                   str);
 void      vm_write_slice(struct virtual_machine *vm,
-						 const struct mir_type  *type,
-						 vm_stack_ptr_t          dest,
-						 void                   *ptr,
-						 s64                     len);
+                         const struct mir_type  *type,
+                         vm_stack_ptr_t          dest,
+                         void                   *ptr,
+                         s64                     len);
 ptrdiff_t vm_get_struct_elem_offset(struct assembly *assembly, const struct mir_type *type, u32 i);
 ptrdiff_t vm_get_array_elem_offset(const struct mir_type *type, u32 i);
 vm_stack_ptr_t vm_get_struct_elem_ptr(struct assembly       *assembly,
-									  const struct mir_type *type,
-									  vm_stack_ptr_t         ptr,
-									  u32                    i);
+                                      const struct mir_type *type,
+                                      vm_stack_ptr_t         ptr,
+                                      u32                    i);
 vm_stack_ptr_t vm_get_array_elem_ptr(const struct mir_type *type, vm_stack_ptr_t ptr, u32 i);
 
 #endif

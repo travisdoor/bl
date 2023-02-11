@@ -99,8 +99,8 @@ bool setup(const char *filepath, const char *triple)
 	}
 	if (!state) {
 		builder_error("Generate new configuration file at '%s' for target triple '%s' failed!",
-					  ctx.filepath,
-					  ctx.triple);
+		              ctx.filepath,
+		              ctx.triple);
 		return false;
 	}
 	char *content = make_content(&ctx);
@@ -164,15 +164,15 @@ char *make_content(const struct context *ctx)
 
 	char *tmp = tstr();
 	strprint(tmp,
-			 TEMPLATE,
-			 ctx->version,
-			 ctx->lib_dir,
-			 ctx->triple,
-			 ctx->preload_file,
-			 ctx->linker_executable,
-			 ctx->linker_opt_exec,
-			 ctx->linker_opt_shared,
-			 ctx->linker_lib_path);
+	         TEMPLATE,
+	         ctx->version,
+	         ctx->lib_dir,
+	         ctx->triple,
+	         ctx->preload_file,
+	         ctx->linker_executable,
+	         ctx->linker_opt_exec,
+	         ctx->linker_opt_shared,
+	         ctx->linker_lib_path);
 	return tmp;
 
 #undef TEMPLATE
@@ -184,9 +184,9 @@ char *make_content(const struct context *ctx)
 bool default_config(struct context UNUSED(*ctx))
 {
 	builder_warning("Automatic generation of configuration file is not supported for target triple "
-					"'%s' empty file will be generated at '%s'.",
-					ctx->triple,
-					ctx->filepath);
+	                "'%s' empty file will be generated at '%s'.",
+	                ctx->triple,
+	                ctx->filepath);
 	return true;
 }
 
@@ -196,7 +196,7 @@ bool x86_64_pc_windows_msvc(struct context *ctx)
 	ctx->preload_file      = "os/_windows.bl";
 	ctx->linker_executable = "";
 	ctx->linker_opt_exec =
-		"/NOLOGO /ENTRY:__os_start /SUBSYSTEM:CONSOLE /INCREMENTAL:NO /MACHINE:x64";
+	    "/NOLOGO /ENTRY:__os_start /SUBSYSTEM:CONSOLE /INCREMENTAL:NO /MACHINE:x64";
 	ctx->linker_opt_shared = "/NOLOGO /INCREMENTAL:NO /MACHINE:x64 /DLL";
 
 	struct wbs *wbs = wbslookup();
@@ -205,7 +205,7 @@ bool x86_64_pc_windows_msvc(struct context *ctx)
 		goto FAILED;
 	}
 	ctx->linker_lib_path =
-		scprint(&ctx->cache, "%s;%s;%s", wbs->ucrt_path, wbs->um_path, wbs->msvc_lib_path);
+	    scprint(&ctx->cache, "%s;%s;%s", wbs->ucrt_path, wbs->um_path, wbs->msvc_lib_path);
 
 	wbsfree(wbs);
 	return true;
@@ -257,7 +257,7 @@ static bool x86_64_apple_darwin(struct context *ctx)
 
 	if (!dir_exists(COMMAND_LINE_TOOLS)) {
 		builder_error("Cannot find Command Line Tools on '%s', use 'xcode-select --install'.",
-					  COMMAND_LINE_TOOLS);
+		              COMMAND_LINE_TOOLS);
 		return false;
 	}
 
@@ -318,7 +318,7 @@ static bool arm64_apple_darwin(struct context *ctx)
 
 	if (!dir_exists(COMMAND_LINE_TOOLS)) {
 		builder_error("Cannot find Command Line Tools on '%s', use 'xcode-select --install'.",
-					  COMMAND_LINE_TOOLS);
+		              COMMAND_LINE_TOOLS);
 		return false;
 	}
 

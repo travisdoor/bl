@@ -173,10 +173,10 @@ static inline void bl_debug_break(void)
 #define babort_issue(N)                                                                            \
 	{                                                                                              \
 		log_impl(LOG_ABORT_ISSUE,                                                                  \
-				 __FILENAME__,                                                                     \
-				 __LINE__,                                                                         \
-				 "Issue: https://github.com/travisdoor/bl/issues/%d",                              \
-				 N);                                                                               \
+		         __FILENAME__,                                                                     \
+		         __LINE__,                                                                         \
+		         "Issue: https://github.com/travisdoor/bl/issues/%d",                              \
+		         N);                                                                               \
 		print_trace();                                                                             \
 		BL_DEBUG_BREAK;                                                                            \
 		abort();                                                                                   \

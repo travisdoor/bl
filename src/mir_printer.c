@@ -291,7 +291,7 @@ static void print_instr_type_poly(struct context *ctx, struct mir_instr_type_pol
 static void print_instr_type_array(struct context *ctx, struct mir_instr_type_array *type_array);
 static void print_instr_type_slice(struct context *ctx, struct mir_instr_type_slice *type_slice);
 static void print_instr_type_dynarr(struct context                *ctx,
-									struct mir_instr_type_dyn_arr *type_dynarr);
+                                    struct mir_instr_type_dyn_arr *type_dynarr);
 static void print_instr_type_vargs(struct context *ctx, struct mir_instr_type_vargs *type_vargs);
 static void print_instr_block(struct context *ctx, struct mir_instr_block *block);
 static void print_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl);
@@ -463,9 +463,9 @@ void print_instr_type_array(struct context *ctx, struct mir_instr_type_array *ty
 {
 	print_instr_head(ctx, &type_array->base, "const");
 	fprintf(ctx->stream,
-			"[%%%llu]%%%llu",
-			(unsigned long long)type_array->len->id,
-			(unsigned long long)type_array->elem_type->id);
+	        "[%%%llu]%%%llu",
+	        (unsigned long long)type_array->len->id,
+	        (unsigned long long)type_array->elem_type->id);
 }
 
 void print_instr_type_slice(struct context *ctx, struct mir_instr_type_slice *type_slice)
@@ -663,11 +663,11 @@ void print_instr_cond_br(struct context *ctx, struct mir_instr_cond_br *cond_br)
 	print_instr_head(ctx, &cond_br->base, "br");
 	print_comptime_value_or_id(ctx, cond_br->cond);
 	fprintf(ctx->stream,
-			" ? %%%s_%llu : %%%s_%llu",
-			cond_br->then_block->name,
-			(unsigned long long)cond_br->then_block->base.id,
-			cond_br->else_block->name,
-			(unsigned long long)cond_br->else_block->base.id);
+	        " ? %%%s_%llu : %%%s_%llu",
+	        cond_br->then_block->name,
+	        (unsigned long long)cond_br->then_block->base.id,
+	        cond_br->else_block->name,
+	        (unsigned long long)cond_br->else_block->base.id);
 }
 
 void print_instr_arg(struct context *ctx, struct mir_instr_arg *arg)
@@ -733,9 +733,9 @@ void print_instr_br(struct context *ctx, struct mir_instr_br *br)
 {
 	print_instr_head(ctx, &br->base, "br");
 	fprintf(ctx->stream,
-			"%%%s_%llu",
-			br->then_block->name,
-			(unsigned long long)br->then_block->base.id);
+	        "%%%s_%llu",
+	        br->then_block->name,
+	        (unsigned long long)br->then_block->base.id);
 }
 
 void print_instr_switch(struct context *ctx, struct mir_instr_switch *sw)
@@ -752,9 +752,9 @@ void print_instr_switch(struct context *ctx, struct mir_instr_switch *sw)
 	}
 
 	fprintf(ctx->stream,
-			"} else %%%s_%llu",
-			sw->default_block->name,
-			(unsigned long long)sw->default_block->base.id);
+	        "} else %%%s_%llu",
+	        sw->default_block->name,
+	        (unsigned long long)sw->default_block->base.id);
 }
 
 void print_instr_load(struct context *ctx, struct mir_instr_load *load)
@@ -877,8 +877,8 @@ void print_instr_call(struct context *ctx, struct mir_instr_call *call)
 	print_instr_head(ctx, &call->base, "call");
 
 	struct mir_fn *callee      = mir_is_comptime(call->callee)
-									 ? MIR_CEV_READ_AS(struct mir_fn *, &call->callee->value)
-									 : NULL;
+	                                 ? MIR_CEV_READ_AS(struct mir_fn *, &call->callee->value)
+	                                 : NULL;
 	const char    *callee_name = callee ? callee->linkage_name : NULL;
 	if (callee_name)
 		fprintf(ctx->stream, "@%s", callee_name);
@@ -941,10 +941,10 @@ void print_instr_block(struct context *ctx, struct mir_instr_block *block)
 		fprintf(ctx->stream, "%%%s_%llu (-):", block->name, (unsigned long long)block->base.id);
 	} else {
 		fprintf(ctx->stream,
-				"%%%s_%llu (%u):",
-				block->name,
-				(unsigned long long)block->base.id,
-				block->base.ref_count);
+		        "%%%s_%llu (%u):",
+		        block->name,
+		        (unsigned long long)block->base.id,
+		        block->base.ref_count);
 	}
 #else
 	fprintf(ctx->stream, "%%%s_%llu:", block->name, (unsigned long long)block->base.id);
@@ -1005,8 +1005,8 @@ void print_instr(struct context *ctx, struct mir_instr *instr)
 {
 #if !PRINT_ANALYZED_COMPTIMES
 	if ((instr->owner_block || instr->kind == MIR_INSTR_BLOCK) &&
-		(instr->kind != MIR_INSTR_DECL_VAR) && instr->value.is_comptime &&
-		instr->state == MIR_IS_COMPLETE)
+	    (instr->kind != MIR_INSTR_DECL_VAR) && instr->value.is_comptime &&
+	    instr->state == MIR_IS_COMPLETE)
 		return;
 #endif
 
@@ -1178,10 +1178,10 @@ void print_instr(struct context *ctx, struct mir_instr *instr)
 		if (instr->node && instr->node->location) {
 			const struct location *loc = instr->node->location;
 			fprintf(ctx->stream,
-					" %s[%s:%d]",
-					has_comment ? "" : "// ",
-					loc->unit->filename,
-					loc->line);
+			        " %s[%s:%d]",
+			        has_comment ? "" : "// ",
+			        loc->unit->filename,
+			        loc->line);
 		}
 	}
 

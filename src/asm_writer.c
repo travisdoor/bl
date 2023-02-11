@@ -43,7 +43,7 @@ void asm_writer_run(struct assembly *assembly)
 	strprint(buf, "%s/%s.%s", target->out_dir, name, ASM_EXT);
 	char *error_msg = NULL;
 	if (LLVMTargetMachineEmitToFile(
-			assembly->llvm.TM, assembly->llvm.modules[0], buf, LLVMAssemblyFile, &error_msg)) {
+	        assembly->llvm.TM, assembly->llvm.modules[0], buf, LLVMAssemblyFile, &error_msg)) {
 		builder_error("Cannot emit assembly file: %s with error: %s", buf, error_msg);
 		LLVMDisposeMessage(error_msg);
 	}
