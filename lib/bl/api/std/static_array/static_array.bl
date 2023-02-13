@@ -19,10 +19,10 @@
 /// }
 /// ```
 StaticArray :: fn (TElem: type #comptime, elem_count: s64 #comptime) type #comptime {
-    return struct {
-        data: [elem_count]TElem;
-        len: s64;
-    };
+	return struct {
+		data: [elem_count]TElem;
+		len: s64;
+	};
 }
 
 /// Push element at the end of the array and returns its address.
@@ -34,46 +34,46 @@ sarray_push :: fn { impl_push_empty; impl_push; }
 /// Pops the last element of the array into `out` destination and returns `true`
 /// otherwise returns `false` and value of `out` stays unchanged.
 sarray_pop :: fn (arr: *?TArr, out: *sarray_typeof_elem(TArr) = null) bool #inline {
-    if arr.len == 0 { return false; }
-    if out {
-        memcpy(auto out, auto &arr.data[arr.len - 1], sizeof(@out));
-    }
-    arr.len -= 1;
-    return true;
+	if arr.len == 0 { return false; }
+	if out {
+		memcpy(auto out, auto &arr.data[arr.len - 1], sizeof(@out));
+	}
+	arr.len -= 1;
+	return true;
 }
 
 /// Errase element at the index `i`. The index value must be valid in range `0 <= i < len`.
 sarray_erase :: fn (arr: *?TArr, i: s64) {
-    if i >= arr.len { panic("Index overflow!"); }
-    if i == arr.len - 1 {
-        arr.len -= 1;
-        return;
-    }
-    TElem :: sarray_typeof_elem(TArr);
-    memcpy(auto &arr.data[i], auto &arr.data[arr.len - 1], sizeof(TElem));
-    arr.len -= 1;
+	if i >= arr.len { panic("Index overflow!"); }
+	if i == arr.len - 1 {
+		arr.len -= 1;
+		return;
+	}
+	TElem :: sarray_typeof_elem(TArr);
+	memcpy(auto &arr.data[i], auto &arr.data[arr.len - 1], sizeof(TElem));
+	arr.len -= 1;
 }
 
 /// Clear the array.
 sarray_clear :: fn (arr: *?TArr) #inline {
-    arr.len = 0;
+	arr.len = 0;
 }
 
 /// Return type of the element.
 sarray_typeof_elem :: fn (TArr: type #comptime) type #comptime {
-    return @TArr.data.ptr;
+	return @TArr.data.ptr;
 }
 
 #private
 impl_push :: fn (arr: *?TArr, value: sarray_typeof_elem(TArr)) *sarray_typeof_elem(TArr) #inline {
-    elem :: impl_push_empty(arr);
-    memcpy(auto elem, auto &value, sizeof(value));
-    return elem;
+	elem :: impl_push_empty(arr);
+	memcpy(auto elem, auto &value, sizeof(value));
+	return elem;
 }
 
 impl_push_empty :: fn (arr: *?TArr) *sarray_typeof_elem(TArr) #inline {
-    assert(arr.len + 1 <= arr.data.len);
-    elem :: &arr.data[arr.len];
-    arr.len += 1;
-    return elem;
+	assert(arr.len + 1 <= arr.data.len);
+	elem :: &arr.data[arr.len];
+	arr.len += 1;
+	return elem;
 }

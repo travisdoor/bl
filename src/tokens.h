@@ -45,61 +45,61 @@ extern struct token *token_end;
 
 struct unit;
 struct location {
-    u16          line;
-    u16          col;
-    u32          len;
-    struct unit *unit;
+	u16          line;
+	u16          col;
+	u32          len;
+	struct unit *unit;
 };
 
 union token_value {
-    str_t str;
-    char  c;
-    f64   d;
-    u64   u;
+	str_t str;
+	char  c;
+	f64   d;
+	u64   u;
 };
 
 struct token {
-    enum sym          sym;
-    bool              overflow;
-    struct location   location;
-    union token_value value;
+	enum sym          sym;
+	bool              overflow;
+	struct location   location;
+	union token_value value;
 };
 
 enum token_associativity {
-    TOKEN_ASSOC_NONE,
-    TOKEN_ASSOC_RIGHT,
-    TOKEN_ASSOC_LEFT,
+	TOKEN_ASSOC_NONE,
+	TOKEN_ASSOC_RIGHT,
+	TOKEN_ASSOC_LEFT,
 };
 
 struct token_precedence {
-    s32                      priority;
-    enum token_associativity associativity;
+	s32                      priority;
+	enum token_associativity associativity;
 };
 
 struct tokens {
-    struct token *buf;
-    usize         iter;
+	struct token *buf;
+	usize         iter;
 };
 
 static inline bool sym_is_binop(enum sym sym)
 {
-    return sym >= SYM_EQ && sym <= SYM_ASTERISK;
+	return sym >= SYM_EQ && sym <= SYM_ASTERISK;
 }
 
 static inline bool token_is_binop(struct token *token)
 {
-    return sym_is_binop(token->sym);
+	return sym_is_binop(token->sym);
 }
 
 static inline bool token_is(struct token *token, enum sym sym)
 {
-    if (!token) return false;
-    return token->sym == sym;
+	if (!token) return false;
+	return token->sym == sym;
 }
 
 static inline bool token_is_not(struct token *token, enum sym sym)
 {
-    return !token_is(token, sym);
+	return !token_is(token, sym);
 }
 
 void                    tokens_init(struct tokens *tokens);

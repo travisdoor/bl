@@ -40,35 +40,35 @@ struct builder;
 struct builder_options;
 
 enum assembly_kind {
-    ASSEMBLY_EXECUTABLE     = 0,
-    ASSEMBLY_SHARED_LIB     = 1,
-    ASSEMBLY_BUILD_PIPELINE = 2,
-    ASSEMBLY_DOCS           = 3,
+	ASSEMBLY_EXECUTABLE     = 0,
+	ASSEMBLY_SHARED_LIB     = 1,
+	ASSEMBLY_BUILD_PIPELINE = 2,
+	ASSEMBLY_DOCS           = 3,
 };
 
 enum assembly_opt {
-    ASSEMBLY_OPT_DEBUG                   = 0, // Standard debug mode. Opt: NONE
-    ASSEMBLY_OPT_RELEASE_FAST            = 1, // Standard release mode. Opt: Aggressive
-    ASSEMBLY_OPT_RELEASE_SMALL           = 2, // Standard release mode. Opt: Default
-    ASSEMBLY_OPT_RELEASE_WITH_DEBUG_INFO = 3, // Release mode. Opt: Default with debug info.
+	ASSEMBLY_OPT_DEBUG                   = 0, // Standard debug mode. Opt: NONE
+	ASSEMBLY_OPT_RELEASE_FAST            = 1, // Standard release mode. Opt: Aggressive
+	ASSEMBLY_OPT_RELEASE_SMALL           = 2, // Standard release mode. Opt: Default
+	ASSEMBLY_OPT_RELEASE_WITH_DEBUG_INFO = 3, // Release mode. Opt: Default with debug info.
 };
 
 enum assembly_di_kind {
-    ASSEMBLY_DI_DWARF    = 0, // Emit DWARF debug information in LLVM IR.
-    ASSEMBLY_DI_CODEVIEW = 1, // Emit MS CodeView debug info (PDB file).
+	ASSEMBLY_DI_DWARF    = 0, // Emit DWARF debug information in LLVM IR.
+	ASSEMBLY_DI_CODEVIEW = 1, // Emit MS CodeView debug info (PDB file).
 };
 
 // keep in sync with build.bl
 enum module_import_policy {
-    IMPORT_POLICY_SYSTEM        = 0,
-    IMPORT_POLICY_BUNDLE        = 1,
-    IMPORT_POLICY_BUNDLE_LATEST = 2,
+	IMPORT_POLICY_SYSTEM        = 0,
+	IMPORT_POLICY_BUNDLE        = 1,
+	IMPORT_POLICY_BUNDLE_LATEST = 2,
 };
 
 enum assert_mode {
-    ASSERT_DEFAULT         = 0,
-    ASSERT_ALWAYS_ENABLED  = 1,
-    ASSERT_ALWAYS_DISABLED = 2,
+	ASSERT_DEFAULT         = 0,
+	ASSERT_ALWAYS_ENABLED  = 1,
+	ASSERT_ALWAYS_DISABLED = 2,
 };
 
 enum arch {
@@ -77,7 +77,7 @@ enum arch {
 #include "target.def"
 #undef entry
 #undef GEN_ARCH
-    _ARCH_COUNT
+	_ARCH_COUNT
 };
 extern const char *arch_names[_ARCH_COUNT];
 
@@ -87,7 +87,7 @@ enum vendor {
 #include "target.def"
 #undef entry
 #undef GEN_VENDOR
-    _VENDOR_COUNT
+	_VENDOR_COUNT
 };
 extern const char *vendor_names[_VENDOR_COUNT];
 
@@ -97,7 +97,7 @@ enum operating_system {
 #include "target.def"
 #undef entry
 #undef GEN_OS
-    _OS_COUNT
+	_OS_COUNT
 };
 extern const char *os_names[_OS_COUNT];
 
@@ -107,157 +107,157 @@ enum environment {
 #include "target.def"
 #undef entry
 #undef GEN_ENV
-    _ENV_COUNT
+	_ENV_COUNT
 };
 extern const char *env_names[_ENV_COUNT];
 
 struct target_triple {
-    enum arch             arch;
-    enum vendor           vendor;
-    enum operating_system os;
-    enum environment      env;
+	enum arch             arch;
+	enum vendor           vendor;
+	enum operating_system os;
+	enum environment      env;
 };
 
 struct native_lib {
-    hash_t        hash;
-    DLLib        *handle;
-    struct token *linked_from;
-    char         *user_name;
-    char         *filename;
-    char         *filepath;
-    char         *dir;
-    // Disable appending of this library to the linker options.
-    bool is_internal;
-    // Library may be loaded only in runtime.
-    bool runtime_only;
+	hash_t        hash;
+	DLLib        *handle;
+	struct token *linked_from;
+	char	     *user_name;
+	char	     *filename;
+	char	     *filepath;
+	char	     *dir;
+	// Disable appending of this library to the linker options.
+	bool is_internal;
+	// Library may be loaded only in runtime.
+	bool runtime_only;
 };
 
 // ABI sync!!! Keep this updated with target representation in build.bl.
 #define TARGET_COPYABLE_CONTENT                                                                    \
-    enum assembly_kind    kind;                                                                    \
-    enum assembly_opt     opt;                                                                     \
-    enum assembly_di_kind di;                                                                      \
-    bool                  reg_split;                                                               \
-    bool                  verify_llvm;                                                             \
-    bool                  run_tests;                                                               \
-    bool                  tests_minimal_output;                                                    \
-    bool                  no_api;                                                                  \
-    bool                  copy_deps;                                                               \
-    bool                  run;                                                                     \
-    bool                  print_tokens;                                                            \
-    bool                  print_ast;                                                               \
-    bool                  emit_llvm;                                                               \
-    bool                  emit_mir;                                                                \
-    bool                  emit_asm;                                                                \
-    bool                  no_bin;                                                                  \
-    bool                  no_llvm;                                                                 \
-    bool                  no_analyze;                                                              \
-    enum assert_mode      assert_mode;                                                             \
-    bool                  syntax_only;                                                             \
-    bool                  vmdbg_enabled;                                                           \
-    s32                   vmdbg_break_on;                                                          \
-    bool                  enable_experimental_targets;                                             \
-    struct target_triple  triple;
+	enum assembly_kind    kind;                                                                    \
+	enum assembly_opt     opt;                                                                     \
+	enum assembly_di_kind di;                                                                      \
+	bool                  reg_split;                                                               \
+	bool                  verify_llvm;                                                             \
+	bool                  run_tests;                                                               \
+	bool                  tests_minimal_output;                                                    \
+	bool                  no_api;                                                                  \
+	bool                  copy_deps;                                                               \
+	bool                  run;                                                                     \
+	bool                  print_tokens;                                                            \
+	bool                  print_ast;                                                               \
+	bool                  emit_llvm;                                                               \
+	bool                  emit_mir;                                                                \
+	bool                  emit_asm;                                                                \
+	bool                  no_bin;                                                                  \
+	bool                  no_llvm;                                                                 \
+	bool                  no_analyze;                                                              \
+	enum assert_mode      assert_mode;                                                             \
+	bool                  syntax_only;                                                             \
+	bool                  vmdbg_enabled;                                                           \
+	s32                   vmdbg_break_on;                                                          \
+	bool                  enable_experimental_targets;                                             \
+	struct target_triple  triple;
 
 struct target {
-    // Copyable content of target can be duplicated from default target, the default target is
-    // usually target containing some setup acquired from command line arguments of application.
-    TARGET_COPYABLE_CONTENT
+	// Copyable content of target can be duplicated from default target, the default target is
+	// usually target containing some setup acquired from command line arguments of application.
+	TARGET_COPYABLE_CONTENT
 
-    char *name;
-    array(char *) files;
-    array(char *) default_lib_paths;
-    array(char *) default_libs;
-    char *default_custom_linker_opt;
-    char *out_dir;
-    char *module_dir;
+	char *name;
+	array(char *) files;
+	array(char *) default_lib_paths;
+	array(char *) default_libs;
+	char *default_custom_linker_opt;
+	char *out_dir;
+	char *module_dir;
 
-    enum module_import_policy module_policy;
+	enum module_import_policy module_policy;
 
-    struct {
-        s32    argc;
-        char **argv;
-    } vm;
+	struct {
+		s32    argc;
+		char **argv;
+	} vm;
 
-    bmagic_member
+	bmagic_member
 };
 
 struct assembly {
-    const struct target *target;
-    char                *custom_linker_opt;
-    array(char *) lib_paths;
-    array(struct native_lib) libs;
-    struct string_cache *string_cache;
+	const struct target *target;
+	char                *custom_linker_opt;
+	array(char *) lib_paths;
+	array(struct native_lib) libs;
+	struct string_cache *string_cache;
 
-    struct {
-        struct scope_arenas scope;
-        struct mir_arenas   mir;
-        struct arena        ast;
-        struct arena        sarr;
-    } arenas;
+	struct {
+		struct scope_arenas scope;
+		struct mir_arenas   mir;
+		struct arena        ast;
+		struct arena        sarr;
+	} arenas;
 
-    struct {
-        array(struct mir_instr *) global_instrs; // All global instructions.
-        struct {
-            u64             key;
-            struct mir_var *value;
-        } *rtti_table; // Map type ids to RTTI variables.
-        array(struct mir_instr *) exported_instrs;
-    } MIR;
+	struct {
+		array(struct mir_instr *) global_instrs; // All global instructions.
+		struct {
+			u64             key;
+			struct mir_var *value;
+		} * rtti_table; // Map type ids to RTTI variables.
+		array(struct mir_instr *) exported_instrs;
+	} MIR;
 
-    struct {
-        array(LLVMModuleRef) modules;
-        LLVMContextRef       ctx;
-        LLVMTargetDataRef    TD;
-        LLVMTargetMachineRef TM;
-        char                *triple;
-    } llvm;
+	struct {
+		array(LLVMModuleRef) modules;
+		LLVMContextRef       ctx;
+		LLVMTargetDataRef    TD;
+		LLVMTargetMachineRef TM;
+		char                *triple;
+	} llvm;
 
-    struct {
-        array(struct mir_fn *) cases;
-        struct mir_var *meta_var;
-    } testing;
+	struct {
+		array(struct mir_fn *) cases;
+		struct mir_var *meta_var;
+	} testing;
 
-    struct {
-        struct mir_fn  *entry;                  // Main function
-        struct mir_fn  *build_entry;            // Set for build assembly
-        struct mir_var *command_line_arguments; // Command line arguments variable.
-        // Provide information whether application run in compile time or not.
-        struct mir_var *is_comptime_run;
+	struct {
+		struct mir_fn  *entry;                  // Main function
+		struct mir_fn  *build_entry;            // Set for build assembly
+		struct mir_var *command_line_arguments; // Command line arguments variable.
+		// Provide information whether application run in compile time or not.
+		struct mir_var *is_comptime_run;
 
-        // Store status of last execution of this assembly.
-        s32 last_execution_status;
-    } vm_run;
+		// Store status of last execution of this assembly.
+		s32 last_execution_status;
+	} vm_run;
 
-    // Some compilation time related runtimes, this data are reset for every compilation.
-    struct {
-        f64 parsing_lexing_s;
-        f64 mir_s;
-        f64 llvm_s;
-        f64 linking_s;
-        f64 polymorph_s;
-        s64 polymorph_count; // @Incomplete: rename to generated.
-        s64 comptime_call_stacks_count;
-    } stats;
+	// Some compilation time related runtimes, this data are reset for every compilation.
+	struct {
+		f64 parsing_lexing_s;
+		f64 mir_s;
+		f64 llvm_s;
+		f64 linking_s;
+		f64 polymorph_s;
+		s64 polymorph_count; // @Incomplete: rename to generated.
+		s64 comptime_call_stacks_count;
+	} stats;
 
-    // DynCall/Lib data used for external method execution in compile time
-    DCCallVM              *dc_vm;
-    struct virtual_machine vm;
+	// DynCall/Lib data used for external method execution in compile time
+	DCCallVM              *dc_vm;
+	struct virtual_machine vm;
 
-    array(struct unit *) units; // array of all units in assembly
-    struct scope *gscope;       // global scope of the assembly
+	array(struct unit *) units; // array of all units in assembly
+	struct scope *gscope;       // global scope of the assembly
 
-    /* Builtins */
-    struct BuiltinTypes {
+	/* Builtins */
+	struct BuiltinTypes {
 #define GEN_BUILTIN_TYPES
 #include "assembly.def"
 #undef GEN_BUILTIN_TYPES
-        bool is_rtti_ready;
-        bool is_any_ready;
-        bool is_test_cases_ready;
-    } builtin_types;
+		bool is_rtti_ready;
+		bool is_any_ready;
+		bool is_test_cases_ready;
+	} builtin_types;
 
-    struct AssemblySyncImpl *sync;
+	struct AssemblySyncImpl *sync;
 };
 
 struct target *target_new(const char *name);
@@ -294,37 +294,37 @@ DCpointer assembly_find_extern(struct assembly *assembly, const char *symbol);
 #define assembly_has_rtti(assembly, type_id) (hmgeti((assembly)->MIR.rtti_table, type_id) != -1)
 #define assembly_get_rtti(assembly, type_id) (hmget((assembly)->MIR.rtti_table, type_id))
 #define assembly_add_rtti(assembly, type_id, rtti_var)                                             \
-    hmput((assembly)->MIR.rtti_table, type_id, rtti_var)
+	hmput((assembly)->MIR.rtti_table, type_id, rtti_var)
 
 // Convert opt level to string.
 static inline const char *opt_to_str(enum assembly_opt opt)
 {
-    switch (opt) {
-    case ASSEMBLY_OPT_DEBUG:
-        return "DEBUG";
-    case ASSEMBLY_OPT_RELEASE_FAST:
-        return "RELEASE-FAST";
-    case ASSEMBLY_OPT_RELEASE_SMALL:
-        return "RELEASE-SMALL";
-    case ASSEMBLY_OPT_RELEASE_WITH_DEBUG_INFO:
-        return "RELEASE-WITH-DEBUG-INFO";
-    }
-    babort("Invalid build mode");
+	switch (opt) {
+	case ASSEMBLY_OPT_DEBUG:
+		return "DEBUG";
+	case ASSEMBLY_OPT_RELEASE_FAST:
+		return "RELEASE-FAST";
+	case ASSEMBLY_OPT_RELEASE_SMALL:
+		return "RELEASE-SMALL";
+	case ASSEMBLY_OPT_RELEASE_WITH_DEBUG_INFO:
+		return "RELEASE-WITH-DEBUG-INFO";
+	}
+	babort("Invalid build mode");
 }
 
 // Convert opt level to LLVM.
 static inline LLVMCodeGenOptLevel opt_to_LLVM(enum assembly_opt opt)
 {
-    switch (opt) {
-    case ASSEMBLY_OPT_DEBUG:
-        return LLVMCodeGenLevelNone;
-    case ASSEMBLY_OPT_RELEASE_FAST:
-        return LLVMCodeGenLevelAggressive;
-    case ASSEMBLY_OPT_RELEASE_SMALL:
-    case ASSEMBLY_OPT_RELEASE_WITH_DEBUG_INFO:
-        return LLVMCodeGenLevelDefault;
-    }
-    babort("Invalid build mode");
+	switch (opt) {
+	case ASSEMBLY_OPT_DEBUG:
+		return LLVMCodeGenLevelNone;
+	case ASSEMBLY_OPT_RELEASE_FAST:
+		return LLVMCodeGenLevelAggressive;
+	case ASSEMBLY_OPT_RELEASE_SMALL:
+	case ASSEMBLY_OPT_RELEASE_WITH_DEBUG_INFO:
+		return LLVMCodeGenLevelDefault;
+	}
+	babort("Invalid build mode");
 }
 
 #endif

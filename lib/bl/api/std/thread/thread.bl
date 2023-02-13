@@ -18,35 +18,35 @@ Thread :: _thread_impl.Handle;
 /// Create and start new thread with specified `entry` function. Pointer to custom `ctx` can be 
 /// optionally passed to the entry function here.
 thread_create :: fn (entry: ThreadEntryFn, ctx: *u8 = null) (Thread, Error) #inline {
-    return _thread_impl.create(entry, ctx);
+	return _thread_impl.create(entry, ctx);
 }
 
 /// Blocks until `thread` exits. Return value from worker function is returned as `exit_code`. When 
 /// execution is successful all thread resources are released.
 thread_join :: fn (thread: Thread) (exit_code: s32, err: Error) #inline {
-    return _thread_impl.join(thread);
+	return _thread_impl.join(thread);
 }
 
 /// Blocks until all `threads` exits. 
 thread_join_all :: fn (threads: []Thread) Error #inline {
-    loop i := 0; i < threads.len; i += 1 {
-        _, err :: _thread_impl.join(threads[i]);
-        if err { return err; }
-    }
-    return OK;
+	loop i := 0; i < threads.len; i += 1 {
+		_, err :: _thread_impl.join(threads[i]);
+		if err { return err; }
+	}
+	return OK;
 }
 
 /// Exit current thread with optional `exit_code` return value.
 thread_exit :: fn (exit_code: s32 = 0) Error #inline {
-    return _thread_impl.exit(exit_code);
+	return _thread_impl.exit(exit_code);
 }
 
 /// Gets current thread.
 thread_current :: fn () Thread #inline {
-    return _thread_impl.current();
+	return _thread_impl.current();
 }
 
 /// Gets current thread ID.
 get_thread_id :: fn () u64 #inline {
-    return _thread_impl.current_id();
+	return _thread_impl.current_id();
 }

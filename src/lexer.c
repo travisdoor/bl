@@ -33,24 +33,25 @@
 #include <string.h>
 
 #define IS_IDENT(c)                                                                                \
-    (((c) >= 'a' && (c) <= 'z') || ((c) >= 'A' && (c) <= 'Z') || ((c) >= '0' && (c) <= '9') ||     \
-     (c) == '_')
+	(((c) >= 'a' && (c) <= 'z') || ((c) >= 'A' && (c) <= 'Z') || ((c) >= '0' && (c) <= '9') ||     \
+	 (c) == '_')
 
 #define report_error(code, format, ...)                                                            \
-    {                                                                                              \
-        builder_msg(MSG_ERR, ERR_##code, NULL, CARET_NONE, (format), ##__VA_ARGS__);               \
-        longjmp((ctx)->jmp_error, ERR_##code);                                                     \
-    }(void)0
+	{                                                                                              \
+		builder_msg(MSG_ERR, ERR_##code, NULL, CARET_NONE, (format), ##__VA_ARGS__);               \
+		longjmp((ctx)->jmp_error, ERR_##code);                                                     \
+	}                                                                                              \
+	(void)0
 
 struct context {
-    struct assembly *assembly;
-    struct unit     *unit;
-    struct tokens   *tokens;
-    sarr_t(char, 64) strtmp; // @Cleanup: Use tmp string from builder.
-    jmp_buf jmp_error;
-    char   *c;
-    s32     line;
-    s32     col;
+	struct assembly *assembly;
+	struct unit     *unit;
+	struct tokens   *tokens;
+	sarr_t(char, 64) strtmp; // @Cleanup: Use tmp string from builder.
+	jmp_buf jmp_error;
+	char   *c;
+	s32     line;
+	s32     col;
 };
 
 static void       scan(struct context *ctx);
@@ -65,206 +66,206 @@ static char       scan_specch(char c);
 
 bool scan_comment(struct context *ctx, struct token *tok, const char *term)
 {
-    if (tok->sym == SYM_SHEBANG && ctx->line != 1) {
-        report_error(INVALID_TOKEN,
-                     "%s %d:%d Shebang is allowed only on the first line of the file.",
-                     ctx->unit->name,
-                     ctx->line,
-                     ctx->col);
-    }
-    const usize len = strlen(term);
-    while (true) {
-        if (*ctx->c == '\n') {
-            ctx->line++;
-            ctx->col = 1;
-        } else if (*ctx->c == '\0' && strcmp(term, "\n") != 0) {
-            // Unterminated comment
-            report_error(UNTERMINATED_COMMENT,
-                         "%s %d:%d unterminated comment block.",
-                         ctx->unit->name,
-                         ctx->line,
-                         ctx->col);
-        }
-        if (*ctx->c == SYM_EOF) return true;
-        if (strncmp(ctx->c, term, len) == 0) break;
-        ctx->c++;
-    }
-    ctx->c += len;
-    return true;
+	if (tok->sym == SYM_SHEBANG && ctx->line != 1) {
+		report_error(INVALID_TOKEN,
+		             "%s %d:%d Shebang is allowed only on the first line of the file.",
+		             ctx->unit->name,
+		             ctx->line,
+		             ctx->col);
+	}
+	const usize len = strlen(term);
+	while (true) {
+		if (*ctx->c == '\n') {
+			ctx->line++;
+			ctx->col = 1;
+		} else if (*ctx->c == '\0' && strcmp(term, "\n") != 0) {
+			// Unterminated comment
+			report_error(UNTERMINATED_COMMENT,
+			             "%s %d:%d unterminated comment block.",
+			             ctx->unit->name,
+			             ctx->line,
+			             ctx->col);
+		}
+		if (*ctx->c == SYM_EOF) return true;
+		if (strncmp(ctx->c, term, len) == 0) break;
+		ctx->c++;
+	}
+	ctx->c += len;
+	return true;
 }
 
 bool scan_docs(struct context *ctx, struct token *tok)
 {
-    bassert(token_is(tok, SYM_DCOMMENT) || token_is(tok, SYM_DGCOMMENT));
-    tok->location.line = ctx->line;
-    tok->location.col  = ctx->col;
+	bassert(token_is(tok, SYM_DCOMMENT) || token_is(tok, SYM_DGCOMMENT));
+	tok->location.line = ctx->line;
+	tok->location.col  = ctx->col;
 
-    sarrclear(&ctx->strtmp);
-    char *begin      = ctx->c;
-    s32   len_parsed = 0;
-    s32   len_str    = 0;
-    while (true) {
-        if (*ctx->c == SYM_EOF) break;
-        if (*ctx->c == '\r' || *ctx->c == '\n') break;
-        if (!len_parsed && *ctx->c == ' ') {
-            ++begin;
-        } else {
-            len_str++;
-        }
-        len_parsed++;
-        ctx->c++;
-    }
+	sarrclear(&ctx->strtmp);
+	char *begin      = ctx->c;
+	s32   len_parsed = 0;
+	s32   len_str    = 0;
+	while (true) {
+		if (*ctx->c == SYM_EOF) break;
+		if (*ctx->c == '\r' || *ctx->c == '\n') break;
+		if (!len_parsed && *ctx->c == ' ') {
+			++begin;
+		} else {
+			len_str++;
+		}
+		len_parsed++;
+		ctx->c++;
+	}
 
-    tok->value.str    = make_str(scdup(&ctx->unit->string_cache, begin, len_str), len_str);
-    tok->location.len = len_parsed + 3; // + 3 = '///'
-    ctx->col += len_parsed;
-    return true;
+	tok->value.str    = make_str(scdup(&ctx->unit->string_cache, begin, len_str), len_str);
+	tok->location.len = len_parsed + 3; // + 3 = '///'
+	ctx->col += len_parsed;
+	return true;
 }
 
 bool scan_ident(struct context *ctx, struct token *tok)
 {
-    zone();
-    tok->location.line = ctx->line;
-    tok->location.col  = ctx->col;
-    tok->sym           = SYM_IDENT;
+	zone();
+	tok->location.line = ctx->line;
+	tok->location.col  = ctx->col;
+	tok->sym           = SYM_IDENT;
 
-    char *begin = ctx->c;
+	char *begin = ctx->c;
 
-    s32 len = 0;
-    while (true) {
-        if (!IS_IDENT(*ctx->c)) {
-            break;
-        }
+	s32 len = 0;
+	while (true) {
+		if (!IS_IDENT(*ctx->c)) {
+			break;
+		}
 
-        len++;
-        ctx->c++;
-    }
+		len++;
+		ctx->c++;
+	}
 
-    if (len == 0) return_zone(false);
-    tok->value.str    = make_str(scdup(&ctx->unit->string_cache, begin, len), len);
-    tok->location.len = len;
-    ctx->col += len;
-    return_zone(true);
+	if (len == 0) return_zone(false);
+	tok->value.str    = make_str(scdup(&ctx->unit->string_cache, begin, len), len);
+	tok->location.len = len;
+	ctx->col += len;
+	return_zone(true);
 }
 
 inline char scan_specch(char c)
 {
-    switch (c) {
-    case 'n':
-        return '\n';
-    case 'r':
-        return '\r';
-    case 't':
-        return '\t';
-    case '0':
-        return '\0';
-    case '\"':
-        return '\"';
-    case '\'':
-        return '\'';
-    case '\\':
-        return '\\';
-    default:
-        return c;
-    }
+	switch (c) {
+	case 'n':
+		return '\n';
+	case 'r':
+		return '\r';
+	case 't':
+		return '\t';
+	case '0':
+		return '\0';
+	case '\"':
+		return '\"';
+	case '\'':
+		return '\'';
+	case '\\':
+		return '\\';
+	default:
+		return c;
+	}
 }
 
 bool scan_string(struct context *ctx, struct token *tok)
 {
-    if (*ctx->c != '"') return false;
-    zone();
-    sarrclear(&ctx->strtmp);
-    tok->location.line = ctx->line;
-    tok->location.col  = ctx->col;
-    tok->sym           = SYM_STRING;
-    char c;
-    s32  len = 0;
+	if (*ctx->c != '"') return false;
+	zone();
+	sarrclear(&ctx->strtmp);
+	tok->location.line = ctx->line;
+	tok->location.col  = ctx->col;
+	tok->sym           = SYM_STRING;
+	char c;
+	s32  len = 0;
 
-    // eat "
-    ctx->c++;
-    while (true) {
-        switch (*ctx->c) {
-        case '"': {
-            ctx->c++;
-            goto DONE;
-        }
-        case '\0': {
-            report_error(UNTERMINATED_STRING,
-                         "%s %d:%d unterminated string.",
-                         ctx->unit->name,
-                         ctx->line,
-                         ctx->col);
-        }
-        case '\\':
-            // special character
-            c = scan_specch(*(ctx->c + 1));
-            ctx->c += 2;
-            len += 2;
-            break;
-        default:
-            c = *ctx->c;
-            len++;
-            ctx->c++;
-        }
-        sarrput(&ctx->strtmp, c);
-    }
+	// eat "
+	ctx->c++;
+	while (true) {
+		switch (*ctx->c) {
+		case '"': {
+			ctx->c++;
+			goto DONE;
+		}
+		case '\0': {
+			report_error(UNTERMINATED_STRING,
+			             "%s %d:%d unterminated string.",
+			             ctx->unit->name,
+			             ctx->line,
+			             ctx->col);
+		}
+		case '\\':
+			// special character
+			c = scan_specch(*(ctx->c + 1));
+			ctx->c += 2;
+			len += 2;
+			break;
+		default:
+			c = *ctx->c;
+			len++;
+			ctx->c++;
+		}
+		sarrput(&ctx->strtmp, c);
+	}
 DONE:
-    tok->value.str =
-        make_str(scdup(&ctx->unit->string_cache, sarrdata(&ctx->strtmp), sarrlenu(&ctx->strtmp)),
-                 sarrlenu(&ctx->strtmp));
+	tok->value.str =
+	    make_str(scdup(&ctx->unit->string_cache, sarrdata(&ctx->strtmp), sarrlenu(&ctx->strtmp)),
+	             sarrlenu(&ctx->strtmp));
 
-    tok->location.len = len;
-    tok->location.col += 1;
-    ctx->col += len + 2;
-    return_zone(true);
+	tok->location.len = len;
+	tok->location.col += 1;
+	ctx->col += len + 2;
+	return_zone(true);
 }
 
 bool scan_char(struct context *ctx, struct token *tok)
 {
-    if (*ctx->c != '\'') return false;
-    tok->location.line = ctx->line;
-    tok->location.col  = ctx->col;
-    tok->location.len  = 0;
-    tok->sym           = SYM_CHAR;
+	if (*ctx->c != '\'') return false;
+	tok->location.line = ctx->line;
+	tok->location.col  = ctx->col;
+	tok->location.len  = 0;
+	tok->sym           = SYM_CHAR;
 
-    // eat '
-    ctx->c++;
+	// eat '
+	ctx->c++;
 
-    switch (*ctx->c) {
-    case '\'': {
-        report_error(
-            EMPTY, "%s %d:%d expected character in ''.", ctx->unit->name, ctx->line, ctx->col);
-    }
-    case '\0': {
-        report_error(UNTERMINATED_STRING,
-                     "%s %d:%d unterminated character.",
-                     ctx->unit->name,
-                     ctx->line,
-                     ctx->col);
-    }
-    case '\\':
-        // special character
-        tok->value.c = scan_specch(*(ctx->c + 1));
-        ctx->c += 2;
-        tok->location.len = 2;
-        break;
-    default:
-        tok->value.c      = *ctx->c;
-        tok->location.len = 1;
-        ctx->c++;
-    }
+	switch (*ctx->c) {
+	case '\'': {
+		report_error(
+		    EMPTY, "%s %d:%d expected character in ''.", ctx->unit->name, ctx->line, ctx->col);
+	}
+	case '\0': {
+		report_error(UNTERMINATED_STRING,
+		             "%s %d:%d unterminated character.",
+		             ctx->unit->name,
+		             ctx->line,
+		             ctx->col);
+	}
+	case '\\':
+		// special character
+		tok->value.c = scan_specch(*(ctx->c + 1));
+		ctx->c += 2;
+		tok->location.len = 2;
+		break;
+	default:
+		tok->value.c      = *ctx->c;
+		tok->location.len = 1;
+		ctx->c++;
+	}
 
-    // eat '
-    if (*ctx->c != '\'') {
-        report_error(UNTERMINATED_STRING,
-                     "%s %d:%d unterminated character expected '.",
-                     ctx->unit->name,
-                     ctx->line,
-                     ctx->col);
-    }
-    ctx->c++;
+	// eat '
+	if (*ctx->c != '\'') {
+		report_error(UNTERMINATED_STRING,
+		             "%s %d:%d unterminated character expected '.",
+		             ctx->unit->name,
+		             ctx->line,
+		             ctx->col);
+	}
+	ctx->c++;
 
-    return true;
+	return true;
 }
 
 inline int c_to_number(char c, s32 base)
@@ -273,29 +274,29 @@ inline int c_to_number(char c, s32 base)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 #endif
-    switch (base) {
-    case 16:
-        if (c >= 'a' && c <= 'f') {
-            return c - 'a' + 10;
-        }
+	switch (base) {
+	case 16:
+		if (c >= 'a' && c <= 'f') {
+			return c - 'a' + 10;
+		}
 
-        if (c >= 'A' && c <= 'F') {
-            return c - 'A' + 10;
-        }
-    case 10:
-        if (c >= '2' && c <= '9') {
-            return c - '0';
-        }
-    case 2:
-        if (c == '0' || c == '1') {
-            return c - '0';
-        }
-        break;
-    default:
-        babort("invalid number base");
-    }
+		if (c >= 'A' && c <= 'F') {
+			return c - 'A' + 10;
+		}
+	case 10:
+		if (c >= '2' && c <= '9') {
+			return c - '0';
+		}
+	case 2:
+		if (c == '0' || c == '1') {
+			return c - '0';
+		}
+		break;
+	default:
+		babort("invalid number base");
+	}
 
-    return -1;
+	return -1;
 #ifndef _MSC_VER
 #pragma GCC diagnostic pop
 #endif
@@ -303,234 +304,233 @@ inline int c_to_number(char c, s32 base)
 
 bool scan_number(struct context *ctx, struct token *tok)
 {
-    tok->location.line = ctx->line;
-    tok->location.col  = ctx->col;
-    // tok->value.str     = ctx->c; @Incomplete: check this
-    tok->overflow = false;
+	tok->location.line = ctx->line;
+	tok->location.col  = ctx->col;
+	// tok->value.str     = ctx->c; @Incomplete: check this
+	tok->overflow = false;
 
-    u64 n = 0, prev_n = 0;
-    s32 len  = 0;
-    s32 base = 10;
-    s32 buf  = 0;
+	u64 n = 0, prev_n = 0;
+	s32 len  = 0;
+	s32 base = 10;
+	s32 buf  = 0;
 
-    if (strncmp(ctx->c, "0x", 2) == 0) {
-        base = 16;
-        ctx->c += 2;
-        len += 2;
-    } else if (strncmp(ctx->c, "0b", 2) == 0) {
-        base = 2;
-        ctx->c += 2;
-        len += 2;
-    }
+	if (strncmp(ctx->c, "0x", 2) == 0) {
+		base = 16;
+		ctx->c += 2;
+		len += 2;
+	} else if (strncmp(ctx->c, "0b", 2) == 0) {
+		base = 2;
+		ctx->c += 2;
+		len += 2;
+	}
 
-    while (true) {
-        if (*(ctx->c) == '.') {
+	while (true) {
+		if (*(ctx->c) == '.') {
 
-            if (base != 10) {
-                report_error(INVALID_TOKEN,
-                             "%s %d:%d invalid suffix.",
-                             ctx->unit->name,
-                             ctx->line,
-                             ctx->col + len);
-            }
+			if (base != 10) {
+				report_error(INVALID_TOKEN,
+				             "%s %d:%d invalid suffix.",
+				             ctx->unit->name,
+				             ctx->line,
+				             ctx->col + len);
+			}
 
-            len++;
-            ctx->c++;
-            goto SCAN_DOUBLE;
-        }
+			len++;
+			ctx->c++;
+			goto SCAN_DOUBLE;
+		}
 
-        buf = c_to_number(*(ctx->c), base);
-        if (buf == -1) {
-            break;
-        }
+		buf = c_to_number(*(ctx->c), base);
+		if (buf == -1) {
+			break;
+		}
 
-        prev_n = n;
-        n      = n * base + buf;
+		prev_n = n;
+		n      = n * base + buf;
 
-        len++;
-        ctx->c++;
-        if (n < prev_n) tok->overflow = true;
-    }
+		len++;
+		ctx->c++;
+		if (n < prev_n) tok->overflow = true;
+	}
 
-    if (len == 0) return false;
+	if (len == 0) return false;
 
-    tok->location.len = len;
-    ctx->col += len;
-    tok->sym     = SYM_NUM;
-    tok->value.u = n;
-    return true;
+	tok->location.len = len;
+	ctx->col += len;
+	tok->sym     = SYM_NUM;
+	tok->value.u = n;
+	return true;
 
 SCAN_DOUBLE : {
-    u64 e = 1;
+	u64 e = 1;
 
-    while (true) {
-        buf = c_to_number(*(ctx->c), 10);
-        if (buf == -1) {
-            break;
-        }
+	while (true) {
+		buf = c_to_number(*(ctx->c), 10);
+		if (buf == -1) {
+			break;
+		}
 
-        prev_n = n;
-        n      = n * 10 + buf;
-        e *= 10;
-        len++;
-        ctx->c++;
+		prev_n = n;
+		n      = n * 10 + buf;
+		e *= 10;
+		len++;
+		ctx->c++;
 
-        if (n < prev_n) tok->overflow = true;
-    }
+		if (n < prev_n) tok->overflow = true;
+	}
 
-    // valid d. or .d -> minimal 2 characters
-    if (len < 2) return false;
+	// valid d. or .d -> minimal 2 characters
+	if (len < 2) return false;
 
-    if (*(ctx->c) == 'f') {
-        len++;
-        ctx->c++;
-        tok->sym = SYM_FLOAT;
-    } else {
-        tok->sym = SYM_DOUBLE;
-    }
+	if (*(ctx->c) == 'f') {
+		len++;
+		ctx->c++;
+		tok->sym = SYM_FLOAT;
+	} else {
+		tok->sym = SYM_DOUBLE;
+	}
 
-    tok->value.d = n / (f64)e;
-    if (tok->value.d > FLT_MAX) tok->overflow = true;
+	tok->value.d = n / (f64)e;
+	if (tok->value.d > FLT_MAX) tok->overflow = true;
 
-    tok->location.len = len;
-    ctx->col += len;
+	tok->location.len = len;
+	ctx->col += len;
 
-    return true;
+	return true;
 }
 }
 
 void scan(struct context *ctx)
 {
-    struct token tok = {0};
+	struct token tok = {0};
 SCAN:
-    tok.location.line = ctx->line;
-    tok.location.col  = ctx->col;
+	tok.location.line = ctx->line;
+	tok.location.col  = ctx->col;
 
-    // Ignored characters
-    switch (*ctx->c) {
-    case '\0':
-        tok.sym = SYM_EOF;
-        tokens_push(ctx->tokens, tok);
-        return;
-    case '\r':
-        ctx->c++;
-        goto SCAN;
-    case '\n':
-        ctx->line++;
-        ctx->col = 1;
-        ctx->c++;
-        goto SCAN;
-    case '\t':
-        // TODO: can be set by user
-        ctx->col += 4;
-        ctx->c++;
-        goto SCAN;
-    case ' ':
-        ctx->col++;
-        ctx->c++;
-        goto SCAN;
-    default:
-        break;
-    }
+	// Ignored characters
+	switch (*ctx->c) {
+	case '\0':
+		tok.sym = SYM_EOF;
+		tokens_push(ctx->tokens, tok);
+		return;
+	case '\r':
+		ctx->c++;
+		goto SCAN;
+	case '\n':
+		ctx->line++;
+		ctx->col = 1;
+		ctx->c++;
+		goto SCAN;
+	case '\t':
+		ctx->col += 1;
+		ctx->c++;
+		goto SCAN;
+	case ' ':
+		ctx->col++;
+		ctx->c++;
+		goto SCAN;
+	default:
+		break;
+	}
 
-    // Scan symbols described directly as strings.
-    usize      len                   = 0;
-    const bool is_current_char_ident = IS_IDENT(*ctx->c);
-    const s32  start                 = is_current_char_ident ? SYM_IF : SYM_UNREACHABLE + 1;
-    const s32  end                   = is_current_char_ident ? SYM_UNREACHABLE + 1 : SYM_NONE;
-    for (s32 i = start; i < end; ++i) {
-        len = sym_lens[i];
-        bassert(len > 0);
-        if (ctx->c[0] == sym_strings[i][0] && strncmp(ctx->c, sym_strings[i], len) == 0) {
-            ctx->c += len;
-            tok.sym          = (enum sym)i;
-            tok.location.len = (s32)len;
+	// Scan symbols described directly as strings.
+	usize      len                   = 0;
+	const bool is_current_char_ident = IS_IDENT(*ctx->c);
+	const s32  start                 = is_current_char_ident ? SYM_IF : SYM_UNREACHABLE + 1;
+	const s32  end                   = is_current_char_ident ? SYM_UNREACHABLE + 1 : SYM_NONE;
+	for (s32 i = start; i < end; ++i) {
+		len = sym_lens[i];
+		bassert(len > 0);
+		if (ctx->c[0] == sym_strings[i][0] && strncmp(ctx->c, sym_strings[i], len) == 0) {
+			ctx->c += len;
+			tok.sym          = (enum sym)i;
+			tok.location.len = (s32)len;
 
-            // Two joined symbols will be parsed as identifier.
-            if (i >= SYM_IF && i <= SYM_UNREACHABLE && IS_IDENT(*ctx->c)) {
-                // roll back
-                ctx->c -= len;
-                break;
-            }
+			// Two joined symbols will be parsed as identifier.
+			if (i >= SYM_IF && i <= SYM_UNREACHABLE && IS_IDENT(*ctx->c)) {
+				// roll back
+				ctx->c -= len;
+				break;
+			}
 
 #ifndef _MSC_VER
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 #endif
-            switch (tok.sym) {
-            case SYM_DCOMMENT:
-            case SYM_DGCOMMENT:
-                if (ctx->assembly && ctx->assembly->target->kind == ASSEMBLY_DOCS) {
-                    scan_docs(ctx, &tok);
-                    goto PUSH_TOKEN;
-                }
-            case SYM_SHEBANG:
-            case SYM_LCOMMENT:
-                scan_comment(ctx, &tok, "\n");
-                goto SCAN;
-            case SYM_LBCOMMENT:
-                scan_comment(ctx, &tok, sym_strings[SYM_RBCOMMENT]);
-                goto SCAN;
-            case SYM_RBCOMMENT: {
-                report_error(INVALID_TOKEN,
-                             "%s %d:%d unexpected token.",
-                             ctx->unit->name,
-                             ctx->line,
-                             ctx->col);
-            }
-            default:
-                ctx->col += (s32)len;
-                goto PUSH_TOKEN;
-            }
+			switch (tok.sym) {
+			case SYM_DCOMMENT:
+			case SYM_DGCOMMENT:
+				if (ctx->assembly && ctx->assembly->target->kind == ASSEMBLY_DOCS) {
+					scan_docs(ctx, &tok);
+					goto PUSH_TOKEN;
+				}
+			case SYM_SHEBANG:
+			case SYM_LCOMMENT:
+				scan_comment(ctx, &tok, "\n");
+				goto SCAN;
+			case SYM_LBCOMMENT:
+				scan_comment(ctx, &tok, sym_strings[SYM_RBCOMMENT]);
+				goto SCAN;
+			case SYM_RBCOMMENT: {
+				report_error(INVALID_TOKEN,
+				             "%s %d:%d unexpected token.",
+				             ctx->unit->name,
+				             ctx->line,
+				             ctx->col);
+			}
+			default:
+				ctx->col += (s32)len;
+				goto PUSH_TOKEN;
+			}
 #ifndef _MSC_VER
 #pragma GCC diagnostic pop
 #endif
-        }
-    }
+		}
+	}
 
-    // Scan special tokens.
-    if (scan_number(ctx, &tok)) goto PUSH_TOKEN;
-    if (scan_ident(ctx, &tok)) goto PUSH_TOKEN;
-    if (scan_string(ctx, &tok)) goto PUSH_TOKEN;
-    if (scan_char(ctx, &tok)) goto PUSH_TOKEN;
+	// Scan special tokens.
+	if (scan_number(ctx, &tok)) goto PUSH_TOKEN;
+	if (scan_ident(ctx, &tok)) goto PUSH_TOKEN;
+	if (scan_string(ctx, &tok)) goto PUSH_TOKEN;
+	if (scan_char(ctx, &tok)) goto PUSH_TOKEN;
 
-    // When symbol is unknown report error
-    report_error(INVALID_TOKEN,
-                 "%s %d:%d Unexpected token '%c' (%d)",
-                 ctx->unit->name,
-                 ctx->line,
-                 ctx->col,
-                 *ctx->c,
-                 *ctx->c);
+	// When symbol is unknown report error
+	report_error(INVALID_TOKEN,
+	             "%s %d:%d Unexpected token '%c' (%d)",
+	             ctx->unit->name,
+	             ctx->line,
+	             ctx->col,
+	             *ctx->c,
+	             *ctx->c);
 PUSH_TOKEN:
-    tok.location.unit = ctx->unit;
-    tokens_push(ctx->tokens, tok);
+	tok.location.unit = ctx->unit;
+	tokens_push(ctx->tokens, tok);
 
-    goto SCAN;
+	goto SCAN;
 }
 
 void lexer_run(struct assembly *assembly, struct unit *unit)
 {
-    struct context ctx = {
-        .assembly = assembly,
-        .tokens   = &unit->tokens,
-        .unit     = unit,
-        .c        = unit->src,
-        .line     = 1,
-        .col      = 1,
-        .strtmp   = SARR_ZERO,
-    };
+	struct context ctx = {
+	    .assembly = assembly,
+	    .tokens   = &unit->tokens,
+	    .unit     = unit,
+	    .c        = unit->src,
+	    .line     = 1,
+	    .col      = 1,
+	    .strtmp   = SARR_ZERO,
+	};
 
-    zone();
-    s32 error = 0;
-    if ((error = setjmp(ctx.jmp_error))) {
-        sarrfree(&ctx.strtmp);
-        return_zone();
-    }
+	zone();
+	s32 error = 0;
+	if ((error = setjmp(ctx.jmp_error))) {
+		sarrfree(&ctx.strtmp);
+		return_zone();
+	}
 
-    scan(&ctx);
-    sarrfree(&ctx.strtmp);
+	scan(&ctx);
+	sarrfree(&ctx.strtmp);
 
-    builder.total_lines += ctx.line;
-    return_zone();
+	builder.total_lines += ctx.line;
+	return_zone();
 }

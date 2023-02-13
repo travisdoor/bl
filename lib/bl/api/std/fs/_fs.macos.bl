@@ -8,281 +8,281 @@ File :: C.int;
 FILE_INVALID : File : -1;
 
 exist :: fn (filepath: string_view) bool #inline {
-    if filepath.len == 0 { return false; }
-    tmp: C.stat_t;
-    return C.stat(std.strtoc(filepath), &tmp) == 0;
+	if filepath.len == 0 { return false; }
+	tmp: C.stat_t;
+	return C.stat(std.strtoc(filepath), &tmp) == 0;
 }
 
 open :: fn (filepath: string_view, mode: std.OpenFileMode) (File, Error) {
-    if std.str_is_empty(filepath) { return 0, error(ERR_INVALID_HANDLE, "File path is empty!"); }
-    flags :: modes_to_flags(mode);
-    mode_flags : C.mode_t : 0x1A4; // 0644
-    handle :: C.open(std.strtoc(filepath), flags, 0);
-    if handle < 0 { // error
-        ec, estr :: os_get_last_error();
-        return 0, error(ec, "Cannot open file '%': %.", filepath, estr);
-    }    
-    // This is for some reason required on some versions on macOS.
-    if C.fchmod(handle, mode_flags) < 0 {
-        ec, estr :: os_get_last_error();
-        return 0, error(ec, "Cannot set file permissions '%': %.", filepath, estr);
-    }    
-    return handle, OK;   
+	if std.str_is_empty(filepath) { return 0, error(ERR_INVALID_HANDLE, "File path is empty!"); }
+	flags :: modes_to_flags(mode);
+	mode_flags : C.mode_t : 0x1A4; // 0644
+	handle :: C.open(std.strtoc(filepath), flags, 0);
+	if handle < 0 { // error
+		ec, estr :: os_get_last_error();
+		return 0, error(ec, "Cannot open file '%': %.", filepath, estr);
+	}    
+	// This is for some reason required on some versions on macOS.
+	if C.fchmod(handle, mode_flags) < 0 {
+		ec, estr :: os_get_last_error();
+		return 0, error(ec, "Cannot set file permissions '%': %.", filepath, estr);
+	}    
+	return handle, OK;   
 }
 
 remove :: fn (filepath: string_view) Error #inline {
-    if std.str_is_empty(filepath) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
-    if C.unlink(std.strtoc(filepath)) != 0 {
-        ec, estr :: os_get_last_error();
-        return error(ec, "Cannot remove file '%': %.", filepath, estr);
-    }
-    return OK;
+	if std.str_is_empty(filepath) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
+	if C.unlink(std.strtoc(filepath)) != 0 {
+		ec, estr :: os_get_last_error();
+		return error(ec, "Cannot remove file '%': %.", filepath, estr);
+	}
+	return OK;
 }
 
 get_uid :: fn (handle: File) (u64, Error) {
-    tmp: C.stat_t;
-    if C.fstat(auto handle, &tmp) != 0 {
-        ec, estr :: os_get_last_error();
-        return 0, error(ec, "Cannot get file information.", estr);
-    }
-    return auto tmp.st_ino, OK;
+	tmp: C.stat_t;
+	if C.fstat(auto handle, &tmp) != 0 {
+		ec, estr :: os_get_last_error();
+		return 0, error(ec, "Cannot get file information.", estr);
+	}
+	return auto tmp.st_ino, OK;
 }
 
 get_uid_by_name :: fn (filepath: string_view) (u64, Error) {
-    file, err1 :: open(filepath, std.OpenFileMode.READ);
-    defer close(file);
-    if err1 { return 0, err1; }
-    return get_uid(file);
+	file, err1 :: open(filepath, std.OpenFileMode.READ);
+	defer close(file);
+	if err1 { return 0, err1; }
+	return get_uid(file);
 }
 
 copy :: fn (src: string_view, dest: string_view, override: bool) Error {
-    if std.str_is_empty(src) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
-    if std.str_is_empty(dest) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
-    if exist(dest) && !override { return error(ERR_ALREADY_EXIST, "Destination already exist '%'", dest); }
+	if std.str_is_empty(src) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
+	if std.str_is_empty(dest) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
+	if exist(dest) && !override { return error(ERR_ALREADY_EXIST, "Destination already exist '%'", dest); }
 
-    src_stream, err_src :: std.open_file(src, std.OpenFileMode.READ);
-    defer std.close_file(&src_stream);
-    if err_src { return err_src; }
+	src_stream, err_src :: std.open_file(src, std.OpenFileMode.READ);
+	defer std.close_file(&src_stream);
+	if err_src { return err_src; }
 
-    dest_stream, err_dest :: std.open_file(dest, make_flags(std.OpenFileMode.READ, std.OpenFileMode.CREATE));
-    defer std.close_file(&dest_stream);
-    if err_dest { return err_dest; }
+	dest_stream, err_dest :: std.open_file(dest, make_flags(std.OpenFileMode.READ, std.OpenFileMode.CREATE));
+	defer std.close_file(&dest_stream);
+	if err_dest { return err_dest; }
 
-    tmp: [1024 * 64]u8 #noinit;
-    loop {
-        read_bytes, read_err :: std.read(&src_stream, tmp.ptr, tmp.len);
-        if read_err { return read_err; }
-        if read_bytes == 0 { break; }
-        write_bytes, write_err :: std.write(&dest_stream, tmp.ptr, read_bytes);
-        if write_err { return write_err; }
-        if read_bytes != write_bytes { return error("Failed to copy '%' to '%'", src, dest); }
-    }
-    return OK;
+	tmp: [1024 * 64]u8 #noinit;
+	loop {
+		read_bytes, read_err :: std.read(&src_stream, tmp.ptr, tmp.len);
+		if read_err { return read_err; }
+		if read_bytes == 0 { break; }
+		write_bytes, write_err :: std.write(&dest_stream, tmp.ptr, read_bytes);
+		if write_err { return write_err; }
+		if read_bytes != write_bytes { return error("Failed to copy '%' to '%'", src, dest); }
+	}
+	return OK;
 }
 
 close :: fn (handle: File) #inline {
-    C.close(auto handle);
+	C.close(auto handle);
 }
 
 create_dir :: fn (dirpath: string_view) Error {
-    if std.str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot create directory, dirpath is empty."); }
-    mode : C.mode_t : 0x1ED; // 0755
-    if C.mkdir(std.strtoc(dirpath), mode) != 0 {
-        ec, estr :: os_get_last_error();
-        return error(ec, "Cannot create directory '%': %.", dirpath, estr);
-    }
-    return OK;
+	if std.str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot create directory, dirpath is empty."); }
+	mode : C.mode_t : 0x1ED; // 0755
+	if C.mkdir(std.strtoc(dirpath), mode) != 0 {
+		ec, estr :: os_get_last_error();
+		return error(ec, "Cannot create directory '%': %.", dirpath, estr);
+	}
+	return OK;
 }
 
 remove_dir :: fn (dirpath: string_view) Error {
-    if std.str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot remove directory, dirpath is empty."); }
-    if C.rmdir(auto dirpath.ptr)!= 0 {
-        ec, estr :: os_get_last_error();
-        return error(ec, "Cannot remove directory '%': %.", dirpath, estr);
-    }
-    return OK;
+	if std.str_is_empty(dirpath) { return error(ERR_INVALID_HANDLE, "Cannot remove directory, dirpath is empty."); }
+	if C.rmdir(auto dirpath.ptr)!= 0 {
+		ec, estr :: os_get_last_error();
+		return error(ec, "Cannot remove directory '%': %.", dirpath, estr);
+	}
+	return OK;
 }
 
 visit_files :: fn (dirpath: string_view, is_recursive: bool, leaf_first: bool, visitor: *fn(info: *std.Info, ctx: *u8) Error, ctx: *u8 = null) Error #inline {
-    using std;
-    directory := str_new(dirpath);
-    defer str_delete(&directory);
-    err :: normalize(&directory);
-    if err { return err; }
+	using std;
+	directory := str_new(dirpath);
+	defer str_delete(&directory);
+	err :: normalize(&directory);
+	if err { return err; }
 
-    dir := C.opendir(strtoc(directory));
-    if !dir {
-        ec, estr :: os_get_last_error();
-        return error(ec, "Cannot list directory '%': %.", dirpath, estr);
-    }
-    defer C.closedir(dir);
+	dir := C.opendir(strtoc(directory));
+	if !dir {
+		ec, estr :: os_get_last_error();
+		return error(ec, "Cannot list directory '%': %.", dirpath, estr);
+	}
+	defer C.closedir(dir);
 
-    filepath :: str_new();
-    defer str_delete(&filepath);
-    loop {
-        stat :: C.readdir(dir);
-        if stat == null { break; }
-        info: Info;
-        info.is_directory = stat.d_type == auto C.DT_DIR;
-        info.filename = ctostr(stat.d_name.ptr);
-        if (!str_match(info.filename, ".")) && (!str_match(info.filename, "..")) {
-            str_clear_concat(&filepath, directory, "/", info.filename);
-            info.filepath = filepath;
-            if !leaf_first {
-                visit_err :: visitor(&info, ctx);
-                if visit_err { return visit_err; }
-            }
-            if is_recursive && info.is_directory {
-                err :: _fs_impl.visit_files(filepath, is_recursive, leaf_first, visitor, ctx);
-                if err { return err; }
-            }
-            if leaf_first {
-                visit_err :: visitor(&info, ctx);
-                if visit_err { return visit_err; }
-            }
-        }
-    }
-    return OK;
+	filepath :: str_new();
+	defer str_delete(&filepath);
+	loop {
+		stat :: C.readdir(dir);
+		if stat == null { break; }
+		info: Info;
+		info.is_directory = stat.d_type == auto C.DT_DIR;
+		info.filename = ctostr(stat.d_name.ptr);
+		if (!str_match(info.filename, ".")) && (!str_match(info.filename, "..")) {
+			str_clear_concat(&filepath, directory, "/", info.filename);
+			info.filepath = filepath;
+			if !leaf_first {
+				visit_err :: visitor(&info, ctx);
+				if visit_err { return visit_err; }
+			}
+			if is_recursive && info.is_directory {
+				err :: _fs_impl.visit_files(filepath, is_recursive, leaf_first, visitor, ctx);
+				if err { return err; }
+			}
+			if leaf_first {
+				visit_err :: visitor(&info, ctx);
+				if visit_err { return visit_err; }
+			}
+		}
+	}
+	return OK;
 }
 
 is_directory :: fn (path: string_view) (bool, Error) #inline {
-    if std.str_is_empty(path) { return false, error(ERR_INVALID_HANDLE, "Path is empty."); }
-    stat: C.stat_t #noinit;
-    if C.stat(std.strtoc(path), &stat) != 0 {
-        ec, estr :: os_get_last_error();
-        return false, error(ec, "Cannot check directory '%': %.", path, estr);
-    }
-    return C.S_ISDIR(stat.st_mode), OK;
+	if std.str_is_empty(path) { return false, error(ERR_INVALID_HANDLE, "Path is empty."); }
+	stat: C.stat_t #noinit;
+	if C.stat(std.strtoc(path), &stat) != 0 {
+		ec, estr :: os_get_last_error();
+		return false, error(ec, "Cannot check directory '%': %.", path, estr);
+	}
+	return C.S_ISDIR(stat.st_mode), OK;
 }
 
 validate_filename :: fn (name: string_view) bool {
-    if name.len == 0 { return false; }
-    invalid :: "/";
-    loop i := 0; i < invalid.len; i += 1 {
-        if std.str_count_of(name, invalid[i]) > 0 { return false; }
-    }
-    return true;
+	if name.len == 0 { return false; }
+	invalid :: "/";
+	loop i := 0; i < invalid.len; i += 1 {
+		if std.str_count_of(name, invalid[i]) > 0 { return false; }
+	}
+	return true;
 }
 
 get_cwd :: fn () string #inline {
-    buf: [OS_PATH_MAX]u8;
-    if !C.getcwd(auto buf.ptr, auto buf.len) { return std.str_new(); }
-    path :: std.str_new(buf.ptr);
-    remove_last_separator(&path);
-    return path;
+	buf: [OS_PATH_MAX]u8;
+	if !C.getcwd(auto buf.ptr, auto buf.len) { return std.str_new(); }
+	path :: std.str_new(buf.ptr);
+	remove_last_separator(&path);
+	return path;
 }
 
 set_cwd :: fn (path: string_view) Error #inline {
-    if std.str_is_empty(path) { return error(ERR_INVALID_HANDLE, "Path is empty!"); }
-    if C.chdir(std.strtoc(path)) != 0 {
-        ec, estr :: os_get_last_error();
-        return error(ec, "Cannot set current directory to '%': %.", path, estr);
-    }
-    return OK;
+	if std.str_is_empty(path) { return error(ERR_INVALID_HANDLE, "Path is empty!"); }
+	if C.chdir(std.strtoc(path)) != 0 {
+		ec, estr :: os_get_last_error();
+		return error(ec, "Cannot set current directory to '%': %.", path, estr);
+	}
+	return OK;
 }
 
 get_home :: fn () string #inline {
-    tmp :: "HOME";
-    cdir :: cast(*u8) C.getenv(auto tmp.ptr);
-    if !cdir { return std.str_new(); }
-    path :: std.str_new(cdir);
-    remove_last_separator(&path);
-    return path;
+	tmp :: "HOME";
+	cdir :: cast(*u8) C.getenv(auto tmp.ptr);
+	if !cdir { return std.str_new(); }
+	path :: std.str_new(cdir);
+	remove_last_separator(&path);
+	return path;
 }
 
 get_tmp :: fn () string #inline {
-    tmp :: "TMPDIR";
-    cdir :: cast(*u8) C.getenv(auto tmp.ptr);
-    if !cdir { return std.str_new("/tmp"); }
-    path :: std.str_new(cdir);
-    remove_last_separator(&path);
-    return path;
+	tmp :: "TMPDIR";
+	cdir :: cast(*u8) C.getenv(auto tmp.ptr);
+	if !cdir { return std.str_new("/tmp"); }
+	path :: std.str_new(cdir);
+	remove_last_separator(&path);
+	return path;
 }
 
 normalize :: fn (filepath: *string) Error {
-    if !filepath { return error(ERR_INVALID_HANDLE, "File path is null!"); }
-    if std.str_is_empty(@filepath) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
-    buf : [OS_PATH_MAX]u8;
-    in_buf : [OS_PATH_MAX]u8;
+	if !filepath { return error(ERR_INVALID_HANDLE, "File path is null!"); }
+	if std.str_is_empty(@filepath) { return error(ERR_INVALID_HANDLE, "File path is empty!"); }
+	buf : [OS_PATH_MAX]u8;
+	in_buf : [OS_PATH_MAX]u8;
 
-    if !is_path_absolute(@filepath) {
-        cwd :: get_cwd();
-        defer std.str_delete(&cwd);
-        bprint(in_buf, "%/%", cwd, @filepath);
-    } else {
-        bprint(in_buf, "%", @filepath);
-    }
-    if !C.realpath(auto in_buf.ptr, auto buf.ptr) {
-        ec, estr :: os_get_last_error();
-        return error(ec, "Cannot normalize '%': %.", @filepath, estr);
-    }
-    std.str_clear(filepath);
-    std.str_append(filepath, std.ctostr(auto buf.ptr));
-    return OK;
+	if !is_path_absolute(@filepath) {
+		cwd :: get_cwd();
+		defer std.str_delete(&cwd);
+		bprint(in_buf, "%/%", cwd, @filepath);
+	} else {
+		bprint(in_buf, "%", @filepath);
+	}
+	if !C.realpath(auto in_buf.ptr, auto buf.ptr) {
+		ec, estr :: os_get_last_error();
+		return error(ec, "Cannot normalize '%': %.", @filepath, estr);
+	}
+	std.str_clear(filepath);
+	std.str_append(filepath, std.ctostr(auto buf.ptr));
+	return OK;
 }
 
 read :: fn (stream: *std.FileStream, dest: *u8, bytes_to_read: s64) (s64, Error) {
-    if !dest { return 0, error(ERR_INVALID_HANDLE, "Cannot read, destination is invalid."); }
-    read :: C.read(auto stream.handle, auto dest, auto bytes_to_read);
-    if read < 0 {
-        ec, estr :: os_get_last_error();
-        return 0, error(ec, "Cannot read file: %", estr);
-    }
-    return auto read, OK;
+	if !dest { return 0, error(ERR_INVALID_HANDLE, "Cannot read, destination is invalid."); }
+	read :: C.read(auto stream.handle, auto dest, auto bytes_to_read);
+	if read < 0 {
+		ec, estr :: os_get_last_error();
+		return 0, error(ec, "Cannot read file: %", estr);
+	}
+	return auto read, OK;
 }
 
 write :: fn (stream: *std.FileStream, src: *u8, bytes_to_write: s64) (s64, Error) {
-    if !src { return 0, error(ERR_INVALID_HANDLE, "Cannot write, source is invalid."); }
-    written :: C.write(auto stream.handle, auto src, auto bytes_to_write);
-    if written < 0 {
-        ec, estr :: os_get_last_error();
-        return 0, error(ec, "Cannot write to file: %.", estr);
-    }
-    return auto written, OK;
+	if !src { return 0, error(ERR_INVALID_HANDLE, "Cannot write, source is invalid."); }
+	written :: C.write(auto stream.handle, auto src, auto bytes_to_write);
+	if written < 0 {
+		ec, estr :: os_get_last_error();
+		return 0, error(ec, "Cannot write to file: %.", estr);
+	}
+	return auto written, OK;
 }
 
 seek :: fn (stream: *std.FileStream, locator: std.StreamLocator, offset: s64) (s64, Error) {
-    move_method := C.SEEK_CUR;
-    using std.StreamLocator;
-    switch locator {
-        CURRENT;
-        BEGIN { move_method = C.SEEK_SET; }
-        END { move_method = C.SEEK_END; }
-    }
-    position :: C.lseek(auto stream.handle, offset, move_method);
-    if position < 0 {
-        ec, estr :: os_get_last_error();
-        return 0, error(ec, "Cannot get file pointer: %", estr);
-    }
-    return position, OK;
+	move_method := C.SEEK_CUR;
+	using std.StreamLocator;
+	switch locator {
+		CURRENT;
+		BEGIN { move_method = C.SEEK_SET; }
+		END { move_method = C.SEEK_END; }
+	}
+	position :: C.lseek(auto stream.handle, offset, move_method);
+	if position < 0 {
+		ec, estr :: os_get_last_error();
+		return 0, error(ec, "Cannot get file pointer: %", estr);
+	}
+	return position, OK;
 }
 
 #private
 modes_to_flags :: fn (modes: std.OpenFileMode) s32 #inline {
-    r, w, create, append := false;
-    if is_flag(modes, std.OpenFileMode.READ) { r = true; }
-    if is_flag(modes, std.OpenFileMode.WRITE) { w = true; }
-    if is_flag(modes, std.OpenFileMode.APPEND) { w = true; append = true; }
-    if is_flag(modes, std.OpenFileMode.CREATE) { create = true; }
-    flags: s32;
-    if ((!w) && (!r)) { flags = C.O_RDONLY; }
-    else if (w && r) { flags = C.O_RDWR; }
-    else if w { flags = C.O_WRONLY; }
-    else if r { flags = C.O_RDONLY; }
-    if create { flags = flags | C.O_CREAT; }
-    if append { flags = flags | C.O_APPEND; }
-    if w && !append { flags = flags | C.O_TRUNC; }
-    return flags;
+	r, w, create, append := false;
+	if is_flag(modes, std.OpenFileMode.READ) { r = true; }
+	if is_flag(modes, std.OpenFileMode.WRITE) { w = true; }
+	if is_flag(modes, std.OpenFileMode.APPEND) { w = true; append = true; }
+	if is_flag(modes, std.OpenFileMode.CREATE) { create = true; }
+	flags: s32;
+	if ((!w) && (!r)) { flags = C.O_RDONLY; }
+	else if (w && r) { flags = C.O_RDWR; }
+	else if w { flags = C.O_WRONLY; }
+	else if r { flags = C.O_RDONLY; }
+	if create { flags = flags | C.O_CREAT; }
+	if append { flags = flags | C.O_APPEND; }
+	if w && !append { flags = flags | C.O_TRUNC; }
+	return flags;
 }
 
 remove_last_separator :: fn (path: *string) {
-    if std.str_is_empty(@path) { return; }
-    if (@path)[path.len-1] == '/' {
-        (@path)[path.len-1] = '\0';
-        path.len -= 1;
-    }
+	if std.str_is_empty(@path) { return; }
+	if (@path)[path.len-1] == '/' {
+		(@path)[path.len-1] = '\0';
+		path.len -= 1;
+	}
 }
 
 is_path_absolute :: fn (path: string) bool #inline {
-    return path.len > 0 && path[0] == '/';
+	return path.len > 0 && path[0] == '/';
 }

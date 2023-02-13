@@ -41,45 +41,45 @@ typedef void (*unit_stage_fn_t)(struct assembly *, struct unit *);
 typedef void (*assembly_stage_fn_t)(struct assembly *);
 
 struct builder_options {
-    bool  verbose;
-    bool  no_color;
-    bool  silent;
-    bool  no_jobs;
-    bool  no_warning;
-    bool  full_path_reports;
-    bool  no_usage_check;
-    bool  stats;
-    s32   error_limit;
-    char *doc_out_dir;
-    bool  enable_experimental_targets;
+	bool  verbose;
+	bool  no_color;
+	bool  silent;
+	bool  no_jobs;
+	bool  no_warning;
+	bool  full_path_reports;
+	bool  no_usage_check;
+	bool  stats;
+	s32   error_limit;
+	char *doc_out_dir;
+	bool  enable_experimental_targets;
 };
 
 struct builder {
-    const struct builder_options *options;
-    const struct target          *default_target;
-    char                         *exec_dir;
-    volatile s32                  total_lines;
-    s32                           errorc;
-    s32                           max_error;
-    s32                           test_failc;
-    s32                           last_script_mode_run_status;
-    struct config                *config;
-    array(struct target *) targets;
-    array(char *) tmp_strs;
-    struct threading_impl *threading;
+	const struct builder_options *options;
+	const struct target          *default_target;
+	char                         *exec_dir;
+	volatile s32                  total_lines;
+	s32                           errorc;
+	s32                           max_error;
+	s32                           test_failc;
+	s32                           last_script_mode_run_status;
+	struct config                *config;
+	array(struct target *) targets;
+	array(char *) tmp_strs;
+	struct threading_impl *threading;
 
-    bool is_initialized;
+	bool is_initialized;
 };
 
 // struct builder global instance.
 extern struct builder builder;
 
 enum builder_msg_type {
-    MSG_LOG = 0,
-    MSG_INFO,
-    MSG_WARN,
-    MSG_ERR_NOTE,
-    MSG_ERR,
+	MSG_LOG = 0,
+	MSG_INFO,
+	MSG_WARN,
+	MSG_ERR_NOTE,
+	MSG_ERR,
 };
 
 enum builder_cur_pos { CARET_WORD = 0, CARET_BEFORE, CARET_AFTER, CARET_NONE };
@@ -105,9 +105,9 @@ void builder_async_submit_unit(struct unit *unit);
 #define builder_log(format, ...) builder_msg(MSG_LOG, -1, NULL, CARET_NONE, format, ##__VA_ARGS__)
 #define builder_info(format, ...) builder_msg(MSG_INFO, -1, NULL, CARET_NONE, format, ##__VA_ARGS__)
 #define builder_note(format, ...)                                                                  \
-    builder_msg(MSG_ERR_NOTE, -1, NULL, CARET_NONE, format, ##__VA_ARGS__)
+	builder_msg(MSG_ERR_NOTE, -1, NULL, CARET_NONE, format, ##__VA_ARGS__)
 #define builder_warning(format, ...)                                                               \
-    builder_msg(MSG_WARN, -1, NULL, CARET_NONE, format, ##__VA_ARGS__)
+	builder_msg(MSG_WARN, -1, NULL, CARET_NONE, format, ##__VA_ARGS__)
 #define builder_error(format, ...) builder_msg(MSG_ERR, -1, NULL, CARET_NONE, format, ##__VA_ARGS__)
 
 void builder_vmsg(enum builder_msg_type type,

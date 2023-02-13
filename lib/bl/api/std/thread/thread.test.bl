@@ -2,80 +2,80 @@
 
 #private
 thread_create_test :: fn () #test {
-    t, err :: std.thread_create(null);
-    test_not_ok(err);
+	t, err :: std.thread_create(null);
+	test_not_ok(err);
 }
 
 _worker_called: s32;
 
 thread_create_test2 :: fn () #test {
-    worker :: fn (ctx: *u8) s32 {
-        _worker_called += 1;
-        return 0;
-    };
-    
-    t, err :: std.thread_create(&worker);
-    test_ok(err);
+	worker :: fn (ctx: *u8) s32 {
+		_worker_called += 1;
+		return 0;
+	};
+	
+	t, err :: std.thread_create(&worker);
+	test_ok(err);
 
-    code, err2 :: std.thread_join(t);
-    test_ok(err2);
-    test_eq(code, 0);
-    test_eq(_worker_called, 1);
-    _worker_called = 0;
+	code, err2 :: std.thread_join(t);
+	test_ok(err2);
+	test_eq(code, 0);
+	test_eq(_worker_called, 1);
+	_worker_called = 0;
 }
 
 thread_create_test3 :: fn () #test {
-    worker :: fn (ctx: *u8) s32 {
-        _worker_called += 1;
-        return 666;
-    };
-    
-    t, err :: std.thread_create(&worker);
-    test_ok(err);
+	worker :: fn (ctx: *u8) s32 {
+		_worker_called += 1;
+		return 666;
+	};
+	
+	t, err :: std.thread_create(&worker);
+	test_ok(err);
 
-    code, err2 :: std.thread_join(t);
-    test_ok(err2);
-    test_eq(code, 666);
-    test_eq(_worker_called, 1);
-    _worker_called = 0;
+	code, err2 :: std.thread_join(t);
+	test_ok(err2);
+	test_eq(code, 666);
+	test_eq(_worker_called, 1);
+	_worker_called = 0;
 }
 
 MyContext :: struct {
-    i: s32;
+	i: s32;
 }
 
 thread_create_test4 :: fn () #test {
-    worker :: fn (_ctx: *u8) s32 {
-        ctx :: cast(*MyContext) _ctx;
-        _worker_called += 1;
-        return ctx.i;
-    };
+	worker :: fn (_ctx: *u8) s32 {
+		ctx :: cast(*MyContext) _ctx;
+		_worker_called += 1;
+		return ctx.i;
+	};
  
-    ctx := MyContext.{10};
-    t, err :: std.thread_create(&worker, auto &ctx);
-    test_ok(err);
+	ctx := MyContext.{10};
+	t, err :: std.thread_create(&worker, auto &ctx);
+	test_ok(err);
 
-    code, err2 :: std.thread_join(t);
-    test_ok(err2);
-    test_eq(code, 10);
-    test_eq(_worker_called, 1);
-    _worker_called = 0;
+	code, err2 :: std.thread_join(t);
+	test_ok(err2);
+	test_eq(code, 10);
+	test_eq(_worker_called, 1);
+	_worker_called = 0;
 }
 
 thread_exit_test :: fn () #test {
-    worker :: fn (_ctx: *u8) s32 {
-        _worker_called += 1;
-        std.thread_exit(10);
-        unreachable;
-        return 0;
-    };
+	worker :: fn (_ctx: *u8) s32 {
+		_worker_called += 1;
+		std.thread_exit(10);
+		unreachable;
+		return 0;
+	};
  
-    t, err :: std.thread_create(&worker);
-    test_ok(err);
+	t, err :: std.thread_create(&worker);
+	test_ok(err);
 
-    code, err2 :: std.thread_join(t);
-    test_ok(err2);
-    test_eq(code, 10);
-    test_eq(_worker_called, 1);
-    _worker_called = 0;
+	code, err2 :: std.thread_join(t);
+	test_ok(err2);
+	test_eq(code, 10);
+	test_eq(_worker_called, 1);
+	_worker_called = 0;
 }

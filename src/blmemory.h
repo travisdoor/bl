@@ -49,19 +49,19 @@ void  bl_free_impl(void *ptr, const char *filename, s32 line);
 
 static inline void *bl_zeromem(void *dest, usize size)
 {
-    void       *orig = dest;
-    const usize m    = size / sizeof(usize);
-    const usize d    = size - m * sizeof(usize);
-    usize       i;
-    for (i = 0; i < m; ++i) {
-        (*(usize *)dest) = 0;
-        dest             = (usize *)dest + 1;
-    }
-    for (i = 0; i < d; ++i) {
-        (*(u8 *)dest) = 0;
-        dest          = (u8 *)dest + 1;
-    }
-    return orig;
+	void       *orig = dest;
+	const usize m    = size / sizeof(usize);
+	const usize d    = size - m * sizeof(usize);
+	usize       i;
+	for (i = 0; i < m; ++i) {
+		(*(usize *)dest) = 0;
+		dest             = (usize *)dest + 1;
+	}
+	for (i = 0; i < d; ++i) {
+		(*(u8 *)dest) = 0;
+		dest          = (u8 *)dest + 1;
+	}
+	return orig;
 }
 
 #endif // BL_BLMEMORY_H

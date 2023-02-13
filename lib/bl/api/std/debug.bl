@@ -36,17 +36,17 @@
 
 /// Print debug log using current application_context `print_log_fn` function.
 print_log :: fn (format: string_view, args: ...) #inline {
-    application_context.print_log_fn(PrintLogKind.MESSAGE, "", 0, format, args);
+	application_context.print_log_fn(PrintLogKind.MESSAGE, "", 0, format, args);
 }
 
 /// Print debug info using current application_context `print_log_fn` function.
 print_info :: fn (format: string_view, args: ...) #inline {
-    application_context.print_log_fn(PrintLogKind.INFO, "", 0, format, args);
+	application_context.print_log_fn(PrintLogKind.INFO, "", 0, format, args);
 }
 
 /// Print debug warning using current application_context `print_log_fn` function.
 print_warn :: fn (format: string_view, args: ...) #inline {
-    application_context.print_log_fn(PrintLogKind.WARNING, "", 0, format, args);
+	application_context.print_log_fn(PrintLogKind.WARNING, "", 0, format, args);
 }
 
 /// Print debug error using current application_context.print_log_fn function.
@@ -60,21 +60,21 @@ print_err :: fn { print_err_e; print_err_msg; }
 /// !!! warning
 ///     There is no argument validation in case the assert call is removed from compilation.
 assert :: fn (condition: bool, message := "", loc := #call_location) #compiler {
-    if condition { return; }
-    if application_context._assert_handled { return; }
-    application_context._assert_handled = true;
-    application_context.assert_fn(message, loc);
+	if condition { return; }
+	if application_context._assert_handled { return; }
+	application_context._assert_handled = true;
+	application_context.assert_fn(message, loc);
 }
 
 /// Assertion check evaluated in compile time.
 static_assert :: fn (expr: bool) #comptime {
-    if expr { return; }
-    unreachable;
+	if expr { return; }
+	unreachable;
 }
 
 __assert_default :: fn (message: string_view, loc: *CodeLocation) {
-    application_context.print_log_fn(PrintLogKind.ASSERT, loc.file, loc.line, message);
-    unreachable;
+	application_context.print_log_fn(PrintLogKind.ASSERT, loc.file, loc.line, message);
+	unreachable;
 }
 
 /// Abort execution and eventually print panic message if there is one specified. First passed 
@@ -93,58 +93,58 @@ panic :: fn { panic_empty; panic_error; panic_msg; }
 
 /// Kinds of log messages.
 PrintLogKind :: enum u8 {
-    /// Debug log message.
-    MESSAGE;
-    /// Informative log message.
-    INFO;
-    /// Warning log message.
-    WARNING;
-    /// Error log message.
-    ERROR;
-    /// Assert log message.
-    ASSERT;
-    /// Panic log message.
-    PANIC;
+	/// Debug log message.
+	MESSAGE;
+	/// Informative log message.
+	INFO;
+	/// Warning log message.
+	WARNING;
+	/// Error log message.
+	ERROR;
+	/// Assert log message.
+	ASSERT;
+	/// Panic log message.
+	PANIC;
 };
 
 /// Print current stack trace into stdout. Does nothing in release modes (stack trace information is
 /// available only when the debug info is in place).
 print_backtrace :: fn (skip_frames := 0) #inline {
-    trace: []CodeLocation;
+	trace: []CodeLocation;
 #if IS_DEBUG {
-    trace = os_get_backtrace(skip_frames+1);
+	trace = os_get_backtrace(skip_frames+1);
 } else {
-    skip_frames; // To silent usage warning.
+	skip_frames; // To silent usage warning.
 }
-    if trace.len == 0 { return; }
-    print("Backtrace: \n");
-    loop i := 0; i < trace.len; i += 1 {
-        frame :: &trace[i];
-        print("  %:%: %\n", frame.file, frame.line, frame.function);
-    }
+	if trace.len == 0 { return; }
+	print("Backtrace: \n");
+	loop i := 0; i < trace.len; i += 1 {
+		frame :: &trace[i];
+		print("  %:%: %\n", frame.file, frame.line, frame.function);
+	}
 }
 
 __print_log_default :: fn (kind: PrintLogKind, file: string_view, line: s32, format: string_view, args: ...) {
-    output_stream := os_stdout();
-    buf: [PRINT_MAX_LENGTH]u8 #noinit;
-    tag: string_view;
-    w: s32;
-    switch kind {
-        PrintLogKind.MESSAGE { tag = "log"; }
-        PrintLogKind.INFO    { tag = "info"; }
-        PrintLogKind.WARNING { tag = "warning"; }
-        PrintLogKind.ERROR   { tag = "error";  output_stream = os_stderr(); }
-        PrintLogKind.ASSERT  { tag = "assert"; output_stream = os_stderr(); }
-        PrintLogKind.PANIC   { tag = "panic";  output_stream = os_stderr(); }
-    }
-    if file.len > 0 {
-        w = bprint(buf, "% [%:%]: ", tag, file, line);
-    } else {
-        w = bprint(buf, "%: ", tag);
-    }
-    w += bprint(slice_range(buf, w), format, args);
-    w += bprint(slice_range(buf, w), "\n");
-    std.write(output_stream, buf.ptr, auto w);
+	output_stream := os_stdout();
+	buf: [PRINT_MAX_LENGTH]u8 #noinit;
+	tag: string_view;
+	w: s32;
+	switch kind {
+		PrintLogKind.MESSAGE { tag = "log"; }
+		PrintLogKind.INFO    { tag = "info"; }
+		PrintLogKind.WARNING { tag = "warning"; }
+		PrintLogKind.ERROR   { tag = "error";  output_stream = os_stderr(); }
+		PrintLogKind.ASSERT  { tag = "assert"; output_stream = os_stderr(); }
+		PrintLogKind.PANIC   { tag = "panic";  output_stream = os_stderr(); }
+	}
+	if file.len > 0 {
+		w = bprint(buf, "% [%:%]: ", tag, file, line);
+	} else {
+		w = bprint(buf, "%: ", tag);
+	}
+	w += bprint(slice_range(buf, w), format, args);
+	w += bprint(slice_range(buf, w), "\n");
+	std.write(output_stream, buf.ptr, auto w);
 };
 
 /// Start measure elapsed milliseconds in the current scope. This function call will push the current
@@ -161,43 +161,43 @@ __print_log_default :: fn (kind: PrintLogKind, file: string_view, line: s32, for
 ///     Every `measure_elapsed_ms_begin` must have corresponding
 ///     [measure_elapsed_ms_end](#measure_elapsed_ms_end) call.
 measure_elapsed_ms_begin :: fn () #inline {
-    array_push(&_elapsed_ms_stack, os_ftick_ms());
+	array_push(&_elapsed_ms_stack, os_ftick_ms());
 }
 
 /// Pop the last start time from the runtime measurement queue and log the result time difference when 
 /// the name is specified. Function return time difference between the current time and last start time.
 measure_elapsed_ms_end :: fn (name : string_view = "") f64 #inline {
-    if _elapsed_ms_stack.len == 0 { return 0.; }
-    index :: _elapsed_ms_stack.len - 1;
-    start_ms :: _elapsed_ms_stack[index];
-    _elapsed_ms_stack.len -= 1;
-    elapsed_ms :: os_ftick_ms() - start_ms;
-    if !std.str_is_empty(name) { print_log("% took % ms.", name, elapsed_ms); }
-    if index == 0 { array_terminate(&_elapsed_ms_stack); }
-    return elapsed_ms;
+	if _elapsed_ms_stack.len == 0 { return 0.; }
+	index :: _elapsed_ms_stack.len - 1;
+	start_ms :: _elapsed_ms_stack[index];
+	_elapsed_ms_stack.len -= 1;
+	elapsed_ms :: os_ftick_ms() - start_ms;
+	if !std.str_is_empty(name) { print_log("% took % ms.", name, elapsed_ms); }
+	if index == 0 { array_terminate(&_elapsed_ms_stack); }
+	return elapsed_ms;
 }
 
 #private
 _elapsed_ms_stack: [..]f64 #thread_local;
 
 panic_empty :: fn () {
-    unreachable;
+	unreachable;
 }
 
 panic_error :: fn (err: Error) {
-    application_context.print_log_fn(PrintLogKind.PANIC, "", 0, "%", err);
-    unreachable;
+	application_context.print_log_fn(PrintLogKind.PANIC, "", 0, "%", err);
+	unreachable;
 }
 
 panic_msg :: fn (format: string_view, args: ...) {
-    application_context.print_log_fn(PrintLogKind.PANIC, "", 0, format, args);
-    unreachable;
+	application_context.print_log_fn(PrintLogKind.PANIC, "", 0, format, args);
+	unreachable;
 }
 
 print_err_e :: fn (err: Error) #inline {
-    application_context.print_log_fn(PrintLogKind.ERROR, "", 0, "%", err);
+	application_context.print_log_fn(PrintLogKind.ERROR, "", 0, "%", err);
 };
 
 print_err_msg :: fn (format: string_view, args: ...) #inline {
-    application_context.print_log_fn(PrintLogKind.ERROR, "", 0, format, args);
+	application_context.print_log_fn(PrintLogKind.ERROR, "", 0, format, args);
 };

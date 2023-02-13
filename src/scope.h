@@ -41,72 +41,72 @@ struct mir_fn;
 struct mir_var;
 
 struct scope_arenas {
-    struct arena scopes;
-    struct arena entries;
+	struct arena scopes;
+	struct arena entries;
 };
 
 enum scope_entry_kind {
-    SCOPE_ENTRY_INCOMPLETE,
-    SCOPE_ENTRY_TYPE,
-    SCOPE_ENTRY_VAR,
-    SCOPE_ENTRY_FN,
-    SCOPE_ENTRY_MEMBER,
-    SCOPE_ENTRY_VARIANT,
-    SCOPE_ENTRY_NAMED_SCOPE,
-    SCOPE_ENTRY_UNNAMED, // Special kind used for unnamed entries.
-    SCOPE_ENTRY_ARG,
+	SCOPE_ENTRY_INCOMPLETE,
+	SCOPE_ENTRY_TYPE,
+	SCOPE_ENTRY_VAR,
+	SCOPE_ENTRY_FN,
+	SCOPE_ENTRY_MEMBER,
+	SCOPE_ENTRY_VARIANT,
+	SCOPE_ENTRY_NAMED_SCOPE,
+	SCOPE_ENTRY_UNNAMED, // Special kind used for unnamed entries.
+	SCOPE_ENTRY_ARG,
 };
 
 union scope_entry_data {
-    struct mir_type    *type;
-    struct mir_fn      *fn;
-    struct mir_var     *var;
-    struct mir_member  *member;
-    struct mir_variant *variant;
-    struct mir_arg     *arg;
-    struct scope       *scope;
+	struct mir_type    *type;
+	struct mir_fn      *fn;
+	struct mir_var     *var;
+	struct mir_member  *member;
+	struct mir_variant *variant;
+	struct mir_arg     *arg;
+	struct scope       *scope;
 };
 
 struct scope_entry {
-    struct id             *id;
-    enum scope_entry_kind  kind;
-    struct scope          *parent_scope;
-    struct ast            *node;
-    bool                   is_builtin;
-    union scope_entry_data data;
-    s32                    ref_count;
-    bmagic_member
+	struct id             *id;
+	enum scope_entry_kind  kind;
+	struct scope          *parent_scope;
+	struct ast            *node;
+	bool                   is_builtin;
+	union scope_entry_data data;
+	s32                    ref_count;
+	bmagic_member
 };
 
 enum scope_kind {
-    SCOPE_NONE = 0,
-    SCOPE_GLOBAL,
-    SCOPE_PRIVATE,
-    SCOPE_FN,
-    SCOPE_FN_BODY,
-    SCOPE_LEXICAL,
-    SCOPE_TYPE_STRUCT,
-    SCOPE_TYPE_ENUM,
-    SCOPE_NAMED,
+	SCOPE_NONE = 0,
+	SCOPE_GLOBAL,
+	SCOPE_PRIVATE,
+	SCOPE_FN,
+	SCOPE_FN_BODY,
+	SCOPE_LEXICAL,
+	SCOPE_TYPE_STRUCT,
+	SCOPE_TYPE_ENUM,
+	SCOPE_NAMED,
 };
 
 #define SCOPE_DEFAULT_LAYER 0
 
 struct scope {
-    enum scope_kind         kind;
-    const char             *name; // optional
-    struct scope           *parent;
-    struct scope_sync_impl *sync;
-    struct location        *location;
-    array(struct scope *) usings;
-    LLVMMetadataRef llvm_meta;
-    hash_table(struct {
-        // Hash value of the scope entry as combination of layer and id.
-        u64                 key;
-        struct scope_entry *value;
-    }) entries;
+	enum scope_kind         kind;
+	const char             *name; // optional
+	struct scope           *parent;
+	struct scope_sync_impl *sync;
+	struct location        *location;
+	array(struct scope *) usings;
+	LLVMMetadataRef llvm_meta;
+	hash_table(struct {
+		// Hash value of the scope entry as combination of layer and id.
+		u64                 key;
+		struct scope_entry *value;
+	}) entries;
 
-    bmagic_member
+	bmagic_member
 };
 
 void scope_arenas_init(struct scope_arenas *arenas);
@@ -131,15 +131,15 @@ void scope_unlock(struct scope *scope);
 bool scope_using_add(struct scope *scope, struct scope *other);
 
 typedef struct {
-    hash_t     layer;
-    struct id *id;
-    bool       in_tree;
-    bool       ignore_global;
+	hash_t     layer;
+	struct id *id;
+	bool       in_tree;
+	bool       ignore_global;
 
-    bool *out_of_local;
+	bool *out_of_local;
 
-    // When set lookup in usings is enabled automatically.
-    struct scope_entry **out_ambiguous;
+	// When set lookup in usings is enabled automatically.
+	struct scope_entry **out_ambiguous;
 } scope_lookup_args_t;
 
 struct scope_entry *scope_lookup(struct scope *scope, scope_lookup_args_t *args);
@@ -152,15 +152,15 @@ void        scope_get_full_name(char **dest, struct scope *scope);
 
 static inline bool scope_is_local(const struct scope *scope)
 {
-    return scope->kind != SCOPE_GLOBAL && scope->kind != SCOPE_PRIVATE &&
-           scope->kind != SCOPE_NAMED;
+	return scope->kind != SCOPE_GLOBAL && scope->kind != SCOPE_PRIVATE &&
+	       scope->kind != SCOPE_NAMED;
 }
 
 static inline struct scope_entry *scope_entry_ref(struct scope_entry *entry)
 {
-    bmagic_assert(entry);
-    ++entry->ref_count;
-    return entry;
+	bmagic_assert(entry);
+	++entry->ref_count;
+	return entry;
 }
 
 #endif

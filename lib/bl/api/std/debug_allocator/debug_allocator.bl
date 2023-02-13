@@ -76,49 +76,49 @@
 //!     are probably trying to use already freed memory.
 
 DebugAllocator :: struct #base Allocator {
-    mutex: std.Mutex;
-    allocator: *Allocator;
-    total_allocated: s64;
-    alloc_table: std.Table(*u8, Meta);
-    serial: u64;
-    break_on: u64;
+	mutex: std.Mutex;
+	allocator: *Allocator;
+	total_allocated: s64;
+	alloc_table: std.Table(*u8, Meta);
+	serial: u64;
+	break_on: u64;
 }
 
 /// Create new debug allocator instance using `allocator` to allocate memory.
 debug_allocator_make :: fn (allocator: *Allocator) DebugAllocator {
-    dbgalloc: DebugAllocator;
-    dbgalloc.handler = auto &handler;
-    dbgalloc.allocator = allocator;
-    std.tbl_init(&dbgalloc.alloc_table, 2048, dbgalloc.allocator);
-    std.mutex_init(&dbgalloc.mutex);
-    return dbgalloc;
+	dbgalloc: DebugAllocator;
+	dbgalloc.handler = auto &handler;
+	dbgalloc.allocator = allocator;
+	std.tbl_init(&dbgalloc.alloc_table, 2048, dbgalloc.allocator);
+	std.mutex_init(&dbgalloc.mutex);
+	return dbgalloc;
 }
 
 /// Release debug allocator resources.
 debug_allocator_release :: fn (dbgalloc: *DebugAllocator) #inline {
-    release_allocator(auto dbgalloc);
+	release_allocator(auto dbgalloc);
 }
 
 /// Invoke `debug_break` before allocation with defined serial ID.
 debug_allocator_break :: fn (dbgalloc: *DebugAllocator, serial: u64) #inline {
-    dbgalloc.break_on = serial;
+	dbgalloc.break_on = serial;
 }
 
 /// Return currently allocated memory in bytes.
 debug_allocator_allocated :: fn (dbgalloc: *DebugAllocator) usize #inline {
-    std.mutex_lock(&dbgalloc.mutex);
-    defer std.mutex_unlock(&dbgalloc.mutex);
-    return auto dbgalloc.total_allocated;
+	std.mutex_lock(&dbgalloc.mutex);
+	defer std.mutex_unlock(&dbgalloc.mutex);
+	return auto dbgalloc.total_allocated;
 }
 
 /// Lookup size in bytes of previously allocated memory. Returns `true` and size in bytes if allocation
 /// was found, otherwise returns `false` and zero size.
 debug_allocator_get_allocation_size :: fn (dbgalloc: *DebugAllocator, ptr: *u8) (found: bool, size: usize) #inline {
-    value :: std.tbl_lookup_ptr(&dbgalloc.alloc_table, ptr);
-    if !value {
-        return false, 0;
-    }
-    return true, value.allocated_size;
+	value :: std.tbl_lookup_ptr(&dbgalloc.alloc_table, ptr);
+	if !value {
+		return false, 0;
+	}
+	return true, value.allocated_size;
 }
 
 /// Print memory report. First block contains currently allocated bytes and current count
@@ -147,117 +147,117 @@ debug_allocator_get_allocation_size :: fn (dbgalloc: *DebugAllocator, ptr: *u8) 
 ///     Allocation serail ID can be used by [debug_allocator_break](#debug_allocator_break) to interrupt
 ///     execution before memory is allocated and eventually localize allocation in debbuger.
 print_memory_report :: fn (dbgalloc: *DebugAllocator, dump_leaks := false) {
-    std.mutex_lock(&dbgalloc.mutex);
-    defer std.mutex_unlock(&dbgalloc.mutex);
-    unit := "Bytes";
-    total := dbgalloc.total_allocated;
-    if total > 1024 { total /= 1024; unit = "kB"; }
-    if total > 1024 { total /= 1024; unit = "MB"; }
-    if total > 1024 { total /= 1024; unit = "GB"; }
-    
-    print("******************* MEMORY REPORT ******************\n");
-    print("* Allocated % %.\n", total, unit);
-    print("* Count of allocations %.\n", dbgalloc.alloc_table.len);
-    print("****************************************************\n");
+	std.mutex_lock(&dbgalloc.mutex);
+	defer std.mutex_unlock(&dbgalloc.mutex);
+	unit := "Bytes";
+	total := dbgalloc.total_allocated;
+	if total > 1024 { total /= 1024; unit = "kB"; }
+	if total > 1024 { total /= 1024; unit = "MB"; }
+	if total > 1024 { total /= 1024; unit = "GB"; }
+	
+	print("******************* MEMORY REPORT ******************\n");
+	print("* Allocated % %.\n", total, unit);
+	print("* Count of allocations %.\n", dbgalloc.alloc_table.len);
+	print("****************************************************\n");
 
-    if dump_leaks && dbgalloc.alloc_table.len > 0 { dump_memory_leaks(dbgalloc); }
+	if dump_leaks && dbgalloc.alloc_table.len > 0 { dump_memory_leaks(dbgalloc); }
 }
 
 /// Print only leaking memory if any and returs count of leaking allocations. Please see the
 /// [print_memory_report](debug_allocator.md#stdprint_memory_report) for further details.
 dump_memory_leaks :: fn (dbgalloc: *DebugAllocator) s64 {
-    if dbgalloc.alloc_table.len == 0 { return 0; }
-    print("Dump memory leaks begin:\n");
-    loop i := 0; i < dbgalloc.alloc_table.len; i += 1 {
-        value :: &dbgalloc.alloc_table.values[i];
-        print("    [%] - %:% (% bytes)\n", value.serial, value.file, value.line, value.allocated_size);
-    }
-    print("Dump memory leaks end.\n");
-    return dbgalloc.alloc_table.len;
+	if dbgalloc.alloc_table.len == 0 { return 0; }
+	print("Dump memory leaks begin:\n");
+	loop i := 0; i < dbgalloc.alloc_table.len; i += 1 {
+		value :: &dbgalloc.alloc_table.values[i];
+		print("    [%] - %:% (% bytes)\n", value.serial, value.file, value.line, value.allocated_size);
+	}
+	print("Dump memory leaks end.\n");
+	return dbgalloc.alloc_table.len;
 }
 
 #private
 Meta :: struct {
-    serial: u64;
-    allocated_size: usize;
-    alignment: usize;
-    file: string_view;
-    line: s32;
+	serial: u64;
+	allocated_size: usize;
+	alignment: usize;
+	file: string_view;
+	line: s32;
 }
 
 handler :: fn (dbgalloc: *DebugAllocator, operation: AllocOp, ptr: *u8, size: usize, alignment: usize, file: string_view, line: s32) (mem: *u8, err: Error) {
-    using AllocOp;
-    switch operation {
-        ALLOCATE {
-            mem, err :: alloc(size, alignment, dbgalloc.allocator);
-            if err { return mem, err; }
-            add_allocation(dbgalloc, mem, size, alignment, file, line);
-            return mem, err;
-        }
-        REALLOCATE {
-            if ptr {
-                _, previous_alignment :: remove_allocation(dbgalloc, ptr);
-                if previous_alignment != alignment {
-                    panic("Alignment of reallocated memory block must be the same as the previous one!"
-                          " Previous alignment is %B and current is %B.", previous_alignment, alignment);
-                }
-            }
-            mem, err :: realloc(ptr, size, alignment, dbgalloc.allocator);
-            if err { return mem, err; }
-            add_allocation(dbgalloc, mem, size, alignment, file, line);
-            return mem, OK;
-        }
-        FREE {
-            if ptr {
-                previously_allocated_size :: remove_allocation(dbgalloc, ptr);
-                invalidate_memory(ptr, previously_allocated_size);
-                free(ptr, dbgalloc.allocator);
-            }
-        }
-        RELEASE {
-            std.tbl_terminate(&dbgalloc.alloc_table);
-            std.mutex_terminate(&dbgalloc.mutex);
-        }
-        RESET {
-            panic("Unsupported operation: %.", operation);
-        }
-        default { panic("Unknown operation."); }
-    }
-    return null, OK;
+	using AllocOp;
+	switch operation {
+		ALLOCATE {
+			mem, err :: alloc(size, alignment, dbgalloc.allocator);
+			if err { return mem, err; }
+			add_allocation(dbgalloc, mem, size, alignment, file, line);
+			return mem, err;
+		}
+		REALLOCATE {
+			if ptr {
+				_, previous_alignment :: remove_allocation(dbgalloc, ptr);
+				if previous_alignment != alignment {
+					panic("Alignment of reallocated memory block must be the same as the previous one!"
+						  " Previous alignment is %B and current is %B.", previous_alignment, alignment);
+				}
+			}
+			mem, err :: realloc(ptr, size, alignment, dbgalloc.allocator);
+			if err { return mem, err; }
+			add_allocation(dbgalloc, mem, size, alignment, file, line);
+			return mem, OK;
+		}
+		FREE {
+			if ptr {
+				previously_allocated_size :: remove_allocation(dbgalloc, ptr);
+				invalidate_memory(ptr, previously_allocated_size);
+				free(ptr, dbgalloc.allocator);
+			}
+		}
+		RELEASE {
+			std.tbl_terminate(&dbgalloc.alloc_table);
+			std.mutex_terminate(&dbgalloc.mutex);
+		}
+		RESET {
+			panic("Unsupported operation: %.", operation);
+		}
+		default { panic("Unknown operation."); }
+	}
+	return null, OK;
 }
 
 add_allocation :: fn (dbgalloc: *DebugAllocator, ptr: *u8, size: usize, alignment: usize, file: string_view, line: s32) {
-    mutex_lock(&dbgalloc.mutex);
-    defer mutex_unlock(&dbgalloc.mutex);
+	mutex_lock(&dbgalloc.mutex);
+	defer mutex_unlock(&dbgalloc.mutex);
 
-    dbgalloc.serial += 1;
-    if dbgalloc.break_on == dbgalloc.serial { debugbreak; }
+	dbgalloc.serial += 1;
+	if dbgalloc.break_on == dbgalloc.serial { debugbreak; }
 
-    meta := std.tbl_insert(&dbgalloc.alloc_table, ptr);
-    meta.allocated_size = size;
-    meta.alignment = alignment;
-    meta.file = file;
-    meta.line = line;
-    meta.serial = dbgalloc.serial;
+	meta := std.tbl_insert(&dbgalloc.alloc_table, ptr);
+	meta.allocated_size = size;
+	meta.alignment = alignment;
+	meta.file = file;
+	meta.line = line;
+	meta.serial = dbgalloc.serial;
 
-    dbgalloc.total_allocated += auto size;
+	dbgalloc.total_allocated += auto size;
 }
 
 remove_allocation :: fn (dbgalloc: *DebugAllocator, ptr: *u8) (size: usize, alignment: usize) {
-    mutex_lock(&dbgalloc.mutex);
-    defer mutex_unlock(&dbgalloc.mutex);
-    value :: std.tbl_lookup_ptr(&dbgalloc.alloc_table, ptr);
-    if !value {
-        panic("Attempt to free already freed or unallocated memory on address %!", ptr);
-    }
-    allocated_size :: value.allocated_size;
-    alignment :: value.alignment;
-    dbgalloc.total_allocated -= auto allocated_size;
-    std.tbl_erase(&dbgalloc.alloc_table, ptr);
-    return allocated_size, alignment;
+	mutex_lock(&dbgalloc.mutex);
+	defer mutex_unlock(&dbgalloc.mutex);
+	value :: std.tbl_lookup_ptr(&dbgalloc.alloc_table, ptr);
+	if !value {
+		panic("Attempt to free already freed or unallocated memory on address %!", ptr);
+	}
+	allocated_size :: value.allocated_size;
+	alignment :: value.alignment;
+	dbgalloc.total_allocated -= auto allocated_size;
+	std.tbl_erase(&dbgalloc.alloc_table, ptr);
+	return allocated_size, alignment;
 }
 
 invalidate_memory :: fn (ptr: *u8, size: usize) #inline {
-    if ptr == null || size == 0 { return; }
-    memset(ptr, 0xdd, size);
+	if ptr == null || size == 0 { return; }
+	memset(ptr, 0xdd, size);
 }

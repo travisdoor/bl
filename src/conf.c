@@ -35,124 +35,124 @@
 // Generic configuration loading
 // =================================================================================================
 struct entry {
-    hash_t      key;
-    const char *value;
+	hash_t      key;
+	const char *value;
 };
 
 struct config {
-    struct entry        *data;
-    struct string_cache *cache;
+	struct entry        *data;
+	struct string_cache *cache;
 };
 
 struct config *confload(const char *filepath)
 {
-    FILE *input = fopen(filepath, "rb");
-    if (!input) {
-        return NULL;
-    }
+	FILE *input = fopen(filepath, "rb");
+	if (!input) {
+		return NULL;
+	}
 
-    yaml_parser_t parser;
-    yaml_parser_initialize(&parser);
-    yaml_parser_set_input_file(&parser, input);
+	yaml_parser_t parser;
+	yaml_parser_initialize(&parser);
+	yaml_parser_set_input_file(&parser, input);
 
-    struct config *conf = bmalloc(sizeof(struct config));
-    conf->data          = NULL;
-    conf->cache         = NULL;
+	struct config *conf = bmalloc(sizeof(struct config));
+	conf->data          = NULL;
+	conf->cache         = NULL;
 
-    // insert special entry for filename
-    struct entry entry;
-    entry.key   = strhash(CONF_FILEPATH);
-    entry.value = scdup(&conf->cache, filepath, strlen(filepath));
-    hmputs(conf->data, entry);
+	// insert special entry for filename
+	struct entry entry;
+	entry.key   = strhash(CONF_FILEPATH);
+	entry.value = scdup(&conf->cache, filepath, strlen(filepath));
+	hmputs(conf->data, entry);
 
-    enum state { STATE_KEY, STATE_VALUE } state = STATE_KEY;
+	enum state { STATE_KEY, STATE_VALUE } state = STATE_KEY;
 
-    char blockpath[256] = "";
+	char blockpath[256] = "";
 
-    yaml_token_t token;
-    char        *key  = tstr();
-    char        *path = tstr();
-    bool         done = false;
-    while (!done) {
-        if (!yaml_parser_scan(&parser, &token)) goto LOAD_ERROR;
+	yaml_token_t token;
+	char        *key  = tstr();
+	char        *path = tstr();
+	bool         done = false;
+	while (!done) {
+		if (!yaml_parser_scan(&parser, &token)) goto LOAD_ERROR;
 
-        switch (token.type) {
-        case YAML_STREAM_START_TOKEN:
-            break;
-        case YAML_KEY_TOKEN:
-            state = STATE_KEY;
-            break;
-        case YAML_VALUE_TOKEN:
-            state = STATE_VALUE;
-            break;
-        case YAML_BLOCK_MAPPING_START_TOKEN:
-            if (strlenu(key)) {
-                snprintf(blockpath, static_arrlenu(blockpath), "/%s", key);
-            }
-            break;
-        case YAML_BLOCK_END_TOKEN:
-            for (usize i = strlen(blockpath); i-- > 0;) {
-                if (blockpath[i] == '/') {
-                    blockpath[i] = '\0';
-                    break;
-                }
-            }
-            break;
-        case YAML_SCALAR_TOKEN: {
-            const char *value = (const char *)token.data.scalar.value;
-            if (state == STATE_KEY) {
-                strprint(key, "%s", value);
-            } else {
-                strprint(path, "%s/%s", blockpath, key);
-                entry.key   = strhash(path);
-                entry.value = scdup(&conf->cache, value, token.data.scalar.length);
-                hmputs(conf->data, entry);
-            }
-            break;
-        }
-        case YAML_STREAM_END_TOKEN:
-            done = true;
-            break;
-        default:
-            bwarn("%s:%d:%d: YAML Unknown token type!",
-                  filepath,
-                  token.start_mark.line,
-                  token.start_mark.column);
-            break;
-        }
-        yaml_token_delete(&token);
-    }
-    yaml_parser_delete(&parser);
-    fclose(input);
-    put_tstr(key);
-    put_tstr(path);
-    return conf;
+		switch (token.type) {
+		case YAML_STREAM_START_TOKEN:
+			break;
+		case YAML_KEY_TOKEN:
+			state = STATE_KEY;
+			break;
+		case YAML_VALUE_TOKEN:
+			state = STATE_VALUE;
+			break;
+		case YAML_BLOCK_MAPPING_START_TOKEN:
+			if (strlenu(key)) {
+				snprintf(blockpath, static_arrlenu(blockpath), "/%s", key);
+			}
+			break;
+		case YAML_BLOCK_END_TOKEN:
+			for (usize i = strlen(blockpath); i-- > 0;) {
+				if (blockpath[i] == '/') {
+					blockpath[i] = '\0';
+					break;
+				}
+			}
+			break;
+		case YAML_SCALAR_TOKEN: {
+			const char *value = (const char *)token.data.scalar.value;
+			if (state == STATE_KEY) {
+				strprint(key, "%s", value);
+			} else {
+				strprint(path, "%s/%s", blockpath, key);
+				entry.key   = strhash(path);
+				entry.value = scdup(&conf->cache, value, token.data.scalar.length);
+				hmputs(conf->data, entry);
+			}
+			break;
+		}
+		case YAML_STREAM_END_TOKEN:
+			done = true;
+			break;
+		default:
+			bwarn("%s:%d:%d: YAML Unknown token type!",
+			      filepath,
+			      token.start_mark.line,
+			      token.start_mark.column);
+			break;
+		}
+		yaml_token_delete(&token);
+	}
+	yaml_parser_delete(&parser);
+	fclose(input);
+	put_tstr(key);
+	put_tstr(path);
+	return conf;
 
 LOAD_ERROR:
-    yaml_parser_delete(&parser);
-    fclose(input);
-    confdelete(conf);
-    put_tstr(key);
-    put_tstr(path);
-    return NULL;
+	yaml_parser_delete(&parser);
+	fclose(input);
+	confdelete(conf);
+	put_tstr(key);
+	put_tstr(path);
+	return NULL;
 }
 
 void confdelete(struct config *conf)
 {
-    if (!conf) return;
-    hmfree(conf->data);
-    scfree(&conf->cache);
-    bfree(conf);
+	if (!conf) return;
+	hmfree(conf->data);
+	scfree(&conf->cache);
+	bfree(conf);
 }
 
 const char *confreads(struct config *conf, const char *path, const char *default_value)
 {
-    bassert(conf);
-    const hash_t hash  = strhash(path);
-    const s64    index = hmgeti(conf->data, hash);
-    if (index == -1) {
-        if (default_value) return default_value;
-        babort("Unknown configuration entry '%s'!", path);
-    }
-    return conf->data[index].value;
+	bassert(conf);
+	const hash_t hash  = strhash(path);
+	const s64    index = hmgeti(conf->data, hash);
+	if (index == -1) {
+		if (default_value) return default_value;
+		babort("Unknown configuration entry '%s'!", path);
+	}
+	return conf->data[index].value;
 }

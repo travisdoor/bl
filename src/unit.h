@@ -38,20 +38,20 @@
 struct token;
 
 struct unit {
-    hash_t        hash;
-    struct tokens tokens;
-    struct ast   *ast;
-    array(struct ast *) ublock_ast;
-    struct scope        *private_scope;
-    char                *filename;
-    char                *filepath;
-    char                *dirpath;
-    char                *name;
-    char                *src;
-    struct token        *loaded_from;
-    LLVMMetadataRef      llvm_file_meta;
-    struct string_cache *string_cache;
-    array(char *) large_string_cache;
+	hash_t        hash;
+	struct tokens tokens;
+	struct ast   *ast;
+	array(struct ast *) ublock_ast;
+	struct scope        *private_scope;
+	char                *filename;
+	char                *filepath;
+	char                *dirpath;
+	char                *name;
+	char                *src;
+	struct token        *loaded_from;
+	LLVMMetadataRef      llvm_file_meta;
+	struct string_cache *string_cache;
+	array(char *) large_string_cache;
 };
 
 hash_t       unit_hash(const char *filepath, struct token *load_from);

@@ -74,6 +74,7 @@ copysign  :: fn { C.copysignf; C.copysign; }
 asin      :: fn { C.asinf; C.asin; }
 acos      :: fn { C.acosf; C.acos; }
 tan       :: fn { C.tanf; C.tan; }
+atan      :: fn { C.atanf; C.atan; }
 
 abs :: fn { f32_abs; f64_abs; s64_abs; }
 compare :: fn { f32_compare; f64_compare; }
@@ -81,34 +82,34 @@ degtorad :: fn { f32_degtorad; f64_degtorad; }
 radtodeg :: fn { f32_radtodeg; f64_radtodeg; }
 
 max :: fn (a: ?T, b: T) T  #inline { 
-    if b > a { return b; }
-    return a;
+	if b > a { return b; }
+	return a;
 }
 
 min :: fn (a: ?T, b: T) T #inline { 
-    if b < a { return b; }
-    return a;
+	if b < a { return b; }
+	return a;
 }
 
 lerp :: fn (a: ?T, b: T, fraction: T) T  #inline {
-    return a + fraction * (b - a);
+	return a + fraction * (b - a);
 }
 
 smooth_step :: fn (a: ?T, b: T, fraction: T) T  #inline {
-    two: T : auto 2;
-    three: T : auto 3;
-    return lerp(a, b, fraction * fraction * (three - two * fraction));
+	two: T : auto 2;
+	three: T : auto 3;
+	return lerp(a, b, fraction * fraction * (three - two * fraction));
 }
 
 clamp :: fn (v: ?T, minimum: T, maximum: T) T { 
-    #if typeinfo(T).kind == TypeKind.INT {
-        if v <= minimum { return minimum; }
-        if v >= maximum { return maximum; }
-    } else {
-        if v < minimum { return minimum; }
-        if v > maximum { return maximum; }    
-    }
-    return v;
+	#if typeinfo(T).kind == TypeKind.INT {
+		if v <= minimum { return minimum; }
+		if v >= maximum { return maximum; }
+	} else {
+		if v < minimum { return minimum; }
+		if v > maximum { return maximum; }    
+	}
+	return v;
 }
 
 #private
@@ -135,41 +136,41 @@ f32_ceil  :: fn (x: f32) f32 #intrinsic "ceil.f32";
 f64_ceil  :: fn (x: f64) f64 #intrinsic "ceil.f64";
 
 s64_abs :: fn (v: s64) s64 {
-    if v < 0 { return -v; }
-    return v;
+	if v < 0 { return -v; }
+	return v;
 }
 
 f32_abs :: fn (v: f32) f32 #inline {
-    if v < 0.f { return -v; }
-    return v;
+	if v < 0.f { return -v; }
+	return v;
 }
 
 f64_abs :: fn (v: f64) f64 #inline {
-    if v < 0. { return -v; }
-    return v;
+	if v < 0. { return -v; }
+	return v;
 }
 
 f32_compare :: fn (a: f32, b: f32, epsilon := F32_EPSILON) bool #inline {
-    return abs(a - b) < epsilon;
+	return abs(a - b) < epsilon;
 };
 
 f64_compare :: fn (a: f64, b: f64, epsilon := F64_EPSILON) bool #inline {
-    return abs(a - b) < epsilon;
+	return abs(a - b) < epsilon;
 };
 
 f32_degtorad :: fn (deg: f32) f32 #inline {
-    return deg / 180.f * cast(f32) PI;
+	return deg / 180.f * cast(f32) PI;
 };
 
 f32_radtodeg :: fn (rad: f32) f32 #inline {
-    return (180.f * rad) / cast(f32) PI;
+	return (180.f * rad) / cast(f32) PI;
 };
 
 f64_degtorad :: fn (deg: f64) f64 #inline {
-    return deg / 180. * PI;
+	return deg / 180. * PI;
 };
 
 f64_radtodeg :: fn (rad: f64) f64 #inline {
-    return (180. * rad) / PI;
+	return (180. * rad) / PI;
 };
 

@@ -39,12 +39,12 @@
 
 // Argument parser instance holding all data required.
 Parser :: struct {
-    usage: [..]string_view;
-    argument_list: [..]Argument;
-    help: bool;
-    info: string_view;
-    executable_name: string_view;
-    allocator: *Allocator;
+	usage: [..]string_view;
+	argument_list: [..]Argument;
+	help: bool;
+	info: string_view;
+	executable_name: string_view;
+	allocator: *Allocator;
 }
 
 /// Initialize argument parser. Custom application information can be set as optional `info`, this information is later
@@ -54,19 +54,19 @@ Parser :: struct {
 ///
 /// Use `terminate` function to release all resources needed by `parser`.
 init :: fn (parser: *Parser, info := "", allocator : *Allocator = null) {
-    assert(parser);
-    zeromem(auto parser, sizeof(@parser));
-    array_init(&parser.argument_list, 32, allocator);
-    array_init(&parser.usage, 32, allocator);
-    parser.info = info;
-    parser.allocator = allocator;
-    add(parser, &parser.help, "--help", "-h", "Print this help.");
+	assert(parser);
+	zeromem(auto parser, sizeof(@parser));
+	array_init(&parser.argument_list, 32, allocator);
+	array_init(&parser.usage, 32, allocator);
+	parser.info = info;
+	parser.allocator = allocator;
+	add(parser, &parser.help, "--help", "-h", "Print this help.");
 }
 
 /// Release all `parser` resources.
 terminate :: fn (parser: *Parser) {
-    array_terminate(&parser.argument_list);
-    array_terminate(&parser.usage);
+	array_terminate(&parser.argument_list);
+	array_terminate(&parser.usage);
 }
 
 // String must be allocated, string view just points to the original argument string.
@@ -83,7 +83,7 @@ terminate :: fn (parser: *Parser) {
 /// !!! warning
 ///     Argument parser internally does NOT duplicate any argument related metadata (i.e. long name).
 add :: fn (parser: *Parser, target: *?T, long: string_view, short := "", help := "", is_required := false) {
-    add_impl(parser, typeinfo(T), auto target, long, short, help, is_required, /* is_positional = */ false);
+	add_impl(parser, typeinfo(T), auto target, long, short, help, is_required, /* is_positional = */ false);
 }
 
 /// Add positional argument prefix to the `parser`. In case such prefix argument is parsed from the input arguments, all following
@@ -91,18 +91,18 @@ add :: fn (parser: *Parser, target: *?T, long: string_view, short := "", help :=
 /// hits some known argument name or the input argument list is empty.
 /// @Incomplete: Example
 add_positional :: fn (parser: *Parser, target: *[]string_view, long: string_view, short := "", help := "", is_required := false) {
-    add_impl(parser, typeinfo(@target), auto target, long, short, help, is_required, /* is_positional = */ true );
+	add_impl(parser, typeinfo(@target), auto target, long, short, help, is_required, /* is_positional = */ true );
 }
 
 /// Add usage string message listed in `Usage` section in the help message.
 add_usage :: fn (parser: *Parser, usage: string_view) {
-    array_push(&parser.usage, usage);
+	array_push(&parser.usage, usage);
 }
 
 /// Sets the executable name used in help message.
 set_executable_name :: fn (parser: *Parser, name: string_view) {
-    assert(parser);
-    parser.executable_name = name;
+	assert(parser);
+	parser.executable_name = name;
 }
 
 /// Start parsing of `args` argument list using the `parser` configuration. The `first_arg_index` can be used to skip
@@ -112,268 +112,268 @@ set_executable_name :: fn (parser: *Parser, name: string_view) {
 /// Returns count of successfully parsed arguments or an error. Client side should handle error cases gracefully (i.e. by printing help
 /// message or terminating the application).
 parse :: fn (parser: *Parser, args: []string_view, first_arg_index := 1) (parsed_arguments_count: s32, result: Error) {
-    using std;
-    // cleanup
-    loop i := 0; i < parser.argument_list.len; i += 1 {
-        arg := &parser.argument_list[i];
-        arg.was_found = false;
-    }
-    parsed_count := 0;
-    positional_argument: *Argument;
-    loop i := first_arg_index; i < args.len; i += 1 {
-        arg :: args[i];
-        // identify the name first
-        if arg.len == 0 { continue; }
-        name, value: string_view;
-        name = arg;
-        str_split_by_first(arg, '=', &name, &value);
-        found_argument := lookup_argument(parser, name);
-        if !found_argument {
-            if positional_argument {
-                positional_argument.data.args.len += 1;
-                continue;
-            } else {
-                return parsed_count, error("Unknown argument '%'.", name);
-            }
-        } else {
-            positional_argument = null;
-        }
-        if found_argument.is_positional {
-            positional_argument = found_argument;
-            positional_argument.data.args.len = 0;
-            positional_argument.data.args.ptr = &args[i+1];
-            positional_argument.was_found = true;
-            parsed_count += 1;
-            continue;
-        }
-        using TypeKind;
-        switch found_argument.info.kind {
-            BOOL {
-                if value.len > 0 { return parsed_count, error("Invalid value for the flag argument '%'.", name); }
-                (@found_argument.data.boolean) = true;
-            }
-            INT {
-                if value.len == 0 { return parsed_count, error("Expected integer value for argument '%'.", name); }
-                n, err :: strtos64(value);
-                if err { return parsed_count, err; }
-                // @Incomplete: validate overflows!
-                write_int(found_argument.data.unsigned, auto n, found_argument.info);
-            }
-            REAL {
-                if value.len == 0 { return parsed_count, error("Expected floating point value for argument '%'.", name); }
-                n, err :: strtof64(value);
-                if err { return parsed_count, err; }
-                // @Incomplete: validate overflows!
-                if found_argument.info.size_bytes == 4 {
-                    (@found_argument.data.float) = auto n;
-                } else {
-                    (@found_argument.data.double) = n;
-                }
-            }
-            STRING {
-                string_value, err :: string_from_value(name, value);
-                if err { return parsed_count, err; }
-                str_clear(found_argument.data.str);
-                str_append(found_argument.data.str, string_value);
-            }
-            ENUM {
-                n, err :: enum_variant_from_value(parser, auto found_argument.info, name, value);
-                if err { return parsed_count, err; }
-                write_int(found_argument.data.unsigned, auto n, found_argument.info);
-            }
-            STRUCT {
-                if is_string_view(found_argument.info) {
-                    string_value, err :: string_from_value(name, value);
-                    if err { return parsed_count, err; }
-                    (@found_argument.data.str_view) = string_value;
-                } else {
-                    return parsed_count, error("Unsupported argument type %.", found_argument.info.kind);
-                }
-            }
-            default {
-                return parsed_count, error("Unsupported argument type %.", found_argument.info.kind);
-            }
-        }
-        found_argument.was_found = true;
-        parsed_count += 1;
-    }
-    if parser.help {
-        print_help(parser);
-    } else {
-        loop i := 0; i < parser.argument_list.len; i += 1 {
-            arg := &parser.argument_list[i];
-            if arg.is_required && arg.was_found == false {
-                return parsed_count, error("Argument '%' is required.", arg.long);
-            }
-        }
-    }
-    return parsed_count, OK;
+	using std;
+	// cleanup
+	loop i := 0; i < parser.argument_list.len; i += 1 {
+		arg := &parser.argument_list[i];
+		arg.was_found = false;
+	}
+	parsed_count := 0;
+	positional_argument: *Argument;
+	loop i := first_arg_index; i < args.len; i += 1 {
+		arg :: args[i];
+		// identify the name first
+		if arg.len == 0 { continue; }
+		name, value: string_view;
+		name = arg;
+		str_split_by_first(arg, '=', &name, &value);
+		found_argument := lookup_argument(parser, name);
+		if !found_argument {
+			if positional_argument {
+				positional_argument.data.args.len += 1;
+				continue;
+			} else {
+				return parsed_count, error("Unknown argument '%'.", name);
+			}
+		} else {
+			positional_argument = null;
+		}
+		if found_argument.is_positional {
+			positional_argument = found_argument;
+			positional_argument.data.args.len = 0;
+			positional_argument.data.args.ptr = &args[i+1];
+			positional_argument.was_found = true;
+			parsed_count += 1;
+			continue;
+		}
+		using TypeKind;
+		switch found_argument.info.kind {
+			BOOL {
+				if value.len > 0 { return parsed_count, error("Invalid value for the flag argument '%'.", name); }
+				(@found_argument.data.boolean) = true;
+			}
+			INT {
+				if value.len == 0 { return parsed_count, error("Expected integer value for argument '%'.", name); }
+				n, err :: strtos64(value);
+				if err { return parsed_count, err; }
+				// @Incomplete: validate overflows!
+				write_int(found_argument.data.unsigned, auto n, found_argument.info);
+			}
+			REAL {
+				if value.len == 0 { return parsed_count, error("Expected floating point value for argument '%'.", name); }
+				n, err :: strtof64(value);
+				if err { return parsed_count, err; }
+				// @Incomplete: validate overflows!
+				if found_argument.info.size_bytes == 4 {
+					(@found_argument.data.float) = auto n;
+				} else {
+					(@found_argument.data.double) = n;
+				}
+			}
+			STRING {
+				string_value, err :: string_from_value(name, value);
+				if err { return parsed_count, err; }
+				str_clear(found_argument.data.str);
+				str_append(found_argument.data.str, string_value);
+			}
+			ENUM {
+				n, err :: enum_variant_from_value(parser, auto found_argument.info, name, value);
+				if err { return parsed_count, err; }
+				write_int(found_argument.data.unsigned, auto n, found_argument.info);
+			}
+			STRUCT {
+				if is_string_view(found_argument.info) {
+					string_value, err :: string_from_value(name, value);
+					if err { return parsed_count, err; }
+					(@found_argument.data.str_view) = string_value;
+				} else {
+					return parsed_count, error("Unsupported argument type %.", found_argument.info.kind);
+				}
+			}
+			default {
+				return parsed_count, error("Unsupported argument type %.", found_argument.info.kind);
+			}
+		}
+		found_argument.was_found = true;
+		parsed_count += 1;
+	}
+	if parser.help {
+		print_help(parser);
+	} else {
+		loop i := 0; i < parser.argument_list.len; i += 1 {
+			arg := &parser.argument_list[i];
+			if arg.is_required && arg.was_found == false {
+				return parsed_count, error("Argument '%' is required.", arg.long);
+			}
+		}
+	}
+	return parsed_count, OK;
 }
 
 /// Print formated help message. The `parser` should be already initialized with all argumenst.
 print_help :: fn (parser: *Parser) {
-    PADDING :: 32;
-    using std;
-    sorted_args: [..]*Argument;
-    defer array_terminate(&sorted_args);
-    loop i := 0; i < parser.argument_list.len; i += 1 {
-        array_push(&sorted_args, &parser.argument_list[i]);
-    }
-    sort(sorted_args, &fn (a: **Argument, b: **Argument) bool {
-        priority := 0;
-        if (@a).short.len > 0 && (@b).short.len == 0 { priority = 1000; }
-        else if (@a).short.len == 0 && (@b).short.len > 0 { priority = -1000; }
-        return std.str_compare((@a).long, (@b).long) + priority < 0;
-    });
-    append_value_options :: fn (line: *string, info: *TypeInfo) {
-        using std;
-        using TypeKind;
-        switch info.kind {
-            INT, REAL { str_append(line, "=<N>"); }
-            STRING    { str_append(line, "=<STR>"); }
-            STRUCT {
-                if info == typeinfo(string_view) {
-                    str_append(line, "=<STR>");
-                }
-            }
-            ENUM {
-                info_enum :: cast(*TypeInfoEnum) info;
-                str_append(line, "=<");
-                loop i := 0; i < info_enum.variants.len; i += 1 {
-                    variant :: &info_enum.variants[i];
-                    str_append(line, variant.name);
-                    if i + 1 < info_enum.variants.len {
-                        str_append(line, "|");
-                    }
-                }
-                str_append(line, ">");
-            }
-            default;
-        }
-    };
-    if parser.info.len > 0 {
-        print("%\n", parser.info);
-    }
-    if parser.usage.len > 0 {
-        print("Usage:\n");
-        loop i := 0; i < parser.usage.len; i += 1 {
-            if parser.executable_name.len > 0 {
-                print("  % %\n", parser.executable_name, parser.usage[i]);
-            } else {
-                print("  %\n", parser.usage[i]);
-            }
-        }
-        print("\n");
-    }
-    print("Options:\n");
-    line := str_new(parser.allocator);
-    defer str_delete(&line);
-    loop i := 0; i < sorted_args.len; i += 1 {
-        arg :: sorted_args[i];
-        str_append(&line, "  ");
-        if arg.short.len > 0 {
-            str_append(&line, arg.short);
-            str_append(&line, ", ");
-        }
-        str_append(&line, arg.long);
-        append_value_options(&line, arg.info);
-        if line.len >= PADDING {
-            print("%\n", line);
-            str_clear(&line);
-        }
-        loop line.len < PADDING {
-            str_append(&line, " ");
-        }
-        if arg.help.len > 0 {
-            str_append(&line, arg.help);
-        }
-        print("%\n", line);
-        str_clear(&line);
-    }
+	PADDING :: 32;
+	using std;
+	sorted_args: [..]*Argument;
+	defer array_terminate(&sorted_args);
+	loop i := 0; i < parser.argument_list.len; i += 1 {
+		array_push(&sorted_args, &parser.argument_list[i]);
+	}
+	sort(sorted_args, &fn (a: **Argument, b: **Argument) bool {
+		priority := 0;
+		if (@a).short.len > 0 && (@b).short.len == 0 { priority = 1000; }
+		else if (@a).short.len == 0 && (@b).short.len > 0 { priority = -1000; }
+		return std.str_compare((@a).long, (@b).long) + priority < 0;
+	});
+	append_value_options :: fn (line: *string, info: *TypeInfo) {
+		using std;
+		using TypeKind;
+		switch info.kind {
+			INT, REAL { str_append(line, "=<N>"); }
+			STRING    { str_append(line, "=<STR>"); }
+			STRUCT {
+				if info == typeinfo(string_view) {
+					str_append(line, "=<STR>");
+				}
+			}
+			ENUM {
+				info_enum :: cast(*TypeInfoEnum) info;
+				str_append(line, "=<");
+				loop i := 0; i < info_enum.variants.len; i += 1 {
+					variant :: &info_enum.variants[i];
+					str_append(line, variant.name);
+					if i + 1 < info_enum.variants.len {
+						str_append(line, "|");
+					}
+				}
+				str_append(line, ">");
+			}
+			default;
+		}
+	};
+	if parser.info.len > 0 {
+		print("%\n", parser.info);
+	}
+	if parser.usage.len > 0 {
+		print("Usage:\n");
+		loop i := 0; i < parser.usage.len; i += 1 {
+			if parser.executable_name.len > 0 {
+				print("  % %\n", parser.executable_name, parser.usage[i]);
+			} else {
+				print("  %\n", parser.usage[i]);
+			}
+		}
+		print("\n");
+	}
+	print("Options:\n");
+	line := str_new(parser.allocator);
+	defer str_delete(&line);
+	loop i := 0; i < sorted_args.len; i += 1 {
+		arg :: sorted_args[i];
+		str_append(&line, "  ");
+		if arg.short.len > 0 {
+			str_append(&line, arg.short);
+			str_append(&line, ", ");
+		}
+		str_append(&line, arg.long);
+		append_value_options(&line, arg.info);
+		if line.len >= PADDING {
+			print("%\n", line);
+			str_clear(&line);
+		}
+		loop line.len < PADDING {
+			str_append(&line, " ");
+		}
+		if arg.help.len > 0 {
+			str_append(&line, arg.help);
+		}
+		print("%\n", line);
+		str_clear(&line);
+	}
 }
 
 #private
 Argument :: struct {
-    long: string_view;
-    short: string_view;
-    help: string_view;
-    is_required: bool;
-    is_positional: bool;
-    was_found: bool;
-    info: *TypeInfo;
-    data: union {
-        any: *u8;
-        boolean: *bool;
-        unsigned:  *u64;
-        float:  *f32;
-        double:  *f64;
-        str_view: *string_view;
-        str: *string;
-        args: *[]string_view;
-    };
+	long: string_view;
+	short: string_view;
+	help: string_view;
+	is_required: bool;
+	is_positional: bool;
+	was_found: bool;
+	info: *TypeInfo;
+	data: union {
+		any: *u8;
+		boolean: *bool;
+		unsigned:  *u64;
+		float:  *f32;
+		double:  *f64;
+		str_view: *string_view;
+		str: *string;
+		args: *[]string_view;
+	};
 }
 
 add_impl :: fn (parser: *Parser, target_info: *TypeInfo, target_ptr: *u8, long: string_view, short: string_view, help: string_view, is_required: bool, is_positional: bool) {
-    assert(parser);
-    assert(target_ptr);
-    assert(long.len > 0);
-    argument := array_push(&parser.argument_list);
-    argument.long          = long;
-    argument.short         = short;
-    argument.help          = help;
-    argument.is_required   = is_required;
-    argument.is_positional = is_positional;
-    argument.was_found     = false;
-    argument.info          = target_info;
-    argument.data.any      = target_ptr;
+	assert(parser);
+	assert(target_ptr);
+	assert(long.len > 0);
+	argument := array_push(&parser.argument_list);
+	argument.long          = long;
+	argument.short         = short;
+	argument.help          = help;
+	argument.is_required   = is_required;
+	argument.is_positional = is_positional;
+	argument.was_found     = false;
+	argument.info          = target_info;
+	argument.data.any      = target_ptr;
 }
 
 lookup_argument :: fn (parser: *Parser, name: string_view) *Argument #inline {
-    using std;
-    loop i := 0; i < parser.argument_list.len; i += 1 {
-        arg :: &parser.argument_list[i];
-        if str_match(arg.short, name) { return arg; }
-        if str_match(arg.long, name)  { return arg; }
-    }
-    return null;
+	using std;
+	loop i := 0; i < parser.argument_list.len; i += 1 {
+		arg :: &parser.argument_list[i];
+		if str_match(arg.short, name) { return arg; }
+		if str_match(arg.long, name)  { return arg; }
+	}
+	return null;
 }
 
 write_int :: fn (dest: *u64, value: u64, info: *TypeInfo) #inline {
-    switch info.size_bytes {
-        1 { n := cast(*u8)  dest; @n = auto value; }
-        2 { n := cast(*u16) dest; @n = auto value; }
-        4 { n := cast(*u32) dest; @n = auto value; }
-        8 { n := cast(*u64) dest; @n = auto value; }
-        default { panic("Unhandled number size!"); }
-    }
+	switch info.size_bytes {
+		1 { n := cast(*u8)  dest; @n = auto value; }
+		2 { n := cast(*u16) dest; @n = auto value; }
+		4 { n := cast(*u32) dest; @n = auto value; }
+		8 { n := cast(*u64) dest; @n = auto value; }
+		default { panic("Unhandled number size!"); }
+	}
 }
 
 is_string_view :: fn (info: *TypeInfo) bool #inline {
-    return info == typeinfo(string_view);
+	return info == typeinfo(string_view);
 }
 
 string_from_value :: fn (name: string_view, value: string_view) (string_view, Error) #inline {
-    if value.len == 0  { return value, error("Expected string value for argument '%'.", name); }
-    return value, OK;
+	if value.len == 0  { return value, error("Expected string value for argument '%'.", name); }
+	return value, OK;
 }
 
 enum_variant_from_value :: fn (parser: *Parser, info: *TypeInfoEnum, name: string_view, value: string_view) (u64, Error) {
-    assert(info && info.kind == TypeKind.ENUM);
-    using std;
-    if value.len == 0 { return 0, error("Expected value for argument '%'.", name); }
-    tmp_value := str_new(value, parser.allocator);
-    defer str_delete(&tmp_value);
-    str_lower(&tmp_value);
-    tmp_variant := str_new(parser.allocator);
-    defer str_delete(&tmp_variant);
-    loop i := 0; i < info.variants.len; i += 1 {
-        variant :: &info.variants[i];
-        str_clear(&tmp_variant);
-        str_append(&tmp_variant, variant.name);
-        str_lower(&tmp_variant);
-        if str_match(tmp_value, tmp_variant) {
-            return auto variant.value, OK;
-        }
-    }
-    return 0, error("Unknown value '%' for argument '%'.", value, name);
+	assert(info && info.kind == TypeKind.ENUM);
+	using std;
+	if value.len == 0 { return 0, error("Expected value for argument '%'.", name); }
+	tmp_value := str_new(value, parser.allocator);
+	defer str_delete(&tmp_value);
+	str_lower(&tmp_value);
+	tmp_variant := str_new(parser.allocator);
+	defer str_delete(&tmp_variant);
+	loop i := 0; i < info.variants.len; i += 1 {
+		variant :: &info.variants[i];
+		str_clear(&tmp_variant);
+		str_append(&tmp_variant, variant.name);
+		str_lower(&tmp_variant);
+		if str_match(tmp_value, tmp_variant) {
+			return auto variant.value, OK;
+		}
+	}
+	return 0, error("Unknown value '%' for argument '%'.", value, name);
 }

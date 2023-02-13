@@ -58,14 +58,14 @@ _SHUT_UP_END
 #define LLVM_MEMCPY_INTRINSIC_ID LLVMLookupIntrinsicID("llvm.memcpy.inline", 18)
 
 typedef enum {
-    DW_ATE_adderess      = 1,
-    DW_ATE_boolean       = 2,
-    DW_ATE_complex_float = 3,
-    DW_ATE_float         = 4,
-    DW_ATE_signed        = 5,
-    DW_ATE_signed_char   = 6,
-    DW_ATE_unsigned      = 7,
-    DW_ATE_unsigned_char = 8,
+	DW_ATE_adderess      = 1,
+	DW_ATE_boolean       = 2,
+	DW_ATE_complex_float = 3,
+	DW_ATE_float         = 4,
+	DW_ATE_signed        = 5,
+	DW_ATE_signed_char   = 6,
+	DW_ATE_unsigned      = 7,
+	DW_ATE_unsigned_char = 8,
 } DW_ATE_Encoding;
 
 typedef enum {
@@ -75,9 +75,9 @@ typedef enum {
 #define HANDLE_DW_TAG(ID, NAME, VERSION, VENDOR) DW_TAG_##NAME = ID,
 #endif
 #include "llvm/BinaryFormat/Dwarf.def"
-    DW_TAG_lo_user   = 0x4080,
-    DW_TAG_hi_user   = 0xffff,
-    DW_TAG_user_base = 0x1000 ///< Recommended base for user tags.
+	DW_TAG_lo_user   = 0x4080,
+	DW_TAG_hi_user   = 0xffff,
+	DW_TAG_user_base = 0x1000 ///< Recommended base for user tags.
 } DW_TAG;
 
 #endif

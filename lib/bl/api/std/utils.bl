@@ -36,142 +36,142 @@
 
 /// Set `flag` in `flags` input. This function is valid for numeric and enum types (checked by assert).
 set_flag :: fn (flags: *?T, flag: T) T #inline {
-    assert(flags);
-    #if typeinfo(T).kind == TypeKind.ENUM {
-        // @Incomplete: Check enums for #flags tag.
-        // @Incomplete: Use static switch.
-        #if sizeof(T)     == 1 { f := cast(*u8)flags; @f  |= cast(u8) flag;  }
-        else if sizeof(T) == 2 { f := cast(*u16)flags; @f |= cast(u16) flag; }
-        else if sizeof(T) == 4 { f := cast(*u32)flags; @f |= cast(u32) flag; }
-        else if sizeof(T) == 8 { f := cast(*u64)flags; @f |= cast(u64) flag; }
-        else { compiler_error("Unsupported type in 'set_flag'"); }
-    } else if typeinfo(T).kind == TypeKind.INT {
-        @flags |= flag;
-    } else {
-        compiler_error("Expected number or enumerator type.");
-    }
-    return @flags;
+	assert(flags);
+	#if typeinfo(T).kind == TypeKind.ENUM {
+		// @Incomplete: Check enums for #flags tag.
+		// @Incomplete: Use static switch.
+		#if sizeof(T)     == 1 { f := cast(*u8)flags; @f  |= cast(u8) flag;  }
+		else if sizeof(T) == 2 { f := cast(*u16)flags; @f |= cast(u16) flag; }
+		else if sizeof(T) == 4 { f := cast(*u32)flags; @f |= cast(u32) flag; }
+		else if sizeof(T) == 8 { f := cast(*u64)flags; @f |= cast(u64) flag; }
+		else { compiler_error("Unsupported type in 'set_flag'"); }
+	} else if typeinfo(T).kind == TypeKind.INT {
+		@flags |= flag;
+	} else {
+		compiler_error("Expected number or enumerator type.");
+	}
+	return @flags;
 }
 
 /// Set all `flags_to_be_set` in `flags`.
 set_flags :: fn (flags: *?T, flags_to_be_set: ...T) T #inline {
-    loop i := 0; i < flags_to_be_set.len; i += 1 {
-        set_flag(flags, flags_to_be_set[i]);
-    }
-    return @flags;
+	loop i := 0; i < flags_to_be_set.len; i += 1 {
+		set_flag(flags, flags_to_be_set[i]);
+	}
+	return @flags;
 }
 
 /// Clear `flag` in `flags` input. This function is valid for numeric and enum types (checked by assert).
 clr_flag :: fn (flags: *?T, flag: T) T #inline {
-    assert(flags);
-    #if typeinfo(T).kind == TypeKind.ENUM {
-        // @Incomplete: Check enums for #flags tag.
-        // @Incomplete: Use static switch.
-        #if sizeof(T)     == 1 { f := cast(*u8)flags; @f  &= ~cast(u8) flag;  }
-        else if sizeof(T) == 2 { f := cast(*u16)flags; @f &= ~cast(u16) flag; }
-        else if sizeof(T) == 4 { f := cast(*u32)flags; @f &= ~cast(u32) flag; }
-        else if sizeof(T) == 8 { f := cast(*u64)flags; @f &= ~cast(u64) flag; }
-        else { panic("Unsupported type in 'clr_flag' %.", T); }
-    } else if typeinfo(T).kind == TypeKind.INT {
-        @flags &= ~flag;
-    } else {
-        compiler_error("Expected number or enumerator type.");
-    }
-    return @flags;
+	assert(flags);
+	#if typeinfo(T).kind == TypeKind.ENUM {
+		// @Incomplete: Check enums for #flags tag.
+		// @Incomplete: Use static switch.
+		#if sizeof(T)     == 1 { f := cast(*u8)flags; @f  &= ~cast(u8) flag;  }
+		else if sizeof(T) == 2 { f := cast(*u16)flags; @f &= ~cast(u16) flag; }
+		else if sizeof(T) == 4 { f := cast(*u32)flags; @f &= ~cast(u32) flag; }
+		else if sizeof(T) == 8 { f := cast(*u64)flags; @f &= ~cast(u64) flag; }
+		else { panic("Unsupported type in 'clr_flag' %.", T); }
+	} else if typeinfo(T).kind == TypeKind.INT {
+		@flags &= ~flag;
+	} else {
+		compiler_error("Expected number or enumerator type.");
+	}
+	return @flags;
 }
 
 /// Clear all `flags_to_be_cleared` in `flags`.
 clr_flags :: fn (flags: *?T, flags_to_be_cleared: ...T) T #inline {
-    loop i := 0; i < flags_to_be_cleared.len; i += 1 {
-        clr_flag(flags, flags_to_be_cleared[i]);
-    }
-    return @flags;
+	loop i := 0; i < flags_to_be_cleared.len; i += 1 {
+		clr_flag(flags, flags_to_be_cleared[i]);
+	}
+	return @flags;
 }
 
 /// Check whether `flag` is set in `flags`. This function is valid for numeric and enum types 
 /// (checked by assert).
 is_flag :: fn (flags: ?T, flag: T) bool #inline {
-    result := false;
-    #if typeinfo(T).kind == TypeKind.ENUM {
-        // @Incomplete: Check enums for #flags tag.
-        // @Incomplete: Use static switch.
-        #if sizeof(T)     == 1 { result = (cast(u8)flags & cast(u8)flag) == cast(u8) flag;    }
-        else if sizeof(T) == 2 { result = (cast(u16)flags & cast(u16)flag) == cast(u16) flag; }
-        else if sizeof(T) == 4 { result = (cast(u32)flags & cast(u32)flag) == cast(u32) flag; }
-        else if sizeof(T) == 8 { result = (cast(u64)flags & cast(u64)flag) == cast(u64) flag; }
-        else { panic("Unsupported type in 'is_flag' %.", T); }
-    } else if typeinfo(T).kind == TypeKind.INT {
-        result = (flags & flag) == flag;        
-    } else {
-        compiler_error("Expected number or enumerator type.");
-    }        
-    return result;
+	result := false;
+	#if typeinfo(T).kind == TypeKind.ENUM {
+		// @Incomplete: Check enums for #flags tag.
+		// @Incomplete: Use static switch.
+		#if sizeof(T)     == 1 { result = (cast(u8)flags & cast(u8)flag) == cast(u8) flag;    }
+		else if sizeof(T) == 2 { result = (cast(u16)flags & cast(u16)flag) == cast(u16) flag; }
+		else if sizeof(T) == 4 { result = (cast(u32)flags & cast(u32)flag) == cast(u32) flag; }
+		else if sizeof(T) == 8 { result = (cast(u64)flags & cast(u64)flag) == cast(u64) flag; }
+		else { panic("Unsupported type in 'is_flag' %.", T); }
+	} else if typeinfo(T).kind == TypeKind.INT {
+		result = (flags & flag) == flag;        
+	} else {
+		compiler_error("Expected number or enumerator type.");
+	}        
+	return result;
 }
 
 /// Check whether all `flags_to_check` are set in `flags`.
 is_all_flags :: fn (flags: ?T, flags_to_check: ...T) bool #inline {
-    loop i := 0; i < flags_to_check.len; i += 1 {
-        if !is_flag(flags, flags_to_check[i]) { return false; }
-    }
-    return true;
+	loop i := 0; i < flags_to_check.len; i += 1 {
+		if !is_flag(flags, flags_to_check[i]) { return false; }
+	}
+	return true;
 }
 
 /// Check whether at least one of `flags_to_check` is set in `flags`.
 is_one_or_more_flags :: fn (flags: ?T, flags_to_check: ...T) bool #inline {
-    set_count: s32;
-    loop i := 0; i < flags_to_check.len; i += 1 {
-        if is_flag(flags, flags_to_check[i]) { set_count += 1; }
-    }
-    return set_count > 0;
+	set_count: s32;
+	loop i := 0; i < flags_to_check.len; i += 1 {
+		if is_flag(flags, flags_to_check[i]) { set_count += 1; }
+	}
+	return set_count > 0;
 }
 
 /// Create new flags from combination of `other` flags.
 make_flags :: fn (f1: ?T, other: ...T) T {
-    result := f1;
-    loop i := 0; i < other.len; i += 1 {
-        set_flag(&result, other[i]);
-    }
-    return result;
+	result := f1;
+	loop i := 0; i < other.len; i += 1 {
+		set_flag(&result, other[i]);
+	}
+	return result;
 }
 
 /// Reads environment variable specified by `var` name. Result is empty in case no such variable was 
 /// found or has no content. It's caller responsibility to delete result string.
 env_get :: fn (var: string_view) string {
-    out :: cast(*u8) C.getenv(std.strtoc(var));
-    if !out { return std.str_new(); }
-    return std.str_new(out);
+	out :: cast(*u8) C.getenv(std.strtoc(var));
+	if !out { return std.str_new(); }
+	return std.str_new(out);
 }
 
 /// Sets environment variable.
 env_set :: fn (var: string_view, value: string_view) #inline {
-    tmp :: sprint("%=%", var, value);
-    defer std.str_delete(&tmp);
-    C.putenv(std.strtoc(tmp));
+	tmp :: sprint("%=%", var, value);
+	defer std.str_delete(&tmp);
+	C.putenv(std.strtoc(tmp));
 }
 
 /// Sets seed for `std.rand` or utility function [random_number](#random_number) based on current 
 /// system tick time.
 random_seed_time :: fn () #inline {
-    C.srand(auto os_tick_ms());
+	C.srand(auto os_tick_ms());
 }
 
 /// Generates random number in specified range <min, max> using standard libc rand generator.
 /// Random number generator seed is supposed to be set by :ref:`random_seed_time` or by `std.srand` 
 /// call.
 random_number :: fn (min := 0, max := 1) s32 #inline {
-    return C.rand() % (max + 1 - min) + min;
+	return C.rand() % (max + 1 - min) + min;
 }
 
 /// Slice sorting utility.
 sort :: fn (list: []?T, cmp: *fn(a: *T, b: *T) bool) {
-    assert(cmp);
-    loop i := 0; i < list.len; i += 1 {
-        loop j := i+1; j < list.len; j += 1 {
-            if cmp(&list[i], &list[j]) {
-                swap(&list[i], &list[j]);
-            }
-        }
-    }
+	assert(cmp);
+	loop i := 0; i < list.len; i += 1 {
+		loop j := i+1; j < list.len; j += 1 {
+			if cmp(&list[i], &list[j]) {
+				swap(&list[i], &list[j]);
+			}
+		}
+	}
 }
 
 /// Iterate over `arr` slice and return pointer to the value and it's index if `func` validator
@@ -182,161 +182,161 @@ sort :: fn (list: []?T, cmp: *fn(a: *T, b: *T) bool) {
 ///
 /// In case no element was found, function returns null pointer and -1 index.
 find_if :: fn (arr: []?T, func: *fn (*T) bool) (value: *T, index: s64) #inline {
-    assert(func);
-    loop i := 0; i < arr.len; i += 1 {
-        if func(&arr[i]) { return &arr[i], i; }
-    }
-    return null, -1;
+	assert(func);
+	loop i := 0; i < arr.len; i += 1 {
+		if func(&arr[i]) { return &arr[i], i; }
+	}
+	return null, -1;
 }
 
 /// Combine two or more hashes into one, T is expected to be an integer type (checked by static
 /// assert).
 hash_combine :: fn (first: ?T, second: T, more: ...T) T #inline {
-    static_assert(typeinfo(T).kind == TypeKind.INT);
-    result := first ^ (second + (cast(T)0x9e3779b9) + (first << 6) + (first >> 2));
-    loop i := 0; i < more.len; i += 1 {
-        // Just copy paste this again to avoid recursion.
-        result = result ^ (more[i] + (cast(T)0x9e3779b9) + (result << 6) + (result >> 2));
-    }
-    return result;
+	static_assert(typeinfo(T).kind == TypeKind.INT);
+	result := first ^ (second + (cast(T)0x9e3779b9) + (first << 6) + (first >> 2));
+	loop i := 0; i < more.len; i += 1 {
+		// Just copy paste this again to avoid recursion.
+		result = result ^ (more[i] + (cast(T)0x9e3779b9) + (result << 6) + (result >> 2));
+	}
+	return result;
 }
 
 /// Check whether the number `n` is power of 2.
 is_power_of_two :: fn (n: usize) bool #inline {
-    return (n != 0) && ((n & (n - 1)) == 0);
+	return (n != 0) && ((n & (n - 1)) == 0);
 }
 
 /// Finds next power of 2.
 next_pow_2 :: fn (n: s64) s64 #inline {
-    value : s64 = 1;
-    loop (value <= n) {
-        value = value << 1;
-    }
-    return value;
+	value : s64 = 1;
+	loop (value <= n) {
+		value = value << 1;
+	}
+	return value;
 }
 
 /// Converts UTF8 encoded string to UTF32.
 utf8_to_utf32 :: fn (utf8_str: string_view, out_utf32_str: *[..]u32) Error {
-    assert(out_utf32_str);
-    if std.str_is_empty(utf8_str) { return OK; }
-    array_reserve(out_utf32_str, utf8_str.len);
-    converted_bytes: s32;
-    loop converted_bytes < utf8_str.len {
-        word :: std.str_sub(utf8_str, converted_bytes);
-        utf32word, decoded_bytes, err_decode :: utf8_to_utf32_single_char(word);
-        if err_decode { return err_decode; }
-        converted_bytes += decoded_bytes;
-        array_push(out_utf32_str, utf32word);
-    }
-    return OK;
+	assert(out_utf32_str);
+	if std.str_is_empty(utf8_str) { return OK; }
+	array_reserve(out_utf32_str, utf8_str.len);
+	converted_bytes: s32;
+	loop converted_bytes < utf8_str.len {
+		word :: std.str_sub(utf8_str, converted_bytes);
+		utf32word, decoded_bytes, err_decode :: utf8_to_utf32_single_char(word);
+		if err_decode { return err_decode; }
+		converted_bytes += decoded_bytes;
+		array_push(out_utf32_str, utf32word);
+	}
+	return OK;
 }
 
 utf8_to_utf32_single_char :: fn (utf8: string_view) (utf32: u32, decoded_bytes: s32, state: Error) #inline {
-    if std.str_is_empty(utf8) { return 0, 0, error("Unable to convert UTF8 to UTF32, input character is empty."); }
-    if utf8[0] < 0x80 { // single byte encoding
-        return auto utf8[0], 1, OK;
-    }
-    b: [4]u32;
-    if (utf8[0] & 0xE0) == 0xC0 { // 2 bytes
-        if utf8.len < 2 { return 0, 0, error("Unable to convert UTF8 to UTF32, invalid encoding."); }
-        b[0] = utf8[0] & 0x1F;
-        if (utf8[1] & 0xC0) == 0x80 {
-            b[1] = auto (utf8[1] & 0x3F);
-        } else {
-            return 0, 0, error("Unable to convert UTF8 to UTF32, invalid encoding.");
-        }
-        return (b[0] << 6) | b[1], 2, OK;
-    }
-    if (utf8[0] & 0xE0) == 0xE0 { // 3 bytes
-        if utf8.len < 3 { return 0, 0, error("Unable to convert UTF8 to UTF32, invalid encoding."); }
-        b[0] = utf8[0] & 0x0F;
-        loop i := 1; i < 3; i += 1 {
-            if (utf8[i] & 0xC0) == 0x80 {
-                b[i] = auto (utf8[i] & 0x3F);
-            } else {
-                return 0, 0, error("Unable to convert UTF8 to UTF32, invalid encoding.");
-            }
-        }
-        return (b[0] << 12) | (b[1] << 6) | b[2], 3, OK;
-    }
-    if (utf8[0] & 0xF8) == 0xF0 { // 4 bytes
-        if utf8.len < 4 { return 0, 0, error("Unable to convert UTF8 to UTF32, invalid encoding."); }
-        b[0] = utf8[0] & 0x7;
-        loop i := 1; i < 4; i += 1 {
-            if (utf8[i] & 0xC0) == 0x80 {
-                b[i] = auto (utf8[i] & 0x3F);
-            } else {
-                return 0, 0, error("Unable to convert UTF8 to UTF32, invalid encoding.");
-            }
-        }
-        return (b[0] << 18) | (b[1] << 12) | (b[2] << 6) | b[3], 4, OK;
-    }
-    return 0, 0, error("Unable to convert UTF8 to UTF32, invalid encoding.");
+	if std.str_is_empty(utf8) { return 0, 0, error("Unable to convert UTF8 to UTF32, input character is empty."); }
+	if utf8[0] < 0x80 { // single byte encoding
+		return auto utf8[0], 1, OK;
+	}
+	b: [4]u32;
+	if (utf8[0] & 0xE0) == 0xC0 { // 2 bytes
+		if utf8.len < 2 { return 0, 0, error("Unable to convert UTF8 to UTF32, invalid encoding."); }
+		b[0] = utf8[0] & 0x1F;
+		if (utf8[1] & 0xC0) == 0x80 {
+			b[1] = auto (utf8[1] & 0x3F);
+		} else {
+			return 0, 0, error("Unable to convert UTF8 to UTF32, invalid encoding.");
+		}
+		return (b[0] << 6) | b[1], 2, OK;
+	}
+	if (utf8[0] & 0xE0) == 0xE0 { // 3 bytes
+		if utf8.len < 3 { return 0, 0, error("Unable to convert UTF8 to UTF32, invalid encoding."); }
+		b[0] = utf8[0] & 0x0F;
+		loop i := 1; i < 3; i += 1 {
+			if (utf8[i] & 0xC0) == 0x80 {
+				b[i] = auto (utf8[i] & 0x3F);
+			} else {
+				return 0, 0, error("Unable to convert UTF8 to UTF32, invalid encoding.");
+			}
+		}
+		return (b[0] << 12) | (b[1] << 6) | b[2], 3, OK;
+	}
+	if (utf8[0] & 0xF8) == 0xF0 { // 4 bytes
+		if utf8.len < 4 { return 0, 0, error("Unable to convert UTF8 to UTF32, invalid encoding."); }
+		b[0] = utf8[0] & 0x7;
+		loop i := 1; i < 4; i += 1 {
+			if (utf8[i] & 0xC0) == 0x80 {
+				b[i] = auto (utf8[i] & 0x3F);
+			} else {
+				return 0, 0, error("Unable to convert UTF8 to UTF32, invalid encoding.");
+			}
+		}
+		return (b[0] << 18) | (b[1] << 12) | (b[2] << 6) | b[3], 4, OK;
+	}
+	return 0, 0, error("Unable to convert UTF8 to UTF32, invalid encoding.");
 }
 
 /// Converts UTF32 encoded string to UTF8.
 utf32_to_utf8 :: fn (utf32_str: []u32, out_utf8_str: *string) Error {
-    assert(out_utf8_str);
-    if utf32_str.len == 0 { return OK; }
-    std.str_reserve(out_utf8_str, utf32_str.len);
-    loop i := 0; i < utf32_str.len; i += 1 {
-        err :: utf32_to_utf8_single_char(utf32_str[i], out_utf8_str);
-        if err { return err; }
-    }
-    return OK;
+	assert(out_utf8_str);
+	if utf32_str.len == 0 { return OK; }
+	std.str_reserve(out_utf8_str, utf32_str.len);
+	loop i := 0; i < utf32_str.len; i += 1 {
+		err :: utf32_to_utf8_single_char(utf32_str[i], out_utf8_str);
+		if err { return err; }
+	}
+	return OK;
 }
 
 /// Appends the `out_utf8_str` string with *utf8* characters converted from `utf32_str` input.
 utf32_to_utf8_single_char :: fn (utf32_char: u32, out_utf8_str: *string) Error {
-    append :: fn (str: *string, char: u32) #inline {
-        tmp :: string_view.{ len = 1, ptr = auto &char };
-        std.str_append(str, tmp);
-    };
-    
-    if utf32_char <= 0x7F {
-        append(out_utf8_str, utf32_char);
-    } else if (utf32_char <= 0x7FF) {
-        append(out_utf8_str, 0xC0 | (utf32_char >> 6));
-        append(out_utf8_str, 0x80 | (utf32_char & 0x3F));
-    } else if (utf32_char <= 0xFFFF) {
-        append(out_utf8_str, 0xE0 | (utf32_char >> 12));
-        append(out_utf8_str, 0x80 | ((utf32_char >> 6) & 0x3F));
-        append(out_utf8_str, 0x80 | (utf32_char & 0x3F));
-    } else if (utf32_char <= 0x1FFFFF) {
-        append(out_utf8_str, 0xF0 | (utf32_char >> 18));
-        append(out_utf8_str, 0x80 | ((utf32_char >> 12) & 0x3F));
-        append(out_utf8_str, 0x80 | ((utf32_char >> 6) & 0x3F));
-        append(out_utf8_str, 0x80 | (utf32_char & 0x3F));
-    } else if (utf32_char <= 0x3FFFFFF) {
-        append(out_utf8_str, 0xF8 | (utf32_char >> 24));
-        append(out_utf8_str, 0x80 | (utf32_char >> 18));
-        append(out_utf8_str, 0x80 | ((utf32_char >> 12) & 0x3F));
-        append(out_utf8_str, 0x80 | ((utf32_char >> 6) & 0x3F));
-        append(out_utf8_str, 0x80 | (utf32_char & 0x3F));
-    } else if (utf32_char <= 0x7FFFFFFF) {
-        append(out_utf8_str, 0xFC | (utf32_char >> 30));
-        append(out_utf8_str, 0x80 | ((utf32_char >> 24) & 0x3F));
-        append(out_utf8_str, 0x80 | ((utf32_char >> 18) & 0x3F));
-        append(out_utf8_str, 0x80 | ((utf32_char >> 12) & 0x3F));
-        append(out_utf8_str, 0x80 | ((utf32_char >> 6) & 0x3F));
-        append(out_utf8_str, 0x80 | (utf32_char & 0x3F));
-    } else {
-        return error("Invalid UTF32 character code: %.", utf32_char);
-    }
+	append :: fn (str: *string, char: u32) #inline {
+		tmp :: string_view.{ len = 1, ptr = auto &char };
+		std.str_append(str, tmp);
+	};
+	
+	if utf32_char <= 0x7F {
+		append(out_utf8_str, utf32_char);
+	} else if (utf32_char <= 0x7FF) {
+		append(out_utf8_str, 0xC0 | (utf32_char >> 6));
+		append(out_utf8_str, 0x80 | (utf32_char & 0x3F));
+	} else if (utf32_char <= 0xFFFF) {
+		append(out_utf8_str, 0xE0 | (utf32_char >> 12));
+		append(out_utf8_str, 0x80 | ((utf32_char >> 6) & 0x3F));
+		append(out_utf8_str, 0x80 | (utf32_char & 0x3F));
+	} else if (utf32_char <= 0x1FFFFF) {
+		append(out_utf8_str, 0xF0 | (utf32_char >> 18));
+		append(out_utf8_str, 0x80 | ((utf32_char >> 12) & 0x3F));
+		append(out_utf8_str, 0x80 | ((utf32_char >> 6) & 0x3F));
+		append(out_utf8_str, 0x80 | (utf32_char & 0x3F));
+	} else if (utf32_char <= 0x3FFFFFF) {
+		append(out_utf8_str, 0xF8 | (utf32_char >> 24));
+		append(out_utf8_str, 0x80 | (utf32_char >> 18));
+		append(out_utf8_str, 0x80 | ((utf32_char >> 12) & 0x3F));
+		append(out_utf8_str, 0x80 | ((utf32_char >> 6) & 0x3F));
+		append(out_utf8_str, 0x80 | (utf32_char & 0x3F));
+	} else if (utf32_char <= 0x7FFFFFFF) {
+		append(out_utf8_str, 0xFC | (utf32_char >> 30));
+		append(out_utf8_str, 0x80 | ((utf32_char >> 24) & 0x3F));
+		append(out_utf8_str, 0x80 | ((utf32_char >> 18) & 0x3F));
+		append(out_utf8_str, 0x80 | ((utf32_char >> 12) & 0x3F));
+		append(out_utf8_str, 0x80 | ((utf32_char >> 6) & 0x3F));
+		append(out_utf8_str, 0x80 | (utf32_char & 0x3F));
+	} else {
+		return error("Invalid UTF32 character code: %.", utf32_char);
+	}
 
-    return OK;
+	return OK;
 }
 
 reinterpret_read_any :: fn (T: type #comptime, value: Any) T #inline {
-    assert(value.data && value.type_info);
-    tmp: T;
-    memcpy(auto &tmp, value.data, std.min(sizeof(T), value.type_info.size_bytes));
-    return tmp;
+	assert(value.data && value.type_info);
+	tmp: T;
+	memcpy(auto &tmp, value.data, std.min(sizeof(T), value.type_info.size_bytes));
+	return tmp;
 }
 
 reinterpret_write_any :: fn (dest: Any, value: ?T) usize #inline {
-    assert(dest.data && dest.type_info);
-    bytes :: std.min(sizeof(T), dest.type_info.size_bytes);
-    memcpy(dest.data, auto &value, bytes);
-    return bytes;
+	assert(dest.data && dest.type_info);
+	bytes :: std.min(sizeof(T), dest.type_info.size_bytes);
+	memcpy(dest.data, auto &value, bytes);
+	return bytes;
 }

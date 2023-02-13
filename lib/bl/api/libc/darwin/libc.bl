@@ -43,43 +43,43 @@ timezone :: long;
 off_t :: longlong;
 
 stat_t :: struct {
-        st_dev: dev_t;
-        st_mode: mode_t;
-        st_nlink: nlink_t;
-        st_ino: ino64_t;
-        st_uid: uid_t;
-        st_gid: gid_t;
-        st_rdev: dev_t;
-        st_atimespec: timespec;
-        st_mtimespec: timespec;
-        st_ctimespec: timespec;
-        st_birthtimespec: timespec;
-        st_size: off_t;
-        st_blocks: blkcnt_t;
-        st_blksize: blksize_t;
-        st_flags: u32;
-        st_gen: u32;
-        st_lspare: s32;
-    st_qspare: [2]s64;
+		st_dev: dev_t;
+		st_mode: mode_t;
+		st_nlink: nlink_t;
+		st_ino: ino64_t;
+		st_uid: uid_t;
+		st_gid: gid_t;
+		st_rdev: dev_t;
+		st_atimespec: timespec;
+		st_mtimespec: timespec;
+		st_ctimespec: timespec;
+		st_birthtimespec: timespec;
+		st_size: off_t;
+		st_blocks: blkcnt_t;
+		st_blksize: blksize_t;
+		st_flags: u32;
+		st_gen: u32;
+		st_lspare: s32;
+	st_qspare: [2]s64;
 }
 
 dirent_t :: struct {
-    d_ino: u64;
-    d_seekoff: u64;
-    d_reclen: u16;
-    d_namlen: u16;
-    d_type: u8;
-    d_name: [DARWIN_MAXPATHLEN]char;
+	d_ino: u64;
+	d_seekoff: u64;
+	d_reclen: u16;
+	d_namlen: u16;
+	d_type: u8;
+	d_name: [DARWIN_MAXPATHLEN]char;
 }
 
 timespec :: struct {
-    tv_sec: time_t;
-    tv_nsec: long;
+	tv_sec: time_t;
+	tv_nsec: long;
 }
 
 timeval :: struct {
-    tv_sec: time_t;
-    tv_usec: suseconds_t;
+	tv_sec: time_t;
+	tv_usec: suseconds_t;
 }
 
 STDIN  :: 0;
@@ -276,11 +276,11 @@ _S_IFLNK  : u32 : 0xA000;
 _S_IFSOCK : u32 : 0xC000;
 
 S_ISDIR :: fn (mode: u32) bool #inline {
-    return (mode & _S_IFMT) == _S_IFDIR;    
+	return (mode & _S_IFMT) == _S_IFDIR;    
 }
 
 S_ISREG :: fn (mode: u32) bool #inline {
-    return (mode & _S_IFMT) == _S_IFREG;    
+	return (mode & _S_IFMT) == _S_IFREG;    
 }
 
 mkdir :: fn (path: *char, mode: mode_t) int #extern "mkdir";
@@ -314,6 +314,8 @@ tanf :: fn (x: f32) f32 #extern "tanf";
 tan :: fn (x: f64) f64 #extern "tan";
 atan2f :: fn (y: f32, x: f32) f32 #extern "atan2f";
 atan2 :: fn (y: f64, x: f64) f64 #extern "atan2";
+atanf :: fn (y: f32) f32 #extern "atanf";
+atan :: fn (y: f64) f64 #extern "atan";
 copysignf :: fn (x: f32, y: f32) f32 #extern "copysingf";
 copysign :: fn (x: f64, y: f64) f64 #extern "copysing";
 tolower :: fn (c: int) int #extern "tolower";
@@ -334,6 +336,6 @@ lseek :: fn (fd: int, offset: off_t, whence: int) off_t #extern "lseek";
 backtrace :: fn (array: *void_ptr, size: int) int #extern "backtrace";
 backtrace_symbols :: fn (array: *void_ptr, size: int) **char #extern "backtrace_symbols";
 errno :: fn () s32 #inline {
-    _errno_location :: fn () *int #extern "__error";
-    return @_errno_location();
+	_errno_location :: fn () *int #extern "__error";
+	return @_errno_location();
 }

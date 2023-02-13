@@ -59,75 +59,75 @@ typedef ptrdiff_t vm_relative_stack_ptr_t;
 typedef u8       *vm_stack_ptr_t;
 
 enum vm_interp_state {
-    VM_INTERP_PASSED,
-    VM_INTERP_POSTPONE,
-    VM_INTERP_ABORT,
+	VM_INTERP_PASSED,
+	VM_INTERP_POSTPONE,
+	VM_INTERP_ABORT,
 };
 
 struct vm_frame {
-    struct vm_frame       *prev;
-    struct mir_instr_call *caller; // Optional
+	struct vm_frame       *prev;
+	struct mir_instr_call *caller; // Optional
 };
 
 struct vm_stack {
-    vm_stack_ptr_t          top_ptr;         // pointer to top of the stack
-    usize                   allocated_bytes; // total allocated size of the stack in bytes
-    struct vm_frame        *ra;              // current frame beginning (return address)
-    struct mir_instr       *pc;              // currently executed instruction (program counter)
-    struct mir_instr_block *prev_block;      // used by phi instruction
+	vm_stack_ptr_t          top_ptr;         // pointer to top of the stack
+	usize                   allocated_bytes; // total allocated size of the stack in bytes
+	struct vm_frame        *ra;              // current frame beginning (return address)
+	struct mir_instr       *pc;              // currently executed instruction (program counter)
+	struct mir_instr_block *prev_block;      // used by phi instruction
 };
 
 struct vm_bufpage {
-    struct vm_bufpage *prev;
-    usize              len, cap;
-    vm_stack_ptr_t     top;
+	struct vm_bufpage *prev;
+	usize              len, cap;
+	vm_stack_ptr_t     top;
 };
 
 struct vm_snapshot {
-    struct mir_instr_call *key;
-    struct vm_stack       *stack;
+	struct mir_instr_call *key;
+	struct vm_stack       *stack;
 };
 
 struct virtual_machine {
-    struct vm_stack   *stack;
-    struct vm_stack   *main_stack; // Owner pointer of the main execution stack.
-    struct vm_bufpage *data;       // Compile time values + global variables.
-    struct assembly   *assembly;
-    array(char) dcsigtmp;
-    bool aborted;
+	struct vm_stack   *stack;
+	struct vm_stack   *main_stack; // Owner pointer of the main execution stack.
+	struct vm_bufpage *data;       // Compile time values + global variables.
+	struct assembly   *assembly;
+	array(char) dcsigtmp;
+	bool aborted;
 
-    // Cache of unused compile-time call executed stacks available for reuse.
-    array(struct vm_stack *) available_comptime_call_stacks;
+	// Cache of unused compile-time call executed stacks available for reuse.
+	array(struct vm_stack *) available_comptime_call_stacks;
 
-    // Contains cached small stacks used for compile time execution of function calls. The function
-    // call in compile time can hit incomplete function in such a case the execution must wait until
-    // the function is analyzed. This cache is used to restore previous execution.
-    //
-    // When the call is successfully completed the cached entry must be removed from the table and
-    // returned back to 'available_comptime_call_stacks' array.
-    hash_table(struct vm_snapshot) comptime_call_stacks;
+	// Contains cached small stacks used for compile time execution of function calls. The function
+	// call in compile time can hit incomplete function in such a case the execution must wait until
+	// the function is analyzed. This cache is used to restore previous execution.
+	//
+	// When the call is successfully completed the cached entry must be removed from the table and
+	// returned back to 'available_comptime_call_stacks' array.
+	hash_table(struct vm_snapshot) comptime_call_stacks;
 };
 
 enum mir_value_address_mode {
-    MIR_VAM_UNKNOWN,
+	MIR_VAM_UNKNOWN,
 
-    // Value points to memory allocation on the stack or heap.
-    MIR_VAM_LVALUE,
-    // Value points to memory allocation on the stack or heap but value itself is immutable and
-    // cannot be modified.
-    MIR_VAM_LVALUE_CONST,
-    // Does not point to allocated memory (i.e.: const literals).
-    MIR_VAM_RVALUE,
+	// Value points to memory allocation on the stack or heap.
+	MIR_VAM_LVALUE,
+	// Value points to memory allocation on the stack or heap but value itself is immutable and
+	// cannot be modified.
+	MIR_VAM_LVALUE_CONST,
+	// Does not point to allocated memory (i.e.: const literals).
+	MIR_VAM_RVALUE,
 };
 
 // This should not be there but whatever.
 struct mir_const_expr_value {
-    // @Performance: _tmp and data can be packed in union
-    vm_value_t                  _tmp;
-    vm_stack_ptr_t              data;
-    struct mir_type            *type;
-    enum mir_value_address_mode addr_mode;
-    bool                        is_comptime;
+	// @Performance: _tmp and data can be packed in union
+	vm_value_t                  _tmp;
+	vm_stack_ptr_t              data;
+	struct mir_type            *type;
+	enum mir_value_address_mode addr_mode;
+	bool                        is_comptime;
 };
 
 typedef sarr_t(struct mir_const_expr_value, 32) mir_const_values_t;

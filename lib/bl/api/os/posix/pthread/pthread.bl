@@ -1,16 +1,16 @@
 pthread_mutex_t :: struct {
-    __sig: C.long;
-    __opaque: [SIZE_OF_PTHREAD_MUTEX_T]C.char;
+	__sig: C.long;
+	__opaque: [SIZE_OF_PTHREAD_MUTEX_T]C.char;
 }
 
 pthread_cond_t :: struct {
-    __sig: C.long;
-    __opaque: [SIZE_OF_PTHREAD_COND]C.char;
+	__sig: C.long;
+	__opaque: [SIZE_OF_PTHREAD_COND]C.char;
 }
 
 pthread_condattr_t :: struct {
-    __sig: C.long;
-    __opaque: [SIZE_PTHREAD_CONDATTR]C.char;
+	__sig: C.long;
+	__opaque: [SIZE_PTHREAD_CONDATTR]C.char;
 }
 
 pthread_t :: *u8;

@@ -35,14 +35,14 @@
 /// }
 /// ```
 BucketArray :: fn (TElem: type #comptime) type #comptime {
-    TBucket :: Bucket(TElem);
-    return struct {
-        buckets: [..]TBucket;
-        free_buckets: [..]s32;
+	TBucket :: Bucket(TElem);
+	return struct {
+		buckets: [..]TBucket;
+		free_buckets: [..]s32;
 
-        len: s64;
-        allocator: *Allocator;
-    };
+		len: s64;
+		allocator: *Allocator;
+	};
 }
 
 /// Create a new **BucketArrayIterator** type based of `TArr` bucket array type.
@@ -53,7 +53,7 @@ BucketArray :: fn (TElem: type #comptime) type #comptime {
 /// }
 /// ```
 BucketArrayIterator :: fn (TArr: type #comptime) type #comptime {
-    return ElemWithMeta(bucket_array_typeof_elem(TArr));
+	return ElemWithMeta(bucket_array_typeof_elem(TArr));
 }
 
 /// Initialize the `arr` bucket array. It's not necessary to call this method in case the `arr` is
@@ -61,29 +61,29 @@ BucketArrayIterator :: fn (TArr: type #comptime) type #comptime {
 /// elements in advance.
 /// Memory preallocation is performed using `allocator`.
 bucket_array_init :: fn (arr: *?TArr, expected_size: s32, allocator: *Allocator = null) {
-    assert(arr);
-    assert(expected_size>= 0);
-    arr.allocator = allocator;
-    if expected_size > 0 {
-        expected_bucket_count :: (expected_size / BUCKET_ELEM_COUNT) + 1;
-        array_init(&arr.buckets, expected_bucket_count, arr.allocator);
-        array_init(&arr.free_buckets, expected_bucket_count, arr.allocator);
-        loop i := 0; i < expected_bucket_count; i += 1 {
-            add_bucket(arr);
-        }
-    }
+	assert(arr);
+	assert(expected_size>= 0);
+	arr.allocator = allocator;
+	if expected_size > 0 {
+		expected_bucket_count :: (expected_size / BUCKET_ELEM_COUNT) + 1;
+		array_init(&arr.buckets, expected_bucket_count, arr.allocator);
+		array_init(&arr.free_buckets, expected_bucket_count, arr.allocator);
+		loop i := 0; i < expected_bucket_count; i += 1 {
+			add_bucket(arr);
+		}
+	}
 }
 
 /// Release all memory resources used by the `arr` and set the `arr` instance to the default state.
 bucket_array_terminate :: fn (arr: *?TArr) {
-    assert(arr);
-    loop i := 0; i < arr.buckets.len; i += 1 {
-        bucket := &arr.buckets[i];
-        free_slice(&bucket.elems, arr.allocator);
-    }
-    array_terminate(&arr.buckets);
-    array_terminate(&arr.free_buckets);
-    zeromem(auto arr, sizeof(TArr));
+	assert(arr);
+	loop i := 0; i < arr.buckets.len; i += 1 {
+		bucket := &arr.buckets[i];
+		free_slice(&bucket.elems, arr.allocator);
+	}
+	array_terminate(&arr.buckets);
+	array_terminate(&arr.free_buckets);
+	zeromem(auto arr, sizeof(TArr));
 }
 
 /// Push a new element `value` at the end of `arr` or into any available free slot in preallocated
@@ -103,73 +103,73 @@ bucket_array_push :: fn { impl_push_empty; impl_push; }
 /// Erase previously pushed value from the `arr`, and asserts in case the value was already erased.
 /// Memory for erased value stays allocated and can be used later for new values.
 bucket_array_erase :: fn (arr: *?TArr, value: *bucket_array_typeof_elem(TArr)) {
-    assert(arr);
-    if !value { return; }
-    elem_with_meta := cast(*ElemWithMeta(typeof(@value))) value;
-    bucket_index :: elem_with_meta.bucket_index;
-    elem_index :: elem_with_meta.elem_index;
-    assert(bucket_index >= 0 && elem_index >= 0);
-    bucket := &arr.buckets[bucket_index];
-    if bucket.mask == FULL {
-        array_push(&arr.free_buckets, auto bucket_index);
-    }
-    elem_with_meta.bucket_index = -1;
-    elem_with_meta.elem_index = -1;
-    mask :: ~(MASK << auto elem_index);
-    bucket.mask &= mask;
-    arr.len -= 1;
+	assert(arr);
+	if !value { return; }
+	elem_with_meta := cast(*ElemWithMeta(typeof(@value))) value;
+	bucket_index :: elem_with_meta.bucket_index;
+	elem_index :: elem_with_meta.elem_index;
+	assert(bucket_index >= 0 && elem_index >= 0);
+	bucket := &arr.buckets[bucket_index];
+	if bucket.mask == FULL {
+		array_push(&arr.free_buckets, auto bucket_index);
+	}
+	elem_with_meta.bucket_index = -1;
+	elem_with_meta.elem_index = -1;
+	mask :: ~(MASK << auto elem_index);
+	bucket.mask &= mask;
+	arr.len -= 1;
 }
 
 /// Returns bucket array iterator pointing to the first element in the bucket array or `null` if
 /// the array is empty.
 bucket_array_begin :: fn (arr: *?TArr) *BucketArrayIterator(TArr) {
-    assert(arr);
-    loop bucket_index := 0; bucket_index < arr.buckets.len; bucket_index += 1 {
-        bucket := &arr.buckets[0];
-        loop elem_index := 0; elem_index < BUCKET_ELEM_COUNT; elem_index += 1 {
-            mask :: MASK << auto elem_index;
-            if (bucket.mask & mask) == mask {
-                return &bucket.elems[elem_index];
-            }
-        }
-    }
-    return null;
+	assert(arr);
+	loop bucket_index := 0; bucket_index < arr.buckets.len; bucket_index += 1 {
+		bucket := &arr.buckets[0];
+		loop elem_index := 0; elem_index < BUCKET_ELEM_COUNT; elem_index += 1 {
+			mask :: MASK << auto elem_index;
+			if (bucket.mask & mask) == mask {
+				return &bucket.elems[elem_index];
+			}
+		}
+	}
+	return null;
 }
 
 /// Returns bucket array iterator pointing to the next element in the `arr` or `null` if there is
 /// no next element in the array (we reached the end).
 bucket_array_iter_next :: fn (arr: *?TArr, iter: *BucketArrayIterator(TArr)) *BucketArrayIterator(TArr) {
-    assert(arr);
-    if !iter { return iter; }
-    bucket_index := iter.bucket_index;
-    elem_index := iter.elem_index + 1;
-    loop ; bucket_index < arr.buckets.len; bucket_index += 1 {
-        bucket := &arr.buckets[bucket_index];
-        loop ; elem_index < BUCKET_ELEM_COUNT; elem_index += 1 {
-            mask :: MASK << auto elem_index;
-            if (bucket.mask & mask) == mask {
-                return &bucket.elems[elem_index];
-            }
-        }
-        elem_index = 0;
-    }
-    return null;
+	assert(arr);
+	if !iter { return iter; }
+	bucket_index := iter.bucket_index;
+	elem_index := iter.elem_index + 1;
+	loop ; bucket_index < arr.buckets.len; bucket_index += 1 {
+		bucket := &arr.buckets[bucket_index];
+		loop ; elem_index < BUCKET_ELEM_COUNT; elem_index += 1 {
+			mask :: MASK << auto elem_index;
+			if (bucket.mask & mask) == mask {
+				return &bucket.elems[elem_index];
+			}
+		}
+		elem_index = 0;
+	}
+	return null;
 }
 
 /// Clears the bucket array but keeps the allocated memory for later use.
 bucket_array_clear :: fn (arr: *?TArr) {
-    assert(arr);
-    array_clear(&arr.free_buckets);
-    loop i := 0; i < arr.buckets.len; i += 1 {
-        arr.buckets[i].mask = 0;
-        array_push(&arr.free_buckets, i);
-    }
-    arr.len = 0;
+	assert(arr);
+	array_clear(&arr.free_buckets);
+	loop i := 0; i < arr.buckets.len; i += 1 {
+		arr.buckets[i].mask = 0;
+		array_push(&arr.free_buckets, i);
+	}
+	arr.len = 0;
 }
 
 /// Returns type of the value stored in `TArr` type.
 bucket_array_typeof_elem :: fn (TArr: type #comptime) type #comptime {
-    return (@(@TArr.buckets.ptr).elems.ptr).value;
+	return (@(@TArr.buckets.ptr).elems.ptr).value;
 }
 
 #private
@@ -178,54 +178,54 @@ FULL : u64 : 0xffffffff #maybe_unused;
 MASK : u64 : 0x00000001 #maybe_unused;
 
 Bucket :: fn (TElem: type #comptime) type #comptime {
-    TElemWithMeta :: ElemWithMeta(TElem);
-    return struct {
-        mask: u64;
-        elems: []TElemWithMeta;
-    };
+	TElemWithMeta :: ElemWithMeta(TElem);
+	return struct {
+		mask: u64;
+		elems: []TElemWithMeta;
+	};
 }
 
 ElemWithMeta :: fn (TElem: type #comptime) type #comptime {
-    return struct {
-        value: TElem;
-        bucket_index: s32;
-        elem_index: s32;
-    };
+	return struct {
+		value: TElem;
+		bucket_index: s32;
+		elem_index: s32;
+	};
 }
 
 add_bucket :: fn (arr: *?TArr) {
-    bucket := array_push(&arr.buckets);
-    alloc_slice(&bucket.elems, BUCKET_ELEM_COUNT, false, arr.allocator);
-    bucket.mask = 0;
-    array_push(&arr.free_buckets, auto arr.buckets.len - 1);
+	bucket := array_push(&arr.buckets);
+	alloc_slice(&bucket.elems, BUCKET_ELEM_COUNT, false, arr.allocator);
+	bucket.mask = 0;
+	array_push(&arr.free_buckets, auto arr.buckets.len - 1);
 }
 
 impl_push :: fn (arr: *?TArr, value: bucket_array_typeof_elem(TArr)) *bucket_array_typeof_elem(TArr) {
-    value_ptr :: impl_push_empty(arr);
-    memcpy(auto value_ptr, auto &value, sizeof(value));
-    return value_ptr;
+	value_ptr :: impl_push_empty(arr);
+	memcpy(auto value_ptr, auto &value, sizeof(value));
+	return value_ptr;
 }
 
 impl_push_empty :: fn (arr: *?TArr) *bucket_array_typeof_elem(TArr) {
-    assert(arr);
-    if arr.free_buckets.len == 0 { add_bucket(arr); }
-    assert(arr.free_buckets.len > 0);
-    free_bucket_index :: arr.free_buckets.len - 1;
-    bucket_index := arr.free_buckets[free_bucket_index];
-    bucket := &arr.buckets[bucket_index];
-    loop i := 0; i < BUCKET_ELEM_COUNT; i += 1 {
-        mask :: MASK << auto i;
-        if (bucket.mask & mask) == 0 {
-            bucket.mask |= mask;
-            if bucket.mask == FULL {
-                array_erase(&arr.free_buckets, free_bucket_index);
-            }
-            bucket.elems[i].bucket_index = bucket_index;
-            bucket.elems[i].elem_index = i;
-            arr.len += 1;
-            return &bucket.elems[i].value;
-        }
-    }
-    panic();
-    return null;
+	assert(arr);
+	if arr.free_buckets.len == 0 { add_bucket(arr); }
+	assert(arr.free_buckets.len > 0);
+	free_bucket_index :: arr.free_buckets.len - 1;
+	bucket_index := arr.free_buckets[free_bucket_index];
+	bucket := &arr.buckets[bucket_index];
+	loop i := 0; i < BUCKET_ELEM_COUNT; i += 1 {
+		mask :: MASK << auto i;
+		if (bucket.mask & mask) == 0 {
+			bucket.mask |= mask;
+			if bucket.mask == FULL {
+				array_erase(&arr.free_buckets, free_bucket_index);
+			}
+			bucket.elems[i].bucket_index = bucket_index;
+			bucket.elems[i].elem_index = i;
+			arr.len += 1;
+			return &bucket.elems[i].value;
+		}
+	}
+	panic();
+	return null;
 }
