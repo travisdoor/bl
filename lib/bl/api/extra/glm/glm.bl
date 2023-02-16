@@ -14,7 +14,7 @@
 // =================================================================================================
 v2 :: struct {
 	x: f32;
-	y: f32
+	y: f32;
 };
 
 v2_one     :: v2.{ 1.f, 1.f };
@@ -526,6 +526,11 @@ quat_forward :: fn (q: quat) v3 {
 	y2y :: y2 * q.y;
 	z2y :: z2 * q.y;
 	return v3.{ z2x + y2w, z2y - x2w, 1.0f - (x2x + y2y) };
+}
+
+lerp :: fn (a: v3, b: v3, t: f32) v3 {
+	dir :: sub(b, a);
+	return add(a, mul(dir, t));
 }
 
 #private
