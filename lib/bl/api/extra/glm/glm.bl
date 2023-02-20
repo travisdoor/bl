@@ -528,9 +528,12 @@ quat_forward :: fn (q: quat) v3 {
 	return v3.{ z2x + y2w, z2y - x2w, 1.0f - (x2x + y2y) };
 }
 
-lerp :: fn (a: v3, b: v3, t: f32) v3 {
-	dir :: sub(b, a);
-	return add(a, mul(dir, t));
+lerp :: fn (a: ?T, b: T, t: f32) T #inline {
+#if T == v2 || T == v3 || T == v4 {
+	return add(a, mul(sub(b, a), t));
+} else {
+	return std.lerp(a, b, t);
+}
 }
 
 #private
