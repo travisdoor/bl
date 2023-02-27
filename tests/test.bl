@@ -39,7 +39,10 @@ TODO:
 - Properly handle fail of ast_expr_lit_fn while generating recipe implementation.
 - is_one_or_more_flags(f) fails to run (empty varaibale argument count!).
 
-
+- loop - else ?
+	loop i := 0; i < arr.len; i += 1 {
+		...
+	} else {}
 
 STATIC IF:
 
