@@ -37,12 +37,18 @@ void vm_tests_run(struct assembly *assembly)
 	struct virtual_machine *vm             = &assembly->vm;
 	struct mir_fn         **cases          = assembly->testing.cases;
 	const bool              minimal_output = assembly->target->tests_minimal_output;
+
+	const s64 test_count = arrlen(cases);
+	if (test_count == 0) {
+		return;
+	}
+
 	if (!minimal_output) {
-		printf("\nTesting start in compile time\n");
+		printf("\nTesting started in compile time for target: %s\n", assembly->target->name);
 		printf(TEXT_LINE "\n");
 	}
-	const s64 test_count   = arrlen(cases);
-	s32       failed_count = 0;
+
+	s32 failed_count = 0;
 
 	struct case_meta {
 		const char *name;

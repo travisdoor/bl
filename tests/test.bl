@@ -1,13 +1,14 @@
+#import "std/test"
+
 main :: fn () s32 {
 	return 0;
 }
 
-PickerContext :: struct {
-	mode: enum {
-		FOO;
-		BAR;
-	};
-	entity: u32;
+my_test :: fn () #test {
+	// This is crahing the compiler!!!
+	// This is crahing the compiler!!!
+	// This is crahing the compiler!!!
+	assert(false);
 }
 
 /*
