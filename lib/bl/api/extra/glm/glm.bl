@@ -540,6 +540,10 @@ distance :: fn (a: ?T, b: T) f32 #inline {
 	return length(sub(b, a));
 }
 
+sqr_distance :: fn (a: ?T, b: T) f32 #inline {
+	return sqr_length(sub(b, a));
+}
+
 #private
 // =================================================================================================
 // sub
