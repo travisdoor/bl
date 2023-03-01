@@ -4848,8 +4848,8 @@ struct result analyze_instr_phi(struct context *ctx, struct mir_instr_phi *phi)
 	bassert(phi->incoming_blocks && phi->incoming_values);
 	bassert(sarrlenu(phi->incoming_values) == sarrlenu(phi->incoming_blocks));
 	// @Performance: Recreating small arrays here is probably faster then removing elements?
-	mir_instrs_t	             *new_blocks      = arena_safe_alloc(&ctx->assembly->arenas.sarr);
-	mir_instrs_t	             *new_values      = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+	mir_instrs_t                 *new_blocks      = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+	mir_instrs_t                 *new_values      = arena_safe_alloc(&ctx->assembly->arenas.sarr);
 	const struct mir_instr_block *phi_owner_block = phi->base.owner_block;
 	struct mir_type              *type            = NULL;
 	bool                          is_comptime     = true;
@@ -7726,15 +7726,26 @@ struct result analyze_instr_binop(struct context *ctx, struct mir_instr_binop *b
 		            "Invalid operation for %s type.");
 		return_zone(FAIL);
 	}
+
 	struct mir_type *type =
 	    ast_binop_is_logic(binop->op) ? ctx->builtin_types->t_bool : lhs->value.type;
 	bassert(type);
+
 	binop->base.value.type = type;
 	// when binary operation has lhs and rhs values known in compile it is known
 	// in compile time also
 	binop->base.value.is_comptime = lhs->value.is_comptime && rhs->value.is_comptime;
 	binop->base.value.addr_mode   = MIR_VAM_RVALUE;
 	binop->volatile_type          = is_instr_type_volatile(lhs) && is_instr_type_volatile(rhs);
+
+	// Lastly check divide by zero for integer types. (This should be valid for real types)
+	if (binop->op == BINOP_DIV && binop->base.value.is_comptime && type->kind != MIR_TYPE_REAL) {
+		const u64 n = vm_read_int(type, rhs->value.data);
+		if (n == 0) {
+			report_error(DIV_BY_ZERO, rhs->node, "Division by zero.");
+			return_zone(FAIL);
+		}
+	}
 
 	return_zone(PASS);
 }

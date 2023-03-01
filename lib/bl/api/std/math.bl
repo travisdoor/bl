@@ -38,6 +38,7 @@ HALF_PI     :: 1.570796326794897;
 F32_PI      :: cast(f32) PI; 
 F32_TWO_PI  :: cast(f32) TWO_PI; 
 F32_HALF_PI :: cast(f32) HALF_PI; 
+
 F32_EPSILON :: 0.00001f;
 F64_EPSILON :: 0.00001;
 
@@ -58,6 +59,44 @@ U32_MIN : u32 : 0;
 U32_MAX : u32 : 4294967295;
 U64_MIN : u64 : 0;
 U64_MAX : u64 : 18446744073709551615;
+
+/// Returns NaN for given type `T`.
+nan :: fn (T: type #comptime) T #comptime {
+	static_assert(is_real(T));
+#if T == f32 {
+	return 0.f/0.f;
+} else {
+	return 0./0.;
+}
+}
+
+/// Returns positive infinity value for given type `T`.
+inf :: fn (T: type #comptime) T #comptime {
+	static_assert(is_real(T));
+#if T == f32 {
+	return 1.f/0.f;
+} else {
+	return 1./0.;
+}
+}
+
+/// Returns `true` in case the input real number is NaN (i.e. result of operation 0./0.).
+is_nan :: fn (n: ?T) bool #inline {
+	static_assert(is_real(T));
+	return n != n; 
+}
+
+/// Returns `true` in case the input real number is positive infinity number (i.e. result of operation 1./0.).
+is_inf :: fn (n: ?T) bool #inline {
+	static_assert(is_real(T));
+	return n == inf(T); 
+}
+
+/// Returns `true` in case the input real number is negative infinity number (i.e. result of operation -1./0.).
+is_ninf :: fn (n: ?T) bool #inline {
+	static_assert(is_real(T));
+	return n == -inf(T); 
+}
 
 sin       :: fn { f32_sin; f64_sin; }
 cos       :: fn { f32_cos; f64_cos; }

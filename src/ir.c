@@ -2218,21 +2218,21 @@ enum state emit_instr_binop(struct context *ctx, struct mir_instr_binop *binop)
 
 	case BINOP_EQ:
 		if (real_type)
-			binop->base.llvm_value = LLVMBuildFCmp(ctx->llvm_builder, LLVMRealOEQ, lhs, rhs, "");
+			binop->base.llvm_value = LLVMBuildFCmp(ctx->llvm_builder, LLVMRealUEQ, lhs, rhs, "");
 		else
 			binop->base.llvm_value = LLVMBuildICmp(ctx->llvm_builder, LLVMIntEQ, lhs, rhs, "");
 		break;
 
 	case BINOP_NEQ:
 		if (real_type)
-			binop->base.llvm_value = LLVMBuildFCmp(ctx->llvm_builder, LLVMRealONE, lhs, rhs, "");
+			binop->base.llvm_value = LLVMBuildFCmp(ctx->llvm_builder, LLVMRealUNE, lhs, rhs, "");
 		else
 			binop->base.llvm_value = LLVMBuildICmp(ctx->llvm_builder, LLVMIntNE, lhs, rhs, "");
 		break;
 
 	case BINOP_GREATER:
 		if (real_type)
-			binop->base.llvm_value = LLVMBuildFCmp(ctx->llvm_builder, LLVMRealOGT, lhs, rhs, "");
+			binop->base.llvm_value = LLVMBuildFCmp(ctx->llvm_builder, LLVMRealUGT, lhs, rhs, "");
 		else
 			binop->base.llvm_value = LLVMBuildICmp(
 			    ctx->llvm_builder, signed_integer ? LLVMIntSGT : LLVMIntUGT, lhs, rhs, "");
@@ -2240,7 +2240,7 @@ enum state emit_instr_binop(struct context *ctx, struct mir_instr_binop *binop)
 
 	case BINOP_LESS:
 		if (real_type)
-			binop->base.llvm_value = LLVMBuildFCmp(ctx->llvm_builder, LLVMRealOLT, lhs, rhs, "");
+			binop->base.llvm_value = LLVMBuildFCmp(ctx->llvm_builder, LLVMRealULT, lhs, rhs, "");
 		else
 			binop->base.llvm_value = LLVMBuildICmp(
 			    ctx->llvm_builder, signed_integer ? LLVMIntSLT : LLVMIntULT, lhs, rhs, "");
@@ -2248,7 +2248,7 @@ enum state emit_instr_binop(struct context *ctx, struct mir_instr_binop *binop)
 
 	case BINOP_GREATER_EQ:
 		if (real_type)
-			binop->base.llvm_value = LLVMBuildFCmp(ctx->llvm_builder, LLVMRealOGE, lhs, rhs, "");
+			binop->base.llvm_value = LLVMBuildFCmp(ctx->llvm_builder, LLVMRealUGE, lhs, rhs, "");
 		else
 			binop->base.llvm_value = LLVMBuildICmp(
 			    ctx->llvm_builder, signed_integer ? LLVMIntSGE : LLVMIntUGE, lhs, rhs, "");
@@ -2256,7 +2256,7 @@ enum state emit_instr_binop(struct context *ctx, struct mir_instr_binop *binop)
 
 	case BINOP_LESS_EQ:
 		if (real_type)
-			binop->base.llvm_value = LLVMBuildFCmp(ctx->llvm_builder, LLVMRealOLE, lhs, rhs, "");
+			binop->base.llvm_value = LLVMBuildFCmp(ctx->llvm_builder, LLVMRealULE, lhs, rhs, "");
 		else
 			binop->base.llvm_value = LLVMBuildICmp(
 			    ctx->llvm_builder, signed_integer ? LLVMIntSLE : LLVMIntULE, lhs, rhs, "");
