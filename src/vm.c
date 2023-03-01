@@ -1910,6 +1910,19 @@ void interp_instr_binop(struct virtual_machine *vm, struct mir_instr_binop *bino
 	struct mir_type *dest_type = binop->base.value.type;
 	struct mir_type *src_type  = binop->lhs->value.type;
 
+	if (binop->op == BINOP_DIV && src_type->kind != MIR_TYPE_REAL) {
+		const u64 n = vm_read_int(src_type, rhs_ptr);
+		if (n == 0) {
+			builder_msg(MSG_ERR,
+			            ERR_DIV_BY_ZERO,
+			            binop->rhs->node->location,
+			            CARET_WORD,
+			            "Division by zero.");
+			eval_abort(vm);
+			return;
+		}
+	}
+
 	vm_value_t tmp = {0};
 	calculate_binop(src_type, (vm_stack_ptr_t)&tmp, lhs_ptr, rhs_ptr, binop->op);
 
@@ -2351,8 +2364,20 @@ void eval_instr_binop(struct virtual_machine UNUSED(*vm), struct mir_instr_binop
 	vm_stack_ptr_t rhs_ptr  = binop->rhs->value.data;
 	vm_stack_ptr_t dest_ptr = binop->base.value.data;
 
-	struct mir_type *dest_type = binop->base.value.type;
-	struct mir_type *src_type  = binop->lhs->value.type;
+	struct mir_type *src_type = binop->lhs->value.type;
+
+	if (binop->op == BINOP_DIV && src_type->kind != MIR_TYPE_REAL) {
+		const u64 n = vm_read_int(src_type, rhs_ptr);
+		if (n == 0) {
+			builder_msg(MSG_ERR,
+			            ERR_DIV_BY_ZERO,
+			            binop->rhs->node->location,
+			            CARET_WORD,
+			            "Division by zero.");
+			eval_abort(vm);
+			return;
+		}
+	}
 
 	calculate_binop(src_type, dest_ptr, lhs_ptr, rhs_ptr, binop->op);
 }

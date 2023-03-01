@@ -1,6 +1,8 @@
 #import "std/test"
 
 main :: fn () s32 {
+	o :: 1/0;
+
 	n := std.nan(f32);
 	print("n = %\n", n);
 	print("is_nan(n) = %\n", std.is_nan(n));

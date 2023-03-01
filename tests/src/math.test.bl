@@ -1,0 +1,41 @@
+#private
+check_nans :: fn () #test {
+	using std;
+
+	test_false(nan(f32) == nan(f32));
+	test_false(nan(f64) == nan(f64));
+
+	a :: nan(f32);
+	test_true(is_nan(a));
+
+	b :: nan(f64);
+	test_true(is_nan(b));
+
+	v1 :: 0.f/0.f;
+	test_true(is_nan(v1));
+
+	v2 :: 0./0.;
+	test_true(is_nan(v2));
+}
+
+check_inf :: fn () #test {
+	using std;
+
+	a :: inf(f32);
+	test_true(is_inf(a));
+
+	b :: inf(f64);
+	test_true(is_inf(b));
+
+	c :: -inf(f32);
+	test_true(is_ninf(c));
+
+	d :: -inf(f64);
+	test_true(is_ninf(d));
+
+	v1 :: 1.f/0.f;
+	test_true(is_inf(v1));
+
+	v2 :: 1./0.;
+	test_true(is_inf(v2));
+}

@@ -7738,15 +7738,6 @@ struct result analyze_instr_binop(struct context *ctx, struct mir_instr_binop *b
 	binop->base.value.addr_mode   = MIR_VAM_RVALUE;
 	binop->volatile_type          = is_instr_type_volatile(lhs) && is_instr_type_volatile(rhs);
 
-	// Lastly check divide by zero for integer types. (This should be valid for real types)
-	if (binop->op == BINOP_DIV && binop->base.value.is_comptime && type->kind != MIR_TYPE_REAL) {
-		const u64 n = vm_read_int(type, rhs->value.data);
-		if (n == 0) {
-			report_error(DIV_BY_ZERO, rhs->node, "Division by zero.");
-			return_zone(FAIL);
-		}
-	}
-
 	return_zone(PASS);
 }
 
