@@ -1,13 +1,22 @@
 #import "std/test"
 
 main :: fn () s32 {
+	o :: 1/0;
+
+	n := std.nan(f32);
+	print("n = %\n", n);
+	print("is_nan(n) = %\n", std.is_nan(n));
+	
+	a := 1./0.;
+
+	print("a = %\n", a);
 	return 0;
 }
 
 my_test :: fn () #test {
-	// This is crahing the compiler!!!
-	// This is crahing the compiler!!!
-	// This is crahing the compiler!!!
+	// This is crashing the compiler!!!
+	// This is crashing the compiler!!!
+	// This is crashing the compiler!!!
 	assert(false);
 }
 

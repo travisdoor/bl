@@ -267,6 +267,19 @@ print_any :: fn (buf: *?T, cur: *s32, any: *Any) {
 		info := cast(*TypeInfoReal) any.type_info;
 
 		real := f64_from_u8_ptr(any.data, info.bit_count);
+		if std.is_nan(real) {
+			print_string(buf, cur, "NaN");
+			return;
+		}
+		if std.is_ninf(real) {
+			print_string(buf, cur, "-inf");
+			return;
+		}
+		if std.is_inf(real) {
+			print_string(buf, cur, "inf");
+			return;
+		}
+
 		if real < 0. {
 			print_string(buf, cur, "-");
 			real = -real;

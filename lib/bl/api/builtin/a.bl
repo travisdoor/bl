@@ -363,6 +363,11 @@ is_number :: fn (T: type #comptime) bool #comptime {
 	return typeinfo(T).kind == TypeKind.INT;
 }
 
+/// Returns `true` if the `T` type is an floating point number type.
+is_real :: fn (T: type #comptime) bool #comptime {
+	return typeinfo(T).kind == TypeKind.REAL;
+}
+
 /// Returns `true` if the `T` type is an integer or floating point number type (f32 or f64).
 is_real_or_number :: fn (T: type #comptime) bool #comptime {
 	return typeinfo(T).kind == TypeKind.INT || typeinfo(T).kind == TypeKind.REAL;

@@ -1,0 +1,5 @@
+// @ERR_DIV_BY_ZERO@
+main :: fn () s32 {
+	a :: 1/0;
+    return a;
+}

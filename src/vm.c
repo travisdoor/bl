@@ -37,8 +37,7 @@
 // =================================================================================================
 // fwd decls
 // =================================================================================================
-static void calculate_binop(struct mir_type *dest_type,
-                            struct mir_type *src_type,
+static void calculate_binop(struct mir_type *src_type,
                             vm_stack_ptr_t   dest,
                             vm_stack_ptr_t   lhs,
                             vm_stack_ptr_t   rhs,
@@ -384,14 +383,12 @@ static inline void stack_alloc_local_vars(struct virtual_machine *vm, struct mir
 //********/
 //* impl */
 //********/
-void calculate_binop(struct mir_type  UNUSED(*dest_type),
-                     struct mir_type *src_type,
+void calculate_binop(struct mir_type *src_type,
                      vm_stack_ptr_t   dest,
                      vm_stack_ptr_t   lhs,
                      vm_stack_ptr_t   rhs,
                      enum binop_kind  op)
 {
-	//*********************************************************************************************/
 #define ARITHMETIC(T)                                                                              \
 	case BINOP_ADD:                                                                                \
 		vm_write_as(T, dest, vm_read_as(T, lhs) + vm_read_as(T, rhs));                             \
@@ -401,14 +398,19 @@ void calculate_binop(struct mir_type  UNUSED(*dest_type),
 		break;                                                                                     \
 	case BINOP_MUL:                                                                                \
 		vm_write_as(T, dest, vm_read_as(T, lhs) * vm_read_as(T, rhs));                             \
-		break;                                                                                     \
+		break;
+
+#define ARITHMETIC_DIV_INT(T)                                                                      \
 	case BINOP_DIV:                                                                                \
 		if (vm_read_as(T, rhs) == 0) babort("Divide by zero, this should be an error!");           \
 		vm_write_as(T, dest, vm_read_as(T, lhs) / vm_read_as(T, rhs));                             \
 		break;
-	//*********************************************************************************************/
 
-	//*********************************************************************************************/
+#define ARITHMETIC_DIV_FLOAT(T)                                                                    \
+	case BINOP_DIV:                                                                                \
+		vm_write_as(T, dest, vm_read_as(T, lhs) / vm_read_as(T, rhs));                             \
+		break;
+
 #define RELATIONAL(T)                                                                              \
 	case BINOP_EQ:                                                                                 \
 		vm_write_as(bool, dest, vm_read_as(T, lhs) == vm_read_as(T, rhs));                         \
@@ -428,9 +430,7 @@ void calculate_binop(struct mir_type  UNUSED(*dest_type),
 	case BINOP_GREATER_EQ:                                                                         \
 		vm_write_as(bool, dest, vm_read_as(T, lhs) >= vm_read_as(T, rhs));                         \
 		break;
-	//*********************************************************************************************/
 
-	//*********************************************************************************************/
 #define LOGICAL(T)                                                                                 \
 	case BINOP_AND:                                                                                \
 		vm_write_as(T, dest, vm_read_as(T, lhs) & vm_read_as(T, rhs));                             \
@@ -441,9 +441,7 @@ void calculate_binop(struct mir_type  UNUSED(*dest_type),
 	case BINOP_XOR:                                                                                \
 		vm_write_as(T, dest, vm_read_as(T, lhs) ^ vm_read_as(T, rhs));                             \
 		break;
-	//*********************************************************************************************/
 
-	//*********************************************************************************************/
 #define OTHER(T)                                                                                   \
 	case BINOP_MOD:                                                                                \
 		vm_write_as(T, dest, vm_read_as(T, lhs) % vm_read_as(T, rhs));                             \
@@ -454,7 +452,6 @@ void calculate_binop(struct mir_type  UNUSED(*dest_type),
 	case BINOP_SHL:                                                                                \
 		vm_write_as(T, dest, vm_read_as(T, lhs) << vm_read_as(T, rhs));                            \
 		break;
-	//*********************************************************************************************/
 
 	// Valid types: integers, floats, doubles, enums (as ints), bool, pointers.
 
@@ -468,6 +465,7 @@ void calculate_binop(struct mir_type  UNUSED(*dest_type),
 		if (size == 4) {
 			switch (op) {
 				ARITHMETIC(f32)
+				ARITHMETIC_DIV_FLOAT(f32)
 				RELATIONAL(f32)
 			default:
 				babort("Invalid binary operation!");
@@ -475,6 +473,7 @@ void calculate_binop(struct mir_type  UNUSED(*dest_type),
 		} else if (size == 8) {
 			switch (op) {
 				ARITHMETIC(f64)
+				ARITHMETIC_DIV_FLOAT(f64)
 				RELATIONAL(f64)
 			default:
 				babort("Invalid binary operation!");
@@ -486,6 +485,7 @@ void calculate_binop(struct mir_type  UNUSED(*dest_type),
 		if (size == 1) {
 			switch (op) {
 				ARITHMETIC(s8)
+				ARITHMETIC_DIV_INT(s8)
 				RELATIONAL(s8)
 				LOGICAL(s8)
 				OTHER(s8)
@@ -495,6 +495,7 @@ void calculate_binop(struct mir_type  UNUSED(*dest_type),
 		} else if (size == 2) {
 			switch (op) {
 				ARITHMETIC(s16)
+				ARITHMETIC_DIV_INT(s16)
 				RELATIONAL(s16)
 				LOGICAL(s16)
 				OTHER(s16)
@@ -504,6 +505,7 @@ void calculate_binop(struct mir_type  UNUSED(*dest_type),
 		} else if (size == 4) {
 			switch (op) {
 				ARITHMETIC(s32)
+				ARITHMETIC_DIV_INT(s32)
 				RELATIONAL(s32)
 				LOGICAL(s32)
 				OTHER(s32)
@@ -513,6 +515,7 @@ void calculate_binop(struct mir_type  UNUSED(*dest_type),
 		} else if (size == 8) {
 			switch (op) {
 				ARITHMETIC(s64)
+				ARITHMETIC_DIV_INT(s64)
 				RELATIONAL(s64)
 				LOGICAL(s64)
 				OTHER(s64)
@@ -526,6 +529,7 @@ void calculate_binop(struct mir_type  UNUSED(*dest_type),
 		if (size == 1) {
 			switch (op) {
 				ARITHMETIC(u8)
+				ARITHMETIC_DIV_INT(u8)
 				RELATIONAL(u8)
 				LOGICAL(u8)
 				OTHER(u8)
@@ -535,6 +539,7 @@ void calculate_binop(struct mir_type  UNUSED(*dest_type),
 		} else if (size == 2) {
 			switch (op) {
 				ARITHMETIC(u16)
+				ARITHMETIC_DIV_INT(u16)
 				RELATIONAL(u16)
 				LOGICAL(u16)
 				OTHER(u16)
@@ -544,6 +549,7 @@ void calculate_binop(struct mir_type  UNUSED(*dest_type),
 		} else if (size == 4) {
 			switch (op) {
 				ARITHMETIC(u32)
+				ARITHMETIC_DIV_INT(u32)
 				RELATIONAL(u32)
 				LOGICAL(u32)
 				OTHER(u32)
@@ -553,6 +559,7 @@ void calculate_binop(struct mir_type  UNUSED(*dest_type),
 		} else if (size == 8) {
 			switch (op) {
 				ARITHMETIC(u64)
+				ARITHMETIC_DIV_INT(u64)
 				RELATIONAL(u64)
 				LOGICAL(u64)
 				OTHER(u64)
@@ -565,6 +572,8 @@ void calculate_binop(struct mir_type  UNUSED(*dest_type),
 	}
 
 #undef ARITHMETIC
+#undef ARITHMETIC_DIV_FLOAT
+#undef ARITHMETIC_DIV_INT
 #undef RELATIONAL
 #undef LOGICAL
 #undef OTHER
@@ -572,7 +581,6 @@ void calculate_binop(struct mir_type  UNUSED(*dest_type),
 
 void calculate_unop(vm_stack_ptr_t dest, vm_stack_ptr_t v, enum unop_kind op, struct mir_type *type)
 {
-	//*********************************************************************************************/
 #define UNOP_CASE(T)                                                                               \
 	case sizeof(T): {                                                                              \
 		switch (op) {                                                                              \
@@ -592,9 +600,7 @@ void calculate_unop(vm_stack_ptr_t dest, vm_stack_ptr_t v, enum unop_kind op, st
 			BL_UNIMPLEMENTED;                                                                      \
 		}                                                                                          \
 	} break
-	//*********************************************************************************************/
 
-	//*********************************************************************************************/
 #define UNOP_CASE_REAL(T)                                                                          \
 	case sizeof(T): {                                                                              \
 		switch (op) {                                                                              \
@@ -611,7 +617,6 @@ void calculate_unop(vm_stack_ptr_t dest, vm_stack_ptr_t v, enum unop_kind op, st
 			BL_UNIMPLEMENTED;                                                                      \
 		}                                                                                          \
 	} break
-	//*********************************************************************************************/
 
 	const usize s = type->store_size_bytes;
 
@@ -1905,8 +1910,21 @@ void interp_instr_binop(struct virtual_machine *vm, struct mir_instr_binop *bino
 	struct mir_type *dest_type = binop->base.value.type;
 	struct mir_type *src_type  = binop->lhs->value.type;
 
+	if (binop->op == BINOP_DIV && src_type->kind != MIR_TYPE_REAL) {
+		const u64 n = vm_read_int(src_type, rhs_ptr);
+		if (n == 0) {
+			builder_msg(MSG_ERR,
+			            ERR_DIV_BY_ZERO,
+			            binop->rhs->node->location,
+			            CARET_WORD,
+			            "Division by zero.");
+			eval_abort(vm);
+			return;
+		}
+	}
+
 	vm_value_t tmp = {0};
-	calculate_binop(dest_type, src_type, (vm_stack_ptr_t)&tmp, lhs_ptr, rhs_ptr, binop->op);
+	calculate_binop(src_type, (vm_stack_ptr_t)&tmp, lhs_ptr, rhs_ptr, binop->op);
 
 	stack_push(vm, &tmp, dest_type);
 }
@@ -2346,10 +2364,22 @@ void eval_instr_binop(struct virtual_machine UNUSED(*vm), struct mir_instr_binop
 	vm_stack_ptr_t rhs_ptr  = binop->rhs->value.data;
 	vm_stack_ptr_t dest_ptr = binop->base.value.data;
 
-	struct mir_type *dest_type = binop->base.value.type;
-	struct mir_type *src_type  = binop->lhs->value.type;
+	struct mir_type *src_type = binop->lhs->value.type;
 
-	calculate_binop(dest_type, src_type, dest_ptr, lhs_ptr, rhs_ptr, binop->op);
+	if (binop->op == BINOP_DIV && src_type->kind != MIR_TYPE_REAL) {
+		const u64 n = vm_read_int(src_type, rhs_ptr);
+		if (n == 0) {
+			builder_msg(MSG_ERR,
+			            ERR_DIV_BY_ZERO,
+			            binop->rhs->node->location,
+			            CARET_WORD,
+			            "Division by zero.");
+			eval_abort(vm);
+			return;
+		}
+	}
+
+	calculate_binop(src_type, dest_ptr, lhs_ptr, rhs_ptr, binop->op);
 }
 
 void eval_instr_decl_ref(struct virtual_machine UNUSED(*vm), struct mir_instr_decl_ref *decl_ref)

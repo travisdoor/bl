@@ -4848,8 +4848,8 @@ struct result analyze_instr_phi(struct context *ctx, struct mir_instr_phi *phi)
 	bassert(phi->incoming_blocks && phi->incoming_values);
 	bassert(sarrlenu(phi->incoming_values) == sarrlenu(phi->incoming_blocks));
 	// @Performance: Recreating small arrays here is probably faster then removing elements?
-	mir_instrs_t	             *new_blocks      = arena_safe_alloc(&ctx->assembly->arenas.sarr);
-	mir_instrs_t	             *new_values      = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+	mir_instrs_t                 *new_blocks      = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+	mir_instrs_t                 *new_values      = arena_safe_alloc(&ctx->assembly->arenas.sarr);
 	const struct mir_instr_block *phi_owner_block = phi->base.owner_block;
 	struct mir_type              *type            = NULL;
 	bool                          is_comptime     = true;
@@ -7726,9 +7726,11 @@ struct result analyze_instr_binop(struct context *ctx, struct mir_instr_binop *b
 		            "Invalid operation for %s type.");
 		return_zone(FAIL);
 	}
+
 	struct mir_type *type =
 	    ast_binop_is_logic(binop->op) ? ctx->builtin_types->t_bool : lhs->value.type;
 	bassert(type);
+
 	binop->base.value.type = type;
 	// when binary operation has lhs and rhs values known in compile it is known
 	// in compile time also
