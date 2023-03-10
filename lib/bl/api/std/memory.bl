@@ -285,6 +285,11 @@ zeromem :: fn (destination: *u8, size: usize) *u8 {
 	return destination;
 }
 
+/// Zero initialize memory block at `ptr` and `sizeof(T)`.
+zeroinit :: fn (ptr: *?T) #inline {
+	zeromem(auto ptr, sizeof(T));
+}
+
 // Zero initialize slice memory.
 zero_slice :: fn (slice: []?T) #inline {
 	if slice.len == 0 { return; }
