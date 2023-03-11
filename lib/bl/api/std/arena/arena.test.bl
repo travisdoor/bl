@@ -1,0 +1,105 @@
+#import "std/arena"
+
+#private
+
+init_1 :: fn () #test {
+	using std;
+	a :: arena_make(128);
+	defer release_allocator(&a);
+	test_not_null(a.mem);
+	test_eq(a.top, a.mem);
+	test_eq(a.space, 128);
+	test_eq(a.allocated, 128);
+}
+
+simple_allocation_1 :: fn () #test {
+	using std;
+	a :: arena_make(128);
+	defer release_allocator(&a);
+
+	data: [10]*s32;
+	loop i := 0; i < data.len; i += 1 {
+		mem, err :: alloc(sizeof(s32), DEFAULT_ALIGNMENT, &a);
+		test_ok(err);
+		data[i] = auto mem;
+		@data[i] = i;
+	}	
+	loop i := 0; i < data.len; i += 1 {
+		test_eq(@data[i], i);
+	}
+}
+
+simple_allocation_and_reset :: fn () #test {
+	using std;
+	a :: arena_make(128);
+	defer release_allocator(&a);
+
+	loop j := 0; j < 100; j += 1 {
+		defer reset_allocator(&a);
+		data: [10]*s32;
+		loop i := 0; i < data.len; i += 1 {
+			mem, err :: alloc(sizeof(s32), DEFAULT_ALIGNMENT, &a);
+			test_ok(err);
+			data[i] = auto mem;
+			@data[i] = i;
+		}	
+		loop i := 0; i < data.len; i += 1 {
+			test_eq(@data[i], i);
+		}
+	}
+
+	test_eq(a.space, 128);
+	test_eq(a.allocated, 128);
+}
+
+simple_allocation_exact_size :: fn () #test {
+	using std;
+
+	count :: 100;
+	size :: arena_required_additional_space(count) + sizeof(s32) * auto count;
+
+	a :: arena_make(size);
+	defer release_allocator(&a);
+
+	loop j := 0; j < count; j += 1 {
+		_, err :: alloc(sizeof(s32), DEFAULT_ALIGNMENT, &a);
+		test_ok(err);
+	}
+
+	test_eq(a.space, 0);
+}
+
+Foo :: struct {
+	i: s32;
+	j: [3]bool;
+}
+
+Bar :: struct {
+	i: s64;
+	j: [10]u8;
+}
+
+complex_allocation_exact_size :: fn () #test {
+	using std;
+
+	count :: 30;
+	size :: arena_required_additional_space(count) + sizeof(s32) * 10 + sizeof(Foo) * 10 + sizeof(Bar) * 10;
+
+	a :: arena_make(size);
+	defer release_allocator(&a);
+
+	loop j := 0; j < count; j += 1 {
+		if j % 3 == 0 {
+			_, err :: alloc(sizeof(s32), DEFAULT_ALIGNMENT, &a);
+			test_ok(err);
+		} else if j % 3 == 1 {
+			_, err :: alloc(sizeof(Foo), DEFAULT_ALIGNMENT, &a);
+			test_ok(err);
+		} else if j % 3 == 2 {
+			_, err :: alloc(sizeof(Bar), DEFAULT_ALIGNMENT, &a);
+			test_ok(err);
+		}
+	}
+
+	test_eq(a.space, 0);
+}

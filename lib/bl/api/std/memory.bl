@@ -226,8 +226,8 @@ reset_allocator :: fn (allocator: *Allocator, loc := #call_location) #inline {
 	allocator.handler(allocator, AllocOp.RESET, null, 0, 0, loc.file, loc.line);
 }
 
-/// Invoke the release operation on the `allocator`. If supported the allocator should release all resources and free
-/// all allocated memory. 
+/// Invoke the release operation on the `allocator`. If the operation is supported, the allocator should release all resources and free
+/// all internally allocated memory. 
 release_allocator :: fn (allocator: *Allocator, loc := #call_location) #inline {
 	assert(allocator.handler);
 	allocator.handler(allocator, AllocOp.RELEASE, null, 0, 0, loc.file, loc.line);
@@ -285,9 +285,16 @@ zeromem :: fn (destination: *u8, size: usize) *u8 {
 	return destination;
 }
 
-/// Zero initialize memory block at `ptr` and `sizeof(T)`.
-zeroinit :: fn (ptr: *?T) #inline {
-	zeromem(auto ptr, sizeof(T));
+/// Zero initialize memory block at `ptr` and `sizeof(T)`. Returns passed `ptr` this might be useful in case of
+/// "inline chaining".
+///
+/// ### Example
+/// 
+/// ```
+/// foo :: zeroinit(array_push(&my_array));
+/// ```
+zeroinit :: fn (ptr: *?T) *T #inline {
+	return auto zeromem(auto ptr, sizeof(T));
 }
 
 // Zero initialize slice memory.
