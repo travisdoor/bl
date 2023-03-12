@@ -186,3 +186,24 @@ flush :: fn (stream: *Stream) Error {
 	if !stream.vtable.flush { panic("Stream does not support flushing."); }
 	return stream.vtable.flush(stream);
 }
+
+/// Copy the whole content from current position in stream `src` to the stream `dest` (starting at current position in `dest`).
+/// If copying was successful, `src` stream position should points to the `src` stream end otherwise error is returned.
+copy_stream :: fn (dest: *Stream, src: *Stream, buffer_size := 512 #comptime) Error {
+	tmp: [buffer_size]u8 #noinit;
+	state := OK;
+	loop {
+		bytes, err :: read(src, tmp.ptr, tmp.len);
+		if err {
+			state = err;
+			break;
+		}
+		if bytes == 0 { break; }
+		write_err :: write_all(dest, tmp.ptr, bytes);
+		if write_err {
+			state = write_err;
+			break;
+		}
+	}
+	return state;
+}
