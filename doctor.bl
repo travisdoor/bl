@@ -24,22 +24,24 @@ MISC :: [6]Test.{
     Test.{ name = "tests/library",             kind = TestKind.BUILD, platform = Platform.WINDOWS },
 };
 
-MODULES :: [15]string_view.{
+MODULES :: [17]string_view.{
+    "lib/bl/api/extra/argparse/argparse.test.bl",
+    "lib/bl/api/std/arena/arena.test.bl",
     "lib/bl/api/std/array/array.test.bl",
+    "lib/bl/api/std/async/async.test.bl",
     "lib/bl/api/std/bucket_array/bucket_array.test.bl",
     "lib/bl/api/std/debug_allocator/debug_allocator.test.bl",
     "lib/bl/api/std/dlib/dlib.test.bl",
     "lib/bl/api/std/fs/fs.test.bl",
+    "lib/bl/api/std/growing_buffer_stream/growing_buffer_stream.test.bl",
     "lib/bl/api/std/io/io.test.bl",
+    "lib/bl/api/std/pool/pool.test.bl",
     "lib/bl/api/std/print/print.test.bl",
+    "lib/bl/api/std/static_array/static_array.test.bl",
     "lib/bl/api/std/string/string.test.bl",
     "lib/bl/api/std/sync/sync.test.bl",
-    "lib/bl/api/std/thread/thread.test.bl",
-    "lib/bl/api/std/pool/pool.test.bl",
-    "lib/bl/api/std/async/async.test.bl",
     "lib/bl/api/std/table/table.test.bl",
-    "lib/bl/api/std/static_array/static_array.test.bl",
-    "lib/bl/api/extra/argparse/argparse.test.bl",
+    "lib/bl/api/std/thread/thread.test.bl",
 };
 
 TestKind :: enum {

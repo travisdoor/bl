@@ -59,6 +59,12 @@ sarray_clear :: fn (arr: *?TArr) #inline {
 	arr.len = 0;
 }
 
+/// Get the content of static array as an slice.
+sarray_get_slice :: fn (arr: *?TArr) []sarray_typeof_elem(TArr) #inline {
+	TElem :: sarray_typeof_elem(TArr);
+	return []TElem.{ arr.len, arr.data.ptr };
+}
+
 /// Return type of the element.
 sarray_typeof_elem :: fn (TArr: type #comptime) type #comptime {
 	return @TArr.data.ptr;

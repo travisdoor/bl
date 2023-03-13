@@ -111,6 +111,13 @@ debug_allocator_allocated :: fn (dbgalloc: *DebugAllocator) usize #inline {
 	return auto dbgalloc.total_allocated;
 }
 
+/// Return count of currently allocated memory entries.
+debug_allocator_allocated_count :: fn (dbgalloc: *DebugAllocator) s64 #inline {
+	std.mutex_lock(&dbgalloc.mutex);
+	defer std.mutex_unlock(&dbgalloc.mutex);
+	return auto dbgalloc.alloc_table.keys.len;
+}
+
 /// Lookup size in bytes of previously allocated memory. Returns `true` and size in bytes if allocation
 /// was found, otherwise returns `false` and zero size.
 debug_allocator_get_allocation_size :: fn (dbgalloc: *DebugAllocator, ptr: *u8) (found: bool, size: usize) #inline {

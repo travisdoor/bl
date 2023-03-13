@@ -1,0 +1,143 @@
+#import "std/growing_buffer_stream"
+
+#private
+
+init_1 :: fn () #test {
+	using std;
+
+	s: GrowingBufferStream;
+	growing_buffer_stream_init(&s);
+
+	test_eq(s.data.len, 0);
+	test_eq(s.position, 0);
+	test_eq(s.end, 0);
+}
+
+init_2 :: fn () #test {
+	using std;
+
+	s: GrowingBufferStream;
+	growing_buffer_stream_init(&s, 256);
+	defer growing_buffer_stream_terminate(&s);
+
+	test_eq(s.data.len, 256);
+	test_eq(s.position, 0);
+	test_eq(s.end, 0);
+}
+
+simple_write_1 :: fn () #test {
+	using std;
+
+	s: GrowingBufferStream;
+	growing_buffer_stream_init(&s);
+	defer growing_buffer_stream_terminate(&s);
+
+	n :: 10;
+	write_value(&s, &n);
+
+	test_eq(s.data.len, 8);
+	test_eq(s.position, 4);
+	test_eq(s.end, 4);
+
+	write_value(&s, &n);
+
+	test_eq(s.data.len, 8);
+	test_eq(s.position, 8);
+	test_eq(s.end, 8);
+
+	write_value(&s, &n);
+
+	test_eq(s.data.len, 16);
+	test_eq(s.position, 12);
+	test_eq(s.end, 12);
+}
+
+read_empty :: fn () #test {
+	using std;
+
+	s: GrowingBufferStream;
+	growing_buffer_stream_init(&s);
+
+	tmp: [8]u8;
+	r, err :: read(&s, tmp.ptr, tmp.len);
+	test_ok(err);
+	test_eq(r, 0);
+}
+
+read_over :: fn () #test {
+	using std;
+
+	s: GrowingBufferStream;
+	growing_buffer_stream_init(&s);
+	defer growing_buffer_stream_terminate(&s);
+
+	n := 10;
+	write_value(&s, &n);
+
+	seek(&s, StreamLocator.BEGIN, 0);
+
+	tmp: [8]u8;
+	r, err :: read(&s, tmp.ptr, tmp.len);
+	test_ok(err);
+	test_eq(r, 4);
+}
+
+simple_read_write_sequence :: fn () #test {
+	using std;
+
+	s: GrowingBufferStream;
+	growing_buffer_stream_init(&s);
+	defer growing_buffer_stream_terminate(&s);
+
+	n := 10;
+	write_value(&s, &n);
+	n = 20;
+	write_value(&s, &n);
+	n = 30;
+	write_value(&s, &n);
+
+	seek(&s, StreamLocator.BEGIN, 0);
+
+	test_eq(s.data.len, 16);
+	test_eq(s.position, 0);
+	test_eq(s.end, 12);
+
+	read_value(&s, &n);
+	test_eq(n, 10);
+
+	read_value(&s, &n);
+	test_eq(n, 20);
+
+	read_value(&s, &n);
+	test_eq(n, 30);
+
+	test_eq(s.data.len, 16);
+	test_eq(s.position, 12);
+	test_eq(s.end, 12);
+}
+
+seek_over :: fn () #test {
+	using std;
+
+	s: GrowingBufferStream;
+	growing_buffer_stream_init(&s);
+
+	test_eq(s.data.len, 0);
+	test_eq(s.position, 0);
+	test_eq(s.end, 0);
+
+	seek(&s, StreamLocator.BEGIN, 0);
+	test_eq(s.position, 0);
+
+	seek(&s, StreamLocator.BEGIN, 10);
+	test_eq(s.position, 0);
+
+	seek(&s, StreamLocator.END, 0);
+	test_eq(s.position, 0);
+
+	seek(&s, StreamLocator.END, 10);
+	test_eq(s.position, 0);
+
+	seek(&s);
+	test_eq(s.position, 0);
+}

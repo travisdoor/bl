@@ -49,13 +49,13 @@ write :: fn (stream: *Stream, src: *u8, bytes_to_write: s64) (s64, Error) #inlin
 
 /// Write the data slice into the stream, the `bytes_to_write` can be specified to limit count
 /// of written bytes. Returns count of actually written bytes or an error.
-write_data :: fn (stream: *Stream, data: []u8, bytes_to_write := std.S64_MAX) (s64, Error) #inline {
+write_data :: fn (stream: *Stream, data: []u8, bytes_to_write := S64_MAX) (s64, Error) #inline {
 	return write(stream, data.ptr, min(data.len, bytes_to_write));
 }
 
 /// Write the data string into the stream, the `bytes_to_write` can be specified to limit count
 /// of written bytes. Returns count of actually written bytes or an error.
-write_string :: fn (stream: *Stream, str: string_view, bytes_to_write := std.S64_MAX) (s64, Error) #inline {
+write_string :: fn (stream: *Stream, str: string_view, bytes_to_write := S64_MAX) (s64, Error) #inline {
 	return write(stream, str.ptr, min(str.len, bytes_to_write));
 }
 
@@ -73,6 +73,18 @@ write_all :: fn (stream: *Stream, src: *u8, bytes_to_write: s64) Error {
 	assert(written_bytes == bytes_to_write);
 	return OK;
 }
+
+write_value :: fn (stream: *Stream, v: *?T) Error #inline {
+	return write_all(stream, auto v, auto sizeof(T));
+}
+
+write_array :: fn (stream: *Stream, v: []?T) Error {
+	err := write_value(stream, &v.len);
+	if err { return err; }
+	err = write_all(stream, auto v.ptr, v.len * auto sizeof(T));
+	return err;
+}
+
 
 // TODO: write_fmt
 
@@ -93,7 +105,7 @@ read :: fn (stream: *Stream, dest: *u8, bytes_to_read: s64) (s64, Error) #inline
 /// Read `bytes_to_read` count of bytes from the stream into `dest` dynamic array. Internal buffer size may
 /// be customized by `buffer_size` argument.
 /// Return an error in case reading failed.
-read_data :: fn (stream: *Stream, dest: *[..]u8, bytes_to_read: s64 = std.S64_MAX, buffer_size := 512 #comptime) Error {
+read_data :: fn (stream: *Stream, dest: *[..]u8, bytes_to_read: s64 = S64_MAX, buffer_size := 512 #comptime) Error {
 	tmp: [buffer_size]u8 #noinit;
 	processed_bytes := bytes_to_read;
 	loop processed_bytes > 0 {
@@ -109,7 +121,7 @@ read_data :: fn (stream: *Stream, dest: *[..]u8, bytes_to_read: s64 = std.S64_MA
 /// Read `bytes_to_read` count of bytes from the stream into `dest`. Internal buffer size may be
 /// customized by `buffer_size` argument.
 /// Return and error in case reading failed.
-read_string :: fn (stream: *Stream, dest: *string, bytes_to_read: s64 = std.S64_MAX, buffer_size := 512 #comptime) Error {
+read_string :: fn (stream: *Stream, dest: *string, bytes_to_read: s64 = S64_MAX, buffer_size := 512 #comptime) Error {
 	tmp: [buffer_size]u8 #noinit;
 	processed_bytes := bytes_to_read;
 	loop processed_bytes > 0 {
@@ -140,6 +152,20 @@ read_all :: fn (stream: *Stream, dest: *u8, bytes_to_read: s64, buffer_size := 5
 	return OK;
 }    
 
+read_value :: fn (stream: *Stream, v: *?T) Error #inline {
+	assert(v);
+	return read_all(stream, auto v, auto sizeof(T));
+}
+
+read_array :: fn (stream: *Stream, v: *[..]?T) Error {
+	assert(v);
+	len: typeof(v.len);
+	err_len :: read_value(stream, &len);
+	if err_len { return err_len; }
+	array_resize(v, len);
+	return read_all(stream, auto v.ptr, v.len * auto sizeof(T));
+}
+
 // =================================================================================================
 // Other
 // =================================================================================================
@@ -159,4 +185,25 @@ flush :: fn (stream: *Stream) Error {
 	assert(stream.vtable);
 	if !stream.vtable.flush { panic("Stream does not support flushing."); }
 	return stream.vtable.flush(stream);
+}
+
+/// Copy the whole content from current position in stream `src` to the stream `dest` (starting at current position in `dest`).
+/// If copying was successful, `src` stream position should points to the `src` stream end otherwise error is returned.
+copy_stream :: fn (dest: *Stream, src: *Stream, buffer_size := 512 #comptime) Error {
+	tmp: [buffer_size]u8 #noinit;
+	state := OK;
+	loop {
+		bytes, err :: read(src, tmp.ptr, tmp.len);
+		if err {
+			state = err;
+			break;
+		}
+		if bytes == 0 { break; }
+		write_err :: write_all(dest, tmp.ptr, bytes);
+		if write_err {
+			state = write_err;
+			break;
+		}
+	}
+	return state;
 }

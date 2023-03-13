@@ -274,7 +274,7 @@ test_run :: fn (print_results := true) s32 {
 	defer array_terminate(&_queue);
 
 	string_pool :: pool_make(application_context.allocator);
-	defer pool_release(&string_pool);
+	defer release_allocator(&string_pool);
 
 	loop i := 0; i < cases.len; i += 1 {
 		case :: &cases[i];

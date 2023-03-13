@@ -1,0 +1,152 @@
+#scope std
+
+//! # Arena Allocator
+//! 
+//! `#import "std/arena"`
+//!
+//! Simple arena allocator is memory storage operating on internally pre-allocated memory block. Arena can be used
+//! to store any arbitrary data. One of the reasons why to use Arena allocator is reduction of memory allocation
+//! overhead; the memory resource is acquired only once (on [arena_make](#arena_make) or [arena_resize](#arena_resize)
+//! call).
+//!
+//! Size of the allocated memory block is fixed, that means calling `alloc` in case there is not enough space in the
+//! arena ends up with an error. However arena can be resizes by [arena_resize](#arena_resize) if needed (all previously
+//! memory allocated using arena becomes invalid).
+//!
+//! ### Supported Operations
+//! 
+//!     - [x] Allocate
+//!     - [-] Reallocate (Cause an error.)
+//!     - [-] Free
+//!     - [x] Release
+//!     - [x] Reset
+//!
+//! - [reset_allocator](/modules/memory/#reset_allocator) can be used to reset arena to the initial state (but keep preallocated memory).
+//! - [release_allocator](/modules/memory/#release_allocator) should be called to release all resources used by arena.
+//!
+
+/// Alignment of each arena allocation. This value should be large enough to properly align all possible data, we also 
+/// can use this value to precisely predict required arena size in advance.
+ARENA_ALIGNMENT :: DEFAULT_ALIGNMENT;
+
+/// The Arena Allocator type.
+ArenaAllocator :: struct #base Allocator {
+	allocator: *Allocator;
+	mem: *u8;
+	top: *u8;
+	/// Space left in arena.
+	space: usize;
+	/// Total bytes allocated by arena (size of pre-allocated chunk).
+	allocated: usize;
+}
+
+/// Make new arena instance. In case the `size` is not 0, the arena memory chunk is preallocated right away to 
+/// `size` bytes. The `allocator` is used to preallocate memory chunk in case it's specified, otherwise default
+/// allocator set in application context is used.
+///
+/// Call [release_allocator](/modules/memory/#release_allocator) to release all resources used by arena if it's not needed
+/// anymore.
+arena_make :: fn (size: usize = 0, allocator: *Allocator = null) ArenaAllocator #inline {
+	a: ArenaAllocator;
+	a.handler = auto &handler;
+	a.allocator = allocator;
+
+	if size > 0 {
+		err :: arena_resize(&a, size);
+		if err { panic(err); }
+		reset(&a);
+	}
+	
+	return a;
+}
+
+/// Resize & reset arena. Previously allocated memory block is kept for later use, however all memory acquired from this
+/// arena becomes invalid (arena is set to an empty state).
+arena_resize :: fn (a: *ArenaAllocator, size: usize) Error {
+	assert(size > 0);
+	err :: resize(a, size);
+	if err { return err; }
+	reset(a);
+	return OK;
+}
+
+/// This helper function might be used to precisely calculate additional space required by arena to store `count_of_allocations`
+/// elements in advance.
+arena_required_additional_space :: fn (count_of_allocations: s32) usize #inline {
+	return (ARENA_ALIGNMENT-1) * auto count_of_allocations;
+}
+
+#private
+
+handler :: fn (
+	a: *ArenaAllocator, 
+	operation: AllocOp, 
+	_: *u8, 
+	size: usize, 
+	_: usize, 
+	_: string_view, 
+	_: s32
+) (mem: *u8, err: Error) {
+	using AllocOp;
+	switch operation {
+		ALLOCATE {
+			return allocate(a, size, ARENA_ALIGNMENT); 
+		}
+		REALLOCATE {
+			assert(false, "Reallocation is not supported by arena allocator!");
+			return null, error("Reallocation is not supported by arena allocator!");
+		}
+		RESET {
+			reset(a);
+		}
+		RELEASE {
+			free(a.mem);
+			zeroinit(a);
+		}
+		FREE;
+
+		default { panic("Unknown operation."); }
+	}
+	return null, OK;
+}
+
+allocate :: fn (a: *ArenaAllocator, size: usize, alignment: usize) (mem: *u8, err: Error) {
+	assert(size > 0);
+
+	mask :: ~(alignment - 1);
+	allocation_size := size + alignment - 1;
+
+	if a.space < allocation_size {
+		assert(false, "Not enough space in arena!");
+		return null, error("Not enough space in arena!");
+	}
+	mem := a.top;
+	mem = auto ((cast(usize) mem) + alignment - 1 & mask); 
+
+	// Adjust next top pointer.
+	a.top = auto (cast(usize) a.top + allocation_size);
+	a.space -= allocation_size;
+
+	assert(is_aligned(mem, alignment));
+	return mem, OK;
+}
+
+resize :: fn (a: *ArenaAllocator, size: usize) Error {
+	if a.allocated >= size { return OK; }
+
+	mem, err :: alloc(size, DEFAULT_ALIGNMENT, a.allocator);
+	if err { return err; }
+
+	free(a.mem);
+
+	a.allocated = size;
+	a.mem = mem;
+
+	return OK;
+}
+
+reset :: fn (a: *ArenaAllocator) #inline {
+	a.top = a.mem;
+	a.space = a.allocated;
+}
+
