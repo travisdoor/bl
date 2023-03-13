@@ -60,6 +60,42 @@ test_strs_init5 :: fn () #test {
 	test_eq(s, "hello");
 }
 
+test_strs_default_1 :: fn () #test {
+	using std;
+	s: string;
+	defer str_delete(&s);
+	test_eq(s.len, 0);
+	test_null(s.ptr);
+}
+
+test_strs_default_append :: fn () #test {
+	using std;
+	s: string;
+	defer str_delete(&s);
+
+	str_append(&s, "hello");
+	test_eq(s, "hello");
+}
+
+test_strs_default_reserve :: fn () #test {
+	using std;
+	s: string;
+	defer str_delete(&s);
+
+	str_reserve(&s, 256);
+	test_not_null(s.ptr);
+	test_eq(s.len, 0);
+}
+
+test_strs_default_misc :: fn () #test {
+	using std;
+	s: string;
+
+	str_clear(&s);
+	str_delete(&s);
+	str_get_allocated_bytes(s);
+}
+
 test_str_split_by_last :: fn () #test {
 	lhs: string_view;
 	rhs: string_view;

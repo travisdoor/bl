@@ -78,14 +78,6 @@ write_value :: fn (stream: *Stream, v: *?T) Error #inline {
 	return write_all(stream, auto v, auto sizeof(T));
 }
 
-write_array :: fn (stream: *Stream, v: []?T) Error {
-	err := write_value(stream, &v.len);
-	if err { return err; }
-	err = write_all(stream, auto v.ptr, v.len * auto sizeof(T));
-	return err;
-}
-
-
 // TODO: write_fmt
 
 // =================================================================================================
@@ -155,15 +147,6 @@ read_all :: fn (stream: *Stream, dest: *u8, bytes_to_read: s64, buffer_size := 5
 read_value :: fn (stream: *Stream, v: *?T) Error #inline {
 	assert(v);
 	return read_all(stream, auto v, auto sizeof(T));
-}
-
-read_array :: fn (stream: *Stream, v: *[..]?T) Error {
-	assert(v);
-	len: typeof(v.len);
-	err_len :: read_value(stream, &len);
-	if err_len { return err_len; }
-	array_resize(v, len);
-	return read_all(stream, auto v.ptr, v.len * auto sizeof(T));
 }
 
 // =================================================================================================

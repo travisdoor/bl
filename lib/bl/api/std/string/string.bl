@@ -79,6 +79,7 @@ str_reserve :: fn (v: *string, count: s64) {
 
 /// Get currently allocated memory used by the string in bytes.
 str_get_allocated_bytes :: fn (v: string) usize #inline {
+	if !v.ptr { return 0; }
 	head :: get_block_head(v.ptr);
 	return head.allocated_size;
 }
@@ -629,6 +630,7 @@ str_sub :: fn (str: string_view, start: s64, len : s64 = -1) string_view #inline
 
 /// Checks whether string is zero terminated.
 str_is_zero_terminated :: fn (str: string_view) bool #inline {
+	// THIS MIGHT NOT BE SAFE? What about empty string view?
 	extend := str;
 	extend.len += 1;
 	return extend[extend.len-1] == '\0';
@@ -690,13 +692,21 @@ get_allocation_ptr :: fn (ptr: *u8) *u8 {
 
 // Get allocation header.
 get_block_head :: fn (ptr: *u8) *BlockHead #inline {
+	assert(ptr);
 	return cast(*BlockHead) get_allocation_ptr(ptr);
 }
 
 make_more_room_if_needed :: fn (orig_ptr: *u8, size: usize) *u8 {
-	head      :: get_block_head(orig_ptr);
-	allocated :: head.allocated_size;
-	allocator :: head.allocator;
+	allocated: usize;
+	allocator: *Allocator;
+
+	// Allocated the string in case it hasn not been allocated yet.
+	if orig_ptr {
+		head :: get_block_head(orig_ptr);
+		allocated = head.allocated_size;
+		allocator = head.allocator;
+	} 
+
 	if size > allocated { 
 		return realloc_block(orig_ptr, size, allocator); 
 	} 
@@ -729,6 +739,7 @@ free_block :: fn (ptr: *u8) {
 }
 
 set_terminator :: fn (v: *string) {
+	if !v.ptr { return; }
 	v.len += 1;
 	(@v)[v.len - 1] = 0;
 	v.len -= 1;
