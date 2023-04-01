@@ -2502,9 +2502,7 @@ bool vm_eval_instr(struct virtual_machine *vm, struct assembly *assembly, struct
 	return_zone(!vm->aborted);
 }
 
-void vm_provide_command_line_arguments(struct virtual_machine *vm,
-                                       const s32               argc,
-                                       const char *            argv[])
+void vm_provide_command_line_arguments(struct virtual_machine *vm, const s32 argc, char *argv[])
 {
 	bassert(argc > 0 && "At least one command line argument must be provided!");
 	bassert(argv && "Invalid arguments value pointer!");

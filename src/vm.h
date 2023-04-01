@@ -151,9 +151,7 @@ enum vm_interp_state vm_execute_fn(struct virtual_machine *vm,
                                    mir_const_values_t *    optional_args,
                                    vm_stack_ptr_t *        optional_return);
 
-void vm_provide_command_line_arguments(struct virtual_machine *vm,
-                                       const s32               argc,
-                                       const char *            argv[]);
+void vm_provide_command_line_arguments(struct virtual_machine *vm, const s32 argc, char *argv[]);
 void vm_override_var(struct virtual_machine *vm, struct mir_var *var, u64 value);
 void vm_do_cast(vm_stack_ptr_t   dest,
                 vm_stack_ptr_t   src,
