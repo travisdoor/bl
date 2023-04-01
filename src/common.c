@@ -180,7 +180,7 @@ char *strtoupper(char *str)
 	return str;
 }
 
-#define min3(a, b, c) ((a) < (b) ? ((a) < (c) ? (a) : (c)) : ((b) < (c) ? (b) : (c)))
+#define MIN3(a, b, c) ((a) < (b) ? ((a) < (c) ? (a) : (c)) : ((b) < (c) ? (b) : (c)))
 #define LEVENSHTEIN_MAX_LENGTH 256
 
 // Compute Levenshtein distance of two strings (the legth of both string is limited to
@@ -190,8 +190,10 @@ char *strtoupper(char *str)
 s32 levenshtein(const char *s1, const char *s2)
 {
 	u32   x, y, lastdiag, olddiag;
-	usize s1len = min(strlen(s1), LEVENSHTEIN_MAX_LENGTH);
-	usize s2len = min(strlen(s2), LEVENSHTEIN_MAX_LENGTH);
+	usize s1len_orig = strlen(s1);
+	usize s2len_orig = strlen(s2);
+	usize s1len      = MIN(s1len_orig, LEVENSHTEIN_MAX_LENGTH);
+	usize s2len      = MIN(s2len_orig, LEVENSHTEIN_MAX_LENGTH);
 	u32   column[LEVENSHTEIN_MAX_LENGTH + 1];
 	for (y = 1; y <= s1len; ++y)
 		column[y] = y;
@@ -200,7 +202,7 @@ s32 levenshtein(const char *s1, const char *s2)
 		for (y = 1, lastdiag = x - 1; y <= s1len; y++) {
 			olddiag = column[y];
 			column[y] =
-			    min3(column[y] + 1, column[y - 1] + 1, lastdiag + (s1[y - 1] == s2[x - 1] ? 0 : 1));
+			    MIN3(column[y] + 1, column[y - 1] + 1, lastdiag + (s1[y - 1] == s2[x - 1] ? 0 : 1));
 			lastdiag = olddiag;
 		}
 	}
