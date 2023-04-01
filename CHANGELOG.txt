@@ -71,6 +71,7 @@ Rename slice_init and slice_terminate to alloc_slice and free_slice.
 Improve compile time execution restore after postpone.
 Function arguments are now immutable.
 Improved error handling in synchronization API.
+Improved error messages reporting unknown symbols.
 
 0.9.0 - PRE-RELEASE
 ---------------------------------------------------------------------------------------

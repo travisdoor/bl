@@ -1,33 +1,25 @@
-#import "std/test"
-
 main :: fn () s32 {
-	o :: 1/0;
-
-	n := std.nan(f32);
-	print("n = %\n", n);
-	print("is_nan(n) = %\n", std.is_nan(n));
-	
-	a := 1./0.;
-
-	print("a = %\n", a);
+	a: Bar;
+	b :: a.a;
 	return 0;
 }
 
-my_test :: fn () #test {
-	// This is crashing the compiler!!!
-	// This is crashing the compiler!!!
-	// This is crashing the compiler!!!
-	assert(false);
+Foo :: struct {
+	a: s32;
+	b: Bar;
+}
+
+Bar :: struct {
+	a: s32;
+	b: FooBar;
 }
 
 /*
 
 TODO:
 
-- Invalid - operator precedence!
-- Better error reporting! For referenced type structures, if one is missing, we get bunch of error even for obviously existing symbols.
-  We may introduce some prioritization of errors or not't report existing incomplete types? 
 - #comptime - automatically comptime evaluated in case all the arguments are compile-time known. What about functions returning types?
+- Invalid - operator precedence!
 - Add blc --init="My Project" command.
 - Nested functions ignore previous using statement in some cases.
 - Consider application context vs thread context (i.e. temporary allocator is by default thread local but application_context is not).

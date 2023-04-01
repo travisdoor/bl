@@ -114,7 +114,7 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 
 #define queue_t(T)                                                                                 \
 	struct {                                                                                       \
-		T  *q[2];                                                                                  \
+		T * q[2];                                                                                  \
 		s64 i;                                                                                     \
 		s32 qi;                                                                                    \
 	}
@@ -153,6 +153,7 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 	(void)0
 
 char *strtoupper(char *str);
+s32   levenshtein(const char *s1, const char *s2);
 
 // =================================================================================================
 // Small Array
@@ -313,8 +314,8 @@ enum search_flags {
 bool search_source_file(const char *filepath,
                         const u32   flags,
                         const char *wdir,
-                        char      **out_filepath,
-                        char      **out_dirpath);
+                        char **     out_filepath,
+                        char **     out_dirpath);
 
 static inline bool is_aligned(const void *p, usize alignment)
 {
@@ -374,11 +375,11 @@ s32         get_last_error(char *buf, s32 buf_len);
 u32         next_pow_2(u32 n);
 void        color_print(FILE *stream, s32 color, const char *format, ...);
 s32         cpu_thread_count(void);
-char       *execute(const char *cmd);
-const char *read_config(struct config       *config,
+char *      execute(const char *cmd);
+const char *read_config(struct config *      config,
                         const struct target *target,
-                        const char          *path,
-                        const char          *default_value);
+                        const char *         path,
+                        const char *         default_value);
 
 typedef void (*process_tokens_fn_t)(void *ctx, const char *token);
 s32   process_tokens(void *ctx, const char *input, const char *delimiter, process_tokens_fn_t fn);

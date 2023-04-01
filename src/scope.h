@@ -58,20 +58,20 @@ enum scope_entry_kind {
 };
 
 union scope_entry_data {
-	struct mir_type    *type;
-	struct mir_fn      *fn;
-	struct mir_var     *var;
-	struct mir_member  *member;
+	struct mir_type *   type;
+	struct mir_fn *     fn;
+	struct mir_var *    var;
+	struct mir_member * member;
 	struct mir_variant *variant;
-	struct mir_arg     *arg;
-	struct scope       *scope;
+	struct mir_arg *    arg;
+	struct scope *      scope;
 };
 
 struct scope_entry {
-	struct id             *id;
+	struct id *            id;
 	enum scope_entry_kind  kind;
-	struct scope          *parent_scope;
-	struct ast            *node;
+	struct scope *         parent_scope;
+	struct ast *           node;
 	bool                   is_builtin;
 	union scope_entry_data data;
 	s32                    ref_count;
@@ -94,10 +94,10 @@ enum scope_kind {
 
 struct scope {
 	enum scope_kind         kind;
-	const char             *name; // optional
-	struct scope           *parent;
+	const char *            name; // optional
+	struct scope *          parent;
 	struct scope_sync_impl *sync;
-	struct location        *location;
+	struct location *       location;
 	array(struct scope *) usings;
 	LLVMMetadataRef llvm_meta;
 	hash_table(struct {
@@ -114,13 +114,13 @@ void scope_arenas_terminate(struct scope_arenas *arenas);
 
 struct scope *scope_create(struct scope_arenas *arenas,
                            enum scope_kind      kind,
-                           struct scope        *parent,
-                           struct location     *loc);
+                           struct scope *       parent,
+                           struct location *    loc);
 
-struct scope_entry *scope_create_entry(struct scope_arenas  *arenas,
+struct scope_entry *scope_create_entry(struct scope_arenas * arenas,
                                        enum scope_entry_kind kind,
-                                       struct id            *id,
-                                       struct ast           *node,
+                                       struct id *           id,
+                                       struct ast *          node,
                                        bool                  is_builtin);
 
 void scope_insert(struct scope *scope, hash_t layer, struct scope_entry *entry);
@@ -140,6 +140,11 @@ typedef struct {
 
 	// When set lookup in usings is enabled automatically.
 	struct scope_entry **out_ambiguous;
+
+	// When set, lookup will try to find most similar symbol in the scope tree, this might be
+	// expensive!
+	const char **out_most_similar;
+	s32 *        out_most_similar_last_distance;
 } scope_lookup_args_t;
 
 struct scope_entry *scope_lookup(struct scope *scope, scope_lookup_args_t *args);

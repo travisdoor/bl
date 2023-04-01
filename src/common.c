@@ -157,7 +157,7 @@ char *scprint(struct string_cache **cache, const char *fmt, ...)
 	va_copy(args2, args);
 	const s32 len = vsnprintf(NULL, 0, fmt, args);
 	bassert(len > 0);
-	char     *buf  = scdup(cache, NULL, len);
+	char *    buf  = scdup(cache, NULL, len);
 	const s32 wlen = vsprintf(buf, fmt, args2);
 	bassert(wlen == len);
 	(void)wlen;
@@ -180,11 +180,38 @@ char *strtoupper(char *str)
 	return str;
 }
 
+#define min3(a, b, c) ((a) < (b) ? ((a) < (c) ? (a) : (c)) : ((b) < (c) ? (b) : (c)))
+#define LEVENSHTEIN_MAX_LENGTH 256
+
+// Compute Levenshtein distance of two strings (the legth of both string is limited to
+// LEVENSHTEIN_MAX_LENGTH).
+// Copy-paste from
+// https://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Levenshtein_distance#C
+s32 levenshtein(const char *s1, const char *s2)
+{
+	u32   x, y, lastdiag, olddiag;
+	usize s1len = min(strlen(s1), LEVENSHTEIN_MAX_LENGTH);
+	usize s2len = min(strlen(s2), LEVENSHTEIN_MAX_LENGTH);
+	u32   column[LEVENSHTEIN_MAX_LENGTH + 1];
+	for (y = 1; y <= s1len; ++y)
+		column[y] = y;
+	for (x = 1; x <= s2len; ++x) {
+		column[0] = x;
+		for (y = 1, lastdiag = x - 1; y <= s1len; y++) {
+			olddiag = column[y];
+			column[y] =
+			    min3(column[y] + 1, column[y - 1] + 1, lastdiag + (s1[y - 1] == s2[x - 1] ? 0 : 1));
+			lastdiag = olddiag;
+		}
+	}
+	return column[s1len];
+}
+
 bool search_source_file(const char *filepath,
                         const u32   flags,
                         const char *wdir,
-                        char      **out_filepath,
-                        char      **out_dirpath)
+                        char **     out_filepath,
+                        char **     out_dirpath)
 {
 	char *tmp = tstr();
 	if (!filepath) goto NOT_FOUND;
@@ -707,10 +734,10 @@ char *execute(const char *cmd)
 	return tmp;
 }
 
-const char *read_config(struct config       *config,
+const char *read_config(struct config *      config,
                         const struct target *target,
-                        const char          *path,
-                        const char          *default_value)
+                        const char *         path,
+                        const char *         default_value)
 {
 	bassert(config && target && path);
 	char *fullpath = tstr();
