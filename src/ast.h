@@ -296,6 +296,7 @@ struct ast_expr_lit_fn {
 	struct ast *type;
 	struct ast *block;
 	struct ast *obsolete_warning_message; // Optional
+	struct ast *enable_if;
 };
 
 struct ast_expr_lit_fn_group {

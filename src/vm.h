@@ -161,14 +161,14 @@ void vm_do_cast(vm_stack_ptr_t   dest,
 
 void vm_alloc_global(struct virtual_machine *vm, struct assembly *assembly, struct mir_var *var);
 
-/// Allocate raw memory on the stack to hold sizeof(type) value.
+// Allocate raw memory on the stack to hold sizeof(type) value.
 vm_stack_ptr_t
 vm_alloc_raw(struct virtual_machine *vm, struct assembly *assembly, struct mir_type *type);
 
 void vm_print_backtrace(struct virtual_machine *vm);
 void vm_abort(struct virtual_machine *vm);
 
-/// Return pointer to constant or stack allocated variable.
+// Return pointer to constant or stack allocated variable.
 vm_stack_ptr_t vm_read_var(struct virtual_machine *vm, const struct mir_var *var);
 
 // @Incomplete <2022-06-23 Thu> Duplicate with MIR_CEV_READ/WRITE...?

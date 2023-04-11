@@ -1,7 +1,7 @@
 #ifdef HD_GEN
     HD_GEN(HD_NONE, "", 0)
     HD_GEN(HD_LOAD, "load", 1 << 1)
-    // 1 << 2 free
+    HD_GEN(HD_ENABLE_IF, "enable_if", 1 << 2)
     HD_GEN(HD_CALL_LOC, "call_location", 1 << 3)
     HD_GEN(HD_EXTERN, "extern", 1 << 4)
     HD_GEN(HD_COMPILER, "compiler", 1 << 5)

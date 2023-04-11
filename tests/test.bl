@@ -1,18 +1,8 @@
 main :: fn () s32 {
-	a: Bar;
-	b :: a.a;
 	return 0;
 }
 
-Foo :: struct {
-	a: s32;
-	b: Bar;
-}
-
-Bar :: struct {
-	a: s32;
-	b: FooBar;
-}
+foo :: fn () #enable_if false {}
 
 /*
 
@@ -76,7 +66,7 @@ NEW FEATURES
 - Anonymous structs/unions?
 - Disable function calls based on condition:
 
-	trace_runtime :: fn () #if IS_DEBUG == true {
+	trace_runtime :: fn () #enable_if IS_DEBUG == true {
 		...
 	}
 

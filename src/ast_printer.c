@@ -489,6 +489,7 @@ void print_expr_lit_fn(struct ast *fn, s32 pad, FILE *stream)
 {
 	print_head(fn, pad, stream);
 	print_node(fn->data.expr_fn.type, pad + 1, stream);
+	print_node(fn->data.expr_fn.enable_if, pad + 1, stream);
 	print_node(fn->data.expr_fn.block, pad + 1, stream);
 }
 
