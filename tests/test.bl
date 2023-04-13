@@ -1,8 +1,13 @@
 main :: fn () s32 {
+	foo();
 	return 0;
 }
 
-foo :: fn () #enable_if false {}
+IS_ENABLED :: false;
+
+foo :: fn () #enable_if IS_ENABLED == true && IS_DEBUG {
+	print("Hello!\n");
+}
 
 /*
 

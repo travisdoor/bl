@@ -652,6 +652,7 @@ struct mir_instr_fn_proto {
 	struct mir_instr  base;
 	struct mir_instr *type;
 	struct mir_instr *user_type;
+	struct mir_instr *enable_if;
 	bool              pushed_for_analyze;
 };
 

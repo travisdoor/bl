@@ -20,6 +20,7 @@ struct mir_type *t_void;
 struct mir_type *t_u8_ptr;
 struct mir_type *t_string_literal;
 struct mir_type *t_resolve_type_fn;
+struct mir_type *t_resolve_bool_expr_fn;
 struct mir_type *t_Any;
 struct mir_type *t_Any_ptr;
 struct mir_type *t_TypeKind;

@@ -935,7 +935,7 @@ void print_instr_fn_group(struct context *ctx, struct mir_instr_fn_group *group)
 void print_instr_block(struct context *ctx, struct mir_instr_block *block)
 {
 	const bool is_global = !block->owner_fn;
-	if (block->base.prev || is_global) fprintf(ctx->stream, "\n");
+	//if (block->base.prev || is_global) fprintf(ctx->stream, "\n");
 #if BL_DEBUG
 	if (block->base.ref_count < 0) {
 		fprintf(ctx->stream, "%%%s_%llu (-):", block->name, (unsigned long long)block->base.id);
