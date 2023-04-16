@@ -1,0 +1,9 @@
+// @ERR_INVALID_TYPE@
+foo :: fn () s32 #enable_if false {
+	return 10;	
+}
+
+main :: fn () s32 {
+	i :: foo();
+	return 0;
+}

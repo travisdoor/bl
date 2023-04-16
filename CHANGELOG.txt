@@ -31,6 +31,7 @@ Add Static Array and Bucket Array
 Add target triple API to the build system pipeline settings.
 Add semaphores into synchronization API.
 Add API to get ID of current thread.
+Add #enable_if function directive.
 Fix crash on unnamed function argument RTTI generation.
 Fix crash when invalid type of default argument value is provided by user.
 Fix invalid conversion of enum variants to Any.

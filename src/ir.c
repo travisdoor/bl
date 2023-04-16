@@ -2963,7 +2963,7 @@ enum state emit_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *f
 enum state emit_instr(struct context *ctx, struct mir_instr *instr)
 {
 	enum state state = STATE_PASSED;
-	bassert(instr->state == MIR_IS_COMPLETE && "Attempt to emit not-analyzed instruction!");
+	bassert(instr->state == MIR_IS_COMPLETE && "Attempt to emit instruction in incomplete state!");
 	if (!mir_type_has_llvm_representation((instr->value.type))) return state;
 	switch (instr->kind) {
 	case MIR_INSTR_INVALID:

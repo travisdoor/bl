@@ -1,12 +1,13 @@
 main :: fn () s32 {
-	foo();
+	foo(10);
+	foo(20);
 	return 0;
 }
 
-IS_ENABLED :: false;
+IS_ENABLED :: true;
 
-foo :: fn () #enable_if IS_ENABLED == true && IS_DEBUG {
-	print("Hello!\n");
+foo :: fn (a: ?T) #enable_if false {
+	print("Hello %!\n", a);
 }
 
 /*
@@ -36,7 +37,7 @@ TODO:
 - Introduce calling conventions.
 - Change syntax of default argument value assignment to ':'.
 - Properly handle fail of ast_expr_lit_fn while generating recipe implementation.
-- is_one_or_more_flags(f) fails to run (empty varaibale argument count!).
+- is_one_or_more_flags(f) fails to run (empty variable argument count!).
 
 - loop - else ?
 

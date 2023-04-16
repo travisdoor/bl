@@ -85,12 +85,6 @@
 		.state = ANALYZE_POSTPONE                                                                  \
 	}
 
-#define SKIP                                                                                       \
-	(struct result)                                                                                \
-	{                                                                                              \
-		.state = ANALYZE_SKIP                                                                      \
-	}
-
 #define WAIT(N)                                                                                    \
 	(struct result)                                                                                \
 	{                                                                                              \
@@ -208,9 +202,6 @@ enum result_state {
 	// In this case struct result will contain hash of desired symbol which be satisfied later,
 	// instruction is pushed into waiting table.
 	ANALYZE_WAIT = 3,
-
-	// Completely skip analyze of instruction.
-	ANALYZE_SKIP = 4,
 };
 
 struct result {
@@ -773,8 +764,10 @@ append_instr_const_string(struct context *ctx, struct ast *node, str_t str);
 static struct mir_instr *append_instr_const_char(struct context *ctx, struct ast *node, char c);
 static struct mir_instr *append_instr_const_null(struct context *ctx, struct ast *node);
 static struct mir_instr *append_instr_const_void(struct context *ctx, struct ast *node);
-static struct mir_instr *
-append_instr_ret(struct context *ctx, struct ast *node, struct mir_instr *value);
+static struct mir_instr *append_instr_ret(struct context   *ctx,
+                                          struct ast       *node,
+                                          struct mir_instr *value,
+                                          bool              expected_comptime);
 static struct mir_instr *append_instr_store(struct context   *ctx,
                                             struct ast       *node,
                                             struct mir_instr *src,
@@ -1416,6 +1409,7 @@ static inline struct mir_instr *unref_instr(struct mir_instr *instr)
 {
 	if (!instr) return NULL;
 	if (instr->ref_count == NO_REF_COUNTING) return instr;
+	bassert(instr->ref_count > 0 && "Attempt to unref already unreferenced instruction.");
 	--instr->ref_count;
 	return instr;
 }
@@ -1437,8 +1431,10 @@ static inline void erase_instr(struct mir_instr *instr)
 	}
 	if (instr->prev) instr->prev->next = instr->next;
 	if (instr->next) instr->next->prev = instr->prev;
-	instr->prev = NULL;
-	instr->next = NULL;
+	// instr->prev = NULL;
+	// instr->next = NULL;
+
+	instr->state = MIR_IS_ERASED;
 }
 
 static inline void erase_block(struct mir_instr *instr)
@@ -4046,6 +4042,12 @@ append_instr_fn_group(struct context *ctx, struct ast *node, mir_instrs_t *varia
 	tmp->base.value.is_comptime    = true;
 	tmp->base.ref_count            = NO_REF_COUNTING;
 	tmp->variants                  = variants;
+
+	for (usize i = 0; i < sarrlenu(variants); ++i) {
+		struct mir_instr *v = sarrpeek(variants, i);
+		ref_instr(v);
+	}
+
 	append_current_block(ctx, &tmp->base);
 	return &tmp->base;
 }
@@ -4338,7 +4340,10 @@ inline struct mir_instr *append_instr_const_void(struct context *ctx, struct ast
 	return tmp;
 }
 
-struct mir_instr *append_instr_ret(struct context *ctx, struct ast *node, struct mir_instr *value)
+struct mir_instr *append_instr_ret(struct context   *ctx,
+                                   struct ast       *node,
+                                   struct mir_instr *value,
+                                   bool              expected_comptime)
 {
 	if (value) ref_instr(value);
 
@@ -4347,6 +4352,7 @@ struct mir_instr *append_instr_ret(struct context *ctx, struct ast *node, struct
 	tmp->base.value.addr_mode = MIR_VAM_RVALUE;
 	tmp->base.ref_count       = NO_REF_COUNTING;
 	tmp->value                = value;
+	tmp->expected_comptime    = expected_comptime;
 	append_current_block(ctx, &tmp->base);
 	struct mir_instr_block *block = ast_current_block(ctx);
 	if (!is_block_terminated(block)) terminate_block(block, &tmp->base);
@@ -4420,15 +4426,23 @@ struct mir_instr *append_instr_call_loc(struct context *ctx, struct ast *node)
 // analyze
 void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
 {
+#define erase(i)                                                                                   \
+	if ((i) && (i)->state != MIR_IS_ERASED) {                                                      \
+		sarrput(&queue, unref_instr((i)));                                                         \
+	}
+
 	if (!instr) return;
 	instrs_t queue = SARR_ZERO;
+
+	// Intentionally not use 'erase' macro here to catch errors!
 	sarrput(&queue, instr);
 	struct mir_instr *top;
 	while (sarrlenu(&queue)) {
 		top = sarrpop(&queue);
 		if (!top) continue;
 
-		bassert(isflag(top->state, MIR_IS_ANALYZED) && "Trying to erase not analyzed instruction.");
+		bassert(isflag(top->state, MIR_IS_ANALYZED) &&
+		        "Trying to erase instruction in non-analyzed state.");
 		if (!force) {
 			if (top->ref_count == NO_REF_COUNTING) continue;
 			if (top->ref_count > 0) continue;
@@ -4440,65 +4454,65 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
 			if (mir_is_zero_initialized(compound)) break;
 			for (usize i = 0; i < sarrlenu(compound->values); ++i) {
 				struct mir_instr *it = sarrpeek(compound->values, i);
-				sarrput(&queue, unref_instr(it));
+				erase(it);
 			}
 			break;
 		}
 
 		case MIR_INSTR_BINOP: {
 			struct mir_instr_binop *binop = (struct mir_instr_binop *)top;
-			sarrput(&queue, unref_instr(binop->rhs));
-			sarrput(&queue, unref_instr(binop->lhs));
+			erase(binop->rhs);
+			erase(binop->lhs);
 			break;
 		}
 
 		case MIR_INSTR_LOAD: {
 			struct mir_instr_load *load = (struct mir_instr_load *)top;
-			sarrput(&queue, unref_instr(load->src));
+			erase(load->src);
 			break;
 		}
 
 		case MIR_INSTR_ALIGNOF: {
 			struct mir_instr_alignof *alof = (struct mir_instr_alignof *)top;
-			sarrput(&queue, unref_instr(alof->expr));
+			erase(alof->expr);
 			break;
 		}
 
 		case MIR_INSTR_SIZEOF: {
 			struct mir_instr_sizeof *szof = (struct mir_instr_sizeof *)top;
-			sarrput(&queue, unref_instr(szof->expr));
+			erase(szof->expr);
 			break;
 		}
 
 		case MIR_INSTR_ELEM_PTR: {
 			struct mir_instr_elem_ptr *ep = (struct mir_instr_elem_ptr *)top;
-			sarrput(&queue, unref_instr(ep->arr_ptr));
-			sarrput(&queue, unref_instr(ep->index));
+			erase(ep->arr_ptr);
+			erase(ep->index);
 			break;
 		}
 
 		case MIR_INSTR_MEMBER_PTR: {
 			struct mir_instr_member_ptr *mp = (struct mir_instr_member_ptr *)top;
-			sarrput(&queue, unref_instr(mp->target_ptr));
+			erase(mp->target_ptr);
 			break;
 		}
 
 		case MIR_INSTR_TYPE_INFO: {
 			struct mir_instr_type_info *info = (struct mir_instr_type_info *)top;
-			sarrput(&queue, unref_instr(info->expr));
+			erase(info->expr);
 			break;
 		}
 
 		case MIR_INSTR_TYPEOF: {
 			struct mir_instr_typeof *type_of = (struct mir_instr_typeof *)top;
-			sarrput(&queue, unref_instr(type_of->expr));
+			erase(type_of->expr);
 			break;
 		}
 
 		case MIR_INSTR_CAST: {
 			struct mir_instr_cast *cast = (struct mir_instr_cast *)top;
-			sarrput(&queue, unref_instr(cast->expr));
-			sarrput(&queue, unref_instr(cast->type));
+			erase(cast->expr);
+			erase(cast->type);
 			break;
 		}
 
@@ -4506,48 +4520,48 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
 			struct mir_instr_call *call = (struct mir_instr_call *)top;
 			for (usize i = 0; i < sarrlenu(call->args); ++i) {
 				struct mir_instr *it = sarrpeek(call->args, i);
-				sarrput(&queue, unref_instr(it));
+				erase(it);
 			}
-			sarrput(&queue, unref_instr(call->callee));
+			erase(call->callee);
 			break;
 		}
 
 		case MIR_INSTR_ADDROF: {
 			struct mir_instr_addrof *addrof = (struct mir_instr_addrof *)top;
-			sarrput(&queue, unref_instr(addrof->src));
+			erase(addrof->src);
 			break;
 		}
 
 		case MIR_INSTR_UNOP: {
 			struct mir_instr_unop *unop = (struct mir_instr_unop *)top;
-			sarrput(&queue, unref_instr(unop->expr));
+			erase(unop->expr);
 			break;
 		}
 
 		case MIR_INSTR_TYPE_PTR: {
 			struct mir_instr_type_ptr *tp = (struct mir_instr_type_ptr *)top;
-			sarrput(&queue, unref_instr(tp->type));
+			erase(tp->type);
 			break;
 		}
 
 		case MIR_INSTR_TYPE_ENUM: {
 			struct mir_instr_type_enum *te = (struct mir_instr_type_enum *)top;
-			sarrput(&queue, unref_instr(te->base_type));
+			erase(te->base_type);
 
 			for (usize i = 0; i < sarrlenu(te->variants); ++i) {
 				struct mir_instr *it = sarrpeek(te->variants, i);
-				sarrput(&queue, unref_instr(it));
+				erase(it);
 			}
 			break;
 		}
 
 		case MIR_INSTR_TYPE_FN: {
 			struct mir_instr_type_fn *tf = (struct mir_instr_type_fn *)top;
-			sarrput(&queue, unref_instr(tf->ret_type));
+			erase(tf->ret_type);
 
 			for (usize i = 0; i < sarrlenu(tf->args); ++i) {
 				struct mir_instr *it = sarrpeek(tf->args, i);
-				sarrput(&queue, unref_instr(it));
+				erase(it);
 			}
 			break;
 		}
@@ -4557,21 +4571,21 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
 			bassert(group->variants);
 			for (usize i = 0; i < sarrlenu(group->variants); ++i) {
 				struct mir_instr *it = sarrpeek(group->variants, i);
-				sarrput(&queue, unref_instr(it));
+				erase(it);
 			}
 			break;
 		}
 
 		case MIR_INSTR_TYPE_VARGS: {
 			struct mir_instr_type_vargs *vargs = (struct mir_instr_type_vargs *)top;
-			sarrput(&queue, unref_instr(vargs->elem_type));
+			erase(vargs->elem_type);
 			break;
 		}
 
 		case MIR_INSTR_TYPE_ARRAY: {
 			struct mir_instr_type_array *ta = (struct mir_instr_type_array *)top;
-			sarrput(&queue, unref_instr(ta->elem_type));
-			sarrput(&queue, unref_instr(ta->len));
+			erase(ta->elem_type);
+			erase(ta->len);
 			break;
 		}
 
@@ -4581,7 +4595,7 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
 			struct mir_instr_type_struct *ts = (struct mir_instr_type_struct *)top;
 			for (usize i = 0; i < sarrlenu(ts->members); ++i) {
 				struct mir_instr *it = sarrpeek(ts->members, i);
-				sarrput(&queue, unref_instr(it));
+				erase(it);
 			}
 			break;
 		}
@@ -4590,14 +4604,14 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
 			struct mir_instr_vargs *vargs = (struct mir_instr_vargs *)top;
 			for (usize i = 0; i < sarrlenu(vargs->values); ++i) {
 				struct mir_instr *it = sarrpeek(vargs->values, i);
-				sarrput(&queue, unref_instr(it));
+				erase(it);
 			}
 			break;
 		}
 
 		case MIR_INSTR_USING: {
 			struct mir_instr_using *using = (struct mir_instr_using *)top;
-			sarrput(&queue, unref_instr(using->scope_expr));
+			erase(using->scope_expr);
 			break;
 		}
 
@@ -4614,10 +4628,13 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
 		case MIR_INSTR_TYPE_POLY:
 		case MIR_INSTR_MSG:
 		case MIR_INSTR_UNROLL:
-		case MIR_INSTR_FN_PROTO:
-		case MIR_INSTR_FN_GROUP:
 		case MIR_INSTR_ARG:
 			break;
+
+		case MIR_INSTR_FN_PROTO:
+		case MIR_INSTR_FN_GROUP:
+			// Skip erase even in the force-erase mode.
+			continue;
 
 		default:
 			babort("Missing erase for instruction '%s'", mir_instr_name(top));
@@ -4627,6 +4644,8 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force)
 		erase_instr(top);
 	}
 	sarrfree(&queue);
+
+#undef erase
 }
 
 enum vm_interp_state evaluate(struct context *ctx, struct mir_instr *instr)
@@ -4733,9 +4752,8 @@ static struct result analyze_call_resolver(struct context *ctx, struct mir_instr
 		bassert(resolver->state != MIR_IS_COMPLETE &&
 		        "In case the resolver call is analyzed it's supposed to be already converted to "
 		        "the constant value during evaluation!");
-		if (analyze_instr(ctx, resolver).state != ANALYZE_PASSED) {
-			return POSTPONE;
-		}
+		struct result result = analyze_instr(ctx, resolver);
+		if (result.state != ANALYZE_PASSED) return result;
 	} else {
 		bassert(resolver->kind == MIR_INSTR_CONST);
 	}
@@ -4892,8 +4910,8 @@ struct result analyze_instr_phi(struct context *ctx, struct mir_instr_phi *phi)
 			if (br->then_block->base.id == phi_owner_block->base.id) {
 				cnt = false;
 			} else {
-				// erase from incoming
-				unref_instr(*value_ref);
+				bassert((*value_ref)->ref_count == 0);
+				// unref_instr(*value_ref);
 				continue;
 			}
 		} else {
@@ -5310,7 +5328,7 @@ struct result analyze_var(struct context *ctx, struct mir_var *var, const bool c
 		return_zone(FAIL);
 	case MIR_TYPE_VOID:
 		// Allocated type is void type.
-		report_error(INVALID_TYPE, var->decl_node, "Cannot allocate 'void' type.");
+		report_error(INVALID_TYPE, var->decl_node, "Cannot allocate void variable.");
 		return_zone(FAIL);
 	default:
 		break;
@@ -5379,7 +5397,7 @@ struct result analyze_instr_set_initializer(struct context                   *ct
 	if (!mir_is_comptime(si->src)) {
 		report_error(EXPECTED_COMPTIME,
 		             si->src->node,
-		             "Global variables must be initialized with compile time known value.");
+		             "Global variables must be initialized with compile-time known value.");
 		return_zone(FAIL);
 	}
 
@@ -5832,6 +5850,7 @@ struct result analyze_instr_addrof(struct context *ctx, struct mir_instr_addrof 
 	zone();
 	struct mir_instr *src = addrof->src;
 	bassert(src);
+	bassert(src->state != MIR_IS_ERASED && "Taking adress of erased instruction!");
 	if (src->state != MIR_IS_COMPLETE) return_zone(POSTPONE);
 	const enum mir_value_address_mode src_addr_mode = src->value.addr_mode;
 
@@ -6291,6 +6310,7 @@ struct result analyze_instr_decl_direct_ref(struct context                   *ct
 {
 	zone();
 	bassert(ref->ref && "Missing declaration reference for direct ref.");
+	bassert(ref->ref->state != MIR_IS_ERASED && "Taking reference to erased instruction!");
 	if (ref->ref->kind == MIR_INSTR_DECL_VAR) {
 		if (ref->ref->state != MIR_IS_COMPLETE) return_zone(POSTPONE);
 		struct mir_var *var = ((struct mir_instr_decl_var *)ref->ref)->var;
@@ -6416,15 +6436,10 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 		fn_proto->base.value.type = fn_type;
 	}
 	// resolve enable-if expression
+	bool is_enabled = true;
 	if (fn_proto->enable_if) {
-		bool          is_enabled = false;
-		struct result result     = analyze_resolve_bool_expr(ctx, fn_proto->enable_if, &is_enabled);
+		struct result result = analyze_resolve_bool_expr(ctx, fn_proto->enable_if, &is_enabled);
 		if (result.state != ANALYZE_PASSED) return_zone(result);
-		if (is_enabled) {
-			blog("Function is enabled!");
-		} else {
-			blog("Function is disabled!");
-		}
 	}
 
 	struct mir_const_expr_value *value = &fn_proto->base.value;
@@ -6443,6 +6458,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 
 	fn->type          = value->type;
 	fn->type->user_id = fn->id;
+	fn->is_disabled   = !is_enabled;
 
 	bassert(fn->type);
 
@@ -6656,6 +6672,7 @@ struct result analyze_instr_fn_group(struct context *ctx, struct mir_instr_fn_gr
 	bassert(vc);
 	for (usize i = 0; i < vc; ++i) {
 		struct mir_instr *variant_ref = sarrpeek(variants, i);
+		bassert(variant_ref->state != MIR_IS_ERASED);
 		if (variant_ref->state != MIR_IS_COMPLETE) {
 			return_zone(POSTPONE);
 		}
@@ -6729,7 +6746,7 @@ struct result analyze_instr_cond_br(struct context *ctx, struct mir_instr_cond_b
 	if (br->is_static && !is_condition_comptime) {
 		report_error(EXPECTED_COMPTIME,
 		             br->cond->node,
-		             "Static if expression is supposed to be known in compile time.");
+		             "Static if expression is supposed to be known in compile-time.");
 		return_zone(FAIL);
 	}
 	// Compile-time known conditional break can be later evaluated into direct break.
@@ -7972,15 +7989,21 @@ struct result analyze_instr_ret(struct context *ctx, struct mir_instr_ret *ret)
 
 	// return value is not expected, but it's provided
 	if (!expected_ret_value && value) {
-		report_error(INVALID_EXPR, ret->value->node, "Unexpected return value.");
+		report_error(INVALID_EXPR, value->node, "Unexpected return value.");
 		return_zone(FAIL);
 	}
 
-	if (value && mir_is_in_comptime_fn(&ret->base) && value->value.type->kind == MIR_TYPE_PTR) {
-		report_warning(
-		    ret->value->node,
-		    "Returning a pointer from compile-time evaluated function is not safe! Address of "
-		    "allocated data on stack or heap in compile-time are not the same in runtime.");
+	if (value) {
+		if (mir_is_in_comptime_fn(&ret->base) && value->value.type->kind == MIR_TYPE_PTR) {
+			report_warning(
+			    ret->value->node,
+			    "Returning a pointer from compile-time evaluated function is not safe! Address of "
+			    "allocated data on stack or heap in compile-time are not the same in runtime.");
+		}
+		if (ret->expected_comptime && !mir_is_comptime(value)) {
+			report_error(EXPECTED_COMPTIME, value->node, "Expected compile-time known value.");
+			return_zone(FAIL);
+		}
 	}
 
 	return_zone(PASS);
@@ -8344,7 +8367,8 @@ static inline void replace_callee(struct mir_instr_call *call, struct mir_fn *re
 {
 	bassert(replacement_fn && replacement_fn->prototype &&
 	        replacement_fn->prototype->kind == MIR_INSTR_FN_PROTO);
-	erase_instr_tree(call->callee, /* keep_root */ false, /* force */ true);
+	unref_instr(call->callee);
+	erase_instr_tree(call->callee, /* keep_root */ false, /* force */ false);
 	call->callee = replacement_fn->prototype;
 }
 
@@ -8403,7 +8427,7 @@ static inline struct mir_instr *replace_default_argument_placeholder(struct cont
 	} else {
 		call_default_arg = create_instr_decl_direct_ref(ctx, NULL, fn_arg->default_value);
 	}
-	sarrpeek(call->args, fn_arg->index) = call_default_arg;
+	sarrpeek(call->args, fn_arg->index) = ref_instr(call_default_arg);
 	insert_instr_before(insert_location, call_default_arg);
 	analyze_instr_rq(call_default_arg);
 	return call_default_arg;
@@ -8426,9 +8450,10 @@ static inline struct mir_instr *insert_default_argument_call_value(struct contex
 		bassert(call->base.node);
 		bassert(call->base.node->location);
 		struct ast *orig_node = default_value->node;
-		call_default_arg      = create_instr_call_loc(ctx, orig_node, call->base.node->location);
+		call_default_arg =
+		    ref_instr(create_instr_call_loc(ctx, orig_node, call->base.node->location));
 	} else {
-		call_default_arg = create_instr_decl_direct_ref(ctx, NULL, default_value);
+		call_default_arg = ref_instr(create_instr_decl_direct_ref(ctx, NULL, default_value));
 	}
 
 	sarrput(call->args, call_default_arg);
@@ -8517,6 +8542,8 @@ struct result analyze_call_stage_resolve_called_object(struct context        *ct
 	bassert(call->callee);
 	struct id *missing_any = lookup_builtins_any(ctx);
 	if (missing_any) return_zone(WAIT(missing_any->hash));
+
+	bassert(call->callee->state != MIR_IS_ERASED);
 	if (call->callee->state != MIR_IS_COMPLETE) {
 		bassert(call->callee->kind == MIR_INSTR_FN_PROTO);
 		struct mir_instr_fn_proto *fn_proto = (struct mir_instr_fn_proto *)call->callee;
@@ -9008,6 +9035,29 @@ struct result analyze_instr_call(struct context *ctx, struct mir_instr_call *cal
 		// Pipeline may changed in one of the stages...
 		if (current_pipeline == call->analyze_pipeline) ++call->analyze_pipeline;
 	}
+
+	if (call->called_function) {
+		struct mir_fn *fn = call->called_function;
+		// Erase call when the called function is disabled.
+		// We do this intentionally after the call is analyzed, this keeps even "dead" code properly
+		// analyzed and not breaking over time even if it's removed from the final binary.
+		if (fn->is_disabled) {
+			const bool remove_completely = !fn->type->data.fn.ret_type;
+			call->base.state             = MIR_IS_ANALYZED;
+
+			if (remove_completely) {
+				unref_instr(&call->base);
+				erase_instr_tree(&call->base, true, true);
+			} else {
+				// In case function is supposed to return value and is disabled, we just mutate the
+				// call instruction to void constant. Invalid usage can be later reported to user.
+				erase_instr_tree(&call->base, false, true);
+				struct mir_instr_const *replacement = mutate_instr(&call->base, MIR_INSTR_CONST);
+				replacement->base.value.type        = ctx->builtin_types->t_void;
+			}
+		}
+	}
+
 	return_zone(PASS);
 }
 
@@ -9361,9 +9411,11 @@ struct result analyze_instr(struct context *ctx, struct mir_instr *instr)
 	if (!instr) return_zone(PASS);
 	struct result state = PASS;
 	if (instr->state == MIR_IS_COMPLETE) return_zone(state);
-	enum mir_instr_state *analyze_state = &instr->state;
 	if (instr->owner_block) set_current_block(ctx, instr->owner_block);
+
+	enum mir_instr_state *analyze_state = &instr->state;
 	bassert((*analyze_state) != MIR_IS_FAILED && "Attempt to analyze already failed instruction?!");
+	bassert((*analyze_state) != MIR_IS_ERASED && "Attempt to analyze already erased instruction?!");
 
 	if ((*analyze_state) == MIR_IS_PENDING) {
 		BL_TRACY_MESSAGE("ANALYZE", "[%llu] %s", instr->id, mir_instr_name(instr));
@@ -9526,6 +9578,12 @@ struct result analyze_instr(struct context *ctx, struct mir_instr *instr)
 			babort("Missing analyze of instruction!");
 		}
 
+		if ((*analyze_state) == MIR_IS_ERASED) {
+			// Instruction was erased completely so we return here.
+			bassert(state.state == ANALYZE_PASSED);
+			return_zone(state);
+		}
+
 		if (state.state == ANALYZE_PASSED) {
 			(*analyze_state) = MIR_IS_ANALYZED;
 		} else if (state.state == ANALYZE_FAILED) {
@@ -9563,7 +9621,7 @@ struct result analyze_instr(struct context *ctx, struct mir_instr *instr)
 			break;
 		}
 		}
-	} // ANALYZED
+	}
 
 	if ((*analyze_state) == MIR_IS_FAILED) {
 		// Report generated function information here in case of analyze failure.
@@ -9608,7 +9666,8 @@ void analyze(struct context *ctx)
 		pip = ip;
 		ip  = skip ? NULL : analyze_try_get_next(ip);
 		// Remove unused instructions here!
-		if (pip && (pip->state == MIR_IS_COMPLETE)) erase_instr_tree(pip, false, false);
+		if (pip && (pip->state == MIR_IS_COMPLETE) && pip->ref_count == 0)
+			erase_instr_tree(pip, false, false);
 		if (ip == NULL) {
 			if (i >= arrlenu(ctx->analyze.stack[si])) {
 				// No other instructions in current analyzed stack, let's try the other one.
@@ -9628,7 +9687,6 @@ void analyze(struct context *ctx)
 			pc = 0;
 			break;
 
-		case ANALYZE_SKIP:
 		case ANALYZE_FAILED:
 			skip = true;
 			pc   = 0;
@@ -9731,7 +9789,7 @@ void analyze_report_unused(struct context *ctx)
 		}
 		default: {
 			report_warning(entry->node,
-			               "Unused symbol '%s'. Use blank identificator '_' if it's "
+			               "Unused symbol '%s'. Use blank identifier '_' if it's "
 			               "intentional, or mark the symbol as '#maybe_unused'. If it's used only "
 			               "in some conditional or generated code.",
 			               entry->id->str);
@@ -10996,10 +11054,10 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
 		                                         });
 		set_current_block(ctx, exit_block);
 		struct mir_instr *ret_init = append_instr_decl_direct_ref(ctx, ast_block, fn->ret_tmp);
-		append_instr_ret(ctx, ast_block, ret_init);
+		append_instr_ret(ctx, ast_block, ret_init, false);
 	} else {
 		set_current_block(ctx, exit_block);
-		append_instr_ret(ctx, ast_block, NULL);
+		append_instr_ret(ctx, ast_block, NULL, false);
 	}
 	set_current_block(ctx, init_block);
 
@@ -11013,7 +11071,7 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
 			bassert(ast_arg->kind == AST_DECL_ARG);
 			ast_arg_name = ast_arg->data.decl.name;
 			bassert(ast_arg_name);
-			bassert(ast_arg_name->kind == AST_IDENT && "Expected identificator.");
+			bassert(ast_arg_name->kind == AST_IDENT && "Expected identifer.");
 			struct id           *arg_id = &ast_arg_name->data.ident.id;
 			const enum ast_flags flags  = ast_arg->data.decl.flags;
 
@@ -11520,7 +11578,7 @@ struct mir_instr *ast_decl_entity(struct context *ctx, struct ast *entity)
 	const bool  is_struct_decl = ast_value && ast_value->kind == AST_EXPR_TYPE &&
 	                            ast_value->data.expr_type.type->kind == AST_TYPE_STRUCT;
 	bassert(ast_name && "Missing entity name.");
-	bassert(ast_name->kind == AST_IDENT && "Expected identificator.");
+	bassert(ast_name->kind == AST_IDENT && "Expected identifier.");
 	if (is_fn_decl) {
 		ast_decl_fn(ctx, entity);
 	} else {
@@ -11641,7 +11699,7 @@ struct mir_instr *ast_decl_variant(struct context     *ctx,
 	struct mir_instr              *value = ast(ctx, ast_value);
 	struct mir_instr_decl_variant *variant_instr =
 	    (struct mir_instr_decl_variant *)append_instr_decl_variant(
-	        ctx, ast_name, value, base_type, prev_variant, is_flags);
+	        ctx, ast_name, ref_instr(value), base_type, prev_variant, is_flags);
 	variant_instr->variant->entry =
 	    register_symbol(ctx, ast_name, &ast_name->data.ident.id, ast_name->owner_scope, false);
 	return (struct mir_instr *)variant_instr;
@@ -11723,7 +11781,7 @@ struct mir_instr *ast_type_fn_group(struct context *ctx, struct ast *group)
 		struct ast *it        = sarrpeek(ast_variants, i);
 		sarrpeek(variants, i) = ast(ctx, it);
 	}
-	// Consume declaration identificator.
+	// Consume declaration identifier.
 	struct id *id              = ctx->ast.current_entity_id;
 	ctx->ast.current_entity_id = NULL;
 	return append_instr_type_fn_group(ctx, group, id, variants);
@@ -11813,7 +11871,7 @@ struct mir_instr *ast_type_enum(struct context *ctx, struct ast *type_enum)
 		sarrput(variants, variant);
 		prev_variant = ((struct mir_instr_decl_variant *)variant)->variant;
 	}
-	// Consume declaration identificator.
+	// Consume declaration identifier.
 	struct id *id              = ctx->ast.current_entity_id;
 	ctx->ast.current_entity_id = NULL;
 	return append_instr_type_enum(ctx, type_enum, id, scope, variants, base_type, is_flags);
@@ -11821,7 +11879,7 @@ struct mir_instr *ast_type_enum(struct context *ctx, struct ast *type_enum)
 
 struct mir_instr *ast_type_struct(struct context *ctx, struct ast *type_struct)
 {
-	// Consume declaration identificator.
+	// Consume declaration identifier.
 	struct id *id              = ctx->ast.current_entity_id;
 	ctx->ast.current_entity_id = NULL;
 
@@ -11987,7 +12045,7 @@ struct mir_instr *ast_create_expr_resolver_call(struct context  *ctx,
 	entry->base.ref_count         = NO_REF_COUNTING;
 	set_current_block(ctx, entry);
 	struct mir_instr *result = ast(ctx, ast_expr);
-	append_instr_ret(ctx, NULL, result);
+	append_instr_ret(ctx, ast_expr, result, true);
 	set_current_block(ctx, prev_block);
 	struct mir_instr *call = create_instr_call(
 	    ctx, ast_expr, fn_proto, NULL, /* is_comptime */ true, /* is_inside_recipe */ false);

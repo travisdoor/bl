@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+Copyright (c) Microsoft Corporation.
+SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+-->
+
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+    <Type Name="mir_instr">
+        <DisplayString>[{id}: {kind} | {state}]</DisplayString>
+        <Expand>
+            <Item Name="[id]">id</Item>
+            <Item Name="[kind]">kind</Item>
+            <Item Name="[state]">state</Item>
+        </Expand>
+    </Type>
+</AutoVisualizer>

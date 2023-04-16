@@ -234,6 +234,7 @@ struct mir_fn {
 	LLVMValueRef llvm_value;
 	bool         is_fully_analyzed;
 	bool         is_global;
+	bool         is_disabled; // Set based on optional enable_if expression in function prototype.
 	s32          ref_count;
 	// Module index specify in which LLVM module the function is supposed to be generated, think
 	// about this number as it was thread ID, because every module is generated from MIR in
@@ -473,6 +474,7 @@ enum mir_instr_state {
 	MIR_IS_ANALYZED = 1,
 	MIR_IS_COMPLETE = 3,
 	MIR_IS_FAILED   = 4,
+	MIR_IS_ERASED   = 5,
 };
 
 struct mir_instr {
@@ -488,6 +490,7 @@ struct mir_instr {
 	enum mir_instr_kind _orig_kind;
 #endif
 	s32  ref_count;
+
 	bool is_unreachable;
 	bool is_implicit;
 
@@ -624,6 +627,7 @@ struct mir_instr_addrof {
 struct mir_instr_ret {
 	struct mir_instr  base;
 	struct mir_instr *value;
+	bool              expected_comptime;
 };
 
 struct mir_instr_set_initializer {

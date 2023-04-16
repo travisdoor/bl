@@ -589,7 +589,7 @@ free :: fn (ptr: void_ptr) #extern;
 
 ### export
 
-Functions with an `export` directive are exported from the binary when program is compiled as a shared library (with `-shared` flag). So the function may be called from the other libraries or executables after successful linking. The `#export` directive can be optionally followed by the linkage name of the exported symbol. If the linkage name is not specified, the function name is used instead. 
+Functions with an `export` directive are exported from the binary when a program is compiled as a shared library (with `-shared` flag). So the function may be called from the other libraries or executables after successful linking. The `#export` directive can be optionally followed by the linkage name of the exported symbol. If the linkage name is not specified, the function name is used instead. 
 
 The export functions must strictly follow *C call conventions*. That means, the function cannot be polymorphic (generated in compile time).
 
@@ -636,4 +636,32 @@ So the comptime function has no runtime overhead.
 - Returning pointers from comptime functions is not a good idea.
 - An internal execution stack for compile-time evaluated functions is limited to 128kB; compile time execution of too complicated stuff may cause stack overflows.
 
+### enable_if
 
+The `#enable_if` directive can be used to conditionally specify whether a certain function should be included or excluded from a final binary. This might be used for debug-only functions like debug logs, profiling code etc.
+
+Following code is supposed to measure the runtime of the main function only in debug mode (when `bool` expression after `#enable_if` directive evaluates `true` in compile-time). Calls to these functions are completely removed in release mode as well as the implementation.
+
+```rust
+main :: fn () s32 {
+    measure_runtime_in_debug_only();
+    defer measure_runtime_in_debug_only_end();
+
+    // do something here
+
+    return 0; 
+}
+
+measure_runtime_in_debug_only :: fn () #enable_if IS_DEBUG {
+    // ... 
+}
+
+measure_runtime_in_debug_only_end :: fn () #enable_if IS_DEBUG {
+    // ... 
+}
+```
+
+**Notes:**
+
+- The function and all its calls are fully analyzed even if the function is disabled.
+- The conditional function might return values, but in case the function is disabled the returned value on the call side is implicitly changed to `void` type. Such behavior is intentionally chosen to prevent possible issues with uninitialized variables.
