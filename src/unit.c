@@ -89,12 +89,13 @@ void unit_delete(struct unit *unit)
 const char *unit_get_src_ln(struct unit *unit, s32 line, long *len)
 {
 	if (line < 1) return NULL;
+	// Iterate from begin of the file looking for a specific line.
 	const char *c     = unit->src;
 	const char *begin = c;
 	while (true) {
 		if (*c == '\n') {
 			--line;
-			if (line == 0) break;
+			if (line == 0) break; // Line found.
 			begin = c + 1;
 		}
 		if (*c == '\0') {
@@ -103,10 +104,12 @@ const char *unit_get_src_ln(struct unit *unit, s32 line, long *len)
 		}
 		++c;
 	}
-	if (line > 0) return NULL;
+	if (line > 0) return NULL; // Line not found.
 	if (len) {
-		(*len) = (long)(c - begin);
-		bassert(*len >= 0);
+		long l = (long)(c - begin);
+		if (l && begin[l - 1] == '\r') --l;
+		bassert(l >= 0);
+		*len = l;
 	}
 	return begin;
 }

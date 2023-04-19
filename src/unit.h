@@ -57,6 +57,7 @@ struct unit {
 hash_t       unit_hash(const char *filepath, struct token *load_from);
 struct unit *unit_new(const char *filepath, struct token *load_from);
 void         unit_delete(struct unit *unit);
-const char  *unit_get_src_ln(struct unit *unit, s32 line, long *len);
+// Returns single line from the unit source code, len does not count last new line char.
+const char *unit_get_src_ln(struct unit *unit, s32 line, long *len);
 
 #endif
