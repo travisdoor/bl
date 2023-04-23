@@ -630,12 +630,12 @@ do_render :: fn () {
 	gl.DrawElements(GL_TRIANGLES, auto index_buffer.len, GL_UNSIGNED_INT, null);
 	shader_attrib_disable_all(context.shader);
 
-	array_clear(&vertex_buffer);
-	array_clear(&fg_color_buffer);
-	array_clear(&bg_color_buffer);
-	array_clear(&uv_buffer);
-	array_clear(&index_buffer);
-	array_clear(&draw_call_data);
+	vertex_buffer.len = 0;
+	fg_color_buffer.len = 0;
+	bg_color_buffer.len = 0;
+	uv_buffer.len = 0;
+	index_buffer.len = 0;
+	draw_call_data.len = 0;
 }
 
 generate_gl_buffers :: fn () {

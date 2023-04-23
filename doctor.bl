@@ -158,7 +158,7 @@ main :: fn () s32 {
 
     // Test examples
     if print_sections { print("\nExamples:\n"); }
-    array_clear(&files);
+    files.len = 0;
     list_dir(&files, get_full_path(EXAMPLES_DIR));
     loop i := 0; i < files.len; i += 1 {
         test_file(&results, files[i], EXECUTE);
@@ -166,7 +166,7 @@ main :: fn () s32 {
 
     // Test fail expected
     if print_sections { print("\nExpect fail:\n"); }
-    array_clear(&files);
+    files.len = 0;
     list_dir(&files, get_full_path(EXPECT_FAIL_DIR));
     loop i := 0; i < files.len; i += 1 {
         test_file(&results, files[i], TEST_EXPECT_FAIL);

@@ -61,17 +61,6 @@ test_reserve_init :: fn () #test {
 	test_eq(arr.allocated_elems, 1000);
 }
 
-test_clear :: fn () #test {
-	arr: [..]s32;
-	defer array_terminate(&arr);
-	loop i := 0; i < 1000; i += 1 {
-		array_push(&arr, i);
-	}
-	test_eq(arr.len, 1000);
-	array_clear(&arr);
-	test_eq(arr.len, 0);
-}
-
 test_erase :: fn () #test {
 	arr: [..]s32;
 	defer array_terminate(&arr);

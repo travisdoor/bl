@@ -173,8 +173,8 @@ tbl_clear :: fn (tbl: *?T) #inline {
 	loop i := 0; i < tbl.slots.len; i += 1 {
 		tbl.slots[i].index = EMPTY_INDEX;
 	}
-	array_clear(&tbl.keys);
-	array_clear(&tbl.values);
+	tbl.keys.len = 0;
+	tbl.values.len = 0;
 	tbl.len = 0;
 }
 
