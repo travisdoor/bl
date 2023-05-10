@@ -161,11 +161,11 @@ reset :: fn (pool: *PoolAllocator) {
 	loop i := 0; i < pool.used_blocks.len; i += 1 {
 		array_push(&pool.unused_blocks, pool.used_blocks[i]);
 	}
-	array_clear(&pool.used_blocks);
+	pool.used_blocks.len = 0;
 	loop i := 0; i < pool.obsolete_blocks.len; i += 1 {
 		free(pool.obsolete_blocks[i], pool.allocator);
 	}
-	array_clear(&pool.obsolete_blocks);
+	pool.obsolete_blocks.len = 0;
 	pool.current_block = null;
 	pool.space = 0;
 	pool.top = null;
@@ -176,7 +176,7 @@ release :: fn (pool: *PoolAllocator) {
 	loop i := 0; i < pool.unused_blocks.len; i += 1 {
 		free(pool.unused_blocks[i], pool.allocator);
 	}
-	array_clear(&pool.unused_blocks);
+	pool.unused_blocks.len = 0;
 	array_terminate(&pool.used_blocks);
 	array_terminate(&pool.unused_blocks);
 	array_terminate(&pool.obsolete_blocks);
@@ -211,9 +211,9 @@ resize :: fn (pool: *PoolAllocator, new_block_size: usize) {
 	loop i := 0; i < pool.used_blocks.len; i += 1 {
 		array_push(&pool.obsolete_blocks, pool.used_blocks[i]);
 	}
-	array_clear(&pool.used_blocks);
+	pool.used_blocks.len = 0;
 	loop i := 0; i < pool.unused_blocks.len; i += 1 {
 		array_push(&pool.obsolete_blocks, pool.unused_blocks[i]);
 	}
-	array_clear(&pool.unused_blocks);
+	pool.unused_blocks.len = 0;
 }

@@ -280,7 +280,7 @@ used_as_allocator :: fn () #test {
 		loop j := 0; j < arr.len; j += 1 {
 			test_eq(arr[j].i, j);
 		}
-		array_clear(&arr);
+		arr.len = 0;
 	}
 }
 

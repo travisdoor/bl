@@ -119,6 +119,7 @@ array_erase :: fn (_arr: *[..]?T, i: s64) {
 	arr.len -= 1;
 }
 
+// @Cleanup: We tend to use directly arr.len = 0 in our code base, so we can remove this function eventually...
 /// Erase all elements in dynamic array but keep allocated memory.
 array_clear :: fn (_arr: *[..]?T) #inline {
 	arr := cast(*_Array) _arr;
