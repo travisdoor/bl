@@ -513,6 +513,7 @@ FindFirstFile :: fn  (lpFileName: LPCSTR, lpFindFileData: LP_FIND_DATAA) HANDLE 
 FindClose :: fn (hFindFile: HANDLE) BOOL #extern "FindClose";
 FindNextFile :: fn (hFindFile: HANDLE, lpFindFileData: LP_FIND_DATAA) BOOL #extern "FindNextFileA";
 GetFileAttributesA :: fn (lpFileName: LPCSTR) DWORD #extern "GetFileAttributesA";
+GetFileAttributesExA :: fn (lpFileName: LPCSTR, fInfoLevelId: GET_FILEEX_INFO_LEVELS, lpFileInformation: LPVOID) BOOL #extern "GetFileAttributesExA";
 CreateFile :: fn (
 	lpFileName: LPCSTR,
 	dwDesiredAccess: DWORD,
@@ -984,6 +985,21 @@ CONSOLE_SCREEN_BUFFER_INFO :: struct {
 	dwMaximumWindowSize: COORD;
 }
 PCONSOLE_SCREEN_BUFFER_INFO :: *CONSOLE_SCREEN_BUFFER_INFO;
+
+GET_FILEEX_INFO_LEVELS :: enum s32 {
+	GetFileExInfoStandard;
+	GetFileExMaxInfoLevel;
+}
+
+WIN32_FILE_ATTRIBUTE_DATA :: struct {
+	dwFileAttributes: DWORD;
+	ftCreationTime: FILETIME;
+	ftLastAccessTime: FILETIME;
+	ftLastWriteTime: FILETIME;
+	nFileSizeHigh: DWORD;
+	nFileSizeLow: DWORD;
+}
+LPWIN32_FILE_ATTRIBUTE_DATA :: *WIN32_FILE_ATTRIBUTE_DATA;
 
 ReleaseMutex :: fn (hMutex: HANDLE) BOOL #extern "ReleaseMutex";
 GetTickCount :: fn () DWORD #extern "GetTickCount";

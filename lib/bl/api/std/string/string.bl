@@ -176,6 +176,14 @@ str_compare :: fn (first: string_view, second: string_view) s32 {
 	return 0;
 }
 
+/// Returns `true` in case the input string `str` is matching exactly one of strings in the `list`.
+str_match_one_of :: fn (str: string_view, list: []string_view) bool {
+	loop i := 0; i < list.len; i += 1 {
+		if str_match(str, list[i]) { return true; }
+	}
+	return false;
+}
+
 /// Converts the first `count` of characters from `str` to `s64` and return OK on success. Use the whole
 /// string in case the `count` is not specified.
 ///
