@@ -31,6 +31,7 @@
 #include <float.h>
 #include <setjmp.h>
 #include <string.h>
+#include <ctype.h>
 
 #define is_ident(c) (isalnum(c) || (c) == '_')
 
