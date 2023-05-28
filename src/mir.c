@@ -7713,8 +7713,13 @@ static inline bool is_type_valid_for_binop(const struct mir_type *type, const en
 	case MIR_TYPE_BOOL:
 		return ast_binop_is_logic(op);
 	case MIR_TYPE_TYPE:
-	case MIR_TYPE_ENUM:
-		return op == BINOP_EQ || op == BINOP_NEQ;
+	case MIR_TYPE_ENUM: {
+		if (type->data.enm.is_flags) {
+			return op == BINOP_EQ || op == BINOP_NEQ || op == BINOP_OR || op == BINOP_AND;
+		} else {
+			return op == BINOP_EQ || op == BINOP_NEQ;
+		}
+	}
 	default:
 		break;
 	}
@@ -7902,12 +7907,13 @@ struct result analyze_instr_unop(struct context *ctx, struct mir_instr_unop *uno
 	}
 
 	case UNOP_BIT_NOT: {
-		if (expr_type->kind != MIR_TYPE_INT) {
+		if (expr_type->kind != MIR_TYPE_INT &&
+		    (expr_type->kind != MIR_TYPE_ENUM && expr_type->data.enm.is_flags)) {
 			char *type_name = mir_type2str(expr_type, /* prefer_name */ true);
 			report_error_after(INVALID_TYPE,
 			                   unop->base.node,
 			                   "Invalid operation for type '%s'. This operation "
-			                   "is valid for integer types only.",
+			                   "is valid for integer or enum flags types only.",
 			                   type_name);
 			put_tstr(type_name);
 			return_zone(FAIL);

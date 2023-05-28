@@ -29,7 +29,7 @@ main :: fn () s32 {
 create_config_file :: fn () bool {
     using std;
     filepath :: get_full_path(CONFIG_FILE);
-    stream, err1 :: open_file(filepath, make_flags(OpenFileMode.WRITE, OpenFileMode.CREATE));
+    stream, err1 :: open_file(filepath, OpenFileMode.WRITE | OpenFileMode.CREATE);
     defer close_file(&stream);
     if err1 {
         print_err("%", err1);

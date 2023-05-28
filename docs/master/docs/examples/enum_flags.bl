@@ -9,18 +9,68 @@ OpenMode :: enum #flags {
 
 main :: fn () s32 {
     mode: OpenMode; // Set to OpenMode.Read by default
+	print("mode = %\n", mode);
+
+	//
+    // Set the flag
+	//
+
+	// Set mode to combination of WRITE nad CREATE flags.
     mode = OpenMode.WRITE_CREATE;
     print("mode = %\n", mode);
-
-    // Set flag
-    set_flag(&mode, OpenMode.APPEND);
+	
+	// Note that we can use the | (or) operator on the flags enumerators. To toggle one additional
+	// flag like this:
+	mode |= OpenMode.APPEND;
     print("mode = %\n", mode);
 
-    // Check flag
-    if is_flag(mode, OpenMode.APPEND) { print("Append is enabled!\n"); }
+	// Reset the mode back to READ only.
+	mode = OpenMode.READ;
+	print("mode = %\n", mode);
 
-    // Clear flag
-    clr_flag(&mode, OpenMode.APPEND);
+	// To set more flags at once, we can use the combination of multiple flags like this:
+	mode = OpenMode.WRITE | OpenMode.CREATE | OpenMode.APPEND;
+	print("mode = %\n", mode);
+
+
+	//
+    // Check flags
+	//
+
+	if (mode & OpenMode.WRITE) == OpenMode.WRITE {
+		print("Set!\n");
+	} else {
+		print("Not set!\n");
+	}
+
+	// We can use helper function for this.
+	if is_flag(mode, OpenMode.WRITE) {
+		print("Set!\n");
+	} else {
+		print("Not set!\n");
+	}
+
+
+	// Check the combination. Evaluates true in case WRITE or CREATE is set.
+	if is_flag(mode, OpenMode.WRITE | OpenMode.CREATE) {
+		print("Set!\n");
+	} else {
+		print("Not set!\n");
+	}
+
+	//
+	// Clear flags
+	//
+
+	mode &= ~OpenMode.WRITE;
+	print("mode = %\n", mode);
+
+	// Now check the WRITE flag again...
+	if is_flag(mode, OpenMode.WRITE) {
+		print("Set!\n");
+	} else {
+		print("Not set!\n");
+	}
 
     return 0;
 }

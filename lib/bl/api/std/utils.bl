@@ -34,104 +34,38 @@
 
 // @Incomplete: use named scope!
 
-/// Set `flag` in `flags` input. This function is valid for numeric and enum types (checked by assert).
-set_flag :: fn (flags: *?T, flag: T) T #inline {
+/// Sets `other` flag or flags in `flags` input. This function is valid for numeric and enum flags types (checked by assert).
+/// This function can be easily replaced by `flags |= other` expression, pick your preferred way to do it.
+///
+/// !!! note
+///     Multiple flags can be set at once by using an or operator `other = A | B`.
+set_flag :: fn (flags: *?T, other: T) T #inline {
+#if !is_valid_bitflags(T) { compiler_error("Flags is supposed to be integer or enum flags type."); }
 	assert(flags);
-	#if typeinfo(T).kind == TypeKind.ENUM {
-		// @Incomplete: Check enums for #flags tag.
-		// @Incomplete: Use static switch.
-		#if sizeof(T)     == 1 { f := cast(*u8)flags; @f  |= cast(u8) flag;  }
-		else if sizeof(T) == 2 { f := cast(*u16)flags; @f |= cast(u16) flag; }
-		else if sizeof(T) == 4 { f := cast(*u32)flags; @f |= cast(u32) flag; }
-		else if sizeof(T) == 8 { f := cast(*u64)flags; @f |= cast(u64) flag; }
-		else { compiler_error("Unsupported type in 'set_flag'"); }
-	} else if typeinfo(T).kind == TypeKind.INT {
-		@flags |= flag;
-	} else {
-		compiler_error("Expected number or enumerator type.");
-	}
+	@flags |= other;
 	return @flags;
 }
 
-/// Set all `flags_to_be_set` in `flags`.
-set_flags :: fn (flags: *?T, flags_to_be_set: ...T) T #inline {
-	loop i := 0; i < flags_to_be_set.len; i += 1 {
-		set_flag(flags, flags_to_be_set[i]);
-	}
-	return @flags;
-}
-
-/// Clear `flag` in `flags` input. This function is valid for numeric and enum types (checked by assert).
-clr_flag :: fn (flags: *?T, flag: T) T #inline {
+/// Clear `other` flag or flags in `flags` input. This function is valid for numeric and enum flags types (checked by assert).
+///
+/// !!! note
+///     Multiple flags can be cleared at once by using an or operator `other = A | B`.
+clr_flag :: fn (flags: *?T, other: T) T #inline {
+#if !is_valid_bitflags(T) { compiler_error("Flags is supposed to be integer or enum flags type."); }
 	assert(flags);
-	#if typeinfo(T).kind == TypeKind.ENUM {
-		// @Incomplete: Check enums for #flags tag.
-		// @Incomplete: Use static switch.
-		#if sizeof(T)     == 1 { f := cast(*u8)flags; @f  &= ~cast(u8) flag;  }
-		else if sizeof(T) == 2 { f := cast(*u16)flags; @f &= ~cast(u16) flag; }
-		else if sizeof(T) == 4 { f := cast(*u32)flags; @f &= ~cast(u32) flag; }
-		else if sizeof(T) == 8 { f := cast(*u64)flags; @f &= ~cast(u64) flag; }
-		else { panic("Unsupported type in 'clr_flag' %.", T); }
-	} else if typeinfo(T).kind == TypeKind.INT {
-		@flags &= ~flag;
-	} else {
-		compiler_error("Expected number or enumerator type.");
-	}
+	@flags &= ~other;
 	return @flags;
 }
 
-/// Clear all `flags_to_be_cleared` in `flags`.
-clr_flags :: fn (flags: *?T, flags_to_be_cleared: ...T) T #inline {
-	loop i := 0; i < flags_to_be_cleared.len; i += 1 {
-		clr_flag(flags, flags_to_be_cleared[i]);
-	}
-	return @flags;
-}
-
-/// Check whether `flag` is set in `flags`. This function is valid for numeric and enum types 
-/// (checked by assert).
-is_flag :: fn (flags: ?T, flag: T) bool #inline {
-	result := false;
-	#if typeinfo(T).kind == TypeKind.ENUM {
-		// @Incomplete: Check enums for #flags tag.
-		// @Incomplete: Use static switch.
-		#if sizeof(T)     == 1 { result = (cast(u8)flags & cast(u8)flag) == cast(u8) flag;    }
-		else if sizeof(T) == 2 { result = (cast(u16)flags & cast(u16)flag) == cast(u16) flag; }
-		else if sizeof(T) == 4 { result = (cast(u32)flags & cast(u32)flag) == cast(u32) flag; }
-		else if sizeof(T) == 8 { result = (cast(u64)flags & cast(u64)flag) == cast(u64) flag; }
-		else { panic("Unsupported type in 'is_flag' %.", T); }
-	} else if typeinfo(T).kind == TypeKind.INT {
-		result = (flags & flag) == flag;        
-	} else {
-		compiler_error("Expected number or enumerator type.");
-	}        
-	return result;
-}
-
-/// Check whether all `flags_to_check` are set in `flags`.
-is_all_flags :: fn (flags: ?T, flags_to_check: ...T) bool #inline {
-	loop i := 0; i < flags_to_check.len; i += 1 {
-		if !is_flag(flags, flags_to_check[i]) { return false; }
-	}
-	return true;
-}
-
-/// Check whether at least one of `flags_to_check` is set in `flags`.
-is_one_or_more_flags :: fn (flags: ?T, flags_to_check: ...T) bool #inline {
-	set_count: s32;
-	loop i := 0; i < flags_to_check.len; i += 1 {
-		if is_flag(flags, flags_to_check[i]) { set_count += 1; }
-	}
-	return set_count > 0;
-}
-
-/// Create new flags from combination of `other` flags.
-make_flags :: fn (f1: ?T, other: ...T) T {
-	result := f1;
-	loop i := 0; i < other.len; i += 1 {
-		set_flag(&result, other[i]);
-	}
-	return result;
+/// Checks whether `other` flag or flags is set in `flags`. This function is valid for numeric and enum flags types (checked by assert).
+///
+/// In case you provide a combination of multiple flags as `other` argument, **all** of them must be set in the `flags` otherwise
+/// the function returns false.
+///
+/// Internally this is wrapper around `(flags & other) == other` expression.
+is_flag :: fn (flags: ?T, other: T) bool #inline {
+	#if !is_valid_bitflags(T) { compiler_error("Flags is supposed to be integer or enum flags type."); }
+	return (flags & other) == other;
 }
 
 /// Reads environment variable specified by `var` name. Result is empty in case no such variable was 
@@ -339,4 +273,19 @@ reinterpret_write_any :: fn (dest: Any, value: ?T) usize #inline {
 	bytes :: std.min(sizeof(T), dest.type_info.size_bytes);
 	memcpy(dest.data, auto &value, bytes);
 	return bytes;
+}
+
+#private
+
+is_valid_bitflags :: fn (T: type #comptime) bool #comptime {
+	info :: typeinfo(T);
+	switch info.kind {
+		TypeKind.INT  { return true; }
+		TypeKind.ENUM {
+			info_enum :: cast(*TypeInfoEnum) info;
+			return info_enum.is_flags;
+		}
+	    default;
+	}
+	return false;
 }

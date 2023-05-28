@@ -58,26 +58,18 @@ flags_1 :: fn () #test {
     test_false(is_flag(f, F2));
     test_false(is_flag(f, F3));
 
-    set_flags(&f, F1, F2);
+    set_flag(&f, F1 | F2);
     test_true(is_flag(f, F1));
     test_true(is_flag(f, F2));
     test_false(is_flag(f, F3));
 
-    test_true(is_all_flags(f, F1, F2));
-    test_true(is_all_flags(f, F2));
+    test_true(is_flag(f, F1 | F2));
+    test_true(is_flag(f, F2));
 
-    clr_flags(&f, F1, F2);
+    clr_flag(&f, F1 | F2);
     test_false(is_flag(f, F1));
     test_false(is_flag(f, F2));
     test_false(is_flag(f, F3));
-
-    test_false(is_one_or_more_flags(f, F1, F2, F3));
-    set_flags(&f, F1, F2);
-    test_true(is_one_or_more_flags(f, F1));
-    test_true(is_one_or_more_flags(f, F2));
-    test_true(is_one_or_more_flags(f, F1, F2));
-    test_true(is_one_or_more_flags(f, F1, F3));
-    test_false(is_one_or_more_flags(f, F3));
 }
 
 flags_enum :: fn () #test {
@@ -122,18 +114,6 @@ flags_enum :: fn () #test {
     test_false(is_flag(f, F.F1));
     test_false(is_flag(f, F.F2));
     test_false(is_flag(f, F.F3));
-}
-
-flags_make:: fn () {
-    F1 : u32 : 1;
-    F2 : u32 : 2;
-    F3 : u32 : 4;
-    f: u32;
-
-    test_eq(make_flags(0), 0);
-    test_eq(make_flags(F1), 1);
-    test_eq(make_flags(F1, F2), F1 | F2);
-    test_eq(make_flags(F1, F3), F1 | F3);
 }
 
 utf8_to_utf32_single_char_1 :: fn () #test {

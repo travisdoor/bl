@@ -21,3 +21,4 @@ compile_commands.json
 .cache
 /tests/out*
 /vs
+/build.bat

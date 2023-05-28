@@ -341,12 +341,22 @@ Enumerators marked as flags are also serialized as a combination of atomic flags
 {% include "../examples/enum_flags.bl" %}
 ```
 
+So in comparison to conventional enumerators, bunch of binary operations are allowed for flags enumerators to easily manipulate (set, clear and check) its values. Namely:
+
+| Symbol | Description          |
+|--------|----------------------|
+| &      | Intersection.        |
+| \|     | Union.               |
+| ~      | Bit flip.            |
+| &=     | Assign intersection. |
+| \|=    | Assign union.        |
+
 !!! note
     Since flags enumerators start implicitly with value 1, you can explicitly define `NoFlag
     = 0;` variant at the beginning of the variant list.
 
 !!! note
-     Flags enumerators must use an unsigned number type as a base type (`u32` by default).
+     Flags enumerators should use an unsigned number type as a base type (`u32` by default).
 
 !!! note
      It's possible to do an implicit casting of flags enumerators to its base type.

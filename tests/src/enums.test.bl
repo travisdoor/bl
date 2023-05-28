@@ -112,6 +112,45 @@ enum_flags_4 :: fn () #test {
     test_true(info.is_flags);
 }
 
+enum_flags_manipulation :: fn () #test {
+	F :: enum #flags {
+		A;
+		B;
+		C;
+		D;
+		E = A | C;
+		ALL = A | B | C | D;
+	};
+
+	f := F.A | F.C;
+	test_true((f & F.A) == F.A);
+	test_true((f & F.C) == F.C);
+	test_true((f & (F.A | F.C)) == (F.A | F.C)); // All of them
+	test_true((f & F.B) != F.B);
+	test_true((f & F.D) != F.D);
+
+	f = F.ALL;
+	test_true((f & F.ALL) == F.ALL);
+	test_true((f & (F.A | F.B | F.C | F.D)) == F.ALL);
+
+	f &= ~F.B;
+	test_false((f & F.ALL) == F.ALL);
+	test_false((f & F.B) == F.B);
+
+	f = F.ALL;
+	f &= ~(F.A | F.C); // clear bunch of flags
+	test_false((f & F.A) == F.A);
+	test_false((f & F.C) == F.C);
+	test_true((f & F.B) == F.B);
+	test_true((f & F.D) == F.D);
+
+	f &= ~(F.A | F.C); // should not take any effect
+	test_false((f & F.A) == F.A);
+	test_false((f & F.C) == F.C);
+	test_true((f & F.B) == F.B);
+	test_true((f & F.D) == F.D);
+}
+
 enum_nested :: fn () #test {
     Struct :: struct {
         a: s32;

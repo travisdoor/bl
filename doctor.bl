@@ -245,38 +245,38 @@ test_file :: fn (results: *[..]Result, filepath: string_view, kind: TestKind) {
     switch kind {
         EXECUTE {
             if os_execute(tprint("% % %", compiler, "--no-warning --silent", filepath)) != 0 {
-                set_flag(&result.state, FAILED_COMPILE);
+                result.state |= FAILED_COMPILE;
             } else if os_execute(tprint("% %", get_exe_name(), silent_output())) != 0 {
-                set_flag(&result.state, FAILED_EXECUTE);
+                result.state |= FAILED_EXECUTE;
             }
             report(result);
         }
 
         COMPILE {
             if os_execute(tprint("% % %", compiler, "--no-warning --silent --no-bin", filepath)) != 0 {
-                set_flag(&result.state, FAILED_COMPILE);
+                result.state |= FAILED_COMPILE;
             }
             report(result);
         }
 
         BUILD {
             if os_execute(tprint("% % --work-dir=\"%\" -build", compiler, "--no-warning --silent", filepath)) != 0 {
-                set_flag(&result.state, FAILED_COMPILE);
+                result.state |= FAILED_COMPILE;
             }
             report(result);
         }
 
         TEST_EXECUTE {
             if os_execute(tprint("% % % %", compiler, "--no-warning --silent", main_file, filepath)) != 0 {
-                set_flag(&result.state, FAILED_COMPILE);
+                result.state |= FAILED_COMPILE;
             } else if os_execute(get_exe_name()) != 0 {
-                set_flag(&result.state, FAILED_EXECUTE);
+                result.state |= FAILED_EXECUTE;
             }
         }
 
         TEST_RUN {
             if os_execute(tprint("% % % %", compiler, "--no-warning --silent --no-bin --run-tests --tests-minimal-output", main_file, filepath)) != 0 {
-                set_flag(&result.state, FAILED_RUN);
+                result.state |= FAILED_RUN;
             }
         }
 
@@ -284,12 +284,12 @@ test_file :: fn (results: *[..]Result, filepath: string_view, kind: TestKind) {
             msg := "";
             is_present, expected_code :: get_expected_error(filepath);
             if !is_present {
-                set_flag(&result.state, FAILED_EXPECT_FAIL);
+                result.state |= FAILED_EXPECT_FAIL;
                 msg = "Expected error code not found!";
             } else {
                 state := os_execute(tprint("% % % %", compiler, "--no-warning --silent --no-bin", filepath, silent_output()));
                 if state != expected_code {
-                    set_flag(&result.state, FAILED_EXPECT_FAIL);
+                    result.state |= FAILED_EXPECT_FAIL;
                     msg = tprint("Expected '%' but returned '%'\n", errtostr(expected_code), errtostr(state));
                 }
             }

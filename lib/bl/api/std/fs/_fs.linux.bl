@@ -42,7 +42,7 @@ copy :: fn (src: string_view, dest: string_view, override: bool) Error {
 	defer std.close_file(&src_stream);
 	if err_src { return err_src; }
 
-	dest_stream, err_dest :: std.open_file(dest, make_flags(std.OpenFileMode.READ, std.OpenFileMode.CREATE));
+	dest_stream, err_dest :: std.open_file(dest, std.OpenFileMode.READ | std.OpenFileMode.CREATE);
 	defer std.close_file(&dest_stream);
 	if err_dest { return err_dest; }
 

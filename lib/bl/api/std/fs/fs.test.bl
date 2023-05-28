@@ -179,7 +179,7 @@ fs_file_stream_create_and_write :: fn () #test {
 	filepath :: get_dummy_filepath();
 	defer str_delete(&filepath);
 	remove_file(filepath);
-	stream, err :: open_file(filepath, make_flags(OpenFileMode.CREATE, OpenFileMode.WRITE));
+	stream, err :: open_file(filepath, OpenFileMode.CREATE | OpenFileMode.WRITE);
 	defer close_file(&stream);
 	test_ok(err);
 	written, err2 :: write_string(&stream, "Hello!");
@@ -194,7 +194,7 @@ fs_file_stream_create_and_reuse :: fn () #test {
 	remove_file(filepath);
 
 	{
-		stream, err :: open_file(filepath, make_flags(OpenFileMode.CREATE, OpenFileMode.WRITE));
+		stream, err :: open_file(filepath, OpenFileMode.CREATE | OpenFileMode.WRITE);
 		defer close_file(&stream);
 		test_ok(err);
 		written, err2 :: write_string(&stream, "Hello!");
@@ -202,7 +202,7 @@ fs_file_stream_create_and_reuse :: fn () #test {
 		test_eq(written, 6);
 	}
 	{
-		stream, err :: open_file(filepath, make_flags(OpenFileMode.CREATE, OpenFileMode.APPEND));
+		stream, err :: open_file(filepath, OpenFileMode.CREATE | OpenFileMode.APPEND);
 		defer close_file(&stream);
 		test_ok(err);
 		written, err2 :: write_string(&stream, "Hello!");
@@ -245,7 +245,7 @@ fs_file_stream_create_twice_and_override :: fn () #test {
 	remove_file(filepath);
 
 	{
-		stream, err :: open_file(filepath, make_flags(OpenFileMode.CREATE, OpenFileMode.WRITE));
+		stream, err :: open_file(filepath, OpenFileMode.CREATE | OpenFileMode.WRITE);
 		defer close_file(&stream);
 		test_ok(err);
 		written, err2 :: write_string(&stream, "Hello!");
@@ -253,7 +253,7 @@ fs_file_stream_create_twice_and_override :: fn () #test {
 		test_eq(written, 6);
 	}
 	{
-		stream, err :: open_file(filepath, make_flags(OpenFileMode.CREATE, OpenFileMode.WRITE));
+		stream, err :: open_file(filepath, OpenFileMode.CREATE | OpenFileMode.WRITE);
 		defer close_file(&stream);
 		test_ok(err);
 		written, err2 :: write_string(&stream, "Hello!");
@@ -291,7 +291,7 @@ fs_write_raw :: fn () #test {
 	content :: "Hello I'm cool file content!";
 
 	{ // write
-		stream :: open_file(filepath, make_flags(std.OpenFileMode.CREATE, std.OpenFileMode.WRITE));
+		stream :: open_file(filepath, std.OpenFileMode.CREATE | std.OpenFileMode.WRITE);
 		defer close_file(&stream);
 		written, err :: write(&stream, content.ptr, content.len);
 		test_ok(err);
@@ -316,7 +316,7 @@ fs_write_string :: fn () #test {
 	content :: "Hello I'm cool file content!";
 
 	{ // write
-		stream :: open_file(filepath, make_flags(std.OpenFileMode.CREATE, std.OpenFileMode.WRITE));
+		stream :: open_file(filepath, std.OpenFileMode.CREATE | std.OpenFileMode.WRITE);
 		defer close_file(&stream);
 		written, err :: write_string(&stream, content);
 		test_ok(err);

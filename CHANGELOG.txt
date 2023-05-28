@@ -73,6 +73,7 @@ Improve compile time execution restore after postpone.
 Function arguments are now immutable.
 Improved error handling in synchronization API.
 Improved error messages reporting unknown symbols.
+Allow bunch of binary operations for enum flags types.
 
 0.9.0 - PRE-RELEASE
 ---------------------------------------------------------------------------------------
