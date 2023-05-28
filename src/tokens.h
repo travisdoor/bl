@@ -86,10 +86,7 @@ static inline bool sym_is_binop(enum sym sym)
 	return sym >= SYM_EQ && sym <= SYM_ASTERISK;
 }
 
-static inline bool token_is_binop(struct token *token)
-{
-	return sym_is_binop(token->sym);
-}
+#define token_is_binop(token) (sym_is_binop((token)->sym))
 
 static inline bool token_is(struct token *token, enum sym sym)
 {
@@ -97,10 +94,7 @@ static inline bool token_is(struct token *token, enum sym sym)
 	return token->sym == sym;
 }
 
-static inline bool token_is_not(struct token *token, enum sym sym)
-{
-	return !token_is(token, sym);
-}
+#define token_is_not(token, sym) (!token_is(token, sym))
 
 void                    tokens_init(struct tokens *tokens);
 void                    tokens_terminate(struct tokens *tokens);

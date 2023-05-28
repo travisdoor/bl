@@ -32,9 +32,7 @@
 #include <setjmp.h>
 #include <string.h>
 
-#define IS_IDENT(c)                                                                                \
-	(((c) >= 'a' && (c) <= 'z') || ((c) >= 'A' && (c) <= 'Z') || ((c) >= '0' && (c) <= '9') ||     \
-	 (c) == '_')
+#define is_ident(c) (isalnum(c) || (c) == '_')
 
 #define report_error(code, format, ...)                                                            \
 	{                                                                                              \
@@ -133,7 +131,7 @@ bool scan_ident(struct context *ctx, struct token *tok)
 
 	s32 len = 0;
 	while (true) {
-		if (!IS_IDENT(*ctx->c)) {
+		if (!is_ident(*ctx->c)) {
 			break;
 		}
 
@@ -435,7 +433,7 @@ SCAN:
 
 	// Scan symbols described directly as strings.
 	usize      len                   = 0;
-	const bool is_current_char_ident = IS_IDENT(*ctx->c);
+	const bool is_current_char_ident = is_ident(*ctx->c);
 	const s32  start                 = is_current_char_ident ? SYM_IF : SYM_UNREACHABLE + 1;
 	const s32  end                   = is_current_char_ident ? SYM_UNREACHABLE + 1 : SYM_NONE;
 	for (s32 i = start; i < end; ++i) {
@@ -447,7 +445,7 @@ SCAN:
 			tok.location.len = (s32)len;
 
 			// Two joined symbols will be parsed as identifier.
-			if (i >= SYM_IF && i <= SYM_UNREACHABLE && IS_IDENT(*ctx->c)) {
+			if (i >= SYM_IF && i <= SYM_UNREACHABLE && is_ident(*ctx->c)) {
 				// roll back
 				ctx->c -= len;
 				break;

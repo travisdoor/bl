@@ -37,6 +37,12 @@ else()
         $<$<CONFIG:Release>:BL_ASSERT_ENABLE=0>)
 endif()
 
+option(BL_DIRTY_ENABLE "Turn on dirty mode, compiler executable leaves freeing of allocated memory on the operating system." ON)
+if(BL_DIRTY_ENABLE)
+    add_definitions(-DBL_DIRTY_ENABLE)
+    message(STATUS "Dirty memory mode enabled to gain some speed.")
+endif()
+
 option(TRACY_ENABLE "Turn on Tracy profiler." OFF)
 set(TRACY_VER "0.7.8" CACHE STRING "Set Tracy profiler version.")
 
@@ -164,7 +170,7 @@ if(MSVC)
     add_definitions(-DNOMINMAX)
     target_link_libraries(blc PUBLIC shlwapi DbgHelp)
     set(MSVC_FLAGS /Z7 /Gr /GF /EHsc)
-    set(MSVC_RELEASE_FLAGS ${MSVC_FLAGS} /DEBUG /O2 /Oi)
+    set(MSVC_RELEASE_FLAGS ${MSVC_FLAGS} /DEBUG /O2 /Oi /Ot /GL)
     set(MSVC_DEBUG_FLAGS  ${MSVC_FLAGS} /Od /MDd)
     target_compile_options(blc PRIVATE
         $<$<CONFIG:Release>: ${MSVC_RELEASE_FLAGS}>

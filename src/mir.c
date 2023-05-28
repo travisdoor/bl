@@ -39,7 +39,7 @@
 #pragma warning(disable : 6001)
 #endif
 
-#define ARENA_CHUNK_COUNT 512
+#define ARENA_CHUNK_COUNT 1024
 #define ARENA_INSTR_CHUNK_COUNT 2048
 #define RESOLVE_TYPE_FN_NAME ".type"
 #define RESOLVE_EXPR_FN_NAME ".expr"
@@ -7290,7 +7290,7 @@ struct result analyze_instr_decl_arg(struct context *ctx, struct mir_instr_decl_
 		// situations when type of this argument is based on compile-time value of previous one. The
 		// compile-time value is not known until the function is called; but call cannot be
 		// completely analyzed until the argument type is known.
-		return analyze_call_slot(ctx, arg->generation_call, arg);
+		return_zone(analyze_call_slot(ctx, arg->generation_call, arg));
 	}
 
 	return_zone(PASS);
@@ -7851,6 +7851,7 @@ struct result analyze_instr_call_loc(struct context *ctx, struct mir_instr_call_
 
 struct result analyze_instr_msg(struct context *ctx, struct mir_instr_msg *msg)
 {
+	zone();
 	if (!msg->expr) {
 		if (sarrlenu(msg->args) != 1) {
 			report_invalid_call_argument_count(ctx, msg->base.node, 1, sarrlenu(msg->args));
@@ -7876,10 +7877,10 @@ struct result analyze_instr_msg(struct context *ctx, struct mir_instr_msg *msg)
 	switch (msg->message_kind) {
 	case MIR_USER_MSG_ERROR:
 		report_error(USER, msg->base.node, "%.*s", message.len, message.ptr);
-		return FAIL;
+		return_zone(FAIL);
 	case MIR_USER_MSG_WARNING:
 		report_warning(msg->base.node, "%.*s", message.len, message.ptr);
-		return PASS;
+		return_zone(PASS);
 	}
 	BL_UNREACHABLE;
 }
@@ -8872,7 +8873,7 @@ struct result analyze_call_stage_prescan_arguments(struct context *ctx, struct m
 
 		if (call_arg_instr && fn_arg->type == ctx->builtin_types->t_Any) {
 			struct result result = is_argument_complete(ctx, call_arg_instr);
-			if (result.state != ANALYZE_PASSED) return result;
+			if (result.state != ANALYZE_PASSED) return_zone(result);
 		}
 
 		// Nothing to do for vargs.
@@ -8885,7 +8886,7 @@ struct result analyze_call_stage_prescan_arguments(struct context *ctx, struct m
 					if (!call_arg_instr) break;
 
 					struct result result = is_argument_complete(ctx, call_arg_instr);
-					if (result.state != ANALYZE_PASSED) return result;
+					if (result.state != ANALYZE_PASSED) return_zone(result);
 				}
 			}
 			break;
@@ -12657,7 +12658,7 @@ void mir_arenas_init(struct mir_arenas *arenas)
 	arena_init(&arenas->type,
 	           sizeof(struct mir_type),
 	           alignment_of(struct mir_type),
-	           ARENA_CHUNK_COUNT,
+	           ARENA_CHUNK_COUNT * 8,
 	           NULL);
 	arena_init(&arenas->var,
 	           sizeof(struct mir_var),

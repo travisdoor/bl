@@ -577,7 +577,9 @@ s32 builder_compile(const struct target *target)
 
 	s32 state = compile(assembly);
 
+#ifndef BL_DIRTY_ENABLE
 	assembly_delete(assembly);
+#endif
 	return state;
 }
 

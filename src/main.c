@@ -732,11 +732,17 @@ SKIP:
 	builder_info("Finished in %.3f seconds.", runtime_ms * 0.001);
 
 RELEASE:
+#ifndef BL_DIRTY_ENABLE
 	builder_terminate();
 	free(exec_dir);
 	free(conf_file);
+#endif
 	blog("Exit with state %d.", state);
 #if BL_CRTDBG_ALLOC
+#ifdef BL_DIRTY_ENABLE
+#pragma message(                                                                                   \
+    "WARNING: Dirty memory mode is enabled, this leads intentionally to some memory not being freed, so memory leaks cannot be properly detected!")
+#endif
 	_CrtDumpMemoryLeaks();
 #endif
 	return state;
