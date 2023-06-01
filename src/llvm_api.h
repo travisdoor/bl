@@ -80,6 +80,4 @@ typedef enum {
 	DW_TAG_user_base = 0x1000 ///< Recommended base for user tags.
 } DW_TAG;
 
-
-
 #endif
