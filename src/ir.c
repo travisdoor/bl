@@ -1704,6 +1704,9 @@ emit_instr_arg(struct context *ctx, struct mir_var *dest, struct mir_instr_arg *
 	case LLVM_EASGM_32:
 	case LLVM_EASGM_64: {
 		LLVMValueRef llvm_arg = LLVMGetParam(llvm_fn, arg->llvm_index);
+		llvm_dest             = LLVMBuildBitCast(
+            ctx->llvm_builder, llvm_dest, LLVMPointerType(LLVMTypeOf(llvm_arg), 0), "");
+
 		LLVMBuildStore(ctx->llvm_builder, llvm_arg, llvm_dest);
 		break;
 	}
@@ -1718,6 +1721,9 @@ emit_instr_arg(struct context *ctx, struct mir_var *dest, struct mir_instr_arg *
 		LLVMTypeRef llvm_arg_elem_types[] = {LLVMTypeOf(llvm_arg_1), LLVMTypeOf(llvm_arg_2)};
 		LLVMTypeRef llvm_arg_type =
 		    LLVMStructTypeInContext(ctx->llvm_cnt, llvm_arg_elem_types, 2, false);
+
+		llvm_dest =
+		    LLVMBuildBitCast(ctx->llvm_builder, llvm_dest, LLVMPointerType(llvm_arg_type, 0), "");
 
 		LLVMValueRef llvm_dest_1 =
 		    LLVMBuildStructGEP2(ctx->llvm_builder, llvm_arg_type, llvm_dest, 0, "");
@@ -1789,8 +1795,7 @@ enum state emit_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_ptr *e
 		    LLVMBuildLoad2(ctx->llvm_builder, get_type(ctx, elem_type), llvm_ptr_ptr, "");
 		bassert(llvm_ptr);
 
-		LLVMValueRef llvm_indices[1];
-		llvm_indices[0] = llvm_index;
+		LLVMValueRef llvm_indices[1] = {llvm_index};
 
 		// Note that the GEP for arrays expects the type to resolve size of each element in the
 		// array, so another deref is needed here to get the actual elem type from pointer to the
@@ -2333,26 +2338,26 @@ enum state emit_instr_binop(struct context *ctx, struct mir_instr_binop *binop)
 	return STATE_PASSED;
 }
 
+// Create temporary variable for EASGM register split.
+static inline LLVMValueRef
+insert_easgm_tmp(struct context *ctx, struct mir_instr_call *call, struct mir_type *type)
+{
+	LLVMBasicBlockRef llvm_prev_block = LLVMGetInsertBlock(ctx->llvm_builder);
+	LLVMBasicBlockRef llvm_entry_block =
+	    LLVMValueAsBasicBlock(call->base.owner_block->owner_fn->first_block->base.llvm_value);
+	if (LLVMGetLastInstruction(llvm_entry_block)) {
+		LLVMPositionBuilderBefore(ctx->llvm_builder, LLVMGetLastInstruction(llvm_entry_block));
+	} else {
+		LLVMPositionBuilderAtEnd(ctx->llvm_builder, llvm_entry_block);
+	}
+	LLVMValueRef llvm_tmp = LLVMBuildAlloca(ctx->llvm_builder, get_type(ctx, type), "");
+	LLVMPositionBuilderAtEnd(ctx->llvm_builder, llvm_prev_block);
+	DI_LOCATION_RESET();
+	return llvm_tmp;
+}
+
 enum state emit_instr_call(struct context *ctx, struct mir_instr_call *call)
 {
-#define INSERT_TMP(_name, _type)                                                                   \
-	LLVMValueRef _name = NULL;                                                                     \
-	{                                                                                              \
-		LLVMBasicBlockRef llvm_prev_block = LLVMGetInsertBlock(ctx->llvm_builder);                 \
-		LLVMBasicBlockRef llvm_entry_block =                                                       \
-		    LLVMValueAsBasicBlock(call->base.owner_block->owner_fn->first_block->base.llvm_value); \
-		if (LLVMGetLastInstruction(llvm_entry_block)) {                                            \
-			LLVMPositionBuilderBefore(ctx->llvm_builder,                                           \
-			                          LLVMGetLastInstruction(llvm_entry_block));                   \
-		} else {                                                                                   \
-			LLVMPositionBuilderAtEnd(ctx->llvm_builder, llvm_entry_block);                         \
-		}                                                                                          \
-		_name = LLVMBuildAlloca(ctx->llvm_builder, _type, "");                                     \
-		LLVMPositionBuilderAtEnd(ctx->llvm_builder, llvm_prev_block);                              \
-		DI_LOCATION_RESET();                                                                       \
-	}                                                                                              \
-	(void)0
-
 	bassert(!mir_is_comptime(&call->base) &&
 	        "Compile time calls should not be generated into the final binary!");
 	struct mir_instr *callee = call->callee;
@@ -2381,7 +2386,7 @@ enum state emit_instr_call(struct context *ctx, struct mir_instr_call *call)
 
 	if (callee_type->data.fn.has_sret) {
 		// PERFORMANCE: Reuse ret_tmp inside function???
-		INSERT_TMP(llvm_tmp, get_type(ctx, callee_type->data.fn.ret_type));
+		LLVMValueRef llvm_tmp = insert_easgm_tmp(ctx, call, callee_type->data.fn.ret_type);
 		sarrput(&llvm_args, llvm_tmp);
 	}
 
@@ -2407,9 +2412,23 @@ enum state emit_instr_call(struct context *ctx, struct mir_instr_call *call)
 			case LLVM_EASGM_16:
 			case LLVM_EASGM_32:
 			case LLVM_EASGM_64: { // Struct fits into one register.
-				// PERFORMANCE: insert only when llvm_arg is not alloca???
-				INSERT_TMP(llvm_tmp, get_type(ctx, arg->type));
-				LLVMBuildStore(ctx->llvm_builder, llvm_arg, llvm_tmp);
+				// Note: This is copy-paste from the next branch, see the description there...
+				LLVMValueRef llvm_tmp = NULL;
+				if (arg_instr->kind != MIR_INSTR_LOAD) {
+					llvm_tmp = insert_easgm_tmp(ctx, call, arg->type);
+					LLVMBuildStore(ctx->llvm_builder, llvm_arg, llvm_tmp);
+				} else {
+					// Load should load something already allocated, so no temporary is needed.
+					bassert(arg_instr->kind == MIR_INSTR_LOAD);
+					llvm_tmp = ((struct mir_instr_load *)arg_instr)->src->llvm_value;
+				}
+				bassert(llvm_tmp);
+
+				llvm_tmp =
+				    LLVMBuildBitCast(ctx->llvm_builder,
+				                     llvm_tmp,
+				                     LLVMPointerType(llvm_callee_arg_types[arg->llvm_index], 0),
+				                     "");
 
 				sarrput(
 				    &llvm_args,
@@ -2422,20 +2441,35 @@ enum state emit_instr_call(struct context *ctx, struct mir_instr_call *call)
 			case LLVM_EASGM_64_16:
 			case LLVM_EASGM_64_32:
 			case LLVM_EASGM_64_64: { // Struct fits into two registers.
-				// PERFORMANCE: insert only when llvm_arg is not alloca???
-				INSERT_TMP(llvm_tmp, get_type(ctx, arg->type));
-				LLVMBuildStore(ctx->llvm_builder, llvm_arg, llvm_tmp);
+				// In the original solution we've used the temporary variable everytime, but this
+				// produce overhead because we have to copy the data avery time; the simpliest
+				// solution is to use prevous allocated variable directly, this might be checked by
+				// arg_instr being load instr. Note that the load instruction is then unused, but
+				// it's still better then copying every time...
+				LLVMValueRef llvm_tmp = NULL;
+				if (arg_instr->kind != MIR_INSTR_LOAD) {
+					llvm_tmp = insert_easgm_tmp(ctx, call, arg->type);
+					LLVMBuildStore(ctx->llvm_builder, llvm_arg, llvm_tmp);
+				} else {
+					// Load should load something already allocated, so no temporary is needed.
+					bassert(arg_instr->kind == MIR_INSTR_LOAD);
+					llvm_tmp = ((struct mir_instr_load *)arg_instr)->src->llvm_value;
+				}
+				bassert(llvm_tmp);
 
+				// Create dummy type just to get propper offsets for GEPs.
 				LLVMTypeRef llvm_tmp_elem_types[] = {llvm_callee_arg_types[arg->llvm_index],
 				                                     llvm_callee_arg_types[arg->llvm_index + 1]};
+				LLVMTypeRef llvm_tmp_type =
+				    LLVMStructTypeInContext(ctx->llvm_cnt, llvm_tmp_elem_types, 2, false);
 
-				LLVMValueRef llvm_tmp_1 = LLVMBuildStructGEP2(
-				    ctx->llvm_builder, get_type(ctx, arg->type), llvm_tmp, 0, "");
+				LLVMValueRef llvm_tmp_1 =
+				    LLVMBuildStructGEP2(ctx->llvm_builder, llvm_tmp_type, llvm_tmp, 0, "");
 				sarrput(&llvm_args,
 				        LLVMBuildLoad2(ctx->llvm_builder, llvm_tmp_elem_types[0], llvm_tmp_1, ""));
 
-				LLVMValueRef llvm_tmp_2 = LLVMBuildStructGEP2(
-				    ctx->llvm_builder, get_type(ctx, arg->type), llvm_tmp, 1, "");
+				LLVMValueRef llvm_tmp_2 =
+				    LLVMBuildStructGEP2(ctx->llvm_builder, llvm_tmp_type, llvm_tmp, 1, "");
 				sarrput(&llvm_args,
 				        LLVMBuildLoad2(ctx->llvm_builder, llvm_tmp_elem_types[1], llvm_tmp_2, ""));
 				break;
@@ -2443,7 +2477,7 @@ enum state emit_instr_call(struct context *ctx, struct mir_instr_call *call)
 
 			case LLVM_EASGM_BYVAL: { // Struct is too big and must be passed by value.
 				if (!has_byval_arg) has_byval_arg = true;
-				INSERT_TMP(llvm_tmp, get_type(ctx, arg->type));
+				LLVMValueRef llvm_tmp = insert_easgm_tmp(ctx, call, arg->type);
 				if (arg_instr->kind == MIR_INSTR_LOAD) {
 					struct mir_instr_load *load = (struct mir_instr_load *)arg_instr;
 					llvm_arg                    = load->src->llvm_value;
@@ -2503,7 +2537,6 @@ enum state emit_instr_call(struct context *ctx, struct mir_instr_call *call)
 	sarrfree(&llvm_args);
 	call->base.llvm_value = llvm_result ? llvm_result : llvm_call;
 	return STATE_PASSED;
-#undef INSERT_TMP
 }
 
 enum state emit_instr_set_initializer(struct context *ctx, struct mir_instr_set_initializer *si)

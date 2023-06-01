@@ -1,16 +1,17 @@
-main ::fn() s32
-{
-	print("Hello LLVM16!!!\n");
-
-arr:
-	= [3] s32.{1, 2, 3};
-	loop i : = 0;
-	i < arr.len;
-	i += 1
-	{
-		print("arr[i] = %\n", arr[i]);
-	}
+main :: fn() s32 {
+	s := S.{ 10, 20, 30 };
+	foo(s);
 	return 0;
+}
+
+S :: struct {
+	a: s32;
+	b: s32;
+	c: s32;
+}
+
+foo :: fn (s: S) {
+	print("%\n", s);
 }
 
 /*
