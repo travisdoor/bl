@@ -1,41 +1,16 @@
 main ::fn() s32
 {
-	v := Flags.A | Flags.B;
+	print("Hello LLVM16!!!\n");
 
-	print("v = %\n", v);
-	print("v & Flags.A = %\n", v & Flags.A);
-
-	if v & Flags.A {
-		print("SET!\n");
+arr:
+	= [3] s32.{1, 2, 3};
+	loop i : = 0;
+	i < arr.len;
+	i += 1
+	{
+		print("arr[i] = %\n", arr[i]);
 	}
-
-	if v & Flags.C {
-		print("SET!\n");
-	} else {
-		print("NOT SET!\n");
-	}
-
-	v |= Flags.C;
-	print("v = %\n", v);
-
-	print("v - Flags.B = %\n", v - Flags.B);
-
-	// & intersection
-	// | union
-	// - difference
-	// ! complement
-
-	// Allowed:
-	// | for enum flags.
-	// implicit cast enum flags to bool?
 	return 0;
-}
-
-Flags :: enum #flags
-{
-	A;
-	B;
-	C;
 }
 
 /*

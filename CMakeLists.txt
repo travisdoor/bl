@@ -60,10 +60,12 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_SOURCE_DIR}/bin")
 set(BL_CONFIG_FILE ${CMAKE_INSTALL_SYSCONFDIR}/bl.yaml)
 set(BL_API_DIR "../lib/bl/api") # relative to the executable
 
-if(UNIX AND NOT APPLE)
-    set(BL_LLVM_VER "11.0.0")
-else()
-    set(BL_LLVM_VER "11.1.0")
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    set(BL_LLVM_VER "16.0.5")
+elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+    set(BL_LLVM_VER "16.0.4")
+elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+    set(BL_LLVM_VER "16.0.0")
 endif()
 
 if(MSVC AND NOT LLVM_DIR)
