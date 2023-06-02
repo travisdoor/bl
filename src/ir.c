@@ -808,6 +808,11 @@ LLVMValueRef emit_fn_proto(struct context *ctx, struct mir_fn *fn, bool schedule
 		                        LLVMCreateTypeAttribute(ctx->llvm_cnt,
 		                                                LLVM_ATTR_STRUCTRET,
 		                                                get_type(ctx, sret_arg_type)));
+		LLVMAddAttributeAtIndex(fn->llvm_value,
+		                        LLVM_SRET_INDEX + 1,
+		                        LLVMCreateEnumAttribute(ctx->llvm_cnt,
+		                                                LLVM_ATTR_ALIGNMENT,
+		                                                (uint64_t)sret_arg_type->alignment));
 	}
 	// Setup attributes for byval.
 	if (fn->type->data.fn.has_byval) {
@@ -816,12 +821,19 @@ LLVMValueRef emit_fn_proto(struct context *ctx, struct mir_fn *fn, bool schedule
 		for (usize i = 0; i < sarrlenu(args); ++i) {
 			struct mir_arg *arg = sarrpeek(args, i);
 			if (arg->llvm_easgm != LLVM_EASGM_BYVAL) continue;
-			// Setup attributes.
-			// LLVMAttributeRef llvm_attr = LLVMCreateEnumAttribute(ctx->llvm_cnt, LLVM_ATTR_BYVAL,
-			// 0);
+			LLVMTypeRef llvm_arg_type = get_type(ctx, arg->type);
 
-			// NOTE: Index + 1, 0 is reserved for return value.
-			// LLVMAddAttributeAtIndex(fn->llvm_value, arg->llvm_index + 1, llvm_attr);
+			LLVMAddAttributeAtIndex(
+			    fn->llvm_value,
+			    arg->llvm_index + 1,
+			    LLVMCreateTypeAttribute(ctx->llvm_cnt, LLVM_ATTR_BYVAL, llvm_arg_type));
+
+			LLVMAddAttributeAtIndex(
+			    fn->llvm_value,
+			    arg->llvm_index + 1,
+			    LLVMCreateEnumAttribute(ctx->llvm_cnt,
+			                            LLVM_ATTR_ALIGNMENT,
+			                            (uint64_t)ctx->builtin_types->t_u8_ptr->alignment));
 		}
 	}
 	if (isflag(fn->flags, FLAG_INLINE)) {
@@ -2504,13 +2516,18 @@ enum state emit_instr_call(struct context *ctx, struct mir_instr_call *call)
 	DI_LOCATION_RESET();
 
 	if (callee_type->data.fn.has_sret) {
-		// Following is an error in LLVM 16.
-		/* struct mir_type *sret_arg_type = callee_type->data.fn.ret_type; */
-		/* LLVMAddCallSiteAttribute( */
-		/*     llvm_call, */
-		/*     LLVM_SRET_INDEX + 1, */
-		/*     LLVMCreateTypeAttribute(ctx->llvm_cnt, LLVM_ATTR_BYVAL, get_type(ctx,
-		 * sret_arg_type))); */
+		struct mir_type *sret_arg_type = callee_type->data.fn.ret_type;
+		LLVMAddCallSiteAttribute(llvm_call,
+		                         LLVM_SRET_INDEX + 1,
+		                         LLVMCreateTypeAttribute(ctx->llvm_cnt,
+		                                                 LLVM_ATTR_STRUCTRET,
+		                                                 get_type(ctx, sret_arg_type)));
+
+		LLVMAddCallSiteAttribute(llvm_call,
+		                         LLVM_SRET_INDEX + 1,
+		                         LLVMCreateEnumAttribute(ctx->llvm_cnt,
+		                                                 LLVM_ATTR_ALIGNMENT,
+		                                                 (uint64_t)sret_arg_type->alignment));
 
 		llvm_result = LLVMBuildLoad2(ctx->llvm_builder,
 		                             get_type(ctx, callee_type->data.fn.ret_type),
@@ -2527,10 +2544,18 @@ enum state emit_instr_call(struct context *ctx, struct mir_instr_call *call)
 		for (usize i = 0; i < sarrlenu(args); ++i) {
 			struct mir_arg *arg = sarrpeek(args, i);
 			if (arg->llvm_easgm != LLVM_EASGM_BYVAL) continue;
-			LLVMAttributeRef llvm_atrbt =
-			    LLVMCreateEnumAttribute(ctx->llvm_cnt, LLVM_ATTR_BYVAL, 0);
-			bassert(llvm_atrbt && "Invalid call side attribute!");
-			LLVMAddCallSiteAttribute(llvm_call, arg->llvm_index + 1, llvm_atrbt);
+			LLVMTypeRef llvm_arg_type = get_type(ctx, arg->type);
+			LLVMAddCallSiteAttribute(
+			    llvm_call,
+			    arg->llvm_index + 1,
+			    LLVMCreateTypeAttribute(ctx->llvm_cnt, LLVM_ATTR_BYVAL, llvm_arg_type));
+
+			LLVMAddAttributeAtIndex(
+			    fn->llvm_value,
+			    arg->llvm_index + 1,
+			    LLVMCreateEnumAttribute(ctx->llvm_cnt,
+			                            LLVM_ATTR_ALIGNMENT,
+			                            (uint64_t)ctx->builtin_types->t_u8_ptr->alignment));
 		}
 	}
 	arrfree(llvm_callee_arg_types);

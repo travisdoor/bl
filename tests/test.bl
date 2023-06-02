@@ -1,17 +1,6 @@
 main :: fn() s32 {
-	s := S.{ 10, 20, 30 };
-	foo(s);
+	print("Hello!");
 	return 0;
-}
-
-S :: struct {
-	a: s32;
-	b: s32;
-	c: s32;
-}
-
-foo :: fn (s: S) {
-	print("%\n", s);
 }
 
 /*
