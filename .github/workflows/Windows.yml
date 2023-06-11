@@ -7,7 +7,7 @@ on:
     branches: [ master ]
 
 env:
-  VSINSTALLDIR: C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/
+  VSINSTALLDIR: C:/Program Files/Microsoft Visual Studio/2022/Enterprise/
     
 jobs:
   build-debug:
