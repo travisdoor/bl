@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ master ]
 
+env:
+  VSINSTALLDIR: C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/
+    
 jobs:
   build-debug:
     runs-on: windows-latest
