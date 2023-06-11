@@ -81,7 +81,7 @@ if(MSVC AND NOT LLVM_DIR)
                 DOWNLOAD ${BL_LLVM_REMOTE_ZIP}
                 ${BL_LLVM_DIR_ZIP}
                 SHOW_PROGRESS
-                EXPECTED_HASH MD5=0ca622e68fdfa6298a4dea038ab45146)
+                EXPECTED_HASH MD5=f142191b0fbf2aac4fb8902ff5a2394f)
         endif()
         execute_process(
             COMMAND ${CMAKE_COMMAND} -E tar -xf ${BL_LLVM_DIR_ZIP}
@@ -101,8 +101,8 @@ endif()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     set(LLD_BIN ${BL_DEPS_DIR}/lld.exe)
-    set(LLD_ZIP lld-13.0.1-win64-release.zip)
-    set(LLD_ZIP_MD5 c8dc9a2a72ce71990bfa255570114e0a)
+    set(LLD_ZIP lld-16.0.5-win64-release.zip)
+    set(LLD_ZIP_MD5 f352aa2535c96a20d107bbdc61533d5b)
     set(BL_VSWHERE_EXE "vswhere.exe")
     set(BL_VSWHERE "${BL_DEPS_DIR}/vswhere-2.8.4/${BL_VSWHERE_EXE}")
     set(BL_LLD_EXE "bl-lld.exe")
