@@ -14,7 +14,7 @@ yet. Biscuit is designed to be simple, fast and explicit.
 - Rich type info in runtime.
 - Debugging in gdb, lldb and Visual Studio.
 
-## Current master (0.11.0)
+## Master (0.11.0)
 
 The latest unstable version of the compiler.
 
@@ -25,9 +25,12 @@ The latest unstable version of the compiler.
 ```text
 ```
 
+## Release (0.10.0)
+
+The latest release compiler version documentation can be found [here](versions/0.10.0/).
+
 ## Older Versions
 
-- [0.10.0](versions/0.10.0/)
 - [0.9.0](versions/0.9.0/)
 - [0.8.0](versions/0.8.0/)
 - [0.7.2](versions/0.7.2/)
