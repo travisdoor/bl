@@ -65,11 +65,20 @@ static bool generate_conf(void)
 	return state;
 }
 
-static bool load_conf_file(void)
+static bool load_conf_file(const char *custom_conf_filepath)
 {
 	char *filepath = tstr();
-	strprint(filepath, "%s/../%s", builder_get_exec_dir(), BL_CONFIG_FILE);
+	if (custom_conf_filepath) {
+		strprint(filepath, "%s", custom_conf_filepath);
+		builder_info("Using custom configuration file: '%s'", filepath);
+	} else {
+		strprint(filepath, "%s/../%s", builder_get_exec_dir(), BL_CONFIG_FILE);
+	}
 	if (!file_exists(filepath)) {
+		if (custom_conf_filepath) {
+			builder_error("Custom configuration file not found on path: '%s'.", filepath);
+			goto FAILED;
+		}
 		if (!generate_conf()) {
 			builder_error("Failed to generate the configuration file, please report the issue on "
 			              "https://github.com/travisdoor/bl/issues");
@@ -334,6 +343,7 @@ int main(s32 argc, char *argv[])
 	opt.target = builder_add_default_target("out");
 
 	char *user_working_directory = NULL;
+	char *user_conf_filepath     = NULL;
 	bool  has_input_files        = false;
 
 #define ID_BUILD 1
@@ -394,6 +404,12 @@ int main(s32 argc, char *argv[])
 	        .help = "Set current working directory. Compiler use by default the current working "
 	                "directory to output all files.",
 	        .property.s = &user_working_directory,
+	    },
+	    {
+	        .kind       = STRING,
+	        .name       = "--override-config",
+	        .help       = "Set custom path to the 'bl.yaml' configuration file.",
+	        .property.s = &user_conf_filepath,
 	    },
 	    {
 	        .name = "-shared",
@@ -694,7 +710,7 @@ SKIP:
 	}
 
 	// Load configuration file
-	if (!load_conf_file()) {
+	if (!load_conf_file(user_conf_filepath)) {
 		EXIT(EXIT_FAILURE);
 	}
 

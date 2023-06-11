@@ -40,7 +40,6 @@ void ir_opt_run(struct assembly *assembly)
 	LLVMPassManagerRef llvm_pm = LLVMCreatePassManager();
 	LLVMAddAnalysisPasses(llvm_tm, llvm_pm);
 	LLVMPassManagerBuilderPopulateModulePassManager(llvm_pm_builder, llvm_pm);
-	LLVMPassManagerBuilderPopulateLTOPassManager(llvm_pm_builder, llvm_pm, true, true);
 	LLVMRunPassManager(llvm_pm, llvm_module);
 	LLVMDisposePassManager(llvm_pm);
 	LLVMPassManagerBuilderDispose(llvm_pm_builder);

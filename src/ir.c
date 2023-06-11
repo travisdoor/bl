@@ -98,7 +98,9 @@ struct context {
 
 	// intrinsics
 	LLVMValueRef intrinsic_memset;
+	LLVMTypeRef  intrinsic_memset_type;
 	LLVMValueRef intrinsic_memcpy;
+	LLVMTypeRef  intrinsic_memcpy_type;
 
 	// stats
 	s64 emit_instruction_count;
@@ -222,6 +224,21 @@ static inline LLVMValueRef emit_instr_compound_global(struct context            
 	return _emit_instr_compound_comptime(ctx, cmp);
 }
 
+static inline LLVMTypeRef get_type(struct context *ctx, struct mir_type *t)
+{
+	bassert(t);
+	bassert(t->llvm_type && "Invalid type reference for LLVM!");
+	bassert(t->kind != MIR_TYPE_INVALID);
+	bassert(t->kind != MIR_TYPE_TYPE);
+	bassert(t->kind != MIR_TYPE_FN_GROUP);
+	bassert(t->kind != MIR_TYPE_NAMED_SCOPE);
+	bassert(t->kind != MIR_TYPE_PLACEHOLDER);
+	if (ctx->generate_debug_info && !t->llvm_meta) {
+		DI_type_init(ctx, t);
+	}
+	return t->llvm_type;
+}
+
 static enum state emit_instr_compound_naked(struct context *ctx, struct mir_instr_compound *cmp)
 {
 	bassert(cmp->is_naked && "Expected naked compound initializer!");
@@ -231,7 +248,8 @@ static enum state emit_instr_compound_naked(struct context *ctx, struct mir_inst
 	bassert(llvm_tmp && "Missing LLVM representation for compound tmp variable!");
 
 	emit_instr_compound(ctx, llvm_tmp, cmp);
-	cmp->base.llvm_value = LLVMBuildLoad(ctx->llvm_builder, llvm_tmp, "");
+	cmp->base.llvm_value =
+	    LLVMBuildLoad2(ctx->llvm_builder, get_type(ctx, cmp->base.value.type), llvm_tmp, "");
 	return STATE_PASSED;
 }
 
@@ -265,20 +283,6 @@ llvm_cache_fn(struct context *ctx, const char *name, LLVMValueRef llvm_fn)
 	const hash_t hash = strhash(name);
 	hmput(ctx->llvm_fn_cache, hash, llvm_fn);
 	return llvm_fn;
-}
-
-static inline LLVMTypeRef get_type(struct context *ctx, struct mir_type *t)
-{
-	bassert(t->llvm_type && "Invalid type reference for LLVM!");
-	bassert(t->kind != MIR_TYPE_INVALID);
-	bassert(t->kind != MIR_TYPE_TYPE);
-	bassert(t->kind != MIR_TYPE_FN_GROUP);
-	bassert(t->kind != MIR_TYPE_NAMED_SCOPE);
-	bassert(t->kind != MIR_TYPE_PLACEHOLDER);
-	if (ctx->generate_debug_info && !t->llvm_meta) {
-		DI_type_init(ctx, t);
-	}
-	return t->llvm_type;
 }
 
 static inline bool is_initialized(LLVMValueRef constant)
@@ -798,10 +802,17 @@ LLVMValueRef emit_fn_proto(struct context *ctx, struct mir_fn *fn, bool schedule
 		LLVMAddAttributeAtIndex(fn->llvm_value,
 		                        LLVM_SRET_INDEX + 1,
 		                        LLVMCreateEnumAttribute(ctx->llvm_cnt, LLVM_ATTR_NOALIAS, 0));
-
+		struct mir_type *sret_arg_type = fn->type->data.fn.ret_type;
 		LLVMAddAttributeAtIndex(fn->llvm_value,
 		                        LLVM_SRET_INDEX + 1,
-		                        LLVMCreateEnumAttribute(ctx->llvm_cnt, LLVM_ATTR_STRUCTRET, 0));
+		                        LLVMCreateTypeAttribute(ctx->llvm_cnt,
+		                                                LLVM_ATTR_STRUCTRET,
+		                                                get_type(ctx, sret_arg_type)));
+		LLVMAddAttributeAtIndex(fn->llvm_value,
+		                        LLVM_SRET_INDEX + 1,
+		                        LLVMCreateEnumAttribute(ctx->llvm_cnt,
+		                                                LLVM_ATTR_ALIGNMENT,
+		                                                (uint64_t)sret_arg_type->alignment));
 	}
 	// Setup attributes for byval.
 	if (fn->type->data.fn.has_byval) {
@@ -810,20 +821,29 @@ LLVMValueRef emit_fn_proto(struct context *ctx, struct mir_fn *fn, bool schedule
 		for (usize i = 0; i < sarrlenu(args); ++i) {
 			struct mir_arg *arg = sarrpeek(args, i);
 			if (arg->llvm_easgm != LLVM_EASGM_BYVAL) continue;
-			// Setup attributes.
-			// LLVMAttributeRef llvm_attr = LLVMCreateEnumAttribute(ctx->llvm_cnt, LLVM_ATTR_BYVAL,
-			// 0);
+			LLVMTypeRef llvm_arg_type = get_type(ctx, arg->type);
 
-			// NOTE: Index + 1, 0 is reserved for return value.
-			// LLVMAddAttributeAtIndex(fn->llvm_value, arg->llvm_index + 1, llvm_attr);
+			LLVMAddAttributeAtIndex(
+			    fn->llvm_value,
+			    arg->llvm_index + 1,
+			    LLVMCreateTypeAttribute(ctx->llvm_cnt, LLVM_ATTR_BYVAL, llvm_arg_type));
+
+			LLVMAddAttributeAtIndex(
+			    fn->llvm_value,
+			    arg->llvm_index + 1,
+			    LLVMCreateEnumAttribute(ctx->llvm_cnt,
+			                            LLVM_ATTR_ALIGNMENT,
+			                            (uint64_t)ctx->builtin_types->t_u8_ptr->alignment));
 		}
 	}
 	if (isflag(fn->flags, FLAG_INLINE)) {
+		bassert(!isflag(fn->flags, FLAG_NO_INLINE));
 		LLVMAttributeRef llvm_attr =
 		    LLVMCreateEnumAttribute(ctx->llvm_cnt, LLVM_ATTR_ALWAYSINLINE, 0);
 		LLVMAddAttributeAtIndex(fn->llvm_value, (unsigned)LLVMAttributeFunctionIndex, llvm_attr);
 	}
 	if (isflag(fn->flags, FLAG_NO_INLINE)) {
+		bassert(!isflag(fn->flags, FLAG_INLINE));
 		LLVMAttributeRef llvm_attr = LLVMCreateEnumAttribute(ctx->llvm_cnt, LLVM_ATTR_NOINLINE, 0);
 		LLVMAddAttributeAtIndex(fn->llvm_value, (unsigned)LLVMAttributeFunctionIndex, llvm_attr);
 	}
@@ -861,16 +881,13 @@ LLVMValueRef emit_const_string(struct context *ctx, const char *str, usize len)
 		struct mir_type *str_type = mir_get_struct_elem_type(type, 1);
 		llvm_str                  = LLVMConstNull(get_type(ctx, str_type));
 	}
-	struct mir_type *len_type     = mir_get_struct_elem_type(type, 0);
-	struct mir_type *ptr_type     = mir_get_struct_elem_type(type, 1);
-	LLVMValueRef     llvm_len     = LLVMConstInt(get_type(ctx, len_type), (u64)len, true);
-	llvm_values_t    llvm_members = SARR_ZERO;
-	sarrput(&llvm_members, llvm_len);
-	sarrput(&llvm_members, LLVMConstBitCast(llvm_str, get_type(ctx, ptr_type)));
-	LLVMValueRef llvm_result = LLVMConstNamedStruct(
-	    get_type(ctx, type), sarrdata(&llvm_members), (u32)sarrlenu(&llvm_members));
-	sarrfree(&llvm_members);
-	return llvm_result;
+
+	LLVMValueRef values[2];
+
+	struct mir_type *len_type = mir_get_struct_elem_type(type, 0);
+	values[0]                 = LLVMConstInt(get_type(ctx, len_type), (u64)len, true);
+	values[1]                 = llvm_str;
+	return LLVMConstNamedStruct(get_type(ctx, type), values, static_arrlenu(values));
 }
 
 enum state emit_instr_decl_ref(struct context *ctx, struct mir_instr_decl_ref *ref)
@@ -940,7 +957,8 @@ enum state emit_instr_debugbreak(struct context *ctx, struct mir_instr_debugbrea
 	bassert(break_fn);
 	if (!break_fn->llvm_value) emit_fn_proto(ctx, break_fn, true);
 	DI_LOCATION_SET(&debug_break->base);
-	LLVMBuildCall(ctx->llvm_builder, break_fn->llvm_value, NULL, 0, "");
+	LLVMBuildCall2(
+	    ctx->llvm_builder, get_type(ctx, break_fn->type), break_fn->llvm_value, NULL, 0, "");
 	DI_LOCATION_RESET();
 	return STATE_PASSED;
 }
@@ -951,7 +969,8 @@ enum state emit_instr_unreachable(struct context *ctx, struct mir_instr_unreacha
 	bassert(abort_fn);
 	if (!abort_fn->llvm_value) emit_fn_proto(ctx, abort_fn, true);
 	DI_LOCATION_SET(&unreachable->base);
-	LLVMBuildCall(ctx->llvm_builder, abort_fn->llvm_value, NULL, 0, "");
+	LLVMBuildCall2(
+	    ctx->llvm_builder, get_type(ctx, abort_fn->type), abort_fn->llvm_value, NULL, 0, "");
 	DI_LOCATION_RESET();
 	return STATE_PASSED;
 }
@@ -1062,11 +1081,9 @@ LLVMValueRef rtti_emit_enum_variants_slice(struct context *ctx, mir_variants_t *
 	struct mir_type *type = ctx->builtin_types->t_TypeInfoEnumVariants_slice;
 	LLVMValueRef     llvm_vals[2];
 	struct mir_type *len_type = mir_get_struct_elem_type(type, 0);
-	struct mir_type *ptr_type = mir_get_struct_elem_type(type, 1);
 	llvm_vals[0]              = LLVMConstInt(
         get_type(ctx, len_type), (u32)sarrlenu(variants), len_type->data.integer.is_signed);
-	llvm_vals[1] =
-	    LLVMConstBitCast(rtti_emit_enum_variants_array(ctx, variants), get_type(ctx, ptr_type));
+	llvm_vals[1] = rtti_emit_enum_variants_array(ctx, variants);
 	return LLVMConstNamedStruct(get_type(ctx, type), llvm_vals, static_arrlenu(llvm_vals));
 }
 
@@ -1169,13 +1186,10 @@ LLVMValueRef rtti_emit_struct_members_slice(struct context *ctx, mir_members_t *
 	struct mir_type *type = ctx->builtin_types->t_TypeInfoStructMembers_slice;
 	LLVMValueRef     llvm_vals[2];
 	struct mir_type *len_type = mir_get_struct_elem_type(type, 0);
-	struct mir_type *ptr_type = mir_get_struct_elem_type(type, 1);
 
 	llvm_vals[0] = LLVMConstInt(
 	    get_type(ctx, len_type), (u32)sarrlenu(members), len_type->data.integer.is_signed);
-
-	llvm_vals[1] =
-	    LLVMConstBitCast(rtti_emit_struct_members_array(ctx, members), get_type(ctx, ptr_type));
+	llvm_vals[1] = rtti_emit_struct_members_array(ctx, members);
 	return LLVMConstNamedStruct(get_type(ctx, type), llvm_vals, static_arrlenu(llvm_vals));
 }
 
@@ -1226,7 +1240,7 @@ LLVMValueRef rtti_emit_fn_slice(struct context *ctx, mir_types_t *fns)
 	struct mir_type *ptr_type = mir_get_struct_elem_type(type, 1);
 	llvm_vals[0] = LLVMConstInt(get_type(ctx, len_type), argc, len_type->data.integer.is_signed);
 	if (argc) {
-		llvm_vals[1] = LLVMConstBitCast(rtti_emit_fn_array(ctx, fns), get_type(ctx, ptr_type));
+		llvm_vals[1] = rtti_emit_fn_array(ctx, fns);
 	} else {
 		llvm_vals[1] = LLVMConstNull(get_type(ctx, ptr_type));
 	}
@@ -1240,8 +1254,7 @@ LLVMValueRef rtti_emit_fn_array(struct context *ctx, mir_types_t *fns)
 
 	for (usize i = 0; i < sarrlenu(fns); ++i) {
 		struct mir_type *it = sarrpeek(fns, i);
-		sarrput(&llvm_vals,
-		        LLVMBuildBitCast(ctx->llvm_builder, _rtti_emit(ctx, it), elem_type->llvm_type, ""));
+		sarrput(&llvm_vals, _rtti_emit(ctx, it));
 	}
 
 	LLVMValueRef llvm_result =
@@ -1303,8 +1316,7 @@ LLVMValueRef rtti_emit_fn_args_slice(struct context *ctx, mir_args_t *args)
 	llvm_vals[0] = LLVMConstInt(get_type(ctx, len_type), argc, len_type->data.integer.is_signed);
 
 	if (argc) {
-		llvm_vals[1] =
-		    LLVMConstBitCast(rtti_emit_fn_args_array(ctx, args), get_type(ctx, ptr_type));
+		llvm_vals[1] = rtti_emit_fn_args_array(ctx, args);
 	} else {
 		llvm_vals[1] = LLVMConstNull(get_type(ctx, ptr_type));
 	}
@@ -1493,14 +1505,7 @@ LLVMValueRef _rtti_emit(struct context *ctx, struct mir_type *type)
 	LLVMSetInitializer(llvm_rtti_var, llvm_value);
 
 SKIP:
-	llvm_rtti_var = LLVMBuildCast(ctx->llvm_builder,
-	                              LLVMBitCast,
-	                              llvm_rtti_var,
-	                              get_type(ctx, ctx->builtin_types->t_TypeInfo_ptr),
-	                              "");
-
 	rtti_var->llvm_value = llvm_rtti_var;
-
 	return llvm_rtti_var;
 }
 
@@ -1580,8 +1585,7 @@ enum state emit_instr_test_cases(struct context *ctx, struct mir_instr_test_case
 	                       len_type->data.integer.is_signed)
 	        : LLVMConstInt(get_type(ctx, len_type), 0, len_type->data.integer.is_signed);
 
-	LLVMValueRef llvm_ptr = var ? LLVMConstBitCast(var->llvm_value, get_type(ctx, ptr_type))
-	                            : LLVMConstPointerNull(get_type(ctx, ptr_type));
+	LLVMValueRef llvm_ptr = var ? var->llvm_value : LLVMConstPointerNull(get_type(ctx, ptr_type));
 
 	llvm_vals[0] = llvm_len;
 	llvm_vals[1] = llvm_ptr;
@@ -1603,8 +1607,9 @@ enum state emit_instr_cast(struct context *ctx, struct mir_instr_cast *cast)
 		cast->base.llvm_value = llvm_src;
 		return STATE_PASSED;
 	case MIR_CAST_BITCAST:
-		llvm_op = LLVMBitCast;
-		break;
+		// bitcast is noop since LLVM 15
+		cast->base.llvm_value = llvm_src;
+		return STATE_PASSED;
 
 	case MIR_CAST_SEXT:
 		llvm_op = LLVMSExt;
@@ -1732,9 +1737,11 @@ emit_instr_arg(struct context *ctx, struct mir_var *dest, struct mir_instr_arg *
 		llvm_dest =
 		    LLVMBuildBitCast(ctx->llvm_builder, llvm_dest, LLVMPointerType(llvm_arg_type, 0), "");
 
-		LLVMValueRef llvm_dest_1 = LLVMBuildStructGEP(ctx->llvm_builder, llvm_dest, 0, "");
+		LLVMValueRef llvm_dest_1 =
+		    LLVMBuildStructGEP2(ctx->llvm_builder, llvm_arg_type, llvm_dest, 0, "");
 		LLVMBuildStore(ctx->llvm_builder, llvm_arg_1, llvm_dest_1);
-		LLVMValueRef llvm_dest_2 = LLVMBuildStructGEP(ctx->llvm_builder, llvm_dest, 1, "");
+		LLVMValueRef llvm_dest_2 =
+		    LLVMBuildStructGEP2(ctx->llvm_builder, llvm_arg_type, llvm_dest, 1, "");
 		LLVMBuildStore(ctx->llvm_builder, llvm_arg_2, llvm_dest_2);
 		break;
 	}
@@ -1752,27 +1759,33 @@ emit_instr_arg(struct context *ctx, struct mir_var *dest, struct mir_instr_arg *
 
 enum state emit_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_ptr *elem_ptr)
 {
-	struct mir_type *arr_type     = mir_deref_type(elem_ptr->arr_ptr->value.type);
-	LLVMValueRef     llvm_arr_ptr = elem_ptr->arr_ptr->llvm_value;
-	LLVMValueRef     llvm_index   = elem_ptr->index->llvm_value;
-	bassert(llvm_arr_ptr && llvm_index);
+	struct mir_type *arr_type = mir_deref_type(elem_ptr->arr_ptr->value.type);
 	bassert(arr_type);
+
+	LLVMValueRef llvm_index = elem_ptr->index->llvm_value;
+	bassert(llvm_index);
 
 	const bool is_global = mir_is_global(&elem_ptr->base);
 
 	switch (arr_type->kind) {
 	case MIR_TYPE_ARRAY: {
+		LLVMValueRef llvm_arr_ptr = elem_ptr->arr_ptr->llvm_value;
 		LLVMValueRef llvm_indices[2];
 		llvm_indices[0] = ctx->llvm_const_i64_zero;
 		llvm_indices[1] = llvm_index;
 
 		if (is_global) {
 			bassert(LLVMIsConstant(llvm_arr_ptr) && "Expected constant!");
-			elem_ptr->base.llvm_value =
-			    LLVMConstGEP(llvm_arr_ptr, llvm_indices, static_arrlenu(llvm_indices));
+			elem_ptr->base.llvm_value = LLVMConstGEP2(
+			    get_type(ctx, arr_type), llvm_arr_ptr, llvm_indices, static_arrlenu(llvm_indices));
 		} else {
-			elem_ptr->base.llvm_value = LLVMBuildGEP(
-			    ctx->llvm_builder, llvm_arr_ptr, llvm_indices, static_arrlenu(llvm_indices), "");
+			// @Incomplete: Check the type!!!
+			elem_ptr->base.llvm_value = LLVMBuildGEP2(ctx->llvm_builder,
+			                                          get_type(ctx, arr_type),
+			                                          llvm_arr_ptr,
+			                                          llvm_indices,
+			                                          static_arrlenu(llvm_indices),
+			                                          "");
 		}
 		break;
 	}
@@ -1781,15 +1794,32 @@ enum state emit_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_ptr *e
 	case MIR_TYPE_SLICE:
 	case MIR_TYPE_STRING:
 	case MIR_TYPE_VARGS: {
-		// special case for slices
-		llvm_arr_ptr = LLVMBuildStructGEP(ctx->llvm_builder, llvm_arr_ptr, 1, "");
-		llvm_arr_ptr = LLVMBuildLoad(ctx->llvm_builder, llvm_arr_ptr, "");
-		bassert(llvm_arr_ptr);
+		// In this case the input arr_ptr is slice (aka { len, ptr }). That means we have to extract
+		// the ptr value first, then load it and then return pointer to the value at the offset from
+		// loaded pointer (the same as access to array in C).
 
-		LLVMValueRef llvm_indices[1];
-		llvm_indices[0]           = llvm_index;
-		elem_ptr->base.llvm_value = LLVMBuildInBoundsGEP(
-		    ctx->llvm_builder, llvm_arr_ptr, llvm_indices, static_arrlenu(llvm_indices), "");
+		LLVMValueRef llvm_slice_ptr = elem_ptr->arr_ptr->llvm_value;
+		LLVMValueRef llvm_ptr_ptr   = LLVMBuildStructGEP2(
+            ctx->llvm_builder, get_type(ctx, arr_type), llvm_slice_ptr, MIR_SLICE_PTR_INDEX, "");
+
+		struct mir_type *elem_type = mir_get_struct_elem_type(arr_type, MIR_SLICE_PTR_INDEX);
+		LLVMValueRef     llvm_ptr =
+		    LLVMBuildLoad2(ctx->llvm_builder, get_type(ctx, elem_type), llvm_ptr_ptr, "");
+		bassert(llvm_ptr);
+
+		LLVMValueRef llvm_indices[1] = {llvm_index};
+
+		// Note that the GEP for arrays expects the type to resolve size of each element in the
+		// array, so another deref is needed here to get the actual elem type from pointer to the
+		// array.
+		struct mir_type *arr_indexing_type = mir_deref_type(elem_type);
+
+		elem_ptr->base.llvm_value = LLVMBuildInBoundsGEP2(ctx->llvm_builder,
+		                                                  get_type(ctx, arr_indexing_type),
+		                                                  llvm_ptr,
+		                                                  llvm_indices,
+		                                                  static_arrlenu(llvm_indices),
+		                                                  "");
 
 		break;
 	}
@@ -1812,13 +1842,15 @@ enum state emit_instr_member_ptr(struct context *ctx, struct mir_instr_member_pt
 
 		if (member->is_parent_union) {
 			// Union's member produce bitcast only.
-			LLVMTypeRef llvm_member_type = get_type(ctx, member_ptr->base.value.type);
-			member_ptr->base.llvm_value =
-			    LLVMBuildBitCast(ctx->llvm_builder, llvm_target_ptr, llvm_member_type, "");
+			member_ptr->base.llvm_value = llvm_target_ptr;
 		} else {
-			const unsigned int index = (const unsigned int)member->index;
-			member_ptr->base.llvm_value =
-			    LLVMBuildStructGEP(ctx->llvm_builder, llvm_target_ptr, index, "");
+			const unsigned int index       = (const unsigned int)member->index;
+			struct mir_type   *target_type = mir_deref_type(member_ptr->target_ptr->value.type);
+			bassert(target_type);
+			LLVMTypeRef llvm_target_type = get_type(ctx, target_type);
+
+			member_ptr->base.llvm_value = LLVMBuildStructGEP2(
+			    ctx->llvm_builder, llvm_target_type, llvm_target_ptr, index, "");
 		}
 
 		bassert(member_ptr->base.llvm_value);
@@ -1830,10 +1862,16 @@ enum state emit_instr_member_ptr(struct context *ctx, struct mir_instr_member_pt
 	// Valid only for slice types, we generate direct replacement for arrays.
 	if (member_ptr->builtin_id == BUILTIN_ID_ARR_LEN) {
 		// .len
-		member_ptr->base.llvm_value = LLVMBuildStructGEP(ctx->llvm_builder, llvm_target_ptr, 0, "");
+		LLVMTypeRef llvm_type = get_type(
+		    ctx, mir_get_struct_elem_type(member_ptr->target_ptr->value.type, MIR_SLICE_LEN_INDEX));
+		member_ptr->base.llvm_value = LLVMBuildStructGEP2(
+		    ctx->llvm_builder, llvm_type, llvm_target_ptr, MIR_SLICE_LEN_INDEX, "");
 	} else if (member_ptr->builtin_id == BUILTIN_ID_ARR_PTR) {
 		// .ptr
-		member_ptr->base.llvm_value = LLVMBuildStructGEP(ctx->llvm_builder, llvm_target_ptr, 1, "");
+		LLVMTypeRef llvm_type = get_type(
+		    ctx, mir_get_struct_elem_type(member_ptr->target_ptr->value.type, MIR_SLICE_PTR_INDEX));
+		member_ptr->base.llvm_value = LLVMBuildStructGEP2(
+		    ctx->llvm_builder, llvm_type, llvm_target_ptr, MIR_SLICE_PTR_INDEX, "");
 	}
 	return STATE_PASSED;
 }
@@ -1842,8 +1880,14 @@ enum state emit_instr_unroll(struct context *ctx, struct mir_instr_unroll *unrol
 {
 	LLVMValueRef llvm_src_ptr = unroll->src->llvm_value;
 	bassert(llvm_src_ptr);
+
 	const unsigned int index = (const unsigned int)unroll->index;
-	unroll->base.llvm_value  = LLVMBuildStructGEP(ctx->llvm_builder, llvm_src_ptr, index, "");
+	unroll->base.llvm_value =
+	    LLVMBuildStructGEP2(ctx->llvm_builder,
+	                        get_type(ctx, mir_deref_type(unroll->src->value.type)),
+	                        llvm_src_ptr,
+	                        index,
+	                        "");
 	return STATE_PASSED;
 }
 
@@ -1870,7 +1914,8 @@ enum state emit_instr_load(struct context *ctx, struct mir_instr_load *load)
 		return STATE_PASSED;
 	}
 	DI_LOCATION_SET(&load->base);
-	load->base.llvm_value = LLVMBuildLoad(ctx->llvm_builder, llvm_src, "");
+	load->base.llvm_value =
+	    LLVMBuildLoad2(ctx->llvm_builder, get_type(ctx, load->base.value.type), llvm_src, "");
 	DI_LOCATION_RESET();
 	const unsigned alignment = (const unsigned)load->base.value.type->alignment;
 	LLVMSetAlignment(load->base.llvm_value, alignment);
@@ -1881,14 +1926,18 @@ static LLVMValueRef
 build_call_memcpy(struct context *ctx, LLVMValueRef src, LLVMValueRef dest, const usize size_bytes)
 {
 	LLVMValueRef llvm_args[4];
-	llvm_args[0] =
-	    LLVMBuildBitCast(ctx->llvm_builder, dest, ctx->builtin_types->t_u8_ptr->llvm_type, "");
-	llvm_args[1] =
-	    LLVMBuildBitCast(ctx->llvm_builder, src, ctx->builtin_types->t_u8_ptr->llvm_type, "");
-	llvm_args[2]           = LLVMConstInt(ctx->builtin_types->t_u64->llvm_type, size_bytes, true);
-	llvm_args[3]           = LLVMConstInt(ctx->builtin_types->t_bool->llvm_type, 0, true);
-	LLVMValueRef llvm_call = LLVMBuildCall(
-	    ctx->llvm_builder, ctx->intrinsic_memcpy, llvm_args, static_arrlenu(llvm_args), "");
+
+	llvm_args[0] = dest;
+	llvm_args[1] = src;
+	llvm_args[2] = LLVMConstInt(ctx->builtin_types->t_u64->llvm_type, size_bytes, true);
+	llvm_args[3] = LLVMConstInt(ctx->builtin_types->t_bool->llvm_type, 0, true);
+
+	LLVMValueRef llvm_call = LLVMBuildCall2(ctx->llvm_builder,
+	                                        ctx->intrinsic_memcpy_type,
+	                                        ctx->intrinsic_memcpy,
+	                                        llvm_args,
+	                                        static_arrlenu(llvm_args),
+	                                        "");
 
 	return llvm_call;
 }
@@ -1982,15 +2031,20 @@ LLVMValueRef _emit_instr_compound_zero_initialized(struct context            *ct
 		LLVMBuildStore(ctx->llvm_builder, cmp->base.llvm_value, llvm_dest);
 	} else {
 		bassert(!mir_is_global(&cmp->base) && "Cannot use memset for global zero initialization!");
+		bassert(LLVMGetTypeKind(LLVMTypeOf(llvm_dest)) == LLVMPointerTypeKind);
 		// Use memset intrinsic for zero initialization of variable
 		LLVMValueRef args[4];
-		args[0] = LLVMBuildBitCast(
-		    ctx->llvm_builder, llvm_dest, get_type(ctx, ctx->builtin_types->t_u8_ptr), "");
+		args[0] = llvm_dest;
 		args[1] = ctx->llvm_const_i8_zero;
 		args[2] =
 		    LLVMConstInt(get_type(ctx, ctx->builtin_types->t_u64), type->store_size_bytes, false);
 		args[3] = LLVMConstInt(get_type(ctx, ctx->builtin_types->t_bool), 0, false);
-		LLVMBuildCall(ctx->llvm_builder, ctx->intrinsic_memset, args, static_arrlenu(args), "");
+		LLVMBuildCall2(ctx->llvm_builder,
+		               ctx->intrinsic_memset_type,
+		               ctx->intrinsic_memset,
+		               args,
+		               static_arrlenu(args),
+		               "");
 	}
 	cmp->base.llvm_value = llvm_dest;
 	return llvm_dest;
@@ -2131,8 +2185,12 @@ void emit_instr_compound(struct context            *ctx,
 			bassert(mapping == NULL && "Mapping is not supported for arrays!");
 			bassert(sarrlenu(values) == type->data.array.len);
 			llvm_indices[1] = LLVMConstInt(get_type(ctx, ctx->builtin_types->t_s64), i, true);
-			llvm_value_dest = LLVMBuildGEP(
-			    ctx->llvm_builder, llvm_dest, llvm_indices, static_arrlenu(llvm_indices), "");
+			llvm_value_dest = LLVMBuildGEP2(ctx->llvm_builder,
+			                                get_type(ctx, type),
+			                                llvm_dest,
+			                                llvm_indices,
+			                                static_arrlenu(llvm_indices),
+			                                "");
 			break;
 
 		case MIR_TYPE_DYNARR:
@@ -2141,8 +2199,8 @@ void emit_instr_compound(struct context            *ctx,
 		case MIR_TYPE_VARGS:
 		case MIR_TYPE_STRUCT: {
 			const usize index = mapping ? sarrpeek(mapping, i) : i;
-			llvm_value_dest =
-			    LLVMBuildStructGEP(ctx->llvm_builder, llvm_dest, (unsigned int)index, "");
+			llvm_value_dest   = LLVMBuildStructGEP2(
+                ctx->llvm_builder, get_type(ctx, type), llvm_dest, (unsigned int)index, "");
 			break;
 		}
 
@@ -2292,26 +2350,26 @@ enum state emit_instr_binop(struct context *ctx, struct mir_instr_binop *binop)
 	return STATE_PASSED;
 }
 
+// Create temporary variable for EASGM register split.
+static inline LLVMValueRef
+insert_easgm_tmp(struct context *ctx, struct mir_instr_call *call, struct mir_type *type)
+{
+	LLVMBasicBlockRef llvm_prev_block = LLVMGetInsertBlock(ctx->llvm_builder);
+	LLVMBasicBlockRef llvm_entry_block =
+	    LLVMValueAsBasicBlock(call->base.owner_block->owner_fn->first_block->base.llvm_value);
+	if (LLVMGetLastInstruction(llvm_entry_block)) {
+		LLVMPositionBuilderBefore(ctx->llvm_builder, LLVMGetLastInstruction(llvm_entry_block));
+	} else {
+		LLVMPositionBuilderAtEnd(ctx->llvm_builder, llvm_entry_block);
+	}
+	LLVMValueRef llvm_tmp = LLVMBuildAlloca(ctx->llvm_builder, get_type(ctx, type), "");
+	LLVMPositionBuilderAtEnd(ctx->llvm_builder, llvm_prev_block);
+	DI_LOCATION_RESET();
+	return llvm_tmp;
+}
+
 enum state emit_instr_call(struct context *ctx, struct mir_instr_call *call)
 {
-#define INSERT_TMP(_name, _type)                                                                   \
-	LLVMValueRef _name = NULL;                                                                     \
-	{                                                                                              \
-		LLVMBasicBlockRef llvm_prev_block = LLVMGetInsertBlock(ctx->llvm_builder);                 \
-		LLVMBasicBlockRef llvm_entry_block =                                                       \
-		    LLVMValueAsBasicBlock(call->base.owner_block->owner_fn->first_block->base.llvm_value); \
-		if (LLVMGetLastInstruction(llvm_entry_block)) {                                            \
-			LLVMPositionBuilderBefore(ctx->llvm_builder,                                           \
-			                          LLVMGetLastInstruction(llvm_entry_block));                   \
-		} else {                                                                                   \
-			LLVMPositionBuilderAtEnd(ctx->llvm_builder, llvm_entry_block);                         \
-		}                                                                                          \
-		_name = LLVMBuildAlloca(ctx->llvm_builder, _type, "");                                     \
-		LLVMPositionBuilderAtEnd(ctx->llvm_builder, llvm_prev_block);                              \
-		DI_LOCATION_RESET();                                                                       \
-	}                                                                                              \
-	(void)0
-
 	bassert(!mir_is_comptime(&call->base) &&
 	        "Compile time calls should not be generated into the final binary!");
 	struct mir_instr *callee = call->callee;
@@ -2340,13 +2398,12 @@ enum state emit_instr_call(struct context *ctx, struct mir_instr_call *call)
 
 	if (callee_type->data.fn.has_sret) {
 		// PERFORMANCE: Reuse ret_tmp inside function???
-		INSERT_TMP(llvm_tmp, get_type(ctx, callee_type->data.fn.ret_type));
+		LLVMValueRef llvm_tmp = insert_easgm_tmp(ctx, call, callee_type->data.fn.ret_type);
 		sarrput(&llvm_args, llvm_tmp);
 	}
 
+	LLVMTypeRef llvm_callee_type = get_type(ctx, callee_type);
 	if (has_args) {
-		LLVMTypeRef llvm_callee_type = get_type(ctx, callee_type);
-
 		// Get real argument types of LLMV function.
 		arrsetlen(llvm_callee_arg_types, LLVMCountParamTypes(llvm_callee_type));
 		LLVMGetParamTypes(llvm_callee_type, llvm_callee_arg_types);
@@ -2367,16 +2424,28 @@ enum state emit_instr_call(struct context *ctx, struct mir_instr_call *call)
 			case LLVM_EASGM_16:
 			case LLVM_EASGM_32:
 			case LLVM_EASGM_64: { // Struct fits into one register.
-				// PERFORMANCE: insert only when llvm_arg is not alloca???
-				INSERT_TMP(llvm_tmp, get_type(ctx, arg->type));
-				LLVMBuildStore(ctx->llvm_builder, llvm_arg, llvm_tmp);
+				// Note: This is copy-paste from the next branch, see the description there...
+				LLVMValueRef llvm_tmp = NULL;
+				if (arg_instr->kind != MIR_INSTR_LOAD) {
+					llvm_tmp = insert_easgm_tmp(ctx, call, arg->type);
+					LLVMBuildStore(ctx->llvm_builder, llvm_arg, llvm_tmp);
+				} else {
+					// Load should load something already allocated, so no temporary is needed.
+					bassert(arg_instr->kind == MIR_INSTR_LOAD);
+					llvm_tmp = ((struct mir_instr_load *)arg_instr)->src->llvm_value;
+				}
+				bassert(llvm_tmp);
+
 				llvm_tmp =
 				    LLVMBuildBitCast(ctx->llvm_builder,
 				                     llvm_tmp,
 				                     LLVMPointerType(llvm_callee_arg_types[arg->llvm_index], 0),
 				                     "");
 
-				sarrput(&llvm_args, LLVMBuildLoad(ctx->llvm_builder, llvm_tmp, ""));
+				sarrput(
+				    &llvm_args,
+				    LLVMBuildLoad2(
+				        ctx->llvm_builder, llvm_callee_arg_types[arg->llvm_index], llvm_tmp, ""));
 				break;
 			}
 
@@ -2384,37 +2453,43 @@ enum state emit_instr_call(struct context *ctx, struct mir_instr_call *call)
 			case LLVM_EASGM_64_16:
 			case LLVM_EASGM_64_32:
 			case LLVM_EASGM_64_64: { // Struct fits into two registers.
-				// PERFORMANCE: insert only when llvm_arg is not alloca???
-				INSERT_TMP(llvm_tmp, get_type(ctx, arg->type));
-				LLVMBuildStore(ctx->llvm_builder, llvm_arg, llvm_tmp);
+				// In the original solution we've used the temporary variable everytime, but this
+				// produce overhead because we have to copy the data avery time; the simpliest
+				// solution is to use prevous allocated variable directly, this might be checked by
+				// arg_instr being load instr. Note that the load instruction is then unused, but
+				// it's still better then copying every time...
+				LLVMValueRef llvm_tmp = NULL;
+				if (arg_instr->kind != MIR_INSTR_LOAD) {
+					llvm_tmp = insert_easgm_tmp(ctx, call, arg->type);
+					LLVMBuildStore(ctx->llvm_builder, llvm_arg, llvm_tmp);
+				} else {
+					// Load should load something already allocated, so no temporary is needed.
+					bassert(arg_instr->kind == MIR_INSTR_LOAD);
+					llvm_tmp = ((struct mir_instr_load *)arg_instr)->src->llvm_value;
+				}
+				bassert(llvm_tmp);
 
+				// Create dummy type just to get propper offsets for GEPs.
 				LLVMTypeRef llvm_tmp_elem_types[] = {llvm_callee_arg_types[arg->llvm_index],
 				                                     llvm_callee_arg_types[arg->llvm_index + 1]};
 				LLVMTypeRef llvm_tmp_type =
 				    LLVMStructTypeInContext(ctx->llvm_cnt, llvm_tmp_elem_types, 2, false);
 
-				llvm_tmp = LLVMBuildBitCast(
-				    ctx->llvm_builder, llvm_tmp, LLVMPointerType(llvm_tmp_type, 0), "");
+				LLVMValueRef llvm_tmp_1 =
+				    LLVMBuildStructGEP2(ctx->llvm_builder, llvm_tmp_type, llvm_tmp, 0, "");
+				sarrput(&llvm_args,
+				        LLVMBuildLoad2(ctx->llvm_builder, llvm_tmp_elem_types[0], llvm_tmp_1, ""));
 
-				LLVMValueRef llvm_tmp_1 = LLVMBuildStructGEP(ctx->llvm_builder, llvm_tmp, 0, "");
-				sarrput(&llvm_args, LLVMBuildLoad(ctx->llvm_builder, llvm_tmp_1, ""));
-
-				LLVMValueRef llvm_tmp_2 = LLVMBuildStructGEP(ctx->llvm_builder, llvm_tmp, 1, "");
-				sarrput(&llvm_args, LLVMBuildLoad(ctx->llvm_builder, llvm_tmp_2, ""));
+				LLVMValueRef llvm_tmp_2 =
+				    LLVMBuildStructGEP2(ctx->llvm_builder, llvm_tmp_type, llvm_tmp, 1, "");
+				sarrput(&llvm_args,
+				        LLVMBuildLoad2(ctx->llvm_builder, llvm_tmp_elem_types[1], llvm_tmp_2, ""));
 				break;
 			}
 
 			case LLVM_EASGM_BYVAL: { // Struct is too big and must be passed by value.
 				if (!has_byval_arg) has_byval_arg = true;
-#if 0
-				// @Incomplete: Validate for all types of compound expressions and all platforms.
-				if (arg_instr->kind == MIR_INSTR_COMPOUND) {
-					sarrput(&llvm_args,
-							((struct mir_instr_compound *)arg_instr)->tmp_var->llvm_value);
-					break;
-				}
-#endif
-				INSERT_TMP(llvm_tmp, get_type(ctx, arg->type));
+				LLVMValueRef llvm_tmp = insert_easgm_tmp(ctx, call, arg->type);
 				if (arg_instr->kind == MIR_INSTR_LOAD) {
 					struct mir_instr_load *load = (struct mir_instr_load *)arg_instr;
 					llvm_arg                    = load->src->llvm_value;
@@ -2432,16 +2507,32 @@ enum state emit_instr_call(struct context *ctx, struct mir_instr_call *call)
 		}
 	}
 	DI_LOCATION_SET(&call->base);
-	LLVMValueRef llvm_call = LLVMBuildCall(
-	    ctx->llvm_builder, llvm_called_fn, sarrdata(&llvm_args), (u32)sarrlenu(&llvm_args), "");
+	LLVMValueRef llvm_call = LLVMBuildCall2(ctx->llvm_builder,
+	                                        llvm_callee_type,
+	                                        llvm_called_fn,
+	                                        sarrdata(&llvm_args),
+	                                        (u32)sarrlenu(&llvm_args),
+	                                        "");
 	DI_LOCATION_RESET();
 
 	if (callee_type->data.fn.has_sret) {
+		struct mir_type *sret_arg_type = callee_type->data.fn.ret_type;
 		LLVMAddCallSiteAttribute(llvm_call,
 		                         LLVM_SRET_INDEX + 1,
-		                         LLVMCreateEnumAttribute(ctx->llvm_cnt, LLVM_ATTR_STRUCTRET, 0));
+		                         LLVMCreateTypeAttribute(ctx->llvm_cnt,
+		                                                 LLVM_ATTR_STRUCTRET,
+		                                                 get_type(ctx, sret_arg_type)));
 
-		llvm_result = LLVMBuildLoad(ctx->llvm_builder, sarrpeek(&llvm_args, LLVM_SRET_INDEX), "");
+		LLVMAddCallSiteAttribute(llvm_call,
+		                         LLVM_SRET_INDEX + 1,
+		                         LLVMCreateEnumAttribute(ctx->llvm_cnt,
+		                                                 LLVM_ATTR_ALIGNMENT,
+		                                                 (uint64_t)sret_arg_type->alignment));
+
+		llvm_result = LLVMBuildLoad2(ctx->llvm_builder,
+		                             get_type(ctx, callee_type->data.fn.ret_type),
+		                             sarrpeek(&llvm_args, LLVM_SRET_INDEX),
+		                             "");
 	}
 
 	// @Performance: LLVM API requires to set call side attributes after call is created.
@@ -2453,17 +2544,24 @@ enum state emit_instr_call(struct context *ctx, struct mir_instr_call *call)
 		for (usize i = 0; i < sarrlenu(args); ++i) {
 			struct mir_arg *arg = sarrpeek(args, i);
 			if (arg->llvm_easgm != LLVM_EASGM_BYVAL) continue;
-			LLVMAttributeRef llvm_atrbt =
-			    LLVMCreateEnumAttribute(ctx->llvm_cnt, LLVM_ATTR_BYVAL, 0);
-			bassert(llvm_atrbt && "Invalid call side attribute!");
-			LLVMAddCallSiteAttribute(llvm_call, arg->llvm_index + 1, llvm_atrbt);
+			LLVMTypeRef llvm_arg_type = get_type(ctx, arg->type);
+			LLVMAddCallSiteAttribute(
+			    llvm_call,
+			    arg->llvm_index + 1,
+			    LLVMCreateTypeAttribute(ctx->llvm_cnt, LLVM_ATTR_BYVAL, llvm_arg_type));
+
+			LLVMAddAttributeAtIndex(
+			    fn->llvm_value,
+			    arg->llvm_index + 1,
+			    LLVMCreateEnumAttribute(ctx->llvm_cnt,
+			                            LLVM_ATTR_ALIGNMENT,
+			                            (uint64_t)ctx->builtin_types->t_u8_ptr->alignment));
 		}
 	}
 	arrfree(llvm_callee_arg_types);
 	sarrfree(&llvm_args);
 	call->base.llvm_value = llvm_result ? llvm_result : llvm_call;
 	return STATE_PASSED;
-#undef INSERT_TMP
 }
 
 enum state emit_instr_set_initializer(struct context *ctx, struct mir_instr_set_initializer *si)
@@ -2748,20 +2846,26 @@ enum state emit_instr_vargs(struct context *ctx, struct mir_instr_vargs *vargs)
 	bassert(values);
 	const usize vargsc = sarrlenu(values);
 	bassert(vargs_type && vargs_type->kind == MIR_TYPE_VARGS);
+	struct mir_type *vargs_tmp_type = vargs->vargs_tmp->value.type;
+
 	// Setup tmp array values.
 	if (vargsc > 0) {
 		LLVMValueRef llvm_indices[2];
-		llvm_indices[0] = ctx->llvm_const_i64_zero;
+		llvm_indices[0]                 = ctx->llvm_const_i64_zero;
+		struct mir_type *vargs_arr_type = vargs->arr_tmp->value.type;
+		bassert(vargs_arr_type);
+
 		for (usize i = 0; i < vargsc; ++i) {
 			struct mir_instr *value      = sarrpeek(values, i);
 			LLVMValueRef      llvm_value = value->llvm_value;
 			bassert(llvm_value);
 			llvm_indices[1] = LLVMConstInt(get_type(ctx, ctx->builtin_types->t_s64), i, true);
-			LLVMValueRef llvm_value_dest = LLVMBuildGEP(ctx->llvm_builder,
-			                                            vargs->arr_tmp->llvm_value,
-			                                            llvm_indices,
-			                                            static_arrlenu(llvm_indices),
-			                                            "");
+			LLVMValueRef llvm_value_dest = LLVMBuildGEP2(ctx->llvm_builder,
+			                                             get_type(ctx, vargs_arr_type),
+			                                             vargs->arr_tmp->llvm_value,
+			                                             llvm_indices,
+			                                             static_arrlenu(llvm_indices),
+			                                             "");
 			LLVMBuildStore(ctx->llvm_builder, llvm_value, llvm_value_dest);
 		}
 	}
@@ -2769,19 +2873,29 @@ enum state emit_instr_vargs(struct context *ctx, struct mir_instr_vargs *vargs)
 	{
 		LLVMValueRef llvm_len =
 		    LLVMConstInt(get_type(ctx, ctx->builtin_types->t_s64), vargsc, false);
-		LLVMValueRef llvm_dest =
-		    LLVMBuildStructGEP(ctx->llvm_builder, vargs->vargs_tmp->llvm_value, 0, "");
+
+		LLVMValueRef llvm_dest = LLVMBuildStructGEP2(ctx->llvm_builder,
+		                                             get_type(ctx, vargs_tmp_type),
+		                                             vargs->vargs_tmp->llvm_value,
+		                                             MIR_SLICE_LEN_INDEX,
+		                                             "");
 		LLVMBuildStore(ctx->llvm_builder, llvm_len, llvm_dest);
 
 		LLVMTypeRef  llvm_ptr_type = get_type(ctx, mir_get_struct_elem_type(vargs_type, 1));
 		LLVMValueRef llvm_ptr =
 		    vargs->arr_tmp ? vargs->arr_tmp->llvm_value : LLVMConstNull(llvm_ptr_type);
-		llvm_dest = LLVMBuildStructGEP(ctx->llvm_builder, vargs->vargs_tmp->llvm_value, 1, "");
-		llvm_ptr  = LLVMBuildBitCast(ctx->llvm_builder, llvm_ptr, llvm_ptr_type, "");
+		llvm_dest = LLVMBuildStructGEP2(ctx->llvm_builder,
+		                                get_type(ctx, vargs_tmp_type),
+		                                vargs->vargs_tmp->llvm_value,
+		                                MIR_SLICE_PTR_INDEX,
+		                                "");
 		LLVMBuildStore(ctx->llvm_builder, llvm_ptr, llvm_dest);
 	}
 
-	vargs->base.llvm_value = LLVMBuildLoad(ctx->llvm_builder, vargs->vargs_tmp->llvm_value, "");
+	vargs->base.llvm_value = LLVMBuildLoad2(ctx->llvm_builder,
+	                                        get_type(ctx, vargs->vargs_tmp->value.type),
+	                                        vargs->vargs_tmp->llvm_value,
+	                                        "");
 	return STATE_PASSED;
 }
 
@@ -2792,13 +2906,16 @@ enum state emit_instr_toany(struct context *ctx, struct mir_instr_to_any *toany)
 
 	bassert(llvm_dest && llvm_type_info);
 	// Setup tmp variable pointer to type info
-	LLVMValueRef llvm_dest_type_info = LLVMBuildStructGEP(ctx->llvm_builder, llvm_dest, 0, "");
+	struct mir_type *tmp_type = toany->tmp->value.type;
+	LLVMValueRef     llvm_dest_type_info =
+	    LLVMBuildStructGEP2(ctx->llvm_builder, get_type(ctx, tmp_type), llvm_dest, 0, "");
 	LLVMBuildStore(ctx->llvm_builder, llvm_type_info, llvm_dest_type_info);
 
 	// data
-	LLVMTypeRef llvm_dest_data_type =
-	    get_type(ctx, mir_get_struct_elem_type(toany->tmp->value.type, 1));
-	LLVMValueRef llvm_dest_data = LLVMBuildStructGEP(ctx->llvm_builder, llvm_dest, 1, "");
+	struct mir_type *data_type           = mir_get_struct_elem_type(toany->tmp->value.type, 1);
+	LLVMTypeRef      llvm_dest_data_type = get_type(ctx, data_type);
+	LLVMValueRef     llvm_dest_data =
+	    LLVMBuildStructGEP2(ctx->llvm_builder, get_type(ctx, tmp_type), llvm_dest, 1, "");
 
 	if (toany->expr_tmp) {
 		LLVMValueRef llvm_dest_tmp = toany->expr_tmp->llvm_value;
@@ -3103,10 +3220,16 @@ static void intrinsics_init(struct context *ctx)
 	// lookup intrinsics
 	{ // memset
 		LLVMTypeRef pt[2];
-		pt[0]                 = get_type(ctx, ctx->builtin_types->t_u8_ptr);
-		pt[1]                 = get_type(ctx, ctx->builtin_types->t_u64);
-		ctx->intrinsic_memset = LLVMGetIntrinsicDeclaration(
-		    ctx->llvm_module, LLVM_MEMSET_INTRINSIC_ID, pt, static_arrlenu(pt));
+
+		pt[0] = get_type(ctx, ctx->builtin_types->t_u8_ptr);
+		pt[1] = get_type(ctx, ctx->builtin_types->t_u64);
+
+		const unsigned id = LLVM_MEMSET_INTRINSIC_ID;
+
+		ctx->intrinsic_memset =
+		    LLVMGetIntrinsicDeclaration(ctx->llvm_module, id, pt, static_arrlenu(pt));
+		ctx->intrinsic_memset_type =
+		    LLVMIntrinsicGetType(ctx->llvm_cnt, id, pt, static_arrlenu(pt));
 
 		bassert(ctx->intrinsic_memset && "Invalid memset intrinsic!");
 	}
@@ -3117,8 +3240,12 @@ static void intrinsics_init(struct context *ctx)
 		pt[1] = get_type(ctx, ctx->builtin_types->t_u8_ptr);
 		pt[2] = get_type(ctx, ctx->builtin_types->t_u64);
 
-		ctx->intrinsic_memcpy = LLVMGetIntrinsicDeclaration(
-		    ctx->llvm_module, LLVM_MEMCPY_INTRINSIC_ID, pt, static_arrlenu(pt));
+		const unsigned id = LLVM_MEMCPY_INTRINSIC_ID;
+
+		ctx->intrinsic_memcpy =
+		    LLVMGetIntrinsicDeclaration(ctx->llvm_module, id, pt, static_arrlenu(pt));
+		ctx->intrinsic_memcpy_type =
+		    LLVMIntrinsicGetType(ctx->llvm_cnt, id, pt, static_arrlenu(pt));
 
 		bassert(ctx->intrinsic_memcpy && "Invalid memcpy intrinsic!");
 	}
@@ -3185,6 +3312,7 @@ static void DI_terminate(struct context *ctx)
 }
 
 static void DI_complete_types(struct context *ctx)
+
 {
 	for (usize i = 0; i < arrlenu(ctx->di_incomplete_types); ++i) {
 		DI_complete_type(ctx, ctx->di_incomplete_types[i]);

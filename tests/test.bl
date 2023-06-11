@@ -1,41 +1,6 @@
-main ::fn() s32
-{
-	v := Flags.A | Flags.B;
-
-	print("v = %\n", v);
-	print("v & Flags.A = %\n", v & Flags.A);
-
-	if v & Flags.A {
-		print("SET!\n");
-	}
-
-	if v & Flags.C {
-		print("SET!\n");
-	} else {
-		print("NOT SET!\n");
-	}
-
-	v |= Flags.C;
-	print("v = %\n", v);
-
-	print("v - Flags.B = %\n", v - Flags.B);
-
-	// & intersection
-	// | union
-	// - difference
-	// ! complement
-
-	// Allowed:
-	// | for enum flags.
-	// implicit cast enum flags to bool?
+main :: fn() s32 {
+	print("Hello!");
 	return 0;
-}
-
-Flags :: enum #flags
-{
-	A;
-	B;
-	C;
 }
 
 /*

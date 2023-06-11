@@ -2701,7 +2701,7 @@ void type_init_llvm_fn(struct context *ctx, struct mir_type *type)
 			usize low   = 0;
 			usize high  = 0;
 
-			if (!has_byval) has_byval = true;
+			has_byval = true;
 
 			low = struct_split_fit(ctx, arg->type, sizeof(usize), &start);
 

@@ -1,0 +1,58 @@
+#private
+
+one :: fn() #test {
+	s := S.{ 10, 20, 30 };
+	foo(s);
+}
+
+S :: struct {
+	a: s32;
+	b: s32;
+	c: s32;
+}
+
+foo :: fn (s: S) {
+	test_eq(s.a, 10);
+	test_eq(s.b, 20);
+	test_eq(s.c, 30);
+}
+
+two :: fn() #test {
+	s := S1.{ 10, 20, 30, 40 };
+	foo1(s);
+}
+
+S1 :: struct {
+	a: s32;
+	b: s32;
+	c: s32;
+	d: s32;
+}
+
+foo1 :: fn (s: S1) {
+	test_eq(s.a, 10);
+	test_eq(s.b, 20);
+	test_eq(s.c, 30);
+	test_eq(s.d, 40);
+}
+
+three :: fn() #test {
+	s := S2.{ 10, 20, 30, 40, 50 };
+	foo2(s);
+}
+
+S2 :: struct {
+	a: s32;
+	b: s32;
+	c: s32;
+	d: s32;
+	e: s32;
+}
+
+foo2 :: fn (s: S2) {
+	test_eq(s.a, 10);
+	test_eq(s.b, 20);
+	test_eq(s.c, 30);
+	test_eq(s.d, 40);
+	test_eq(s.e, 50);
+}
