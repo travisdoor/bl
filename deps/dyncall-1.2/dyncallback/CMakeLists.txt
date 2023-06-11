@@ -41,17 +41,17 @@ add_library(dyncallback_s STATIC ${ASM_SRC}
   dyncall_callback.c
 )
 
-install(TARGETS dyncallback_s ARCHIVE DESTINATION lib )
+# install(TARGETS dyncallback_s ARCHIVE DESTINATION lib )
 
-install(FILES
-  dyncall_thunk.h
-  dyncall_thunk_x86.h
-  dyncall_thunk_ppc32.h
-  dyncall_thunk_x64.h
-  dyncall_thunk_arm32.h
-  dyncall_alloc_wx.h
-  dyncall_args.h
-  dyncall_callback.h
-  DESTINATION include
-)
+# install(FILES
+#   dyncall_thunk.h
+#   dyncall_thunk_x86.h
+#   dyncall_thunk_ppc32.h
+#   dyncall_thunk_x64.h
+#   dyncall_thunk_arm32.h
+#   dyncall_alloc_wx.h
+#   dyncall_args.h
+#   dyncall_callback.h
+#   DESTINATION include
+# )
 

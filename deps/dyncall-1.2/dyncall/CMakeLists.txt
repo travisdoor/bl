@@ -41,16 +41,16 @@ add_library(dyncall_s STATIC ${ASM_SRC}
   dyncall_callf.c
 )
 
-install(TARGETS dyncall_s ARCHIVE DESTINATION lib )
+# install(TARGETS dyncall_s ARCHIVE DESTINATION lib )
 
-install(FILES 
-  dyncall_macros.h 
-  dyncall_config.h 
-  dyncall_types.h 
-  dyncall.h
-  dyncall_signature.h
-  dyncall_value.h
-  dyncall_callf.h
-  DESTINATION include
-)
+# install(FILES 
+#   dyncall_macros.h 
+#   dyncall_config.h 
+#   dyncall_types.h 
+#   dyncall.h
+#   dyncall_signature.h
+#   dyncall_value.h
+#   dyncall_callf.h
+#   DESTINATION include
+# )
 

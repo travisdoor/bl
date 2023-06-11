@@ -81,19 +81,19 @@ target_include_directories(yaml PUBLIC
 #
 # Install rules
 #
-install(
-  FILES
-    include/yaml.h
-  DESTINATION include COMPONENT Development
-  )
+# install(
+#   FILES
+#     include/yaml.h
+#   DESTINATION include COMPONENT Development
+#   )
 
-install(
-  TARGETS yaml
-  EXPORT yamlTargets
-  RUNTIME DESTINATION "${INSTALL_BIN_DIR}" COMPONENT Runtime
-  LIBRARY DESTINATION "${INSTALL_LIB_DIR}" COMPONENT Development
-  ARCHIVE DESTINATION "${INSTALL_LIB_DIR}" COMPONENT Development
-  )
+# install(
+#   TARGETS yaml
+#   EXPORT yamlTargets
+#   RUNTIME DESTINATION "${INSTALL_BIN_DIR}" COMPONENT Runtime
+#   LIBRARY DESTINATION "${INSTALL_LIB_DIR}" COMPONENT Development
+#   ARCHIVE DESTINATION "${INSTALL_LIB_DIR}" COMPONENT Development
+#   )
 
 #
 # Generate 'yamlConfig.cmake', 'yamlConfigVersion.cmake' and 'yamlTargets.cmake'
@@ -126,17 +126,17 @@ configure_package_config_file(
   PATH_VARS CONFIG_DIR_CONFIG
   NO_CHECK_REQUIRED_COMPONENTS_MACRO
   )
-install(
-  FILES ${install_config_file}
-  DESTINATION ${INSTALL_CMAKE_DIR} COMPONENT Development
-  )
+# install(
+#   FILES ${install_config_file}
+#   DESTINATION ${INSTALL_CMAKE_DIR} COMPONENT Development
+#   )
 
 # Configure and install 'yamlTargets.cmake' for an install tree
-install(EXPORT yamlTargets
-  FILE yamlTargets.cmake
-  DESTINATION ${INSTALL_CMAKE_DIR}
-  COMPONENT Development
-  )
+# install(EXPORT yamlTargets
+#   FILE yamlTargets.cmake
+#   DESTINATION ${INSTALL_CMAKE_DIR}
+#   COMPONENT Development
+#   )
 
 # Configure 'yamlConfigVersion.cmake' for a build tree
 set(config_version_file ${PROJECT_BINARY_DIR}/yamlConfigVersion.cmake)
@@ -146,7 +146,7 @@ write_basic_package_version_file(
     COMPATIBILITY AnyNewerVersion
 )
 # ... and install for an install tree
-install(
-  FILES ${config_version_file}
-  DESTINATION ${INSTALL_CMAKE_DIR} COMPONENT Development
-  )
+# install(
+#   FILES ${config_version_file}
+#   DESTINATION ${INSTALL_CMAKE_DIR} COMPONENT Development
+#   )

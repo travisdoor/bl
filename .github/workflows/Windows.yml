@@ -37,18 +37,3 @@ jobs:
       run: cmake --build . --config Release
     - name: Run tests
       run: bin\blc.exe -run doctor.bl
-    - name: Prepare package
-      shell: powershell
-      run: |
-        mkdir dist
-        cp -r lib dist
-        cp -r bin dist
-        cp -r syntax dist
-        cp CHANGELOG.txt dist
-        cp LEGAL dist
-        cp LICENSE dist
-        cp README.md dist
-    - uses: actions/upload-artifact@v1
-      with:
-        name: windows-artifacts
-        path: dist

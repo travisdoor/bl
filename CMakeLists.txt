@@ -107,6 +107,14 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     set(BL_VSWHERE "${BL_DEPS_DIR}/vswhere-2.8.4/${BL_VSWHERE_EXE}")
     set(BL_LLD_EXE "bl-lld.exe")
     set(BL_LINKER ${BL_LLD_EXE})
+
+	# Installation step for VSWHERE
+	install(
+      FILES ${BL_VSWHERE}
+      PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
+      DESTINATION ${CMAKE_INSTALL_BINDIR}
+      RENAME ${BL_VSWHERE_EXE}
+	)
 endif()
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
@@ -235,6 +243,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     add_custom_command(TARGET blc POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${BL_VSWHERE} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${BL_VSWHERE_EXE})
 endif()
 
+# Installation step for LLD
 install(
     FILES ${LLD_BIN}
     PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ

@@ -19,7 +19,7 @@
 #
 
 add_library(dynload_s STATIC dynload.c dynload_syms.c)
-install(TARGETS dynload_s ARCHIVE DESTINATION lib)
-install(FILES dynload.h DESTINATION include)
+# install(TARGETS dynload_s ARCHIVE DESTINATION lib)
+# install(FILES dynload.h DESTINATION include)
 
 
