@@ -102,7 +102,7 @@ cmd :: fn (fmt: string_view, args: ...) Error {
 CONFIG ::
     "site_name: Biscuit Language\n"
     "theme:\n"
-    "    name: spacelab\n"
+    "    name: sandstone\n"
     "    # spacelab, sandstone, slate\n"
     "plugins:\n"
     "    - search\n"
@@ -112,7 +112,7 @@ CONFIG ::
     "extra_css:\n"
     "    - extra.css\n" 
     "extra:\n"
-    "    version: 0.10.0\n"
+    "    version: 0.11.0\n"
     "nav:\n"
     "    - Home: index.md\n"
     "    - installation.md\n"
