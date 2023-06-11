@@ -8,7 +8,6 @@ There are several options that can be passed to the compiler.
 
 ```text
 blc --help
-
 Usage:
   blc [options] [source-files]
 
@@ -47,6 +46,8 @@ Options:
   --no-llvm                Disable LLVM back-end.
   --no-usage-check         Disable checking of unused symbols.
   --no-warning             Ignore all warnings.
+  --override-config=<STRING>
+                           Set custom path to the 'bl.yaml' configuration file.
   --reg-split=<off|on>     Enable/disable splitting of structures passed into the function by value into registers.
   --run-tests              Execute all unit tests in compile time.
   --silent                 Disable compiler console logging.

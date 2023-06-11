@@ -1,6 +1,21 @@
 # Installation
 
-Currently only installation from the source code is possible.
+Prebuilt packages are currently available only for Windows, you can download it [here](https://github.com/travisdoor/bl/releases/download/0.10.0/blc-0.10.0-win64.zip).
+
+Just unzip the downloaded package, the compiler executable `blc.exe` can be found in the `bin` folder, use following snippet to add the `bin` directory to the system PATH.
+
+**In Powershell:**
+```
+[Environment]::SetEnvironmentVariable(
+   "Path",
+   [Environment]::GetEnvironmentVariable("Path", "User") + ";path\to\bl\bin",
+   "User"
+)
+```
+
+# Installation From Source Code
+
+Download the source from [here](https://github.com/travisdoor/bl/archive/refs/tags/0.10.0.zip).
 
 **Supported targets:**
 
@@ -11,17 +26,15 @@ Currently only installation from the source code is possible.
 
 ## Windows
 
-* Install [git](https://git-scm.com)
 * Install [CMake](https://cmake.org)
 * Install Visual Studio 2022 or [MS Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools) with C/C++ support
 * Download and compile
 
 ```bash
-git clone https://github.com/travisdoor/bl.git
-cd bl
+cd path\to\unzipped\directory
 mkdir build
 cd build
-cmake .. -G "Visual Studio 17 2022" -Thost=x64 -DCMAKE_BUILD_TYPE=Release
+cmake .. -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Release
 cmake --build . --config Release
 ```
 
@@ -39,13 +52,12 @@ cmake --build . --config Release
 ## Linux (Ubuntu)
 * Install needed tools
 ```bash
-apt-get install git cmake build-essential llvm-11-dev
+apt-get install cmake build-essential llvm-16-dev
 ```  
 * Download and compile
 
 ```bash
-git clone https://github.com/travisdoor/bl.git
-cd bl
+cd path/to/unzipped/directory
 mkdir build
 cd build
 cmake ..
@@ -60,12 +72,11 @@ export PATH=$PATH:/path/to/your/bl/bin
 
 ## macOS
 * Install command line tools ``xcode-select --install``.
-* Install other needed tools using [brew](https://brew.sh) `brew install git cmake llvm`.
+* Install other needed tools using [brew](https://brew.sh) `brew install cmake llvm@16`.
 * Download and compile
 
 ```bash
-git clone https://github.com/travisdoor/bl.git
-cd bl
+cd path/to/unzipped/directory
 mkdir build
 cd build
 cmake ..
@@ -79,5 +90,5 @@ export PATH=$PATH:/path/to/your/bl/bin
 ```
 
 !!! warning 
-    M1 support is experimental. 
+    ARM support is experimental. 
 
