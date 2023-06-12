@@ -7,7 +7,7 @@
 //! 
 //! Internally, the table is implemented as preallocated array of `slots` and dynamic array of `keys`
 //! and `values`. The `slots` array holds information about mapping of each key-value pair (inserted into `keys`
-//! anf `values` arrays) and corresponding 32 bit hash value calculated from the `key` value.
+//! and `values` arrays) and corresponding 32 bit hash value calculated from the `key` value.
 //!
 //! The `kays` and `values` arrays are actually regular dynamic arrays holding inserted keys and values,
 //! so it can be iterated as usual. The ordering of arrays is unstable after erase operation.
@@ -50,8 +50,7 @@ Table :: fn (TKey: type #comptime, TValue: type #comptime) type #comptime {
 	}
 	return struct {
 		slots: []Slot;
-		// @Performance: mdorazil <2022-06-13> Maybe we don't want to use dynamic arrays
-		// here to reduce redundant values (i.e. len).
+		// @Performance: Maybe we don't want to use dynamic arrays here to reduce redundant values (i.e. len).
 		keys: [..]TKey;
 		values: [..]TValue;
 		len: s64;
