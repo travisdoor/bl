@@ -133,3 +133,13 @@ BL_EXPORT f64 __intrinsic_ceil_f64(f64 v)
 {
 	return ceil(v);
 }
+
+BL_EXPORT f32 __intrinsic_trunc_f32(f32 v)
+{
+	return truncf(v);
+}
+
+BL_EXPORT f64 __intrinsic_trunc_f64(f64 v)
+{
+	return trunc(v);
+}

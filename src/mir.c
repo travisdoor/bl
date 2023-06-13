@@ -12643,7 +12643,8 @@ const char *get_intrinsic(const char *name)
 	    "ceil.f64",        "__intrinsic_ceil_f64",        "round.f32", "__intrinsic_round_f32",
 	    "round.f64",       "__intrinsic_round_f64",       "floor.f32", "__intrinsic_floor_f32",
 	    "floor.f64",       "__intrinsic_floor_f64",       "log10.f32", "__intrinsic_log10_f32",
-	    "log10.f64",       "__intrinsic_log10_f64"};
+	    "log10.f64",       "__intrinsic_log10_f64",       "trunc.f32", "__intrinsic_trunc_f32",
+	    "trunc.f64",       "__intrinsic_trunc_f64"};
 
 	for (usize i = 0; i < static_arrlenu(map); i += 2) {
 		if (strcmp(name, map[i]) == 0) return_zone(map[i + 1]);

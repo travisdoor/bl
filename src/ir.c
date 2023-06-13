@@ -339,6 +339,8 @@ const char *get_intrinsic(const char *name)
 	if (strcmp(name, "floor.f64") == 0) return_zone("llvm.floor.f64");
 	if (strcmp(name, "log10.f32") == 0) return_zone("llvm.log10.f32");
 	if (strcmp(name, "log10.f64") == 0) return_zone("llvm.log10.f64");
+	if (strcmp(name, "trunc.f32") == 0) return_zone("llvm.trunc.f32");
+	if (strcmp(name, "trunc.f64") == 0) return_zone("llvm.trunc.f64");
 
 	return_zone(NULL);
 }

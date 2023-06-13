@@ -108,12 +108,22 @@ log2      :: fn { f32_log2; f64_log2; }
 log10     :: fn { f32_log10; f64_log10; }
 sqrt      :: fn { f32_sqrt; f64_sqrt; }
 ceil      :: fn { f32_ceil; f64_ceil; }
+trunc     :: fn { f32_trunc; f64_trunc; }
 atan2     :: fn { C.atan2f; C.atan2; }
 copysign  :: fn { C.copysignf; C.copysign; }
 asin      :: fn { C.asinf; C.asin; }
 acos      :: fn { C.acosf; C.acos; }
 tan       :: fn { C.tanf; C.tan; }
 atan      :: fn { C.atanf; C.atan; }
+
+fmod :: fn {
+	fn (x: f32, y: f32) f32 {
+		return x - f32_trunc(x / y) * y;
+	};
+	fn (x: f64, y: f64) f64 {
+		return x - f64_trunc(x / y) * y;
+	};
+}
 
 abs :: fn { f32_abs; f64_abs; s64_abs; }
 compare :: fn { f32_compare; f64_compare; }
@@ -141,13 +151,9 @@ smooth_step :: fn (a: ?T, b: T, fraction: T) T  #inline {
 }
 
 clamp :: fn (v: ?T, minimum: T, maximum: T) T { 
-	#if typeinfo(T).kind == TypeKind.INT {
-		if v <= minimum { return minimum; }
-		if v >= maximum { return maximum; }
-	} else {
-		if v < minimum { return minimum; }
-		if v > maximum { return maximum; }    
-	}
+	if v <= minimum { return minimum; }
+	if v >= maximum { return maximum; }
+
 	return v;
 }
 
@@ -173,6 +179,8 @@ f32_sqrt  :: fn (n: f32) f32 #intrinsic "sqrt.f32";
 f64_sqrt  :: fn (n: f64) f64 #intrinsic "sqrt.f64";
 f32_ceil  :: fn (x: f32) f32 #intrinsic "ceil.f32";
 f64_ceil  :: fn (x: f64) f64 #intrinsic "ceil.f64";
+f32_trunc :: fn (x: f32) f32 #intrinsic "trunc.f32";
+f64_trunc :: fn (x: f64) f64 #intrinsic "trunc.f64";
 
 s64_abs :: fn (v: s64) s64 {
 	if v < 0 { return -v; }
