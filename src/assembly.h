@@ -111,6 +111,18 @@ enum environment {
 };
 extern const char *env_names[_ENV_COUNT];
 
+static const usize sarr_total_size = sizeof(union {
+	ast_nodes_t        _1;
+	mir_args_t         _2;
+	mir_fns_t          _3;
+	mir_types_t        _4;
+	mir_members_t      _5;
+	mir_variants_t     _6;
+	mir_instrs_t       _7;
+	mir_switch_cases_t _8;
+	ints_t             _9;
+});
+
 struct target_triple {
 	enum arch             arch;
 	enum vendor           vendor;
@@ -122,10 +134,10 @@ struct native_lib {
 	hash_t        hash;
 	DLLib        *handle;
 	struct token *linked_from;
-	char	     *user_name;
-	char	     *filename;
-	char	     *filepath;
-	char	     *dir;
+	char         *user_name;
+	char         *filename;
+	char         *filepath;
+	char         *dir;
 	// Disable appending of this library to the linker options.
 	bool is_internal;
 	// Library may be loaded only in runtime.
@@ -200,7 +212,7 @@ struct assembly {
 		struct {
 			u64             key;
 			struct mir_var *value;
-		} * rtti_table; // Map type ids to RTTI variables.
+		} *rtti_table; // Map type ids to RTTI variables.
 		array(struct mir_instr *) exported_instrs;
 	} MIR;
 

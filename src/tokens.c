@@ -47,7 +47,7 @@ void tokens_init(struct tokens *tokens)
 {
 	tokens->buf  = NULL;
 	tokens->iter = 0;
-	arrsetcap(tokens->buf, 512);
+	arrsetcap(tokens->buf, 2048);
 }
 
 void tokens_terminate(struct tokens *tokens)

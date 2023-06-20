@@ -70,6 +70,7 @@ struct context {
 	struct assembly     *assembly;
 	struct unit         *unit;
 	struct arena        *ast_arena;
+	struct arena        *sarr_arena;
 	struct scope_arenas *scope_arenas;
 	struct tokens       *tokens;
 
@@ -542,7 +543,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
 		// and it is visible only from such unit.
 		// Private scope contains only global entity declarations with 'private' flag set
 		// in ast node.
-		struct scope *scope = scope_create(
+		struct scope *scope = scope_safe_create(
 		    ctx->scope_arenas, SCOPE_PRIVATE, scope_get(ctx), &tok_directive->location);
 
 		ctx->current_private_scope = scope;
@@ -579,7 +580,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
 			scope_entry = scope_create_entry(
 			    &ctx->assembly->arenas.scope, SCOPE_ENTRY_NAMED_SCOPE, id, scope, false);
 			scope_insert(scope_get(ctx), SCOPE_DEFAULT_LAYER, scope_entry);
-			struct scope *named_scope = scope_create(
+			struct scope *named_scope = scope_safe_create(
 			    ctx->scope_arenas, SCOPE_NAMED, scope_get(ctx), &tok_directive->location);
 			named_scope->name       = id->str;
 			scope_entry->data.scope = named_scope;
@@ -643,7 +644,7 @@ NEXT:
 	tmp = parse_expr(ctx);
 	if (tmp) {
 		if (!compound->data.expr_compound.values) {
-			compound->data.expr_compound.values = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+			compound->data.expr_compound.values = arena_alloc(ctx->sarr_arena);
 		}
 
 		sarrput(compound->data.expr_compound.values, tmp);
@@ -983,7 +984,7 @@ NEXT:
 	expr = parse_expr(ctx);
 	if (expr) {
 		if (!ret->data.stmt_return.exprs) {
-			ret->data.stmt_return.exprs = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+			ret->data.stmt_return.exprs = arena_alloc(ctx->sarr_arena);
 		}
 		sarrput(ret->data.stmt_return.exprs, expr);
 		if (tokens_consume_if(ctx->tokens, SYM_COMMA)) {
@@ -1068,7 +1069,7 @@ struct ast *parse_stmt_switch(struct context *ctx)
 		return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
 	}
 
-	ast_nodes_t *cases        = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+	ast_nodes_t *cases        = arena_alloc(ctx->sarr_arena);
 	struct ast  *stmt_case    = NULL;
 	struct ast  *default_case = NULL;
 NEXT:
@@ -1122,7 +1123,7 @@ struct ast *parse_stmt_case(struct context *ctx)
 	if (tok_case) goto SKIP_EXPRS;
 
 	tok_case = tokens_peek(ctx->tokens);
-	exprs    = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+	exprs    = arena_alloc(ctx->sarr_arena);
 NEXT:
 	expr = parse_expr(ctx);
 	if (expr) {
@@ -1180,7 +1181,7 @@ struct ast *parse_stmt_loop(struct context *ctx)
 	ctx->is_inside_loop      = true;
 
 	struct scope *scope =
-	    scope_create(ctx->scope_arenas, SCOPE_LEXICAL, scope_get(ctx), &tok_begin->location);
+	    scope_safe_create(ctx->scope_arenas, SCOPE_LEXICAL, scope_get(ctx), &tok_begin->location);
 
 	scope_push(ctx, scope);
 
@@ -1517,7 +1518,8 @@ struct ast *parse_expr_lit_fn(struct context *ctx)
 	struct ast   *fn     = ast_create_node(ctx->ast_arena, AST_EXPR_LIT_FN, tok_fn, scope_get(ctx));
 
 	// Create function scope for function signature.
-	scope_push(ctx, scope_create(ctx->scope_arenas, SCOPE_FN, scope_get(ctx), &tok_fn->location));
+	scope_push(ctx,
+	           scope_safe_create(ctx->scope_arenas, SCOPE_FN, scope_get(ctx), &tok_fn->location));
 
 	struct ast *type = parse_type_fn(ctx, /* named_args */ true, /* create_scope */ false);
 	bassert(type);
@@ -1574,7 +1576,7 @@ struct ast *parse_expr_lit_fn_group(struct context *ctx)
 	struct ast   *group =
 	    ast_create_node(ctx->ast_arena, AST_EXPR_LIT_FN_GROUP, tok_group, scope_get(ctx));
 
-	ast_nodes_t *variants              = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+	ast_nodes_t *variants              = arena_alloc(ctx->sarr_arena);
 	group->data.expr_fn_group.variants = variants;
 	struct ast *tmp;
 NEXT:
@@ -1706,7 +1708,7 @@ struct ast *parse_type_enum(struct context *ctx)
 	if (!tok_enum) return_zone(NULL);
 
 	struct ast *enm = ast_create_node(ctx->ast_arena, AST_TYPE_ENUM, tok_enum, scope_get(ctx));
-	enm->data.type_enm.variants = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+	enm->data.type_enm.variants = arena_alloc(ctx->sarr_arena);
 	enm->data.type_enm.type     = parse_type(ctx);
 
 	// parse flags
@@ -1733,7 +1735,7 @@ struct ast *parse_type_enum(struct context *ctx)
 	}
 
 	struct scope *scope =
-	    scope_create(ctx->scope_arenas, SCOPE_TYPE_ENUM, scope_get(ctx), &tok->location);
+	    scope_safe_create(ctx->scope_arenas, SCOPE_TYPE_ENUM, scope_get(ctx), &tok->location);
 	enm->data.type_enm.scope = scope;
 	scope_push(ctx, scope);
 
@@ -1973,14 +1975,14 @@ struct ast *parse_type_fn_return(struct context *ctx)
 		// multiple return type ( T1, T2 )
 		// eat (
 		struct token *tok_begin = tokens_consume(ctx->tokens);
-		struct scope *scope     = scope_create(
+		struct scope *scope     = scope_safe_create(
             ctx->scope_arenas, SCOPE_TYPE_STRUCT, scope_get(ctx), &tok_begin->location);
 		scope_push(ctx, scope);
 
 		struct ast *type_struct =
 		    ast_create_node(ctx->ast_arena, AST_TYPE_STRUCT, tok_begin, scope_get(ctx));
-		type_struct->data.type_strct.scope   = scope;
-		type_struct->data.type_strct.members = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+		type_struct->data.type_strct.scope                   = scope;
+		type_struct->data.type_strct.members                 = arena_alloc(ctx->sarr_arena);
 		type_struct->data.type_strct.is_multiple_return_type = true;
 		struct ast *tmp;
 		s32         index = 0;
@@ -2027,8 +2029,8 @@ struct ast *parse_type_fn(struct context *ctx, bool named_args, bool create_scop
 	struct ast *fn = ast_create_node(ctx->ast_arena, AST_TYPE_FN, tok_fn, scope_get(ctx));
 
 	if (create_scope) {
-		scope_push(ctx,
-		           scope_create(ctx->scope_arenas, SCOPE_FN, scope_get(ctx), &tok_fn->location));
+		scope_push(
+		    ctx, scope_safe_create(ctx->scope_arenas, SCOPE_FN, scope_get(ctx), &tok_fn->location));
 	}
 
 	// parse arg types
@@ -2043,7 +2045,7 @@ NEXT:
 		// Setup argument index -> order in the function type argument list.
 		tmp->data.decl_arg.index = index++;
 		if (!fn->data.type_fn.args) {
-			fn->data.type_fn.args = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+			fn->data.type_fn.args = arena_alloc(ctx->sarr_arena);
 		}
 		sarrput(fn->data.type_fn.args, tmp);
 		if (tokens_consume_if(ctx->tokens, SYM_COMMA)) {
@@ -2086,7 +2088,7 @@ struct ast *parse_type_fn_group(struct context *ctx)
 	struct ast   *group =
 	    ast_create_node(ctx->ast_arena, AST_TYPE_FN_GROUP, tok_group, scope_get(ctx));
 
-	ast_nodes_t *variants              = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+	ast_nodes_t *variants              = arena_alloc(ctx->sarr_arena);
 	group->data.type_fn_group.variants = variants;
 	struct ast *tmp;
 NEXT:
@@ -2150,13 +2152,13 @@ struct ast *parse_type_struct(struct context *ctx)
 	}
 
 	struct scope *scope =
-	    scope_create(ctx->scope_arenas, SCOPE_TYPE_STRUCT, scope_get(ctx), &tok->location);
+	    scope_safe_create(ctx->scope_arenas, SCOPE_TYPE_STRUCT, scope_get(ctx), &tok->location);
 	scope_push(ctx, scope);
 
 	struct ast *type_struct =
 	    ast_create_node(ctx->ast_arena, AST_TYPE_STRUCT, tok_struct, scope_get(ctx));
 	type_struct->data.type_strct.scope     = scope;
-	type_struct->data.type_strct.members   = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+	type_struct->data.type_strct.members   = arena_alloc(ctx->sarr_arena);
 	type_struct->data.type_strct.base_type = base_type;
 	type_struct->data.type_strct.is_union  = is_union;
 
@@ -2297,7 +2299,7 @@ arg:
 	tmp = parse_expr(ctx);
 	if (tmp) {
 		if (!call->data.expr_call.args) {
-			call->data.expr_call.args = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+			call->data.expr_call.args = arena_alloc(ctx->sarr_arena);
 		}
 		sarrput(call->data.expr_call.args, tmp);
 
@@ -2384,7 +2386,7 @@ struct ast *parse_block(struct context *ctx, enum scope_kind scope_kind)
 		        "Unexpected scope kind, extend this assert in case it's intentional.");
 
 		struct scope *scope =
-		    scope_create(ctx->scope_arenas, scope_kind, scope_get(ctx), &tok_begin->location);
+		    scope_safe_create(ctx->scope_arenas, scope_kind, scope_get(ctx), &tok_begin->location);
 
 		scope_push(ctx, scope);
 		scope_created = true;
@@ -2392,7 +2394,7 @@ struct ast *parse_block(struct context *ctx, enum scope_kind scope_kind)
 	struct ast   *block = ast_create_node(ctx->ast_arena, AST_BLOCK, tok_begin, scope_get(ctx));
 	struct token *tok;
 	struct ast   *tmp       = NULL;
-	block->data.block.nodes = arena_safe_alloc(&ctx->assembly->arenas.sarr);
+	block->data.block.nodes = arena_alloc(ctx->sarr_arena);
 
 NEXT:
 	switch (tokens_peek_sym(ctx->tokens)) {
@@ -2556,6 +2558,7 @@ void parser_run(struct assembly *assembly, struct unit *unit)
 	    .assembly     = assembly,
 	    .unit         = unit,
 	    .ast_arena    = &unit->ast_arena,
+	    .sarr_arena   = &unit->sarr_arena,
 	    .scope_arenas = &assembly->arenas.scope,
 	    .tokens       = &unit->tokens,
 	};

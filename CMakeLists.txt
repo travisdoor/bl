@@ -155,6 +155,10 @@ if(NOT EXISTS ${LLD_BIN})
     )
 endif()
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    add_definitions(-DBL_USE_SIMD)
+endif()
+
 find_package(LLVM ${BL_LLVM_VER} REQUIRED)
 
 file(GLOB HEADER_FILES src/*.h)
@@ -180,7 +184,7 @@ if(MSVC)
     add_definitions(-DNOMINMAX)
     target_link_libraries(blc PUBLIC shlwapi DbgHelp)
     set(MSVC_FLAGS /Z7 /Gr /GF /EHsc)
-    set(MSVC_RELEASE_FLAGS ${MSVC_FLAGS} /DEBUG /O2 /Oi /Ot /GL)
+    set(MSVC_RELEASE_FLAGS ${MSVC_FLAGS} /O2 /Oi /Ot /GL)
     set(MSVC_DEBUG_FLAGS  ${MSVC_FLAGS} /Od /MDd)
     target_compile_options(blc PRIVATE
         $<$<CONFIG:Release>: ${MSVC_RELEASE_FLAGS}>
@@ -191,6 +195,8 @@ if(MSVC)
     target_compile_options(yaml PRIVATE
         $<$<CONFIG:Release>: ${MSVC_RELEASE_FLAGS} /wd4996 /wd4267 /wd4244>
         $<$<CONFIG:Debug>:   ${MSVC_DEBUG_FLAGS} /wd4996 /wd4267 /wd4244>)
+
+	set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} /DEBUG:FULL")
 else()
     set(THREADS_PREFER_PTHREAD_FLAG ON)
     find_package(Threads REQUIRED)

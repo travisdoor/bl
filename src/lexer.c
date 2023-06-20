@@ -33,9 +33,7 @@
 #include <setjmp.h>
 #include <string.h>
 
-#define USE_SIMD
-
-#ifdef USE_SIMD
+#ifdef BL_USE_SIMD
 #include <emmintrin.h>
 #include <intrin.h>
 #endif
@@ -139,7 +137,7 @@ bool scan_ident(struct context *ctx, struct token *tok)
 
 	s32 len = 0;
 	
-#ifdef USE_SIMD
+#ifdef BL_USE_SIMD
 	while (true) {
 		// Process by 16 chars
 		const __m128i src = _mm_loadu_si128((__m128i *)(begin + len));

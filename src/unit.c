@@ -27,12 +27,20 @@
 // =================================================================================================
 
 #include "unit.h"
+#include "assembly.h"
 #include "stb_ds.h"
 #include <string.h>
 
 #if BL_PLATFORM_WIN
 #include <windows.h>
 #endif
+
+#define EXPECTED_ARRAY_COUNT 64
+
+static void sarr_dtor(sarr_any_t *arr)
+{
+	sarrfree(arr);
+}
 
 hash_t unit_hash(const char *filepath, struct token *load_from)
 {
@@ -66,6 +74,12 @@ struct unit *unit_new(const char *filepath, struct token *load_from)
 	unit->loaded_from = load_from;
 	unit->hash        = strhash(unit->filepath ? unit->filepath : unit->name);
 	ast_arena_init(&unit->ast_arena);
+	arena_init(&unit->sarr_arena,
+	           sarr_total_size,
+	           16, // Is this correct?
+	           EXPECTED_ARRAY_COUNT,
+	           (arena_elem_dtor_t)sarr_dtor);
+
 	tokens_init(&unit->tokens);
 	return unit;
 }
@@ -84,6 +98,7 @@ void unit_delete(struct unit *unit)
 	free(unit->name);
 	free(unit->filename);
 	ast_arena_terminate(&unit->ast_arena);
+	arena_terminate(&unit->ast_arena);
 	tokens_terminate(&unit->tokens);
 	bfree(unit);
 }

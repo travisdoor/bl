@@ -479,22 +479,22 @@ enum mir_instr_state {
 
 struct mir_instr {
 	struct mir_const_expr_value value;
+	enum mir_instr_kind         kind;
+	enum mir_instr_state        state;
 	u64                         id;
 	struct ast                 *node;
 	struct mir_instr_block     *owner_block;
 	LLVMValueRef                llvm_value;
 	struct mir_instr           *prev;
 	struct mir_instr           *next;
-	enum mir_instr_kind         kind;
+
 #if BL_DEBUG
 	enum mir_instr_kind _orig_kind;
 #endif
-	s32  ref_count;
+	s32 ref_count;
 
 	bool is_unreachable;
 	bool is_implicit;
-
-	enum mir_instr_state state;
 
 	bmagic_member
 };

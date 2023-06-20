@@ -67,6 +67,12 @@
 #define pclose _pclose
 #endif
 
+#ifdef BL_USE_SIMD
+#include "memcpy_fast.h"
+#else
+#define memcpy_fast(dest, src, size) memcpy(dest, src, size)
+#endif
+
 u64 main_thread_id = 0;
 // =================================================================================================
 // PUBLIC
@@ -92,7 +98,7 @@ void sarradd_impl(void *ptr, usize elem_size, usize static_elem_count, usize new
 	} else if (!on_heap && needed_len > static_elem_count) {
 		arr->cap   = (u32)(static_elem_count * 2 > needed_len ? static_elem_count * 2 : needed_len);
 		void *data = bmalloc(arr->cap * elem_size);
-		memcpy(data, arr->_buf, elem_size * arr->len);
+		memcpy_fast(data, arr->_buf, elem_size * arr->len);
 		arr->_data = data;
 	}
 	arr->len += (u32)new_elem_count;
@@ -101,7 +107,7 @@ void sarradd_impl(void *ptr, usize elem_size, usize static_elem_count, usize new
 // =================================================================================================
 // String cache
 // =================================================================================================
-#define SC_BLOCK_BYTES 512
+#define SC_BLOCK_BYTES 2048
 
 struct string_cache {
 	u32 len;
@@ -132,8 +138,8 @@ char *scdup(struct string_cache **cache, const char *str, usize len)
 	}
 	char *mem = ((char *)((*cache) + 1)) + (*cache)->len;
 	if (str) {
-		memcpy(mem, str, len - 1); // Do not copy zero terminator.
-		mem[len - 1] = '\0';       // Set zero terminator.
+		memcpy_fast(mem, str, len - 1); // Do not copy zero terminator.
+		mem[len - 1] = '\0';            // Set zero terminator.
 	}
 	(*cache)->len += (u32)len;
 	return_zone(mem);

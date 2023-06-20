@@ -42,6 +42,7 @@ struct unit {
 	struct tokens tokens;
 	struct ast   *ast;
 	struct arena  ast_arena;
+	struct arena  sarr_arena;
 	array(struct ast *) ublock_ast;
 	struct scope        *private_scope;
 	char                *filename;

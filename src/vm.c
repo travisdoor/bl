@@ -34,6 +34,12 @@
 
 #define VM_MAX_ALIGNMENT 8
 
+#ifdef BL_USE_SIMD
+#include "memcpy_fast.h"
+#else
+#define memcpy_fast(dest, src, size) memcpy(dest, src, size)
+#endif
+
 // =================================================================================================
 // fwd decls
 // =================================================================================================
@@ -240,7 +246,7 @@ stack_push(struct virtual_machine *vm, void *value, struct mir_type *type)
 {
 	bassert(value && "try to push NULL value");
 	vm_stack_ptr_t tmp = stack_push_empty(vm, type);
-	memcpy(tmp, value, type->store_size_bytes);
+	memcpy_fast(tmp, value, type->store_size_bytes);
 	return tmp;
 }
 
@@ -1101,7 +1107,11 @@ enum vm_interp_state execute_function(struct virtual_machine *vm,
 		instr = get_pc(vm);
 		prev  = instr;
 		if (!instr) break;
-		state = interp_instr(vm, instr);
+		if (instr->state != MIR_IS_COMPLETE) {
+			state = VM_INTERP_POSTPONE;
+		} else {
+			state = interp_instr(vm, instr);
+		}
 		if (state != VM_INTERP_PASSED) break;
 		// When we reach terminal instruction of this function, we must stop the execution,
 		// otherwise when the interpreted call lives in scope of other function, interpreter will
@@ -1124,11 +1134,8 @@ enum vm_interp_state execute_function(struct virtual_machine *vm,
 
 enum vm_interp_state interp_instr(struct virtual_machine *vm, struct mir_instr *instr)
 {
-	if (!instr) return VM_INTERP_PASSED;
-	if (instr->state != MIR_IS_COMPLETE) {
-		return VM_INTERP_POSTPONE;
-	}
-
+	bassert(instr);
+	bassert(instr->state == MIR_IS_COMPLETE);
 	if (vm->assembly->target->vmdbg_break_on == (s32)instr->id) {
 		vmdbg_break();
 	}
@@ -1137,7 +1144,9 @@ enum vm_interp_state interp_instr(struct virtual_machine *vm, struct mir_instr *
 	enum vm_interp_state state = VM_INTERP_PASSED;
 	if (mir_is_comptime(instr)) return state;
 
-	switch (instr->kind) {
+	const enum mir_instr_kind kind = instr->kind;
+
+	switch (kind) {
 	case MIR_INSTR_CAST:
 		interp_instr_cast(vm, (struct mir_instr_cast *)instr);
 		break;
@@ -1248,19 +1257,19 @@ void interp_instr_toany(struct virtual_machine *vm, struct mir_instr_to_any *toa
 		vm_stack_ptr_t  dest_expr = vm_read_var(vm, expr_var);
 
 		// copy value to the tmp variable
-		memcpy(dest_expr, data, data_type->store_size_bytes);
+		memcpy_fast(dest_expr, data, data_type->store_size_bytes);
 
 		// setup destination pointer
-		memcpy(dest_data, &dest_expr, dest_data_type->store_size_bytes);
+		memcpy_fast(dest_data, &dest_expr, dest_data_type->store_size_bytes);
 	} else if (toany->rtti_data) {
 		struct mir_var *rtti_data_var = assembly_get_rtti(vm->assembly, toany->rtti_data->id.hash);
 		vm_stack_ptr_t  rtti_data     = vm_read_var(vm, rtti_data_var);
 		// setup destination pointer
-		memcpy(dest_data, &rtti_data, dest_data_type->store_size_bytes);
+		memcpy_fast(dest_data, &rtti_data, dest_data_type->store_size_bytes);
 	} else {
 		vm_stack_ptr_t data = fetch_value(vm, &toany->expr->value);
 		bassert(mir_is_pointer_type(dest_data_type));
-		memcpy(dest_data, data, dest_data_type->store_size_bytes);
+		memcpy_fast(dest_data, data, dest_data_type->store_size_bytes);
 	}
 
 	stack_push(vm, &dest, toany->base.value.type);
@@ -1695,7 +1704,7 @@ void interp_instr_compound(struct virtual_machine    *vm,
 		}
 
 		vm_stack_ptr_t value_ptr = fetch_value(vm, &value->value);
-		memcpy(elem_ptr, value_ptr, elem_type->store_size_bytes);
+		memcpy_fast(elem_ptr, value_ptr, elem_type->store_size_bytes);
 	}
 
 	if (will_push) stack_push(vm, tmp_ptr, cmp->base.value.type);
@@ -1722,7 +1731,7 @@ void interp_instr_vargs(struct virtual_machine *vm, struct mir_instr_vargs *varg
 
 		vm_stack_ptr_t value_ptr = fetch_value(vm, &value->value);
 		if (!dest) babort("Bad memory.");
-		memcpy(dest, value_ptr, value_size);
+		memcpy_fast(dest, value_ptr, value_size);
 	}
 
 	// Push vargs slice on the stack.
@@ -1763,7 +1772,7 @@ void interp_instr_decl_var(struct virtual_machine *vm, struct mir_instr_decl_var
 		} else {
 			// read initialization value if there is one
 			vm_stack_ptr_t init_ptr = fetch_value(vm, &decl->init->value);
-			memcpy(var_ptr, init_ptr, var->value.type->store_size_bytes);
+			memcpy_fast(var_ptr, init_ptr, var->value.type->store_size_bytes);
 		}
 	}
 }
@@ -1803,7 +1812,7 @@ void interp_instr_store(struct virtual_machine *vm, struct mir_instr_store *stor
 
 	vm_stack_ptr_t const src_ptr = fetch_value(vm, &store->src->value);
 	bassert(dest_ptr && src_ptr);
-	memcpy(dest_ptr, src_ptr, src_type->store_size_bytes);
+	memcpy_fast(dest_ptr, src_ptr, src_type->store_size_bytes);
 }
 
 enum vm_interp_state interp_instr_call(struct virtual_machine *vm, struct mir_instr_call *call)
@@ -2214,7 +2223,7 @@ void eval_instr_compound(struct virtual_machine *vm, struct mir_instr_compound *
 		case MIR_TYPE_ARRAY: {
 			ptrdiff_t offset = vm_get_array_elem_offset(value->type, (u32)index);
 			dest_ptr += offset;
-			memcpy(dest_ptr, src_ptr, value->type->data.array.elem_type->store_size_bytes);
+			memcpy_fast(dest_ptr, src_ptr, value->type->data.array.elem_type->store_size_bytes);
 			break;
 		}
 
@@ -2226,7 +2235,7 @@ void eval_instr_compound(struct virtual_machine *vm, struct mir_instr_compound *
 			struct mir_type *member_type = mir_get_struct_elem_type(value->type, index);
 			ptrdiff_t offset = vm_get_struct_elem_offset(vm->assembly, value->type, (u32)index);
 			dest_ptr += offset;
-			memcpy(dest_ptr, src_ptr, member_type->store_size_bytes);
+			memcpy_fast(dest_ptr, src_ptr, member_type->store_size_bytes);
 			break;
 		}
 
@@ -2236,7 +2245,7 @@ void eval_instr_compound(struct virtual_machine *vm, struct mir_instr_compound *
 		case MIR_TYPE_PTR:
 		case MIR_TYPE_ENUM: {
 			bassert(i == 0 && "Non-agregate type initialized with multiple values!");
-			memcpy(dest_ptr, src_ptr, value->type->store_size_bytes);
+			memcpy_fast(dest_ptr, src_ptr, value->type->store_size_bytes);
 			break;
 		}
 
@@ -2346,7 +2355,7 @@ void eval_instr_set_initializer(struct virtual_machine *vm, struct mir_instr_set
 			const vm_stack_ptr_t var_ptr = vm_read_var(vm, var);
 			// Runtime variable needs it's own memory location so we must create copy of
 			// initializer data
-			memcpy(var_ptr, si->src->value.data, var_type->store_size_bytes);
+			memcpy_fast(var_ptr, si->src->value.data, var_type->store_size_bytes);
 		}
 	}
 }
@@ -2673,7 +2682,7 @@ enum vm_interp_state vm_execute_comptime_call(struct virtual_machine *vm,
 			} else {
 				dest = (vm_stack_ptr_t)&call->base.value._tmp;
 			}
-			memcpy(dest, ptr, ret_type->store_size_bytes);
+			memcpy_fast(dest, ptr, ret_type->store_size_bytes);
 			call->base.value.data = dest;
 		} else {
 			call->base.value.data = NULL;
@@ -2741,7 +2750,7 @@ u64 vm_read_int(struct mir_type const *type, vm_stack_ptr_t src)
 {
 	bassert(src && "Attempt to read null source!");
 	u64 result = 0;
-	memcpy(&result, src, type->store_size_bytes);
+	memcpy_fast(&result, src, type->store_size_bytes);
 	return result;
 }
 
@@ -2751,7 +2760,7 @@ f64 vm_read_double(const struct mir_type *type, vm_stack_ptr_t src)
 	bassert(src && "Attempt to read null source!");
 	bassert(size == sizeof(f64) && "Target type is not f64 type!");
 	f64 result = 0;
-	memcpy(&result, src, size);
+	memcpy_fast(&result, src, size);
 	return result;
 }
 
@@ -2761,7 +2770,7 @@ vm_stack_ptr_t vm_read_ptr(const struct mir_type *type, vm_stack_ptr_t src)
 	bassert(src && "Attempt to read null source!");
 	bassert(size == sizeof(vm_stack_ptr_t) && "Target type is not pointer type!");
 	vm_stack_ptr_t result = 0;
-	memcpy(&result, src, size);
+	memcpy_fast(&result, src, size);
 	return result;
 }
 
@@ -2772,7 +2781,7 @@ f32 vm_read_float(const struct mir_type *type, vm_stack_ptr_t src)
 	bassert(size == sizeof(f32) && "Target type is not f64 type!");
 
 	f32 result = 0;
-	memcpy(&result, src, size);
+	memcpy_fast(&result, src, size);
 	return result;
 }
 
@@ -2790,7 +2799,7 @@ str_t vm_read_string(struct virtual_machine *vm, const struct mir_type *type, vm
 void vm_write_int(const struct mir_type *type, vm_stack_ptr_t dest, u64 i)
 {
 	bassert(dest && "Attempt to write to the null destination!");
-	memcpy(dest, &i, type->store_size_bytes);
+	memcpy_fast(dest, &i, type->store_size_bytes);
 }
 
 void vm_write_double(const struct mir_type *type, vm_stack_ptr_t dest, f64 i)
@@ -2798,7 +2807,7 @@ void vm_write_double(const struct mir_type *type, vm_stack_ptr_t dest, f64 i)
 	const usize size = type->store_size_bytes;
 	bassert(size == sizeof(f64) && "Target type is not f64 type!");
 	bassert(dest && "Attempt to write to the null destination!");
-	memcpy(dest, &i, size);
+	memcpy_fast(dest, &i, size);
 }
 
 void vm_write_float(const struct mir_type *type, vm_stack_ptr_t dest, f32 i)
@@ -2806,19 +2815,19 @@ void vm_write_float(const struct mir_type *type, vm_stack_ptr_t dest, f32 i)
 	const usize size = type->store_size_bytes;
 	bassert(size == sizeof(f32) && "Target type is not f64 type!");
 	bassert(dest && "Attempt to write to the null destination!");
-	memcpy(dest, &i, size);
+	memcpy_fast(dest, &i, size);
 }
 
 void vm_write_ptr(const struct mir_type *type, vm_stack_ptr_t dest, vm_stack_ptr_t ptr)
 {
 	bassert(dest && "Attempt to write to the null destination!");
-	memcpy(dest, &ptr, type->store_size_bytes);
+	memcpy_fast(dest, &ptr, type->store_size_bytes);
 }
 
 void _vm_write_value(usize dest_size, vm_stack_ptr_t dest, vm_stack_ptr_t src)
 {
 	bassert(dest && "Attempt to write to the null destination!");
-	memcpy(dest, src, dest_size);
+	memcpy_fast(dest, src, dest_size);
 }
 
 void vm_write_string(struct virtual_machine *vm,
@@ -2907,7 +2916,7 @@ void vm_do_cast(vm_stack_ptr_t   dest,
 	case MIR_CAST_ZEXT:
 	case MIR_CAST_TRUNC:
 		memset(dest, 0, dest_size);
-		memcpy(dest, src, src_size);
+		memcpy_fast(dest, src, src_size);
 		break;
 
 	case MIR_CAST_PTRTOBOOL: {

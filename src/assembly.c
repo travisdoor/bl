@@ -37,7 +37,7 @@
 #include "stb_ds.h"
 #include <string.h>
 
-#define EXPECTED_ARRAY_COUNT 256
+#define EXPECTED_ARRAY_COUNT 2048
 
 const char *arch_names[] = {
 #define GEN_ARCH
@@ -70,18 +70,6 @@ const char *env_names[] = {
 #undef entry
 #undef GEN_ENV
 };
-
-static const usize sarr_total_size = sizeof(union {
-	ast_nodes_t        _1;
-	mir_args_t         _2;
-	mir_fns_t          _3;
-	mir_types_t        _4;
-	mir_members_t      _5;
-	mir_variants_t     _6;
-	mir_instrs_t       _7;
-	mir_switch_cases_t _8;
-	ints_t             _9;
-});
 
 static void sarr_dtor(sarr_any_t *arr)
 {
