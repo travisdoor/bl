@@ -267,7 +267,7 @@ bool scan_char(struct context *ctx, struct token *tok)
 	return true;
 }
 
-inline int c_to_number(char c, s32 base)
+inline s32 c_to_number(char c, s32 base)
 {
 #ifndef _MSC_VER
 #pragma GCC diagnostic push
