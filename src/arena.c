@@ -111,10 +111,9 @@ void arena_terminate(struct arena *arena)
 	sync_delete(arena->sync);
 }
 
-void *arena_safe_alloc(struct arena *arena)
+void *arena_alloc(struct arena *arena)
 {
 	zone();
-	pthread_spin_lock(&arena->sync->lock);
 	if (!arena->current_chunk) {
 		arena->current_chunk = alloc_chunk(arena);
 		arena->first_chunk   = arena->current_chunk;
@@ -128,8 +127,15 @@ void *arena_safe_alloc(struct arena *arena)
 	}
 
 	void *elem = get_from_chunk(arena, arena->current_chunk, arena->current_chunk->count++);
-	pthread_spin_unlock(&arena->sync->lock);
-
 	bassert(is_aligned(elem, arena->elem_alignment) && "Unaligned allocation of arena element!");
 	return_zone(elem);
+}
+
+void *arena_safe_alloc(struct arena *arena)
+{
+	zone();
+	pthread_spin_lock(&arena->sync->lock);
+	void *mem = arena_alloc(arena);
+	pthread_spin_unlock(&arena->sync->lock);
+	return_zone(mem);
 }

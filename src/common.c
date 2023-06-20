@@ -112,12 +112,13 @@ struct string_cache {
 
 static struct string_cache *new_block(usize len, struct string_cache *prev)
 {
+	zone();
 	const usize          cap   = len > SC_BLOCK_BYTES ? len : SC_BLOCK_BYTES;
 	struct string_cache *cache = bmalloc(sizeof(struct string_cache) + cap);
 	cache->cap                 = (u32)cap;
 	cache->prev                = prev;
 	cache->len                 = 0;
-	return cache;
+	return_zone(cache);
 }
 
 char *scdup(struct string_cache **cache, const char *str, usize len)
@@ -157,7 +158,7 @@ char *scprint(struct string_cache **cache, const char *fmt, ...)
 	va_copy(args2, args);
 	const s32 len = vsnprintf(NULL, 0, fmt, args);
 	bassert(len > 0);
-	char *    buf  = scdup(cache, NULL, len);
+	char     *buf  = scdup(cache, NULL, len);
 	const s32 wlen = vsprintf(buf, fmt, args2);
 	bassert(wlen == len);
 	(void)wlen;
@@ -212,8 +213,8 @@ s32 levenshtein(const char *s1, const char *s2)
 bool search_source_file(const char *filepath,
                         const u32   flags,
                         const char *wdir,
-                        char **     out_filepath,
-                        char **     out_dirpath)
+                        char      **out_filepath,
+                        char      **out_dirpath)
 {
 	char *tmp = tstr();
 	if (!filepath) goto NOT_FOUND;
@@ -736,10 +737,10 @@ char *execute(const char *cmd)
 	return tmp;
 }
 
-const char *read_config(struct config *      config,
+const char *read_config(struct config       *config,
                         const struct target *target,
-                        const char *         path,
-                        const char *         default_value)
+                        const char          *path,
+                        const char          *default_value)
 {
 	bassert(config && target && path);
 	char *fullpath = tstr();

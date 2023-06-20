@@ -192,7 +192,6 @@ struct assembly {
 	struct {
 		struct scope_arenas scope;
 		struct mir_arenas   mir;
-		struct arena        ast;
 		struct arena        sarr;
 	} arenas;
 

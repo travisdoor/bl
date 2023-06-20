@@ -612,7 +612,6 @@ struct assembly *assembly_new(const struct target *target)
 
 	// set defaults
 	scope_arenas_init(&assembly->arenas.scope);
-	ast_arena_init(&assembly->arenas.ast);
 	arena_init(&assembly->arenas.sarr,
 	           sarr_total_size,
 	           16, // Is this correct?
@@ -684,7 +683,6 @@ void assembly_delete(struct assembly *assembly)
 	strfree(assembly->custom_linker_opt);
 	vm_terminate(&assembly->vm);
 	arena_terminate(&assembly->arenas.sarr);
-	ast_arena_terminate(&assembly->arenas.ast);
 	scope_arenas_terminate(&assembly->arenas.scope);
 	llvm_terminate(assembly);
 	dl_terminate(assembly);

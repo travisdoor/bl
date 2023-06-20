@@ -65,6 +65,7 @@ struct unit *unit_new(const char *filepath, struct token *load_from)
 	}
 	unit->loaded_from = load_from;
 	unit->hash        = strhash(unit->filepath ? unit->filepath : unit->name);
+	ast_arena_init(&unit->ast_arena);
 	tokens_init(&unit->tokens);
 	return unit;
 }
@@ -82,6 +83,7 @@ void unit_delete(struct unit *unit)
 	free(unit->dirpath);
 	free(unit->name);
 	free(unit->filename);
+	ast_arena_terminate(&unit->ast_arena);
 	tokens_terminate(&unit->tokens);
 	bfree(unit);
 }

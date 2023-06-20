@@ -28,10 +28,17 @@
 
 #include "builder.h"
 #include "tokens_inline_utils.h"
+#include <ctype.h>
 #include <float.h>
 #include <setjmp.h>
 #include <string.h>
-#include <ctype.h>
+
+#define USE_SIMD
+
+#ifdef USE_SIMD
+#include <emmintrin.h>
+#include <intrin.h>
+#endif
 
 #define is_ident(c) (isalnum(c) || (c) == '_')
 
@@ -131,6 +138,56 @@ bool scan_ident(struct context *ctx, struct token *tok)
 	char *begin = ctx->c;
 
 	s32 len = 0;
+	
+#ifdef USE_SIMD
+	while (true) {
+		// Process by 16 chars
+		const __m128i src = _mm_loadu_si128((__m128i *)(begin + len));
+
+		// Convert to uppercase
+		const __m128i range_shift = _mm_sub_epi8(src, _mm_set1_epi8((char)('a' + 128)));
+		const __m128i no_modify   = _mm_cmpgt_epi8(range_shift, _mm_set1_epi8(-128 + 25));
+		const __m128i flip        = _mm_andnot_si128(no_modify, _mm_set1_epi8(0x20));
+		const __m128i src_upper   = _mm_xor_si128(src, flip);
+
+		// Check for characters from A to Z.
+		const __m128i a = _mm_set1_epi8('A' - 1);
+		const __m128i z = _mm_set1_epi8('Z' + 1);
+
+		const __m128i gta      = _mm_cmpgt_epi8(src_upper, a);
+		const __m128i ltz      = _mm_cmplt_epi8(src_upper, z);
+		__m128i       is_alpha = _mm_and_si128(gta, ltz);
+
+		// Check for underscore.
+		const __m128i underscore = _mm_cmpeq_epi8(src_upper, _mm_set1_epi8('_'));
+		is_alpha                 = _mm_or_si128(is_alpha, underscore);
+
+		// Check for numbers
+		const __m128i zero = _mm_set1_epi8('0' - 1);
+		const __m128i nine = _mm_set1_epi8('9' + 1);
+
+		const __m128i gtzero    = _mm_cmpgt_epi8(src_upper, zero);
+		const __m128i ltnine    = _mm_cmplt_epi8(src_upper, nine);
+		const __m128i is_number = _mm_and_si128(gtzero, ltnine);
+
+		// Finalize
+		const __m128i is_ident = _mm_or_si128(is_alpha, is_number);
+
+		const int mask = _mm_movemask_epi8(is_ident) ^ 0xFFFF;
+		int       advance;
+		if (mask) {
+			advance = _tzcnt_u32(mask);
+		} else {
+			advance = 16;
+		}
+
+		len += advance;
+		if (mask) break;
+	}
+	
+	// Shift the global cursor.
+	ctx->c += len;
+#else
 	while (true) {
 		if (!is_ident(*ctx->c)) {
 			break;
@@ -139,6 +196,7 @@ bool scan_ident(struct context *ctx, struct token *tok)
 		len++;
 		ctx->c++;
 	}
+#endif
 
 	if (len == 0) return_zone(false);
 	tok->value.str    = make_str(scdup(&ctx->unit->string_cache, begin, len), len);

@@ -30,12 +30,12 @@
 #include "stb_ds.h"
 #include "tokens.h"
 
-#define ARENA_CHUNK_COUNT 256
+#define ARENA_CHUNK_COUNT 2048
 
 struct ast *
 ast_create_node(struct arena *arena, enum ast_kind c, struct token *tok, struct scope *parent_scope)
 {
-	struct ast *node  = arena_safe_alloc(arena);
+	struct ast *node  = arena_alloc(arena);
 	node->kind        = c;
 	node->owner_scope = parent_scope;
 	node->location    = tok ? &tok->location : NULL;

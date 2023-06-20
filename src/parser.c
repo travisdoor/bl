@@ -2555,7 +2555,7 @@ void parser_run(struct assembly *assembly, struct unit *unit)
 	struct context ctx = {
 	    .assembly     = assembly,
 	    .unit         = unit,
-	    .ast_arena    = &assembly->arenas.ast,
+	    .ast_arena    = &unit->ast_arena,
 	    .scope_arenas = &assembly->arenas.scope,
 	    .tokens       = &unit->tokens,
 	};
