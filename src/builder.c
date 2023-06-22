@@ -360,8 +360,10 @@ static void setup_assembly_pipeline(struct assembly *assembly, array(assembly_st
 
 static void print_stats(struct assembly *assembly)
 {
+
 	const f64 total_s = assembly->stats.parsing_lexing_s + assembly->stats.mir_s +
-	                    assembly->stats.llvm_s + assembly->stats.linking_s;
+	                    assembly->stats.llvm_s + assembly->stats.linking_s +
+	                    assembly->stats.llvm_obj_s;
 
 	builder_info(
 	    "--------------------------------------------------------------------------------\n"
@@ -371,6 +373,7 @@ static void print_stats(struct assembly *assembly)
 	    "  Lexing & Parsing: %10.3f seconds    %3.0f%%\n"
 	    "  MIR:              %10.3f seconds    %3.0f%%\n"
 	    "  LLVM IR:          %10.3f seconds    %3.0f%%\n"
+		"  LLVM Obj:         %10.3f seconds    %3.0f%%\n"
 	    "  Linking:          %10.3f seconds    %3.0f%%\n\n"
 	    "  Polymorph:        %10lld generated in %.3f seconds\n\n"
 	    "  Total:            %10.3f seconds\n"
@@ -385,6 +388,8 @@ static void print_stats(struct assembly *assembly)
 	    assembly->stats.mir_s / total_s * 100.,
 	    assembly->stats.llvm_s,
 	    assembly->stats.llvm_s / total_s * 100.,
+	    assembly->stats.llvm_obj_s,
+	    assembly->stats.llvm_obj_s / total_s * 100.,
 	    assembly->stats.linking_s,
 	    assembly->stats.linking_s / total_s * 100.,
 	    assembly->stats.polymorph_count,

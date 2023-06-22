@@ -249,7 +249,7 @@ static void native_lib_terminate(struct native_lib *lib)
 static void mir_init(struct assembly *assembly)
 {
 	mir_arenas_init(&assembly->arenas.mir);
-	arrsetcap(assembly->MIR.global_instrs, 1024);
+	arrsetcap(assembly->MIR.global_instrs, 4096);
 	arrsetcap(assembly->MIR.exported_instrs, 256);
 }
 

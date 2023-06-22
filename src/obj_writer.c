@@ -39,6 +39,7 @@
 void obj_writer_run(struct assembly *assembly)
 {
 	zone();
+	runtime_measure_begin(llvm_obj_generation);
 	char                *buf    = tstr();
 	const struct target *target = assembly->target;
 	const char          *name   = target->name;
@@ -52,5 +53,6 @@ void obj_writer_run(struct assembly *assembly)
 	}
 	LLVMDisposeMessage(error_msg);
 	put_tstr(buf);
+	assembly->stats.llvm_obj_s = runtime_measure_end(llvm_obj_generation);
 	return_zone();
 }
