@@ -58,17 +58,6 @@ static void scope_dtor(struct scope *scope)
 	sync_delete(scope->sync);
 }
 
-void scope_arenas_init(struct scope_arenas *arenas)
-{
-	arena_init(&arenas->scopes,
-	           sizeof(struct scope),
-	           alignment_of(struct scope),
-	           256,
-	           (arena_elem_dtor_t)scope_dtor);
-	arena_init(
-	    &arenas->entries, sizeof(struct scope_entry), alignment_of(struct scope_entry), 1024, NULL);
-}
-
 static inline struct scope_entry *
 lookup_usings(struct scope *scope, struct id *id, struct scope_entry **out_ambiguous)
 {
@@ -89,22 +78,39 @@ lookup_usings(struct scope *scope, struct id *id, struct scope_entry **out_ambig
 	return_zone(found);
 }
 
-void scope_arenas_terminate(struct scope_arenas *arenas)
+void scopes_context_init(struct scopes_context *ctx)
 {
-	arena_terminate(&arenas->scopes);
-	arena_terminate(&arenas->entries);
+	ctx->bookmarks = NULL;
+	arena_init(&ctx->arenas.scopes,
+	           sizeof(struct scope),
+	           alignment_of(struct scope),
+	           256,
+	           (arena_elem_dtor_t)scope_dtor);
+	arena_init(&ctx->arenas.entries,
+	           sizeof(struct scope_entry),
+	           alignment_of(struct scope_entry),
+	           1024,
+	           NULL);
 }
 
-struct scope *scope_create(struct scope_arenas *arenas,
-                           enum scope_kind      kind,
-                           struct scope        *parent,
-                           struct location     *loc)
+void scopes_context_terminate(struct scopes_context *ctx)
+{
+	hmfree(ctx->bookmarks);
+	arena_terminate(&ctx->arenas.scopes);
+	arena_terminate(&ctx->arenas.entries);
+}
+
+struct scope *scope_create(struct scopes_context *ctx,
+                           enum scope_kind        kind,
+                           struct scope          *parent,
+                           struct location       *loc)
 {
 	bassert(kind != SCOPE_NONE && "Invalid scope kind.");
-	struct scope *scope = arena_alloc(&arenas->scopes);
+	struct scope *scope = arena_alloc(&ctx->arenas.scopes);
 	scope->parent       = parent;
 	scope->kind         = kind;
 	scope->location     = loc;
+	scope->ctx          = ctx;
 
 	// Global scopes must be thread safe!
 	if (kind == SCOPE_GLOBAL) scope->sync = sync_new();
@@ -112,16 +118,17 @@ struct scope *scope_create(struct scope_arenas *arenas,
 	return scope;
 }
 
-struct scope *scope_safe_create(struct scope_arenas *arenas,
-                                enum scope_kind      kind,
-                                struct scope        *parent,
-                                struct location     *loc)
+struct scope *scope_safe_create(struct scopes_context *ctx,
+                                enum scope_kind        kind,
+                                struct scope          *parent,
+                                struct location       *loc)
 {
 	bassert(kind != SCOPE_NONE && "Invalid scope kind.");
-	struct scope *scope = arena_safe_alloc(&arenas->scopes);
+	struct scope *scope = arena_safe_alloc(&ctx->arenas.scopes);
 	scope->parent       = parent;
 	scope->kind         = kind;
 	scope->location     = loc;
+	scope->ctx          = ctx;
 
 	// Global scopes must be thread safe!
 	if (kind == SCOPE_GLOBAL) scope->sync = sync_new();
@@ -129,13 +136,13 @@ struct scope *scope_safe_create(struct scope_arenas *arenas,
 	return scope;
 }
 
-struct scope_entry *scope_create_entry(struct scope_arenas  *arenas,
-                                       enum scope_entry_kind kind,
-                                       struct id            *id,
-                                       struct ast           *node,
-                                       bool                  is_builtin)
+struct scope_entry *scope_create_entry(struct scopes_context *ctx,
+                                       enum scope_entry_kind  kind,
+                                       struct id             *id,
+                                       struct ast            *node,
+                                       bool                   is_builtin)
 {
-	struct scope_entry *entry = arena_safe_alloc(&arenas->entries);
+	struct scope_entry *entry = arena_safe_alloc(&ctx->arenas.entries);
 	entry->id                 = id;
 	entry->kind               = kind;
 	entry->node               = node;
@@ -157,6 +164,17 @@ void scope_insert(struct scope *scope, hash_t layer, struct scope_entry *entry)
 	return_zone();
 }
 
+void scope_insert_bookmark(struct scopes_context *ctx, hash_t layer, struct scope_entry *entry)
+{
+	blog("Bookmark: '%s'", entry->id->str);
+
+	bassert(entry);
+	const u64 hash = entry_hash(entry->id->hash, layer);
+	bassert(hash != 0);
+	bassert(hmgeti(ctx->bookmarks, hash) == -1 && "Duplicate scope entry key in bookmark table!!!");
+	hmput(ctx->bookmarks, hash, entry);
+}
+
 struct scope_entry *scope_lookup(struct scope *scope, scope_lookup_args_t *args)
 {
 	zone();
@@ -164,6 +182,29 @@ struct scope_entry *scope_lookup(struct scope *scope, scope_lookup_args_t *args)
 	struct scope_entry *found       = NULL;
 	struct scope_entry *found_using = NULL;
 	struct scope_entry *ambiguous   = NULL;
+
+#define REPORTS 0
+
+#if REPORTS
+	static s32 hit   = 0;
+	static s32 total = 0;
+	total++;
+#endif
+
+#if 0
+	{ // check bookmarks
+		bassert(scope->ctx);
+		struct scopes_context *ctx = scope->ctx;
+
+		const s64 i = hmgeti(ctx->bookmarks, args->id->hash);
+		if (i != -1) {
+			found = ctx->bookmarks[i].value;
+			bassert(found);
+
+			return_zone(found);
+		}
+	}
+#endif
 
 	u64 hash = entry_hash(args->id->hash, args->layer);
 	while (scope) {
@@ -175,28 +216,27 @@ struct scope_entry *scope_lookup(struct scope *scope, scope_lookup_args_t *args)
 
 		// Used scopes are handled in following way:
 		// If we found symbol in one of used scopes we can eventually use it as found result,
-		// however function local symbols are preferred (and can eventually hide symbols from used
-		// scope). This approach does not apply for global symbols; in case we have global with the
-		// same name as one of symbols from used scopes we must report an error (symbol is
-		// ambiguous). An ambiguous symbol is also symbol found in more than one of used scopes and
-		// must be also reported.
+		// however function local symbols are preferred (and can eventually hide symbols from
+		// used scope). This approach does not apply for global symbols; in case we have global
+		// with the same name as one of symbols from used scopes we must report an error (symbol
+		// is ambiguous). An ambiguous symbol is also symbol found in more than one of used
+		// scopes and must be also reported.
 		if (!found_using && args->out_ambiguous) {
 			found_using = lookup_usings(scope, args->id, &ambiguous);
 		}
 		const s64 i = hmgeti(scope->entries, hash);
 		if (i != -1) {
 			found = scope->entries[i].value;
-			if (found) {
-				if (!scope_is_local(scope) && found_using) { // not found in local scope
-					bassert(args->out_ambiguous);
-					(*args->out_ambiguous) = found_using;
-				}
-				break;
+			bassert(found);
+			if (!scope_is_local(scope) && found_using) { // not found in local scope
+				bassert(args->out_ambiguous);
+				(*args->out_ambiguous) = found_using;
 			}
+			break;
 		} else if (args->out_most_similar) {
 			bassert(args->out_most_similar_last_distance);
-			// @Performance: This might be expensive so we should do this only in rare cases (i.e.
-			// compilation failed due to unknown symbol...).
+			// @Performance: This might be expensive so we should do this only in rare cases
+			// (i.e. compilation failed due to unknown symbol...).
 			for (usize i = 0; i < hmlenu(scope->entries); ++i) {
 				struct scope_entry *entry = scope->entries[i].value;
 				const s32           d     = levenshtein(args->id->str, entry->id->str);
@@ -217,6 +257,11 @@ struct scope_entry *scope_lookup(struct scope *scope, scope_lookup_args_t *args)
 		found                  = found_using;
 		(*args->out_ambiguous) = ambiguous;
 	}
+
+#if REPORTS
+	if (found) hit++;
+	printf("(%3.0f%%) [%d/%d]\n", ((f32)hit / (f32)total) * 100.f, hit, total);
+#endif
 	return_zone(found);
 }
 

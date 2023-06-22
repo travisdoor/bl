@@ -599,13 +599,13 @@ struct assembly *assembly_new(const struct target *target)
 	vm_init(&assembly->vm, VM_STACK_SIZE);
 
 	// set defaults
-	scope_arenas_init(&assembly->arenas.scope);
+	scopes_context_init(&assembly->scopes_context);
 	arena_init(&assembly->arenas.sarr,
 	           sarr_total_size,
 	           16, // Is this correct?
 	           EXPECTED_ARRAY_COUNT,
 	           (arena_elem_dtor_t)sarr_dtor);
-	assembly->gscope = scope_create(&assembly->arenas.scope, SCOPE_GLOBAL, NULL, NULL);
+	assembly->gscope = scope_create(&assembly->scopes_context, SCOPE_GLOBAL, NULL, NULL);
 
 	dl_init(assembly);
 	mir_init(assembly);
@@ -671,7 +671,7 @@ void assembly_delete(struct assembly *assembly)
 	strfree(assembly->custom_linker_opt);
 	vm_terminate(&assembly->vm);
 	arena_terminate(&assembly->arenas.sarr);
-	scope_arenas_terminate(&assembly->arenas.scope);
+	scopes_context_terminate(&assembly->scopes_context);
 	llvm_terminate(assembly);
 	dl_terminate(assembly);
 	mir_terminate(assembly);

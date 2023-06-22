@@ -40,9 +40,17 @@ struct mir_type;
 struct mir_fn;
 struct mir_var;
 
-struct scope_arenas {
-	struct arena scopes;
-	struct arena entries;
+// Global context data used by all scopes in assembly.
+struct scopes_context {
+	hash_table(struct {
+		u64                 key;
+		struct scope_entry *value;
+	}) bookmarks;
+
+	struct {
+		struct arena scopes;
+		struct arena entries;
+	} arenas;
 };
 
 enum scope_entry_kind {
@@ -94,6 +102,7 @@ enum scope_kind {
 
 struct scope {
 	enum scope_kind         kind;
+	struct scopes_context  *ctx;
 	const char             *name; // optional
 	struct scope           *parent;
 	struct scope_sync_impl *sync;
@@ -109,25 +118,30 @@ struct scope {
 	bmagic_member
 };
 
-void scope_arenas_init(struct scope_arenas *arenas);
-void scope_arenas_terminate(struct scope_arenas *arenas);
+void scopes_context_init(struct scopes_context *ctx);
+void scopes_context_terminate(struct scopes_context *ctx);
 
-struct scope *scope_create(struct scope_arenas *arenas,
-                           enum scope_kind      kind,
-                           struct scope        *parent,
-                           struct location     *loc);
-struct scope *scope_safe_create(struct scope_arenas *arenas,
-                                enum scope_kind      kind,
-                                struct scope        *parent,
-                                struct location     *loc);
+struct scope *scope_create(struct scopes_context *ctx,
+                           enum scope_kind        kind,
+                           struct scope          *parent,
+                           struct location       *loc);
+struct scope *scope_safe_create(struct scopes_context *ctx,
+                                enum scope_kind        kind,
+                                struct scope          *parent,
+                                struct location       *loc);
 
-struct scope_entry *scope_create_entry(struct scope_arenas  *arenas,
-                                       enum scope_entry_kind kind,
-                                       struct id            *id,
-                                       struct ast           *node,
-                                       bool                  is_builtin);
+struct scope_entry *scope_create_entry(struct scopes_context *ctx,
+                                       enum scope_entry_kind  kind,
+                                       struct id             *id,
+                                       struct ast            *node,
+                                       bool                   is_builtin);
 
 void scope_insert(struct scope *scope, hash_t layer, struct scope_entry *entry);
+
+// Inserts scope entry into the quick bookmark table. The bookmark table is global table useful for
+// quick resolve of builtin or common types.
+void scope_insert_bookmark(struct scopes_context *ctx, hash_t layer, struct scope_entry *entry);
+
 void scope_lock(struct scope *scope);
 void scope_unlock(struct scope *scope);
 

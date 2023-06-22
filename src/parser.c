@@ -67,12 +67,12 @@ struct context {
 		enum hash_directive_flags value;
 	} *hash_directive_table;
 
-	struct assembly     *assembly;
-	struct unit         *unit;
-	struct arena        *ast_arena;
-	struct arena        *sarr_arena;
-	struct scope_arenas *scope_arenas;
-	struct tokens       *tokens;
+	struct assembly       *assembly;
+	struct unit           *unit;
+	struct arena          *ast_arena;
+	struct arena          *sarr_arena;
+	struct scopes_context *scopes_context;
+	struct tokens         *tokens;
 
 	// tmps
 	array(struct scope *) scope_stack;
@@ -544,7 +544,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
 		// Private scope contains only global entity declarations with 'private' flag set
 		// in ast node.
 		struct scope *scope = scope_safe_create(
-		    ctx->scope_arenas, SCOPE_PRIVATE, scope_get(ctx), &tok_directive->location);
+		    ctx->scopes_context, SCOPE_PRIVATE, scope_get(ctx), &tok_directive->location);
 
 		ctx->current_private_scope = scope;
 		ctx->unit->private_scope   = scope;
@@ -578,10 +578,10 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
 			bassert(scope_entry->data.scope && scope_entry->data.scope->kind == SCOPE_NAMED);
 		} else {
 			scope_entry = scope_create_entry(
-			    &ctx->assembly->arenas.scope, SCOPE_ENTRY_NAMED_SCOPE, id, scope, false);
+			    &ctx->assembly->scopes_context, SCOPE_ENTRY_NAMED_SCOPE, id, scope, false);
 			scope_insert(scope_get(ctx), SCOPE_DEFAULT_LAYER, scope_entry);
 			struct scope *named_scope = scope_safe_create(
-			    ctx->scope_arenas, SCOPE_NAMED, scope_get(ctx), &tok_directive->location);
+			    ctx->scopes_context, SCOPE_NAMED, scope_get(ctx), &tok_directive->location);
 			named_scope->name       = id->str;
 			scope_entry->data.scope = named_scope;
 		}
@@ -1181,7 +1181,7 @@ struct ast *parse_stmt_loop(struct context *ctx)
 	ctx->is_inside_loop      = true;
 
 	struct scope *scope =
-	    scope_safe_create(ctx->scope_arenas, SCOPE_LEXICAL, scope_get(ctx), &tok_begin->location);
+	    scope_safe_create(ctx->scopes_context, SCOPE_LEXICAL, scope_get(ctx), &tok_begin->location);
 
 	scope_push(ctx, scope);
 
@@ -1519,7 +1519,7 @@ struct ast *parse_expr_lit_fn(struct context *ctx)
 
 	// Create function scope for function signature.
 	scope_push(ctx,
-	           scope_safe_create(ctx->scope_arenas, SCOPE_FN, scope_get(ctx), &tok_fn->location));
+	           scope_safe_create(ctx->scopes_context, SCOPE_FN, scope_get(ctx), &tok_fn->location));
 
 	struct ast *type = parse_type_fn(ctx, /* named_args */ true, /* create_scope */ false);
 	bassert(type);
@@ -1735,7 +1735,7 @@ struct ast *parse_type_enum(struct context *ctx)
 	}
 
 	struct scope *scope =
-	    scope_safe_create(ctx->scope_arenas, SCOPE_TYPE_ENUM, scope_get(ctx), &tok->location);
+	    scope_safe_create(ctx->scopes_context, SCOPE_TYPE_ENUM, scope_get(ctx), &tok->location);
 	enm->data.type_enm.scope = scope;
 	scope_push(ctx, scope);
 
@@ -1976,7 +1976,7 @@ struct ast *parse_type_fn_return(struct context *ctx)
 		// eat (
 		struct token *tok_begin = tokens_consume(ctx->tokens);
 		struct scope *scope     = scope_safe_create(
-            ctx->scope_arenas, SCOPE_TYPE_STRUCT, scope_get(ctx), &tok_begin->location);
+            ctx->scopes_context, SCOPE_TYPE_STRUCT, scope_get(ctx), &tok_begin->location);
 		scope_push(ctx, scope);
 
 		struct ast *type_struct =
@@ -2030,7 +2030,8 @@ struct ast *parse_type_fn(struct context *ctx, bool named_args, bool create_scop
 
 	if (create_scope) {
 		scope_push(
-		    ctx, scope_safe_create(ctx->scope_arenas, SCOPE_FN, scope_get(ctx), &tok_fn->location));
+		    ctx,
+		    scope_safe_create(ctx->scopes_context, SCOPE_FN, scope_get(ctx), &tok_fn->location));
 	}
 
 	// parse arg types
@@ -2152,7 +2153,7 @@ struct ast *parse_type_struct(struct context *ctx)
 	}
 
 	struct scope *scope =
-	    scope_safe_create(ctx->scope_arenas, SCOPE_TYPE_STRUCT, scope_get(ctx), &tok->location);
+	    scope_safe_create(ctx->scopes_context, SCOPE_TYPE_STRUCT, scope_get(ctx), &tok->location);
 	scope_push(ctx, scope);
 
 	struct ast *type_struct =
@@ -2385,8 +2386,8 @@ struct ast *parse_block(struct context *ctx, enum scope_kind scope_kind)
 		bassert((scope_kind == SCOPE_LEXICAL || scope_kind == SCOPE_FN_BODY) &&
 		        "Unexpected scope kind, extend this assert in case it's intentional.");
 
-		struct scope *scope =
-		    scope_safe_create(ctx->scope_arenas, scope_kind, scope_get(ctx), &tok_begin->location);
+		struct scope *scope = scope_safe_create(
+		    ctx->scopes_context, scope_kind, scope_get(ctx), &tok_begin->location);
 
 		scope_push(ctx, scope);
 		scope_created = true;
@@ -2555,12 +2556,12 @@ void parser_run(struct assembly *assembly, struct unit *unit)
 
 	zone();
 	struct context ctx = {
-	    .assembly     = assembly,
-	    .unit         = unit,
-	    .ast_arena    = &unit->ast_arena,
-	    .sarr_arena   = &unit->sarr_arena,
-	    .scope_arenas = &assembly->arenas.scope,
-	    .tokens       = &unit->tokens,
+	    .assembly       = assembly,
+	    .unit           = unit,
+	    .ast_arena      = &unit->ast_arena,
+	    .sarr_arena     = &unit->sarr_arena,
+	    .scopes_context = &assembly->scopes_context,
+	    .tokens         = &unit->tokens,
 	};
 
 	init_hash_directives(&ctx);

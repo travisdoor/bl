@@ -44,13 +44,7 @@ if(BL_DIRTY_ENABLE)
 endif()
 
 option(TRACY_ENABLE "Turn on Tracy profiler." OFF)
-set(TRACY_VER "0.7.8" CACHE STRING "Set Tracy profiler version.")
-
-if(TRACY_ENABLE)
-    add_definitions(-DTRACY_ENABLE)
-    add_definitions(-DTRACY_CALLSTACK=8)
-    message(STATUS "Tracy profiler enabled.")
-endif()
+set(TRACY_VER "0.9.1" CACHE STRING "Set Tracy profiler version.")
 
 # setup output directories
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
@@ -166,7 +160,6 @@ file(GLOB SOURCE_FILES src/*.c)
 
 set(SOURCE_FILES
     ${SOURCE_FILES}
-    ${BL_DEPS_DIR}/tracy-${TRACY_VER}/TracyClient.cpp
 )
 
 # LLVM
@@ -179,6 +172,13 @@ add_executable(blc ${SOURCE_FILES} ${HEADER_FILES})
 
 add_subdirectory(${BL_DEPS_DIR}/dyncall-1.2)
 add_subdirectory(${BL_DEPS_DIR}/libyaml-0.2.5)
+
+if(TRACY_ENABLE)
+    add_definitions(-DTRACY_ENABLE)
+	add_subdirectory(${BL_DEPS_DIR}/tracy-${TRACY_VER})
+	target_link_libraries(blc PUBLIC Tracy::TracyClient)
+    message(STATUS "Tracy profiler enabled.")
+endif()
 
 if(MSVC)
     add_definitions(-DNOMINMAX)
@@ -223,8 +223,8 @@ target_include_directories(
             ${BL_DEPS_DIR}/dyncall-1.2/dyncall
             ${BL_DEPS_DIR}/dyncall-1.2/dynload
             ${BL_DEPS_DIR}/dyncall-1.2/dyncallback
-            ${BL_DEPS_DIR}/tracy-${TRACY_VER}
             ${BL_DEPS_DIR}/libyaml-0.2.5/include
+			${BL_DEPS_DIR}/tracy-${TRACY_VER}/public/tracy
             ${LLVM_INCLUDE_DIRS}
 )
 

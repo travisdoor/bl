@@ -470,10 +470,10 @@ SetJoystickUserPointer :: fn (jid: s32, pointer: *u8)  #extern "glfwSetJoystickU
 GetJoystickUserPointer :: fn (jid: s32) *u8 #extern "glfwGetJoystickUserPointer";
 JoystickIsGamepad :: fn (jid: s32) s32 #extern "glfwJoystickIsGamepad";
 SetJoystickCallback :: fn (cbfun: JoystickFun) JoystickFun #extern "glfwSetJoystickCallback";
-UpdateGamepadMappings :: fn (string: *u8) s32 #extern "glfwUpdateGamepadMappings";
+UpdateGamepadMappings :: fn (str: *u8) s32 #extern "glfwUpdateGamepadMappings";
 GetGamepadName :: fn (jid: s32) *u8 #extern "glfwGetGamepadName";
 GetGamepadState :: fn (jid: s32, state: *GamepadState) s32 #extern "glfwGetGamepadState";
-SetClipboardString :: fn (window: *Window, string: *u8)  #extern "glfwSetClipboardString";
+SetClipboardString :: fn (window: *Window, str: *u8)  #extern "glfwSetClipboardString";
 GetClipboardString :: fn (window: *Window) *u8 #extern "glfwGetClipboardString";
 GetTime :: fn () f64 #extern "glfwGetTime";
 SetTime :: fn (time: f64)  #extern "glfwSetTime";

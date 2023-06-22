@@ -199,12 +199,12 @@ struct assembly {
 	char                *custom_linker_opt;
 	array(char *) lib_paths;
 	array(struct native_lib) libs;
-	struct string_cache *string_cache;
+	struct string_cache  *string_cache;
+	struct scopes_context scopes_context;
 
 	struct {
-		struct scope_arenas scope;
-		struct mir_arenas   mir;
-		struct arena        sarr;
+		struct mir_arenas mir;
+		struct arena      sarr;
 	} arenas;
 
 	struct {
