@@ -103,7 +103,7 @@ enum scope_kind {
 struct scope {
 	enum scope_kind         kind;
 	struct scopes_context  *ctx;
-	const char             *name; // optional
+	str_t                   name; // optional
 	struct scope           *parent;
 	struct scope_sync_impl *sync;
 	struct location        *location;
@@ -161,8 +161,8 @@ typedef struct {
 
 	// When set, lookup will try to find most similar symbol in the scope tree, this might be
 	// expensive!
-	const char **out_most_similar;
-	s32         *out_most_similar_last_distance;
+	str_t *out_most_similar;
+	s32   *out_most_similar_last_distance;
 } scope_lookup_args_t;
 
 struct scope_entry *scope_lookup(struct scope *scope, scope_lookup_args_t *args);

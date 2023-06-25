@@ -863,14 +863,19 @@ DONE:
 	return_zone(state);
 }
 
-DCpointer assembly_find_extern(struct assembly *assembly, const char *symbol)
+DCpointer assembly_find_extern(struct assembly *assembly, const str_t symbol)
 {
+	char *tmp = tstr();
+	// The str_t might not be zero terminated so we have to deal with it in the C world.
+	strappend(tmp, "%.*s", symbol.len32, symbol.ptr);
+
 	void              *handle = NULL;
 	struct native_lib *lib;
 	for (usize i = 0; i < arrlenu(assembly->libs); ++i) {
 		lib    = &assembly->libs[i];
-		handle = dlFindSymbol(lib->handle, symbol);
+		handle = dlFindSymbol(lib->handle, tmp);
 		if (handle) break;
 	}
+	put_tstr(tmp);
 	return handle;
 }

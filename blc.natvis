@@ -13,4 +13,11 @@ SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
             <Item Name="[state]">state</Item>
         </Expand>
     </Type>
+    <Type Name="str_t">
+        <DisplayString>[{len}] {ptr,[len]na}</DisplayString>
+        <Expand>
+            <Item Name="[len]">len</Item>
+            <Item Name="[ptr]">ptr,[len]na</Item>
+        </Expand>
+    </Type>
 </AutoVisualizer>

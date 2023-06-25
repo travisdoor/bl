@@ -136,7 +136,7 @@ bool scan_ident(struct context *ctx, struct token *tok)
 	char *begin = ctx->c;
 
 	s32 len = 0;
-	
+
 #ifdef BL_USE_SIMD
 	while (true) {
 		// Process by 16 chars
@@ -182,7 +182,7 @@ bool scan_ident(struct context *ctx, struct token *tok)
 		len += advance;
 		if (mask) break;
 	}
-	
+
 	// Shift the global cursor.
 	ctx->c += len;
 #else
@@ -197,7 +197,8 @@ bool scan_ident(struct context *ctx, struct token *tok)
 #endif
 
 	if (len == 0) return_zone(false);
-	tok->value.str    = make_str(scdup(&ctx->unit->string_cache, begin, len), len);
+	/* tok->value.str    = make_str(scdup(&ctx->unit->string_cache, begin, len), len); */
+	tok->value.str    = make_str(begin, len);
 	tok->location.len = len;
 	ctx->col += len;
 	return_zone(true);

@@ -133,7 +133,7 @@ char *scdup(struct string_cache **cache, const char *str, usize len)
 	char *mem = ((char *)((*cache) + 1)) + (*cache)->len;
 	if (str) {
 		memcpy(mem, str, len - 1); // Do not copy zero terminator.
-		mem[len - 1] = '\0';            // Set zero terminator.
+		mem[len - 1] = '\0';       // Set zero terminator.
 	}
 	(*cache)->len += (u32)len;
 	return_zone(mem);
@@ -152,7 +152,6 @@ void scfree(struct string_cache **cache)
 
 char *scprint(struct string_cache **cache, const char *fmt, ...)
 {
-	zone();
 	va_list args, args2;
 	va_start(args, fmt);
 	va_copy(args2, args);
@@ -164,7 +163,23 @@ char *scprint(struct string_cache **cache, const char *fmt, ...)
 	(void)wlen;
 	va_end(args2);
 	va_end(args);
-	return_zone(buf);
+	return buf;
+}
+
+str_t scprint2(struct string_cache **cache, const char *fmt, ...)
+{
+	va_list args, args2;
+	va_start(args, fmt);
+	va_copy(args2, args);
+	const s32 len = vsnprintf(NULL, 0, fmt, args);
+	bassert(len > 0);
+	char     *buf  = scdup(cache, NULL, len);
+	const s32 wlen = vsprintf(buf, fmt, args2);
+	bassert(wlen == len);
+	(void)wlen;
+	va_end(args2);
+	va_end(args);
+	return make_str(buf, len);
 }
 
 // =================================================================================================
@@ -181,6 +196,16 @@ char *strtoupper(char *str)
 	return str;
 }
 
+bool str_match(str_t a, str_t b)
+{
+	// @Performance, @Inclomplete: Implement SIMD version.
+	if (a.len != b.len) return false;
+	for (s64 i = 0; i < a.len; i += 1) {
+		if (a.ptr[i] != b.ptr[i]) return false;
+	}
+	return true;
+}
+
 #define MIN3(a, b, c) ((a) < (b) ? ((a) < (c) ? (a) : (c)) : ((b) < (c) ? (b) : (c)))
 #define LEVENSHTEIN_MAX_LENGTH 256
 
@@ -188,23 +213,22 @@ char *strtoupper(char *str)
 // LEVENSHTEIN_MAX_LENGTH).
 // Copy-paste from
 // https://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Levenshtein_distance#C
-s32 levenshtein(const char *s1, const char *s2)
+s32 levenshtein(const str_t s1, const str_t s2)
 {
 	u32   x, y, lastdiag, olddiag;
-	usize s1len_orig = strlen(s1);
-	usize s2len_orig = strlen(s2);
-	usize s1len      = MIN(s1len_orig, LEVENSHTEIN_MAX_LENGTH);
-	usize s2len      = MIN(s2len_orig, LEVENSHTEIN_MAX_LENGTH);
+	usize s1len = MIN(s1.len, LEVENSHTEIN_MAX_LENGTH);
+	usize s2len = MIN(s2.len, LEVENSHTEIN_MAX_LENGTH);
 	u32   column[LEVENSHTEIN_MAX_LENGTH + 1];
 	for (y = 1; y <= s1len; ++y)
 		column[y] = y;
 	for (x = 1; x <= s2len; ++x) {
 		column[0] = x;
 		for (y = 1, lastdiag = x - 1; y <= s1len; y++) {
-			olddiag = column[y];
-			column[y] =
-			    MIN3(column[y] + 1, column[y - 1] + 1, lastdiag + (s1[y - 1] == s2[x - 1] ? 0 : 1));
-			lastdiag = olddiag;
+			olddiag   = column[y];
+			column[y] = MIN3(column[y] + 1,
+			                 column[y - 1] + 1,
+			                 lastdiag + (s1.ptr[y - 1] == s2.ptr[x - 1] ? 0 : 1));
+			lastdiag  = olddiag;
 		}
 	}
 	return column[s1len];

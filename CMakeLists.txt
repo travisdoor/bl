@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 3.3)
 project(bl VERSION 0.11.0)
 
-# Must use GNUInstallDirs to install libraries into correct locations on all
-# platforms.
+#Must use GNUInstallDirs to install libraries into correct locations on all
+#platforms.
 include(GNUInstallDirs)
 
 set(CMAKE_C_STANDARD 11)
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -18,7 +18,7 @@ set(BL_DEPS_DIR ${CMAKE_SOURCE_DIR}/deps)
 
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "" FORCE)
 
-# Set a default build type if none was specified
+#Set a default build type if none was specified
 set(DEFAULT_BUILD_TYPE "Release")
 if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}' as none was specified.")
@@ -46,7 +46,7 @@ endif()
 option(TRACY_ENABLE "Turn on Tracy profiler." OFF)
 set(TRACY_VER "0.9.1" CACHE STRING "Set Tracy profiler version.")
 
-# setup output directories
+#setup output directories
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 set(PDB_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_SOURCE_DIR}/bin")
@@ -63,7 +63,7 @@ elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
 endif()
 
 if(MSVC AND NOT LLVM_DIR)
-    # DOWNLOAD LLVM
+#DOWNLOAD LLVM
     set(BL_LLVM_DIR ${BL_DEPS_DIR}/llvm-${BL_LLVM_VER}-win64)
     set(BL_LLVM_DIR_ZIP ${BL_DEPS_DIR}/llvm-${BL_LLVM_VER}-win64.zip)
     set(BL_LLVM_REMOTE_ZIP ${BL_DEPS_REMOTE}/llvm-${BL_LLVM_VER}-win64.zip)
@@ -102,7 +102,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     set(BL_LLD_EXE "bl-lld.exe")
     set(BL_LINKER ${BL_LLD_EXE})
 
-	# Installation step for VSWHERE
+#Installation step for VSWHERE
 	install(
       FILES ${BL_VSWHERE}
       PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
@@ -127,7 +127,7 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
     set(BL_LINKER ${BL_LLD_EXE})
 endif()
 
-# DOWNLOAD LLD binary
+#DOWNLOAD LLD binary
 if(NOT EXISTS ${LLD_BIN})
     set(LLD_LOCAL_ZIP ${BL_DEPS_DIR}/${LLD_ZIP})
     set(LLD_REMOTE_ZIP ${BL_DEPS_REMOTE}/${LLD_ZIP})
@@ -158,9 +158,7 @@ find_package(LLVM ${BL_LLVM_VER} REQUIRED)
 file(GLOB HEADER_FILES src/*.h)
 file(GLOB SOURCE_FILES src/*.c)
 
-set(SOURCE_FILES
-    ${SOURCE_FILES}
-)
+set(SOURCE_FILES ${SOURCE_FILES} src/llvm_api.cpp)
 
 # LLVM
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")

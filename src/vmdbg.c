@@ -131,9 +131,10 @@ static void print_data(struct mir_type *type, vm_stack_ptr_t ptr)
 static void print_variable(struct mir_var *var)
 {
 	bassert(var);
+	// @Cleanup
 	char *type_name     = var->value.type ? mir_type2str(var->value.type, true) : "<UNKNOWN_TYPE>";
 	vm_stack_ptr_t data = vm_read_var(current_vm, var);
-	printf("%-32s%-32s", var->linkage_name, type_name);
+	printf("%-32.*s%-32s", var->linkage_name.len32, var->linkage_name.ptr, type_name);
 	print_data(var->value.type, data);
 	printf("\n");
 	if (var->value.type) put_tstr(type_name);

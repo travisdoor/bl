@@ -469,7 +469,7 @@ void builder_init(const struct builder_options *options, const char *exec_dir)
 	llvm_init();
 	// Generate hashes for builtin ids.
 	for (s32 i = 0; i < _BUILTIN_ID_COUNT; ++i) {
-		builtin_ids[i].hash = strhash(builtin_ids[i].str);
+		builtin_ids[i].hash = strhash2(builtin_ids[i].str);
 	}
 	arrsetcap(builder.tmp_strs, 16);
 	start_threads();

@@ -41,22 +41,22 @@
 
 #define ARENA_CHUNK_COUNT 1024
 #define ARENA_INSTR_CHUNK_COUNT 2048
-#define RESOLVE_TYPE_FN_NAME ".type"
-#define RESOLVE_EXPR_FN_NAME ".expr"
+#define RESOLVE_TYPE_FN_NAME make_str(".type", 5)
+#define RESOLVE_EXPR_FN_NAME make_str(".expr", 5)
 #define INIT_VALUE_FN_NAME ".init"
-#define IMPL_FN_NAME ".impl"
-#define IMPL_VARGS_TMP_ARR ".vargs.arr"
-#define IMPL_VARGS_TMP ".vargs"
-#define IMPL_ANY_TMP ".any"
-#define IMPL_ANY_EXPR_TMP ".any.expr"
-#define IMPL_COMPOUND_TMP ".compound"
-#define IMPL_RTTI_ENTRY ".rtti"
-#define IMPL_TESTCASES_TMP ".testcases"
-#define IMPL_ARG_DEFAULT ".arg.default"
-#define IMPL_CALL_LOC ".call.loc"
-#define IMPL_RET_TMP ".ret"
-#define IMPL_UNROLL_TMP ".unroll"
-#define IMPL_TOSLICE_TMP ".toslice"
+#define IMPL_FN_NAME make_str(".impl", 5)
+#define IMPL_VARGS_TMP_ARR make_str(".vargs.arr", 10)
+#define IMPL_VARGS_TMP make_str(".vargs", 6)
+#define IMPL_ANY_TMP make_str(".any", 4)
+#define IMPL_ANY_EXPR_TMP make_str(".any.expr", 9)
+#define IMPL_COMPOUND_TMP make_str(".compound", 9)
+#define IMPL_RTTI_ENTRY make_str(".rtti", 5)
+#define IMPL_TESTCASES_TMP make_str(".testcases", 10)
+#define IMPL_ARG_DEFAULT make_str(".arg.default", 12)
+#define IMPL_CALL_LOC make_str(".call.loc", 9)
+#define IMPL_RET_TMP make_str(".ret", 4)
+#define IMPL_UNROLL_TMP make_str(".unroll", 7)
+#define IMPL_TOSLICE_TMP make_str(".toslice", 8)
 #define NO_REF_COUNTING (-1)
 
 #define analyze_instr_rq(i)                                                                        \
@@ -253,7 +253,7 @@ static void            testing_add_test_case(struct context *ctx, struct mir_fn 
 static struct mir_var *testing_gen_meta(struct context *ctx);
 
 // Execute all registered test cases in current assembly.
-static const char *get_intrinsic(const char *name);
+static str_t get_intrinsic(const str_t name);
 // Register incomplete scope entry for symbol.
 static struct scope_entry *register_symbol(struct context *ctx,
                                            struct ast     *node,
@@ -297,6 +297,7 @@ static void type_init_id(struct context *ctx, struct mir_type *type);
 // Create new type. The 'user_id' is optional.
 static struct mir_type *
 create_type(struct context *ctx, enum mir_type_kind kind, struct id *user_id);
+static struct mir_type *create_type2(struct context *ctx, enum mir_type_kind kind, struct id id);
 static struct mir_type *create_type_type(struct context *ctx);
 static struct mir_type *create_type_named_scope(struct context *ctx);
 static struct mir_type *create_type_null(struct context *ctx, struct mir_type *base_type);
@@ -304,8 +305,8 @@ static struct mir_type *create_type_void(struct context *ctx);
 static struct mir_type *create_type_bool(struct context *ctx);
 static struct mir_type *create_type_poly(struct context *ctx, bool is_master);
 static struct mir_type *
-create_type_int(struct context *ctx, struct id *id, s32 bitcount, bool is_signed);
-static struct mir_type *create_type_real(struct context *ctx, struct id *id, s32 bitcount);
+create_type_int(struct context *ctx, struct id id, s32 bitcount, bool is_signed);
+static struct mir_type *create_type_real(struct context *ctx, struct id id, s32 bitcount);
 static struct mir_type *create_type_ptr(struct context *ctx, struct mir_type *src_type);
 static struct mir_type *create_type_placeholder(struct context *ctx);
 
@@ -409,7 +410,7 @@ static struct mir_var *create_var(struct context *ctx, create_var_args_t *args);
 
 typedef struct {
 	struct ast      *decl_node; // optional
-	const char      *name;
+	str_t            name;
 	struct mir_type *alloc_type;
 	bool             is_mutable;
 	bool             is_global;
@@ -422,7 +423,7 @@ static struct mir_var *create_var_impl(struct context *ctx, create_var_impl_args
 typedef struct {
 	struct ast                        *node;
 	struct id                         *id;
-	const char                        *linkage_name;
+	str_t                              linkage_name;
 	enum ast_flags                     flags;
 	struct mir_instr_fn_proto         *prototype;
 	bool                               is_global;
@@ -709,7 +710,7 @@ static struct mir_instr *append_instr_decl_var(struct context               *ctx
 
 typedef struct {
 	struct ast       *node; // Optional
-	const char       *name;
+	str_t             name;
 	struct mir_instr *type; // Optional
 	struct mir_instr *init; // Optional
 	bool              is_mutable;
@@ -805,7 +806,7 @@ static struct mir_instr *
 ast_create_global_initializer(struct context *ctx, struct ast *ast_value, struct mir_instr *decls);
 static struct mir_instr *ast_create_type_resolver_call(struct context *ctx, struct ast *ast_type);
 static struct mir_instr *ast_create_expr_resolver_call(struct context  *ctx,
-                                                       const char      *fn_name,
+                                                       str_t            fn_name,
                                                        struct mir_type *fn_type,
                                                        struct ast      *ast_expr);
 static void              ast_push_defer_stack(struct context *ctx);
@@ -859,7 +860,7 @@ static struct mir_instr *ast_expr_lit_bool(struct context *ctx, struct ast *expr
 static struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
                                          struct ast          *lit_fn,
                                          struct ast          *decl_node,
-                                         const char          *explicit_linkage_name, // optional
+                                         str_t                explicit_linkage_name, // optional
                                          bool                 is_global,
                                          enum ast_flags       flags,
                                          enum builtin_id_kind builtin_id);
@@ -1565,10 +1566,16 @@ static inline void analyze_notify_provided(struct context *ctx, hash_t hash)
 }
 // =================================================================================================
 
-static inline const char *unique_name(struct context *ctx, const char *prefix)
+static inline str_t unique_name(struct context *ctx, const char *prefix)
 {
 	static u64 ui = 0;
-	return scprint(&ctx->assembly->string_cache, "%s.%llu", prefix, ui++);
+	return scprint2(&ctx->assembly->string_cache, "%s.%llu", prefix, ui++);
+}
+
+static inline str_t unique_name2(struct context *ctx, const str_t prefix)
+{
+	static u64 ui = 0;
+	return scprint2(&ctx->assembly->string_cache, "%.*s.%llu", prefix.len32, prefix.ptr, ui++);
 }
 
 static inline bool is_builtin(struct ast *ident, enum builtin_id_kind kind)
@@ -1794,24 +1801,26 @@ void ast_free_defer_stack(struct context *ctx)
 	arrfree(ctx->ast.defer_stack);
 }
 
+static void gen_id_struct(char *tmp, struct mir_type *type)
+{
+	if (type->user_id) {
+		const str_t name = type->user_id->str;
+		strappend(tmp, "%.*s", name.len32, name.ptr);
+	}
+	strappend(tmp, "{");
+	for (usize i = 0; i < sarrlenu(type->data.strct.members); ++i) {
+		struct mir_member *member = sarrpeek(type->data.strct.members, i);
+		const str_t        name   = member->type->id.str;
+		bassert(name.len);
+		strappend(tmp, "%.*s", name.len32, name.ptr);
+		if (i != sarrlenu(type->data.strct.members) - 1) strappend(tmp, ",");
+	}
+	strappend(tmp, "}");
+}
+
 void type_init_id(struct context *ctx, struct mir_type *type)
 {
 	zone();
-	// =============================================================================================
-#define gen_id_struct(tmp)                                                                         \
-	if (type->user_id) {                                                                           \
-		strappend(tmp, "%s", type->user_id->str);                                                  \
-	}                                                                                              \
-	strappend(tmp, "{");                                                                           \
-	for (usize i = 0; i < sarrlenu(type->data.strct.members); ++i) {                               \
-		struct mir_member *member = sarrpeek(type->data.strct.members, i);                         \
-		bassert(member->type->id.str);                                                             \
-		strappend(tmp, "%s", member->type->id.str);                                                \
-		if (i != sarrlenu(type->data.strct.members) - 1) strappend(tmp, ",");                      \
-	}                                                                                              \
-	strappend(tmp, "}");                                                                           \
-	(void)0
-	// =============================================================================================
 	bassert(type && "Invalid type pointer!");
 	char *tmp = tstr();
 
@@ -1822,21 +1831,20 @@ void type_init_id(struct context *ctx, struct mir_type *type)
 	case MIR_TYPE_REAL:
 	case MIR_TYPE_NAMED_SCOPE:
 	case MIR_TYPE_INT: {
+		babort("This should be removed!!!");
 		bassert(type->user_id);
-		strprint(tmp, "%s", type->user_id->str);
+		strprint(tmp, "%.*s", type->user_id->str.len32, type->user_id->str.ptr);
 		break;
 	}
 
 	case MIR_TYPE_NULL: {
-		strprint(tmp, "n.%s", type->data.null.base_type->id.str);
+		const str_t s = type->data.null.base_type->id.str;
+		strprint(tmp, "n.%.*s", s.len32, s.ptr);
 		break;
 	}
 
 	case MIR_TYPE_POLY: {
-		static u64 serial = 0;
-		bassert(type->user_id);
 		strprint(tmp, "?%c", type->data.poly.is_master ? 'M' : 'S');
-		// serial++;
 		break;
 	}
 
@@ -1846,7 +1854,8 @@ void type_init_id(struct context *ctx, struct mir_type *type)
 	}
 
 	case MIR_TYPE_PTR: {
-		strprint(tmp, "p.%s", type->data.ptr.expr->id.str);
+		const str_t s = type->data.ptr.expr->id.str;
+		strprint(tmp, "p.%.*s", s.len32, s.ptr);
 		break;
 	}
 
@@ -1855,22 +1864,19 @@ void type_init_id(struct context *ctx, struct mir_type *type)
 		// append all arg types isd
 		for (usize i = 0; i < sarrlenu(type->data.fn.args); ++i) {
 			struct mir_arg *arg = sarrpeek(type->data.fn.args, i);
-			bassert(arg->type->id.str);
+			const str_t     s   = arg->type->id.str;
+			bassert(s.len);
 			if (i != sarrlenu(type->data.fn.args) - 1) {
-				strappend(tmp, "%s,", arg->type->id.str);
+				strappend(tmp, "%.*s,", s.len32, s.ptr);
 			} else {
-				strappend(tmp, "%s", arg->type->id.str);
+				strappend(tmp, "%.*s", s.len32, s.ptr);
 			}
 		}
 		strappend(tmp, ")");
 		type->data.fn.argument_hash = strhash(tmp);
-		if (type->data.fn.ret_type) {
-			bassert(type->data.fn.ret_type->id.str);
-			strappend(tmp, "%s", type->data.fn.ret_type->id.str);
-		} else {
-			// implicit return void
-			strappend(tmp, "%s", ctx->builtin_types->t_void->id.str);
-		}
+		const str_t ret_type_name   = type->data.fn.ret_type ? type->data.fn.ret_type->id.str
+		                                                     : ctx->builtin_types->t_void->id.str;
+		strappend(tmp, "%.*s", ret_type_name.len32, ret_type_name.ptr);
 		break;
 	}
 
@@ -1880,11 +1886,12 @@ void type_init_id(struct context *ctx, struct mir_type *type)
 		mir_types_t *variants = type->data.fn_group.variants;
 		for (usize i = 0; i < sarrlenu(variants); ++i) {
 			struct mir_type *variant = sarrpeek(variants, i);
-			bassert(variant->id.str);
+			const str_t      name    = variant->id.str;
+			bassert(name.len);
 			if (i != sarrlenu(variants) - 1) {
-				strappend(tmp, "%s,", variant->id.str);
+				strappend(tmp, "%.*s,", name.len32, name.ptr);
 			} else {
-				strappend(tmp, "%s", variant->id.str);
+				strappend(tmp, "%.*s", name.len32, name.ptr);
 			}
 		}
 		strappend(tmp, "}");
@@ -1892,34 +1899,36 @@ void type_init_id(struct context *ctx, struct mir_type *type)
 	}
 
 	case MIR_TYPE_ARRAY: {
+		const str_t elem_type_name = type->data.array.elem_type->id.str;
 		strappend(tmp,
-		          "%llu.%s",
+		          "%llu.%.*s",
 		          (unsigned long long)type->data.array.len,
-		          type->data.array.elem_type->id.str);
+		          elem_type_name.len32,
+		          elem_type_name.ptr);
 		break;
 	}
 
 	case MIR_TYPE_STRING: {
 		strappend(tmp, "ss.");
-		gen_id_struct(tmp);
+		gen_id_struct(tmp, type);
 		break;
 	}
 
 	case MIR_TYPE_SLICE: {
 		strappend(tmp, "sl.");
-		gen_id_struct(tmp);
+		gen_id_struct(tmp, type);
 		break;
 	}
 
 	case MIR_TYPE_DYNARR: {
 		strappend(tmp, "da.");
-		gen_id_struct(tmp);
+		gen_id_struct(tmp, type);
 		break;
 	}
 
 	case MIR_TYPE_VARGS: {
 		strappend(tmp, "sv.");
-		gen_id_struct(tmp);
+		gen_id_struct(tmp, type);
 		break;
 	}
 
@@ -1927,37 +1936,25 @@ void type_init_id(struct context *ctx, struct mir_type *type)
 		static u64 serial   = 0;
 		const bool is_union = type->data.strct.is_union;
 		if (type->user_id) {
-			strprint(tmp, "%s%llu.%s", is_union ? "u" : "s", serial, type->user_id->str);
+			const str_t name = type->user_id->str;
+			strprint(tmp, "%s%llu.%.*s", is_union ? "u" : "s", serial, name.len32, name.ptr);
 			++serial;
 			break;
 		}
 		strappend(tmp, is_union ? "u." : "s.");
-		gen_id_struct(tmp);
+		gen_id_struct(tmp, type);
 		break;
 	}
 
 	case MIR_TYPE_ENUM: {
 		static u64 serial = 0;
 		if (type->user_id) {
-			strappend(tmp, "e%llu.%s", serial, type->user_id->str);
+			const str_t name = type->user_id->str;
+			strappend(tmp, "e%llu.%.*s", serial, name.len32, name.ptr);
 		} else {
 			strappend(tmp, "e%llu", serial);
 		}
 		++serial;
-#if 0
-		strappend(tmp, "(%s){", type->data.enm.base_type->id.str);
-		mir_variants_t *variants = type->data.enm.variants;
-		for (usize i = 0; i < sarrlenu(variants); ++i) {
-			struct mir_variant *variant = sarrpeek(variants, i);
-			if (i != sarrlenu(type->data.enm.variants) - 1) {
-				strappend(tmp, "%lld,", variant->value);
-			} else {
-				strappend(tmp, "%lld", variant->value);
-			}
-		}
-
-		strappend(tmp, "}");
-#endif
 		break;
 	}
 
@@ -1965,7 +1962,11 @@ void type_init_id(struct context *ctx, struct mir_type *type)
 		BL_UNIMPLEMENTED;
 	}
 
-	id_init(&type->id, scdup(&ctx->assembly->string_cache, tmp, strlenu(tmp)));
+	// @Performance!!!
+	const usize tmp_len = strlenu(tmp);
+	const str_t dup     = make_str(scdup(&ctx->assembly->string_cache, tmp, tmp_len), tmp_len);
+	id_init(&type->id, dup);
+
 	put_tstr(tmp);
 #if TRACY_ENABLE
 	static int tc = 0;
@@ -1973,16 +1974,25 @@ void type_init_id(struct context *ctx, struct mir_type *type)
 	BL_TRACY_MESSAGE("CREATE_TYPE", "%s", type->id.str);
 #endif
 	return_zone();
-
-#undef gen_id_struct
 }
 
+// @Cleanup
 struct mir_type *create_type(struct context *ctx, enum mir_type_kind kind, struct id *user_id)
 {
 	struct mir_type *type = arena_alloc(&ctx->assembly->arenas.mir.type);
 	bmagic_set(type);
 	type->kind    = kind;
 	type->user_id = user_id;
+	return type;
+}
+
+struct mir_type *create_type2(struct context *ctx, enum mir_type_kind kind, struct id id)
+{
+	struct mir_type *type = arena_alloc(&ctx->assembly->arenas.mir.type);
+	bmagic_set(type);
+	type->kind    = kind;
+	type->id      = id;
+	type->user_id = &type->id; // @Incomplete!!!
 	return type;
 }
 
@@ -2271,8 +2281,8 @@ add_global_int(struct context *ctx, struct id *id, bool is_mutable, struct mir_t
 
 struct mir_type *create_type_type(struct context *ctx)
 {
-	struct mir_type *tmp = create_type(ctx, MIR_TYPE_TYPE, &builtin_ids[BUILTIN_ID_TYPE_TYPE]);
-	type_init_id(ctx, tmp);
+	struct id        id  = builtin_ids[BUILTIN_ID_TYPE_TYPE];
+	struct mir_type *tmp = create_type2(ctx, MIR_TYPE_TYPE, id);
 	type_init_llvm_dummy(ctx, tmp);
 	return tmp;
 }
@@ -2280,8 +2290,7 @@ struct mir_type *create_type_type(struct context *ctx)
 struct mir_type *create_type_named_scope(struct context *ctx)
 {
 	struct mir_type *tmp =
-	    create_type(ctx, MIR_TYPE_NAMED_SCOPE, &builtin_ids[BUILTIN_ID_TYPE_NAMED_SCOPE]);
-	type_init_id(ctx, tmp);
+	    create_type2(ctx, MIR_TYPE_NAMED_SCOPE, builtin_ids[BUILTIN_ID_TYPE_NAMED_SCOPE]);
 	type_init_llvm_dummy(ctx, tmp);
 	return tmp;
 }
@@ -2303,7 +2312,7 @@ static bool is_type_cached(struct mir_type *t)
 		case MIR_TYPE_INT:
 		case MIR_TYPE_STRING:
 		case MIR_TYPE_ENUM:
-		/* case MIR_TYPE_FN: */
+		case MIR_TYPE_FN:
 		case MIR_TYPE_VOID:
 		case MIR_TYPE_POLY:
 			return true;
@@ -2313,7 +2322,36 @@ static bool is_type_cached(struct mir_type *t)
 		}
 	}
 }
+#if 0 //@Incomplete
+static struct id gen_typeid(struct context *ctx, struct mir_type *t)
+{
+	bassert(t);
 
+	struct id id;
+
+	switch (t->kind) {
+	case MIR_TYPE_INT:
+	case MIR_TYPE_REAL:
+	case MIR_TYPE_BOOL:
+	case MIR_TYPE_TYPE:
+	case MIR_TYPE_NAMED_SCOPE:
+		bassert(t->user_id);
+		id = *t->user_id;
+		break;
+
+	case MIR_TYPE_PTR:
+		break;
+		
+	default:
+		babort("Missing implementation!");
+	}
+	return id;
+}
+#endif
+
+#define ENABLE_TYPE_CACHE 0
+
+#if ENABLE_TYPE_CACHE
 static hash_t null_hash(struct context *ctx, struct mir_type *src_type)
 {
 	struct id id;
@@ -2323,11 +2361,13 @@ static hash_t null_hash(struct context *ctx, struct mir_type *src_type)
 	put_tstr(tmp);
 	return id.hash;
 }
+#endif
 
 struct mir_type *create_type_null(struct context *ctx, struct mir_type *base_type)
 {
 	bassert(base_type);
 
+#if ENABLE_TYPE_CACHE
 	const bool is_cached = is_type_cached(base_type);
 	if (is_cached) {
 		hash_t    expected_hash = null_hash(ctx, base_type);
@@ -2336,34 +2376,56 @@ struct mir_type *create_type_null(struct context *ctx, struct mir_type *base_typ
 			return ctx->type_cache[i].value;
 		}
 	}
+#endif
 
 	struct mir_type *tmp     = create_type(ctx, MIR_TYPE_NULL, &builtin_ids[BUILTIN_ID_NULL]);
 	tmp->data.null.base_type = base_type;
 	type_init_id(ctx, tmp);
 	type_init_llvm_null(ctx, tmp);
+#if ENABLE_TYPE_CACHE
 	if (is_cached) hmput(ctx->type_cache, tmp->id.hash, tmp);
+#endif
 	return tmp;
 }
 
 struct mir_type *create_type_void(struct context *ctx)
 {
-	struct mir_type *tmp = create_type(ctx, MIR_TYPE_VOID, &builtin_ids[BUILTIN_ID_TYPE_VOID]);
-	type_init_id(ctx, tmp);
+	struct id        id  = builtin_ids[BUILTIN_ID_TYPE_VOID];
+	struct mir_type *tmp = create_type2(ctx, MIR_TYPE_VOID, id);
 	type_init_llvm_void(ctx, tmp);
 	return tmp;
 }
 
 struct mir_type *create_type_bool(struct context *ctx)
 {
-	struct mir_type *tmp = create_type(ctx, MIR_TYPE_BOOL, &builtin_ids[BUILTIN_ID_TYPE_BOOL]);
-	type_init_id(ctx, tmp);
+	struct id        id  = builtin_ids[BUILTIN_ID_TYPE_BOOL];
+	struct mir_type *tmp = create_type2(ctx, MIR_TYPE_BOOL, id);
 	type_init_llvm_bool(ctx, tmp);
+	return tmp;
+}
+
+struct mir_type *create_type_int(struct context *ctx, struct id id, s32 bitcount, bool is_signed)
+{
+	bassert(bitcount > 0);
+	struct mir_type *tmp        = create_type2(ctx, MIR_TYPE_INT, id);
+	tmp->data.integer.bitcount  = bitcount;
+	tmp->data.integer.is_signed = is_signed;
+
+	type_init_llvm_int(ctx, tmp);
+	return tmp;
+}
+
+struct mir_type *create_type_real(struct context *ctx, struct id id, s32 bitcount)
+{
+	bassert(bitcount > 0);
+	struct mir_type *tmp    = create_type2(ctx, MIR_TYPE_REAL, id);
+	tmp->data.real.bitcount = bitcount;
+	type_init_llvm_real(ctx, tmp);
 	return tmp;
 }
 
 struct mir_type *create_type_poly(struct context *ctx, bool is_master)
 {
-	bassert(user_id);
 	struct mir_type *tmp     = create_type(ctx, MIR_TYPE_POLY, NULL);
 	tmp->data.poly.is_master = is_master;
 	type_init_id(ctx, tmp);
@@ -2371,32 +2433,7 @@ struct mir_type *create_type_poly(struct context *ctx, bool is_master)
 	return tmp;
 }
 
-struct mir_type *create_type_int(struct context *ctx, struct id *id, s32 bitcount, bool is_signed)
-{
-	bassert(id);
-	bassert(bitcount > 0);
-	struct mir_type *tmp        = create_type(ctx, MIR_TYPE_INT, id);
-	tmp->data.integer.bitcount  = bitcount;
-	tmp->data.integer.is_signed = is_signed;
-
-	type_init_id(ctx, tmp);
-	type_init_llvm_int(ctx, tmp);
-
-	return tmp;
-}
-
-struct mir_type *create_type_real(struct context *ctx, struct id *id, s32 bitcount)
-{
-	bassert(bitcount > 0);
-	struct mir_type *tmp    = create_type(ctx, MIR_TYPE_REAL, id);
-	tmp->data.real.bitcount = bitcount;
-
-	type_init_id(ctx, tmp);
-	type_init_llvm_real(ctx, tmp);
-
-	return tmp;
-}
-
+#if ENABLE_TYPE_CACHE
 static hash_t pointer_hash(struct context *ctx, struct mir_type *src_type)
 {
 	struct id id;
@@ -2406,11 +2443,13 @@ static hash_t pointer_hash(struct context *ctx, struct mir_type *src_type)
 	put_tstr(tmp);
 	return id.hash;
 }
+#endif
 
 struct mir_type *create_type_ptr(struct context *ctx, struct mir_type *src_type)
 {
 	bassert(src_type && "Invalid src type for pointer type.");
 
+#if ENABLE_TYPE_CACHE
 	const bool is_cached = is_type_cached(src_type);
 
 	if (is_cached) {
@@ -2420,13 +2459,16 @@ struct mir_type *create_type_ptr(struct context *ctx, struct mir_type *src_type)
 			return ctx->type_cache[i].value;
 		}
 	}
+#endif
 
 	struct mir_type *tmp = create_type(ctx, MIR_TYPE_PTR, NULL);
 	tmp->data.ptr.expr   = src_type;
 	type_init_id(ctx, tmp);
 	type_init_llvm_ptr(ctx, tmp);
 
+#if ENABLE_TYPE_CACHE
 	if (is_cached) hmput(ctx->type_cache, tmp->id.hash, tmp);
+#endif
 	return tmp;
 }
 
@@ -2875,7 +2917,7 @@ void type_init_llvm_struct(struct context *ctx, struct mir_type *type)
 {
 	if (type->data.strct.is_incomplete_fwd_struct) {
 		bassert(type->user_id && "Missing user id for incomplete struct type.");
-		type->llvm_type = LLVMStructCreateNamed(ctx->assembly->llvm.ctx, type->user_id->str);
+		type->llvm_type = llvm_struct_create_named(ctx->assembly->llvm.ctx, type->user_id->str);
 		return;
 	}
 
@@ -2915,7 +2957,7 @@ void type_init_llvm_struct(struct context *ctx, struct mir_type *type)
 		if (type->llvm_type == NULL) {
 			// Create new named type only if it's not already created (by incomplete
 			// type declaration).
-			type->llvm_type = LLVMStructCreateNamed(ctx->assembly->llvm.ctx, type->user_id->str);
+			type->llvm_type = llvm_struct_create_named(ctx->assembly->llvm.ctx, type->user_id->str);
 		}
 
 		LLVMStructSetBody(
@@ -2992,7 +3034,7 @@ struct mir_var *create_var(struct context *ctx, create_var_args_t *args)
 
 static struct mir_var *create_var_impl(struct context *ctx, create_var_impl_args_t *args)
 {
-	bassert(args->name);
+	bassert(args->name.len);
 	struct mir_var *tmp    = arena_alloc(&ctx->assembly->arenas.mir.var);
 	tmp->value.type        = args->alloc_type;
 	tmp->value.is_comptime = args->is_comptime;
@@ -4902,7 +4944,7 @@ struct result analyze_instr_toany(struct context *ctx, struct mir_instr_to_any *
 		// temporary variable containing the value and fetch pointer to this variable.
 		toany->expr_tmp = create_var_impl(ctx,
 		                                  &(create_var_impl_args_t){
-		                                      .name       = unique_name(ctx, IMPL_ANY_EXPR_TMP),
+		                                      .name       = unique_name2(ctx, IMPL_ANY_EXPR_TMP),
 		                                      .alloc_type = rtti_type,
 		                                  });
 	}
@@ -4948,13 +4990,12 @@ struct result analyze_instr_toany(struct context *ctx, struct mir_instr_to_any *
 	}
 
 	// This is temporary variable used for Any data.
-	const char *tmp_var_name = unique_name(ctx, IMPL_ANY_TMP);
-
-	toany->tmp = create_var_impl(ctx,
-	                             &(create_var_impl_args_t){
-	                                 .name       = tmp_var_name,
-	                                 .alloc_type = any_type,
-	                             });
+	const str_t tmp_var_name = unique_name2(ctx, IMPL_ANY_TMP);
+	toany->tmp               = create_var_impl(ctx,
+                                 &(create_var_impl_args_t){
+	                                               .name       = tmp_var_name,
+	                                               .alloc_type = any_type,
+                                 });
 
 	return_zone(PASS);
 }
@@ -5094,7 +5135,7 @@ struct result analyze_instr_unroll(struct context *ctx, struct mir_instr_unroll 
 				// no tmp var to unroll from; create one and insert it after call
 				tmp_var = create_instr_decl_var_impl(ctx,
 				                                     &(create_instr_decl_var_impl_args_t){
-				                                         .name = unique_name(ctx, IMPL_UNROLL_TMP),
+				                                         .name = unique_name2(ctx, IMPL_UNROLL_TMP),
 				                                         .init = src,
 				                                     });
 				insert_instr_after(src, tmp_var);
@@ -5365,7 +5406,7 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
 		// keep all data.
 		cmp->tmp_var = create_var_impl(ctx,
 		                               &(create_var_impl_args_t){
-		                                   .name       = unique_name(ctx, IMPL_COMPOUND_TMP),
+		                                   .name       = unique_name2(ctx, IMPL_COMPOUND_TMP),
 		                                   .alloc_type = type,
 		                                   .is_mutable = true,
 		                               });
@@ -5543,7 +5584,7 @@ struct result analyze_instr_vargs(struct context *ctx, struct mir_instr_vargs *v
 	const usize valc = sarrlen(values);
 	if (valc > 0) {
 		// Prepare tmp array for values
-		const char      *tmp_name = unique_name(ctx, IMPL_VARGS_TMP_ARR);
+		const str_t      tmp_name = unique_name2(ctx, IMPL_VARGS_TMP_ARR);
 		struct mir_type *tmp_type = create_type_array(ctx, NULL, vargs->type, (u32)valc);
 
 		vargs->arr_tmp = create_var_impl(ctx,
@@ -5556,7 +5597,7 @@ struct result analyze_instr_vargs(struct context *ctx, struct mir_instr_vargs *v
 
 	{
 		// Prepare tmp slice for vargs
-		const char *tmp_name = unique_name(ctx, IMPL_VARGS_TMP);
+		const str_t tmp_name = unique_name2(ctx, IMPL_VARGS_TMP);
 
 		vargs->vargs_tmp = create_var_impl(ctx,
 		                                   &(create_var_impl_args_t){
@@ -6193,7 +6234,7 @@ static struct result lookup_ref(struct context                  *ctx,
                                 const struct mir_instr_decl_ref *ref,
                                 struct scope_entry             **out_found,
                                 bool                            *out_of_local,
-                                const char                     **out_most_similar)
+                                str_t                           *out_most_similar)
 {
 	zone();
 	bassert(out_found);
@@ -6572,20 +6613,18 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 	}
 
 	// Setup function linkage name, this will be later used by LLVM backend.
-	if (fn->id && !fn->linkage_name) { // Has ID and has no linkage name specified.
+	if (fn->id && !fn->linkage_name.len) { // Has ID and has no linkage name specified.
 		// Setup function full name.
 		if (strlenu(name_prefix)) {
-			const char *fmt = "%s.%s";
-			const s32   len = snprintf(NULL, 0, fmt, name_prefix, fn->id->str);
-			bassert(len > 0);
-			char *buf = scdup(&ctx->assembly->string_cache, NULL, len);
-			// +1 len does not include terminator.
-			snprintf(buf, len + 1, fmt, name_prefix, fn->id->str);
-			fn->full_name = buf;
+			fn->full_name = scprint2(&ctx->assembly->string_cache,
+			                         "%s.%.*s",
+			                         name_prefix,
+			                         fn->id->str.len32,
+			                         fn->id->str.ptr);
 		} else {
 			fn->full_name = fn->id->str;
 		}
-		bassert(fn->full_name);
+		bassert(fn->full_name.len);
 
 		// Setup function linkage name.
 		if (isflag(fn->flags, FLAG_EXTERN) || isflag(fn->flags, FLAG_ENTRY) ||
@@ -6593,23 +6632,23 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 			fn->linkage_name = fn->id->str;
 		} else {
 			// Here we generate unique linkage name
-			fn->linkage_name = unique_name(ctx, fn->full_name);
+			fn->linkage_name = unique_name2(ctx, fn->full_name);
 		}
-	} else if (!fn->linkage_name) {
+	} else if (!fn->linkage_name.len) {
 		// Anonymous function use implicit unique name.
 		char *full_name = tstr();
 		if (strlenu(name_prefix)) {
-			strprint(full_name, "%s%s", name_prefix, IMPL_FN_NAME);
+			strprint(full_name, "%s%.*s", name_prefix, IMPL_FN_NAME.len32, IMPL_FN_NAME.ptr);
 		} else {
-			strprint(full_name, IMPL_FN_NAME);
+			strprint(full_name, "%.*s", IMPL_FN_NAME.len32, IMPL_FN_NAME.ptr);
 		}
 		fn->linkage_name = unique_name(ctx, full_name);
 		fn->full_name    = fn->linkage_name;
 		put_tstr(full_name);
 	}
 	put_tstr(name_prefix);
-	bassert(fn->linkage_name);
-	if (!fn->full_name) fn->full_name = fn->linkage_name;
+	bassert(fn->linkage_name.len);
+	if (!fn->full_name.len) fn->full_name = fn->linkage_name;
 
 	// Check build entry function.
 	if (isflag(fn->flags, FLAG_BUILD_ENTRY)) {
@@ -6636,7 +6675,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 		}
 	}
 
-	bassert(fn->linkage_name && "Function without linkage name!");
+	bassert(fn->linkage_name.len && "Function without linkage name!");
 
 	if (isflag(fn->flags, FLAG_EXTERN)) {
 		// lookup external function exec handle
@@ -6645,8 +6684,8 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 	} else if (isflag(fn->flags, FLAG_INTRINSIC)) {
 		// For intrinsics we use shorter names defined in user code, so we need username ->
 		// internal name mapping in this case.
-		const char *intrinsic_name = get_intrinsic(fn->linkage_name);
-		if (!intrinsic_name) {
+		const str_t intrinsic_name = get_intrinsic(fn->linkage_name);
+		if (!intrinsic_name.len) {
 			report_error(UNKNOWN_SYMBOL,
 			             fn_proto->base.node,
 			             "Unknown compiler intrinsic '%s'.",
@@ -7909,7 +7948,7 @@ struct result analyze_instr_call_loc(struct context *ctx, struct mir_instr_call_
 	const char *filepath = loc->call_location->unit->filepath;
 	bassert(filepath);
 	const struct mir_fn *owner_fn = mir_instr_owner_fn(&loc->base);
-	loc->function_name            = "";
+	loc->function_name            = str_empty;
 	if (owner_fn) {
 		loc->function_name = owner_fn->full_name;
 	}
@@ -7919,8 +7958,7 @@ struct result analyze_instr_call_loc(struct context *ctx, struct mir_instr_call_
 	put_tstr(str_hash);
 
 	vm_write_string(ctx->vm, dest_file_type, dest_file, make_str_from_c(filepath));
-	vm_write_string(
-	    ctx->vm, dest_function_type, dest_function, make_str_from_c(loc->function_name));
+	vm_write_string(ctx->vm, dest_function_type, dest_function, loc->function_name);
 	vm_write_int(dest_line_type, dest_line, (u64)loc->call_location->line);
 	vm_write_int(dest_hash_type, dest_hash, (u64)hash);
 
@@ -8115,10 +8153,10 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
 	}
 
 	if (isflag(var->iflags, MIR_VAR_GLOBAL) && isnotflag(var->iflags, MIR_VAR_STRUCT_TYPEDEF)) {
-		bassert(var->linkage_name && "Missing variable linkage name!");
+		bassert(var->linkage_name.len && "Missing variable linkage name!");
 		// Un-exported globals have unique linkage name to solve potential conflicts
 		// with extern symbols.
-		var->linkage_name = unique_name(ctx, var->linkage_name);
+		var->linkage_name = unique_name2(ctx, var->linkage_name);
 
 		// Globals are set by initializer so we can skip all checks, rest of the
 		// work is up to set initializer instruction! There is one exceptional case:
@@ -8844,7 +8882,7 @@ struct result analyze_call_stage_generate(struct context *ctx, struct mir_instr_
 		}
 
 		// Create name for generated function
-		const char *original_fn_name = recipe_fn->id ? recipe_fn->id->str : IMPL_FN_NAME;
+		const str_t original_fn_name = recipe_fn->id ? recipe_fn->id->str : IMPL_FN_NAME;
 
 		bassert(recipe->ast_lit_fn && recipe->ast_lit_fn->kind == AST_EXPR_LIT_FN);
 
@@ -8853,7 +8891,7 @@ struct result analyze_call_stage_generate(struct context *ctx, struct mir_instr_
 		struct mir_instr *instr_fn_proto = ast_expr_lit_fn(ctx,
 		                                                   recipe->ast_lit_fn,
 		                                                   recipe_fn->decl_node,
-		                                                   unique_name(ctx, original_fn_name),
+		                                                   unique_name2(ctx, original_fn_name),
 		                                                   recipe_fn->is_global,
 		                                                   recipe_fn->flags,
 		                                                   BUILTIN_ID_NONE);
@@ -9191,22 +9229,25 @@ struct result analyze_instr_block(struct context *ctx, struct mir_instr_block *b
 		// Report unreachable code if there is one only once inside function body.
 		fn->first_unreachable_loc     = block->entry_instr->node->location;
 		const char *debug_replacement = fn->generated.debug_replacement_types;
+		const str_t fn_readable_name  = mir_get_fn_readable_name(fn);
 		if (debug_replacement) {
 			builder_msg(
 			    MSG_WARN,
 			    0,
 			    fn->first_unreachable_loc,
 			    CARET_NONE,
-			    "Unreachable code detected in the function '%s' with polymorph replacement: %s",
-			    mir_get_fn_readable_name(fn),
+			    "Unreachable code detected in the function '%.*s' with polymorph replacement: %s",
+			    fn_readable_name.len32,
+			    fn_readable_name.ptr,
 			    debug_replacement);
 		} else {
 			builder_msg(MSG_WARN,
 			            0,
 			            fn->first_unreachable_loc,
 			            CARET_NONE,
-			            "Unreachable code detected in the function '%s'.",
-			            mir_get_fn_readable_name(fn));
+			            "Unreachable code detected in the function '%.*s'.",
+			            fn_readable_name.len32,
+			            fn_readable_name.ptr);
 		}
 	}
 
@@ -9357,11 +9398,11 @@ ANALYZE_STAGE_FN(toany)
 	return ANALYZE_STAGE_BREAK;
 }
 
-static void analyze_make_tmp_var(struct context *ctx, struct mir_instr **input, const char *name)
+static void analyze_make_tmp_var(struct context *ctx, struct mir_instr **input, const str_t name)
 {
 	struct mir_instr *tmp_var = create_instr_decl_var_impl(ctx,
 	                                                       &(create_instr_decl_var_impl_args_t){
-	                                                           .name = unique_name(ctx, name),
+	                                                           .name = unique_name2(ctx, name),
 	                                                           .init = *input,
 	                                                       });
 	insert_instr_after(*input, tmp_var);
@@ -9820,8 +9861,8 @@ void analyze_report_unresolved(struct context *ctx)
 		for (usize j = 0; j < sarrlenu(wq); ++j) {
 			struct mir_instr *instr = sarrpeek(wq, j);
 			bassert(instr);
-			const char *sym_name         = NULL;
-			const char *sym_similar_name = NULL;
+			str_t sym_name         = str_empty;
+			str_t sym_similar_name = str_empty;
 			switch (instr->kind) {
 			case MIR_INSTR_DECL_REF: {
 				struct mir_instr_decl_ref *ref = (struct mir_instr_decl_ref *)instr;
@@ -9837,15 +9878,21 @@ void analyze_report_unresolved(struct context *ctx)
 				blog("Waiting instruction: %%%llu %s", instr->id, mir_instr_name(instr));
 				continue;
 			}
-			bassert(sym_name && "Invalid unresolved symbol name!");
-			if (sym_similar_name) {
+			bassert(sym_name.len && "Invalid unresolved symbol name!");
+			if (sym_similar_name.len) {
 				report_error(UNKNOWN_SYMBOL,
 				             instr->node,
-				             "Unknown symbol '%s'. Did you mean '%s'?",
-				             sym_name,
-				             sym_similar_name);
+				             "Unknown symbol '%.*s'. Did you mean '%.*s'?",
+				             sym_name.len32,
+				             sym_name.ptr,
+				             sym_similar_name.len32,
+				             sym_similar_name.ptr);
 			} else {
-				report_error(UNKNOWN_SYMBOL, instr->node, "Unknown symbol '%s'.", sym_name);
+				report_error(UNKNOWN_SYMBOL,
+				             instr->node,
+				             "Unknown symbol '%.*s'.",
+				             sym_name.len32,
+				             sym_name.ptr);
 			}
 			++reported;
 		}
@@ -9934,7 +9981,7 @@ inline void testing_add_test_case(struct context *ctx, struct mir_fn *fn)
 	const s32   line     = fn->decl_node ? fn->decl_node->location->line : 0;
 
 	vm_write_ptr(func_type, func_ptr, (vm_stack_ptr_t)fn);
-	vm_write_string(ctx->vm, name_type, name_ptr, make_str_from_c(fn->id->str));
+	vm_write_string(ctx->vm, name_type, name_ptr, fn->id->str);
 	vm_write_string(ctx->vm, file_type, file_ptr, make_str_from_c(filename));
 	vm_write_int(line_type, line_ptr, line);
 }
@@ -10135,9 +10182,9 @@ struct mir_var *rtti_gen_array(struct context *ctx, struct mir_type *type)
 	// name
 	struct mir_type *dest_name_type = mir_get_struct_elem_type(rtti_type, 1);
 	vm_stack_ptr_t   dest_name      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
-	const char      *name           = type->user_id ? type->user_id->str : type->id.str;
+	const str_t      name           = type->user_id ? type->user_id->str : type->id.str;
 
-	vm_write_string(ctx->vm, dest_name_type, dest_name, make_str_from_c(name));
+	vm_write_string(ctx->vm, dest_name_type, dest_name, name);
 
 	// elem_type
 	struct mir_type *dest_elem_type = mir_get_struct_elem_type(rtti_type, 2);
@@ -10177,7 +10224,7 @@ void rtti_gen_enum_variant(struct context *ctx, vm_stack_ptr_t dest, struct mir_
 	bassert(variant->value_type->kind == MIR_TYPE_ENUM);
 	struct mir_type *base_enum_type = variant->value_type->data.enm.base_type;
 
-	vm_write_string(ctx->vm, dest_name_type, dest_name, make_str_from_c(variant->id->str));
+	vm_write_string(ctx->vm, dest_name_type, dest_name, variant->id->str);
 	if (mir_type_cmp(dest_value_type, base_enum_type)) {
 		vm_write_int(dest_value_type, dest_value, variant->value);
 	} else {
@@ -10227,8 +10274,8 @@ struct mir_var *rtti_gen_enum(struct context *ctx, struct mir_type *type)
 	// name
 	struct mir_type *dest_name_type = mir_get_struct_elem_type(rtti_type, 1);
 	vm_stack_ptr_t   dest_name      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
-	const char      *name           = type->user_id ? type->user_id->str : type->id.str;
-	vm_write_string(ctx->vm, dest_name_type, dest_name, make_str_from_c(name));
+	const str_t      name           = type->user_id ? type->user_id->str : type->id.str;
+	vm_write_string(ctx->vm, dest_name_type, dest_name, name);
 
 	// base_type
 	struct mir_type *dest_base_type_type = mir_get_struct_elem_type(rtti_type, 2);
@@ -10255,7 +10302,7 @@ void rtti_gen_struct_member(struct context *ctx, vm_stack_ptr_t dest, struct mir
 	// name
 	struct mir_type *dest_name_type = mir_get_struct_elem_type(rtti_type, 0);
 	vm_stack_ptr_t   dest_name      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 0);
-	vm_write_string(ctx->vm, dest_name_type, dest_name, make_str_from_c(member->id->str));
+	vm_write_string(ctx->vm, dest_name_type, dest_name, member->id->str);
 
 	// base_type
 	struct mir_type *dest_base_type_type = mir_get_struct_elem_type(rtti_type, 1);
@@ -10325,8 +10372,8 @@ struct mir_var *rtti_gen_struct(struct context *ctx, struct mir_type *type)
 	// name
 	struct mir_type *dest_name_type = mir_get_struct_elem_type(rtti_type, 1);
 	vm_stack_ptr_t   dest_name      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 1);
-	const char      *name           = type->user_id ? type->user_id->str : type->id.str;
-	vm_write_string(ctx->vm, dest_name_type, dest_name, make_str_from_c(name));
+	const str_t      name           = type->user_id ? type->user_id->str : type->id.str;
+	vm_write_string(ctx->vm, dest_name_type, dest_name, name);
 
 	// members
 	vm_stack_ptr_t dest_members = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 2);
@@ -10359,8 +10406,8 @@ void rtti_gen_fn_arg(struct context *ctx, vm_stack_ptr_t dest, struct mir_arg *a
 	// name
 	struct mir_type *dest_name_type = mir_get_struct_elem_type(rtti_type, 0);
 	vm_stack_ptr_t   dest_name      = vm_get_struct_elem_ptr(ctx->assembly, rtti_type, dest, 0);
-	const char      *arg_name       = arg->id ? arg->id->str : "";
-	vm_write_string(ctx->vm, dest_name_type, dest_name, make_str_from_c(arg_name));
+	const str_t      arg_name       = arg->id ? arg->id->str : str_empty;
+	vm_write_string(ctx->vm, dest_name_type, dest_name, arg_name);
 
 	// base_type
 	struct mir_type *dest_base_type_type = mir_get_struct_elem_type(rtti_type, 1);
@@ -11003,7 +11050,7 @@ struct mir_instr *ast_expr_elem(struct context *ctx, struct ast *elem)
 struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
                                   struct ast          *lit_fn,
                                   struct ast          *decl_node,
-                                  const char          *explicit_linkage_name, // optional
+                                  str_t                explicit_linkage_name, // optional
                                   bool                 is_global,
                                   enum ast_flags       flags,
                                   enum builtin_id_kind builtin_id)
@@ -11057,13 +11104,11 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
 	ast_push_defer_stack(ctx);
 	struct mir_instr_block *prev_block = ast_current_block(ctx);
 
-	const char *linkage_name = explicit_linkage_name;
-
 	struct mir_fn *fn = create_fn(ctx,
 	                              &(create_fn_args_t){
 	                                  .node            = decl_node ? decl_node : lit_fn,
 	                                  .id              = id,
-	                                  .linkage_name    = linkage_name,
+	                                  .linkage_name    = explicit_linkage_name,
 	                                  .flags           = flags,
 	                                  .prototype       = fn_proto,
 	                                  .is_global       = is_global,
@@ -11135,7 +11180,7 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
 		set_current_block(ctx, init_block);
 		fn->ret_tmp = append_instr_decl_var_impl(ctx,
 		                                         &(append_instr_decl_var_impl_args_t){
-		                                             .name       = unique_name(ctx, IMPL_RET_TMP),
+		                                             .name       = unique_name2(ctx, IMPL_RET_TMP),
 		                                             .is_mutable = true,
 		                                             .is_return_temporary = true,
 		                                         });
@@ -11209,7 +11254,7 @@ struct mir_instr *ast_expr_lit_fn_group(struct context *ctx, struct ast *group)
 		struct ast       *it = sarrpeek(ast_variants, i);
 		struct mir_instr *variant;
 		if (it->kind == AST_EXPR_LIT_FN) {
-			variant = ast_expr_lit_fn(ctx, it, NULL, NULL, true, 0, BUILTIN_ID_NONE);
+			variant = ast_expr_lit_fn(ctx, it, NULL, str_empty, true, 0, BUILTIN_ID_NONE);
 		} else {
 			variant = ast(ctx, it);
 		}
@@ -11469,8 +11514,8 @@ static void ast_decl_fn(struct context *ctx, struct ast *ast_fn)
 	const bool           is_compiler = isflag(flags, FLAG_COMPILER);
 	if (is_compiler) builtin_id = check_symbol_marked_compiler(ctx, ast_name);
 	const bool  is_global = ast_fn->data.decl_entity.is_global;
-	const char *optional_explicit_linkage_name =
-	    ast_explicit_linkage_name ? ast_explicit_linkage_name->data.ident.id.str : NULL;
+	const str_t optional_explicit_linkage_name =
+	    ast_explicit_linkage_name ? ast_explicit_linkage_name->data.ident.id.str : str_empty;
 	struct mir_instr *value = ast_expr_lit_fn(
 	    ctx, ast_value, ast_name, optional_explicit_linkage_name, is_global, flags, builtin_id);
 	bassert(value);
@@ -12109,7 +12154,7 @@ struct mir_instr *ast_create_type_resolver_call(struct context *ctx, struct ast 
 }
 
 struct mir_instr *ast_create_expr_resolver_call(struct context  *ctx,
-                                                const char      *fn_name,
+                                                str_t            fn_name,
                                                 struct mir_type *fn_type,
                                                 struct ast      *ast_expr)
 {
@@ -12225,7 +12270,7 @@ struct mir_instr *ast(struct context *ctx, struct ast *node)
 	case AST_EXPR_LIT_BOOL:
 		return ast_expr_lit_bool(ctx, node);
 	case AST_EXPR_LIT_FN:
-		return ast_expr_lit_fn(ctx, node, NULL, NULL, false, 0, BUILTIN_ID_NONE);
+		return ast_expr_lit_fn(ctx, node, NULL, str_empty, false, 0, BUILTIN_ID_NONE);
 	case AST_EXPR_LIT_FN_GROUP:
 		return ast_expr_lit_fn_group(ctx, node);
 	case AST_EXPR_LIT_STRING:
@@ -12397,7 +12442,7 @@ bool mir_is_in_comptime_fn(struct mir_instr *instr)
 	return owner_fn ? isflag(owner_fn->flags, FLAG_COMPTIME) : false;
 }
 
-const char *mir_get_fn_readable_name(struct mir_fn *fn)
+str_t mir_get_fn_readable_name(struct mir_fn *fn)
 {
 	bassert(fn);
 	if (fn->id) {
@@ -12423,8 +12468,8 @@ static void _type2str(char **buf, const struct mir_type *type, bool prefer_name)
 	}
 
 	if (type->user_id && prefer_name) {
-		bassert(type->user_id->str);
-		strappend(*buf, "%s", type->user_id->str);
+		const str_t name = type->user_id->str;
+		strappend(*buf, "%.*s", name.len32, name.ptr);
 		return;
 	}
 
@@ -12494,7 +12539,8 @@ static void _type2str(char **buf, const struct mir_type *type, bool prefer_name)
 		strappend(*buf, "enum{");
 		for (usize i = 0; i < sarrlenu(variants); ++i) {
 			struct mir_variant *variant = sarrpeek(variants, i);
-			strappend(*buf, "%s :: %lld", variant->id->str, variant->value);
+			const str_t         name    = variant->id->str;
+			strappend(*buf, "%.*s :: %lld", name.len32, name.ptr, variant->value);
 			if (i < sarrlenu(variants) - 1) strappend(*buf, ", ");
 		}
 		strappend(*buf, "}");
@@ -12539,7 +12585,8 @@ static void _type2str(char **buf, const struct mir_type *type, bool prefer_name)
 	}
 
 	default:
-		strappend(*buf, "%s", type->user_id ? type->user_id->str : "<invalid>");
+		const str_t name = type->user_id ? type->user_id->str : make_str("<INVALID>", 9);
+		strappend(*buf, "%.*s", name.len32, name.ptr);
 	}
 }
 
@@ -12568,9 +12615,9 @@ static void provide_builtin_arch(struct context *ctx)
 	mir_variants_t  *variants = arena_alloc(&ctx->assembly->arenas.sarr);
 	static struct id ids[static_arrlenu(arch_names)];
 	for (usize i = 0; i < static_arrlenu(arch_names); ++i) {
-		char *name = scdup(&ctx->assembly->string_cache, arch_names[i], strlen(arch_names[i]));
-		struct mir_variant *variant =
-		    create_variant(ctx, id_init(&ids[i], strtoupper(name)), bt->t_s32, i);
+		str_t name = (str_t){.len = strlen(arch_names[i])};
+		name.ptr   = strtoupper(scdup(&ctx->assembly->string_cache, arch_names[i], name.len));
+		struct mir_variant *variant = create_variant(ctx, id_init(&ids[i], name), bt->t_s32, i);
 		sarrput(variants, variant);
 		provide_builtin_variant(ctx, scope, variant);
 	}
@@ -12595,9 +12642,9 @@ static void provide_builtin_os(struct context *ctx)
 	mir_variants_t  *variants = arena_alloc(&ctx->assembly->arenas.sarr);
 	static struct id ids[static_arrlenu(os_names)];
 	for (usize i = 0; i < static_arrlenu(os_names); ++i) {
-		char *name = scdup(&ctx->assembly->string_cache, os_names[i], strlen(os_names[i]));
-		struct mir_variant *variant =
-		    create_variant(ctx, id_init(&ids[i], strtoupper(name)), bt->t_s32, i);
+		str_t name = (str_t){.len = strlen(os_names[i])};
+		name.ptr   = strtoupper(scdup(&ctx->assembly->string_cache, os_names[i], name.len));
+		struct mir_variant *variant = create_variant(ctx, id_init(&ids[i], name), bt->t_s32, i);
 		sarrput(variants, variant);
 		provide_builtin_variant(ctx, scope, variant);
 	}
@@ -12622,9 +12669,9 @@ static void provide_builtin_env(struct context *ctx)
 	mir_variants_t  *variants = arena_alloc(&ctx->assembly->arenas.sarr);
 	static struct id ids[static_arrlenu(env_names)];
 	for (usize i = 0; i < static_arrlenu(env_names); ++i) {
-		char *name = scdup(&ctx->assembly->string_cache, env_names[i], strlen(env_names[i]));
-		struct mir_variant *variant =
-		    create_variant(ctx, id_init(&ids[i], strtoupper(name)), bt->t_s32, i);
+		str_t name = (str_t){.len = strlen(env_names[i])};
+		name.ptr   = strtoupper(scdup(&ctx->assembly->string_cache, env_names[i], name.len));
+		struct mir_variant *variant = create_variant(ctx, id_init(&ids[i], name), bt->t_s32, i);
 		sarrput(variants, variant);
 		provide_builtin_variant(ctx, scope, variant);
 	}
@@ -12643,18 +12690,18 @@ static void provide_builtin_env(struct context *ctx)
 void initialize_builtins(struct context *ctx)
 {
 	struct BuiltinTypes *bt = ctx->builtin_types;
-	bt->t_s8                = create_type_int(ctx, BID(TYPE_S8), 8, true);
-	bt->t_s16               = create_type_int(ctx, BID(TYPE_S16), 16, true);
-	bt->t_s32               = create_type_int(ctx, BID(TYPE_S32), 32, true);
-	bt->t_s64               = create_type_int(ctx, BID(TYPE_S64), 64, true);
-	bt->t_u8                = create_type_int(ctx, BID(TYPE_U8), 8, false);
-	bt->t_u16               = create_type_int(ctx, BID(TYPE_U16), 16, false);
-	bt->t_u32               = create_type_int(ctx, BID(TYPE_U32), 32, false);
-	bt->t_u64               = create_type_int(ctx, BID(TYPE_U64), 64, false);
-	bt->t_usize             = create_type_int(ctx, BID(TYPE_USIZE), 64, false);
+	bt->t_s8                = create_type_int(ctx, builtin_ids[BUILTIN_ID_TYPE_S8], 8, true);
+	bt->t_s16               = create_type_int(ctx, builtin_ids[BUILTIN_ID_TYPE_S16], 16, true);
+	bt->t_s32               = create_type_int(ctx, builtin_ids[BUILTIN_ID_TYPE_S32], 32, true);
+	bt->t_s64               = create_type_int(ctx, builtin_ids[BUILTIN_ID_TYPE_S64], 64, true);
+	bt->t_u8                = create_type_int(ctx, builtin_ids[BUILTIN_ID_TYPE_U8], 8, false);
+	bt->t_u16               = create_type_int(ctx, builtin_ids[BUILTIN_ID_TYPE_U16], 16, false);
+	bt->t_u32               = create_type_int(ctx, builtin_ids[BUILTIN_ID_TYPE_U32], 32, false);
+	bt->t_u64               = create_type_int(ctx, builtin_ids[BUILTIN_ID_TYPE_U64], 64, false);
+	bt->t_usize             = create_type_int(ctx, builtin_ids[BUILTIN_ID_TYPE_USIZE], 64, false);
 	bt->t_bool              = create_type_bool(ctx);
-	bt->t_f32               = create_type_real(ctx, BID(TYPE_F32), 32);
-	bt->t_f64               = create_type_real(ctx, BID(TYPE_F64), 64);
+	bt->t_f32               = create_type_real(ctx, builtin_ids[BUILTIN_ID_TYPE_F32], 32);
+	bt->t_f64               = create_type_real(ctx, builtin_ids[BUILTIN_ID_TYPE_F64], 64);
 	bt->t_dummy_ptr         = create_type_ptr(ctx, bt->t_u8);
 	bt->t_type              = create_type_type(ctx);
 	bt->t_scope             = create_type_named_scope(ctx);
@@ -12708,28 +12755,44 @@ void initialize_builtins(struct context *ctx)
 	}
 }
 
-const char *get_intrinsic(const char *name)
+str_t get_intrinsic(const str_t name)
 {
-	zone();
-	if (!name) return_zone(NULL);
-	const char *map[] = {
-	    "memset.p0i8.i64", "__intrinsic_memset_p0i8_i64", "sin.f32",   "__intrinsic_sin_f32",
-	    "sin.f64",         "__intrinsic_sin_f64",         "cos.f32",   "__intrinsic_cos_f32",
-	    "cos.f64",         "__intrinsic_cos_f64",         "pow.f32",   "__intrinsic_pow_f32",
-	    "pow.f64",         "__intrinsic_pow_f64",         "log.f32",   "__intrinsic_log_f32",
-	    "log.f64",         "__intrinsic_log_f64",         "log2.f32",  "__intrinsic_log2_f32",
-	    "log2.f64",        "__intrinsic_log2_f64",        "sqrt.f32",  "__intrinsic_sqrt_f32",
-	    "sqrt.f64",        "__intrinsic_sqrt_f64",        "ceil.f32",  "__intrinsic_ceil_f32",
-	    "ceil.f64",        "__intrinsic_ceil_f64",        "round.f32", "__intrinsic_round_f32",
-	    "round.f64",       "__intrinsic_round_f64",       "floor.f32", "__intrinsic_floor_f32",
-	    "floor.f64",       "__intrinsic_floor_f64",       "log10.f32", "__intrinsic_log10_f32",
-	    "log10.f64",       "__intrinsic_log10_f64",       "trunc.f32", "__intrinsic_trunc_f32",
-	    "trunc.f64",       "__intrinsic_trunc_f64"};
+	if (!name.len) return str_empty;
+	// clang-format off
+	const str_t map[] = {
+        make_str("memset.p0i8.i64", 15), make_str("__intrinsic_memset_p0i8_i64", 27),
 
+        make_str("sin.f32", 7), make_str("__intrinsic_sin_f32", 19),
+        make_str("sin.f64", 7), make_str("__intrinsic_sin_f64", 19),
+        make_str("cos.f32", 7), make_str("__intrinsic_cos_f32", 19),
+        make_str("cos.f64", 7), make_str("__intrinsic_cos_f64", 19),
+        make_str("pow.f32", 7), make_str("__intrinsic_pow_f32", 19),
+        make_str("pow.f64", 7), make_str("__intrinsic_pow_f64", 19),
+        make_str("log.f32", 7), make_str("__intrinsic_log_f32", 19),
+        make_str("log.f64", 7), make_str("__intrinsic_log_f64", 19),
+        
+        make_str("log2.f32", 8), make_str("__intrinsic_log2_f32", 20),
+        make_str("log2.f64", 8), make_str("__intrinsic_log2_f64", 20),
+        make_str("sqrt.f32", 8), make_str("__intrinsic_sqrt_f32", 20),
+        make_str("sqrt.f64", 8), make_str("__intrinsic_sqrt_f64", 20),
+        make_str("ceil.f32", 8), make_str("__intrinsic_ceil_f32", 20),
+        make_str("ceil.f64", 8), make_str("__intrinsic_ceil_f64", 20),
+        
+        make_str("round.f32", 9), make_str("__intrinsic_round_f32", 21),
+        make_str("round.f64", 9), make_str("__intrinsic_round_f64", 21),
+        make_str("floor.f32", 9), make_str("__intrinsic_floor_f32", 21),
+        make_str("floor.f64", 9), make_str("__intrinsic_floor_f64", 21),
+        make_str("log10.f32", 9), make_str("__intrinsic_log10_f32", 21),
+        make_str("log10.f64", 9), make_str("__intrinsic_log10_f64", 21),
+        make_str("trunc.f32", 9), make_str("__intrinsic_trunc_f32", 21),
+        make_str("trunc.f64", 9), make_str("__intrinsic_trunc_f64", 21),
+    };
+
+	// clang-format on
 	for (usize i = 0; i < static_arrlenu(map); i += 2) {
-		if (strcmp(name, map[i]) == 0) return_zone(map[i + 1]);
+		if (str_match(name, map[i]) == 0) return map[i + 1];
 	}
-	return_zone(NULL);
+	return str_empty;
 }
 
 void mir_arenas_init(struct mir_arenas *arenas)

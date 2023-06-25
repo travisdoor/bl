@@ -106,6 +106,41 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 #endif
 
 // =================================================================================================
+// String View
+// =================================================================================================
+
+#define make_str(p, l)                                                                             \
+	(str_t)                                                                                        \
+	{                                                                                              \
+		.ptr = (p), .len = (s64)(l)                                                                \
+	}
+
+#define make_str_from_c(p)                                                                         \
+	(str_t)                                                                                        \
+	{                                                                                              \
+		.ptr = (p), .len = (s64)strlen(p)                                                          \
+	}
+
+#define str_empty                                                                                  \
+	(str_t)                                                                                        \
+	{                                                                                              \
+		0                                                                                          \
+	}
+
+// Non-owning string representation with cached size. Note that the string might not be zero
+// terminated. This way we can avoid calling strlen() every time and ew can reduce amount of string
+// copying and allocations (e.g. identificators can point directly to the loaded file data).
+typedef struct {
+	const char *ptr;
+	union {
+		s64 len;
+		s32 len32; // Be careful using this!
+	};
+} str_t;
+
+bool str_match(str_t a, str_t b);
+
+// =================================================================================================
 // STB utils
 // =================================================================================================
 
@@ -114,7 +149,7 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 
 #define queue_t(T)                                                                                 \
 	struct {                                                                                       \
-		T * q[2];                                                                                  \
+		T  *q[2];                                                                                  \
 		s64 i;                                                                                     \
 		s32 qi;                                                                                    \
 	}
@@ -153,7 +188,7 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 	(void)0
 
 char *strtoupper(char *str);
-s32   levenshtein(const char *s1, const char *s2);
+s32   levenshtein(const str_t s1, const str_t s2);
 
 // =================================================================================================
 // Small Array
@@ -217,28 +252,8 @@ struct string_cache;
 // original string.
 char *scdup(struct string_cache **cache, const char *str, usize len);
 void  scfree(struct string_cache **cache);
-char *scprint(struct string_cache **cache, const char *fmt, ...);
-
-// =================================================================================================
-// String View
-// =================================================================================================
-
-#define make_str(p, l)                                                                             \
-	(str_t)                                                                                        \
-	{                                                                                              \
-		.ptr = (p), .len = (l)                                                                     \
-	}
-
-#define make_str_from_c(p)                                                                         \
-	(str_t)                                                                                        \
-	{                                                                                              \
-		.ptr = (p), .len = strlen(p)                                                               \
-	}
-
-typedef struct {
-	const char *ptr;
-	s64         len;
-} str_t;
+char *scprint(struct string_cache **cache, const char *fmt, ...); // @Cleanup
+str_t scprint2(struct string_cache **cache, const char *fmt, ...);
 
 // =================================================================================================
 // Hashing
@@ -246,8 +261,9 @@ typedef struct {
 typedef u32 hash_t;
 
 struct id {
-	const char *str;
-	hash_t      hash;
+	/* const char *str; */
+	str_t  str;
+	hash_t hash;
 };
 
 // Reference implementation: https://github.com/haipome/fnv/blob/master/fnv.c
@@ -271,23 +287,37 @@ static inline hash_t strhash(const char *str)
 #endif
 }
 
+static inline hash_t strhash2(const str_t s)
+{
+	// FNV 32-bit hash
+	hash_t hash = 2166136261;
+	char   c;
+	for (s64 i = 0; i < s.len; ++i) {
+		c    = s.ptr[i];
+		hash = hash ^ (u8)c;
+		hash = hash * 16777619;
+	}
+	return hash;
+}
+
 static inline hash_t hashcomb(hash_t first, hash_t second)
 {
 	return first ^ (second + 0x9e3779b9 + (first << 6) + (first >> 2));
 }
 
-static inline struct id *id_init(struct id *id, const char *str)
+static inline struct id *id_init(struct id *id, str_t str)
 {
 	bassert(id);
-	id->hash = strhash(str);
+	id->hash = strhash2(str);
 	id->str  = str;
 	return id;
 }
 
-static inline bool is_ignored_id(const struct id *id)
+static inline bool is_ignored_id(struct id *id)
 {
 	bassert(id);
-	return strcmp(id->str, "_") == 0;
+	if (id->str.len != 1) return false;
+	return id->str.ptr[0] == '_';
 }
 
 // =================================================================================================
@@ -314,8 +344,8 @@ enum search_flags {
 bool search_source_file(const char *filepath,
                         const u32   flags,
                         const char *wdir,
-                        char **     out_filepath,
-                        char **     out_dirpath);
+                        char      **out_filepath,
+                        char      **out_dirpath);
 
 static inline bool is_aligned(const void *p, usize alignment)
 {
@@ -375,11 +405,11 @@ s32         get_last_error(char *buf, s32 buf_len);
 u32         next_pow_2(u32 n);
 void        color_print(FILE *stream, s32 color, const char *format, ...);
 s32         cpu_thread_count(void);
-char *      execute(const char *cmd);
-const char *read_config(struct config *      config,
+char       *execute(const char *cmd);
+const char *read_config(struct config       *config,
                         const struct target *target,
-                        const char *         path,
-                        const char *         default_value);
+                        const char          *path,
+                        const char          *default_value);
 
 typedef void (*process_tokens_fn_t)(void *ctx, const char *token);
 s32   process_tokens(void *ctx, const char *input, const char *delimiter, process_tokens_fn_t fn);

@@ -162,7 +162,7 @@ enum builtin_id_kind {
 
 extern struct id builtin_ids[_BUILTIN_ID_COUNT];
 
-#define BID(name) &builtin_ids[BUILTIN_ID_##name]
+#define BID(name) &builtin_ids[BUILTIN_ID_##name] // @Cleanup: remove this shit
 
 struct dyncall_cb_context {
 	struct virtual_machine *vm;
@@ -228,9 +228,9 @@ struct mir_fn {
 	// Linkage name of the function, this name is used during linking to identify function,
 	// actual implementation can be external, internal or intrinsic embedded in compiler,
 	// depending on function flags.
-	const char *linkage_name;
+	str_t linkage_name;
 	// Full name contains full function name with parent scopes.
-	const char  *full_name;
+	str_t        full_name;
 	LLVMValueRef llvm_value;
 	bool         is_fully_analyzed;
 	bool         is_global;
@@ -457,7 +457,7 @@ struct mir_var {
 	struct scope_entry         *entry;
 	struct mir_instr           *initializer_block;
 	LLVMValueRef                llvm_value;
-	const char                 *linkage_name;
+	str_t                       linkage_name;
 	enum builtin_id_kind        builtin_id;
 	enum ast_flags              flags;  // User flags.
 	enum mir_var_flags          iflags; // Internal flags.
@@ -857,7 +857,7 @@ struct mir_instr_call_loc {
 	struct mir_instr base;
 	struct location *call_location; // Optional call location
 	struct mir_var  *meta_var;      // Optional meta var.
-	const char      *function_name;
+	str_t            function_name;
 	hash_t           hash;
 };
 
@@ -1028,6 +1028,6 @@ char          *mir_type2str(const struct mir_type *type, bool prefer_name);
 const char    *mir_instr_name(const struct mir_instr *instr);
 void           mir_run(struct assembly *assembly);
 struct mir_fn *mir_get_callee(const struct mir_instr_call *call);
-const char    *mir_get_fn_readable_name(struct mir_fn *fn);
+str_t          mir_get_fn_readable_name(struct mir_fn *fn);
 
 #endif

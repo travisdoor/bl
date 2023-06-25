@@ -301,7 +301,7 @@ void      assembly_add_native_lib_safe(struct assembly *assembly,
 bool      assembly_import_module(struct assembly *assembly,
                                  const char      *modulepath,
                                  struct token    *import_from);
-DCpointer assembly_find_extern(struct assembly *assembly, const char *symbol);
+DCpointer assembly_find_extern(struct assembly *assembly, const str_t symbol);
 
 #define assembly_has_rtti(assembly, type_id) (hmgeti((assembly)->MIR.rtti_table, type_id) != -1)
 #define assembly_get_rtti(assembly, type_id) (hmget((assembly)->MIR.rtti_table, type_id))

@@ -80,4 +80,18 @@ typedef enum {
 	DW_TAG_user_base = 0x1000 ///< Recommended base for user tags.
 } DW_TAG;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// We need these because LLVM C API does not provide length parameter for string names.
+LLVMTypeRef  llvm_struct_create_named(LLVMContextRef C, str_t Name);
+LLVMValueRef llvm_add_global(LLVMModuleRef M, LLVMTypeRef Ty, str_t Name);
+LLVMValueRef llvm_add_function(LLVMModuleRef M, str_t Name, LLVMTypeRef FunctionTy);
+LLVMValueRef llvm_build_alloca(LLVMBuilderRef B, LLVMTypeRef Ty, str_t Name);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

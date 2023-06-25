@@ -21,6 +21,9 @@ Application context.
 [ ] Accessible via #context directive.
 
 MISC
+[ ] Use custom string implementation str_t.
+[ ] ID should be passed by value (make sure it's 16B)
+[ ] Refer to original file data since we'll have strings with len.
 [ ] Add blc --init="My Project" command.
 [x] Add support of #maybe_unused for function arguments.
 [ ] Nested functions ignore previous using statement in some cases.

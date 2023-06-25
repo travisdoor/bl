@@ -161,7 +161,7 @@ static inline struct ast *_parse_ident(struct context *ctx)
 	struct token *tok_ident = tokens_consume(ctx->tokens);
 	assert(tok_ident->sym == SYM_IDENT);
 	struct ast *ident = ast_create_node(ctx->ast_arena, AST_IDENT, tok_ident, scope_get(ctx));
-	id_init(&ident->data.ident.id, tok_ident->value.str.ptr);
+	id_init(&ident->data.ident.id, tok_ident->value.str);
 	return_zone(ident);
 }
 
@@ -367,12 +367,12 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
 	struct token *tok_directive = tokens_consume(ctx->tokens);
 	if (tok_directive->sym != SYM_IDENT) goto INVALID;
 
-	const char  *directive = tok_directive->value.str.ptr;
-	const hash_t hash      = strhash(directive);
+	const str_t  directive = tok_directive->value.str;
+	const hash_t hash      = strhash2(directive);
 	const s64    index     = hmgeti(ctx->hash_directive_table, hash);
 	if (index == -1) goto INVALID;
 	const enum hash_directive_flags hd_flag = ctx->hash_directive_table[index].value;
-	bassert(directive);
+	bassert(directive.len);
 
 	if (isnotflag(expected_mask, hd_flag)) {
 		report_error(UNEXPECTED_DIRECTIVE, tok_directive, CARET_WORD, "Unexpected directive.");
@@ -487,7 +487,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
 		if (!tok_ext) return_zone(NULL);
 		// Parse extension token.
 		struct ast *ext = ast_create_node(ctx->ast_arena, AST_IDENT, tok_ext, scope_get(ctx));
-		id_init(&ext->data.ident.id, tok_ext->value.str.ptr);
+		id_init(&ext->data.ident.id, tok_ext->value.str);
 		return_zone(ext);
 	}
 
@@ -498,7 +498,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
 		if (!tok_ext) return_zone(NULL);
 		// Parse extension token.
 		struct ast *ext = ast_create_node(ctx->ast_arena, AST_IDENT, tok_ext, scope_get(ctx));
-		id_init(&ext->data.ident.id, tok_ext->value.str.ptr);
+		id_init(&ext->data.ident.id, tok_ext->value.str);
 		return_zone(ext);
 	}
 
@@ -520,7 +520,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
 		if (!tok_ext) return_zone(NULL);
 		// Parse extension token.
 		struct ast *ext = ast_create_node(ctx->ast_arena, AST_IDENT, tok_ext, scope_get(ctx));
-		id_init(&ext->data.ident.id, tok_ext->value.str.ptr);
+		id_init(&ext->data.ident.id, tok_ext->value.str);
 		return_zone(ext);
 	}
 
@@ -776,12 +776,13 @@ struct ast *parse_decl_member(struct context *ctx, s32 UNUSED(index))
 
 	if (!name) {
 		bassert(index >= 0);
+		// @Cleanup: Make this better?
 		char      buf[64]; // More than enough.
-		const s32 c = snprintf(buf, static_arrlenu(buf), "_%d", index);
-		bassert(c >= 0 && c < (s32)static_arrlenu(buf) && "Buffer overflow!");
-		char *ident = scdup(&ctx->unit->string_cache, buf, c);
+		const s32 len = snprintf(buf, static_arrlenu(buf), "_%d", index);
+		bassert(len >= 0 && len < (s32)static_arrlenu(buf) && "Buffer overflow!");
+		char *ident = scdup(&ctx->unit->string_cache, buf, len);
 		name        = ast_create_node(ctx->ast_arena, AST_IDENT, tok_begin, scope_get(ctx));
-		id_init(&name->data.ident.id, ident);
+		id_init(&name->data.ident.id, make_str(ident, len));
 	}
 
 	enum hash_directive_flags found_hd = HD_NONE;

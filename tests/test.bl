@@ -1,4 +1,10 @@
+
+foo :: fn () #comptime {
+    std.pow(1.f,2.f);
+}
+
 main :: fn() s32 {
+    foo();
 	print("Hello!");
 	return 0;
 }
