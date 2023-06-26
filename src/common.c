@@ -43,6 +43,12 @@
 #include <stdio.h>
 #include <time.h>
 
+#ifdef BL_USE_SIMD
+#include <emmintrin.h>
+#include <intrin.h>
+#include <nmmintrin.h>
+#endif
+
 #if !BL_PLATFORM_WIN
 #include <sys/stat.h>
 #include <unistd.h>
@@ -198,12 +204,30 @@ char *strtoupper(char *str)
 
 bool str_match(str_t a, str_t b)
 {
-	// @Performance, @Inclomplete: Implement SIMD version.
 	if (a.len != b.len) return false;
+
+#ifdef BL_USE_SIMD
+	__m128i *ita = (__m128i *)a.ptr;
+	__m128i *itb = (__m128i *)b.ptr;
+
+	for (s64 i = 0; i < a.len; i += 16, ++ita, ++itb) {
+		const __m128i a16 = _mm_loadu_si128(ita);
+		const __m128i b16 = _mm_loadu_si128(itb);
+		if (_mm_cmpistrc(a16,
+		                 b16,
+		                 _SIDD_SBYTE_OPS | _SIDD_CMP_EQUAL_EACH | _SIDD_NEGATIVE_POLARITY |
+		                     _SIDD_LEAST_SIGNIFICANT) != 0) {
+			return false;
+		}
+	}
+
+	return true;
+#else
 	for (s64 i = 0; i < a.len; i += 1) {
 		if (a.ptr[i] != b.ptr[i]) return false;
 	}
 	return true;
+#endif
 }
 
 #define MIN3(a, b, c) ((a) < (b) ? ((a) < (c) ? (a) : (c)) : ((b) < (c) ? (b) : (c)))
