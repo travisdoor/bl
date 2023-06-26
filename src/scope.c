@@ -166,7 +166,7 @@ void scope_insert(struct scope *scope, hash_t layer, struct scope_entry *entry)
 
 void scope_insert_bookmark(struct scopes_context *ctx, hash_t layer, struct scope_entry *entry)
 {
-	blog("Bookmark: '%.*s'", entry->id->str.len32, entry->id->str.ptr);
+	//blog("Bookmark: '%.*s'", entry->id->str.len32, entry->id->str.ptr);
 
 	bassert(entry);
 	const u64 hash = entry_hash(entry->id->hash, layer);

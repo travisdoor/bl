@@ -1438,8 +1438,6 @@ static inline void erase_instr(struct mir_instr *instr)
 	}
 	if (instr->prev) instr->prev->next = instr->next;
 	if (instr->next) instr->next->prev = instr->prev;
-	// instr->prev = NULL;
-	// instr->next = NULL;
 
 	instr->state = MIR_IS_ERASED;
 }
@@ -1566,13 +1564,7 @@ static inline void analyze_notify_provided(struct context *ctx, hash_t hash)
 }
 // =================================================================================================
 
-static inline str_t unique_name(struct context *ctx, const char *prefix)
-{
-	static u64 ui = 0;
-	return scprint2(&ctx->assembly->string_cache, "%s.%llu", prefix, ui++);
-}
-
-static inline str_t unique_name2(struct context *ctx, const str_t prefix)
+static inline str_t unique_name(struct context *ctx, const str_t prefix)
 {
 	static u64 ui = 0;
 	return scprint2(&ctx->assembly->string_cache, "%.*s.%llu", prefix.len32, prefix.ptr, ui++);
@@ -3055,6 +3047,7 @@ static struct mir_var *create_var_impl(struct context *ctx, create_var_impl_args
 struct mir_fn *create_fn(struct context *ctx, create_fn_args_t *args)
 {
 	bassert(args->prototype);
+
 	struct mir_fn *tmp = arena_alloc(&ctx->assembly->arenas.mir.fn);
 	bmagic_set(tmp);
 	tmp->linkage_name      = args->linkage_name;
@@ -3079,6 +3072,7 @@ create_fn_group(struct context *ctx, struct ast *decl_node, mir_fns_t *variants)
 	bmagic_set(tmp);
 	tmp->decl_node = decl_node;
 	tmp->variants  = variants;
+
 	return tmp;
 }
 
@@ -4944,7 +4938,7 @@ struct result analyze_instr_toany(struct context *ctx, struct mir_instr_to_any *
 		// temporary variable containing the value and fetch pointer to this variable.
 		toany->expr_tmp = create_var_impl(ctx,
 		                                  &(create_var_impl_args_t){
-		                                      .name       = unique_name2(ctx, IMPL_ANY_EXPR_TMP),
+		                                      .name       = unique_name(ctx, IMPL_ANY_EXPR_TMP),
 		                                      .alloc_type = rtti_type,
 		                                  });
 	}
@@ -4990,7 +4984,7 @@ struct result analyze_instr_toany(struct context *ctx, struct mir_instr_to_any *
 	}
 
 	// This is temporary variable used for Any data.
-	const str_t tmp_var_name = unique_name2(ctx, IMPL_ANY_TMP);
+	const str_t tmp_var_name = unique_name(ctx, IMPL_ANY_TMP);
 	toany->tmp               = create_var_impl(ctx,
                                  &(create_var_impl_args_t){
 	                                               .name       = tmp_var_name,
@@ -5135,7 +5129,7 @@ struct result analyze_instr_unroll(struct context *ctx, struct mir_instr_unroll 
 				// no tmp var to unroll from; create one and insert it after call
 				tmp_var = create_instr_decl_var_impl(ctx,
 				                                     &(create_instr_decl_var_impl_args_t){
-				                                         .name = unique_name2(ctx, IMPL_UNROLL_TMP),
+				                                         .name = unique_name(ctx, IMPL_UNROLL_TMP),
 				                                         .init = src,
 				                                     });
 				insert_instr_after(src, tmp_var);
@@ -5406,7 +5400,7 @@ struct result analyze_instr_compound(struct context *ctx, struct mir_instr_compo
 		// keep all data.
 		cmp->tmp_var = create_var_impl(ctx,
 		                               &(create_var_impl_args_t){
-		                                   .name       = unique_name2(ctx, IMPL_COMPOUND_TMP),
+		                                   .name       = unique_name(ctx, IMPL_COMPOUND_TMP),
 		                                   .alloc_type = type,
 		                                   .is_mutable = true,
 		                               });
@@ -5584,7 +5578,7 @@ struct result analyze_instr_vargs(struct context *ctx, struct mir_instr_vargs *v
 	const usize valc = sarrlen(values);
 	if (valc > 0) {
 		// Prepare tmp array for values
-		const str_t      tmp_name = unique_name2(ctx, IMPL_VARGS_TMP_ARR);
+		const str_t      tmp_name = unique_name(ctx, IMPL_VARGS_TMP_ARR);
 		struct mir_type *tmp_type = create_type_array(ctx, NULL, vargs->type, (u32)valc);
 
 		vargs->arr_tmp = create_var_impl(ctx,
@@ -5597,7 +5591,7 @@ struct result analyze_instr_vargs(struct context *ctx, struct mir_instr_vargs *v
 
 	{
 		// Prepare tmp slice for vargs
-		const str_t tmp_name = unique_name2(ctx, IMPL_VARGS_TMP);
+		const str_t tmp_name = unique_name(ctx, IMPL_VARGS_TMP);
 
 		vargs->vargs_tmp = create_var_impl(ctx,
 		                                   &(create_var_impl_args_t){
@@ -6632,7 +6626,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 			fn->linkage_name = fn->id->str;
 		} else {
 			// Here we generate unique linkage name
-			fn->linkage_name = unique_name2(ctx, fn->full_name);
+			fn->linkage_name = unique_name(ctx, fn->full_name);
 		}
 	} else if (!fn->linkage_name.len) {
 		// Anonymous function use implicit unique name.
@@ -6642,7 +6636,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 		} else {
 			strprint(full_name, "%.*s", IMPL_FN_NAME.len32, IMPL_FN_NAME.ptr);
 		}
-		fn->linkage_name = unique_name(ctx, full_name);
+		fn->linkage_name = unique_name(ctx, make_str(full_name, strlenu(full_name)));
 		fn->full_name    = fn->linkage_name;
 		put_tstr(full_name);
 	}
@@ -8156,7 +8150,7 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
 		bassert(var->linkage_name.len && "Missing variable linkage name!");
 		// Un-exported globals have unique linkage name to solve potential conflicts
 		// with extern symbols.
-		var->linkage_name = unique_name2(ctx, var->linkage_name);
+		var->linkage_name = unique_name(ctx, var->linkage_name);
 
 		// Globals are set by initializer so we can skip all checks, rest of the
 		// work is up to set initializer instruction! There is one exceptional case:
@@ -8891,7 +8885,7 @@ struct result analyze_call_stage_generate(struct context *ctx, struct mir_instr_
 		struct mir_instr *instr_fn_proto = ast_expr_lit_fn(ctx,
 		                                                   recipe->ast_lit_fn,
 		                                                   recipe_fn->decl_node,
-		                                                   unique_name2(ctx, original_fn_name),
+		                                                   unique_name(ctx, original_fn_name),
 		                                                   recipe_fn->is_global,
 		                                                   recipe_fn->flags,
 		                                                   BUILTIN_ID_NONE);
@@ -9402,7 +9396,7 @@ static void analyze_make_tmp_var(struct context *ctx, struct mir_instr **input, 
 {
 	struct mir_instr *tmp_var = create_instr_decl_var_impl(ctx,
 	                                                       &(create_instr_decl_var_impl_args_t){
-	                                                           .name = unique_name2(ctx, name),
+	                                                           .name = unique_name(ctx, name),
 	                                                           .init = *input,
 	                                                       });
 	insert_instr_after(*input, tmp_var);
@@ -11059,7 +11053,14 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
 	struct ast *ast_block     = lit_fn->data.expr_fn.block;
 	struct ast *ast_fn_type   = lit_fn->data.expr_fn.type;
 	struct ast *ast_enable_if = lit_fn->data.expr_fn.enable_if;
-	struct id  *id            = decl_node ? &decl_node->data.ident.id : NULL;
+
+	// The function literal itself does not have any information about the function name currently
+	// generated, the idea is to support also anonymous functions. The decl_node is used for error
+	// reporting (in case it's a symbol declaration identificator we want to highlight the name,
+	// otherwise we highlight the function literal itself). The same information is reused also to
+	// resolve the function name, but keep in mind it's possible only in case the function is not
+	// anonymous (has a name), so the decl_node must be s AST_IDENT.
+	struct id *id = (decl_node && decl_node->kind == AST_IDENT) ? &decl_node->data.ident.id : NULL;
 	bassert(ast_fn_type->kind == AST_TYPE_FN);
 
 	const enum ast_type_fn_flavor function_type_flavor = ast_fn_type->data.type_fn.flavor;
@@ -11180,7 +11181,7 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
 		set_current_block(ctx, init_block);
 		fn->ret_tmp = append_instr_decl_var_impl(ctx,
 		                                         &(append_instr_decl_var_impl_args_t){
-		                                             .name       = unique_name2(ctx, IMPL_RET_TMP),
+		                                             .name       = unique_name(ctx, IMPL_RET_TMP),
 		                                             .is_mutable = true,
 		                                             .is_return_temporary = true,
 		                                         });
@@ -11488,6 +11489,8 @@ static void ast_decl_fn(struct context *ctx, struct ast *ast_fn)
 	struct ast *ast_name  = ast_fn->data.decl.name;
 	struct ast *ast_type  = ast_fn->data.decl.type;
 	struct ast *ast_value = ast_fn->data.decl_entity.value;
+
+	bassert(ast_name->kind == AST_IDENT);
 
 	// recognized named function declaration
 	const enum ast_flags flags                     = ast_fn->data.decl.flags;
@@ -12107,8 +12110,13 @@ struct mir_instr *ast_type_poly(struct context *ctx, struct ast *poly)
 	// anywhere inside function argument list declaration; even before ?T is appears in
 	// declaration. So polymorphic type is completed right after this function ends and no
 	// additional analyze is needed.
-	struct mir_type *master_type = ctx->builtin_types->t_poly_master;
-	struct mir_type *slave_type  = ctx->builtin_types->t_poly_slave;
+
+	// @Incomplete: this might be cached but it cause test failiure, in case we'll decide to not
+	// reuse types here, we can remove it from builtin types.
+	/* struct mir_type *master_type = ctx->builtin_types->t_poly_master; */
+	/* struct mir_type *slave_type  = ctx->builtin_types->t_poly_slave; */
+	struct mir_type *master_type = create_type_poly(ctx, true);
+	struct mir_type *slave_type  = create_type_poly(ctx, false);
 	scope_entry->kind            = SCOPE_ENTRY_TYPE;
 	scope_entry->data.type       = slave_type;
 
@@ -12790,7 +12798,7 @@ str_t get_intrinsic(const str_t name)
 
 	// clang-format on
 	for (usize i = 0; i < static_arrlenu(map); i += 2) {
-		if (str_match(name, map[i]) == 0) return map[i + 1];
+		if (str_match(name, map[i])) return map[i + 1];
 	}
 	return str_empty;
 }

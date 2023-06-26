@@ -866,8 +866,9 @@ DONE:
 DCpointer assembly_find_extern(struct assembly *assembly, const str_t symbol)
 {
 	char *tmp = tstr();
-	// The str_t might not be zero terminated so we have to deal with it in the C world.
-	strappend(tmp, "%.*s", symbol.len32, symbol.ptr);
+	strsetcap(tmp, symbol.len);
+	memcpy(tmp, symbol.ptr, symbol.len);
+	tmp[symbol.len] = '\0';
 
 	void              *handle = NULL;
 	struct native_lib *lib;
@@ -876,6 +877,7 @@ DCpointer assembly_find_extern(struct assembly *assembly, const str_t symbol)
 		handle = dlFindSymbol(lib->handle, tmp);
 		if (handle) break;
 	}
+
 	put_tstr(tmp);
 	return handle;
 }

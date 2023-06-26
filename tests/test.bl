@@ -1,13 +1,30 @@
 
-foo :: fn () #comptime {
-    std.pow(1.f,2.f);
-}
+#import "std/test"
 
 main :: fn() s32 {
-    foo();
-	print("Hello!");
+	
 	return 0;
 }
+
+
+expected_supported_env :: [4]string_view.{
+    "UNKNOWN",
+    "MSVC",
+    "GNU",
+    "MUSL",
+};
+
+env_all :: fn () #test {
+    T :: cast(*TypeInfoEnum) typeinfo(Env);
+    test_eq(T.base_type, typeinfo(s32));
+    test_eq(T.variants.len, expected_supported_env.len);
+    loop i := 0; i < T.variants.len; i += 1 {
+        variant :: T.variants[i];
+        test_eq(variant.value, i);
+        test_eq(expected_supported_env[i], variant.name);
+    }
+}
+
 
 /*
 

@@ -138,6 +138,8 @@ typedef struct {
 	};
 } str_t;
 
+static_assert(sizeof(str_t) == 16, "Invalid size of string view type.");
+
 bool str_match(str_t a, str_t b);
 
 // =================================================================================================
