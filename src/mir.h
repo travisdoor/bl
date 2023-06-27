@@ -162,8 +162,6 @@ enum builtin_id_kind {
 
 extern struct id builtin_ids[_BUILTIN_ID_COUNT];
 
-#define BID(name) &builtin_ids[BUILTIN_ID_##name] // @Cleanup: remove this shit
-
 struct dyncall_cb_context {
 	struct virtual_machine *vm;
 	struct mir_fn          *fn;

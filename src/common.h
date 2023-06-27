@@ -133,7 +133,7 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 typedef struct {
 	const char *ptr;
 	// Might be s64 but it cause warning in range-prints.
-	s32         len;
+	s32 len;
 } str_t;
 
 static_assert(sizeof(str_t) == 16, "Invalid size of string view type.");

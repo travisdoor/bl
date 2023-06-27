@@ -437,11 +437,12 @@ static struct mir_fn_group *
 create_fn_group(struct context *ctx, struct ast *decl_node, mir_fns_t *variants);
 static struct mir_fn_generated_recipe *create_fn_generation_recipe(struct context *ctx,
                                                                    struct ast     *ast_lit_fn);
-static struct mir_member              *create_member(struct context  *ctx,
-                                                     struct ast      *node,
-                                                     struct id       *id,
-                                                     s64              index,
-                                                     struct mir_type *type);
+
+static struct mir_member *create_member(struct context  *ctx,
+                                        struct ast      *node,
+                                        struct id       *id,
+                                        s64              index,
+                                        struct mir_type *type);
 
 typedef struct {
 	struct ast            *node;
@@ -12632,14 +12633,15 @@ static void provide_builtin_arch(struct context *ctx)
 
 	struct mir_type *t_arch = create_type_enum(ctx,
 	                                           &(create_type_enum_args_t){
-	                                               .id        = BID(ARCH_ENUM),
+	                                               .id        = &builtin_ids[BUILTIN_ID_ARCH_ENUM],
 	                                               .scope     = scope,
 	                                               .base_type = bt->t_s32,
 	                                               .variants  = variants,
 	                                           });
 
 	provide_builtin_type(ctx, t_arch);
-	add_global_int(ctx, BID(ARCH), false, t_arch, ctx->assembly->target->triple.arch);
+	add_global_int(
+	    ctx, &builtin_ids[BUILTIN_ID_ARCH], false, t_arch, ctx->assembly->target->triple.arch);
 }
 
 static void provide_builtin_os(struct context *ctx)
@@ -12659,14 +12661,15 @@ static void provide_builtin_os(struct context *ctx)
 
 	struct mir_type *t_os = create_type_enum(ctx,
 	                                         &(create_type_enum_args_t){
-	                                             .id        = BID(PLATFORM_ENUM),
-	                                             .scope     = scope,
+	                                             .id    = &builtin_ids[BUILTIN_ID_PLATFORM_ENUM],
+	                                             .scope = scope,
 	                                             .base_type = bt->t_s32,
 	                                             .variants  = variants,
 	                                         });
 
 	provide_builtin_type(ctx, t_os);
-	add_global_int(ctx, BID(PLATFORM), false, t_os, ctx->assembly->target->triple.os);
+	add_global_int(
+	    ctx, &builtin_ids[BUILTIN_ID_PLATFORM], false, t_os, ctx->assembly->target->triple.os);
 }
 
 static void provide_builtin_env(struct context *ctx)
@@ -12686,13 +12689,14 @@ static void provide_builtin_env(struct context *ctx)
 
 	struct mir_type *t_env = create_type_enum(ctx,
 	                                          &(create_type_enum_args_t){
-	                                              .id        = BID(ENV_ENUM),
+	                                              .id        = &builtin_ids[BUILTIN_ID_ENV_ENUM],
 	                                              .scope     = scope,
 	                                              .base_type = bt->t_s32,
 	                                              .variants  = variants,
 	                                          });
 	provide_builtin_type(ctx, t_env);
-	add_global_int(ctx, BID(ENV), false, t_env, ctx->assembly->target->triple.env);
+	add_global_int(
+	    ctx, &builtin_ids[BUILTIN_ID_ENV], false, t_env, ctx->assembly->target->triple.env);
 }
 
 void initialize_builtins(struct context *ctx)
@@ -12715,7 +12719,8 @@ void initialize_builtins(struct context *ctx)
 	bt->t_scope             = create_type_named_scope(ctx);
 	bt->t_void              = create_type_void(ctx);
 	bt->t_u8_ptr            = create_type_ptr(ctx, bt->t_u8);
-	bt->t_string = create_type_slice(ctx, MIR_TYPE_STRING, BID(TYPE_STRING), bt->t_u8_ptr, false);
+	bt->t_string            = create_type_slice(
+        ctx, MIR_TYPE_STRING, &builtin_ids[BUILTIN_ID_TYPE_STRING], bt->t_u8_ptr, false);
 	bt->t_string_literal  = create_type_slice(ctx, MIR_TYPE_SLICE, NULL, bt->t_u8_ptr, true);
 	bt->t_resolve_type_fn = create_type_fn(ctx, &(create_type_fn_args_t){.ret_type = bt->t_type});
 	bt->t_resolve_bool_expr_fn =
@@ -12746,16 +12751,17 @@ void initialize_builtins(struct context *ctx)
 
 	// Add IS_DEBUG immutable into the global scope to provide information about enabled
 	// debug mode.
-	add_global_bool(ctx, BID(IS_DEBUG), false, ctx->debug_mode);
+	add_global_bool(ctx, &builtin_ids[BUILTIN_ID_IS_DEBUG], false, ctx->debug_mode);
 
 	// Add IS_COMPTIME_RUN immutable into the global scope to provide information about compile
 	// time run.
-	ctx->assembly->vm_run.is_comptime_run = add_global_bool(ctx, BID(IS_COMPTIME_RUN), true, false);
+	ctx->assembly->vm_run.is_comptime_run =
+	    add_global_bool(ctx, &builtin_ids[BUILTIN_ID_IS_COMPTIME_RUN], true, false);
 
 	// Compiler version.
-	add_global_int(ctx, BID(BLC_VER_MAJOR), false, bt->t_s32, BL_VERSION_MAJOR);
-	add_global_int(ctx, BID(BLC_VER_MINOR), false, bt->t_s32, BL_VERSION_MINOR);
-	add_global_int(ctx, BID(BLC_VER_PATCH), false, bt->t_s32, BL_VERSION_PATCH);
+	add_global_int(ctx, &builtin_ids[BUILTIN_ID_BLC_VER_MAJOR], false, bt->t_s32, BL_VERSION_MAJOR);
+	add_global_int(ctx, &builtin_ids[BUILTIN_ID_BLC_VER_MINOR], false, bt->t_s32, BL_VERSION_MINOR);
+	add_global_int(ctx, &builtin_ids[BUILTIN_ID_BLC_VER_PATCH], false, bt->t_s32, BL_VERSION_PATCH);
 
 	// Register all compiler builtin helper functions to report eventual collisions with user code.
 	for (u32 i = BUILTIN_ID_SIZEOF; i < static_arrlenu(builtin_ids); ++i) {
