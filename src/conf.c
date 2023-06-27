@@ -86,7 +86,7 @@ struct config *confload(const char *filepath)
 			state = STATE_VALUE;
 			break;
 		case YAML_BLOCK_MAPPING_START_TOKEN:
-			if (strlenu(key)) {
+			if (str_lenu(key)) {
 				snprintf(blockpath, static_arrlenu(blockpath), "/%s", key);
 			}
 			break;

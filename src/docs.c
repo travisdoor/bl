@@ -151,14 +151,14 @@ void doc_decl_entity(struct context *ctx, struct ast *decl)
 	CODE_BLOCK_END(ctx->stream);
 	if (text) fprintf(ctx->stream, "%s\n\n", text);
 
-	if (strlenu(ctx->section_variants) > 0) {
+	if (str_lenu(ctx->section_variants) > 0) {
 		append_section(ctx, "Variants", ctx->section_variants);
-		strclr(ctx->section_variants);
+		str_clr(ctx->section_variants);
 	}
 
-	if (strlenu(ctx->section_members) > 0) {
+	if (str_lenu(ctx->section_members) > 0) {
 		append_section(ctx, "Members", ctx->section_members);
-		strclr(ctx->section_members);
+		str_clr(ctx->section_members);
 	}
 
 	fprintf(ctx->stream, "\n\n*File: %s*\n\n", ctx->unit->filename);
@@ -216,7 +216,7 @@ void doc_decl_variant(struct context *ctx, struct ast *decl)
 		const str_t name = ident->data.ident.id.str;
 		fprintf(ctx->stream, "%.*s", name.len, name.ptr);
 		if (decl->docs) {
-			strappend(ctx->section_variants, "* `%.*s` - %s\n", name.len, name.ptr, decl->docs);
+			str_append(ctx->section_variants, "* `%.*s` - %s\n", name.len, name.ptr, decl->docs);
 		}
 	}
 	if (value && value->kind == AST_EXPR_LIT_INT) {
@@ -234,7 +234,7 @@ void doc_decl_member(struct context *ctx, struct ast *decl)
 		fprintf(ctx->stream, "%.*s: ", name.len, name.ptr);
 
 		if (decl->docs) {
-			strappend(ctx->section_members, "* `%.*s` - %s\n", name.len, name.ptr, decl->docs);
+			str_append(ctx->section_members, "* `%.*s` - %s\n", name.len, name.ptr, decl->docs);
 		}
 	}
 	doc(ctx, type);
@@ -479,8 +479,8 @@ void docs_run(struct assembly *assembly)
 	zone();
 	struct context ctx;
 	memset(&ctx, 0, sizeof(struct context));
-	strinit(ctx.section_variants, 128);
-	strinit(ctx.section_members, 128);
+	str_init(ctx.section_variants, 128);
+	str_init(ctx.section_members, 128);
 	ctx.output_directory = builder.options->doc_out_dir;
 
 	// prepare output directory
@@ -492,8 +492,8 @@ void docs_run(struct assembly *assembly)
 	}
 
 	// cleanup
-	strfree(ctx.section_variants);
-	strfree(ctx.section_members);
+	str_free(ctx.section_variants);
+	str_free(ctx.section_members);
 
 	builder_info("Documentation written into '%s' directory.", ctx.output_directory);
 	return_zone();

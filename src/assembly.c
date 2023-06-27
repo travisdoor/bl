@@ -412,14 +412,14 @@ struct target *target_new(const char *name)
 	struct target *target = bmalloc(sizeof(struct target));
 	memset(target, 0, sizeof(struct target));
 	bmagic_set(target);
-	strinit(target->default_custom_linker_opt, 128);
-	strinit(target->module_dir, 128);
-	strinit(target->out_dir, 128);
+	str_init(target->default_custom_linker_opt, 128);
+	str_init(target->module_dir, 128);
+	str_init(target->out_dir, 128);
 	target->name = strdup(name);
 
 	// Default target uses current working directory which may be changed by user compiler flags
 	// later (--work-dir).
-	strappend(target->out_dir, ".");
+	str_append(target->out_dir, ".");
 
 	// Setup some defaults.
 	target->opt           = ASSEMBLY_OPT_DEBUG;
@@ -465,9 +465,9 @@ void target_delete(struct target *target)
 	arrfree(target->files);
 	arrfree(target->default_lib_paths);
 	arrfree(target->default_libs);
-	strfree(target->out_dir);
-	strfree(target->default_custom_linker_opt);
-	strfree(target->module_dir);
+	str_free(target->out_dir);
+	str_free(target->default_custom_linker_opt);
+	str_free(target->module_dir);
 	free(target->name);
 	bfree(target);
 }
@@ -519,7 +519,7 @@ void target_append_linker_options(struct target *target, const char *option)
 {
 	bmagic_assert(target);
 	if (!option) return;
-	strappend(target->default_custom_linker_opt, "%s ", option);
+	str_append(target->default_custom_linker_opt, "%s ", option);
 }
 
 void target_set_module_dir(struct target *target, const char *dir, enum module_import_policy policy)
@@ -595,7 +595,7 @@ struct assembly *assembly_new(const struct target *target)
 
 	llvm_init(assembly);
 	arrsetcap(assembly->units, 64);
-	strinit(assembly->custom_linker_opt, 128);
+	str_init(assembly->custom_linker_opt, 128);
 	vm_init(&assembly->vm, VM_STACK_SIZE);
 
 	// set defaults
@@ -668,7 +668,7 @@ void assembly_delete(struct assembly *assembly)
 	arrfree(assembly->testing.cases);
 	arrfree(assembly->units);
 
-	strfree(assembly->custom_linker_opt);
+	str_free(assembly->custom_linker_opt);
 	vm_terminate(&assembly->vm);
 	arena_terminate(&assembly->arenas.sarr);
 	scopes_context_terminate(&assembly->scopes_context);
@@ -699,7 +699,7 @@ void assembly_append_linker_options_safe(struct assembly *assembly, const char *
 
 	AssemblySyncImpl *sync = assembly->sync;
 	pthread_spin_lock(&sync->linker_opt_lock);
-	strappend(assembly->custom_linker_opt, "%s ", opt);
+	str_append(assembly->custom_linker_opt, "%s ", opt);
 	pthread_spin_unlock(&sync->linker_opt_lock);
 }
 
@@ -783,7 +783,7 @@ bool assembly_import_module(struct assembly *assembly,
 	char                *local_path = tstr();
 	struct config       *config     = NULL;
 	const struct target *target     = assembly->target;
-	const char          *module_dir = strlenu(target->module_dir) > 0 ? target->module_dir : NULL;
+	const char          *module_dir = str_lenu(target->module_dir) > 0 ? target->module_dir : NULL;
 	const enum module_import_policy policy = assembly->target->module_policy;
 	const bool local_found = module_dir ? module_exist(module_dir, modulepath) : false;
 
@@ -866,7 +866,7 @@ DONE:
 DCpointer assembly_find_extern(struct assembly *assembly, const str_t symbol)
 {
 	char *tmp = tstr();
-	strsetcap(tmp, symbol.len);
+	str_setcap(tmp, symbol.len);
 	memcpy(tmp, symbol.ptr, symbol.len);
 	tmp[symbol.len] = '\0';
 

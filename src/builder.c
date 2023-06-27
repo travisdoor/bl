@@ -472,6 +472,7 @@ void builder_init(const struct builder_options *options, const char *exec_dir)
 		builtin_ids[i].hash = strhash2(builtin_ids[i].str);
 	}
 	arrsetcap(builder.tmp_strs, 16);
+	arrsetcap(builder.tmp_strs2, 16);
 	start_threads();
 
 	builder.is_initialized = true;
@@ -484,10 +485,16 @@ void builder_terminate(void)
 	}
 	arrfree(builder.targets);
 	for (usize i = 0; i < arrlenu(builder.tmp_strs); ++i) {
-		strfree(builder.tmp_strs[i]);
+		str_free(builder.tmp_strs[i]);
 	}
 	blog("Used %llu temp-strings.", arrlenu(builder.tmp_strs));
 	arrfree(builder.tmp_strs);
+
+	for (usize i = 0; i < arrlenu(builder.tmp_strs2); ++i) {
+		str_buf_free(&builder.tmp_strs2[i]);
+	}
+	blog("Used %llu temp-strings.", arrlenu(builder.tmp_strs2));
+	arrfree(builder.tmp_strs2);
 
 	confdelete(builder.config);
 	llvm_terminate();
@@ -752,10 +759,10 @@ char *tstr(void)
 	if (arrlenu(builder.tmp_strs)) {
 		str = arrpop(builder.tmp_strs);
 	} else {
-		strsetcap(str, 255);
+		str_setcap(str, 255);
 	}
 	bassert(str);
-	strclr(str); // also set zero terminator
+	str_clr(str); // also set zero terminator
 	pthread_spin_unlock(&threading->str_tmp_lock);
 	return_zone(str);
 }
@@ -773,6 +780,30 @@ void put_tstr(char *str)
 	struct threading_impl *threading = builder.threading;
 	pthread_spin_lock(&threading->str_tmp_lock);
 	arrput(builder.tmp_strs, str);
+	pthread_spin_unlock(&threading->str_tmp_lock);
+}
+
+str_buf_t get_tmp_str(void)
+{
+	zone();
+	struct threading_impl *threading = builder.threading;
+	pthread_spin_lock(&threading->str_tmp_lock);
+	str_buf_t str = {0};
+	if (arrlenu(builder.tmp_strs2)) {
+		str = arrpop(builder.tmp_strs2);
+	} else {
+		str_buf_setcap(&str, 255);
+	}
+	str_buf_clr(&str); // also set zero terminator
+	pthread_spin_unlock(&threading->str_tmp_lock);
+	return_zone(str);
+}
+
+void put_tmp_str(str_buf_t str)
+{
+	struct threading_impl *threading = builder.threading;
+	pthread_spin_lock(&threading->str_tmp_lock);
+	arrput(builder.tmp_strs2, str);
 	pthread_spin_unlock(&threading->str_tmp_lock);
 }
 

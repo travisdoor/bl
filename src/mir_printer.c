@@ -206,10 +206,10 @@ _print_const_value(struct context *ctx, struct mir_type *type, vm_stack_ptr_t va
 			while ((c = *(str_ptr++))) {
 				switch (c) {
 				case '\n':
-					strappend(tmp, "\\n");
+					str_append(tmp, "\\n");
 					break;
 				default:
-					strappend(tmp, "%c", c);
+					str_append(tmp, "%c", c);
 				}
 			}
 			fprintf(ctx->stream, "%s\"}", tmp);

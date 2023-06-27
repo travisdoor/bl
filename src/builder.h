@@ -66,6 +66,7 @@ struct builder {
 	struct config                *config;
 	array(struct target *) targets;
 	array(char *) tmp_strs;
+	array(str_buf_t) tmp_strs2;
 	struct threading_impl *threading;
 
 	bool is_initialized;
@@ -124,9 +125,13 @@ void builder_msg(enum builder_msg_type type,
                  const char           *format,
                  ...);
 
+// Temporary strings.
 char *tstr(void);
 char *tstrdup(const char *str);
 void  put_tstr(char *str);
+
+str_buf_t get_tmp_str(void);
+void      put_tmp_str(str_buf_t str);
 
 void builder_print_location(FILE *stream, struct location *loc, s32 col, s32 len);
 

@@ -305,7 +305,7 @@ bool parse_docs(struct context *ctx)
 		strprint(tmp, "%s\n", str);
 		struct token *tok;
 		while ((tok = tokens_consume_if(ctx->tokens, SYM_DCOMMENT))) {
-			strappend(tmp, "%s\n", tok->value.str.ptr);
+			str_append(tmp, "%s\n", tok->value.str.ptr);
 		}
 		arrput(ctx->unit->large_string_cache, tmp);
 		str = tmp;

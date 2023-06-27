@@ -105,7 +105,7 @@ static bool _lookup_program_files(struct wbs *ctx)
 static bool _lookup_vs(struct wbs *ctx)
 {
 	char *vspath = execute("vswhere.exe -latest -nologo -property installationPath");
-	if (!strlenu(vspath)) {
+	if (!str_lenu(vspath)) {
 		// try to use Build Tools instead!
 		strprint(vspath, "%s/%s", ctx->program_files_path, BUILD_TOOLS);
 		if (!dir_exists(vspath)) {
@@ -118,7 +118,7 @@ static bool _lookup_vs(struct wbs *ctx)
 			return false;
 		}
 	}
-	win_path_to_unix(vspath, strlenu(vspath));
+	win_path_to_unix(vspath, str_lenu(vspath));
 	ctx->vs_path = strdup(vspath);
 	put_tstr(vspath);
 	return true;
@@ -172,7 +172,7 @@ static bool _lookup_windows_sdk(struct wbs *ctx)
 		}
 	}
 
-	strappend(sdkpath, "/%s", versions[best_index]);
+	str_append(sdkpath, "/%s", versions[best_index]);
 	_listfile_delete(&versions);
 	ctx->windows_sdk_path = strdup(sdkpath);
 	put_tstr(sdkpath);
@@ -215,7 +215,7 @@ static bool _lookup_msvc_libs(struct wbs *ctx)
 		}
 	}
 
-	strappend(sdkpath, "/%s/%s", versions[best_index], MSVC_LIB);
+	str_append(sdkpath, "/%s/%s", versions[best_index], MSVC_LIB);
 	_listfile_delete(&versions);
 	if (!dir_exists(sdkpath)) {
 		builder_error("MSVC lib directory not found. (Expected location is '%s')", sdkpath);
@@ -230,7 +230,7 @@ static bool _lookup_msvc_libs(struct wbs *ctx)
 static bool _lookup_ucrt(struct wbs *ctx)
 {
 	char *tmppath = tstr();
-	strappend(tmppath, "%s/%s", ctx->windows_sdk_path, UCRT);
+	str_append(tmppath, "%s/%s", ctx->windows_sdk_path, UCRT);
 	if (!dir_exists(tmppath)) {
 		builder_error("UCRT lib-path not found. (Expected location is '%s')", tmppath);
 		put_tstr(tmppath);
@@ -244,7 +244,7 @@ static bool _lookup_ucrt(struct wbs *ctx)
 static bool _lookup_um(struct wbs *ctx)
 {
 	char *tmppath = tstr();
-	strappend(tmppath, "%s/%s", ctx->windows_sdk_path, UM);
+	str_append(tmppath, "%s/%s", ctx->windows_sdk_path, UM);
 	if (!dir_exists(tmppath)) {
 		builder_error("UM lib-path not found. (Expected location is '%s')", tmppath);
 		put_tstr(tmppath);

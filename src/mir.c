@@ -1798,17 +1798,17 @@ static void gen_id_struct(char *tmp, struct mir_type *type)
 {
 	if (type->user_id) {
 		const str_t name = type->user_id->str;
-		strappend(tmp, "%.*s", name.len, name.ptr);
+		str_append(tmp, "%.*s", name.len, name.ptr);
 	}
-	strappend(tmp, "{");
+	str_append(tmp, "{");
 	for (usize i = 0; i < sarrlenu(type->data.strct.members); ++i) {
 		struct mir_member *member = sarrpeek(type->data.strct.members, i);
 		const str_t        name   = member->type->id.str;
 		bassert(name.len);
-		strappend(tmp, "%.*s", name.len, name.ptr);
-		if (i != sarrlenu(type->data.strct.members) - 1) strappend(tmp, ",");
+		str_append(tmp, "%.*s", name.len, name.ptr);
+		if (i != sarrlenu(type->data.strct.members) - 1) str_append(tmp, ",");
 	}
-	strappend(tmp, "}");
+	str_append(tmp, "}");
 }
 
 void type_init_id(struct context *ctx, struct mir_type *type)
@@ -1860,21 +1860,21 @@ void type_init_id(struct context *ctx, struct mir_type *type)
 			const str_t     s   = arg->type->id.str;
 			bassert(s.len);
 			if (i != sarrlenu(type->data.fn.args) - 1) {
-				strappend(tmp, "%.*s,", s.len, s.ptr);
+				str_append(tmp, "%.*s,", s.len, s.ptr);
 			} else {
-				strappend(tmp, "%.*s", s.len, s.ptr);
+				str_append(tmp, "%.*s", s.len, s.ptr);
 			}
 		}
-		strappend(tmp, ")");
+		str_append(tmp, ")");
 		type->data.fn.argument_hash = strhash(tmp);
 		const str_t ret_type_name   = type->data.fn.ret_type ? type->data.fn.ret_type->id.str
 		                                                     : ctx->builtin_types->t_void->id.str;
-		strappend(tmp, "%.*s", ret_type_name.len, ret_type_name.ptr);
+		str_append(tmp, "%.*s", ret_type_name.len, ret_type_name.ptr);
 		break;
 	}
 
 	case MIR_TYPE_FN_GROUP: {
-		strappend(tmp, "f.{");
+		str_append(tmp, "f.{");
 		// append all arg types isd
 		mir_types_t *variants = type->data.fn_group.variants;
 		for (usize i = 0; i < sarrlenu(variants); ++i) {
@@ -1882,45 +1882,45 @@ void type_init_id(struct context *ctx, struct mir_type *type)
 			const str_t      name    = variant->id.str;
 			bassert(name.len);
 			if (i != sarrlenu(variants) - 1) {
-				strappend(tmp, "%.*s,", name.len, name.ptr);
+				str_append(tmp, "%.*s,", name.len, name.ptr);
 			} else {
-				strappend(tmp, "%.*s", name.len, name.ptr);
+				str_append(tmp, "%.*s", name.len, name.ptr);
 			}
 		}
-		strappend(tmp, "}");
+		str_append(tmp, "}");
 		break;
 	}
 
 	case MIR_TYPE_ARRAY: {
 		const str_t elem_type_name = type->data.array.elem_type->id.str;
-		strappend(tmp,
-		          "%llu.%.*s",
-		          (unsigned long long)type->data.array.len,
-		          elem_type_name.len,
-		          elem_type_name.ptr);
+		str_append(tmp,
+		           "%llu.%.*s",
+		           (unsigned long long)type->data.array.len,
+		           elem_type_name.len,
+		           elem_type_name.ptr);
 		break;
 	}
 
 	case MIR_TYPE_STRING: {
-		strappend(tmp, "ss.");
+		str_append(tmp, "ss.");
 		gen_id_struct(tmp, type);
 		break;
 	}
 
 	case MIR_TYPE_SLICE: {
-		strappend(tmp, "sl.");
+		str_append(tmp, "sl.");
 		gen_id_struct(tmp, type);
 		break;
 	}
 
 	case MIR_TYPE_DYNARR: {
-		strappend(tmp, "da.");
+		str_append(tmp, "da.");
 		gen_id_struct(tmp, type);
 		break;
 	}
 
 	case MIR_TYPE_VARGS: {
-		strappend(tmp, "sv.");
+		str_append(tmp, "sv.");
 		gen_id_struct(tmp, type);
 		break;
 	}
@@ -1934,7 +1934,7 @@ void type_init_id(struct context *ctx, struct mir_type *type)
 			++serial;
 			break;
 		}
-		strappend(tmp, is_union ? "u." : "s.");
+		str_append(tmp, is_union ? "u." : "s.");
 		gen_id_struct(tmp, type);
 		break;
 	}
@@ -1943,9 +1943,9 @@ void type_init_id(struct context *ctx, struct mir_type *type)
 		static u64 serial = 0;
 		if (type->user_id) {
 			const str_t name = type->user_id->str;
-			strappend(tmp, "e%llu.%.*s", serial, name.len, name.ptr);
+			str_append(tmp, "e%llu.%.*s", serial, name.len, name.ptr);
 		} else {
-			strappend(tmp, "e%llu", serial);
+			str_append(tmp, "e%llu", serial);
 		}
 		++serial;
 		break;
@@ -1956,7 +1956,7 @@ void type_init_id(struct context *ctx, struct mir_type *type)
 	}
 
 	// @Performance!!!
-	const usize tmp_len = strlenu(tmp);
+	const usize tmp_len = str_lenu(tmp);
 	const str_t dup     = make_str(scdup(&ctx->assembly->string_cache, tmp, tmp_len), tmp_len);
 	id_init(&type->id, dup);
 
@@ -6610,7 +6610,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 	// Setup function linkage name, this will be later used by LLVM backend.
 	if (fn->id && !fn->linkage_name.len) { // Has ID and has no linkage name specified.
 		// Setup function full name.
-		if (strlenu(name_prefix)) {
+		if (str_lenu(name_prefix)) {
 			fn->full_name = scprint2(&ctx->assembly->string_cache,
 			                         "%s.%.*s",
 			                         name_prefix,
@@ -6630,17 +6630,20 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 			fn->linkage_name = unique_name(ctx, fn->full_name);
 		}
 	} else if (!fn->linkage_name.len) {
-		// Anonymous function use implicit unique name.
-		char *full_name = tstr();
-		if (strlenu(name_prefix)) {
-			strprint(full_name, "%s%.*s", name_prefix, IMPL_FN_NAME.len, IMPL_FN_NAME.ptr);
-		} else {
-			strprint(full_name, "%.*s", IMPL_FN_NAME.len, IMPL_FN_NAME.ptr);
+		// Anonymous function use implicit unique name in format [prefix].<IMPL_NAME>.
+		str_buf_t full_name = get_tmp_str();
+		
+		if (str_lenu(name_prefix)) {
+			str_buf_append(&full_name, make_str(name_prefix, str_lenu(name_prefix)));
 		}
-		fn->linkage_name = unique_name(ctx, make_str(full_name, strlenu(full_name)));
+		// . is already in IMPL_FN_NAME!!!
+		str_buf_append(&full_name, IMPL_FN_NAME);
+
+		fn->linkage_name = unique_name(ctx, str_buf_view(full_name));
 		fn->full_name    = fn->linkage_name;
-		put_tstr(full_name);
+		put_tmp_str(full_name);
 	}
+
 	put_tstr(name_prefix);
 	bassert(fn->linkage_name.len);
 	if (!fn->full_name.len) fn->full_name = fn->linkage_name;
@@ -8847,7 +8850,7 @@ struct result analyze_call_stage_generate(struct context *ctx, struct mir_instr_
 
 				char *type_name1 = mir_type2str(poly_type, /* prefer_name */ true);
 				char *type_name2 = mir_type2str(matching_type, /* prefer_name */ true);
-				strappend(debug_replacement_str, "%s = %s; ", type_name1, type_name2);
+				str_append(debug_replacement_str, "%s = %s; ", type_name1, type_name2);
 				put_tstr(type_name1);
 				put_tstr(type_name2);
 
@@ -8904,10 +8907,10 @@ struct result analyze_call_stage_generate(struct context *ctx, struct mir_instr_
 		bmagic_assert(replacement_fn);
 
 		replacement_fn->generated.first_call_node = call->base.node;
-		if (strlenu(debug_replacement_str)) {
+		if (str_lenu(debug_replacement_str)) {
 			char *debug_replacement_str_dup = scdup(&ctx->assembly->string_cache,
 			                                        debug_replacement_str,
-			                                        strlenu(debug_replacement_str));
+			                                        str_lenu(debug_replacement_str));
 
 			replacement_fn->generated.debug_replacement_types = debug_replacement_str_dup;
 		} else {
@@ -12472,28 +12475,28 @@ struct mir_fn *mir_get_callee(const struct mir_instr_call *call)
 static void _type2str(char **buf, const struct mir_type *type, bool prefer_name)
 {
 	if (!type) {
-		strappend(*buf, "<unknown>");
+		str_append(*buf, "<unknown>");
 		return;
 	}
 
 	if (type->user_id && prefer_name) {
 		const str_t name = type->user_id->str;
-		strappend(*buf, "%.*s", name.len, name.ptr);
+		str_append(*buf, "%.*s", name.len, name.ptr);
 		return;
 	}
 
 	switch (type->kind) {
 	case MIR_TYPE_TYPE:
-		strappend(*buf, "type");
+		str_append(*buf, "type");
 		break;
 
 	case MIR_TYPE_PLACEHOLDER:
-		strappend(*buf, "@placeholder");
+		str_append(*buf, "@placeholder");
 		break;
 
 	case MIR_TYPE_SLICE: {
 		const bool has_members = type->data.strct.members;
-		strappend(*buf, "[]");
+		str_append(*buf, "[]");
 
 		if (has_members) {
 			struct mir_type *tmp = mir_get_struct_elem_type(type, MIR_SLICE_PTR_INDEX);
@@ -12505,7 +12508,7 @@ static void _type2str(char **buf, const struct mir_type *type, bool prefer_name)
 
 	case MIR_TYPE_DYNARR: {
 		const bool has_members = type->data.strct.members;
-		strappend(*buf, "[..]");
+		str_append(*buf, "[..]");
 
 		if (has_members) {
 			struct mir_type *tmp = mir_get_struct_elem_type(type, MIR_SLICE_PTR_INDEX);
@@ -12517,7 +12520,7 @@ static void _type2str(char **buf, const struct mir_type *type, bool prefer_name)
 
 	case MIR_TYPE_VARGS: {
 		const bool has_members = type->data.strct.members;
-		strappend(*buf, "...");
+		str_append(*buf, "...");
 
 		if (has_members) {
 			struct mir_type *tmp = mir_get_struct_elem_type(type, MIR_SLICE_PTR_INDEX);
@@ -12530,72 +12533,72 @@ static void _type2str(char **buf, const struct mir_type *type, bool prefer_name)
 	case MIR_TYPE_STRUCT: {
 		mir_members_t *members = type->data.strct.members;
 		if (type->data.strct.is_union) {
-			strappend(*buf, "union{");
+			str_append(*buf, "union{");
 		} else {
-			strappend(*buf, "struct{");
+			str_append(*buf, "struct{");
 		}
 		for (usize i = 0; i < sarrlenu(members); ++i) {
 			struct mir_member *member = sarrpeek(members, i);
 			_type2str(buf, member->type, true);
-			if (i < sarrlenu(members) - 1) strappend(*buf, ", ");
+			if (i < sarrlenu(members) - 1) str_append(*buf, ", ");
 		}
-		strappend(*buf, "}");
+		str_append(*buf, "}");
 		break;
 	}
 
 	case MIR_TYPE_ENUM: {
 		mir_variants_t *variants = type->data.enm.variants;
-		strappend(*buf, "enum{");
+		str_append(*buf, "enum{");
 		for (usize i = 0; i < sarrlenu(variants); ++i) {
 			struct mir_variant *variant = sarrpeek(variants, i);
 			const str_t         name    = variant->id->str;
-			strappend(*buf, "%.*s :: %lld", name.len, name.ptr, variant->value);
-			if (i < sarrlenu(variants) - 1) strappend(*buf, ", ");
+			str_append(*buf, "%.*s :: %lld", name.len, name.ptr, variant->value);
+			if (i < sarrlenu(variants) - 1) str_append(*buf, ", ");
 		}
-		strappend(*buf, "}");
+		str_append(*buf, "}");
 		break;
 	}
 
 	case MIR_TYPE_FN: {
-		strappend(*buf, "fn(");
+		str_append(*buf, "fn(");
 		mir_args_t *args = type->data.fn.args;
 		for (usize i = 0; i < sarrlenu(args); ++i) {
 			struct mir_arg *arg = sarrpeek(args, i);
 			_type2str(buf, arg->type, true);
-			if (i < sarrlenu(args) - 1) strappend(*buf, ", ");
+			if (i < sarrlenu(args) - 1) str_append(*buf, ", ");
 		}
-		strappend(*buf, ") ");
+		str_append(*buf, ") ");
 		_type2str(buf, type->data.fn.ret_type, true);
 		break;
 	}
 
 	case MIR_TYPE_FN_GROUP: {
-		strappend(*buf, "fn{");
+		str_append(*buf, "fn{");
 		mir_types_t *variants = type->data.fn_group.variants;
 		for (usize i = 0; i < sarrlenu(variants); ++i) {
 			struct mir_type *it = sarrpeek(variants, i);
 			_type2str(buf, it, true);
-			if (i < sarrlenu(variants) - 1) strappend(*buf, "; ");
+			if (i < sarrlenu(variants) - 1) str_append(*buf, "; ");
 		}
-		strappend(*buf, "} ");
+		str_append(*buf, "} ");
 		break;
 	}
 
 	case MIR_TYPE_PTR: {
-		strappend(*buf, "*");
+		str_append(*buf, "*");
 		_type2str(buf, mir_deref_type(type), prefer_name);
 		break;
 	}
 
 	case MIR_TYPE_ARRAY: {
-		strappend(*buf, "[%llu]", (unsigned long long)type->data.array.len);
+		str_append(*buf, "[%llu]", (unsigned long long)type->data.array.len);
 		_type2str(buf, type->data.array.elem_type, true);
 		break;
 	}
 
 	default:
 		const str_t name = type->user_id ? type->user_id->str : make_str("<INVALID>", 9);
-		strappend(*buf, "%.*s", name.len, name.ptr);
+		str_append(*buf, "%.*s", name.len, name.ptr);
 	}
 }
 
@@ -12625,7 +12628,7 @@ static void provide_builtin_arch(struct context *ctx)
 	static struct id ids[static_arrlenu(arch_names)];
 	for (usize i = 0; i < static_arrlenu(arch_names); ++i) {
 		str_t name = (str_t){.len = (s32)strlen(arch_names[i])};
-		name.ptr   = strtoupper(scdup(&ctx->assembly->string_cache, arch_names[i], name.len));
+		name.ptr   = str_toupper(scdup(&ctx->assembly->string_cache, arch_names[i], name.len));
 		struct mir_variant *variant = create_variant(ctx, id_init(&ids[i], name), bt->t_s32, i);
 		sarrput(variants, variant);
 		provide_builtin_variant(ctx, scope, variant);
@@ -12653,7 +12656,7 @@ static void provide_builtin_os(struct context *ctx)
 	static struct id ids[static_arrlenu(os_names)];
 	for (usize i = 0; i < static_arrlenu(os_names); ++i) {
 		str_t name = (str_t){.len = (s32)strlen(os_names[i])};
-		name.ptr   = strtoupper(scdup(&ctx->assembly->string_cache, os_names[i], name.len));
+		name.ptr   = str_toupper(scdup(&ctx->assembly->string_cache, os_names[i], name.len));
 		struct mir_variant *variant = create_variant(ctx, id_init(&ids[i], name), bt->t_s32, i);
 		sarrput(variants, variant);
 		provide_builtin_variant(ctx, scope, variant);
@@ -12681,7 +12684,7 @@ static void provide_builtin_env(struct context *ctx)
 	static struct id ids[static_arrlenu(env_names)];
 	for (usize i = 0; i < static_arrlenu(env_names); ++i) {
 		str_t name = (str_t){.len = (s32)strlen(env_names[i])};
-		name.ptr   = strtoupper(scdup(&ctx->assembly->string_cache, env_names[i], name.len));
+		name.ptr   = str_toupper(scdup(&ctx->assembly->string_cache, env_names[i], name.len));
 		struct mir_variant *variant = create_variant(ctx, id_init(&ids[i], name), bt->t_s32, i);
 		sarrput(variants, variant);
 		provide_builtin_variant(ctx, scope, variant);

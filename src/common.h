@@ -141,6 +141,71 @@ static_assert(sizeof(str_t) == 16, "Invalid size of string view type.");
 bool str_match(str_t a, str_t b);
 
 // =================================================================================================
+// String Buffer
+// =================================================================================================
+
+#define str_init(A, C) (str_setcap(A, C), (A)[0] = '\0')
+#define str_free(A) (arrfree(A))
+#define str_lenu(A) (arrlenu(A) ? arrlenu(A) - 1 : 0)
+#define str_clr(A) (arrsetlen(A, 1), (A)[0] = '\0')
+#define str_setcap(A, C) (arrsetcap(A, (C) + 1))
+#define str_append(A, fmt, ...)                                                                    \
+	{                                                                                              \
+		const usize orig_len = str_lenu(A);                                                        \
+		const usize text_len = (usize)snprintf(NULL, 0, fmt, ##__VA_ARGS__) + 1;                   \
+		arrsetlen(A, orig_len + text_len);                                                         \
+		snprintf((A) + orig_len, text_len, fmt, ##__VA_ARGS__);                                    \
+	}                                                                                              \
+	(void)0
+
+#define strprint(A, fmt, ...)                                                                      \
+	{                                                                                              \
+		const usize l = (usize)snprintf(NULL, 0, fmt, ##__VA_ARGS__) + 1;                          \
+		arrsetlen(A, l);                                                                           \
+		snprintf(A, l, fmt, ##__VA_ARGS__);                                                        \
+	}                                                                                              \
+	(void)0
+
+char *str_toupper(char *str);
+s32   levenshtein(const str_t s1, const str_t s2);
+
+// String dynamic array buffer.
+//
+// Note it's guaranteed to be zero terminated, however use 'str_to_c' macro for safety!
+struct str_buf {
+	char *ptr;
+	s32   len, cap;
+};
+
+typedef struct str_buf str_buf_t;
+
+void str_buf_free(str_buf_t *buf);
+// Set the capacity (preallocates) space for 'cap' characters. Does nothing in case the 'cap' is
+// smaller than zero. The preallocation includes extra space for zero terminator.
+void str_buf_setcap(str_buf_t *buf, s32 cap);
+void str_buf_append(str_buf_t *buf, str_t s);
+void str_buf_append_fmt(str_buf_t *buf, const char *fmt, ...);
+void str_buf_clr(str_buf_t *buf); // This is also setting the zero
+
+static inline char *_str_to_c_checked(char *ptr, s32 len)
+{
+	if (!ptr) return "";
+	bassert(ptr[len] == '\0' && "String is not zero terminated!");
+	return ptr;
+}
+
+// Converts the input string or str_t or str_buf_t to the C string. Zero termination is checked by
+// assert.
+// In case the buffer is not allocated, returns pointer to the static empty C string.
+#define str_to_c(B) _str_to_c_checked((B).ptr, (B).len)
+
+#define str_buf_view(B)                                                                            \
+	(str_t)                                                                                        \
+	{                                                                                              \
+		.ptr = (B).ptr, .len = (B).len                                                             \
+	}
+
+// =================================================================================================
 // STB utils
 // =================================================================================================
 
@@ -164,31 +229,6 @@ bool str_match(str_t a, str_t b);
 #define qpush_back(Q, V) arrput(_qother(Q), (V))
 #define qpop_front(Q) (_qcurrent(Q)[(Q)->i++])
 #define qsetcap(Q, c) (arrsetcap(_qother(Q), c))
-
-#define strprint(A, fmt, ...)                                                                      \
-	{                                                                                              \
-		const usize l = (usize)snprintf(NULL, 0, fmt, ##__VA_ARGS__) + 1;                          \
-		arrsetlen(A, l);                                                                           \
-		snprintf(A, l, fmt, ##__VA_ARGS__);                                                        \
-	}                                                                                              \
-	(void)0
-
-#define strinit(A, C) (strsetcap(A, C), (A)[0] = '\0')
-#define strfree(A) (arrfree(A))
-#define strlenu(A) (arrlenu(A) ? arrlenu(A) - 1 : 0)
-#define strclr(A) (arrsetlen(A, 1), (A)[0] = '\0')
-#define strsetcap(A, C) (arrsetcap(A, (C) + 1))
-#define strappend(A, fmt, ...)                                                                     \
-	{                                                                                              \
-		const usize orig_len = strlenu(A);                                                         \
-		const usize text_len = (usize)snprintf(NULL, 0, fmt, ##__VA_ARGS__) + 1;                   \
-		arrsetlen(A, orig_len + text_len);                                                         \
-		snprintf((A) + orig_len, text_len, fmt, ##__VA_ARGS__);                                    \
-	}                                                                                              \
-	(void)0
-
-char *strtoupper(char *str);
-s32   levenshtein(const str_t s1, const str_t s2);
 
 // =================================================================================================
 // Small Array

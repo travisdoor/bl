@@ -189,10 +189,72 @@ str_t scprint2(struct string_cache **cache, const char *fmt, ...)
 }
 
 // =================================================================================================
+// String Buffer
+// =================================================================================================
+
+void str_buf_free(str_buf_t *buf)
+{
+	bfree(buf->ptr);
+	buf->cap = 0;
+	buf->len = 0;
+	buf->ptr = NULL;
+}
+
+void str_buf_clr(str_buf_t *buf)
+{
+	buf->len = 0;
+	if (buf->ptr) buf->ptr[0] = '\0';
+}
+
+void str_buf_setcap(str_buf_t *buf, s32 cap)
+{
+	if (cap < 1) return;
+	cap += 1; // This is for zero terminator.
+	if (buf->cap >= cap) return;
+
+	buf->ptr = brealloc(buf->ptr, MAX(cap, 64));
+	buf->cap = cap;
+	blog("Realloc % bytes", cap);
+}
+
+void str_buf_append(str_buf_t *buf, str_t s)
+{
+	if (s.len == 0) return;
+	bassert(s.ptr);
+	if (buf->len + s.len >= buf->cap) {
+		str_buf_setcap(buf, (buf->len + s.len) * 2);
+	}
+	memcpy(buf->ptr + buf->len, s.ptr, s.len);
+	buf->len += s.len;
+	buf->ptr[buf->len] = '\0';
+}
+
+void str_buf_append_fmt(str_buf_t *buf, const char *fmt, ...)
+{
+	va_list args, args2;
+	va_start(args, fmt);
+	va_copy(args2, args);
+	const s32 len = vsnprintf(NULL, 0, fmt, args);
+	bassert(len > 0);
+
+	str_buf_setcap(buf, buf->len + len);
+	buf->len += len;
+
+	const s32 wlen = vsprintf(buf->ptr, fmt, args2);
+	bassert(wlen == len);
+	(void)wlen;
+
+	buf->ptr[buf->len] = '\0';
+
+	va_end(args2);
+	va_end(args);
+}
+
+// =================================================================================================
 // Utils
 // =================================================================================================
 
-char *strtoupper(char *str)
+char *str_toupper(char *str)
 {
 	char *s = str;
 	while (*s) {
@@ -775,10 +837,10 @@ char *execute(const char *cmd)
 	}
 	char buffer[128];
 	while (fgets(buffer, static_arrlenu(buffer), pipe) != NULL) {
-		strappend(tmp, "%s", buffer);
+		str_append(tmp, "%s", buffer);
 	}
 	pclose(pipe);
-	const usize len = strlenu(tmp);
+	const usize len = str_lenu(tmp);
 	if (len > 0 && tmp[len - 1] == '\n') {
 		tmp[len - 1] = '\0';
 	}
