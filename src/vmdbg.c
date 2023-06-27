@@ -88,7 +88,7 @@ static void print_data(struct mir_type *type, vm_stack_ptr_t ptr)
 	}
 	case MIR_TYPE_STRING: {
 		const str_t str = vm_read_string(current_vm, type, ptr);
-		printf("\"%.*s\"", (s32)str.len, str.ptr);
+		printf("\"%.*s\"", str.len, str.ptr);
 		return;
 	}
 	case MIR_TYPE_SLICE: {
@@ -134,7 +134,7 @@ static void print_variable(struct mir_var *var)
 	// @Cleanup
 	char *type_name     = var->value.type ? mir_type2str(var->value.type, true) : "<UNKNOWN_TYPE>";
 	vm_stack_ptr_t data = vm_read_var(current_vm, var);
-	printf("%-32.*s%-32s", var->linkage_name.len32, var->linkage_name.ptr, type_name);
+	printf("%-32.*s%-32s", var->linkage_name.len, var->linkage_name.ptr, type_name);
 	print_data(var->value.type, data);
 	printf("\n");
 	if (var->value.type) put_tstr(type_name);

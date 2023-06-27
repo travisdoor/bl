@@ -173,7 +173,7 @@ _print_const_value(struct context *ctx, struct mir_type *type, vm_stack_ptr_t va
 
 			if (fn) {
 				const str_t linkage_name = fn->linkage_name;
-				fprintf(ctx->stream, "&%.*s", linkage_name.len32, linkage_name.ptr);
+				fprintf(ctx->stream, "&%.*s", linkage_name.len, linkage_name.ptr);
 			} else {
 				fprintf(ctx->stream, "null");
 			}
@@ -254,7 +254,7 @@ _print_const_value(struct context *ctx, struct mir_type *type, vm_stack_ptr_t va
 		struct mir_fn *fn = vm_read_as(struct mir_fn *, value);
 		bmagic_assert(fn);
 		const str_t name = fn->full_name;
-		fprintf(ctx->stream, "@%.*s", name.len32, name.ptr);
+		fprintf(ctx->stream, "@%.*s", name.len, name.ptr);
 		break;
 	}
 
@@ -332,7 +332,7 @@ void print_comptime_value_or_id(struct context *ctx, struct mir_instr *instr)
 	// Value is compile time known constant.
 	if (instr->kind == MIR_INSTR_DECL_REF) {
 		const str_t s = ((struct mir_instr_decl_ref *)instr)->rid->str;
-		fprintf(ctx->stream, "%.*s", s.len32, s.ptr);
+		fprintf(ctx->stream, "%.*s", s.len, s.ptr);
 		return;
 	}
 
@@ -378,7 +378,7 @@ void print_instr_set_initializer(struct context *ctx, struct mir_instr_set_initi
 		struct mir_instr_decl_var *dest         = (struct mir_instr_decl_var *)_dest;
 		const str_t                linkage_name = dest->var->linkage_name;
 		if (dest && linkage_name.len) {
-			fprintf(ctx->stream, "%.*s", linkage_name.len32, linkage_name.ptr);
+			fprintf(ctx->stream, "%.*s", linkage_name.len, linkage_name.ptr);
 		} else {
 			print_comptime_value_or_id(ctx, _dest);
 		}
@@ -462,7 +462,7 @@ void print_instr_type_poly(struct context *ctx, struct mir_instr_type_poly *type
 	print_instr_head(ctx, &type_poly->base, "const");
 	if (type_poly->T_id) {
 		const str_t s = type_poly->T_id->str;
-		fprintf(ctx->stream, "?%.*s", s.len32, s.ptr);
+		fprintf(ctx->stream, "?%.*s", s.len, s.ptr);
 	} else {
 		fprintf(ctx->stream, "?<INVALID>");
 	}
@@ -640,7 +640,7 @@ void print_instr_member_ptr(struct context *ctx, struct mir_instr_member_ptr *me
 	if (member_ptr->builtin_id == BUILTIN_ID_NONE) {
 		if (member_ptr->member_ident) {
 			const str_t s = member_ptr->member_ident->data.ident.id.str;
-			fprintf(ctx->stream, "%.*s", s.len32, s.ptr);
+			fprintf(ctx->stream, "%.*s", s.len, s.ptr);
 		} else {
 			fprintf(ctx->stream, "<UNKNOWN>");
 		}
@@ -729,7 +729,7 @@ void print_instr_designator(struct context *ctx, struct mir_instr_designator *de
 	} else {
 		name = make_str("<INVALID>", 9);
 	}
-	fprintf(ctx->stream, "%.*s = ", name.len32, name.ptr);
+	fprintf(ctx->stream, "%.*s = ", name.len, name.ptr);
 	print_comptime_value_or_id(ctx, designator->value);
 }
 
@@ -792,7 +792,7 @@ void print_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl)
 
 	if (isflag(var->iflags, MIR_VAR_GLOBAL)) {
 		// global scope variable
-		fprintf(ctx->stream, "\n@%.*s : ", name.len32, name.ptr);
+		fprintf(ctx->stream, "\n@%.*s : ", name.len, name.ptr);
 		print_type(ctx, var->value.type, false, true);
 		fprintf(ctx->stream, " %s ", isflag(var->iflags, MIR_VAR_MUTABLE) ? "=" : ":");
 
@@ -805,7 +805,7 @@ void print_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl)
 		// local scope variable
 		print_instr_head(ctx, &decl->base, "decl");
 
-		fprintf(ctx->stream, "%.*s : ", name.len32, name.ptr);
+		fprintf(ctx->stream, "%.*s : ", name.len, name.ptr);
 		print_type(ctx, var->value.type, false, true);
 		if (decl->init) {
 			fprintf(ctx->stream, " %s ", isflag(var->iflags, MIR_VAR_MUTABLE) ? "=" : ":");
@@ -825,7 +825,7 @@ void print_instr_decl_variant(struct context *ctx, struct mir_instr_decl_variant
 	bassert(variant);
 
 	const str_t name = variant->id->str;
-	fprintf(ctx->stream, "%.*s", name.len32, name.ptr);
+	fprintf(ctx->stream, "%.*s", name.len, name.ptr);
 
 	if (var->value) {
 		fprintf(ctx->stream, " :: ");
@@ -841,7 +841,7 @@ void print_instr_decl_arg(struct context *ctx, struct mir_instr_decl_arg *decl)
 	bassert(arg);
 
 	const str_t name = arg->id ? arg->id->str : make_str("-", 1);
-	fprintf(ctx->stream, "%.*s : ", name.len32, name.ptr);
+	fprintf(ctx->stream, "%.*s : ", name.len, name.ptr);
 	print_comptime_value_or_id(ctx, decl->type);
 
 	if (arg->default_value) {
@@ -858,7 +858,7 @@ void print_instr_decl_member(struct context *ctx, struct mir_instr_decl_member *
 	bassert(member);
 
 	const str_t name = member->id->str;
-	fprintf(ctx->stream, "%.*s : ", name.len32, name.ptr);
+	fprintf(ctx->stream, "%.*s : ", name.len, name.ptr);
 	print_comptime_value_or_id(ctx, decl->type);
 }
 
@@ -867,7 +867,7 @@ void print_instr_decl_ref(struct context *ctx, struct mir_instr_decl_ref *ref)
 	print_instr_head(ctx, &ref->base, "declref");
 
 	const str_t name = ref->rid->str;
-	fprintf(ctx->stream, "%.*s", name.len32, name.ptr);
+	fprintf(ctx->stream, "%.*s", name.len, name.ptr);
 	if (ref->accept_incomplete_type) fprintf(ctx->stream, " /* accept incomplete */");
 }
 
@@ -895,7 +895,7 @@ void print_instr_call(struct context *ctx, struct mir_instr_call *call)
 	if (callee) {
 		const str_t name = callee->linkage_name;
 		bassert(name.len);
-		fprintf(ctx->stream, "@%.*s", name.len32, name.ptr);
+		fprintf(ctx->stream, "@%.*s", name.len, name.ptr);
 	} else {
 		fprintf(ctx->stream, "%%%llu", (unsigned long long)call->callee->id);
 	}
@@ -990,7 +990,7 @@ void print_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_pro
 	fprintf(ctx->stream, "\n");
 	if (fn_proto->base.state == MIR_IS_COMPLETE) fprintf(ctx->stream, "/* analyzed */\n");
 	if (fn->linkage_name.len)
-		fprintf(ctx->stream, "@%.*s ", fn->linkage_name.len32, fn->linkage_name.ptr);
+		fprintf(ctx->stream, "@%.*s ", fn->linkage_name.len, fn->linkage_name.ptr);
 	else
 		fprintf(ctx->stream, "@%llu ", (unsigned long long)fn_proto->base.id);
 

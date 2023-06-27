@@ -351,9 +351,9 @@ void scope_get_full_name(char **dest, struct scope *scope)
 	for (usize i = sarrlenu(&tmp); i-- > 0;) {
 		const str_t subname = sarrpeek(&tmp, i);
 		if (i > 0) {
-			strappend(*dest, "%.*s.", subname.len32, subname.ptr);
+			strappend(*dest, "%.*s.", subname.len, subname.ptr);
 		} else {
-			strappend(*dest, "%.*s", subname.len32, subname.ptr);
+			strappend(*dest, "%.*s", subname.len, subname.ptr);
 		}
 	}
 	sarrfree(&tmp);

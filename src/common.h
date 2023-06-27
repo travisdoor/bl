@@ -112,13 +112,13 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 #define make_str(p, l)                                                                             \
 	(str_t)                                                                                        \
 	{                                                                                              \
-		.ptr = (p), .len = (s64)(l)                                                                \
+		.ptr = (p), .len = (s32)(l)                                                                \
 	}
 
 #define make_str_from_c(p)                                                                         \
 	(str_t)                                                                                        \
 	{                                                                                              \
-		.ptr = (p), .len = (s64)strlen(p)                                                          \
+		.ptr = (p), .len = (s32)strlen(p)                                                          \
 	}
 
 #define str_empty                                                                                  \
@@ -132,10 +132,8 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 // copying and allocations (e.g. identificators can point directly to the loaded file data).
 typedef struct {
 	const char *ptr;
-	union {
-		s64 len;
-		s32 len32; // Be careful using this!
-	};
+	// Might be s64 but it cause warning in range-prints.
+	s32         len;
 } str_t;
 
 static_assert(sizeof(str_t) == 16, "Invalid size of string view type.");
@@ -263,7 +261,6 @@ str_t scprint2(struct string_cache **cache, const char *fmt, ...);
 typedef u32 hash_t;
 
 struct id {
-	/* const char *str; */
 	str_t  str;
 	hash_t hash;
 };
@@ -294,7 +291,7 @@ static inline hash_t strhash2(const str_t s)
 	// FNV 32-bit hash
 	hash_t hash = 2166136261;
 	char   c;
-	for (s64 i = 0; i < s.len; ++i) {
+	for (s32 i = 0; i < s.len; ++i) {
 		c    = s.ptr[i];
 		hash = hash ^ (u8)c;
 		hash = hash * 16777619;

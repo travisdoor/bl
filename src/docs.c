@@ -129,15 +129,15 @@ void doc_decl_entity(struct context *ctx, struct ast *decl)
 
 	char *full_name = tstr();
 	if (scope_name.len) {
-		strprint(full_name, "%.*s.%.*s", scope_name.len32, scope_name.ptr, name.len32, name.ptr);
+		strprint(full_name, "%.*s.%.*s", scope_name.len, scope_name.ptr, name.len, name.ptr);
 	} else {
-		strprint(full_name, "%.*s", name.len32, name.ptr);
+		strprint(full_name, "%.*s", name.len, name.ptr);
 	}
 
 	H1(ctx->stream, full_name);
 	put_tstr(full_name);
 	CODE_BLOCK_BEGIN(ctx->stream);
-	fprintf(ctx->stream, "%.*s :", name.len32, name.ptr);
+	fprintf(ctx->stream, "%.*s :", name.len, name.ptr);
 	if (type) {
 		fprintf(ctx->stream, " ");
 		doc(ctx, type);
@@ -195,15 +195,15 @@ void doc_decl_arg(struct context *ctx, struct ast *decl)
 	struct ast *value = decl->data.decl_arg.value;
 	const str_t name  = ident ? ident->data.ident.id.str : str_empty;
 	if (type && value) {
-		fprintf(ctx->stream, "%.*s : ", name.len32, name.ptr);
+		fprintf(ctx->stream, "%.*s : ", name.len, name.ptr);
 		doc(ctx, type);
 		fprintf(ctx->stream, ": ");
 		doc_value(ctx, value);
 	} else if (type && !value) {
-		fprintf(ctx->stream, "%.*s: ", name.len32, name.ptr);
+		fprintf(ctx->stream, "%.*s: ", name.len, name.ptr);
 		doc(ctx, type);
 	} else if (value) {
-		fprintf(ctx->stream, "%.*s :: ", name.len32, name.ptr);
+		fprintf(ctx->stream, "%.*s :: ", name.len, name.ptr);
 		doc_value(ctx, value);
 	}
 }
@@ -214,9 +214,9 @@ void doc_decl_variant(struct context *ctx, struct ast *decl)
 	struct ast *value = decl->data.decl_variant.value;
 	if (ident) {
 		const str_t name = ident->data.ident.id.str;
-		fprintf(ctx->stream, "%.*s", name.len32, name.ptr);
+		fprintf(ctx->stream, "%.*s", name.len, name.ptr);
 		if (decl->docs) {
-			strappend(ctx->section_variants, "* `%.*s` - %s\n", name.len32, name.ptr, decl->docs);
+			strappend(ctx->section_variants, "* `%.*s` - %s\n", name.len, name.ptr, decl->docs);
 		}
 	}
 	if (value && value->kind == AST_EXPR_LIT_INT) {
@@ -231,10 +231,10 @@ void doc_decl_member(struct context *ctx, struct ast *decl)
 	struct ast *type  = decl->data.decl.type;
 	if (ident) {
 		const str_t name = ident->data.ident.id.str;
-		fprintf(ctx->stream, "%.*s: ", name.len32, name.ptr);
+		fprintf(ctx->stream, "%.*s: ", name.len, name.ptr);
 
 		if (decl->docs) {
-			strappend(ctx->section_members, "* `%.*s` - %s\n", name.len32, name.ptr, decl->docs);
+			strappend(ctx->section_members, "* `%.*s` - %s\n", name.len, name.ptr, decl->docs);
 		}
 	}
 	doc(ctx, type);
@@ -335,7 +335,7 @@ void doc_ref(struct context *ctx, struct ast *ref)
 		fprintf(ctx->stream, ".");
 	}
 	const str_t name = ident->data.ident.id.str;
-	fprintf(ctx->stream, "%.*s", name.len32, name.ptr);
+	fprintf(ctx->stream, "%.*s", name.len, name.ptr);
 }
 
 void doc_type_ptr(struct context *ctx, struct ast *type)
@@ -356,7 +356,7 @@ void doc_type_poly(struct context *ctx, struct ast *type)
 {
 	struct ast *ident = type->data.type_poly.ident;
 	const str_t name  = ident->data.ident.id.str;
-	fprintf(ctx->stream, "?%.*s", name.len32, name.ptr);
+	fprintf(ctx->stream, "?%.*s", name.len, name.ptr);
 }
 
 void doc_expr_lit_fn_group(struct context *ctx, struct ast *lit)

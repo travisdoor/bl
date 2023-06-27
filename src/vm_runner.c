@@ -67,9 +67,9 @@ void vm_tests_run(struct assembly *assembly)
 		const f64   runtime_ms = get_tick_ms() - start;
 		const str_t name       = test_fn->id->str;
 		if (state == VM_INTERP_PASSED) {
-			printf("[ PASS |      ] %.*s (%f ms)\n", name.len32, name.ptr, runtime_ms);
+			printf("[ PASS |      ] %.*s (%f ms)\n", name.len, name.ptr, runtime_ms);
 		} else {
-			printf("[      | FAIL ] %.*s (%f ms)\n", name.len32, name.ptr, runtime_ms);
+			printf("[      | FAIL ] %.*s (%f ms)\n", name.len, name.ptr, runtime_ms);
 			arrput(failed, ((struct case_meta){.name = name, .runtime_ms = runtime_ms}));
 			builder.errorc = 0;
 			++failed_count;
@@ -84,7 +84,7 @@ void vm_tests_run(struct assembly *assembly)
 		printf(TEXT_LINE "\n");
 		for (s64 i = 0; i < arrlen(failed); ++i) {
 			struct case_meta *f = &failed[i];
-			printf("[      | FAIL ] %.*s (%f ms)\n", f->name.len32, f->name.ptr, f->runtime_ms);
+			printf("[      | FAIL ] %.*s (%f ms)\n", f->name.len, f->name.ptr, f->runtime_ms);
 		}
 
 		if (arrlen(failed)) printf(TEXT_LINE "\n");
