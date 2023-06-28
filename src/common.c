@@ -145,6 +145,23 @@ char *scdup(struct string_cache **cache, const char *str, usize len)
 	return_zone(mem);
 }
 
+str_t _scdup2(struct string_cache **cache, char *str, s32 len)
+{
+	len += 1; // +zero terminator
+	if (!*cache) {
+		(*cache) = new_block(len, NULL);
+	} else if ((*cache)->len + len >= (*cache)->cap) {
+		(*cache) = new_block(len, *cache);
+	}
+	char *mem = ((char *)((*cache) + 1)) + (*cache)->len;
+	if (str) {
+		memcpy(mem, str, len - 1); // Do not copy zero terminator.
+		mem[len - 1] = '\0';       // Set zero terminator.
+	}
+	(*cache)->len += (u32)len;
+	return make_str(mem, len);
+}
+
 void scfree(struct string_cache **cache)
 {
 	struct string_cache *c = (*cache);
@@ -214,19 +231,18 @@ void str_buf_setcap(str_buf_t *buf, s32 cap)
 
 	buf->ptr = brealloc(buf->ptr, MAX(cap, 64));
 	buf->cap = cap;
-	blog("Realloc % bytes", cap);
 }
 
-void str_buf_append(str_buf_t *buf, str_t s)
+void _str_buf_append(str_buf_t *buf, char *ptr, s32 len)
 {
-	if (s.len == 0) return;
-	bassert(s.ptr);
-	if (buf->len + s.len >= buf->cap) {
-		str_buf_setcap(buf, (buf->len + s.len) * 2);
+	if (len == 0) return;
+	bassert(ptr);
+	if (buf->len + len >= buf->cap) {
+		str_buf_setcap(buf, (buf->len + len) * 2);
 	}
-	memcpy(buf->ptr + buf->len, s.ptr, s.len);
-	buf->len += s.len;
-    bassert(buf->len < buf->cap);
+	memcpy(buf->ptr + buf->len, ptr, len);
+	buf->len += len;
+	bassert(buf->len < buf->cap);
 	buf->ptr[buf->len] = '\0';
 }
 
@@ -244,8 +260,8 @@ void str_buf_append_fmt(str_buf_t *buf, const char *fmt, ...)
 	const s32 wlen = vsprintf(buf->ptr, fmt, args2);
 	bassert(wlen == len);
 	(void)wlen;
-    
-    bassert(buf->len < buf->cap);
+
+	bassert(buf->len < buf->cap);
 	buf->ptr[buf->len] = '\0';
 
 	va_end(args2);

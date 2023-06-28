@@ -171,7 +171,8 @@ struct scope_entry *scope_lookup(struct scope *scope, scope_lookup_args_t *args)
 bool        scope_is_subtree_of_kind(const struct scope *scope, enum scope_kind kind);
 bool        scope_is_subtree_of(const struct scope *scope, const struct scope *other);
 const char *scope_kind_name(const struct scope *scope);
-void        scope_get_full_name(char **dest, struct scope *scope);
+// Resolve the full name of the scope (containing all namespaces separated by '.'.
+void scope_get_full_name(str_buf_t *buf, struct scope *scope);
 
 static inline bool scope_is_local(const struct scope *scope)
 {

@@ -166,7 +166,7 @@ void scope_insert(struct scope *scope, hash_t layer, struct scope_entry *entry)
 
 void scope_insert_bookmark(struct scopes_context *ctx, hash_t layer, struct scope_entry *entry)
 {
-	//blog("Bookmark: '%.*s'", entry->id->str.len32, entry->id->str.ptr);
+	// blog("Bookmark: '%.*s'", entry->id->str.len32, entry->id->str.ptr);
 
 	bassert(entry);
 	const u64 hash = entry_hash(entry->id->hash, layer);
@@ -340,20 +340,22 @@ const char *scope_kind_name(const struct scope *scope)
 	return "<INVALID>";
 }
 
-void scope_get_full_name(char **dest, struct scope *scope)
+void scope_get_full_name(str_buf_t *buf, struct scope *scope)
 {
-	bassert(dest && scope);
+	bassert(scope && buf);
 	sarr_t(str_t, 8) tmp = SARR_ZERO;
 	while (scope) {
 		if (scope->name.len) sarrput(&tmp, scope->name);
 		scope = scope->parent;
 	}
+
+	str_t dot = make_str(".", 1);
 	for (usize i = sarrlenu(&tmp); i-- > 0;) {
 		const str_t subname = sarrpeek(&tmp, i);
+		//str_buf_append(buf, dot);
+		str_buf_append(buf, subname);
 		if (i > 0) {
-			str_append(*dest, "%.*s.", subname.len, subname.ptr);
-		} else {
-			str_append(*dest, "%.*s", subname.len, subname.ptr);
+			str_buf_append(buf, dot);
 		}
 	}
 	sarrfree(&tmp);

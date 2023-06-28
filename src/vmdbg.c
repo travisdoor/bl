@@ -131,13 +131,22 @@ static void print_data(struct mir_type *type, vm_stack_ptr_t ptr)
 static void print_variable(struct mir_var *var)
 {
 	bassert(var);
-	// @Cleanup
-	char *type_name     = var->value.type ? mir_type2str(var->value.type, true) : "<UNKNOWN_TYPE>";
+
+	if (var->value.type) {
+		str_buf_t type_name = mir_type2str(var->value.type, true);
+		printf("%-32.*s%-32.*s",
+		       var->linkage_name.len,
+		       var->linkage_name.ptr,
+		       type_name.len,
+		       type_name.ptr);
+		put_tmp_str(type_name);
+	} else {
+		printf("%-32.*s%-32s", var->linkage_name.len, var->linkage_name.ptr, "<UNKNONW_TYPE>");
+	}
+
 	vm_stack_ptr_t data = vm_read_var(current_vm, var);
-	printf("%-32.*s%-32s", var->linkage_name.len, var->linkage_name.ptr, type_name);
 	print_data(var->value.type, data);
 	printf("\n");
-	if (var->value.type) put_tstr(type_name);
 }
 
 static void print_local_variables(struct mir_instr *instr)
@@ -326,7 +335,7 @@ void vmdbg_notify_stack_op(enum vmdbg_stack_op op, struct mir_type *type, void *
 			break;
 		case VMDBG_PUSH: {
 			unsigned long long size      = type->store_size_bytes;
-			char              *type_name = mir_type2str(type, true);
+			str_buf_t          type_name = mir_type2str(type, true);
 			if (vm->stack->pc) {
 				color_print(stdout,
 				            BL_RED,
@@ -335,21 +344,21 @@ void vmdbg_notify_stack_op(enum vmdbg_stack_op op, struct mir_type *type, void *
 				            mir_instr_name(vm->stack->pc),
 				            size,
 				            ptr,
-				            type_name);
+				            str_to_c(type_name));
 			} else {
 				color_print(stdout,
 				            BL_RED,
 				            "     -                       PUSH    (%lluB, %p) %s\n",
 				            size,
 				            ptr,
-				            type_name);
+				            str_to_c(type_name));
 			}
-			put_tstr(type_name);
+			put_tmp_str(type_name);
 			break;
 		}
 		case VMDBG_POP: {
 			unsigned long long size      = type->store_size_bytes;
-			char              *type_name = mir_type2str(type, true);
+			str_buf_t          type_name = mir_type2str(type, true);
 			if (vm->stack->pc) {
 				color_print(stdout,
 				            BL_BLUE,
@@ -358,16 +367,16 @@ void vmdbg_notify_stack_op(enum vmdbg_stack_op op, struct mir_type *type, void *
 				            mir_instr_name(vm->stack->pc),
 				            size,
 				            ptr,
-				            type_name);
+				            str_to_c(type_name));
 			} else {
 				color_print(stdout,
 				            BL_BLUE,
 				            "     -                       POP     (%lluB, %p) %s\n",
 				            size,
 				            ptr,
-				            type_name);
+				            str_to_c(type_name));
 			}
-			put_tstr(type_name);
+			put_tmp_str(type_name);
 			break;
 		}
 		}

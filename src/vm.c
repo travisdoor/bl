@@ -861,9 +861,9 @@ void _dyncall_generate_signature(struct virtual_machine *vm, struct mir_type *ty
 	}
 
 	default: {
-		char *type_name = mir_type2str(type, true);
-		babort("Unsupported DC-signature type '%s'.", type_name);
-		put_tstr(type_name);
+		str_buf_t type_name = mir_type2str(type, true);
+		babort("Unsupported DC-signature type '%s'.", str_to_c(type_name));
+		put_tmp_str(type_name);
 	}
 	}
 }
@@ -1060,9 +1060,8 @@ void interp_extern_call(struct virtual_machine *vm, struct mir_fn *fn, struct mi
 	}
 
 	default: {
-		char *type_name = mir_type2str(ret_type, true);
-		babort("Unsupported external call return type '%s'", type_name);
-		// no tmpstrput here.
+		str_buf_t type_name = mir_type2str(ret_type, true);
+		babort("Unsupported external call return type '%s'", str_to_c(type_name));
 	}
 	}
 
@@ -2481,13 +2480,15 @@ void vm_print_backtrace(struct virtual_machine *vm)
 			break;
 		}
 		struct mir_fn *fn = instr->owner_block->owner_fn;
-		if (fn && is_str_valid_nonempty(fn->generated.debug_replacement_types)) {
+		if (fn && fn->generated.debug_replacement_types.len) {
+			const str_t replacement = fn->generated.debug_replacement_types;
 			builder_msg(MSG_ERR_NOTE,
 			            0,
 			            instr->node->location,
 			            CARET_NONE,
-			            "Called from following location with polymorph replacement: %s",
-			            fn->generated.debug_replacement_types);
+			            "Called from following location with polymorph replacement: %.*s",
+			            replacement.len,
+			            replacement.ptr);
 		} else {
 			builder_msg(MSG_ERR_NOTE, 0, instr->node->location, CARET_NONE, "Called from:");
 		}
@@ -2787,7 +2788,7 @@ str_t vm_read_string(struct virtual_machine *vm, const struct mir_type *type, vm
 	struct mir_type *ptr_type = mir_get_struct_elem_type(type, MIR_SLICE_PTR_INDEX);
 	vm_stack_ptr_t   len = vm_get_struct_elem_ptr(vm->assembly, type, src, MIR_SLICE_LEN_INDEX);
 	vm_stack_ptr_t   ptr = vm_get_struct_elem_ptr(vm->assembly, type, src, MIR_SLICE_PTR_INDEX);
-	return make_str((const char *)vm_read_ptr(ptr_type, ptr), vm_read_int(len_type, len));
+	return make_str((char *)vm_read_ptr(ptr_type, ptr), vm_read_int(len_type, len));
 }
 
 void vm_write_int(const struct mir_type *type, vm_stack_ptr_t dest, u64 i)

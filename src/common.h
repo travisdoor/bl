@@ -93,6 +93,7 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 
 // Return size of of static array.
 #define static_arrlenu(A) (sizeof(A) / sizeof((A)[0]))
+// @Cleanup?
 #define is_str_valid_nonempty(S) ((S) && (S)[0] != '\0')
 
 #ifndef MIN
@@ -183,7 +184,11 @@ void str_buf_free(str_buf_t *buf);
 // Set the capacity (preallocates) space for 'cap' characters. Does nothing in case the 'cap' is
 // smaller than zero. The preallocation includes extra space for zero terminator.
 void str_buf_setcap(str_buf_t *buf, s32 cap);
-void str_buf_append(str_buf_t *buf, str_t s);
+
+void _str_buf_append(str_buf_t *buf, char *ptr, s32 len);
+// This way we can append another string buffer or view without any casting.
+#define str_buf_append(B, S) _str_buf_append(B, (S).ptr, (S).len)
+
 void str_buf_append_fmt(str_buf_t *buf, const char *fmt, ...);
 void str_buf_clr(str_buf_t *buf); // This is also setting the zero
 
@@ -198,12 +203,6 @@ static inline const char *_str_to_c_checked(char *ptr, s32 len)
 // assert.
 // In case the buffer is not allocated, returns pointer to the static empty C string.
 #define str_to_c(B) _str_to_c_checked((B).ptr, (B).len)
-
-#define str_buf_view(B)                                                                            \
-	(str_t)                                                                                        \
-	{                                                                                              \
-		.ptr = (B).ptr, .len = (B).len                                                             \
-	}
 
 // =================================================================================================
 // STB utils
@@ -291,6 +290,10 @@ struct string_cache;
 // 'str' is NULL no data copy is done. Function returns pointer to new allocated block/copy of the
 // original string.
 char *scdup(struct string_cache **cache, const char *str, usize len);
+
+#define scdup2(C, S) _scdup2(C, (S).ptr, (S).len)
+str_t _scdup2(struct string_cache **cache, char *str, s32 len);
+
 void  scfree(struct string_cache **cache);
 char *scprint(struct string_cache **cache, const char *fmt, ...); // @Cleanup
 str_t scprint2(struct string_cache **cache, const char *fmt, ...);
@@ -326,13 +329,14 @@ static inline hash_t strhash(const char *str)
 #endif
 }
 
-static inline hash_t strhash2(const str_t s)
+#define strhash2(S) _strhash2((S).ptr, (S).len)
+static inline hash_t _strhash2(char *ptr, s32 len)
 {
 	// FNV 32-bit hash
 	hash_t hash = 2166136261;
 	char   c;
-	for (s32 i = 0; i < s.len; ++i) {
-		c    = s.ptr[i];
+	for (s32 i = 0; i < len; ++i) {
+		c    = ptr[i];
 		hash = hash ^ (u8)c;
 		hash = hash * 16777619;
 	}

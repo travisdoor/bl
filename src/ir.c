@@ -504,8 +504,8 @@ LLVMMetadataRef DI_type_init(struct context *ctx, struct mir_type *type)
 	}
 
 	default: {
-		char *type_name = mir_type2str(type, true);
-		babort("Missing generation DI for type '%s'.", type_name);
+		str_buf_t type_name = mir_type2str(type, true);
+		babort("Missing generation DI for type '%s'.", str_to_c(type_name));
 		// Leak type_name we're aborting...
 	}
 	}
@@ -1501,8 +1501,8 @@ LLVMValueRef _rtti_emit(struct context *ctx, struct mir_type *type)
 		break;
 
 	default: {
-		char *type_name = mir_type2str(type, true);
-		babort("Missing LLVM RTTI generation for type '%s'", type_name);
+		str_buf_t type_name = mir_type2str(type, true);
+		babort("Missing LLVM RTTI generation for type '%s'", str_to_c(type_name));
 		// no put_tstr here...
 	}
 	}

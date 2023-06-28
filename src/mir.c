@@ -294,6 +294,9 @@ static struct mir_var *
 add_global_int(struct context *ctx, struct id *id, bool is_mutable, struct mir_type *type, s32 v);
 static void type_init_id(struct context *ctx, struct mir_type *type);
 
+struct id
+make_fundamental_type_id(struct context *ctx, enum mir_type_kind kind, struct id *user_id);
+
 // Create new type. The 'user_id' is optional.
 static struct mir_type *
 create_type(struct context *ctx, enum mir_type_kind kind, struct id *user_id);
@@ -303,7 +306,7 @@ static struct mir_type *create_type_named_scope(struct context *ctx);
 static struct mir_type *create_type_null(struct context *ctx, struct mir_type *base_type);
 static struct mir_type *create_type_void(struct context *ctx);
 static struct mir_type *create_type_bool(struct context *ctx);
-static struct mir_type *create_type_poly(struct context *ctx, bool is_master);
+static struct mir_type *create_type_poly(struct context *ctx, struct id *user_id, bool is_master);
 static struct mir_type *
 create_type_int(struct context *ctx, struct id id, s32 bitcount, bool is_signed);
 static struct mir_type *create_type_real(struct context *ctx, struct id id, s32 bitcount);
@@ -1565,10 +1568,11 @@ static inline void analyze_notify_provided(struct context *ctx, hash_t hash)
 }
 // =================================================================================================
 
-static inline str_t unique_name(struct context *ctx, const str_t prefix)
+#define unique_name(C, P) _unique_name(C, (P).ptr, (P).len)
+static inline str_t _unique_name(struct context *ctx, char *prefix_ptr, s32 prefix_len)
 {
 	static u64 ui = 0;
-	return scprint2(&ctx->assembly->string_cache, "%.*s.%llu", prefix.len, prefix.ptr, ui++);
+	return scprint2(&ctx->assembly->string_cache, "%.*s.%llu", prefix_len, prefix_ptr, ui++);
 }
 
 static inline bool is_builtin(struct ast *ident, enum builtin_id_kind kind)
@@ -1609,11 +1613,11 @@ static inline void error_types(struct context   *ctx,
 {
 	bassert(from && to);
 	if (!msg) msg = "No implicit cast for type '%s' and '%s'.";
-	char *tmp_from = mir_type2str(from, /* prefer_name */ true);
-	char *tmp_to   = mir_type2str(to, /* prefer_name */ true);
-	report_error(INVALID_TYPE, node, msg, tmp_from, tmp_to);
-	put_tstr(tmp_from);
-	put_tstr(tmp_to);
+	str_buf_t tmp_from = mir_type2str(from, /* prefer_name */ true);
+	str_buf_t tmp_to   = mir_type2str(to, /* prefer_name */ true);
+	report_error(INVALID_TYPE, node, msg, str_to_c(tmp_from), str_to_c(tmp_to));
+	put_tmp_str(tmp_from);
+	put_tmp_str(tmp_to);
 }
 
 static inline void commit_fn(struct context *ctx, struct mir_fn *fn)
@@ -1811,6 +1815,33 @@ static void gen_id_struct(char *tmp, struct mir_type *type)
 	str_append(tmp, "}");
 }
 
+// Make the type id based on the user id ant type kind, this method applies only to fundamental
+// types (internally checked). The generated ID is essentially just copy of the user ID.
+struct id make_fundamental_type_id(struct context *ctx, enum mir_type_kind kind, struct id *user_id)
+{
+	zone();
+	struct id result = {0};
+
+	bassert(user_id);
+	bassert(user_id->hash != 0);
+
+	switch (type->kind) {
+	case MIR_TYPE_BOOL:
+	case MIR_TYPE_VOID:
+	case MIR_TYPE_TYPE:
+	case MIR_TYPE_REAL:
+	case MIR_TYPE_NAMED_SCOPE:
+	case MIR_TYPE_INT: {
+		result = *user_id;
+		break;
+	}
+	default:
+		babort("The type is not fundamental!");
+	}
+
+	return_zone(result);
+}
+
 void type_init_id(struct context *ctx, struct mir_type *type)
 {
 	zone();
@@ -1837,7 +1868,10 @@ void type_init_id(struct context *ctx, struct mir_type *type)
 	}
 
 	case MIR_TYPE_POLY: {
-		strprint(tmp, "?%c", type->data.poly.is_master ? 'M' : 'S');
+		static u64 serial = 0;
+		bassert(type->user_id);
+		const str_t name = type->user_id->str;
+		strprint(tmp, "?%llu.%.*s", serial++, name.len, name.ptr);
 		break;
 	}
 
@@ -1979,7 +2013,7 @@ struct mir_type *create_type(struct context *ctx, enum mir_type_kind kind, struc
 	return type;
 }
 
-struct mir_type *create_type2(struct context *ctx, enum mir_type_kind kind, struct id id)
+struct mir_type *create_type2(struct context *ctx, enum mir_type_kind kind, struct id *user_id)
 {
 	struct mir_type *type = arena_alloc(&ctx->assembly->arenas.mir.type);
 	bmagic_set(type);
@@ -2400,6 +2434,7 @@ struct mir_type *create_type_bool(struct context *ctx)
 struct mir_type *create_type_int(struct context *ctx, struct id id, s32 bitcount, bool is_signed)
 {
 	bassert(bitcount > 0);
+
 	struct mir_type *tmp        = create_type2(ctx, MIR_TYPE_INT, id);
 	tmp->data.integer.bitcount  = bitcount;
 	tmp->data.integer.is_signed = is_signed;
@@ -2417,9 +2452,11 @@ struct mir_type *create_type_real(struct context *ctx, struct id id, s32 bitcoun
 	return tmp;
 }
 
-struct mir_type *create_type_poly(struct context *ctx, bool is_master)
+// Note that the poly type keeps the user name for identification and debugging.
+struct mir_type *create_type_poly(struct context *ctx, struct id *user_id, bool is_master)
 {
-	struct mir_type *tmp     = create_type(ctx, MIR_TYPE_POLY, NULL);
+	bassert(user_id);
+	struct mir_type *tmp     = create_type(ctx, MIR_TYPE_POLY, user_id);
 	tmp->data.poly.is_master = is_master;
 	type_init_id(ctx, tmp);
 	type_init_llvm_dummy(ctx, tmp);
@@ -2549,9 +2586,9 @@ static struct mir_type *complete_type_struct(struct context *ctx, complete_type_
 
 #if TRACY_ENABLE
 	{
-		char *type_name = mir_type2str(incomplete_type, /* prefer_name */ true);
-		BL_TRACY_MESSAGE("COMPLETE_TYPE", "%s", type_name);
-		put_tstr(type_name);
+		str_buf_t type_name = mir_type2str(incomplete_type, /* prefer_name */ true);
+		BL_TRACY_MESSAGE("COMPLETE_TYPE", "%s", str_to_c(type_name));
+		put_tmp_str(type_name);
 	}
 #endif
 	type_init_llvm_struct(ctx, incomplete_type);
@@ -5298,14 +5335,14 @@ static struct result analyze_instr_compound_regular(struct context            *c
 				                                             .id = id,
 				                                         });
 				if (!found) {
-					char *type_name = mir_type2str(type, /* prefer_name */ true);
+					str_buf_t type_name = mir_type2str(type, /* prefer_name */ true);
 					report_error(INVALID_INITIALIZER,
 					             designator->ident,
 					             "Structure member designator '%s' does not refer to any member of "
 					             "initialized structure type '%s'.",
 					             id->str,
-					             type_name);
-					put_tstr(type_name);
+					             str_to_c(type_name));
+					put_tmp_str(type_name);
 					goto STRUCT_FAILED;
 				}
 				bassert(found->kind == SCOPE_ENTRY_MEMBER);
@@ -5952,12 +5989,12 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
 	}
 
 	// Invalid
-	char *type_name = mir_type2str(target_ptr->value.type, /* prefer_name */ true);
+	str_buf_t type_name = mir_type2str(target_ptr->value.type, /* prefer_name */ true);
 	report_error(INVALID_TYPE,
 	             target_ptr->node,
 	             "Expected structure or enumerator type, got '%s'.",
-	             type_name);
-	put_tstr(type_name);
+	             str_to_c(type_name));
+	put_tmp_str(type_name);
 	return_zone(FAIL);
 }
 
@@ -6600,6 +6637,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 		((struct mir_instr_decl_var *)fn->ret_tmp)->var->value.type = value->type->data.fn.ret_type;
 	}
 
+	// Contains the prefix (based on the scope) if any.
 	str_buf_t name_prefix = get_tmp_str();
 
 	if (fn->decl_node) {
@@ -6611,10 +6649,11 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 	// Setup function linkage name, this will be later used by LLVM backend.
 	if (fn->id && !fn->linkage_name.len) { // Has ID and has no linkage name specified.
 		// Setup function full name.
-		if (str_lenu(name_prefix)) {
+		if (name_prefix.len) {
 			fn->full_name = scprint2(&ctx->assembly->string_cache,
-			                         "%s.%.*s",
-			                         name_prefix,
+			                         "%.*s.%.*s",
+			                         name_prefix.len,
+			                         name_prefix.ptr,
 			                         fn->id->str.len,
 			                         fn->id->str.ptr);
 		} else {
@@ -6634,19 +6673,18 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 		// Anonymous function use implicit unique name in format [prefix].<IMPL_NAME>.
 		str_buf_t full_name = get_tmp_str();
 
-		if (str_lenu(name_prefix)) {
-			str_buf_append(&full_name, make_str(name_prefix, str_lenu(name_prefix)));
+		if (name_prefix.len) {
+			str_buf_append(&full_name, name_prefix);
 		}
 		// . is already in IMPL_FN_NAME!!!
 		str_buf_append(&full_name, IMPL_FN_NAME);
 
-		fn->linkage_name = unique_name(ctx, str_buf_view(full_name));
+		fn->linkage_name = unique_name(ctx, full_name);
 		fn->full_name    = fn->linkage_name;
-		blog(">> %s", str_to_c(fn->linkage_name));
 		put_tmp_str(full_name);
 	}
 
-	put_tstr(name_prefix);
+	put_tmp_str(name_prefix);
 	bassert(fn->linkage_name.len);
 	if (!fn->full_name.len) fn->full_name = fn->linkage_name;
 
@@ -7017,9 +7055,10 @@ struct result analyze_instr_load(struct context *ctx, struct mir_instr_load *loa
 
 INVALID_SRC : {
 	bassert(err_type);
-	char *type_name = mir_type2str(err_type, /* prefer_name */ true);
-	report_error(INVALID_TYPE, src->node, "Expected value of pointer type, got '%s'.", type_name);
-	put_tstr(type_name);
+	str_buf_t type_name = mir_type2str(err_type, /* prefer_name */ true);
+	report_error(
+	    INVALID_TYPE, src->node, "Expected value of pointer type, got '%s'.", str_to_c(type_name));
+	put_tmp_str(type_name);
 	return_zone(FAIL);
 }
 }
@@ -7077,12 +7116,12 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
 			case MIR_TYPE_FN:
 			case MIR_TYPE_FN_GROUP:
 			case MIR_TYPE_NAMED_SCOPE: {
-				char *type_name = mir_type2str(arg->type, /* prefer_name */ true);
+				str_buf_t type_name = mir_type2str(arg->type, /* prefer_name */ true);
 				report_error(INVALID_TYPE,
 				             arg->decl_node,
 				             "Invalid function argument type '%s'.",
-				             type_name);
-				put_tstr(type_name);
+				             str_to_c(type_name));
+				put_tmp_str(type_name);
 				return_zone(FAIL);
 			}
 			default:
@@ -7237,12 +7276,12 @@ struct result analyze_instr_decl_member(struct context *ctx, struct mir_instr_de
 		return_zone(FAIL);
 	}
 	if (decl->type->value.type->kind != MIR_TYPE_TYPE && !mir_is_placeholder(decl->type)) {
-		char *type_name = mir_type2str(decl->type->value.type, /* prefer_name */ true);
+		str_buf_t type_name = mir_type2str(decl->type->value.type, /* prefer_name */ true);
 		report_error(INVALID_TYPE,
 		             decl->type->node,
 		             "Invalid type of the structure member, expected is 'type', got '%s'",
-		             type_name);
-		put_tstr(type_name);
+		             str_to_c(type_name));
+		put_tmp_str(type_name);
 		return_zone(FAIL);
 	}
 
@@ -7301,15 +7340,15 @@ struct result analyze_instr_decl_variant(struct context                *ctx,
 		const bool u64overflow = value == 0;
 		if (is_flags && (value > max_value || u64overflow)) {
 			// @Incomplete: Detect overflow also for regular enums?
-			char *base_type_name = mir_type2str(base_type, /* prefer_name */ true);
+			str_buf_t base_type_name = mir_type2str(base_type, /* prefer_name */ true);
 			report_error(NUM_LIT_OVERFLOW,
 			             variant_instr->base.node,
 			             "Enum variant value overflow on variant '%s', maximum value for type "
 			             "'%s' is %llu.",
 			             variant->id->str,
-			             base_type_name,
+			             str_to_c(base_type_name),
 			             max_value);
-			put_tstr(base_type_name);
+			put_tmp_str(base_type_name);
 			return_zone(FAIL);
 		}
 		variant_instr->variant->value = value;
@@ -7945,17 +7984,19 @@ struct result analyze_instr_call_loc(struct context *ctx, struct mir_instr_call_
 	struct mir_type *dest_hash_type     = mir_get_struct_elem_type(type, 3);
 	vm_stack_ptr_t   dest_hash          = vm_get_struct_elem_ptr(ctx->assembly, type, dest, 3);
 
-	const char *filepath = loc->call_location->unit->filepath;
+	char *filepath = loc->call_location->unit->filepath;
 	bassert(filepath);
 	const struct mir_fn *owner_fn = mir_instr_owner_fn(&loc->base);
 	loc->function_name            = str_empty;
 	if (owner_fn) {
 		loc->function_name = owner_fn->full_name;
 	}
-	char *str_hash = tstr();
-	strprint(str_hash, "%s%d", filepath, loc->call_location->line);
-	const hash_t hash = strhash(str_hash);
-	put_tstr(str_hash);
+
+	// Generate source location hash.
+	str_buf_t str_hash = get_tmp_str();
+	str_buf_append_fmt(&str_hash, "%s%d", filepath, loc->call_location->line);
+	const hash_t hash = strhash2(str_hash);
+	put_tmp_str(str_hash);
 
 	vm_write_string(ctx->vm, dest_file_type, dest_file, make_str_from_c(filepath));
 	vm_write_string(ctx->vm, dest_function_type, dest_function, loc->function_name);
@@ -8028,13 +8069,13 @@ struct result analyze_instr_unop(struct context *ctx, struct mir_instr_unop *uno
 	case UNOP_BIT_NOT: {
 		if (expr_type->kind != MIR_TYPE_INT &&
 		    (expr_type->kind != MIR_TYPE_ENUM && expr_type->data.enm.is_flags)) {
-			char *type_name = mir_type2str(expr_type, /* prefer_name */ true);
+			str_buf_t type_name = mir_type2str(expr_type, /* prefer_name */ true);
 			report_error_after(INVALID_TYPE,
 			                   unop->base.node,
 			                   "Invalid operation for type '%s'. This operation "
 			                   "is valid for integer or enum flags types only.",
-			                   type_name);
-			put_tstr(type_name);
+			                   str_to_c(type_name));
+			put_tmp_str(type_name);
 			return_zone(FAIL);
 		}
 		break;
@@ -8043,13 +8084,13 @@ struct result analyze_instr_unop(struct context *ctx, struct mir_instr_unop *uno
 	case UNOP_POS:
 	case UNOP_NEG: {
 		if (expr_type->kind != MIR_TYPE_INT && expr_type->kind != MIR_TYPE_REAL) {
-			char *type_name = mir_type2str(expr_type, /* prefer_name */ true);
+			str_buf_t type_name = mir_type2str(expr_type, /* prefer_name */ true);
 			report_error_after(INVALID_TYPE,
 			                   unop->base.node,
 			                   "Invalid operation for type '%s'. This operation "
 			                   "is valid for integer or real types only.",
-			                   type_name);
-			put_tstr(type_name);
+			                   str_to_c(type_name));
+			put_tmp_str(type_name);
 			return_zone(FAIL);
 		}
 		break;
@@ -8762,7 +8803,7 @@ struct result analyze_call_stage_generate(struct context *ctx, struct mir_instr_
 	struct mir_fn_generated_recipe *recipe = recipe_fn->generation_recipe;
 	bassert(recipe);
 
-	char *debug_replacement_str = tstr();
+	str_buf_t debug_replacement_str = get_tmp_str();
 
 	const bool is_polymorph = isflag(recipe_fn->generated_flavor, MIR_FN_GENERATED_POLY);
 	if (is_polymorph) {
@@ -8798,6 +8839,8 @@ struct result analyze_call_stage_generate(struct context *ctx, struct mir_instr_
 			struct mir_type *matching_type = NULL;
 			poly_type_match(recipe_fn_arg->type, call_arg_type, &poly_type, &matching_type);
 			if (poly_type && !matching_type) {
+				bassert(poly_type->user_id);
+
 				// Resolve type AST node to get better
 				ast_nodes_t *ast_poly_args =
 				    recipe->ast_lit_fn->data.expr_fn.type->data.type_fn.args;
@@ -8806,20 +8849,20 @@ struct result analyze_call_stage_generate(struct context *ctx, struct mir_instr_
 
 				// We expect polymorph master replacement, but no matching one was found.
 				if (call_arg_type) {
-					char *recipe_type_name =
+					str_buf_t recipe_type_name =
 					    mir_type2str(recipe_fn_arg->type, /* prefer_name */ true);
-					char *arg_type_name = mir_type2str(call_arg_type, /* prefer_name */ true);
+					str_buf_t arg_type_name = mir_type2str(call_arg_type, /* prefer_name */ true);
 
 					report_error(INVALID_POLY_MATCH,
 					             err_node,
 					             "Cannot deduce polymorph function argument type '%s'. Expected is "
 					             "'%s' but call-side argument type is '%s'.",
 					             poly_type->user_id->str,
-					             recipe_type_name,
-					             arg_type_name);
+					             str_to_c(recipe_type_name),
+					             str_to_c(arg_type_name));
 
-					put_tstr(recipe_type_name);
-					put_tstr(arg_type_name);
+					put_tmp_str(recipe_type_name);
+					put_tmp_str(arg_type_name);
 				} else {
 					// Missing argument on call side required for polymorph deduction. Should be
 					// reported only for vargs (see the check above).
@@ -8832,6 +8875,8 @@ struct result analyze_call_stage_generate(struct context *ctx, struct mir_instr_
 				goto DONE;
 			} else if (poly_type && matching_type) {
 				bassert(matching_type->kind != MIR_TYPE_POLY);
+				bassert(poly_type->user_id);
+
 				if (matching_type->kind == MIR_TYPE_PLACEHOLDER) {
 					// We've got placeholder type from default value which is resolved later. This
 					// cannot be solved right now, because the default value of the polymorph
@@ -8850,11 +8895,13 @@ struct result analyze_call_stage_generate(struct context *ctx, struct mir_instr_
 					goto DONE;
 				}
 
-				char *type_name1 = mir_type2str(poly_type, /* prefer_name */ true);
-				char *type_name2 = mir_type2str(matching_type, /* prefer_name */ true);
-				str_append(debug_replacement_str, "%s = %s; ", type_name1, type_name2);
-				put_tstr(type_name1);
-				put_tstr(type_name2);
+				str_buf_t type_name = mir_type2str(matching_type, /* prefer_name */ true);
+				str_buf_append_fmt(&debug_replacement_str,
+				                   "%.*s = %s; ",
+				                   poly_type->user_id->str.len,
+				                   poly_type->user_id->str.ptr,
+				                   str_to_c(type_name));
+				put_tmp_str(type_name);
 
 				sarrput(queue, matching_type);
 			}
@@ -8909,14 +8956,13 @@ struct result analyze_call_stage_generate(struct context *ctx, struct mir_instr_
 		bmagic_assert(replacement_fn);
 
 		replacement_fn->generated.first_call_node = call->base.node;
-		if (str_lenu(debug_replacement_str)) {
-			char *debug_replacement_str_dup = scdup(&ctx->assembly->string_cache,
-			                                        debug_replacement_str,
-			                                        str_lenu(debug_replacement_str));
+		if (debug_replacement_str.len) {
+			str_t debug_replacement_str_dup =
+			    scdup2(&ctx->assembly->string_cache, debug_replacement_str);
 
 			replacement_fn->generated.debug_replacement_types = debug_replacement_str_dup;
 		} else {
-			replacement_fn->generated.debug_replacement_types = NULL;
+			replacement_fn->generated.debug_replacement_types = str_empty;
 		}
 
 		// Restore previous state.
@@ -8935,7 +8981,7 @@ struct result analyze_call_stage_generate(struct context *ctx, struct mir_instr_
 
 DONE:
 	reset_poly_replacement_queue(ctx);
-	put_tstr(debug_replacement_str);
+	put_tmp_str(debug_replacement_str);
 	ctx->assembly->stats.polymorph_s += runtime_measure_end(generated);
 
 	if (!replacement_fn) return_zone(FAIL);
@@ -9228,18 +9274,19 @@ struct result analyze_instr_block(struct context *ctx, struct mir_instr_block *b
 	    block->entry_instr->node && isnotflag(fn->flags, FLAG_COMPTIME)) {
 		// Report unreachable code if there is one only once inside function body.
 		fn->first_unreachable_loc     = block->entry_instr->node->location;
-		const char *debug_replacement = fn->generated.debug_replacement_types;
+		const str_t debug_replacement = fn->generated.debug_replacement_types;
 		const str_t fn_readable_name  = mir_get_fn_readable_name(fn);
-		if (debug_replacement) {
+		if (debug_replacement.len) {
 			builder_msg(
 			    MSG_WARN,
 			    0,
 			    fn->first_unreachable_loc,
 			    CARET_NONE,
-			    "Unreachable code detected in the function '%.*s' with polymorph replacement: %s",
+			    "Unreachable code detected in the function '%.*s' with polymorph replacement: %.*s",
 			    fn_readable_name.len,
 			    fn_readable_name.ptr,
-			    debug_replacement);
+			    debug_replacement.len,
+			    debug_replacement.ptr);
 		} else {
 			builder_msg(MSG_WARN,
 			            0,
@@ -9977,8 +10024,8 @@ inline void testing_add_test_case(struct context *ctx, struct mir_fn *fn)
 
 	bassert(fn->id);
 
-	const char *filename = fn->decl_node ? fn->decl_node->location->unit->filename : "UNKNOWN";
-	const s32   line     = fn->decl_node ? fn->decl_node->location->line : 0;
+	char     *filename = fn->decl_node ? fn->decl_node->location->unit->filename : "UNKNOWN";
+	const s32 line     = fn->decl_node ? fn->decl_node->location->line : 0;
 
 	vm_write_ptr(func_type, func_ptr, (vm_stack_ptr_t)fn);
 	vm_write_string(ctx->vm, name_type, name_ptr, fn->id->str);
@@ -10077,9 +10124,8 @@ struct mir_var *_rtti_gen(struct context *ctx, struct mir_type *type)
 		break;
 
 	default: {
-		char *type_name = mir_type2str(type, /* prefer_name */ true);
-		babort("missing RTTI generation for type '%s'", type_name);
-		// no put_tstr here, we aborting anyway...
+		str_buf_t type_name = mir_type2str(type, /* prefer_name */ true);
+		babort("missing RTTI generation for type '%s'", str_to_c(type_name));
 	}
 	}
 
@@ -11378,8 +11424,8 @@ struct mir_instr *ast_expr_binop(struct context *ctx, struct ast *binop)
 		struct mir_instr_block *end_block        = ctx->ast.current_phi_end_block;
 		struct mir_instr_phi   *phi              = ctx->ast.current_phi;
 		bool                    append_end_block = false;
-		// If no end block is specified, we are on the top level of PHI expression generation and
-		// we must create one. Also PHI instruction must be crated (but not appended yet);
+		// If no end block is specified, we are on the top level of PHI expression generation
+		// and we must create one. Also PHI instruction must be crated (but not appended yet);
 		// created PHI gather incomes from all nested branches created by expression.
 		if (!end_block) {
 			bassert(!phi);
@@ -11471,14 +11517,15 @@ void report_poly(struct mir_instr *instr)
 	if (!owner_fn) return;
 	if (!owner_fn->generated.first_call_node) return;
 	if (!owner_fn->generated.first_call_node->location) return;
-	const char *debug_replacement = owner_fn->generated.debug_replacement_types;
-	if (debug_replacement) {
+	const str_t debug_replacement = owner_fn->generated.debug_replacement_types;
+	if (debug_replacement.len) {
 		builder_msg(MSG_ERR_NOTE,
 		            0,
 		            owner_fn->decl_node->location,
 		            CARET_WORD,
-		            "In polymorphic function with substitution: %s",
-		            debug_replacement);
+		            "In polymorphic function with substitution: %.*s",
+		            debug_replacement.len,
+		            debug_replacement.ptr);
 	} else {
 		builder_msg(MSG_ERR_NOTE, 0, owner_fn->decl_node->location, CARET_WORD, "In function:");
 	}
@@ -11881,9 +11928,9 @@ struct mir_instr *ast_type_fn(struct context *ctx, struct ast *type_fn)
 		args = arena_alloc(&ctx->assembly->arenas.sarr);
 		sarrsetlen(args, argc);
 
-		// Argument types are appended in original order (in general it does not matter, they are
-		// not evaluated by the interpreter -> not event pushed on the stack, however previous
-		// version used the reverse order to keep general byte code conventions).
+		// Argument types are appended in original order (in general it does not matter, they
+		// are not evaluated by the interpreter -> not event pushed on the stack, however
+		// previous version used the reverse order to keep general byte code conventions).
 		//
 		// The original ordering is kept because we want to provide compile-time arguments into
 		// function argument scope; all compile time argument values are accessible in the
@@ -12121,8 +12168,8 @@ struct mir_instr *ast_type_poly(struct context *ctx, struct ast *poly)
 	// reuse types here, we can remove it from builtin types.
 	/* struct mir_type *master_type = ctx->builtin_types->t_poly_master; */
 	/* struct mir_type *slave_type  = ctx->builtin_types->t_poly_slave; */
-	struct mir_type *master_type = create_type_poly(ctx, true);
-	struct mir_type *slave_type  = create_type_poly(ctx, false);
+	struct mir_type *master_type = create_type_poly(ctx, scope_entry->id, true);
+	struct mir_type *slave_type  = create_type_poly(ctx, scope_entry->id, false);
 	scope_entry->kind            = SCOPE_ENTRY_TYPE;
 	scope_entry->data.type       = slave_type;
 
@@ -12474,31 +12521,30 @@ struct mir_fn *mir_get_callee(const struct mir_instr_call *call)
 	return fn;
 }
 
-static void _type2str(char **buf, const struct mir_type *type, bool prefer_name)
+static void _type2str(str_buf_t *buf, const struct mir_type *type, bool prefer_name)
 {
 	if (!type) {
-		str_append(*buf, "<unknown>");
+		str_buf_append(buf, make_str("<unknown>", 9));
 		return;
 	}
 
 	if (type->user_id && prefer_name) {
-		const str_t name = type->user_id->str;
-		str_append(*buf, "%.*s", name.len, name.ptr);
+		str_buf_append(buf, type->user_id->str);
 		return;
 	}
 
 	switch (type->kind) {
 	case MIR_TYPE_TYPE:
-		str_append(*buf, "type");
+		str_buf_append(buf, make_str("type", 4));
 		break;
 
 	case MIR_TYPE_PLACEHOLDER:
-		str_append(*buf, "@placeholder");
+		str_buf_append(buf, make_str("@placeholder", 12));
 		break;
 
 	case MIR_TYPE_SLICE: {
 		const bool has_members = type->data.strct.members;
-		str_append(*buf, "[]");
+		str_buf_append(buf, make_str("[]", 2));
 
 		if (has_members) {
 			struct mir_type *tmp = mir_get_struct_elem_type(type, MIR_SLICE_PTR_INDEX);
@@ -12510,7 +12556,7 @@ static void _type2str(char **buf, const struct mir_type *type, bool prefer_name)
 
 	case MIR_TYPE_DYNARR: {
 		const bool has_members = type->data.strct.members;
-		str_append(*buf, "[..]");
+		str_buf_append(buf, make_str("[..]", 4));
 
 		if (has_members) {
 			struct mir_type *tmp = mir_get_struct_elem_type(type, MIR_SLICE_PTR_INDEX);
@@ -12522,7 +12568,7 @@ static void _type2str(char **buf, const struct mir_type *type, bool prefer_name)
 
 	case MIR_TYPE_VARGS: {
 		const bool has_members = type->data.strct.members;
-		str_append(*buf, "...");
+		str_buf_append(buf, make_str("...", 3));
 
 		if (has_members) {
 			struct mir_type *tmp = mir_get_struct_elem_type(type, MIR_SLICE_PTR_INDEX);
@@ -12535,72 +12581,72 @@ static void _type2str(char **buf, const struct mir_type *type, bool prefer_name)
 	case MIR_TYPE_STRUCT: {
 		mir_members_t *members = type->data.strct.members;
 		if (type->data.strct.is_union) {
-			str_append(*buf, "union{");
+			str_buf_append(buf, make_str("union{", 6));
 		} else {
-			str_append(*buf, "struct{");
+			str_buf_append(buf, make_str("struct{", 7));
 		}
 		for (usize i = 0; i < sarrlenu(members); ++i) {
 			struct mir_member *member = sarrpeek(members, i);
 			_type2str(buf, member->type, true);
-			if (i < sarrlenu(members) - 1) str_append(*buf, ", ");
+			if (i < sarrlenu(members) - 1) str_buf_append(buf, make_str(", ", 2));
 		}
-		str_append(*buf, "}");
+		str_buf_append(buf, make_str("}", 1));
 		break;
 	}
 
 	case MIR_TYPE_ENUM: {
 		mir_variants_t *variants = type->data.enm.variants;
-		str_append(*buf, "enum{");
+		str_buf_append(buf, make_str("enum{", 5));
 		for (usize i = 0; i < sarrlenu(variants); ++i) {
 			struct mir_variant *variant = sarrpeek(variants, i);
 			const str_t         name    = variant->id->str;
-			str_append(*buf, "%.*s :: %lld", name.len, name.ptr, variant->value);
-			if (i < sarrlenu(variants) - 1) str_append(*buf, ", ");
+			str_buf_append_fmt(buf, "%.*s :: %lld", name.len, name.ptr, variant->value);
+			if (i < sarrlenu(variants) - 1) str_buf_append(buf, make_str(", ", 2));
 		}
-		str_append(*buf, "}");
+		str_buf_append(buf, make_str("}", 1));
 		break;
 	}
 
 	case MIR_TYPE_FN: {
-		str_append(*buf, "fn(");
+		str_buf_append(buf, make_str("fn(", 3));
 		mir_args_t *args = type->data.fn.args;
 		for (usize i = 0; i < sarrlenu(args); ++i) {
 			struct mir_arg *arg = sarrpeek(args, i);
 			_type2str(buf, arg->type, true);
-			if (i < sarrlenu(args) - 1) str_append(*buf, ", ");
+			if (i < sarrlenu(args) - 1) str_buf_append(buf, make_str(", ", 2));
 		}
-		str_append(*buf, ") ");
+		str_buf_append(buf, make_str(") ", 2));
 		_type2str(buf, type->data.fn.ret_type, true);
 		break;
 	}
 
 	case MIR_TYPE_FN_GROUP: {
-		str_append(*buf, "fn{");
+		str_buf_append(buf, make_str("fn{", 3));
 		mir_types_t *variants = type->data.fn_group.variants;
 		for (usize i = 0; i < sarrlenu(variants); ++i) {
 			struct mir_type *it = sarrpeek(variants, i);
 			_type2str(buf, it, true);
-			if (i < sarrlenu(variants) - 1) str_append(*buf, "; ");
+			if (i < sarrlenu(variants) - 1) str_buf_append(buf, make_str("; ", 2));
 		}
-		str_append(*buf, "} ");
+		str_buf_append(buf, make_str("} ", 2));
 		break;
 	}
 
 	case MIR_TYPE_PTR: {
-		str_append(*buf, "*");
+		str_buf_append(buf, make_str("*", 1));
 		_type2str(buf, mir_deref_type(type), prefer_name);
 		break;
 	}
 
 	case MIR_TYPE_ARRAY: {
-		str_append(*buf, "[%llu]", (unsigned long long)type->data.array.len);
+		str_buf_append_fmt(buf, "[%llu]", (unsigned long long)type->data.array.len);
 		_type2str(buf, type->data.array.elem_type, true);
 		break;
 	}
 
 	default:
 		const str_t name = type->user_id ? type->user_id->str : make_str("<INVALID>", 9);
-		str_append(*buf, "%.*s", name.len, name.ptr);
+		str_buf_append(buf, name);
 	}
 }
 
@@ -12614,11 +12660,11 @@ vm_stack_ptr_t _mir_cev_read(struct mir_const_expr_value *value)
 }
 #endif
 
-char *mir_type2str(const struct mir_type *type, bool prefer_name)
+str_buf_t mir_type2str(const struct mir_type *type, bool prefer_name)
 {
-	char *str = tstr();
-	_type2str(&str, type, prefer_name);
-	return str;
+	str_buf_t buf = get_tmp_str();
+	_type2str(&buf, type, prefer_name);
+	return buf;
 }
 
 static void provide_builtin_arch(struct context *ctx)
@@ -12730,9 +12776,7 @@ void initialize_builtins(struct context *ctx)
 	bt->t_resolve_type_fn = create_type_fn(ctx, &(create_type_fn_args_t){.ret_type = bt->t_type});
 	bt->t_resolve_bool_expr_fn =
 	    create_type_fn(ctx, &(create_type_fn_args_t){.ret_type = bt->t_bool});
-	bt->t_placeholer  = create_type_placeholder(ctx);
-	bt->t_poly_master = create_type_poly(ctx, true);
-	bt->t_poly_slave  = create_type_poly(ctx, false);
+	bt->t_placeholer = create_type_placeholder(ctx);
 
 	provide_builtin_arch(ctx);
 	provide_builtin_os(ctx);
@@ -12768,7 +12812,8 @@ void initialize_builtins(struct context *ctx)
 	add_global_int(ctx, &builtin_ids[BUILTIN_ID_BLC_VER_MINOR], false, bt->t_s32, BL_VERSION_MINOR);
 	add_global_int(ctx, &builtin_ids[BUILTIN_ID_BLC_VER_PATCH], false, bt->t_s32, BL_VERSION_PATCH);
 
-	// Register all compiler builtin helper functions to report eventual collisions with user code.
+	// Register all compiler builtin helper functions to report eventual collisions with user
+	// code.
 	for (u32 i = BUILTIN_ID_SIZEOF; i < static_arrlenu(builtin_ids); ++i) {
 		register_symbol(ctx, NULL, &builtin_ids[i], ctx->assembly->gscope, true, true);
 	}
