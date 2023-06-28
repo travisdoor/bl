@@ -203,7 +203,7 @@ void str_buf_free(str_buf_t *buf)
 void str_buf_clr(str_buf_t *buf)
 {
 	buf->len = 0;
-	if (buf->ptr) buf->ptr[0] = '\0';
+	if (buf->ptr && buf->cap) buf->ptr[0] = '\0';
 }
 
 void str_buf_setcap(str_buf_t *buf, s32 cap)
@@ -226,6 +226,7 @@ void str_buf_append(str_buf_t *buf, str_t s)
 	}
 	memcpy(buf->ptr + buf->len, s.ptr, s.len);
 	buf->len += s.len;
+    bassert(buf->len < buf->cap);
 	buf->ptr[buf->len] = '\0';
 }
 
@@ -243,7 +244,8 @@ void str_buf_append_fmt(str_buf_t *buf, const char *fmt, ...)
 	const s32 wlen = vsprintf(buf->ptr, fmt, args2);
 	bassert(wlen == len);
 	(void)wlen;
-
+    
+    bassert(buf->len < buf->cap);
 	buf->ptr[buf->len] = '\0';
 
 	va_end(args2);

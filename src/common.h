@@ -131,7 +131,7 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 // terminated. This way we can avoid calling strlen() every time and ew can reduce amount of string
 // copying and allocations (e.g. identificators can point directly to the loaded file data).
 typedef struct {
-	const char *ptr;
+	char *ptr;
 	// Might be s64 but it cause warning in range-prints.
 	s32 len;
 } str_t;
@@ -187,7 +187,7 @@ void str_buf_append(str_buf_t *buf, str_t s);
 void str_buf_append_fmt(str_buf_t *buf, const char *fmt, ...);
 void str_buf_clr(str_buf_t *buf); // This is also setting the zero
 
-static inline char *_str_to_c_checked(char *ptr, s32 len)
+static inline const char *_str_to_c_checked(char *ptr, s32 len)
 {
 	if (!ptr) return "";
 	bassert(ptr[len] == '\0' && "String is not zero terminated!");

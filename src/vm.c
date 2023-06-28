@@ -2829,7 +2829,6 @@ void vm_write_string(struct virtual_machine *vm,
                      vm_stack_ptr_t          dest,
                      str_t                   str)
 {
-	bassert(str.ptr && "Invalid string constant!");
 	bassert(str.len >= 0 && "Invalid string constant length.");
 	bassert(type->kind == MIR_TYPE_SLICE && "Expected slice type!");
 	vm_write_slice(vm, type, dest, (void *)str.ptr, str.len);

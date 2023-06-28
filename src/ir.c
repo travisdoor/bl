@@ -1528,8 +1528,8 @@ LLVMValueRef testing_emit_meta_case(struct context *ctx, struct mir_fn *fn)
 	struct mir_type *type = ctx->builtin_types->t_TestCase;
 	LLVMValueRef     llvm_vals[4];
 
-	const char *filename = fn->decl_node ? fn->decl_node->location->unit->filename : "UNKNOWN";
-	const s32   line     = fn->decl_node ? fn->decl_node->location->line : 0;
+	char     *filename = fn->decl_node ? fn->decl_node->location->unit->filename : "UNKNOWN";
+	const s32 line     = fn->decl_node ? fn->decl_node->location->line : 0;
 
 	llvm_vals[0] = emit_fn_proto(ctx, fn, true);
 	llvm_vals[1] = emit_const_string(ctx, fn->id->str);
@@ -2754,9 +2754,9 @@ enum state emit_instr_const(struct context *ctx, struct mir_instr_const *c)
 			    vm_get_struct_elem_ptr(ctx->assembly, type, c->base.value.data, 0);
 			vm_stack_ptr_t str_ptr =
 			    vm_get_struct_elem_ptr(ctx->assembly, type, c->base.value.data, 1);
-			const s64   len = vm_read_as(s64, len_ptr);
-			const char *str = vm_read_as(const char *, str_ptr);
-			llvm_value      = emit_const_string(ctx, make_str(str, len));
+			const s64 len = vm_read_as(s64, len_ptr);
+			char     *str = vm_read_as(char *, str_ptr);
+			llvm_value    = emit_const_string(ctx, make_str(str, len));
 		} else {
 			// Only string literals can be represented as constant for now! Other slices are not
 			// handled.
@@ -2957,7 +2957,7 @@ enum state emit_instr_call_loc(struct context *ctx, struct mir_instr_call_loc *l
 	LLVMSetGlobalConstant(llvm_var, true);
 
 	LLVMValueRef llvm_vals[4];
-	const char  *filepath      = loc->call_location->unit->filepath;
+	char        *filepath      = loc->call_location->unit->filepath;
 	llvm_vals[0]               = emit_const_string(ctx, make_str_from_c(filepath));
 	struct mir_type *line_type = mir_get_struct_elem_type(type, 1);
 	llvm_vals[1] = LLVMConstInt(get_type(ctx, line_type), (u32)loc->call_location->line, true);

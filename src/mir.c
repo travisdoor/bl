@@ -6600,7 +6600,8 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 		((struct mir_instr_decl_var *)fn->ret_tmp)->var->value.type = value->type->data.fn.ret_type;
 	}
 
-	char *name_prefix = tstr();
+	str_buf_t name_prefix = get_tmp_str();
+
 	if (fn->decl_node) {
 		struct scope *owner_scope = fn->decl_node->owner_scope;
 		bassert(owner_scope);
@@ -6632,7 +6633,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 	} else if (!fn->linkage_name.len) {
 		// Anonymous function use implicit unique name in format [prefix].<IMPL_NAME>.
 		str_buf_t full_name = get_tmp_str();
-		
+
 		if (str_lenu(name_prefix)) {
 			str_buf_append(&full_name, make_str(name_prefix, str_lenu(name_prefix)));
 		}
@@ -6641,6 +6642,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 
 		fn->linkage_name = unique_name(ctx, str_buf_view(full_name));
 		fn->full_name    = fn->linkage_name;
+		blog(">> %s", str_to_c(fn->linkage_name));
 		put_tmp_str(full_name);
 	}
 
