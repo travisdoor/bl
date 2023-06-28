@@ -1,13 +1,29 @@
 
 #import "std/test"
 
-main :: fn() s32 {
-	my_poly(10);
-	return 0;
+A :: struct {
+    x: s32;
 }
 
-my_poly :: fn (v: ?T) {
-	std.str_match(10, 10);
+B :: struct {
+    y: s32;
+}
+
+main :: fn() s32 {
+
+    a: struct { x: s32; };
+    b: struct { y: s32; };
+
+    ap :: &a;
+    bp :: &b;
+
+    app :: &ap;
+    bpp :: &bp;
+
+    (@app).x = 0;
+    (@bpp).y = 0;
+    
+	return 0;
 }
 
 /*

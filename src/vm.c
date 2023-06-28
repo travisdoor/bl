@@ -1861,7 +1861,7 @@ void interp_instr_ret(struct virtual_machine *vm, struct mir_instr_ret *ret)
 
 	// pop return value from stack
 	if (ret->value) {
-		bassert(ret_type == ret->value->value.type);
+		bassert(mir_type_cmp(ret_type, ret->value->value.type));
 		bassert(ret_type->kind != MIR_TYPE_VOID && "Void return cannot have specified value.");
 		ret_data_ptr = fetch_value(vm, &ret->value->value);
 		bassert(ret_data_ptr);

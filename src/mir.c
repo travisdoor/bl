@@ -294,13 +294,9 @@ static struct mir_var *
 add_global_int(struct context *ctx, struct id *id, bool is_mutable, struct mir_type *type, s32 v);
 static void type_init_id(struct context *ctx, struct mir_type *type);
 
-struct id
-make_fundamental_type_id(struct context *ctx, enum mir_type_kind kind, struct id *user_id);
-
 // Create new type. The 'user_id' is optional.
 static struct mir_type *
 create_type(struct context *ctx, enum mir_type_kind kind, struct id *user_id);
-static struct mir_type *create_type2(struct context *ctx, enum mir_type_kind kind, struct id id);
 static struct mir_type *create_type_type(struct context *ctx);
 static struct mir_type *create_type_named_scope(struct context *ctx);
 static struct mir_type *create_type_null(struct context *ctx, struct mir_type *base_type);
@@ -308,8 +304,8 @@ static struct mir_type *create_type_void(struct context *ctx);
 static struct mir_type *create_type_bool(struct context *ctx);
 static struct mir_type *create_type_poly(struct context *ctx, struct id *user_id, bool is_master);
 static struct mir_type *
-create_type_int(struct context *ctx, struct id id, s32 bitcount, bool is_signed);
-static struct mir_type *create_type_real(struct context *ctx, struct id id, s32 bitcount);
+create_type_int(struct context *ctx, struct id *user_id, s32 bitcount, bool is_signed);
+static struct mir_type *create_type_real(struct context *ctx, struct id *user_id, s32 bitcount);
 static struct mir_type *create_type_ptr(struct context *ctx, struct mir_type *src_type);
 static struct mir_type *create_type_placeholder(struct context *ctx);
 
@@ -1278,6 +1274,41 @@ DONE:
 	return_zone(first_incomplete_type);
 }
 
+static inline struct mir_type *lookup_type(struct context *ctx, hash_t hash)
+{
+	const s64 i = hmgeti(ctx->type_cache, hash);
+	if (i == -1) return NULL;
+	return ctx->type_cache[i].value;
+}
+
+static inline void insert_type_into_cache(struct context *ctx, struct mir_type *type)
+{
+	bassert(type);
+	bassert(type->id.hash != 0);
+	bassert(hmgeti(ctx->type_cache, type->id.hash) == -1);
+	hmput(ctx->type_cache, type->id.hash, type);
+}
+
+static inline bool is_fundamental_type(struct mir_type *type)
+{
+	bassert(type);
+	switch (type->kind) {
+	case MIR_TYPE_TYPE:
+	case MIR_TYPE_INT:
+	case MIR_TYPE_REAL:
+	case MIR_TYPE_POLY:
+	case MIR_TYPE_VOID:
+	case MIR_TYPE_NAMED_SCOPE:
+	case MIR_TYPE_BOOL:
+	case MIR_TYPE_ENUM:
+	case MIR_TYPE_PLACEHOLDER:
+	case MIR_TYPE_STRING:
+	case MIR_TYPE_PTR:
+		return true;
+	}
+	return false;
+}
+
 // Determinate if instruction has volatile type, that means we can change type of the value during
 // analyze pass as needed. This is used for constant integer literals.
 static inline bool is_instr_type_volatile(struct mir_instr *instr)
@@ -1815,33 +1846,6 @@ static void gen_id_struct(char *tmp, struct mir_type *type)
 	str_append(tmp, "}");
 }
 
-// Make the type id based on the user id ant type kind, this method applies only to fundamental
-// types (internally checked). The generated ID is essentially just copy of the user ID.
-struct id make_fundamental_type_id(struct context *ctx, enum mir_type_kind kind, struct id *user_id)
-{
-	zone();
-	struct id result = {0};
-
-	bassert(user_id);
-	bassert(user_id->hash != 0);
-
-	switch (type->kind) {
-	case MIR_TYPE_BOOL:
-	case MIR_TYPE_VOID:
-	case MIR_TYPE_TYPE:
-	case MIR_TYPE_REAL:
-	case MIR_TYPE_NAMED_SCOPE:
-	case MIR_TYPE_INT: {
-		result = *user_id;
-		break;
-	}
-	default:
-		babort("The type is not fundamental!");
-	}
-
-	return_zone(result);
-}
-
 void type_init_id(struct context *ctx, struct mir_type *type)
 {
 	zone();
@@ -1861,28 +1865,21 @@ void type_init_id(struct context *ctx, struct mir_type *type)
 		break;
 	}
 
-	case MIR_TYPE_NULL: {
-		const str_t s = type->data.null.base_type->id.str;
-		strprint(tmp, "n.%.*s", s.len, s.ptr);
-		break;
-	}
-
 	case MIR_TYPE_POLY: {
 		static u64 serial = 0;
 		bassert(type->user_id);
 		const str_t name = type->user_id->str;
-		strprint(tmp, "?%llu.%.*s", serial++, name.len, name.ptr);
+		strprint(tmp,
+		         "?%llu.%s.%.*s",
+		         serial++,
+		         type->data.poly.is_master ? "M" : "S",
+		         name.len,
+		         name.ptr);
 		break;
 	}
 
 	case MIR_TYPE_PLACEHOLDER: {
 		strprint(tmp, "@");
-		break;
-	}
-
-	case MIR_TYPE_PTR: {
-		const str_t s = type->data.ptr.expr->id.str;
-		strprint(tmp, "p.%.*s", s.len, s.ptr);
 		break;
 	}
 
@@ -1964,10 +1961,10 @@ void type_init_id(struct context *ctx, struct mir_type *type)
 		const bool is_union = type->data.strct.is_union;
 		if (type->user_id) {
 			const str_t name = type->user_id->str;
-			strprint(tmp, "%s%llu.%.*s", is_union ? "u" : "s", serial, name.len, name.ptr);
-			++serial;
+			strprint(tmp, "%s%llu.%.*s", is_union ? "u" : "s", serial++, name.len, name.ptr);
 			break;
 		}
+
 		str_append(tmp, is_union ? "u." : "s.");
 		gen_id_struct(tmp, type);
 		break;
@@ -2010,16 +2007,11 @@ struct mir_type *create_type(struct context *ctx, enum mir_type_kind kind, struc
 	bmagic_set(type);
 	type->kind    = kind;
 	type->user_id = user_id;
-	return type;
-}
 
-struct mir_type *create_type2(struct context *ctx, enum mir_type_kind kind, struct id *user_id)
-{
-	struct mir_type *type = arena_alloc(&ctx->assembly->arenas.mir.type);
-	bmagic_set(type);
-	type->kind    = kind;
-	type->id      = id;
-	type->user_id = &type->id; // @Incomplete!!!
+	// @Cleanup!
+	static s32 tc = 0;
+	blog("%d", ++tc);
+
 	return type;
 }
 
@@ -2308,146 +2300,93 @@ add_global_int(struct context *ctx, struct id *id, bool is_mutable, struct mir_t
 
 struct mir_type *create_type_type(struct context *ctx)
 {
-	struct id        id  = builtin_ids[BUILTIN_ID_TYPE_TYPE];
-	struct mir_type *tmp = create_type2(ctx, MIR_TYPE_TYPE, id);
+	struct id       *user_id = &builtin_ids[BUILTIN_ID_TYPE_TYPE];
+	struct mir_type *tmp     = create_type(ctx, MIR_TYPE_TYPE, user_id);
+	tmp->id                  = *user_id;
 	type_init_llvm_dummy(ctx, tmp);
 	return tmp;
 }
 
 struct mir_type *create_type_named_scope(struct context *ctx)
 {
-	struct mir_type *tmp =
-	    create_type2(ctx, MIR_TYPE_NAMED_SCOPE, builtin_ids[BUILTIN_ID_TYPE_NAMED_SCOPE]);
+	struct id       *user_id = &builtin_ids[BUILTIN_ID_TYPE_NAMED_SCOPE];
+	struct mir_type *tmp     = create_type(ctx, MIR_TYPE_NAMED_SCOPE, user_id);
+	tmp->id                  = *user_id;
 	type_init_llvm_dummy(ctx, tmp);
 	return tmp;
 }
 
-static bool is_type_cached(struct mir_type *t)
-{
-	bassert(t);
-	while (true) {
-		switch (t->kind) {
-		case MIR_TYPE_PTR:
-			t = t->data.ptr.expr;
-			continue;
-		case MIR_TYPE_NULL:
-			t = t->data.null.base_type;
-			continue;
-		case MIR_TYPE_TYPE:
-		case MIR_TYPE_BOOL:
-		case MIR_TYPE_REAL:
-		case MIR_TYPE_INT:
-		case MIR_TYPE_STRING:
-		case MIR_TYPE_ENUM:
-		case MIR_TYPE_FN:
-		case MIR_TYPE_VOID:
-		case MIR_TYPE_POLY:
-			return true;
-
-		default:
-			return false;
-		}
-	}
-}
-#if 0 //@Incomplete
-static struct id gen_typeid(struct context *ctx, struct mir_type *t)
-{
-	bassert(t);
-
-	struct id id;
-
-	switch (t->kind) {
-	case MIR_TYPE_INT:
-	case MIR_TYPE_REAL:
-	case MIR_TYPE_BOOL:
-	case MIR_TYPE_TYPE:
-	case MIR_TYPE_NAMED_SCOPE:
-		bassert(t->user_id);
-		id = *t->user_id;
-		break;
-
-	case MIR_TYPE_PTR:
-		break;
-		
-	default:
-		babort("Missing implementation!");
-	}
-	return id;
-}
-#endif
-
-#define ENABLE_TYPE_CACHE 0
-
-#if ENABLE_TYPE_CACHE
-static hash_t null_hash(struct context *ctx, struct mir_type *src_type)
-{
-	struct id id;
-	char     *tmp = tstr();
-	strprint(tmp, "n.%s", src_type->id.str);
-	id_init(&id, tmp);
-	put_tstr(tmp);
-	return id.hash;
-}
-#endif
-
 struct mir_type *create_type_null(struct context *ctx, struct mir_type *base_type)
 {
 	bassert(base_type);
+	// @Cleanup: this caching really doesn't work.
+	const bool       is_cached = is_fundamental_type(base_type);
+	struct mir_type *tmp;
 
-#if ENABLE_TYPE_CACHE
-	const bool is_cached = is_type_cached(base_type);
+	str_buf_t name = get_tmp_str();
+	str_buf_append(&name, make_str("n.", 2));
+	str_buf_append(&name, base_type->id.str);
+
+	hash_t hash = strhash2(name);
 	if (is_cached) {
-		hash_t    expected_hash = null_hash(ctx, base_type);
-		const s64 i             = hmgeti(ctx->type_cache, expected_hash);
-		if (i != -1) {
-			return ctx->type_cache[i].value;
-		}
+		tmp = lookup_type(ctx, hash);
+		if (tmp) goto DONE;
 	}
-#endif
 
-	struct mir_type *tmp     = create_type(ctx, MIR_TYPE_NULL, &builtin_ids[BUILTIN_ID_NULL]);
+	tmp                      = create_type(ctx, MIR_TYPE_NULL, &builtin_ids[BUILTIN_ID_NULL]);
+	tmp->id.str              = scdup2(&ctx->assembly->string_cache, name);
+	tmp->id.hash             = hash;
 	tmp->data.null.base_type = base_type;
-	type_init_id(ctx, tmp);
+
 	type_init_llvm_null(ctx, tmp);
-#if ENABLE_TYPE_CACHE
-	if (is_cached) hmput(ctx->type_cache, tmp->id.hash, tmp);
-#endif
+
+	if (is_cached) insert_type_into_cache(ctx, tmp);
+
+DONE:
+	put_tmp_str(name);
 	return tmp;
 }
 
 struct mir_type *create_type_void(struct context *ctx)
 {
-	struct id        id  = builtin_ids[BUILTIN_ID_TYPE_VOID];
-	struct mir_type *tmp = create_type2(ctx, MIR_TYPE_VOID, id);
+	struct id       *user_id = &builtin_ids[BUILTIN_ID_TYPE_VOID];
+	struct mir_type *tmp     = create_type(ctx, MIR_TYPE_VOID, user_id);
+	tmp->id                  = *user_id;
 	type_init_llvm_void(ctx, tmp);
 	return tmp;
 }
 
 struct mir_type *create_type_bool(struct context *ctx)
 {
-	struct id        id  = builtin_ids[BUILTIN_ID_TYPE_BOOL];
-	struct mir_type *tmp = create_type2(ctx, MIR_TYPE_BOOL, id);
+	struct id       *user_id = &builtin_ids[BUILTIN_ID_TYPE_BOOL];
+	struct mir_type *tmp     = create_type(ctx, MIR_TYPE_BOOL, user_id);
+	tmp->id                  = *user_id;
 	type_init_llvm_bool(ctx, tmp);
 	return tmp;
 }
 
-struct mir_type *create_type_int(struct context *ctx, struct id id, s32 bitcount, bool is_signed)
+struct mir_type *
+create_type_int(struct context *ctx, struct id *user_id, s32 bitcount, bool is_signed)
 {
+	bassert(user_id);
 	bassert(bitcount > 0);
 
-	struct mir_type *tmp        = create_type2(ctx, MIR_TYPE_INT, id);
+	struct mir_type *tmp        = create_type(ctx, MIR_TYPE_INT, user_id);
 	tmp->data.integer.bitcount  = bitcount;
 	tmp->data.integer.is_signed = is_signed;
+	tmp->id                     = *user_id;
 
 	type_init_llvm_int(ctx, tmp);
 	return tmp;
 }
 
-struct mir_type *create_type_real(struct context *ctx, struct id id, s32 bitcount)
+struct mir_type *create_type_real(struct context *ctx, struct id *user_id, s32 bitcount)
 {
+	bassert(user_id);
 	bassert(bitcount > 0);
-	struct mir_type *tmp    = create_type2(ctx, MIR_TYPE_REAL, id);
+	struct mir_type *tmp    = create_type(ctx, MIR_TYPE_REAL, user_id);
 	tmp->data.real.bitcount = bitcount;
+	tmp->id                 = *user_id;
 	type_init_llvm_real(ctx, tmp);
 	return tmp;
 }
@@ -2463,42 +2402,31 @@ struct mir_type *create_type_poly(struct context *ctx, struct id *user_id, bool 
 	return tmp;
 }
 
-#if ENABLE_TYPE_CACHE
-static hash_t pointer_hash(struct context *ctx, struct mir_type *src_type)
-{
-	struct id id;
-	char     *tmp = tstr();
-	strprint(tmp, "p.%s", src_type->id.str);
-	id_init(&id, tmp);
-	put_tstr(tmp);
-	return id.hash;
-}
-#endif
-
 struct mir_type *create_type_ptr(struct context *ctx, struct mir_type *src_type)
 {
 	bassert(src_type && "Invalid src type for pointer type.");
+	const bool       is_cached = is_fundamental_type(src_type);
+	struct mir_type *tmp;
 
-#if ENABLE_TYPE_CACHE
-	const bool is_cached = is_type_cached(src_type);
+	str_buf_t name = get_tmp_str();
+	str_buf_append(&name, make_str("p.", 2));
+	str_buf_append(&name, src_type->id.str);
 
+	hash_t hash = strhash2(name);
 	if (is_cached) {
-		hash_t    expected_hash = pointer_hash(ctx, src_type);
-		const s64 i             = hmgeti(ctx->type_cache, expected_hash);
-		if (i != -1) {
-			return ctx->type_cache[i].value;
-		}
+		tmp = lookup_type(ctx, hash);
+		if (tmp) goto DONE;
 	}
-#endif
 
-	struct mir_type *tmp = create_type(ctx, MIR_TYPE_PTR, NULL);
-	tmp->data.ptr.expr   = src_type;
-	type_init_id(ctx, tmp);
+	tmp                = create_type(ctx, MIR_TYPE_PTR, NULL);
+	tmp->id.str        = scdup2(&ctx->assembly->string_cache, name);
+	tmp->id.hash       = hash;
+	tmp->data.ptr.expr = src_type;
 	type_init_llvm_ptr(ctx, tmp);
+	if (is_cached) insert_type_into_cache(ctx, tmp);
 
-#if ENABLE_TYPE_CACHE
-	if (is_cached) hmput(ctx->type_cache, tmp->id.hash, tmp);
-#endif
+DONE:
+	put_tmp_str(name);
 	return tmp;
 }
 
@@ -12753,18 +12681,18 @@ static void provide_builtin_env(struct context *ctx)
 void initialize_builtins(struct context *ctx)
 {
 	struct BuiltinTypes *bt = ctx->builtin_types;
-	bt->t_s8                = create_type_int(ctx, builtin_ids[BUILTIN_ID_TYPE_S8], 8, true);
-	bt->t_s16               = create_type_int(ctx, builtin_ids[BUILTIN_ID_TYPE_S16], 16, true);
-	bt->t_s32               = create_type_int(ctx, builtin_ids[BUILTIN_ID_TYPE_S32], 32, true);
-	bt->t_s64               = create_type_int(ctx, builtin_ids[BUILTIN_ID_TYPE_S64], 64, true);
-	bt->t_u8                = create_type_int(ctx, builtin_ids[BUILTIN_ID_TYPE_U8], 8, false);
-	bt->t_u16               = create_type_int(ctx, builtin_ids[BUILTIN_ID_TYPE_U16], 16, false);
-	bt->t_u32               = create_type_int(ctx, builtin_ids[BUILTIN_ID_TYPE_U32], 32, false);
-	bt->t_u64               = create_type_int(ctx, builtin_ids[BUILTIN_ID_TYPE_U64], 64, false);
-	bt->t_usize             = create_type_int(ctx, builtin_ids[BUILTIN_ID_TYPE_USIZE], 64, false);
+	bt->t_s8                = create_type_int(ctx, &builtin_ids[BUILTIN_ID_TYPE_S8], 8, true);
+	bt->t_s16               = create_type_int(ctx, &builtin_ids[BUILTIN_ID_TYPE_S16], 16, true);
+	bt->t_s32               = create_type_int(ctx, &builtin_ids[BUILTIN_ID_TYPE_S32], 32, true);
+	bt->t_s64               = create_type_int(ctx, &builtin_ids[BUILTIN_ID_TYPE_S64], 64, true);
+	bt->t_u8                = create_type_int(ctx, &builtin_ids[BUILTIN_ID_TYPE_U8], 8, false);
+	bt->t_u16               = create_type_int(ctx, &builtin_ids[BUILTIN_ID_TYPE_U16], 16, false);
+	bt->t_u32               = create_type_int(ctx, &builtin_ids[BUILTIN_ID_TYPE_U32], 32, false);
+	bt->t_u64               = create_type_int(ctx, &builtin_ids[BUILTIN_ID_TYPE_U64], 64, false);
+	bt->t_usize             = create_type_int(ctx, &builtin_ids[BUILTIN_ID_TYPE_USIZE], 64, false);
 	bt->t_bool              = create_type_bool(ctx);
-	bt->t_f32               = create_type_real(ctx, builtin_ids[BUILTIN_ID_TYPE_F32], 32);
-	bt->t_f64               = create_type_real(ctx, builtin_ids[BUILTIN_ID_TYPE_F64], 64);
+	bt->t_f32               = create_type_real(ctx, &builtin_ids[BUILTIN_ID_TYPE_F32], 32);
+	bt->t_f64               = create_type_real(ctx, &builtin_ids[BUILTIN_ID_TYPE_F64], 64);
 	bt->t_dummy_ptr         = create_type_ptr(ctx, bt->t_u8);
 	bt->t_type              = create_type_type(ctx);
 	bt->t_scope             = create_type_named_scope(ctx);
