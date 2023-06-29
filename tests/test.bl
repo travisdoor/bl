@@ -1,29 +1,18 @@
-
-#import "std/test"
-
-A :: struct {
-    x: s32;
-}
-
-B :: struct {
-    y: s32;
-}
-
 main :: fn() s32 {
-
-    a: struct { x: s32; };
-    b: struct { y: s32; };
-
-    ap :: &a;
-    bp :: &b;
-
-    app :: &ap;
-    bpp :: &bp;
-
-    (@app).x = 0;
-    (@bpp).y = 0;
-    
+	print("%\n", typeid(Foo));
+	print("%\n", typeid(Bar.Foo));
+	
 	return 0;
+}
+
+Foo :: struct {
+	b: s32;
+}
+#private
+#scope Bar
+
+Foo :: struct {
+	a: s32;
 }
 
 /*

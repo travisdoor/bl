@@ -1959,13 +1959,13 @@ void type_init_id(struct context *ctx, struct mir_type *type)
 	case MIR_TYPE_STRUCT: {
 		static u64 serial   = 0;
 		const bool is_union = type->data.strct.is_union;
+		strprint(tmp, "%s.%llu.", is_union ? "u" : "s", serial++);
 		if (type->user_id) {
 			const str_t name = type->user_id->str;
-			strprint(tmp, "%s%llu.%.*s", is_union ? "u" : "s", serial++, name.len, name.ptr);
+			strprint(tmp, "%.*s", name.len, name.ptr);
 			break;
 		}
 
-		str_append(tmp, is_union ? "u." : "s.");
 		gen_id_struct(tmp, type);
 		break;
 	}
@@ -2009,8 +2009,8 @@ struct mir_type *create_type(struct context *ctx, enum mir_type_kind kind, struc
 	type->user_id = user_id;
 
 	// @Cleanup!
-	static s32 tc = 0;
-	blog("%d", ++tc);
+	/* static s32 tc = 0; */
+	/* blog("%d", ++tc); */
 
 	return type;
 }
@@ -9886,22 +9886,27 @@ void analyze_report_unused(struct context *ctx)
 		if (entry->ref_count > 0) continue;
 		if (!entry->node || !entry->id) continue;
 		bassert(entry->node->location);
+		const str_t name = entry->id->str;
+
 		switch (entry->node->owner_scope->kind) {
 		case SCOPE_GLOBAL:
 		case SCOPE_PRIVATE:
 		case SCOPE_NAMED: {
+
 			report_warning(
 			    entry->node,
-			    "Unused symbol '%s'. Mark the symbol as '#maybe_unused' if it's intentional.",
-			    entry->id->str);
+			    "Unused symbol '%.*s'. Mark the symbol as '#maybe_unused' if it's intentional.",
+			    name.len,
+			    name.ptr);
 			break;
 		}
 		default: {
 			report_warning(entry->node,
-			               "Unused symbol '%s'. Use blank identifier '_' if it's "
+			               "Unused symbol '%.*s'. Use blank identifier '_' if it's "
 			               "intentional, or mark the symbol as '#maybe_unused'. If it's used only "
 			               "in some conditional or generated code.",
-			               entry->id->str);
+			               name.len,
+			               name.ptr);
 		}
 		}
 	}
