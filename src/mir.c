@@ -1834,11 +1834,6 @@ struct mir_type *create_type(struct context *ctx, enum mir_type_kind kind, struc
 	bmagic_set(type);
 	type->kind    = kind;
 	type->user_id = user_id;
-
-	// @Cleanup!
-	static s32 tc = 0;
-	blog("%d", ++tc);
-
 	return type;
 }
 
@@ -5091,8 +5086,8 @@ struct result analyze_instr_phi(struct context *ctx, struct mir_instr_phi *phi)
 	bassert(phi->incoming_blocks && phi->incoming_values);
 	bassert(sarrlenu(phi->incoming_values) == sarrlenu(phi->incoming_blocks));
 	// @Performance: Recreating small arrays here is probably faster then removing elements?
-	mir_instrs_t                 *new_blocks      = arena_alloc(&ctx->assembly->arenas.sarr);
-	mir_instrs_t                 *new_values      = arena_alloc(&ctx->assembly->arenas.sarr);
+	mir_instrs_t	             *new_blocks      = arena_alloc(&ctx->assembly->arenas.sarr);
+	mir_instrs_t	             *new_values      = arena_alloc(&ctx->assembly->arenas.sarr);
 	const struct mir_instr_block *phi_owner_block = phi->base.owner_block;
 	struct mir_type              *type            = NULL;
 	bool                          is_comptime     = true;
@@ -12701,9 +12696,10 @@ static void _type2str(str_buf_t *buf, const struct mir_type *type, bool prefer_n
 		break;
 	}
 
-	default:
+	default: {
 		const str_t name = type->user_id ? type->user_id->str : make_str("<INVALID>", 9);
 		str_buf_append(buf, name);
+	}
 	}
 }
 
