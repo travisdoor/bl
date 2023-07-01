@@ -294,8 +294,8 @@ static inline LLVMBasicBlockRef emit_basic_block(struct context *ctx, struct mir
 	if (!block) return NULL;
 	LLVMBasicBlockRef llvm_block = NULL;
 	if (!block->base.llvm_value) {
-		llvm_block =
-		    LLVMAppendBasicBlockInContext(ctx->llvm_cnt, block->owner_fn->llvm_value, block->name);
+		llvm_block = llvm_append_basic_block_in_context(
+		    ctx->llvm_cnt, block->owner_fn->llvm_value, block->name);
 		block->base.llvm_value = LLVMBasicBlockAsValue(llvm_block);
 	} else {
 		llvm_block = LLVMValueAsBasicBlock(block->base.llvm_value);
@@ -1429,9 +1429,9 @@ void rtti_satisfy_incomplete(struct context *ctx, struct rtti_incomplete incompl
 LLVMValueRef _rtti_emit(struct context *ctx, struct mir_type *type)
 {
 	bassert(type);
-	bassert(assembly_has_rtti(ctx->assembly, type->id.hash));
 
 	struct mir_var *rtti_var = assembly_get_rtti(ctx->assembly, type->id.hash);
+	bassert(rtti_var && "RTTI variable not generated for the type!");
 	if (rtti_var->llvm_value) {
 		return rtti_var->llvm_value;
 	}

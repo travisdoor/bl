@@ -160,6 +160,17 @@ file(GLOB SOURCE_FILES src/*.c)
 
 set(SOURCE_FILES ${SOURCE_FILES} src/llvm_api.cpp)
 
+# rpmalloc
+option(BL_RPMALLOC_ENABLE "Enable or disable rpmalloc https://github.com/mjansson/rpmalloc." ON)
+if(BL_RPMALLOC_ENABLE)
+    add_compile_definitions(BL_RPMALLOC_ENABLE=1)
+	set(SOURCE_FILES ${SOURCE_FILES} ${BL_DEPS_DIR}/rpmalloc-1.4.4/rpmalloc/rpmalloc.c)
+	message(STATUS "RPMalloc enabled.")
+else()
+    add_compile_definitions(BL_RPMALLOC_ENABLE=0)
+    message(STATUS "RPMalloc disabled.")
+endif()
+
 # LLVM
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
@@ -223,6 +234,7 @@ target_include_directories(
             ${BL_DEPS_DIR}/dyncall-1.2/dyncallback
             ${BL_DEPS_DIR}/libyaml-0.2.5/include
 			${BL_DEPS_DIR}/tracy-${TRACY_VER}/public/tracy
+			${BL_DEPS_DIR}/rpmalloc-1.4.4/rpmalloc
             ${LLVM_INCLUDE_DIRS}
 )
 

@@ -2,7 +2,7 @@
 struct_type_hash :: fn () #test {
 	test_eq(typeid(Foo), typeid(Foo));
 	test_neq(typeid(Foo), typeid(Bar.Foo));
-	test_neq(typeid(struct { i: s32; }), typeid(struct { i: s32; }));
+	test_eq(typeid(struct { i: s32; }), typeid(struct { i: s32; }));
 }
 
 Foo :: struct {

@@ -409,7 +409,11 @@ void print_instr_phi(struct context *ctx, struct mir_instr_phi *phi)
 		fprintf(ctx->stream, "[");
 		print_comptime_value_or_id(ctx, value);
 		fprintf(ctx->stream, ", ");
-		fprintf(ctx->stream, "%%%s_%llu", block->name, (unsigned long long)block->base.id);
+		fprintf(ctx->stream,
+		        "%%%.*s_%llu",
+		        block->name.len,
+		        block->name.ptr,
+		        (unsigned long long)block->base.id);
 		fprintf(ctx->stream, "] ");
 	}
 }
@@ -672,11 +676,15 @@ void print_instr_cond_br(struct context *ctx, struct mir_instr_cond_br *cond_br)
 {
 	print_instr_head(ctx, &cond_br->base, "br");
 	print_comptime_value_or_id(ctx, cond_br->cond);
+	const str_t then_block = cond_br->then_block->name;
+	const str_t else_block = cond_br->else_block->name;
 	fprintf(ctx->stream,
-	        " ? %%%s_%llu : %%%s_%llu",
-	        cond_br->then_block->name,
+	        " ? %%%.*s_%llu : %%%.*s_%llu",
+	        then_block.len,
+	        then_block.ptr,
 	        (unsigned long long)cond_br->then_block->base.id,
-	        cond_br->else_block->name,
+	        else_block.len,
+	        else_block.ptr,
 	        (unsigned long long)cond_br->else_block->base.id);
 }
 
@@ -742,9 +750,11 @@ void print_instr_msg(struct context *ctx, struct mir_instr_msg *msg)
 void print_instr_br(struct context *ctx, struct mir_instr_br *br)
 {
 	print_instr_head(ctx, &br->base, "br");
+	const str_t then_block = br->then_block->name;
 	fprintf(ctx->stream,
-	        "%%%s_%llu",
-	        br->then_block->name,
+	        "%%%.*s_%llu",
+	        then_block.len,
+	        then_block.ptr,
 	        (unsigned long long)br->then_block->base.id);
 }
 
@@ -755,15 +765,22 @@ void print_instr_switch(struct context *ctx, struct mir_instr_switch *sw)
 	fprintf(ctx->stream, " {");
 
 	for (usize i = 0; i < sarrlenu(sw->cases); ++i) {
-		struct mir_switch_case *c = &sarrpeek(sw->cases, i);
+		struct mir_switch_case *c          = &sarrpeek(sw->cases, i);
+		const str_t             block_name = c->block->name;
 		print_comptime_value_or_id(ctx, c->on_value);
-		fprintf(ctx->stream, ": %%%s_%llu", c->block->name, (unsigned long long)c->block->base.id);
+		fprintf(ctx->stream,
+		        ": %%%.*s_%llu",
+		        block_name.len,
+		        block_name.ptr,
+		        (unsigned long long)c->block->base.id);
 		if (i < sarrlenu(sw->cases) - 1) fprintf(ctx->stream, "; ");
 	}
 
+	const str_t default_block_name = sw->default_block->name;
 	fprintf(ctx->stream,
-	        "} else %%%s_%llu",
-	        sw->default_block->name,
+	        "} else %%%.*s_%llu",
+	        default_block_name.len,
+	        default_block_name.ptr,
 	        (unsigned long long)sw->default_block->base.id);
 }
 
@@ -953,16 +970,25 @@ void print_instr_block(struct context *ctx, struct mir_instr_block *block)
 	// if (block->base.prev || is_global) fprintf(ctx->stream, "\n");
 #if BL_DEBUG
 	if (block->base.ref_count < 0) {
-		fprintf(ctx->stream, "%%%s_%llu (-):", block->name, (unsigned long long)block->base.id);
+		fprintf(ctx->stream,
+		        "%%%.*s_%llu (-):",
+		        block->name.len,
+		        block->name.ptr,
+		        (unsigned long long)block->base.id);
 	} else {
 		fprintf(ctx->stream,
-		        "%%%s_%llu (%u):",
-		        block->name,
+		        "%%%.*s_%llu (%u):",
+		        block->name.len,
+		        block->name.ptr,
 		        (unsigned long long)block->base.id,
 		        block->base.ref_count);
 	}
 #else
-	fprintf(ctx->stream, "%%%s_%llu:", block->name, (unsigned long long)block->base.id);
+	fprintf(ctx->stream,
+	        "%%%.*s_%llu:",
+	        block->name.len,
+	        block->name.ptr,
+	        (unsigned long long)block->base.id);
 #endif
 	if (is_global) {
 		fprintf(ctx->stream, " {\n");

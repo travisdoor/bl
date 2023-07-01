@@ -64,3 +64,9 @@ LLVMValueRef llvm_build_alloca(LLVMBuilderRef B, LLVMTypeRef Ty, str_t Name)
 	StringRef sName(Name.ptr, (size_t)Name.len);
 	return wrap(unwrap(B)->CreateAlloca(unwrap(Ty), nullptr, sName));
 }
+
+LLVMBasicBlockRef llvm_append_basic_block_in_context(LLVMContextRef C, LLVMValueRef Fn, str_t Name)
+{
+	StringRef sName(Name.ptr, (size_t)Name.len);
+	return wrap(BasicBlock::Create(*unwrap(C), sName, unwrap<Function>(Fn)));
+}

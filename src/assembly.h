@@ -210,7 +210,7 @@ struct assembly {
 	struct {
 		array(struct mir_instr *) global_instrs; // All global instructions.
 		struct {
-			u64             key;
+			hash_t          key;
 			struct mir_var *value;
 		} *rtti_table; // Map type ids to RTTI variables.
 		array(struct mir_instr *) exported_instrs;
@@ -303,10 +303,8 @@ bool      assembly_import_module(struct assembly *assembly,
                                  struct token    *import_from);
 DCpointer assembly_find_extern(struct assembly *assembly, const str_t symbol);
 
-#define assembly_has_rtti(assembly, type_id) (hmgeti((assembly)->MIR.rtti_table, type_id) != -1)
-#define assembly_get_rtti(assembly, type_id) (hmget((assembly)->MIR.rtti_table, type_id))
-#define assembly_add_rtti(assembly, type_id, rtti_var)                                             \
-	hmput((assembly)->MIR.rtti_table, type_id, rtti_var)
+struct mir_var *assembly_get_rtti(struct assembly *assembly, hash_t type_hash);
+void assembly_add_rtti(struct assembly *assembly, hash_t type_hash, struct mir_var *rtti_var);
 
 // Convert opt level to string.
 static inline const char *opt_to_str(enum assembly_opt opt)

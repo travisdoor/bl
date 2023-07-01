@@ -161,6 +161,7 @@ static void threading_delete(struct threading_impl *t)
 
 static void *worker(void UNUSED(*args))
 {
+	bl_alloc_thread_init();
 	struct threading_impl *threading = builder.threading;
 	while (true) {
 		pthread_mutex_lock(&threading->queue_mutex);
@@ -185,6 +186,7 @@ static void *worker(void UNUSED(*args))
 		pthread_cond_signal(&threading->active_condition);
 		pthread_mutex_unlock(&threading->active_mutex);
 	}
+	bl_alloc_thread_terminate();
 	pthread_exit(NULL);
 	return NULL;
 }
@@ -373,7 +375,7 @@ static void print_stats(struct assembly *assembly)
 	    "  Lexing & Parsing: %10.3f seconds    %3.0f%%\n"
 	    "  MIR:              %10.3f seconds    %3.0f%%\n"
 	    "  LLVM IR:          %10.3f seconds    %3.0f%%\n"
-		"  LLVM Obj:         %10.3f seconds    %3.0f%%\n"
+	    "  LLVM Obj:         %10.3f seconds    %3.0f%%\n"
 	    "  Linking:          %10.3f seconds    %3.0f%%\n\n"
 	    "  Polymorph:        %10lld generated in %.3f seconds\n\n"
 	    "  Total:            %10.3f seconds\n"

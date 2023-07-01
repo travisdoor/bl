@@ -204,6 +204,12 @@ static inline const char *_str_to_c_checked(char *ptr, s32 len)
 // In case the buffer is not allocated, returns pointer to the static empty C string.
 #define str_to_c(B) _str_to_c_checked((B).ptr, (B).len)
 
+#define str_buf_view(B)                                                                            \
+	(str_t)                                                                                        \
+	{                                                                                              \
+		.len = (B).len, .ptr = (B).ptr                                                             \
+	}
+
 // =================================================================================================
 // STB utils
 // =================================================================================================

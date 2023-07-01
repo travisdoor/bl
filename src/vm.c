@@ -2061,6 +2061,14 @@ void eval_instr_type_info(struct virtual_machine *vm, struct mir_instr_type_info
 {
 	bassert(type_info->rtti_type && "Missing RTTI type!");
 	struct mir_var *rtti_var = assembly_get_rtti(vm->assembly, type_info->rtti_type->id.hash);
+#if BL_ASSERT_ENABLE
+	if (!rtti_var) {
+		const str_t  name = type_info->rtti_type->id.str;
+		const hash_t hash = type_info->rtti_type->id.hash;
+		blog("Rtti type %.*s [%lu] not found!", name.len, name.ptr, hash);
+		bassert(rtti_var);
+	}
+#endif
 
 	MIR_CEV_WRITE_AS(vm_stack_ptr_t, &type_info->base.value, rtti_var->value.data);
 }

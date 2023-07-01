@@ -43,7 +43,7 @@
 #define ARENA_INSTR_CHUNK_COUNT 2048
 #define RESOLVE_TYPE_FN_NAME make_str(".type", 5)
 #define RESOLVE_EXPR_FN_NAME make_str(".expr", 5)
-#define INIT_VALUE_FN_NAME ".init"
+#define INIT_VALUE_FN_NAME make_str(".init", 5)
 #define IMPL_FN_NAME make_str(".impl", 5)
 #define IMPL_VARGS_TMP_ARR make_str(".vargs.arr", 10)
 #define IMPL_VARGS_TMP make_str(".vargs", 6)
@@ -292,7 +292,6 @@ static struct mir_var *add_global_variable(struct context   *ctx,
 static struct mir_var *add_global_bool(struct context *ctx, struct id *id, bool is_mutable, bool v);
 static struct mir_var *
 add_global_int(struct context *ctx, struct id *id, bool is_mutable, struct mir_type *type, s32 v);
-static void type_init_id(struct context *ctx, struct mir_type *type);
 
 // Create new type. The 'user_id' is optional.
 static struct mir_type *
@@ -321,12 +320,13 @@ typedef struct {
 static struct mir_type *create_type_fn(struct context *ctx, create_type_fn_args_t *args);
 
 static struct mir_type *
-create_type_fn_group(struct context *ctx, struct id *id, mir_types_t *variants);
+create_type_fn_group(struct context *ctx, struct id *user_id, mir_types_t *variants);
 static struct mir_type *
-create_type_array(struct context *ctx, struct id *id, struct mir_type *elem_type, s64 len);
+create_type_array(struct context *ctx, struct id *user_id, struct mir_type *elem_type, s64 len);
 
 typedef struct {
 	enum mir_type_kind kind;
+	struct id         *user_id;
 	struct id         *id;
 	struct scope      *scope;
 	hash_t             scope_layer;
@@ -363,7 +363,7 @@ static struct mir_type *complete_type_struct(struct context              *ctx,
                                              complete_type_struct_args_t *args);
 
 typedef struct {
-	struct id       *id;
+	struct id       *user_id;
 	struct scope    *scope;
 	struct mir_type *base_type;
 	mir_variants_t  *variants;
@@ -374,9 +374,12 @@ static struct mir_type *create_type_enum(struct context *ctx, create_type_enum_a
 
 static struct mir_type *create_type_slice(struct context    *ctx,
                                           enum mir_type_kind kind,
-                                          struct id         *id,
+                                          struct id         *user_id,
                                           struct mir_type   *elem_ptr_type,
                                           bool               is_string_literal);
+
+static struct mir_type *
+create_type_struct_dynarr(struct context *ctx, struct id *user_id, struct mir_type *elem_ptr_type);
 
 static void type_init_llvm_int(struct context *ctx, struct mir_type *type);
 static void type_init_llvm_real(struct context *ctx, struct mir_type *type);
@@ -460,14 +463,14 @@ static struct mir_arg *create_arg(struct context *ctx, create_arg_args_t *args);
 static struct mir_variant *
 create_variant(struct context *ctx, struct id *id, struct mir_type *value_type, const u64 value);
 // Create block without owner function.
-static struct mir_instr_block *create_block(struct context *ctx, const char *name);
+static struct mir_instr_block *create_block(struct context *ctx, const str_t name);
 // Create and append block into function specified.
 static struct mir_instr_block *
-append_block(struct context *ctx, struct mir_fn *fn, const char *name);
+append_block(struct context *ctx, struct mir_fn *fn, const str_t name);
 // Append already created block into function. Block cannot be already member of other function.
 static struct mir_instr_block *
 append_block2(struct context *ctx, struct mir_fn *fn, struct mir_instr_block *block);
-static struct mir_instr_block *append_global_block(struct context *ctx, const char *name);
+static struct mir_instr_block *append_global_block(struct context *ctx, const str_t name);
 
 // instructions
 static void *create_instr(struct context *ctx, enum mir_instr_kind kind, struct ast *node);
@@ -633,7 +636,7 @@ static struct mir_instr *append_instr_type_fn_group(struct context *ctx,
 
 static struct mir_instr *append_instr_type_struct(struct context   *ctx,
                                                   struct ast       *node,
-                                                  struct id        *id,
+                                                  struct id        *user_id,
                                                   struct mir_instr *fwd_decl, // Optional
                                                   struct scope     *scope,
                                                   hash_t            scope_layer,
@@ -1289,26 +1292,6 @@ static inline void insert_type_into_cache(struct context *ctx, struct mir_type *
 	hmput(ctx->type_cache, type->id.hash, type);
 }
 
-static inline bool is_fundamental_type(struct mir_type *type)
-{
-	bassert(type);
-	switch (type->kind) {
-	case MIR_TYPE_TYPE:
-	case MIR_TYPE_INT:
-	case MIR_TYPE_REAL:
-	case MIR_TYPE_POLY:
-	case MIR_TYPE_VOID:
-	case MIR_TYPE_NAMED_SCOPE:
-	case MIR_TYPE_BOOL:
-	case MIR_TYPE_ENUM:
-	case MIR_TYPE_PLACEHOLDER:
-	case MIR_TYPE_STRING:
-	case MIR_TYPE_PTR:
-		return true;
-	}
-	return false;
-}
-
 // Determinate if instruction has volatile type, that means we can change type of the value during
 // analyze pass as needed. This is used for constant integer literals.
 static inline bool is_instr_type_volatile(struct mir_instr *instr)
@@ -1693,7 +1676,6 @@ static inline void commit_var(struct context *ctx, struct mir_var *var, const bo
 	if (entry->kind == SCOPE_ENTRY_UNNAMED) return;
 	entry->kind     = SCOPE_ENTRY_VAR;
 	entry->data.var = var;
-	BL_TRACY_MESSAGE("COMMIT_VAR", "%s", id->str);
 	if (isflag(var->iflags, MIR_VAR_GLOBAL) || isflag(var->iflags, MIR_VAR_STRUCT_TYPEDEF))
 		analyze_notify_provided(ctx, id->hash);
 	if (check_usage) usage_check_push(ctx, entry);
@@ -1846,161 +1828,6 @@ static void gen_id_struct(char *tmp, struct mir_type *type)
 	str_append(tmp, "}");
 }
 
-void type_init_id(struct context *ctx, struct mir_type *type)
-{
-	zone();
-	bassert(type && "Invalid type pointer!");
-	char *tmp = tstr();
-
-	switch (type->kind) {
-	case MIR_TYPE_BOOL:
-	case MIR_TYPE_VOID:
-	case MIR_TYPE_TYPE:
-	case MIR_TYPE_REAL:
-	case MIR_TYPE_NAMED_SCOPE:
-	case MIR_TYPE_INT: {
-		babort("This should be removed!!!");
-		bassert(type->user_id);
-		strprint(tmp, "%.*s", type->user_id->str.len, type->user_id->str.ptr);
-		break;
-	}
-
-	case MIR_TYPE_POLY: {
-		static u64 serial = 0;
-		bassert(type->user_id);
-		const str_t name = type->user_id->str;
-		strprint(tmp,
-		         "?%llu.%s.%.*s",
-		         serial++,
-		         type->data.poly.is_master ? "M" : "S",
-		         name.len,
-		         name.ptr);
-		break;
-	}
-
-	case MIR_TYPE_PLACEHOLDER: {
-		strprint(tmp, "@");
-		break;
-	}
-
-	case MIR_TYPE_FN: {
-		strprint(tmp, "f.(");
-		// append all arg types isd
-		for (usize i = 0; i < sarrlenu(type->data.fn.args); ++i) {
-			struct mir_arg *arg = sarrpeek(type->data.fn.args, i);
-			const str_t     s   = arg->type->id.str;
-			bassert(s.len);
-			if (i != sarrlenu(type->data.fn.args) - 1) {
-				str_append(tmp, "%.*s,", s.len, s.ptr);
-			} else {
-				str_append(tmp, "%.*s", s.len, s.ptr);
-			}
-		}
-		str_append(tmp, ")");
-		type->data.fn.argument_hash = strhash(tmp);
-		const str_t ret_type_name   = type->data.fn.ret_type ? type->data.fn.ret_type->id.str
-		                                                     : ctx->builtin_types->t_void->id.str;
-		str_append(tmp, "%.*s", ret_type_name.len, ret_type_name.ptr);
-		break;
-	}
-
-	case MIR_TYPE_FN_GROUP: {
-		str_append(tmp, "f.{");
-		// append all arg types isd
-		mir_types_t *variants = type->data.fn_group.variants;
-		for (usize i = 0; i < sarrlenu(variants); ++i) {
-			struct mir_type *variant = sarrpeek(variants, i);
-			const str_t      name    = variant->id.str;
-			bassert(name.len);
-			if (i != sarrlenu(variants) - 1) {
-				str_append(tmp, "%.*s,", name.len, name.ptr);
-			} else {
-				str_append(tmp, "%.*s", name.len, name.ptr);
-			}
-		}
-		str_append(tmp, "}");
-		break;
-	}
-
-	case MIR_TYPE_ARRAY: {
-		const str_t elem_type_name = type->data.array.elem_type->id.str;
-		str_append(tmp,
-		           "%llu.%.*s",
-		           (unsigned long long)type->data.array.len,
-		           elem_type_name.len,
-		           elem_type_name.ptr);
-		break;
-	}
-
-	case MIR_TYPE_STRING: {
-		str_append(tmp, "ss.");
-		gen_id_struct(tmp, type);
-		break;
-	}
-
-	case MIR_TYPE_SLICE: {
-		str_append(tmp, "sl.");
-		gen_id_struct(tmp, type);
-		break;
-	}
-
-	case MIR_TYPE_DYNARR: {
-		str_append(tmp, "da.");
-		gen_id_struct(tmp, type);
-		break;
-	}
-
-	case MIR_TYPE_VARGS: {
-		str_append(tmp, "sv.");
-		gen_id_struct(tmp, type);
-		break;
-	}
-
-	case MIR_TYPE_STRUCT: {
-		static u64 serial   = 0;
-		const bool is_union = type->data.strct.is_union;
-		strprint(tmp, "%s.%llu.", is_union ? "u" : "s", serial++);
-		if (type->user_id) {
-			const str_t name = type->user_id->str;
-			strprint(tmp, "%.*s", name.len, name.ptr);
-			break;
-		}
-
-		gen_id_struct(tmp, type);
-		break;
-	}
-
-	case MIR_TYPE_ENUM: {
-		static u64 serial = 0;
-		if (type->user_id) {
-			const str_t name = type->user_id->str;
-			str_append(tmp, "e%llu.%.*s", serial, name.len, name.ptr);
-		} else {
-			str_append(tmp, "e%llu", serial);
-		}
-		++serial;
-		break;
-	}
-
-	default:
-		BL_UNIMPLEMENTED;
-	}
-
-	// @Performance!!!
-	const usize tmp_len = str_lenu(tmp);
-	const str_t dup     = make_str(scdup(&ctx->assembly->string_cache, tmp, tmp_len), tmp_len);
-	id_init(&type->id, dup);
-
-	put_tstr(tmp);
-#if TRACY_ENABLE
-	static int tc = 0;
-	TracyCPlot("Type count", ++tc);
-	BL_TRACY_MESSAGE("CREATE_TYPE", "%s", type->id.str);
-#endif
-	return_zone();
-}
-
-// @Cleanup
 struct mir_type *create_type(struct context *ctx, enum mir_type_kind kind, struct id *user_id)
 {
 	struct mir_type *type = arena_alloc(&ctx->assembly->arenas.mir.type);
@@ -2009,8 +1836,8 @@ struct mir_type *create_type(struct context *ctx, enum mir_type_kind kind, struc
 	type->user_id = user_id;
 
 	// @Cleanup!
-	/* static s32 tc = 0; */
-	/* blog("%d", ++tc); */
+	static s32 tc = 0;
+	blog("%d", ++tc);
 
 	return type;
 }
@@ -2053,7 +1880,6 @@ struct scope_entry *register_symbol(struct context *ctx,
 	    &ctx->assembly->scopes_context, SCOPE_ENTRY_INCOMPLETE, id, node, is_builtin);
 	if (add_bookmark) scope_insert_bookmark(&ctx->assembly->scopes_context, layer_index, entry);
 	scope_insert(scope, layer_index, entry);
-	BL_TRACY_MESSAGE("REGISTER_SYMBOL", "%s", id->str);
 	return entry;
 
 COLLIDE : {
@@ -2303,6 +2129,7 @@ struct mir_type *create_type_type(struct context *ctx)
 	struct id       *user_id = &builtin_ids[BUILTIN_ID_TYPE_TYPE];
 	struct mir_type *tmp     = create_type(ctx, MIR_TYPE_TYPE, user_id);
 	tmp->id                  = *user_id;
+	tmp->can_use_cache       = true;
 	type_init_llvm_dummy(ctx, tmp);
 	return tmp;
 }
@@ -2312,7 +2139,60 @@ struct mir_type *create_type_named_scope(struct context *ctx)
 	struct id       *user_id = &builtin_ids[BUILTIN_ID_TYPE_NAMED_SCOPE];
 	struct mir_type *tmp     = create_type(ctx, MIR_TYPE_NAMED_SCOPE, user_id);
 	tmp->id                  = *user_id;
+	tmp->can_use_cache       = true;
 	type_init_llvm_dummy(ctx, tmp);
+	return tmp;
+}
+
+struct mir_type *create_type_void(struct context *ctx)
+{
+	struct id       *user_id = &builtin_ids[BUILTIN_ID_TYPE_VOID];
+	struct mir_type *tmp     = create_type(ctx, MIR_TYPE_VOID, user_id);
+	tmp->id                  = *user_id;
+	tmp->can_use_cache       = true;
+
+	type_init_llvm_void(ctx, tmp);
+	return tmp;
+}
+
+struct mir_type *create_type_bool(struct context *ctx)
+{
+	struct id       *user_id = &builtin_ids[BUILTIN_ID_TYPE_BOOL];
+	struct mir_type *tmp     = create_type(ctx, MIR_TYPE_BOOL, user_id);
+	tmp->id                  = *user_id;
+	tmp->can_use_cache       = true;
+
+	type_init_llvm_bool(ctx, tmp);
+	return tmp;
+}
+
+struct mir_type *
+create_type_int(struct context *ctx, struct id *user_id, s32 bitcount, bool is_signed)
+{
+	bassert(user_id);
+	bassert(user_id->hash);
+	bassert(bitcount > 0);
+
+	struct mir_type *tmp        = create_type(ctx, MIR_TYPE_INT, user_id);
+	tmp->data.integer.bitcount  = bitcount;
+	tmp->data.integer.is_signed = is_signed;
+	tmp->id                     = *user_id;
+	tmp->can_use_cache          = true;
+
+	type_init_llvm_int(ctx, tmp);
+	return tmp;
+}
+
+struct mir_type *create_type_real(struct context *ctx, struct id *user_id, s32 bitcount)
+{
+	bassert(user_id);
+	bassert(bitcount > 0);
+	struct mir_type *tmp    = create_type(ctx, MIR_TYPE_REAL, user_id);
+	tmp->data.real.bitcount = bitcount;
+	tmp->id                 = *user_id;
+	tmp->can_use_cache      = true;
+
+	type_init_llvm_real(ctx, tmp);
 	return tmp;
 }
 
@@ -2320,7 +2200,7 @@ struct mir_type *create_type_null(struct context *ctx, struct mir_type *base_typ
 {
 	bassert(base_type);
 	// @Cleanup: this caching really doesn't work.
-	const bool       is_cached = is_fundamental_type(base_type);
+	const bool       is_cached = base_type->can_use_cache;
 	struct mir_type *tmp;
 
 	str_buf_t name = get_tmp_str();
@@ -2337,6 +2217,7 @@ struct mir_type *create_type_null(struct context *ctx, struct mir_type *base_typ
 	tmp->id.str              = scdup2(&ctx->assembly->string_cache, name);
 	tmp->id.hash             = hash;
 	tmp->data.null.base_type = base_type;
+	tmp->can_use_cache       = base_type->can_use_cache;
 
 	type_init_llvm_null(ctx, tmp);
 
@@ -2347,65 +2228,10 @@ DONE:
 	return tmp;
 }
 
-struct mir_type *create_type_void(struct context *ctx)
-{
-	struct id       *user_id = &builtin_ids[BUILTIN_ID_TYPE_VOID];
-	struct mir_type *tmp     = create_type(ctx, MIR_TYPE_VOID, user_id);
-	tmp->id                  = *user_id;
-	type_init_llvm_void(ctx, tmp);
-	return tmp;
-}
-
-struct mir_type *create_type_bool(struct context *ctx)
-{
-	struct id       *user_id = &builtin_ids[BUILTIN_ID_TYPE_BOOL];
-	struct mir_type *tmp     = create_type(ctx, MIR_TYPE_BOOL, user_id);
-	tmp->id                  = *user_id;
-	type_init_llvm_bool(ctx, tmp);
-	return tmp;
-}
-
-struct mir_type *
-create_type_int(struct context *ctx, struct id *user_id, s32 bitcount, bool is_signed)
-{
-	bassert(user_id);
-	bassert(bitcount > 0);
-
-	struct mir_type *tmp        = create_type(ctx, MIR_TYPE_INT, user_id);
-	tmp->data.integer.bitcount  = bitcount;
-	tmp->data.integer.is_signed = is_signed;
-	tmp->id                     = *user_id;
-
-	type_init_llvm_int(ctx, tmp);
-	return tmp;
-}
-
-struct mir_type *create_type_real(struct context *ctx, struct id *user_id, s32 bitcount)
-{
-	bassert(user_id);
-	bassert(bitcount > 0);
-	struct mir_type *tmp    = create_type(ctx, MIR_TYPE_REAL, user_id);
-	tmp->data.real.bitcount = bitcount;
-	tmp->id                 = *user_id;
-	type_init_llvm_real(ctx, tmp);
-	return tmp;
-}
-
-// Note that the poly type keeps the user name for identification and debugging.
-struct mir_type *create_type_poly(struct context *ctx, struct id *user_id, bool is_master)
-{
-	bassert(user_id);
-	struct mir_type *tmp     = create_type(ctx, MIR_TYPE_POLY, user_id);
-	tmp->data.poly.is_master = is_master;
-	type_init_id(ctx, tmp);
-	type_init_llvm_dummy(ctx, tmp);
-	return tmp;
-}
-
 struct mir_type *create_type_ptr(struct context *ctx, struct mir_type *src_type)
 {
 	bassert(src_type && "Invalid src type for pointer type.");
-	const bool       is_cached = is_fundamental_type(src_type);
+	const bool       is_cached = src_type->can_use_cache;
 	struct mir_type *tmp;
 
 	str_buf_t name = get_tmp_str();
@@ -2422,6 +2248,8 @@ struct mir_type *create_type_ptr(struct context *ctx, struct mir_type *src_type)
 	tmp->id.str        = scdup2(&ctx->assembly->string_cache, name);
 	tmp->id.hash       = hash;
 	tmp->data.ptr.expr = src_type;
+	tmp->can_use_cache = src_type->can_use_cache;
+
 	type_init_llvm_ptr(ctx, tmp);
 	if (is_cached) insert_type_into_cache(ctx, tmp);
 
@@ -2430,65 +2258,269 @@ DONE:
 	return tmp;
 }
 
+// Note that the poly type keeps the user name for identification and debugging.
+struct mir_type *create_type_poly(struct context *ctx, struct id *user_id, bool is_master)
+{
+	bassert(user_id);
+
+	str_buf_t name = get_tmp_str();
+	str_buf_append_fmt(
+	    &name, "?%s.%.*s", is_master ? "M" : "S", user_id->str.len, user_id->str.ptr);
+
+	hash_t hash = strhash2(name);
+
+	struct mir_type *tmp = lookup_type(ctx, hash);
+	if (tmp) goto DONE;
+
+	tmp          = create_type(ctx, MIR_TYPE_POLY, user_id);
+	tmp->id.str  = scdup2(&ctx->assembly->string_cache, name);
+	tmp->id.hash = hash;
+
+	// We need to distinguish polymorph types as masters and slaves + we have unique user name for
+	// error reports, this information is fully in the hash, so we can cache them.
+	tmp->can_use_cache = true;
+
+	tmp->data.poly.is_master = is_master;
+
+	type_init_llvm_dummy(ctx, tmp);
+	insert_type_into_cache(ctx, tmp);
+DONE:
+	put_tmp_str(name);
+	return tmp;
+}
+
 struct mir_type *create_type_placeholder(struct context *ctx)
 {
+	// We call this only once and then reuse the type, no need to use cache here.
+
+	str_t  name = make_str("@", 1);
+	hash_t hash = strhash2(name);
+
 	struct mir_type *tmp =
 	    create_type(ctx, MIR_TYPE_PLACEHOLDER, &builtin_ids[BUILTIN_ID_TYPE_PLACEHOLDER]);
-	type_init_id(ctx, tmp);
+	tmp->id.str  = scdup2(&ctx->assembly->string_cache, name);
+	tmp->id.hash = hash;
+
 	type_init_llvm_dummy(ctx, tmp);
 	return tmp;
 }
 
 struct mir_type *create_type_fn(struct context *ctx, create_type_fn_args_t *args)
 {
+	struct mir_type *ret_type = args->ret_type ? args->ret_type : ctx->builtin_types->t_void;
+
+	str_buf_t name = get_tmp_str();
+	str_buf_append(&name, make_str("f.(", 3));
+	for (usize i = 0; i < sarrlenu(args->args); ++i) {
+		struct mir_arg *arg = sarrpeek(args->args, i);
+		str_buf_append(&name, arg->type->id.str);
+		if (i != sarrlenu(args->args) - 1) {
+			str_buf_append(&name, make_str(",", 1));
+		}
+	}
+	str_buf_append(&name, make_str(")", 1));
+	const hash_t argument_hash = strhash2(name);
+
+	str_buf_append(&name, ret_type->id.str);
+	const hash_t hash = strhash2(name);
+
 	struct mir_type *tmp          = create_type(ctx, MIR_TYPE_FN, args->id);
+	tmp->id.str                   = scdup2(&ctx->assembly->string_cache, name);
+	tmp->id.hash                  = hash;
 	tmp->data.fn.args             = args->args;
-	tmp->data.fn.ret_type         = args->ret_type ? args->ret_type : ctx->builtin_types->t_void;
+	tmp->data.fn.ret_type         = ret_type;
 	tmp->data.fn.builtin_id       = BUILTIN_ID_NONE;
 	tmp->data.fn.is_vargs         = args->is_vargs;
 	tmp->data.fn.has_default_args = args->has_default_args;
 	tmp->data.fn.is_polymorph     = args->is_polymorph;
-	type_init_id(ctx, tmp);
-	type_init_llvm_fn(ctx, tmp);
-	return tmp;
-}
+	tmp->data.fn.argument_hash    = argument_hash;
 
-struct mir_type *create_type_fn_group(struct context *ctx, struct id *id, mir_types_t *variants)
-{
-	bassert(sarrlenu(variants));
-	struct mir_type *tmp        = create_type(ctx, MIR_TYPE_FN_GROUP, id);
-	tmp->data.fn_group.variants = variants;
-	type_init_id(ctx, tmp);
-	type_init_llvm_dummy(ctx, tmp);
+	type_init_llvm_fn(ctx, tmp);
+	put_tmp_str(name);
 	return tmp;
 }
 
 struct mir_type *
-create_type_array(struct context *ctx, struct id *id, struct mir_type *elem_type, s64 len)
+create_type_fn_group(struct context *ctx, struct id *user_id, mir_types_t *variants)
+{
+	bassert(sarrlenu(variants));
+
+	str_buf_t name = get_tmp_str();
+	str_buf_append(&name, make_str("f.{", 3));
+	// Note we use function hashses directly to have smaller strings processed...
+	for (usize i = 0; i < sarrlenu(variants); ++i) {
+		struct mir_type *variant = sarrpeek(variants, i);
+		str_buf_append_fmt(&name, "%lu", variant->id.hash);
+		if (i != sarrlenu(variants) - 1) {
+			str_buf_append(&name, make_str(",", 1));
+		}
+	}
+	str_buf_append(&name, make_str("}", 1));
+
+	// No caching here...
+
+	struct mir_type *tmp        = create_type(ctx, MIR_TYPE_FN_GROUP, user_id);
+	tmp->id.hash                = strhash2(name);
+	tmp->id.str                 = scdup2(&ctx->assembly->string_cache, name);
+	tmp->data.fn_group.variants = variants;
+
+	type_init_llvm_dummy(ctx, tmp);
+
+	put_tmp_str(name);
+	return tmp;
+}
+
+struct mir_type *
+create_type_array(struct context *ctx, struct id *user_id, struct mir_type *elem_type, s64 len)
 {
 	bassert(elem_type);
-	struct mir_type *tmp      = create_type(ctx, MIR_TYPE_ARRAY, id);
-	tmp->data.array.elem_type = elem_type;
-	tmp->data.array.len       = len;
-	type_init_id(ctx, tmp);
-	type_init_llvm_array(ctx, tmp);
-	return tmp;
+
+	struct mir_type *result;
+
+	const bool can_use_cache = elem_type->can_use_cache;
+
+	str_buf_t name = get_tmp_str();
+
+	const str_t elem_type_name = elem_type->id.str;
+	str_buf_append_fmt(
+	    &name, "%llu.%.*s", (unsigned long long)len, elem_type_name.len, elem_type_name.ptr);
+
+	const hash_t hash = strhash2(name);
+
+	if (can_use_cache) {
+		result = lookup_type(ctx, hash);
+		if (result) goto DONE;
+	}
+
+	result                       = create_type(ctx, MIR_TYPE_ARRAY, user_id);
+	result->id.hash              = hash;
+	result->id.str               = scdup2(&ctx->assembly->string_cache, name);
+	result->data.array.elem_type = elem_type;
+	result->data.array.len       = len;
+
+	type_init_llvm_array(ctx, result);
+
+	if (can_use_cache) {
+		insert_type_into_cache(ctx, result);
+		result->can_use_cache = true;
+	}
+
+DONE:
+	put_tmp_str(name);
+	return result;
+}
+
+static void generate_struct_signature(str_buf_t *name, create_type_struct_args_t *args)
+{
+	static u64 serial = 0;
+	if (args->user_id) {
+		const str_t user_name = args->user_id->str;
+		str_buf_append_fmt(name,
+		                   "%s.%llu.%.*s",
+		                   args->is_union ? "u" : "s",
+		                   serial++,
+		                   user_name.len,
+		                   user_name.ptr);
+		return;
+	}
+	// Implicit struct type...
+	str_buf_append(name, args->is_union ? make_str("u.{", 3) : make_str("s.{", 3));
+	for (usize i = 0; i < sarrlenu(args->members); ++i) {
+		struct mir_member *member = sarrpeek(args->members, i);
+		str_buf_append(name, member->type->id.str);
+		if (i != sarrlenu(args->members) - 1) str_buf_append(name, make_str(",", 1));
+	}
+	str_buf_append(name, make_str("}", 1));
+}
+
+struct mir_type *
+create_type_struct_incomplete(struct context *ctx, struct id *user_id, bool is_union, bool has_base)
+{
+	(void)has_base; // @Cleanup?
+	bassert(user_id);
+	str_buf_t name = get_tmp_str();
+	generate_struct_signature(&name,
+	                          &(create_type_struct_args_t){
+	                              .user_id  = user_id,
+	                              .is_union = is_union,
+	                          });
+
+	// The user_id is required so we can use cache every time? See comments in create_type_struct.
+
+	const hash_t     hash   = strhash2(name);
+	struct mir_type *result = lookup_type(ctx, hash);
+	if (result) goto DONE;
+
+	result = create_type(ctx, MIR_TYPE_STRUCT, user_id);
+
+	result->id.hash                             = hash;
+	result->id.str                              = scdup2(&ctx->assembly->string_cache, name);
+	result->can_use_cache                       = true;
+	result->data.strct.is_incomplete_fwd_struct = true;
+	result->data.strct.is_union                 = is_union;
+
+	type_init_llvm_struct(ctx, result);
+
+DONE:
+	put_tmp_str(name);
+	return result;
 }
 
 struct mir_type *create_type_struct(struct context *ctx, create_type_struct_args_t *args)
 {
-	struct mir_type *tmp                    = create_type(ctx, args->kind, args->id);
-	tmp->data.strct.members                 = args->members;
-	tmp->data.strct.scope                   = args->scope;
-	tmp->data.strct.scope_layer             = args->scope_layer;
-	tmp->data.strct.is_packed               = args->is_packed;
-	tmp->data.strct.is_union                = args->is_union;
-	tmp->data.strct.is_multiple_return_type = args->is_multiple_return_type;
-	tmp->data.strct.base_type               = args->base_type;
-	tmp->data.strct.is_string_literal       = args->is_string_literal;
-	type_init_id(ctx, tmp);
-	type_init_llvm_struct(ctx, tmp);
-	return tmp;
+	struct id        id;
+	struct mir_type *result;
+
+	str_buf_t name          = get_tmp_str();
+	bool      can_use_cache = false;
+
+	if (!args->id) {
+		generate_struct_signature(&name, args);
+
+		if (args->user_id) {
+			// @Incomplete explain
+			can_use_cache = true;
+		} else {
+			// @Incomplete explain
+			can_use_cache = args->is_multiple_return_type;
+		}
+
+		const hash_t hash = strhash2(name);
+
+		if (can_use_cache) {
+			result = lookup_type(ctx, hash);
+			if (result) goto DONE;
+		}
+
+		id.hash = hash;
+		id.str  = scdup2(&ctx->assembly->string_cache, name);
+
+	} else {
+		id = *args->id;
+	}
+
+	result = create_type(ctx, args->kind, args->user_id);
+
+	result->id                                 = id;
+	result->data.strct.members                 = args->members;
+	result->data.strct.scope                   = args->scope;
+	result->data.strct.scope_layer             = args->scope_layer;
+	result->data.strct.is_packed               = args->is_packed;
+	result->data.strct.is_union                = args->is_union;
+	result->data.strct.is_multiple_return_type = args->is_multiple_return_type;
+	result->data.strct.base_type               = args->base_type;
+	result->data.strct.is_string_literal       = args->is_string_literal;
+
+	type_init_llvm_struct(ctx, result);
+
+	if (can_use_cache) {
+		insert_type_into_cache(ctx, result);
+		result->can_use_cache = true;
+	}
+
+DONE:
+	put_tmp_str(name);
+	return result;
 }
 
 static struct mir_type *complete_type_struct(struct context *ctx, complete_type_struct_args_t *args)
@@ -2523,60 +2555,120 @@ static struct mir_type *complete_type_struct(struct context *ctx, complete_type_
 	return incomplete_type;
 }
 
-struct mir_type *
-create_type_struct_incomplete(struct context *ctx, struct id *user_id, bool is_union, bool has_base)
-{
-	// @Incomplete
-	// @Incomplete
-	// @Incomplete
-	(void)has_base;
-	struct mir_type *type                     = create_type(ctx, MIR_TYPE_STRUCT, user_id);
-	type->data.strct.is_incomplete_fwd_struct = true;
-	type->data.strct.is_union                 = is_union;
-
-	type_init_id(ctx, type);
-	type_init_llvm_struct(ctx, type);
-	return type;
-}
-
 struct mir_type *create_type_slice(struct context    *ctx,
                                    enum mir_type_kind kind,
-                                   struct id         *id,
+                                   struct id         *user_id,
                                    struct mir_type   *elem_ptr_type,
                                    bool               is_string_literal)
 {
 	bassert(mir_is_pointer_type(elem_ptr_type));
-	bassert(kind == MIR_TYPE_STRING || kind == MIR_TYPE_VARGS || kind == MIR_TYPE_SLICE);
+
+	struct mir_type *result;
+	struct mir_type *len_type = ctx->builtin_types->t_s64;
+
+	str_buf_t name          = get_tmp_str();
+	bool      can_use_cache = elem_ptr_type->can_use_cache;
+
+	switch (kind) {
+	case MIR_TYPE_STRING:
+		bassert(user_id);
+		str_buf_append(&name, user_id->str);
+		break;
+	case MIR_TYPE_SLICE:
+	case MIR_TYPE_VARGS: {
+		str_t prefix    = kind == MIR_TYPE_SLICE ? make_str("sl.", 3) : make_str("sv.", 3);
+		str_t len_name  = len_type->id.str;
+		str_t elem_name = elem_ptr_type->id.str;
+		str_buf_append(&name, prefix);
+		/* if (user_id) str_buf_append(&name, user_id->str); */
+		str_buf_append_fmt(
+		    &name, "{%.*s,%.*s}", len_name.len, len_name.ptr, elem_name.len, elem_name.ptr);
+		break;
+	}
+
+	default:
+		babort("Unexpected type kind.");
+	}
+
+	bassert(name.len);
+	const hash_t hash = strhash2(name);
+
+	if (can_use_cache) {
+		result = lookup_type(ctx, hash);
+		if (result) goto DONE;
+	}
+
 	mir_members_t *members = arena_alloc(&ctx->assembly->arenas.sarr);
 	// Slice layout struct { s64, *T }
 	struct scope *body_scope = scope_create(
 	    &ctx->assembly->scopes_context, SCOPE_TYPE_STRUCT, ctx->assembly->gscope, NULL);
 
 	struct mir_member *tmp;
-	tmp = create_member(ctx, NULL, &builtin_ids[BUILTIN_ID_ARR_LEN], 0, ctx->builtin_types->t_s64);
+	tmp = create_member(ctx, NULL, &builtin_ids[BUILTIN_ID_ARR_LEN], 0, len_type);
 
 	sarrput(members, tmp);
 	provide_builtin_member(ctx, body_scope, tmp);
 
 	tmp = create_member(ctx, NULL, &builtin_ids[BUILTIN_ID_ARR_PTR], 1, elem_ptr_type);
 
+	struct id id;
+	id.hash = hash;
+	id.str  = scdup2(&ctx->assembly->string_cache, name);
+
 	sarrput(members, tmp);
 	provide_builtin_member(ctx, body_scope, tmp);
-	return create_type_struct(ctx,
-	                          &(create_type_struct_args_t){
-	                              .kind              = kind,
-	                              .id                = id,
-	                              .scope             = body_scope,
-	                              .scope_layer       = SCOPE_DEFAULT_LAYER,
-	                              .members           = members,
-	                              .is_string_literal = is_string_literal,
-	                          });
+	result = create_type_struct(ctx,
+	                            &(create_type_struct_args_t){
+	                                .kind              = kind,
+	                                .user_id           = user_id,
+	                                .id                = &id,
+	                                .scope             = body_scope,
+	                                .scope_layer       = SCOPE_DEFAULT_LAYER,
+	                                .members           = members,
+	                                .is_string_literal = is_string_literal,
+	                            });
+
+	if (can_use_cache) {
+		insert_type_into_cache(ctx, result);
+		result->can_use_cache = true;
+	}
+
+DONE:
+	put_tmp_str(name);
+	return result;
 }
 
 struct mir_type *
-create_type_struct_dynarr(struct context *ctx, struct id *id, struct mir_type *elem_ptr_type)
+create_type_struct_dynarr(struct context *ctx, struct id *user_id, struct mir_type *elem_ptr_type)
 {
 	bassert(mir_is_pointer_type(elem_ptr_type));
+
+	struct mir_type *result;
+
+	struct mir_type *len_type       = ctx->builtin_types->t_s64;
+	struct mir_type *allocated_type = ctx->builtin_types->t_usize;
+	struct mir_type *allocator_type = ctx->builtin_types->t_u8_ptr;
+
+	const bool can_use_cache = elem_ptr_type->can_use_cache;
+	str_buf_t  name          = get_tmp_str();
+
+	str_buf_append_fmt(&name,
+	                   "da.{%.*s,%.*s,%.*s,%.*s}",
+	                   len_type->id.str.len,
+	                   len_type->id.str.ptr,
+	                   elem_ptr_type->id.str.len,
+	                   elem_ptr_type->id.str.ptr,
+	                   allocated_type->id.str.len,
+	                   allocated_type->id.str.ptr,
+	                   allocator_type->id.str.len,
+	                   allocator_type->id.str.ptr);
+
+	const hash_t hash = strhash2(name);
+	if (can_use_cache) {
+		result = lookup_type(ctx, hash);
+		if (result) goto DONE;
+	}
+
 	mir_members_t *members = arena_alloc(&ctx->assembly->arenas.sarr);
 	// Dynamic array layout struct { s64, *T, usize, allocator }
 	struct scope *body_scope = scope_create(
@@ -2584,8 +2676,7 @@ create_type_struct_dynarr(struct context *ctx, struct id *id, struct mir_type *e
 
 	struct mir_member *tmp;
 	{ // .len
-		tmp = create_member(
-		    ctx, NULL, &builtin_ids[BUILTIN_ID_ARR_LEN], 0, ctx->builtin_types->t_s64);
+		tmp = create_member(ctx, NULL, &builtin_ids[BUILTIN_ID_ARR_LEN], 0, len_type);
 
 		sarrput(members, tmp);
 		provide_builtin_member(ctx, body_scope, tmp);
@@ -2599,53 +2690,87 @@ create_type_struct_dynarr(struct context *ctx, struct id *id, struct mir_type *e
 	}
 
 	{ // .allocated
-		tmp = create_member(ctx,
-		                    NULL,
-		                    &builtin_ids[BUILTIN_ID_ARR_ALLOCATED_ELEMS],
-		                    2,
-		                    ctx->builtin_types->t_usize);
+		tmp = create_member(
+		    ctx, NULL, &builtin_ids[BUILTIN_ID_ARR_ALLOCATED_ELEMS], 2, allocated_type);
 
 		sarrput(members, tmp);
 		provide_builtin_member(ctx, body_scope, tmp);
 	}
 
 	{ // .allocator
-		tmp = create_member(
-		    ctx, NULL, &builtin_ids[BUILTIN_ID_ARR_ALLOCATOR], 3, ctx->builtin_types->t_u8_ptr);
+		tmp = create_member(ctx, NULL, &builtin_ids[BUILTIN_ID_ARR_ALLOCATOR], 3, allocator_type);
 
 		sarrput(members, tmp);
 		provide_builtin_member(ctx, body_scope, tmp);
 	}
 
-	return create_type_struct(ctx,
-	                          &(create_type_struct_args_t){
-	                              .kind        = MIR_TYPE_DYNARR,
-	                              .id          = id,
-	                              .scope       = body_scope,
-	                              .scope_layer = SCOPE_DEFAULT_LAYER,
-	                              .members     = members,
-	                          });
+	struct id id;
+	id.hash = hash;
+	id.str  = scdup2(&ctx->assembly->string_cache, name);
+
+	result = create_type_struct(ctx,
+	                            &(create_type_struct_args_t){
+	                                .kind        = MIR_TYPE_DYNARR,
+	                                .user_id     = user_id,
+	                                .id          = &id,
+	                                .scope       = body_scope,
+	                                .scope_layer = SCOPE_DEFAULT_LAYER,
+	                                .members     = members,
+	                            });
+
+	if (can_use_cache) {
+		insert_type_into_cache(ctx, result);
+		result->can_use_cache = true;
+	}
+
+DONE:
+	put_tmp_str(name);
+	return result;
 }
 
 static struct mir_type *create_type_enum(struct context *ctx, create_type_enum_args_t *args)
 {
 	bassert(args->base_type);
-	struct mir_type *tmp    = create_type(ctx, MIR_TYPE_ENUM, args->id);
-	tmp->data.enm.scope     = args->scope;
-	tmp->data.enm.base_type = args->base_type;
-	tmp->data.enm.variants  = args->variants;
-	tmp->data.enm.is_flags  = args->is_flags;
-	type_init_id(ctx, tmp);
-	type_init_llvm_enum(ctx, tmp);
+	bassert(args->base_type->can_use_cache);
+
+	str_buf_t name = get_tmp_str();
+
+	static u64 serial = 0;
+	if (args->user_id) {
+		const str_t user_name = args->user_id->str;
+		str_buf_append_fmt(&name, "e%llu.%.*s", serial++, user_name.len, user_name.ptr);
+	} else {
+		str_buf_append_fmt(&name, "e%llu", serial++);
+	}
+
+	const hash_t hash = strhash2(name);
+
+	struct mir_type *result = lookup_type(ctx, hash);
+	if (result) goto DONE;
+
+	result                     = create_type(ctx, MIR_TYPE_ENUM, args->user_id);
+	result->id.hash            = hash;
+	result->id.str             = scdup2(&ctx->assembly->string_cache, name);
+	result->data.enm.scope     = args->scope;
+	result->data.enm.base_type = args->base_type;
+	result->data.enm.variants  = args->variants;
+	result->data.enm.is_flags  = args->is_flags;
+	result->can_use_cache      = true;
+
+	type_init_llvm_enum(ctx, result);
 
 	// @Performance: Set all variant's type to the type of already created enum type. See the
 	// analyze_instr_variant for more info.
 	for (usize i = 0; i < sarrlenu(args->variants); ++i) {
 		struct mir_variant *variant = sarrpeek(args->variants, i);
-		variant->value_type         = tmp;
+		variant->value_type         = result;
 	}
 
-	return tmp;
+	insert_type_into_cache(ctx, result);
+
+DONE:
+	put_tmp_str(name);
+	return result;
 }
 
 void type_init_llvm_int(struct context *ctx, struct mir_type *type)
@@ -3105,7 +3230,7 @@ void append_current_block(struct context *ctx, struct mir_instr *instr)
 		// Append this instruction into unreachable block if current block was terminated
 		// already. Unreachable block will never be generated into LLVM and compiler can
 		// complain later about this and give hit to the user.
-		block = append_block(ctx, block->owner_fn, ".unreachable");
+		block = append_block(ctx, block->owner_fn, make_str(".unreachable", 12));
 		set_current_block(ctx, block);
 	}
 
@@ -3452,9 +3577,9 @@ create_instr_call_loc(struct context *ctx, struct ast *node, struct location *ca
 	return &tmp->base;
 }
 
-struct mir_instr_block *create_block(struct context *ctx, const char *name)
+struct mir_instr_block *create_block(struct context *ctx, const str_t name)
 {
-	bassert(name);
+	bassert(name.len);
 	struct mir_instr_block *tmp = create_instr(ctx, MIR_INSTR_BLOCK, NULL);
 	tmp->base.value.type        = ctx->builtin_types->t_void;
 	tmp->name                   = name;
@@ -3479,15 +3604,15 @@ append_block2(struct context UNUSED(*ctx), struct mir_fn *fn, struct mir_instr_b
 	return block;
 }
 
-struct mir_instr_block *append_block(struct context *ctx, struct mir_fn *fn, const char *name)
+struct mir_instr_block *append_block(struct context *ctx, struct mir_fn *fn, const str_t name)
 {
-	bassert(fn && name);
+	bassert(fn);
 	struct mir_instr_block *tmp = create_block(ctx, name);
 	append_block2(ctx, fn, tmp);
 	return tmp;
 }
 
-struct mir_instr_block *append_global_block(struct context *ctx, const char *name)
+struct mir_instr_block *append_global_block(struct context *ctx, const str_t name)
 {
 	struct mir_instr_block *tmp = create_instr(ctx, MIR_INSTR_BLOCK, NULL);
 	tmp->base.value.type        = ctx->builtin_types->t_void;
@@ -3575,7 +3700,7 @@ struct mir_instr *append_instr_type_fn_group(struct context *ctx,
 
 struct mir_instr *append_instr_type_struct(struct context   *ctx,
                                            struct ast       *node,
-                                           struct id        *id,
+                                           struct id        *user_id,
                                            struct mir_instr *fwd_decl,
                                            struct scope     *scope,
                                            hash_t            scope_layer,
@@ -3595,7 +3720,7 @@ struct mir_instr *append_instr_type_struct(struct context   *ctx,
 	tmp->is_union                     = is_union;
 	tmp->is_multiple_return_type      = is_multiple_return_type;
 
-	tmp->id       = id;
+	tmp->user_id  = user_id;
 	tmp->fwd_decl = fwd_decl;
 
 	for (usize i = 0; i < sarrlenu(members); ++i) {
@@ -3620,7 +3745,7 @@ struct mir_instr *append_instr_type_enum(struct context   *ctx,
 	tmp->base.value.addr_mode       = MIR_VAM_RVALUE;
 	tmp->variants                   = variants;
 	tmp->scope                      = scope;
-	tmp->id                         = id;
+	tmp->user_id                    = id;
 	tmp->base_type                  = base_type;
 	tmp->is_flags                   = is_flags;
 
@@ -5386,7 +5511,6 @@ struct result analyze_instr_designator(struct context *ctx, struct mir_instr_des
 struct result analyze_var(struct context *ctx, struct mir_var *var, const bool check_usage)
 {
 	zone();
-	BL_TRACY_MESSAGE("ANALYZE_VAR", "%s", var->linkage_name);
 	if (!var->value.type) {
 		babort("unknown declaration type");
 	}
@@ -6259,7 +6383,6 @@ struct result analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_
 	}
 
 	if (found->kind == SCOPE_ENTRY_INCOMPLETE) {
-		BL_TRACY_MESSAGE("INCOMPLETE_DECL_REF", "%s", ref->rid->str);
 		return_zone(WAIT(ref->rid->hash));
 	}
 	scope_entry_ref(found);
@@ -7475,7 +7598,7 @@ struct result analyze_instr_type_struct(struct context               *ctx,
 		    create_type_struct(ctx,
 		                       &(create_type_struct_args_t){
 		                           .kind                    = MIR_TYPE_STRUCT,
-		                           .id                      = type_struct->id,
+		                           .user_id                 = type_struct->user_id,
 		                           .scope                   = type_struct->scope,
 		                           .scope_layer             = type_struct->scope_layer,
 		                           .members                 = members,
@@ -7501,9 +7624,9 @@ struct result analyze_instr_type_slice(struct context *ctx, struct mir_instr_typ
 		return_zone(FAIL);
 	}
 
-	struct id *id = NULL;
+	struct id *user_id = NULL;
 	if (type_slice->base.node && type_slice->base.node->kind == AST_IDENT) {
-		id = &type_slice->base.node->data.ident.id;
+		user_id = &type_slice->base.node->data.ident.id;
 	}
 
 	if (mir_is_placeholder(type_slice->elem_type)) {
@@ -7532,7 +7655,7 @@ struct result analyze_instr_type_slice(struct context *ctx, struct mir_instr_typ
 
 	MIR_CEV_WRITE_AS(struct mir_type *,
 	                 &type_slice->base.value,
-	                 create_type_slice(ctx, MIR_TYPE_SLICE, id, elem_type, false));
+	                 create_type_slice(ctx, MIR_TYPE_SLICE, user_id, elem_type, false));
 
 	return_zone(PASS);
 }
@@ -7554,9 +7677,9 @@ struct result analyze_instr_type_dynarr(struct context                *ctx,
 		return_zone(FAIL);
 	}
 
-	struct id *id = NULL;
+	struct id *user_id = NULL;
 	if (type_dynarr->base.node && type_dynarr->base.node->kind == AST_IDENT) {
-		id = &type_dynarr->base.node->data.ident.id;
+		user_id = &type_dynarr->base.node->data.ident.id;
 	}
 
 	if (mir_is_placeholder(type_dynarr->elem_type)) {
@@ -7588,8 +7711,9 @@ struct result analyze_instr_type_dynarr(struct context                *ctx,
 
 	elem_type = create_type_ptr(ctx, elem_type);
 
-	MIR_CEV_WRITE_AS(
-	    struct mir_type *, &type_dynarr->base.value, create_type_struct_dynarr(ctx, id, elem_type));
+	MIR_CEV_WRITE_AS(struct mir_type *,
+	                 &type_dynarr->base.value,
+	                 create_type_struct_dynarr(ctx, user_id, elem_type));
 
 	return_zone(PASS);
 }
@@ -7734,7 +7858,7 @@ struct result analyze_instr_type_enum(struct context *ctx, struct mir_instr_type
 	}
 	struct mir_type *type = create_type_enum(ctx,
 	                                         &(create_type_enum_args_t){
-	                                             .id        = type_enum->id,
+	                                             .user_id   = type_enum->user_id,
 	                                             .scope     = scope,
 	                                             .base_type = base_type,
 	                                             .variants  = variants,
@@ -9991,10 +10115,8 @@ void rtti_satisfy_incomplete(struct context *ctx, struct rtti_incomplete *incomp
 struct mir_var *_rtti_gen(struct context *ctx, struct mir_type *type)
 {
 	bassert(type);
-	if (assembly_has_rtti(ctx->assembly, type->id.hash))
-		return assembly_get_rtti(ctx->assembly, type->id.hash);
-
-	struct mir_var *rtti_var = NULL;
+	struct mir_var *rtti_var = assembly_get_rtti(ctx->assembly, type->id.hash);
+	if (rtti_var) return rtti_var;
 
 	switch (type->kind) {
 	case MIR_TYPE_INT:
@@ -10063,6 +10185,7 @@ struct mir_var *_rtti_gen(struct context *ctx, struct mir_type *type)
 	}
 
 	bassert(rtti_var);
+	bassert(type->id.hash && "Invalid type hash!");
 	assembly_add_rtti(ctx->assembly, type->id.hash, rtti_var);
 	return rtti_var;
 }
@@ -10554,8 +10677,8 @@ void ast_stmt_if(struct context *ctx, struct ast *stmt_if)
 
 	const bool              is_static      = stmt_if->data.stmt_if.is_static;
 	struct mir_instr_block *tmp_block      = NULL;
-	struct mir_instr_block *then_block     = append_block(ctx, fn, "if_then");
-	struct mir_instr_block *continue_block = append_block(ctx, fn, "if_continue");
+	struct mir_instr_block *then_block     = append_block(ctx, fn, make_str("if_then", 7));
+	struct mir_instr_block *continue_block = append_block(ctx, fn, make_str("if_continue", 11));
 	struct mir_instr       *cond           = ast(ctx, ast_condition);
 
 	// Note: Else block is optional in this case i.e. if (true) { ... } expression does not have
@@ -10566,7 +10689,7 @@ void ast_stmt_if(struct context *ctx, struct ast *stmt_if)
 	const bool              has_else_branch = ast_else;
 	struct mir_instr_block *else_block      = NULL;
 	if (has_else_branch) {
-		else_block = append_block(ctx, fn, "if_else");
+		else_block = append_block(ctx, fn, make_str("if_else", 7));
 		append_instr_cond_br(ctx, stmt_if, cond, then_block, else_block, is_static);
 	} else {
 		append_instr_cond_br(ctx, stmt_if, cond, then_block, continue_block, is_static);
@@ -10613,11 +10736,11 @@ void ast_stmt_loop(struct context *ctx, struct ast *loop)
 	// prepare all blocks
 	struct mir_instr_block *tmp_block = NULL;
 	struct mir_instr_block *increment_block =
-	    ast_increment ? append_block(ctx, fn, "loop_increment") : NULL;
-	struct mir_instr_block *decide_block        = append_block(ctx, fn, "loop_decide");
-	struct mir_instr_block *body_block          = append_block(ctx, fn, "loop_body");
-	struct mir_instr_block *continue_block      = append_block(ctx, fn, "loop_continue");
-	struct mir_instr_block *prev_break_block    = ctx->ast.break_block;
+	    ast_increment ? append_block(ctx, fn, make_str("loop_increment", 14)) : NULL;
+	struct mir_instr_block *decide_block     = append_block(ctx, fn, make_str("loop_decide", 11));
+	struct mir_instr_block *body_block       = append_block(ctx, fn, make_str("loop_body", 9));
+	struct mir_instr_block *continue_block   = append_block(ctx, fn, make_str("loop_continue", 13));
+	struct mir_instr_block *prev_break_block = ctx->ast.break_block;
 	struct mir_instr_block *prev_continue_block = ctx->ast.continue_block;
 	ctx->ast.break_block                        = continue_block;
 	ctx->ast.continue_block                     = ast_increment ? increment_block : decide_block;
@@ -10669,9 +10792,9 @@ void ast_stmt_switch(struct context *ctx, struct ast *stmt_switch)
 	struct mir_fn *fn = ast_current_fn(ctx);
 	bassert(fn);
 
-	struct mir_instr_block *src_block            = ast_current_block(ctx);
-	struct mir_instr_block *cont_block           = append_block(ctx, fn, "switch_continue");
-	struct mir_instr_block *default_block        = cont_block;
+	struct mir_instr_block *src_block     = ast_current_block(ctx);
+	struct mir_instr_block *cont_block    = append_block(ctx, fn, make_str("switch_continue", 15));
+	struct mir_instr_block *default_block = cont_block;
 	bool                    user_defined_default = false;
 
 	for (usize i = sarrlenu(ast_cases); i-- > 0;) {
@@ -10681,7 +10804,8 @@ void ast_stmt_switch(struct context *ctx, struct ast *stmt_switch)
 		struct mir_instr_block *case_block = NULL;
 
 		if (ast_case->data.stmt_case.block) {
-			case_block = append_block(ctx, fn, is_default ? "switch_default" : "switch_case");
+			case_block = append_block(
+			    ctx, fn, is_default ? make_str("switch_default", 14) : make_str("switch_case", 11));
 			set_current_block(ctx, case_block);
 			ast(ctx, ast_case->data.stmt_case.block);
 
@@ -11149,7 +11273,7 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
 	fn->body_scope = ast_block->owner_scope;
 
 	// create block for initialization locals and arguments
-	struct mir_instr_block *init_block = append_block(ctx, fn, "entry");
+	struct mir_instr_block *init_block = append_block(ctx, fn, make_str("entry", 5));
 	init_block->base.ref_count         = NO_REF_COUNTING;
 	// Every user generated function must contain exit block; this block is invoked last
 	// in every function eventually can return .ret value stored in temporary storage.
@@ -11158,7 +11282,7 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
 	// defer statement, because we need to call defer blocks after return value
 	// evaluation and before terminal instruction of the function. Last defer block
 	// always breaks into the exit block.
-	struct mir_instr_block *exit_block = append_block(ctx, fn, "exit");
+	struct mir_instr_block *exit_block = append_block(ctx, fn, make_str("exit", 4));
 	fn->exit_block =
 	    (struct mir_instr_block *)ref_instr(&exit_block->base); // Exit block is always referenced
 
@@ -11353,7 +11477,7 @@ struct mir_instr *ast_expr_binop(struct context *ctx, struct ast *binop)
 	case BINOP_LOGIC_OR: {
 		const bool              swap_condition   = op == BINOP_LOGIC_AND;
 		struct mir_fn          *fn               = ast_current_fn(ctx);
-		struct mir_instr_block *rhs_block        = append_block(ctx, fn, "rhs_block");
+		struct mir_instr_block *rhs_block        = append_block(ctx, fn, make_str("rhs_block", 9));
 		struct mir_instr_block *end_block        = ctx->ast.current_phi_end_block;
 		struct mir_instr_phi   *phi              = ctx->ast.current_phi;
 		bool                    append_end_block = false;
@@ -11362,7 +11486,7 @@ struct mir_instr *ast_expr_binop(struct context *ctx, struct ast *binop)
 		// created PHI gather incomes from all nested branches created by expression.
 		if (!end_block) {
 			bassert(!phi);
-			end_block                      = create_block(ctx, "end_block");
+			end_block                      = create_block(ctx, make_str("end_block", 9));
 			phi                            = (struct mir_instr_phi *)create_instr_phi(ctx, binop);
 			ctx->ast.current_phi_end_block = end_block;
 			ctx->ast.current_phi           = phi;
@@ -12001,7 +12125,7 @@ struct mir_instr *ast_type_enum(struct context *ctx, struct ast *type_enum)
 struct mir_instr *ast_type_struct(struct context *ctx, struct ast *type_struct)
 {
 	// Consume declaration identifier.
-	struct id *id              = ctx->ast.current_entity_id;
+	struct id *user_id         = ctx->ast.current_entity_id;
 	ctx->ast.current_entity_id = NULL;
 
 	// Consume current struct fwd decl.
@@ -12052,7 +12176,7 @@ struct mir_instr *ast_type_struct(struct context *ctx, struct ast *type_struct)
 
 	return append_instr_type_struct(ctx,
 	                                type_struct,
-	                                id,
+	                                user_id,
 	                                fwd_decl,
 	                                scope,
 	                                ctx->fn_generate.current_scope_layer,
@@ -12167,7 +12291,7 @@ struct mir_instr *ast_create_expr_resolver_call(struct context  *ctx,
 	MIR_CEV_WRITE_AS(struct mir_fn *, &fn_proto->value, fn);
 
 	fn->type                      = fn_type;
-	struct mir_instr_block *entry = append_block(ctx, fn, "entry");
+	struct mir_instr_block *entry = append_block(ctx, fn, make_str("entry", 5));
 	entry->base.ref_count         = NO_REF_COUNTING;
 	set_current_block(ctx, entry);
 	struct mir_instr *result = ast(ctx, ast_expr);
@@ -12617,7 +12741,7 @@ static void provide_builtin_arch(struct context *ctx)
 
 	struct mir_type *t_arch = create_type_enum(ctx,
 	                                           &(create_type_enum_args_t){
-	                                               .id        = &builtin_ids[BUILTIN_ID_ARCH_ENUM],
+	                                               .user_id   = &builtin_ids[BUILTIN_ID_ARCH_ENUM],
 	                                               .scope     = scope,
 	                                               .base_type = bt->t_s32,
 	                                               .variants  = variants,
@@ -12645,8 +12769,8 @@ static void provide_builtin_os(struct context *ctx)
 
 	struct mir_type *t_os = create_type_enum(ctx,
 	                                         &(create_type_enum_args_t){
-	                                             .id    = &builtin_ids[BUILTIN_ID_PLATFORM_ENUM],
-	                                             .scope = scope,
+	                                             .user_id = &builtin_ids[BUILTIN_ID_PLATFORM_ENUM],
+	                                             .scope   = scope,
 	                                             .base_type = bt->t_s32,
 	                                             .variants  = variants,
 	                                         });
@@ -12673,7 +12797,7 @@ static void provide_builtin_env(struct context *ctx)
 
 	struct mir_type *t_env = create_type_enum(ctx,
 	                                          &(create_type_enum_args_t){
-	                                              .id        = &builtin_ids[BUILTIN_ID_ENV_ENUM],
+	                                              .user_id   = &builtin_ids[BUILTIN_ID_ENV_ENUM],
 	                                              .scope     = scope,
 	                                              .base_type = bt->t_s32,
 	                                              .variants  = variants,

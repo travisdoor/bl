@@ -881,3 +881,22 @@ DCpointer assembly_find_extern(struct assembly *assembly, const str_t symbol)
 	put_tstr(tmp);
 	return handle;
 }
+
+struct mir_var *assembly_get_rtti(struct assembly *assembly, hash_t type_hash)
+{
+	bassert(type_hash);
+	const s64 i = hmgeti(assembly->MIR.rtti_table, type_hash);
+	if (i < 0) return NULL;
+	struct mir_var *result = assembly->MIR.rtti_table[i].value;
+	bassert(result);
+	return result;
+}
+
+void assembly_add_rtti(struct assembly *assembly, hash_t type_hash, struct mir_var *rtti_var)
+{
+	bassert(rtti_var);
+	bassert(type_hash);
+	bassert(assembly_get_rtti(assembly, type_hash) == NULL &&
+	        "RTTI variable already added for the type!");
+	hmput(assembly->MIR.rtti_table, type_hash, rtti_var);
+}

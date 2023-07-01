@@ -403,6 +403,10 @@ struct mir_type {
 	s8                 alignment;
 	bool               checked_and_complete;
 
+	// In case this is true, the type does not hold any unique state (e.g. s32, pointer to s32,
+	// etc.) and thus it can be cached instead of created each time when needed.
+	bool can_use_cache;
+
 	union {
 		struct mir_type_int         integer;
 		struct mir_type_fn          fn;
@@ -499,7 +503,7 @@ struct mir_instr {
 
 struct mir_instr_block {
 	struct mir_instr  base;
-	const char       *name;
+	str_t             name;
 	struct mir_instr *entry_instr;
 	struct mir_instr *last_instr;
 	struct mir_instr *terminal;
@@ -682,7 +686,7 @@ struct mir_instr_type_struct {
 	struct mir_instr base;
 	// fwd_decl is optional pointer to forward declaration of this structure type.
 	struct mir_instr *fwd_decl;
-	struct id        *id;
+	struct id        *user_id;
 	struct scope     *scope;
 	hash_t            scope_layer;
 	mir_instrs_t     *members;
@@ -694,7 +698,7 @@ struct mir_instr_type_struct {
 
 struct mir_instr_type_enum {
 	struct mir_instr  base;
-	struct id        *id;
+	struct id        *user_id;
 	struct scope     *scope;
 	mir_instrs_t     *variants;
 	struct mir_instr *base_type;

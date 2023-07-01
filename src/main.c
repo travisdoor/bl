@@ -331,6 +331,8 @@ int main(s32 argc, char *argv[])
 	char *exec_dir  = NULL;
 	char *conf_file = NULL;
 
+	bl_alloc_init();
+
 	const f64 start_time_ms = get_tick_ms();
 
 	exec_dir                = get_exec_dir();
@@ -748,12 +750,16 @@ SKIP:
 	builder_info("Finished in %.3f seconds.", runtime_ms * 0.001);
 
 RELEASE:
+
 #ifndef BL_DIRTY_ENABLE
 	builder_terminate();
 	free(exec_dir);
 	free(conf_file);
+
+	bl_alloc_terminate();
 #endif
-	blog("Exit with state %d.", state);
+
+	// Report memory leaks...
 #if BL_CRTDBG_ALLOC
 #ifdef BL_DIRTY_ENABLE
 #pragma message(                                                                                   \
@@ -761,6 +767,8 @@ RELEASE:
 #endif
 	_CrtDumpMemoryLeaks();
 #endif
+
+	blog("Exit with state %d.", state);
 	return state;
 #undef EXIT
 }

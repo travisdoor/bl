@@ -27,6 +27,57 @@
 // =================================================================================================
 
 #include "blmemory.h"
+#include "common.h"
+
+#if BL_RPMALLOC_ENABLE
+#include "rpmalloc.h"
+
+void *bl_realloc_impl(void *ptr, const size_t size, const char UNUSED(*filename), s32 UNUSED(line))
+{
+	zone();
+	void *mem = rprealloc(ptr, size);
+	if (!mem) abort();
+	TracyCFree(ptr);
+	TracyCAlloc(mem, size);
+	return_zone(mem);
+}
+
+void *bl_malloc_impl(const size_t size, const char UNUSED(*filename), s32 UNUSED(line))
+{
+	zone();
+	void *mem = rpmalloc(size);
+	if (!mem) abort();
+	TracyCAlloc(mem, size);
+	return_zone(mem);
+}
+
+void bl_free_impl(void *ptr, const char UNUSED(*filename), s32 UNUSED(line))
+{
+	TracyCFree(ptr);
+	rpfree(ptr);
+}
+
+void bl_alloc_init(void)
+{
+	rpmalloc_initialize();
+}
+
+void bl_alloc_terminate(void)
+{
+	rpmalloc_finalize();
+}
+
+void bl_alloc_thread_init(void)
+{
+	rpmalloc_thread_initialize();
+}
+
+void bl_alloc_thread_terminate(void)
+{
+	rpmalloc_thread_finalize(false);
+}
+
+#else
 
 #if BL_CRTDBG_ALLOC
 #define _CRTDBG_MAP_ALLOC
@@ -37,7 +88,6 @@
 #endif
 
 #include "TracyC.h"
-#include "common.h"
 #include <memory.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -66,3 +116,19 @@ void bl_free_impl(void *ptr, const char UNUSED(*filename), s32 UNUSED(line))
 	TracyCFree(ptr);
 	free(ptr);
 }
+
+// UNUSED
+void bl_alloc_init(void)
+{
+}
+void bl_alloc_terminate(void)
+{
+}
+void bl_alloc_thread_init(void)
+{
+}
+void bl_alloc_thread_terminate(void)
+{
+}
+
+#endif

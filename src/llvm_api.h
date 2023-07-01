@@ -85,10 +85,11 @@ extern "C" {
 #endif
 
 // We need these because LLVM C API does not provide length parameter for string names.
-LLVMTypeRef  llvm_struct_create_named(LLVMContextRef C, str_t Name);
-LLVMValueRef llvm_add_global(LLVMModuleRef M, LLVMTypeRef Ty, str_t Name);
-LLVMValueRef llvm_add_function(LLVMModuleRef M, str_t Name, LLVMTypeRef FunctionTy);
-LLVMValueRef llvm_build_alloca(LLVMBuilderRef B, LLVMTypeRef Ty, str_t Name);
+LLVMTypeRef       llvm_struct_create_named(LLVMContextRef C, str_t Name);
+LLVMValueRef      llvm_add_global(LLVMModuleRef M, LLVMTypeRef Ty, str_t Name);
+LLVMValueRef      llvm_add_function(LLVMModuleRef M, str_t Name, LLVMTypeRef FunctionTy);
+LLVMValueRef      llvm_build_alloca(LLVMBuilderRef B, LLVMTypeRef Ty, str_t Name);
+LLVMBasicBlockRef llvm_append_basic_block_in_context(LLVMContextRef C, LLVMValueRef Fn, str_t Name);
 
 #ifdef __cplusplus
 }

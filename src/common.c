@@ -159,7 +159,7 @@ str_t _scdup2(struct string_cache **cache, char *str, s32 len)
 		mem[len - 1] = '\0';       // Set zero terminator.
 	}
 	(*cache)->len += (u32)len;
-	return make_str(mem, len);
+	return make_str(mem, len - 1); // -1 zero terminator!
 }
 
 void scfree(struct string_cache **cache)
@@ -240,7 +240,7 @@ void _str_buf_append(str_buf_t *buf, char *ptr, s32 len)
 	if (buf->len + len >= buf->cap) {
 		str_buf_setcap(buf, (buf->len + len) * 2);
 	}
-	memcpy(buf->ptr + buf->len, ptr, len);
+	memcpy(&buf->ptr[buf->len], ptr, len);
 	buf->len += len;
 	bassert(buf->len < buf->cap);
 	buf->ptr[buf->len] = '\0';
@@ -255,11 +255,12 @@ void str_buf_append_fmt(str_buf_t *buf, const char *fmt, ...)
 	bassert(len > 0);
 
 	str_buf_setcap(buf, buf->len + len);
-	buf->len += len;
 
-	const s32 wlen = vsprintf(buf->ptr, fmt, args2);
+	const s32 wlen = vsprintf(&buf->ptr[buf->len], fmt, args2);
 	bassert(wlen == len);
 	(void)wlen;
+
+	buf->len += len;
 
 	bassert(buf->len < buf->cap);
 	buf->ptr[buf->len] = '\0';
