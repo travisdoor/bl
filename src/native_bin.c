@@ -49,25 +49,29 @@ static void copy_user_libs(struct assembly *assembly)
 		struct native_lib *lib = &assembly->libs[i];
 		if (lib->is_internal) continue;
 		if (!lib->user_name) continue;
-		char *lib_dest_name = lib->filename;
+		str_t lib_dest_name = lib->filename;
 #if BL_PLATFORM_LINUX || BL_PLATFORM_MACOS
 		struct stat statbuf;
-		lstat(lib->filepath, &statbuf);
+		lstat(str_to_c(lib->filepath), &statbuf);
 		if (S_ISLNK(statbuf.st_mode)) {
 			char buf[PATH_MAX] = {0};
-			if (readlink(lib->filepath, buf, static_arrlenu(buf)) == -1) {
-				builder_error("Cannot follow symlink '%s' with error: %d", lib->filepath, errno);
+			if (readlink(str_to_c(lib->filepath), buf, static_arrlenu(buf)) == -1) {
+				builder_error("Cannot follow symlink '%.*s' with error: %d",
+				              lib->filepath.len,
+				              lib->filepath.ptr,
+				              errno);
 				continue;
 			}
-			lib_dest_name = buf;
+			lib_dest_name = make_str_from_c(buf);
 		}
 #endif
 
-		strprint(dest_path, "%s/%s", out_dir, lib_dest_name);
+		strprint(dest_path, "%s/%.*s", out_dir, lib_dest_name.len, lib_dest_name.ptr);
 		if (file_exists(dest_path)) continue;
-		builder_info("Copy '%s' to '%s'.", lib->filepath, dest_path);
-		if (!copy_file(lib->filepath, dest_path)) {
-			builder_error("Cannot copy '%s' to '%s'.", lib->filepath, dest_path);
+		builder_info("Copy '%.*s' to '%s'.", lib->filepath.len, lib->filepath.ptr, dest_path);
+		if (!copy_file(str_to_c(lib->filepath), dest_path)) {
+			builder_error(
+			    "Cannot copy '%.*s' to '%s'.", lib->filepath.len, lib->filepath.ptr, dest_path);
 		}
 	}
 	put_tstr(dest_path);

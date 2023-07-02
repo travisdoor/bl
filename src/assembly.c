@@ -240,9 +240,6 @@ static void native_lib_terminate(struct native_lib *lib)
 {
 	if (lib->handle) dlFreeLibrary(lib->handle);
 	if (lib->is_internal) return;
-	free(lib->filename);
-	free(lib->filepath);
-	free(lib->dir);
 	free(lib->user_name);
 }
 

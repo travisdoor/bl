@@ -134,10 +134,10 @@ struct native_lib {
 	hash_t        hash;
 	DLLib        *handle;
 	struct token *linked_from;
-	char         *user_name;
-	char         *filename;
-	char         *filepath;
-	char         *dir;
+	char	     *user_name;
+	str_t         filename;
+	str_t         filepath;
+	str_t         dir;
 	// Disable appending of this library to the linker options.
 	bool is_internal;
 	// Library may be loaded only in runtime.
@@ -212,7 +212,7 @@ struct assembly {
 		struct {
 			hash_t          key;
 			struct mir_var *value;
-		} *rtti_table; // Map type ids to RTTI variables.
+		} * rtti_table; // Map type ids to RTTI variables.
 		array(struct mir_instr *) exported_instrs;
 	} MIR;
 

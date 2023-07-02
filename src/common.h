@@ -113,13 +113,13 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 #define make_str(p, l)                                                                             \
 	(str_t)                                                                                        \
 	{                                                                                              \
-		.ptr = (p), .len = (s32)(l)                                                                \
+		.ptr = (char *)(p), .len = (s32)(l)                                                        \
 	}
 
 #define make_str_from_c(p)                                                                         \
 	(str_t)                                                                                        \
 	{                                                                                              \
-		.ptr = (p), .len = (s32)strlen(p)                                                          \
+		.ptr = (char *)(p), .len = (s32)strlen((char *)p)                                          \
 	}
 
 #define str_empty                                                                                  \
@@ -428,9 +428,13 @@ static inline void *next_aligned(void *p, usize alignment)
 // Replace all backslashes in passed path with forward slash, this is used as workaround on Windows
 // platform due to inconsistency 'Unix vs Windows' path separators. This function will modify passed
 // buffer.
-void        win_path_to_unix(char *buf, usize buf_size);
-void        unix_path_to_win(char *buf, usize buf_size);
-bool        file_exists(const char *filepath);
+void win_path_to_unix(char *buf, usize buf_size);
+void unix_path_to_win(char *buf, usize buf_size);
+bool file_exists(const char *filepath);
+
+#define file_exists2(S) _file_exists((S).ptr, (S).len)
+bool _file_exists(const char *ptr, s32 len);
+
 bool        dir_exists(const char *dirpath);
 bool        normalize_path(char **path);
 bool        brealpath(const char *file, char *out, s32 out_len);

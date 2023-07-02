@@ -29,6 +29,7 @@
 // =================================================================================================
 // STB
 // =================================================================================================
+#include "bldebug.h"
 #include "blmemory.h"
 #include "conf.h"
 #define STB_DS_IMPLEMENTATION
@@ -476,6 +477,17 @@ bool file_exists(const char *filepath)
 #else
 	struct stat tmp;
 	return stat(filepath, &tmp) == 0;
+#endif
+}
+
+bool _file_exists(const char *ptr, s32 len)
+{
+	str_t filepath = make_str(ptr, len);
+#if BL_PLATFORM_WIN
+	return (bool)PathFileExistsA(str_to_c(filepath));
+#else
+	struct stat tmp;
+	return stat(str_to_c(filepath), &tmp) == 0;
 #endif
 }
 

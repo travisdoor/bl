@@ -27,6 +27,7 @@
 // =================================================================================================
 
 #include "builder.h"
+#include "common.h"
 #include "conf.h"
 #include "stb_ds.h"
 
@@ -45,32 +46,43 @@ struct context {
 
 static bool search_library(struct context *ctx,
                            const char     *lib_name,
-                           char          **out_lib_name,
-                           char          **out_lib_dir,
-                           char          **out_lib_filepath)
+                           str_t          *out_lib_name,
+                           str_t          *out_lib_dir,
+                           str_t          *out_lib_filepath)
 {
-	char *lib_filepath                = tstr();
-	char  lib_name_full[LIB_NAME_MAX] = {0};
-	bool  found                       = false;
+	str_buf_t lib_filepath                = get_tmp_str();
+	char      lib_name_full[LIB_NAME_MAX] = {0};
+	bool      found                       = false;
 	platform_lib_name(lib_name, lib_name_full, static_arrlenu(lib_name_full));
 	builder_log("- Looking for: '%s'", lib_name_full);
 	for (usize i = 0; i < arrlenu(ctx->assembly->lib_paths); ++i) {
 		char *dir = ctx->assembly->lib_paths[i];
 		builder_log("- Search in: '%s'", dir);
-		strprint(lib_filepath, "%s/%s", dir, lib_name_full);
-		if (file_exists(lib_filepath)) {
-			builder_log("  Found: '%s'", lib_filepath);
-			if (out_lib_name) (*out_lib_name) = strdup(lib_name_full);
-			if (out_lib_dir) (*out_lib_dir) = strdup(dir);
-			if (out_lib_filepath) (*out_lib_filepath) = strdup(lib_filepath);
+
+		str_buf_clr(&lib_filepath);
+		str_buf_append_fmt(&lib_filepath, "%s/%s", dir, lib_name_full);
+
+		if (file_exists2(lib_filepath)) {
+			builder_log("  Found: '%.*s'", lib_filepath.len, lib_filepath.ptr);
+
+			if (out_lib_name) {
+				(*out_lib_name) =
+				    scdup2(&ctx->assembly->string_cache, make_str_from_c(lib_name_full));
+			}
+			if (out_lib_dir) {
+				(*out_lib_dir) = scdup2(&ctx->assembly->string_cache, make_str_from_c(dir));
+			}
+			if (out_lib_filepath) {
+				(*out_lib_filepath) = scdup2(&ctx->assembly->string_cache, lib_filepath);
+			}
 			found = true;
 			goto DONE;
 		}
 	}
 
 DONE:
-	if (!found) builder_log("  Not found: '%s'", lib_filepath);
-	put_tstr(lib_filepath);
+	if (!found) builder_log("  Not found: '%.*s'", lib_filepath.len, lib_filepath.ptr);
+	put_tmp_str(lib_filepath);
 	return found;
 }
 
@@ -118,17 +130,14 @@ static bool link_lib(struct context *ctx, struct native_lib *lib)
 {
 	if (!lib) babort("invalid lib");
 	if (!lib->user_name) babort("invalid lib name");
-
 	if (!search_library(ctx, lib->user_name, &lib->filename, &lib->dir, &lib->filepath)) {
 		return false;
 	}
-
 	if (lib->runtime_only) {
 		builder_log("- Library with 'runtime_only' flag '%s' skipped.", lib->user_name);
 		return true;
 	}
-
-	lib->handle = dlLoadLibrary(lib->filepath);
+	lib->handle = dlLoadLibrary(str_to_c(lib->filepath));
 	return lib->handle;
 }
 
@@ -137,13 +146,9 @@ static bool link_working_environment(struct context *ctx, const char *lib_name)
 	DLLib *handle = dlLoadLibrary(lib_name);
 	if (!handle) return false;
 
-	struct native_lib native_lib;
-	native_lib.handle      = handle;
-	native_lib.linked_from = NULL;
-	native_lib.user_name   = NULL;
-	native_lib.filename    = NULL;
-	native_lib.filepath    = NULL;
-	native_lib.is_internal = true;
+	struct native_lib native_lib = {0};
+	native_lib.handle            = handle;
+	native_lib.is_internal       = true;
 
 	arrput(ctx->assembly->libs, native_lib);
 	return true;
