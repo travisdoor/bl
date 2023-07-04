@@ -5,6 +5,7 @@ on:
     branches: [ master ]
   pull_request:
     branches: [ master ]
+  workflow-dispatch
 
 env:
   VSINSTALLDIR: C:/Program Files/Microsoft Visual Studio/2022/Enterprise/
