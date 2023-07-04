@@ -149,8 +149,13 @@ if(NOT EXISTS ${LLD_BIN})
     )
 endif()
 
-if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-    add_definitions(-DBL_USE_SIMD)
+# SIMD
+option(BL_SIMD_ENABLE "Enable or disable SIMD." ON)
+if(BL_SIMD_ENABLE)
+    if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+	  message(STATUS "SIMD enabled.")
+      add_definitions(-DBL_USE_SIMD)	  
+    endif()
 endif()
 
 find_package(LLVM ${BL_LLVM_VER} REQUIRED)

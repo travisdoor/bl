@@ -201,19 +201,19 @@ _print_const_value(struct context *ctx, struct mir_type *type, vm_stack_ptr_t va
 		vm_stack_ptr_t str_ptr = value + offset;
 		str_ptr                = VM_STACK_PTR_DEREF(str_ptr);
 		if (str_ptr) {
-			char *tmp = tstr();
-			char  c;
+			str_buf_t tmp = get_tmp_str();
+			char      c;
 			while ((c = *(str_ptr++))) {
 				switch (c) {
 				case '\n':
-					str_append(tmp, "\\n");
+					str_buf_append(&tmp, make_str("\\n", 2));
 					break;
 				default:
-					str_append(tmp, "%c", c);
+					str_buf_append_fmt(&tmp, "%c", c);
 				}
 			}
-			fprintf(ctx->stream, "%s\"}", tmp);
-			put_tstr(tmp);
+			fprintf(ctx->stream, "%.*s\"}", tmp.len, tmp.ptr);
+			put_tmp_str(tmp);
 		} else {
 			fprintf(ctx->stream, "(null)\"}");
 		}

@@ -49,13 +49,13 @@
 #define MSVC_LIB "/lib/x64"
 
 struct wbs {
-	bool  is_valid;
-	char *program_files_path;
-	char *vs_path;
-	char *windows_sdk_path;
-	char *ucrt_path;
-	char *um_path;
-	char *msvc_lib_path;
+	bool      is_valid;
+	str_buf_t program_files_path;
+	str_buf_t vs_path;
+	str_buf_t windows_sdk_path;
+	str_buf_t ucrt_path;
+	str_buf_t um_path;
+	str_buf_t msvc_lib_path;
 };
 
 // =================================================================================================
@@ -67,15 +67,15 @@ static void        wbsfree(struct wbs *wbs);
 // =================================================================================================
 // PRIVATE STUFF
 // =================================================================================================
-static bool _listdir(struct wbs *ctx, const char *dirpath, array(char *) * outdirs)
+static bool _listdir(struct wbs *ctx, const str_buf_t dirpath, array(char *) * outdirs)
 {
-	char *search = tstr();
-	strprint(search, "%s\\*", dirpath);
+	str_buf_t search = get_tmp_str();
+	str_buf_append_fmt(&search, "%.*s\\*", dirpath.len, dirpath.ptr);
 	WIN32_FIND_DATAA find_data;
-	HANDLE           handle = FindFirstFileA(search, &find_data);
+	HANDLE           handle = FindFirstFileA(str_to_c(search), &find_data);
 	if (handle == INVALID_HANDLE_VALUE) {
-		builder_error("Cannot list directory '%s'.", dirpath);
-		put_tstr(search);
+		builder_error("Cannot list directory '%.*s'.", dirpath.len, dirpath.ptr);
+		put_tmp_str(search);
 		return false;
 	}
 	while (FindNextFileA(handle, &find_data) != 0) {
@@ -84,7 +84,7 @@ static bool _listdir(struct wbs *ctx, const char *dirpath, array(char *) * outdi
 		arrput((*outdirs), tmp);
 	}
 	FindClose(handle);
-	put_tstr(search);
+	put_tmp_str(search);
 	return true;
 }
 
@@ -97,30 +97,36 @@ static bool _lookup_program_files(struct wbs *ctx)
 		return false;
 	}
 
-	ctx->program_files_path = strdup(program_files_path);
-	win_path_to_unix(ctx->program_files_path, strlen(ctx->program_files_path));
+	str_buf_t dup = str_buf_dup(make_str_from_c(program_files_path));
+	win_path_to_unix(dup.ptr, dup.len);
+	ctx->program_files_path = dup;
 	return true;
 }
 
 static bool _lookup_vs(struct wbs *ctx)
 {
-	char *vspath = execute("vswhere.exe -latest -nologo -property installationPath");
-	if (!str_lenu(vspath)) {
+	str_buf_t vspath = execute("vswhere.exe -latest -nologo -property installationPath");
+	if (!vspath.len) {
 		// try to use Build Tools instead!
-		strprint(vspath, "%s/%s", ctx->program_files_path, BUILD_TOOLS);
-		if (!dir_exists(vspath)) {
+		str_buf_append_fmt(&vspath,
+		                   "%.*s/%s",
+		                   ctx->program_files_path.len,
+		                   ctx->program_files_path.ptr,
+		                   BUILD_TOOLS);
+		if (!dir_exists2(vspath)) {
 			builder_error("Visual Studio installation or MS Build Tools not found. Download & "
 			              "install MS Build Tools from "
 			              "https://visualstudio.microsoft.com/visual-cpp-build-tools. (Expected "
-			              "location is '%s')",
-			              vspath);
-			put_tstr(vspath);
+			              "location is '%.*s')",
+			              vspath.len,
+			              vspath.ptr);
+			put_tmp_str(vspath);
 			return false;
 		}
 	}
-	win_path_to_unix(vspath, str_lenu(vspath));
-	ctx->vs_path = strdup(vspath);
-	put_tstr(vspath);
+	win_path_to_unix(vspath.ptr, vspath.len);
+	ctx->vs_path = str_buf_dup(vspath);
+	put_tmp_str(vspath);
 	return true;
 }
 
@@ -134,17 +140,19 @@ static void _listfile_delete(char ***list)
 
 static bool _lookup_windows_sdk(struct wbs *ctx)
 {
-	char *sdkpath = tstr();
-	strprint(sdkpath, "%s/%s", ctx->program_files_path, WIN_SDK);
-	if (!dir_exists(sdkpath)) {
-		builder_error("Windows SDK not found. (Expected location is '%s')", sdkpath);
-		put_tstr(sdkpath);
+	str_buf_t sdkpath = {0};
+	str_buf_append_fmt(
+	    &sdkpath, "%.*s/%s", ctx->program_files_path.len, ctx->program_files_path.ptr, WIN_SDK);
+	if (!dir_exists2(sdkpath)) {
+		builder_error(
+		    "Windows SDK not found. (Expected location is '%.*s')", sdkpath.len, sdkpath.ptr);
+		str_buf_free(&sdkpath);
 		return false;
 	}
 	array(char *) versions = NULL;
 	if (!_listdir(ctx, sdkpath, &versions)) {
 		_listfile_delete(&versions);
-		put_tstr(sdkpath);
+		str_buf_free(&sdkpath);
 		return false;
 	}
 	s32   best[4]    = {0};
@@ -172,26 +180,26 @@ static bool _lookup_windows_sdk(struct wbs *ctx)
 		}
 	}
 
-	str_append(sdkpath, "/%s", versions[best_index]);
+	str_buf_append_fmt(&sdkpath, "/%s", versions[best_index]);
 	_listfile_delete(&versions);
-	ctx->windows_sdk_path = strdup(sdkpath);
-	put_tstr(sdkpath);
+	ctx->windows_sdk_path = sdkpath;
 	return true;
 }
 
 static bool _lookup_msvc_libs(struct wbs *ctx)
 {
-	char *sdkpath = tstr();
-	strprint(sdkpath, "%s/%s", ctx->vs_path, MSVC_TOOLS);
-	if (!dir_exists(sdkpath)) {
-		builder_error("MSVC build tools not found. (Expected location is '%s')", sdkpath);
-		put_tstr(sdkpath);
+	str_buf_t sdkpath = {0};
+	str_buf_append_fmt(&sdkpath, "%.*s/%s", ctx->vs_path.len, ctx->vs_path.ptr, MSVC_TOOLS);
+	if (!dir_exists2(sdkpath)) {
+		builder_error(
+		    "MSVC build tools not found. (Expected location is '%.*s')", sdkpath.len, sdkpath.ptr);
+		str_buf_free(&sdkpath);
 		return false;
 	}
 	char **versions = NULL;
 	if (!_listdir(ctx, sdkpath, &versions)) {
 		_listfile_delete(&versions);
-		put_tstr(sdkpath);
+		str_buf_free(&sdkpath);
 		return false;
 	}
 	s32   best[3]    = {0};
@@ -215,43 +223,46 @@ static bool _lookup_msvc_libs(struct wbs *ctx)
 		}
 	}
 
-	str_append(sdkpath, "/%s/%s", versions[best_index], MSVC_LIB);
+	str_buf_append_fmt(&sdkpath, "/%s/%s", versions[best_index], MSVC_LIB);
 	_listfile_delete(&versions);
-	if (!dir_exists(sdkpath)) {
-		builder_error("MSVC lib directory not found. (Expected location is '%s')", sdkpath);
-		put_tstr(sdkpath);
+	if (!dir_exists2(sdkpath)) {
+		builder_error("MSVC lib directory not found. (Expected location is '%.*s')",
+		              sdkpath.len,
+		              sdkpath.ptr);
+		str_buf_free(&sdkpath);
 		return false;
 	}
-	ctx->msvc_lib_path = strdup(sdkpath);
-	put_tstr(sdkpath);
+	ctx->msvc_lib_path = sdkpath;
 	return true;
 }
 
 static bool _lookup_ucrt(struct wbs *ctx)
 {
-	char *tmppath = tstr();
-	str_append(tmppath, "%s/%s", ctx->windows_sdk_path, UCRT);
-	if (!dir_exists(tmppath)) {
-		builder_error("UCRT lib-path not found. (Expected location is '%s')", tmppath);
-		put_tstr(tmppath);
+	str_buf_t tmppath = {0};
+	str_buf_append_fmt(
+	    &tmppath, "%.*s/%s", ctx->windows_sdk_path.len, ctx->windows_sdk_path.ptr, UCRT);
+	if (!dir_exists2(tmppath)) {
+		builder_error(
+		    "UCRT lib-path not found. (Expected location is '%.*s')", tmppath.len, tmppath.ptr);
+		str_buf_free(&tmppath);
 		return false;
 	}
-	ctx->ucrt_path = strdup(tmppath);
-	put_tstr(tmppath);
+	ctx->ucrt_path = tmppath;
 	return true;
 }
 
 static bool _lookup_um(struct wbs *ctx)
 {
-	char *tmppath = tstr();
-	str_append(tmppath, "%s/%s", ctx->windows_sdk_path, UM);
-	if (!dir_exists(tmppath)) {
-		builder_error("UM lib-path not found. (Expected location is '%s')", tmppath);
-		put_tstr(tmppath);
+	str_buf_t tmppath = {0};
+	str_buf_append_fmt(
+	    &tmppath, "%.*s/%s", ctx->windows_sdk_path.len, ctx->windows_sdk_path.ptr, UM);
+	if (!dir_exists2(tmppath)) {
+		builder_error(
+		    "UM lib-path not found. (Expected location is '%.*s')", tmppath.len, tmppath.ptr);
+		str_buf_free(&tmppath);
 		return false;
 	}
-	ctx->um_path = strdup(tmppath);
-	put_tstr(tmppath);
+	ctx->um_path = tmppath;
 	return true;
 }
 
@@ -274,11 +285,11 @@ FAILED:
 void wbsfree(struct wbs *wbs)
 {
 	if (!wbs) return;
-	free(wbs->msvc_lib_path);
-	free(wbs->program_files_path);
-	free(wbs->ucrt_path);
-	free(wbs->um_path);
-	free(wbs->vs_path);
-	free(wbs->windows_sdk_path);
+	str_buf_free(&wbs->msvc_lib_path);
+	str_buf_free(&wbs->program_files_path);
+	str_buf_free(&wbs->ucrt_path);
+	str_buf_free(&wbs->um_path);
+	str_buf_free(&wbs->vs_path);
+	str_buf_free(&wbs->windows_sdk_path);
 	bfree(wbs);
 }

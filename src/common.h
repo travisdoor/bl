@@ -181,16 +181,15 @@ struct str_buf {
 typedef struct str_buf str_buf_t;
 
 void str_buf_free(str_buf_t *buf);
+
 // Set the capacity (preallocates) space for 'cap' characters. Does nothing in case the 'cap' is
 // smaller than zero. The preallocation includes extra space for zero terminator.
 void str_buf_setcap(str_buf_t *buf, s32 cap);
 
-void _str_buf_append(str_buf_t *buf, char *ptr, s32 len);
-// This way we can append another string buffer or view without any casting.
-#define str_buf_append(B, S) _str_buf_append(B, (S).ptr, (S).len)
-
-void str_buf_append_fmt(str_buf_t *buf, const char *fmt, ...);
-void str_buf_clr(str_buf_t *buf); // This is also setting the zero
+void      _str_buf_append(str_buf_t *buf, char *ptr, s32 len);
+str_buf_t _str_buf_dup(char *ptr, s32 len);
+void      str_buf_append_fmt(str_buf_t *buf, const char *fmt, ...);
+void      str_buf_clr(str_buf_t *buf); // This is also setting the zero
 
 static inline const char *_str_to_c_checked(char *ptr, s32 len)
 {
@@ -202,7 +201,21 @@ static inline const char *_str_to_c_checked(char *ptr, s32 len)
 // Converts the input string or str_t or str_buf_t to the C string. Zero termination is checked by
 // assert.
 // In case the buffer is not allocated, returns pointer to the static empty C string.
-#define str_to_c(B) _str_to_c_checked((B).ptr, (B).len)
+// clang-format off
+#define str_to_c(B) _Generic((B), \
+							 str_buf_t: _str_to_c_checked((B).ptr, (B).len), \
+							 str_t:     _str_to_c_checked((B).ptr, (B).len))
+
+// This way we can append another string buffer or view without any casting.
+#define str_buf_append(B, S) _Generic((S), \
+									  str_buf_t: _str_buf_append(B, (S).ptr, (S).len), \
+									  str_t:     _str_buf_append(B, (S).ptr, (S).len))
+
+#define str_buf_dup(S) _Generic((S), \
+								str_buf_t: _str_buf_dup((S).ptr, (S).len), \
+								str_t:     _str_buf_dup((S).ptr, (S).len))
+
+// clang-format on
 
 #define str_buf_view(B)                                                                            \
 	(str_t)                                                                                        \
@@ -425,18 +438,18 @@ static inline void *next_aligned(void *p, usize alignment)
 	return p;
 }
 
+#define file_exists2(S) _file_exists((S).ptr, (S).len)
+#define dir_exists2(S) _dir_exists((S).ptr, (S).len)
+
 // Replace all backslashes in passed path with forward slash, this is used as workaround on Windows
 // platform due to inconsistency 'Unix vs Windows' path separators. This function will modify passed
 // buffer.
-void win_path_to_unix(char *buf, usize buf_size);
-void unix_path_to_win(char *buf, usize buf_size);
-bool file_exists(const char *filepath);
-
-#define file_exists2(S) _file_exists((S).ptr, (S).len)
-bool _file_exists(const char *ptr, s32 len);
-
+void        win_path_to_unix(char *buf, usize buf_size);
+void        unix_path_to_win(char *buf, usize buf_size);
+bool        file_exists(const char *filepath);
 bool        dir_exists(const char *dirpath);
 bool        normalize_path(char **path);
+bool        normalize_path2(str_buf_t *path);
 bool        brealpath(const char *file, char *out, s32 out_len);
 bool        get_current_working_dir(char *buf, usize buf_size);
 bool        set_current_working_dir(const char *path);
@@ -452,13 +465,14 @@ bool        remove_dir(const char *path);
 void        date_time(char *buf, s32 len, const char *format);
 void        print_bits(s32 const size, void const *const ptr);
 int         count_bits(u64 n);
+str_buf_t   platform_lib_name2(const str_t name);
 void        platform_lib_name(const char *name, char *buffer, usize max_len);
 f64         get_tick_ms(void);
 s32         get_last_error(char *buf, s32 buf_len);
 u32         next_pow_2(u32 n);
 void        color_print(FILE *stream, s32 color, const char *format, ...);
 s32         cpu_thread_count(void);
-char       *execute(const char *cmd);
+str_buf_t   execute(const char *cmd);
 const char *read_config(struct config       *config,
                         const struct target *target,
                         const char          *path,
@@ -467,5 +481,8 @@ const char *read_config(struct config       *config,
 typedef void (*process_tokens_fn_t)(void *ctx, const char *token);
 s32   process_tokens(void *ctx, const char *input, const char *delimiter, process_tokens_fn_t fn);
 char *strtrim(char *str);
+
+bool _dir_exists(const char *ptr, s32 len);
+bool _file_exists(const char *ptr, s32 len);
 
 #endif

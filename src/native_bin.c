@@ -42,13 +42,15 @@ s32 lld_ld(struct assembly *assembly);
 
 static void copy_user_libs(struct assembly *assembly)
 {
-	char                *dest_path = tstr();
+	str_buf_t            dest_path = get_tmp_str();
 	const struct target *target    = assembly->target;
 	const char          *out_dir   = target->out_dir;
 	for (usize i = 0; i < arrlenu(assembly->libs); ++i) {
 		struct native_lib *lib = &assembly->libs[i];
 		if (lib->is_internal) continue;
-		if (!lib->user_name) continue;
+		if (!lib->user_name.len) continue;
+
+		str_buf_clr(&dest_path);
 		str_t lib_dest_name = lib->filename;
 #if BL_PLATFORM_LINUX || BL_PLATFORM_MACOS
 		struct stat statbuf;
@@ -66,15 +68,24 @@ static void copy_user_libs(struct assembly *assembly)
 		}
 #endif
 
-		strprint(dest_path, "%s/%.*s", out_dir, lib_dest_name.len, lib_dest_name.ptr);
-		if (file_exists(dest_path)) continue;
-		builder_info("Copy '%.*s' to '%s'.", lib->filepath.len, lib->filepath.ptr, dest_path);
-		if (!copy_file(str_to_c(lib->filepath), dest_path)) {
-			builder_error(
-			    "Cannot copy '%.*s' to '%s'.", lib->filepath.len, lib->filepath.ptr, dest_path);
+		str_buf_append_fmt(&dest_path, "%s/%.*s", out_dir, lib_dest_name.len, lib_dest_name.ptr);
+		if (file_exists2(dest_path)) continue;
+
+		builder_info("Copy '%.*s' to '%.*s'.",
+		             lib->filepath.len,
+		             lib->filepath.ptr,
+		             dest_path.len,
+		             dest_path.ptr);
+
+		if (!copy_file(str_to_c(lib->filepath), str_to_c(dest_path))) {
+			builder_error("Cannot copy '%.*s' to '%.*s'.",
+			              lib->filepath.len,
+			              lib->filepath.ptr,
+			              dest_path.len,
+			              dest_path.ptr);
 		}
 	}
-	put_tstr(dest_path);
+	put_tmp_str(dest_path);
 }
 
 void native_bin_run(struct assembly *assembly)

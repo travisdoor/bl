@@ -70,9 +70,10 @@ struct config *confload(const char *filepath)
 	char blockpath[256] = "";
 
 	yaml_token_t token;
-	char        *key  = tstr();
-	char        *path = tstr();
-	bool         done = false;
+	str_buf_t    key  = get_tmp_str();
+	str_buf_t    path = get_tmp_str();
+
+	bool done = false;
 	while (!done) {
 		if (!yaml_parser_scan(&parser, &token)) goto LOAD_ERROR;
 
@@ -86,8 +87,8 @@ struct config *confload(const char *filepath)
 			state = STATE_VALUE;
 			break;
 		case YAML_BLOCK_MAPPING_START_TOKEN:
-			if (str_lenu(key)) {
-				snprintf(blockpath, static_arrlenu(blockpath), "/%s", key);
+			if (key.len) {
+				snprintf(blockpath, static_arrlenu(blockpath), "/%.*s", key.len, key.ptr);
 			}
 			break;
 		case YAML_BLOCK_END_TOKEN:
@@ -101,10 +102,12 @@ struct config *confload(const char *filepath)
 		case YAML_SCALAR_TOKEN: {
 			const char *value = (const char *)token.data.scalar.value;
 			if (state == STATE_KEY) {
-				strprint(key, "%s", value);
+				str_buf_clr(&key);
+				str_buf_append(&key, make_str_from_c(value));
 			} else {
-				strprint(path, "%s/%s", blockpath, key);
-				entry.key   = strhash(path);
+				str_buf_clr(&path);
+				str_buf_append_fmt(&path, "%s/%.*s", blockpath, key.len, key.ptr);
+				entry.key   = strhash2(path);
 				entry.value = scdup(&conf->cache, value, token.data.scalar.length);
 				hmputs(conf->data, entry);
 			}
@@ -124,16 +127,16 @@ struct config *confload(const char *filepath)
 	}
 	yaml_parser_delete(&parser);
 	fclose(input);
-	put_tstr(key);
-	put_tstr(path);
+	put_tmp_str(key);
+	put_tmp_str(path);
 	return conf;
 
 LOAD_ERROR:
 	yaml_parser_delete(&parser);
 	fclose(input);
 	confdelete(conf);
-	put_tstr(key);
-	put_tstr(path);
+	put_tmp_str(key);
+	put_tmp_str(path);
 	return NULL;
 }
 

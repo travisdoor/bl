@@ -42,11 +42,6 @@ struct mir_var;
 
 // Global context data used by all scopes in assembly.
 struct scopes_context {
-	hash_table(struct {
-		u64                 key;
-		struct scope_entry *value;
-	}) bookmarks;
-
 	struct {
 		struct arena scopes;
 		struct arena entries;
@@ -137,10 +132,6 @@ struct scope_entry *scope_create_entry(struct scopes_context *ctx,
                                        bool                   is_builtin);
 
 void scope_insert(struct scope *scope, hash_t layer, struct scope_entry *entry);
-
-// Inserts scope entry into the quick bookmark table. The bookmark table is global table useful for
-// quick resolve of builtin or common types.
-void scope_insert_bookmark(struct scopes_context *ctx, hash_t layer, struct scope_entry *entry);
 
 void scope_lock(struct scope *scope);
 void scope_unlock(struct scope *scope);

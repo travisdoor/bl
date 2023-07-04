@@ -134,7 +134,7 @@ struct native_lib {
 	hash_t        hash;
 	DLLib        *handle;
 	struct token *linked_from;
-	char	     *user_name;
+	str_t         user_name;
 	str_t         filename;
 	str_t         filepath;
 	str_t         dir;
@@ -212,7 +212,7 @@ struct assembly {
 		struct {
 			hash_t          key;
 			struct mir_var *value;
-		} * rtti_table; // Map type ids to RTTI variables.
+		} *rtti_table; // Map type ids to RTTI variables.
 		array(struct mir_instr *) exported_instrs;
 	} MIR;
 

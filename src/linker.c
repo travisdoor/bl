@@ -45,29 +45,30 @@ struct context {
 };
 
 static bool search_library(struct context *ctx,
-                           const char     *lib_name,
+                           str_t           lib_name,
                            str_t          *out_lib_name,
                            str_t          *out_lib_dir,
                            str_t          *out_lib_filepath)
 {
-	str_buf_t lib_filepath                = get_tmp_str();
-	char      lib_name_full[LIB_NAME_MAX] = {0};
-	bool      found                       = false;
-	platform_lib_name(lib_name, lib_name_full, static_arrlenu(lib_name_full));
-	builder_log("- Looking for: '%s'", lib_name_full);
+	bool found = false;
+
+	str_buf_t lib_filepath      = get_tmp_str();
+	str_buf_t lib_platform_name = platform_lib_name2(lib_name);
+
+	builder_log("- Looking for: '%.*s'", lib_platform_name.len, lib_platform_name.ptr);
 	for (usize i = 0; i < arrlenu(ctx->assembly->lib_paths); ++i) {
 		char *dir = ctx->assembly->lib_paths[i];
 		builder_log("- Search in: '%s'", dir);
 
 		str_buf_clr(&lib_filepath);
-		str_buf_append_fmt(&lib_filepath, "%s/%s", dir, lib_name_full);
+		str_buf_append_fmt(
+		    &lib_filepath, "%s/%.*s", dir, lib_platform_name.len, lib_platform_name.ptr);
 
 		if (file_exists2(lib_filepath)) {
 			builder_log("  Found: '%.*s'", lib_filepath.len, lib_filepath.ptr);
 
 			if (out_lib_name) {
-				(*out_lib_name) =
-				    scdup2(&ctx->assembly->string_cache, make_str_from_c(lib_name_full));
+				(*out_lib_name) = scdup2(&ctx->assembly->string_cache, lib_platform_name);
 			}
 			if (out_lib_dir) {
 				(*out_lib_dir) = scdup2(&ctx->assembly->string_cache, make_str_from_c(dir));
@@ -82,7 +83,9 @@ static bool search_library(struct context *ctx,
 
 DONE:
 	if (!found) builder_log("  Not found: '%.*s'", lib_filepath.len, lib_filepath.ptr);
+	put_tmp_str(lib_platform_name);
 	put_tmp_str(lib_filepath);
+
 	return found;
 }
 
@@ -129,12 +132,14 @@ static void set_lib_paths(struct context *ctx)
 static bool link_lib(struct context *ctx, struct native_lib *lib)
 {
 	if (!lib) babort("invalid lib");
-	if (!lib->user_name) babort("invalid lib name");
+	if (!lib->user_name.len) babort("invalid lib name");
 	if (!search_library(ctx, lib->user_name, &lib->filename, &lib->dir, &lib->filepath)) {
 		return false;
 	}
 	if (lib->runtime_only) {
-		builder_log("- Library with 'runtime_only' flag '%s' skipped.", lib->user_name);
+		builder_log("- Library with 'runtime_only' flag '%.*s' skipped.",
+		            lib->user_name.len,
+		            lib->user_name.ptr);
 		return true;
 	}
 	lib->handle = dlLoadLibrary(str_to_c(lib->filepath));
@@ -170,8 +175,9 @@ void linker_run(struct assembly *assembly)
 			link_error(ERR_LIB_NOT_FOUND,
 			           lib->linked_from,
 			           CARET_WORD,
-			           "Cannot load library '%s' with error: %s",
-			           lib->user_name,
+			           "Cannot load library '%.*s' with error: %s",
+			           lib->user_name.len,
+			           lib->user_name.ptr,
 			           error_len ? error_buffer : "UNKNOWN");
 		}
 	}

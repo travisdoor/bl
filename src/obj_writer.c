@@ -40,19 +40,26 @@ void obj_writer_run(struct assembly *assembly)
 {
 	zone();
 	runtime_measure_begin(llvm_obj_generation);
-	char                *buf    = tstr();
+
+	str_buf_t buf = get_tmp_str();
+
 	const struct target *target = assembly->target;
 	const char          *name   = target->name;
 	blog("out_dir = %s", target->out_dir);
 	blog("name = %s", name);
-	strprint(buf, "%s/%s.%s", target->out_dir, name, OBJ_EXT);
+
+	str_buf_append_fmt(&buf, "%s/%s.%s", target->out_dir, name, OBJ_EXT);
 	char *error_msg = NULL;
-	if (LLVMTargetMachineEmitToFile(
-	        assembly->llvm.TM, assembly->llvm.modules[0], buf, LLVMObjectFile, &error_msg)) {
-		builder_error("Cannot emit object file: %s with error: %s", buf, error_msg);
+	if (LLVMTargetMachineEmitToFile(assembly->llvm.TM,
+	                                assembly->llvm.modules[0],
+	                                str_to_c(buf),
+	                                LLVMObjectFile,
+	                                &error_msg)) {
+		builder_error("Cannot emit object file: %.*s with error: %s", buf.len, buf.ptr, error_msg);
 	}
 	LLVMDisposeMessage(error_msg);
-	put_tstr(buf);
+	put_tmp_str(buf);
+
 	assembly->stats.llvm_obj_s = runtime_measure_end(llvm_obj_generation);
 	return_zone();
 }

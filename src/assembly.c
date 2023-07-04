@@ -240,7 +240,6 @@ static void native_lib_terminate(struct native_lib *lib)
 {
 	if (lib->handle) dlFreeLibrary(lib->handle);
 	if (lib->is_internal) return;
-	free(lib->user_name);
 }
 
 static void mir_init(struct assembly *assembly)
@@ -291,10 +290,10 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, char **out
 
 static struct config *load_module_config(const char *modulepath, struct token *import_from)
 {
-	char *path = tstr();
-	strprint(path, "%s/%s", modulepath, MODULE_CONFIG_FILE);
-	struct config *conf = confload(path);
-	put_tstr(path);
+	str_buf_t path = get_tmp_str();
+	str_buf_append_fmt(&path, "%s/%s", modulepath, MODULE_CONFIG_FILE);
+	struct config *conf = confload(str_to_c(path));
+	put_tmp_str(path);
 	return conf;
 }
 
@@ -319,28 +318,29 @@ typedef struct {
 
 static void import_source(import_elem_context_t *ctx, const char *srcfile)
 {
-	char *path = tstr();
-	strprint(path, "%s/%s", ctx->modulepath, srcfile);
+	str_buf_t path = get_tmp_str();
+	str_buf_append_fmt(&path, "%s/%s", ctx->modulepath, srcfile);
 	// @Cleanup: should we pass the import_from token here?
-	assembly_add_unit_safe(ctx->assembly, path, NULL);
-	put_tstr(path);
+	assembly_add_unit_safe(ctx->assembly, str_to_c(path), NULL);
+	put_tmp_str(path);
 }
 
 static void import_lib_path(import_elem_context_t *ctx, const char *dirpath)
 {
-	char *path = tstr();
-	strprint(path, "%s/%s", ctx->modulepath, dirpath);
-	if (!dir_exists(path)) {
+	str_buf_t path = get_tmp_str();
+	str_buf_append_fmt(&path, "%s/%s", ctx->modulepath, dirpath);
+	if (!dir_exists2(path)) {
 		builder_msg(MSG_ERR,
 		            ERR_FILE_NOT_FOUND,
 		            TOKEN_OPTIONAL_LOCATION(ctx->import_from),
 		            CARET_WORD,
-		            "Cannot find module imported library path '%s'.",
-		            path);
+		            "Cannot find module imported library path '%.*s'.",
+		            path.len,
+		            path.ptr);
 	} else {
-		assembly_add_lib_path_safe(ctx->assembly, path);
+		assembly_add_lib_path_safe(ctx->assembly, str_to_c(path));
 	}
-	put_tstr(path);
+	put_tmp_str(path);
 }
 
 static void import_link(import_elem_context_t *ctx, const char *lib)
@@ -745,7 +745,7 @@ void assembly_add_native_lib_safe(struct assembly *assembly,
 	}
 	struct native_lib lib = {0};
 	lib.hash              = hash;
-	lib.user_name         = strdup(lib_name);
+	lib.user_name         = scdup2(&assembly->string_cache, make_str_from_c(lib_name));
 	lib.linked_from       = link_token;
 	lib.runtime_only      = runtime_only;
 	arrput(assembly->libs, lib);
@@ -755,10 +755,10 @@ DONE:
 
 static inline bool module_exist(const char *module_dir, const char *modulepath)
 {
-	char *path = tstr();
-	strprint(path, "%s/%s/%s", module_dir, modulepath, MODULE_CONFIG_FILE);
-	const bool found = search_source_file(path, SEARCH_FLAG_ABS, NULL, NULL, NULL);
-	put_tstr(path);
+	str_buf_t path = get_tmp_str();
+	str_buf_append_fmt(&path, "%s/%s/%s", module_dir, modulepath, MODULE_CONFIG_FILE);
+	const bool found = search_source_file(str_to_c(path), SEARCH_FLAG_ABS, NULL, NULL, NULL);
+	put_tmp_str(path);
 	return found;
 }
 
@@ -777,7 +777,7 @@ bool assembly_import_module(struct assembly *assembly,
 		goto DONE;
 	}
 
-	char                *local_path = tstr();
+	str_buf_t            local_path = get_tmp_str();
 	struct config       *config     = NULL;
 	const struct target *target     = assembly->target;
 	const char          *module_dir = str_lenu(target->module_dir) > 0 ? target->module_dir : NULL;
@@ -787,31 +787,32 @@ bool assembly_import_module(struct assembly *assembly,
 	switch (policy) {
 	case IMPORT_POLICY_SYSTEM: {
 		if (local_found) {
-			strprint(local_path, "%s/%s", module_dir, modulepath);
+			str_buf_append_fmt(&local_path, "%s/%s", module_dir, modulepath);
 		} else {
-			strprint(local_path, "%s/%s", builder_get_lib_dir(), modulepath);
+			str_buf_append_fmt(&local_path, "%s/%s", builder_get_lib_dir(), modulepath);
 		}
-		config = load_module_config(local_path, import_from);
+		config = load_module_config(str_to_c(local_path), import_from);
 		break;
 	}
 
 	case IMPORT_POLICY_BUNDLE_LATEST:
 	case IMPORT_POLICY_BUNDLE: {
 		bassert(module_dir);
-		char      *system_path   = tstr();
+		str_buf_t  system_path   = get_tmp_str();
 		const bool check_version = policy == IMPORT_POLICY_BUNDLE_LATEST;
-		strprint(local_path, "%s/%s", module_dir, modulepath);
-		strprint(system_path, "%s/%s", builder_get_lib_dir(), modulepath);
+		str_buf_append_fmt(&local_path, "%s/%s", module_dir, modulepath);
+		str_buf_append_fmt(&system_path, "%s/%s", builder_get_lib_dir(), modulepath);
 		const bool system_found = module_exist(builder_get_lib_dir(), modulepath);
 		// Check if module is present in module directory.
 		bool do_copy = !local_found;
 		if (check_version && local_found && system_found) {
 			s32 system_version = 0;
 			s32 local_version  = 0;
-			strprint(system_path, "%s/%s", builder_get_lib_dir(), modulepath);
-			config = load_module_config(system_path, import_from);
+			str_buf_clr(&system_path);
+			str_buf_append_fmt(&system_path, "%s/%s", builder_get_lib_dir(), modulepath);
+			config = load_module_config(str_to_c(system_path), import_from);
 			if (config) system_version = get_module_version(config);
-			struct config *local_config = load_module_config(local_path, import_from);
+			struct config *local_config = load_module_config(str_to_c(local_path), import_from);
 			if (local_config) local_version = get_module_version(local_config);
 			confdelete(local_config);
 			do_copy = system_version > local_version;
@@ -819,26 +820,27 @@ bool assembly_import_module(struct assembly *assembly,
 		if (do_copy) {
 			// Delete old one.
 			if (local_found) {
-				char *backup_name = tstr();
-				char  date[26];
+				str_buf_t backup_name = get_tmp_str();
+				char      date[26];
 				date_time(date, static_arrlenu(date), "%d-%m-%Y_%H-%M-%S");
-				strprint(backup_name, "%s_%s.bak", local_path, date);
-				copy_dir(local_path, backup_name);
-				remove_dir(local_path);
-				builder_info("Backup module '%s'.", backup_name);
-				put_tstr(backup_name);
+				str_buf_append_fmt(
+				    &backup_name, "%.*s_%s.bak", local_path.len, local_path.ptr, date);
+				copy_dir(str_to_c(local_path), str_to_c(backup_name));
+				remove_dir(str_to_c(local_path));
+				builder_info("Backup module '%.*s'.", backup_name.len, backup_name.ptr);
+				put_tmp_str(backup_name);
 			}
 			// Copy module from system to module directory.
 			builder_info("%s module '%s' in '%s'.",
 			             (check_version && local_found) ? "Update" : "Import",
 			             modulepath,
 			             module_dir);
-			if (!copy_dir(system_path, local_path)) {
+			if (!copy_dir(str_to_c(system_path), str_to_c(local_path))) {
 				builder_error("Cannot import module '%s'.", modulepath);
 			}
 		}
-		if (!config) config = load_module_config(local_path, import_from);
-		put_tstr(system_path);
+		if (!config) config = load_module_config(str_to_c(local_path), import_from);
+		put_tmp_str(system_path);
 		break;
 	}
 
@@ -846,7 +848,7 @@ bool assembly_import_module(struct assembly *assembly,
 		bassert("Invalid module import policy!");
 	}
 	if (config) {
-		state = import_module(assembly, config, local_path, import_from);
+		state = import_module(assembly, config, str_to_c(local_path), import_from);
 	} else {
 		builder_msg(MSG_ERR,
 		            ERR_FILE_NOT_FOUND,
@@ -854,7 +856,7 @@ bool assembly_import_module(struct assembly *assembly,
 		            CARET_WORD,
 		            "Module not found.");
 	}
-	put_tstr(local_path);
+	put_tmp_str(local_path);
 	confdelete(config);
 DONE:
 	return_zone(state);
@@ -862,20 +864,19 @@ DONE:
 
 DCpointer assembly_find_extern(struct assembly *assembly, const str_t symbol)
 {
-	char *tmp = tstr();
-	str_setcap(tmp, symbol.len);
-	memcpy(tmp, symbol.ptr, symbol.len);
-	tmp[symbol.len] = '\0';
+	// We have to duplicate the symbol name to be sure it's zero terminated...
+	str_buf_t tmp = get_tmp_str();
+	str_buf_append(&tmp, symbol);
 
 	void              *handle = NULL;
 	struct native_lib *lib;
 	for (usize i = 0; i < arrlenu(assembly->libs); ++i) {
 		lib    = &assembly->libs[i];
-		handle = dlFindSymbol(lib->handle, tmp);
+		handle = dlFindSymbol(lib->handle, str_to_c(tmp));
 		if (handle) break;
 	}
 
-	put_tstr(tmp);
+	put_tmp_str(tmp);
 	return handle;
 }
 

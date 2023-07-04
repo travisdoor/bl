@@ -127,15 +127,16 @@ void doc_decl_entity(struct context *ctx, struct ast *decl)
 	const str_t scope_name =
 	    decl->owner_scope->kind == SCOPE_NAMED ? decl->owner_scope->name : str_empty;
 
-	char *full_name = tstr();
+	str_buf_t full_name = get_tmp_str();
 	if (scope_name.len) {
-		strprint(full_name, "%.*s.%.*s", scope_name.len, scope_name.ptr, name.len, name.ptr);
+		str_buf_append_fmt(
+		    &full_name, "%.*s.%.*s", scope_name.len, scope_name.ptr, name.len, name.ptr);
 	} else {
-		strprint(full_name, "%.*s", name.len, name.ptr);
+		str_buf_append_fmt(&full_name, "%.*s", name.len, name.ptr);
 	}
 
-	H1(ctx->stream, full_name);
-	put_tstr(full_name);
+	H1(ctx->stream, str_to_c(full_name));
+	put_tmp_str(full_name);
 	CODE_BLOCK_BEGIN(ctx->stream);
 	fprintf(ctx->stream, "%.*s :", name.len, name.ptr);
 	if (type) {
@@ -447,31 +448,33 @@ void doc(struct context *ctx, struct ast *node)
 void doc_unit(struct context *ctx, struct unit *unit)
 {
 	if (!unit->filename) return;
-	char *unit_name = tstr();
-	strprint(unit_name, "%.*s", (s32)strlen(unit->filename) - 3, unit->filename); // -3 ('.bl')
+	str_buf_t unit_name = get_tmp_str();
+	str_buf_append_fmt(
+	    &unit_name, "%.*s", (s32)strlen(unit->filename) - 3, unit->filename); // -3 ('.bl')
 	ctx->unit = unit;
 
 	// write unit global docs
-	char *export_file = tstr();
-	strprint(export_file, "%s/%s.md", ctx->output_directory, unit_name);
-	FILE *f = fopen(export_file, "w");
+	str_buf_t export_file = get_tmp_str();
+	str_buf_append_fmt(
+	    &export_file, "%s/%.*s.md", ctx->output_directory, unit_name.len, unit_name.ptr);
+	FILE *f = fopen(str_to_c(export_file), "w");
 	if (f == NULL) {
 		builder_error("Cannot open file '%s'", export_file);
-		put_tstr(export_file);
-		return;
+		goto DONE;
 	}
-	put_tstr(export_file);
-	ctx->stream = f;
 
+	ctx->stream = f;
 	if (unit->ast->docs) {
 		fprintf(f, "%s\n", unit->ast->docs);
 	} else {
 		H0(f, unit->filename);
 	}
 	doc(ctx, unit->ast);
-
 	fclose(f);
-	put_tstr(unit_name);
+
+DONE:
+	put_tmp_str(export_file);
+	put_tmp_str(unit_name);
 }
 
 void docs_run(struct assembly *assembly)

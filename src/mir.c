@@ -259,8 +259,7 @@ static struct scope_entry *register_symbol(struct context *ctx,
                                            struct ast     *node,
                                            struct id      *id,
                                            struct scope   *scope,
-                                           bool            is_builtin,
-                                           bool            add_bookmark);
+                                           bool            is_builtin);
 
 // Lookup builtin by builtin kind in global scope. Return NULL even if builtin is valid symbol in
 // case when it's not been analyzed yet or is incomplete struct type. In such case caller must
@@ -1685,7 +1684,7 @@ static inline void commit_var(struct context *ctx, struct mir_var *var, const bo
 static inline void provide_builtin_type(struct context *ctx, struct mir_type *type)
 {
 	struct scope_entry *entry =
-	    register_symbol(ctx, NULL, type->user_id, ctx->assembly->gscope, true, true);
+	    register_symbol(ctx, NULL, type->user_id, ctx->assembly->gscope, true);
 
 	if (!entry) return;
 	bassert(entry->kind != SCOPE_ENTRY_UNNAMED);
@@ -1696,7 +1695,7 @@ static inline void provide_builtin_type(struct context *ctx, struct mir_type *ty
 static inline void
 provide_builtin_member(struct context *ctx, struct scope *scope, struct mir_member *member)
 {
-	struct scope_entry *entry = register_symbol(ctx, NULL, member->id, scope, true, false);
+	struct scope_entry *entry = register_symbol(ctx, NULL, member->id, scope, true);
 	if (!entry) return;
 	bassert(entry->kind != SCOPE_ENTRY_UNNAMED);
 	entry->kind        = SCOPE_ENTRY_MEMBER;
@@ -1707,7 +1706,7 @@ provide_builtin_member(struct context *ctx, struct scope *scope, struct mir_memb
 static inline void
 provide_builtin_variant(struct context *ctx, struct scope *scope, struct mir_variant *variant)
 {
-	struct scope_entry *entry = register_symbol(ctx, NULL, variant->id, scope, true, false);
+	struct scope_entry *entry = register_symbol(ctx, NULL, variant->id, scope, true);
 	if (!entry) return;
 	bassert(entry->kind != SCOPE_ENTRY_UNNAMED);
 	entry->kind         = SCOPE_ENTRY_VARIANT;
@@ -1841,8 +1840,7 @@ struct scope_entry *register_symbol(struct context *ctx,
                                     struct ast     *node,
                                     struct id      *id,
                                     struct scope   *scope,
-                                    bool            is_builtin,
-                                    bool            add_bookmark)
+                                    bool            is_builtin)
 {
 	bassert(id && "Missing symbol ID.");
 	bassert(scope && "Missing entry scope.");
@@ -1873,7 +1871,6 @@ struct scope_entry *register_symbol(struct context *ctx,
 	// no collision
 	struct scope_entry *entry = scope_create_entry(
 	    &ctx->assembly->scopes_context, SCOPE_ENTRY_INCOMPLETE, id, node, is_builtin);
-	if (add_bookmark) scope_insert_bookmark(&ctx->assembly->scopes_context, layer_index, entry);
 	scope_insert(scope, layer_index, entry);
 	return entry;
 
@@ -2104,7 +2101,7 @@ struct mir_var *add_global_variable(struct context   *ctx,
 	append_instr_set_initializer(ctx, NULL, decls, initializer);
 	set_current_block(ctx, prev_block);
 	struct mir_var *var = ((struct mir_instr_decl_var *)decl_var)->var;
-	var->entry          = register_symbol(ctx, NULL, id, scope, true, false);
+	var->entry          = register_symbol(ctx, NULL, id, scope, true);
 	return var;
 }
 
@@ -5086,8 +5083,8 @@ struct result analyze_instr_phi(struct context *ctx, struct mir_instr_phi *phi)
 	bassert(phi->incoming_blocks && phi->incoming_values);
 	bassert(sarrlenu(phi->incoming_values) == sarrlenu(phi->incoming_blocks));
 	// @Performance: Recreating small arrays here is probably faster then removing elements?
-	mir_instrs_t	             *new_blocks      = arena_alloc(&ctx->assembly->arenas.sarr);
-	mir_instrs_t	             *new_values      = arena_alloc(&ctx->assembly->arenas.sarr);
+	mir_instrs_t                 *new_blocks      = arena_alloc(&ctx->assembly->arenas.sarr);
+	mir_instrs_t                 *new_values      = arena_alloc(&ctx->assembly->arenas.sarr);
 	const struct mir_instr_block *phi_owner_block = phi->base.owner_block;
 	struct mir_type              *type            = NULL;
 	bool                          is_comptime     = true;
@@ -11331,7 +11328,7 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
 			        });
 
 			decl_var->var->entry =
-			    register_symbol(ctx, ast_arg_name, arg_id, fn->body_scope, false, false);
+			    register_symbol(ctx, ast_arg_name, arg_id, fn->body_scope, false);
 		}
 	}
 
@@ -11657,7 +11654,7 @@ static void ast_decl_fn(struct context *ctx, struct ast *ast_fn)
 
 	struct id    *id    = &ast_name->data.ident.id;
 	struct scope *scope = ast_name->owner_scope;
-	fn->scope_entry     = register_symbol(ctx, ast_name, id, scope, is_compiler, false);
+	fn->scope_entry     = register_symbol(ctx, ast_name, id, scope, is_compiler);
 }
 
 // Helper for local variable declaration generation.
@@ -11723,7 +11720,7 @@ static void ast_decl_var_local(struct context *ctx, struct ast *ast_local)
 		                                                  .builtin_id = builtin_id,
 		                                              });
 		((struct mir_instr_decl_var *)var)->var->entry =
-		    register_symbol(ctx, ast_current_name, id, scope, is_compiler, false);
+		    register_symbol(ctx, ast_current_name, id, scope, is_compiler);
 
 		bassert(ast_current_name->kind == AST_IDENT);
 		ast_current_name = ast_current_name->data.ident.next;
@@ -11791,7 +11788,7 @@ static void ast_decl_var_global_or_struct(struct context *ctx, struct ast *ast_g
 		sarrput(decls, decl);
 
 		struct mir_var *var = ((struct mir_instr_decl_var *)decl)->var;
-		var->entry          = register_symbol(ctx, ast_current_name, id, scope, is_compiler, false);
+		var->entry          = register_symbol(ctx, ast_current_name, id, scope, is_compiler);
 		ast_current_name    = ast_current_name->data.ident.next;
 	}
 
@@ -11879,7 +11876,7 @@ struct mir_instr *ast_decl_arg(struct context *ctx, struct ast *arg)
 
 		// Arguments may be unnamed.
 		id    = &ast_name->data.ident.id;
-		entry = register_symbol(ctx, ast_name, id, scope, false, false);
+		entry = register_symbol(ctx, ast_name, id, scope, false);
 	}
 
 	return append_instr_decl_arg(ctx,
@@ -11921,7 +11918,7 @@ struct mir_instr *ast_decl_member(struct context *ctx, struct ast *arg)
 	bassert(scope->kind == SCOPE_TYPE_STRUCT);
 
 	((struct mir_instr_decl_member *)result)->member->entry =
-	    register_symbol(ctx, ast_name, &ast_name->data.ident.id, scope, false, false);
+	    register_symbol(ctx, ast_name, &ast_name->data.ident.id, scope, false);
 
 	bassert(result);
 	return result;
@@ -11940,8 +11937,8 @@ struct mir_instr *ast_decl_variant(struct context     *ctx,
 	struct mir_instr_decl_variant *variant_instr =
 	    (struct mir_instr_decl_variant *)append_instr_decl_variant(
 	        ctx, ast_name, ref_instr(value), base_type, prev_variant, is_flags);
-	variant_instr->variant->entry = register_symbol(
-	    ctx, ast_name, &ast_name->data.ident.id, ast_name->owner_scope, false, false);
+	variant_instr->variant->entry =
+	    register_symbol(ctx, ast_name, &ast_name->data.ident.id, ast_name->owner_scope, false);
 	return (struct mir_instr *)variant_instr;
 }
 
@@ -12192,7 +12189,7 @@ struct mir_instr *ast_type_poly(struct context *ctx, struct ast *poly)
 	bassert((*queue_index) <= sarrlen(queue));
 
 	struct id          *T_id        = &ast_ident->data.ident.id;
-	struct scope_entry *scope_entry = register_symbol(ctx, ast_ident, T_id, scope, false, false);
+	struct scope_entry *scope_entry = register_symbol(ctx, ast_ident, T_id, scope, false);
 	if (!scope_entry) goto USE_DUMMY;
 	if (ctx->fn_generate.is_generation_active) {
 		if (sarrlen(queue) == (*queue_index)) {
@@ -12868,7 +12865,7 @@ void initialize_builtins(struct context *ctx)
 	// Register all compiler builtin helper functions to report eventual collisions with user
 	// code.
 	for (u32 i = BUILTIN_ID_SIZEOF; i < static_arrlenu(builtin_ids); ++i) {
-		register_symbol(ctx, NULL, &builtin_ids[i], ctx->assembly->gscope, true, true);
+		register_symbol(ctx, NULL, &builtin_ids[i], ctx->assembly->gscope, true);
 	}
 }
 

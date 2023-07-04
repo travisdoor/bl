@@ -80,7 +80,6 @@ lookup_usings(struct scope *scope, struct id *id, struct scope_entry **out_ambig
 
 void scopes_context_init(struct scopes_context *ctx)
 {
-	ctx->bookmarks = NULL;
 	arena_init(&ctx->arenas.scopes,
 	           sizeof(struct scope),
 	           alignment_of(struct scope),
@@ -95,7 +94,6 @@ void scopes_context_init(struct scopes_context *ctx)
 
 void scopes_context_terminate(struct scopes_context *ctx)
 {
-	hmfree(ctx->bookmarks);
 	arena_terminate(&ctx->arenas.scopes);
 	arena_terminate(&ctx->arenas.entries);
 }
@@ -164,17 +162,6 @@ void scope_insert(struct scope *scope, hash_t layer, struct scope_entry *entry)
 	return_zone();
 }
 
-void scope_insert_bookmark(struct scopes_context *ctx, hash_t layer, struct scope_entry *entry)
-{
-	// blog("Bookmark: '%.*s'", entry->id->str.len32, entry->id->str.ptr);
-
-	bassert(entry);
-	const u64 hash = entry_hash(entry->id->hash, layer);
-	bassert(hash != 0);
-	bassert(hmgeti(ctx->bookmarks, hash) == -1 && "Duplicate scope entry key in bookmark table!!!");
-	hmput(ctx->bookmarks, hash, entry);
-}
-
 struct scope_entry *scope_lookup(struct scope *scope, scope_lookup_args_t *args)
 {
 	zone();
@@ -189,21 +176,6 @@ struct scope_entry *scope_lookup(struct scope *scope, scope_lookup_args_t *args)
 	static s32 hit   = 0;
 	static s32 total = 0;
 	total++;
-#endif
-
-#if 0
-	{ // check bookmarks
-		bassert(scope->ctx);
-		struct scopes_context *ctx = scope->ctx;
-
-		const s64 i = hmgeti(ctx->bookmarks, args->id->hash);
-		if (i != -1) {
-			found = ctx->bookmarks[i].value;
-			bassert(found);
-
-			return_zone(found);
-		}
-	}
 #endif
 
 	u64 hash = entry_hash(args->id->hash, args->layer);

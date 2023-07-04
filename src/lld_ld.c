@@ -85,8 +85,8 @@ static void append_libs(struct assembly *assembly, str_buf_t *buf)
 	for (usize i = 0; i < arrlenu(assembly->libs); ++i) {
 		struct native_lib *lib = &assembly->libs[i];
 		if (lib->is_internal) continue;
-		if (!lib->user_name) continue;
-		str_buf_append_fmt(buf, "%s%s ", FLAG_LIB, lib->user_name);
+		if (!lib->user_name.len) continue;
+		str_buf_append_fmt(buf, "%s%.*s ", FLAG_LIB, lib->user_name.len, lib->user_name.ptr);
 	}
 }
 
@@ -157,6 +157,6 @@ s32 lld_ld(struct assembly *assembly)
 	s32 state = system(str_to_c(buf));
 	put_tmp_str(buf);
 	assembly->stats.linking_s = runtime_measure_end(linking);
-    
+
 	return state;
 }
