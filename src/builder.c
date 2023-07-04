@@ -474,7 +474,6 @@ void builder_init(const struct builder_options *options, const char *exec_dir)
 		builtin_ids[i].hash = strhash2(builtin_ids[i].str);
 	}
 	arrsetcap(builder.tmp_strs, 16);
-	arrsetcap(builder.tmp_strs2, 16);
 	start_threads();
 
 	builder.is_initialized = true;
@@ -486,17 +485,12 @@ void builder_terminate(void)
 		target_delete(builder.targets[i]);
 	}
 	arrfree(builder.targets);
+
 	for (usize i = 0; i < arrlenu(builder.tmp_strs); ++i) {
-		str_free(builder.tmp_strs[i]);
+		str_buf_free(&builder.tmp_strs[i]);
 	}
 	blog("Used %llu temp-strings.", arrlenu(builder.tmp_strs));
 	arrfree(builder.tmp_strs);
-
-	for (usize i = 0; i < arrlenu(builder.tmp_strs2); ++i) {
-		str_buf_free(&builder.tmp_strs2[i]);
-	}
-	blog("Used %llu temp-strings.", arrlenu(builder.tmp_strs2));
-	arrfree(builder.tmp_strs2);
 
 	confdelete(builder.config);
 	llvm_terminate();
@@ -532,10 +526,10 @@ const char *builder_get_exec_dir(void)
 	return builder.exec_dir;
 }
 
-bool builder_load_config(const char *filepath)
+bool builder_load_config(const str_t filepath)
 {
 	confdelete(builder.config);
-	builder.config = confload(filepath);
+	builder.config = confload(str_to_c(filepath));
 	return (bool)builder.config;
 }
 
@@ -752,47 +746,14 @@ void builder_msg(enum builder_msg_type type,
 	va_end(args);
 }
 
-char *tstr(void)
-{
-	zone();
-	struct threading_impl *threading = builder.threading;
-	pthread_spin_lock(&threading->str_tmp_lock);
-	char *str = NULL;
-	if (arrlenu(builder.tmp_strs)) {
-		str = arrpop(builder.tmp_strs);
-	} else {
-		str_setcap(str, 255);
-	}
-	bassert(str);
-	str_clr(str); // also set zero terminator
-	pthread_spin_unlock(&threading->str_tmp_lock);
-	return_zone(str);
-}
-
-char *tstrdup(const char *str)
-{
-	char *tmp = tstr();
-	strprint(tmp, "%s", str);
-	return tmp;
-}
-
-void put_tstr(char *str)
-{
-	bassert(str);
-	struct threading_impl *threading = builder.threading;
-	pthread_spin_lock(&threading->str_tmp_lock);
-	arrput(builder.tmp_strs, str);
-	pthread_spin_unlock(&threading->str_tmp_lock);
-}
-
 str_buf_t get_tmp_str(void)
 {
 	zone();
 	struct threading_impl *threading = builder.threading;
 	pthread_spin_lock(&threading->str_tmp_lock);
 	str_buf_t str = {0};
-	if (arrlenu(builder.tmp_strs2)) {
-		str = arrpop(builder.tmp_strs2);
+	if (arrlenu(builder.tmp_strs)) {
+		str = arrpop(builder.tmp_strs);
 	} else {
 		str_buf_setcap(&str, 255);
 	}
@@ -805,7 +766,7 @@ void put_tmp_str(str_buf_t str)
 {
 	struct threading_impl *threading = builder.threading;
 	pthread_spin_lock(&threading->str_tmp_lock);
-	arrput(builder.tmp_strs2, str);
+	arrput(builder.tmp_strs, str);
 	pthread_spin_unlock(&threading->str_tmp_lock);
 }
 

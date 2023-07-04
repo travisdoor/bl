@@ -36,7 +36,7 @@
 
 struct context {
 	const char *triple;
-	const char *filepath;
+	str_t       filepath;
 
 	str_t version;
 	str_t lib_dir;
@@ -57,7 +57,7 @@ static bool arm64_apple_darwin(struct context *ctx);
 
 static str_buf_t make_content(const struct context *ctx);
 
-bool setup(const char *filepath, const char *triple)
+bool setup(const str_t filepath, const char *triple)
 {
 	struct context ctx    = {0};
 	ctx.triple            = triple;
@@ -99,26 +99,27 @@ bool setup(const char *filepath, const char *triple)
 		state = default_config(&ctx);
 	}
 	if (!state) {
-		builder_error("Generate new configuration file at '%s' for target triple '%s' failed!",
-		              ctx.filepath,
+		builder_error("Generate new configuration file at '%.*s' for target triple '%s' failed!",
+		              ctx.filepath.len,
+		              ctx.filepath.ptr,
 		              ctx.triple);
 		return false;
 	}
 	str_buf_t content = make_content(&ctx);
-	if (file_exists(ctx.filepath)) { // backup old-one
+	if (file_exists2(ctx.filepath)) { // backup old-one
 		str_buf_t bakfilepath = get_tmp_str();
 		char      date[26];
 		date_time(date, static_arrlenu(date), "%d-%m-%Y_%H-%M-%S");
-		str_buf_append_fmt(&bakfilepath, "%s.%s", ctx.filepath, date);
+		str_buf_append_fmt(&bakfilepath, "%.*s.%s", ctx.filepath.len, ctx.filepath.ptr, date);
 		builder_warning("Creating backup of previous configuration file at '%.*s'.",
 		                bakfilepath.len,
 		                bakfilepath.ptr);
-		copy_file(ctx.filepath, str_to_c(bakfilepath));
+		copy_file(str_to_c(ctx.filepath), str_to_c(bakfilepath));
 		put_tmp_str(bakfilepath);
 	}
 
 	char dirpath[PATH_MAX]; // @Hack: use dynamic length string?
-	get_dir_from_filepath(dirpath, static_arrlenu(dirpath), ctx.filepath);
+	get_dir_from_filepath(dirpath, static_arrlenu(dirpath), str_to_c(ctx.filepath));
 	if (!dir_exists(dirpath)) {
 		if (!create_dir_tree(dirpath)) {
 			builder_error("Cannot create directory path '%s'!", dirpath);
@@ -127,9 +128,9 @@ bool setup(const char *filepath, const char *triple)
 		}
 	}
 
-	FILE *file = fopen(ctx.filepath, "w");
+	FILE *file = fopen(str_to_c(ctx.filepath), "w");
 	if (!file) {
-		builder_error("Cannot open file '%s' for writing!", ctx.filepath);
+		builder_error("Cannot open file '%.*s' for writing!", ctx.filepath.len, ctx.filepath.ptr);
 		put_tmp_str(content);
 		return false;
 	}
@@ -194,9 +195,10 @@ str_buf_t make_content(const struct context *ctx)
 bool default_config(struct context UNUSED(*ctx))
 {
 	builder_warning("Automatic generation of configuration file is not supported for target triple "
-	                "'%s' empty file will be generated at '%s'.",
+	                "'%s' empty file will be generated at '%.*s'.",
 	                ctx->triple,
-	                ctx->filepath);
+	                ctx->filepath.len,
+	                ctx->filepath.ptr);
 	return true;
 }
 
@@ -247,18 +249,20 @@ bool x86_64_pc_linux_gnu(struct context *ctx)
 	ctx->linker_executable = scdup2(&ctx->cache, ldpath);
 	put_tmp_str(ldpath);
 
-	char *runtime = tstr();
-	strprint(runtime, "%s/../%s", builder_get_exec_dir(), RUNTIME_PATH);
-	if (!normalize_path(&runtime)) {
-		builder_error("Runtime loader not found. (Expected location is '%s').", runtime);
-		put_tstr(runtime);
+	str_buf_t runtime = get_tmp_str();
+	str_buf_append_fmt(&runtime, "%s/../%s", builder_get_exec_dir(), RUNTIME_PATH);
+	if (!normalize_path2(&runtime)) {
+		builder_error(
+		    "Runtime loader not found. (Expected location is '%.*s').", runtime.len, runtime.ptr);
+		put_tmp_str(runtime);
 		return false;
 	}
-	ctx->linker_opt_exec   = scprint2(&ctx->cache, "%s %s", runtime, LINKER_OPT_EXEC);
+	ctx->linker_opt_exec =
+	    scprint2(&ctx->cache, "%.*s %s", runtime.len, runtime.ptr, LINKER_OPT_EXEC);
 	ctx->linker_opt_shared = scprint2(&ctx->cache, "%s", LINKER_OPT_SHARED);
 	ctx->linker_lib_path   = scprint2(&ctx->cache, "%s", LINKER_LIB_PATH);
 
-	put_tstr(runtime);
+	put_tmp_str(runtime);
 	return true;
 }
 

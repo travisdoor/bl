@@ -38,7 +38,7 @@
 #include <crtdbg.h>
 #endif
 
-bool setup(const char *filepath, const char *triple);
+bool setup(const str_t filepath, const char *triple);
 
 static char *get_exec_dir(void)
 {
@@ -58,25 +58,26 @@ static bool generate_conf(void)
 	char triple_str[128];
 	target_triple_to_string(&triple, triple_str, static_arrlenu(triple_str));
 	blog("Triple: %s", triple_str);
-	char *filepath = tstr();
-	strprint(filepath, "%s/../%s", builder_get_exec_dir(), BL_CONFIG_FILE);
-	const bool state = setup(filepath, triple_str);
-	put_tstr(filepath);
+	str_buf_t filepath = get_tmp_str();
+	str_buf_append_fmt(&filepath, "%s/../%s", builder_get_exec_dir(), BL_CONFIG_FILE);
+	const bool state = setup(str_buf_view(filepath), triple_str);
+	put_tmp_str(filepath);
 	return state;
 }
 
 static bool load_conf_file(const char *custom_conf_filepath)
 {
-	char *filepath = tstr();
+	str_buf_t filepath = get_tmp_str();
 	if (custom_conf_filepath) {
-		strprint(filepath, "%s", custom_conf_filepath);
-		builder_info("Using custom configuration file: '%s'", filepath);
+		str_buf_append_fmt(&filepath, "%s", custom_conf_filepath);
+		builder_info("Using custom configuration file: '%.*s'", filepath.len, filepath.ptr);
 	} else {
-		strprint(filepath, "%s/../%s", builder_get_exec_dir(), BL_CONFIG_FILE);
+		str_buf_append_fmt(&filepath, "%s/../%s", builder_get_exec_dir(), BL_CONFIG_FILE);
 	}
-	if (!file_exists(filepath)) {
+	if (!file_exists2(filepath)) {
 		if (custom_conf_filepath) {
-			builder_error("Custom configuration file not found on path: '%s'.", filepath);
+			builder_error(
+			    "Custom configuration file not found on path: '%.*s'.", filepath.len, filepath.ptr);
 			goto FAILED;
 		}
 		if (!generate_conf()) {
@@ -85,20 +86,22 @@ static bool load_conf_file(const char *custom_conf_filepath)
 			goto FAILED;
 		}
 	}
-	if (!builder_load_config(filepath)) goto FAILED;
+	if (!builder_load_config(str_buf_view(filepath))) goto FAILED;
 	const char *got = confreads(builder.config, CONF_VERSION, "(UNKNOWN)");
 	if (strcmp(got, BL_VERSION) != 0) {
-		builder_warning("Invalid version of current configuration file '%s'. Expected is '%s', got "
-		                "'%s'. Consider generation of new one using 'blc --configure'.",
-		                filepath,
-		                BL_VERSION,
-		                got);
+		builder_warning(
+		    "Invalid version of current configuration file '%.*s'. Expected is '%s', got "
+		    "'%s'. Consider generation of new one using 'blc --configure'.",
+		    filepath.len,
+		    filepath.ptr,
+		    BL_VERSION,
+		    got);
 	}
 
-	put_tstr(filepath);
+	put_tmp_str(filepath);
 	return true;
 FAILED:
-	put_tstr(filepath);
+	put_tmp_str(filepath);
 	return false;
 }
 

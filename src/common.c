@@ -945,9 +945,10 @@ const char *read_config(struct config       *config,
 s32 process_tokens(void *ctx, const char *input, const char *delimiter, process_tokens_fn_t fn)
 {
 	if (!is_str_valid_nonempty(input)) return 0;
-	char *tmp = tstrdup(input);
+	str_buf_t tmp = get_tmp_str();
+	str_buf_append(&tmp, make_str_from_c(input));
 	char *token;
-	char *it    = tmp;
+	char *it    = tmp.ptr;
 	s32   count = 0;
 	while ((token = strtok_r(it, delimiter, &it))) {
 		token = strtrim(token);
@@ -956,7 +957,7 @@ s32 process_tokens(void *ctx, const char *input, const char *delimiter, process_
 			++count;
 		}
 	}
-	put_tstr(tmp);
+	put_tmp_str(tmp);
 	return count;
 }
 

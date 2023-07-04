@@ -65,8 +65,7 @@ struct builder {
 	s32                           last_script_mode_run_status;
 	struct config                *config;
 	array(struct target *) targets;
-	array(char *) tmp_strs;
-	array(str_buf_t) tmp_strs2;
+	array(str_buf_t) tmp_strs;
 	struct threading_impl *threading;
 
 	bool is_initialized;
@@ -94,7 +93,7 @@ void builder_terminate(void);
 char         **builder_get_supported_targets(void);
 const char    *builder_get_lib_dir(void);
 const char    *builder_get_exec_dir(void);
-bool           builder_load_config(const char *filepath);
+bool           builder_load_config(const str_t filepath);
 struct target *builder_add_target(const char *name);
 struct target *builder_add_default_target(const char *name);
 s32            builder_compile_all(void);
@@ -126,10 +125,6 @@ void builder_msg(enum builder_msg_type type,
                  ...);
 
 // Temporary strings.
-char *tstr(void);
-char *tstrdup(const char *str);
-void  put_tstr(char *str);
-
 str_buf_t get_tmp_str(void);
 void      put_tmp_str(str_buf_t str);
 
