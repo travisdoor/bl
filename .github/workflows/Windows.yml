@@ -5,8 +5,13 @@ on:
     branches: [ master ]
   pull_request:
     branches: [ master ]
-  workflow-dispatch
-
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Log level'     
+        required: true
+        default: 'warning'
+  
 env:
   VSINSTALLDIR: C:/Program Files/Microsoft Visual Studio/2022/Enterprise/
     
