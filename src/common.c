@@ -45,33 +45,33 @@
 #include <time.h>
 
 #ifdef BL_USE_SIMD
-#include <emmintrin.h>
-#include <intrin.h>
-#include <nmmintrin.h>
+#	include <emmintrin.h>
+#	include <intrin.h>
+#	include <nmmintrin.h>
 #endif
 
 #if !BL_PLATFORM_WIN
-#include <sys/stat.h>
-#include <unistd.h>
+#	include <sys/stat.h>
+#	include <unistd.h>
 #endif
 
 #if BL_PLATFORM_MACOS
-#include <ctype.h>
-#include <errno.h>
-#include <mach-o/dyld.h>
-#include <mach/mach_time.h>
-#include <sys/time.h>
+#	include <ctype.h>
+#	include <errno.h>
+#	include <mach-o/dyld.h>
+#	include <mach/mach_time.h>
+#	include <sys/time.h>
 #endif
 
 #if BL_PLATFORM_LINUX
-#include <ctype.h>
-#include <errno.h>
+#	include <ctype.h>
+#	include <errno.h>
 #endif
 
 #if BL_PLATFORM_WIN
-#include <shlwapi.h>
-#define popen _popen
-#define pclose _pclose
+#	include <shlwapi.h>
+#	define popen _popen
+#	define pclose _pclose
 #endif
 
 u64 main_thread_id = 0;
@@ -174,31 +174,15 @@ void scfree(struct string_cache **cache)
 	(*cache) = NULL;
 }
 
-char *scprint(struct string_cache **cache, const char *fmt, ...)
+str_t scprint(struct string_cache **cache, const char *fmt, ...)
 {
 	va_list args, args2;
 	va_start(args, fmt);
 	va_copy(args2, args);
-	const s32 len = vsnprintf(NULL, 0, fmt, args);
+	const s32 len = bvsnprint(NULL, 0, fmt, args);
 	bassert(len > 0);
 	char     *buf  = scdup(cache, NULL, len);
-	const s32 wlen = vsprintf(buf, fmt, args2);
-	bassert(wlen == len);
-	(void)wlen;
-	va_end(args2);
-	va_end(args);
-	return buf;
-}
-
-str_t scprint2(struct string_cache **cache, const char *fmt, ...)
-{
-	va_list args, args2;
-	va_start(args, fmt);
-	va_copy(args2, args);
-	const s32 len = vsnprintf(NULL, 0, fmt, args);
-	bassert(len > 0);
-	char     *buf  = scdup(cache, NULL, len);
-	const s32 wlen = vsprintf(buf, fmt, args2);
+	const s32 wlen = bvsnprint(buf, len, fmt, args2);
 	bassert(wlen == len);
 	(void)wlen;
 	va_end(args2);
@@ -270,6 +254,152 @@ void str_buf_append_fmt(str_buf_t *buf, const char *fmt, ...)
 	va_end(args);
 }
 
+void str_buf_append_fmt2(str_buf_t *buf, const char *fmt, ...)
+{
+	va_list args, args2;
+	va_start(args, fmt);
+	va_copy(args2, args);
+	const s32 len = bvsnprint(NULL, 0, fmt, args);
+	bassert(len > 0);
+
+	str_buf_setcap(buf, buf->len + len);
+
+	const s32 wlen = bvsnprint(&buf->ptr[buf->len], len, fmt, args2);
+	bassert(wlen == len);
+	(void)wlen;
+
+	buf->len += len;
+
+	bassert(buf->len < buf->cap);
+	buf->ptr[buf->len] = '\0';
+
+	va_end(args2);
+	va_end(args);
+}
+
+s32 bvsnprint(char *buf, s32 buf_len, const char *fmt, va_list args)
+{
+	const char *i         = fmt;
+	s32         buf_index = 0;
+
+	while (*i != '\0') {
+		if (buf && buf_index >= buf_len) break;
+		if (*i != '{' && *i != '}') {
+			if (buf) buf[buf_index] = *i;
+			++buf_index;
+			++i;
+			continue;
+		}
+		++i;
+
+		if (*i == '{' || *i == '}') {
+			if (buf) buf[buf_index] = *i;
+			++buf_index;
+			++i;
+			continue;
+		}
+
+		const s32 space_left = buf_len - buf_index;
+
+		str_t f = make_str(i, 3);
+		if (str_match(f, cstr("str"))) {
+			const str_t s = va_arg(args, str_t);
+			if (buf) {
+				const s32 len = MIN(space_left, s.len);
+				memcpy(&buf[buf_index], s.ptr, len);
+				buf_index += len;
+			} else {
+				buf_index += s.len;
+			}
+
+			i += f.len;
+			goto PASSED;
+		}
+		if (str_match(f, cstr("s32"))) {
+			const s32 s = va_arg(args, s32);
+			char      tmp[11];
+			itoa(s, tmp, 10);
+			const s32 tmp_len = (s32)strlen(tmp);
+			if (buf) {
+				const s32 len = MIN(space_left, tmp_len);
+				memcpy(&buf[buf_index], tmp, len);
+				buf_index += len;
+			} else {
+				buf_index += tmp_len;
+			}
+
+			i += f.len;
+			goto PASSED;
+		}
+		if (str_match(f, cstr("u64"))) {
+			const u64 s = va_arg(args, u64);
+			char      tmp[20];
+			_i64toa(s, tmp, 10);
+			const s32 tmp_len = (s32)strlen(tmp);
+			if (buf) {
+				const s32 len = MIN(space_left, tmp_len);
+				memcpy(&buf[buf_index], tmp, len);
+				buf_index += len;
+			} else {
+				buf_index += tmp_len;
+			}
+
+			i += f.len;
+			goto PASSED;
+		}
+		if (str_match(f, cstr("u32"))) {
+			const u32 s = va_arg(args, u32);
+			char      tmp[20];
+			ultoa(s, tmp, 10);
+			const s32 tmp_len = (s32)strlen(tmp);
+			if (buf) {
+				const s32 len = MIN(space_left, tmp_len);
+				memcpy(&buf[buf_index], tmp, len);
+				buf_index += len;
+			} else {
+				buf_index += tmp_len;
+			}
+
+			i += f.len;
+			goto PASSED;
+		}
+
+		switch (*i) {
+		case 's': {
+			char     *s     = va_arg(args, char *);
+			const s32 s_len = (s32)strlen(s);
+			if (buf) {
+				const s32 len = MIN(space_left, s_len);
+				memcpy(&buf[buf_index], s, len);
+				buf_index += len;
+			} else {
+				buf_index += s_len;
+			}
+
+			i += 1;
+			goto PASSED;
+		}
+		}
+
+		babort("Invalid formating string!");
+
+	PASSED:
+		if (*i++ != '}') {
+			babort("Expected end of formating sequence!");
+		}
+	}
+	return buf_index;
+}
+
+s32 bsnprint(char *buf, s32 buf_len, const char *fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	const s32 c = bvsnprint(buf, buf_len, fmt, args);
+	va_end(args);
+	return c;
+}
+
 str_buf_t _str_buf_dup(char *ptr, s32 len)
 {
 	str_buf_t result = {0};
@@ -299,16 +429,19 @@ bool str_match(str_t a, str_t b)
 	__m128i *ita = (__m128i *)a.ptr;
 	__m128i *itb = (__m128i *)b.ptr;
 
-	for (s64 i = 0; i < a.len; i += 16, ++ita, ++itb) {
-		const __m128i a16 = _mm_loadu_si128(ita);
-		const __m128i b16 = _mm_loadu_si128(itb);
-		if (_mm_cmpistrc(a16,
-		                 b16,
-		                 _SIDD_SBYTE_OPS | _SIDD_CMP_EQUAL_EACH | _SIDD_NEGATIVE_POLARITY |
-		                     _SIDD_LEAST_SIGNIFICANT) != 0) {
-			return false;
-		}
+	// for (s64 i = 0; i < a.len; i += 16, ++ita, ++itb) {
+	const __m128i a16 = _mm_loadu_si128(ita);
+	const __m128i b16 = _mm_loadu_si128(itb);
+
+	if (_mm_cmpestrc(a16,
+	                 a.len,
+	                 b16,
+	                 b.len,
+	                 _SIDD_SBYTE_OPS | _SIDD_CMP_EQUAL_EACH | _SIDD_NEGATIVE_POLARITY |
+	                     _SIDD_LEAST_SIGNIFICANT) != 0) {
+		return false;
 	}
+	//}
 
 	return true;
 #else

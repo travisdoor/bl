@@ -45,10 +45,10 @@ void obj_writer_run(struct assembly *assembly)
 
 	const struct target *target = assembly->target;
 	const char          *name   = target->name;
-	blog("out_dir = %s", target->out_dir);
+	blog("out_dir = %.*s", target->out_dir.len, target->out_dir.ptr);
 	blog("name = %s", name);
 
-	str_buf_append_fmt(&buf, "%s/%s.%s", target->out_dir, name, OBJ_EXT);
+	str_buf_append_fmt2(&buf, "{str}/{s}.{s}", target->out_dir, name, OBJ_EXT);
 	char *error_msg = NULL;
 	if (LLVMTargetMachineEmitToFile(assembly->llvm.TM,
 	                                assembly->llvm.modules[0],

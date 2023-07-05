@@ -129,10 +129,9 @@ void doc_decl_entity(struct context *ctx, struct ast *decl)
 
 	str_buf_t full_name = get_tmp_str();
 	if (scope_name.len) {
-		str_buf_append_fmt(
-		    &full_name, "%.*s.%.*s", scope_name.len, scope_name.ptr, name.len, name.ptr);
+		str_buf_append_fmt2(&full_name, "{str}.{str}", scope_name, name);
 	} else {
-		str_buf_append_fmt(&full_name, "%.*s", name.len, name.ptr);
+		str_buf_append_fmt2(&full_name, "{str}", name);
 	}
 
 	H1(ctx->stream, str_to_c(full_name));

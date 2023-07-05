@@ -36,27 +36,27 @@
 #include <stdarg.h>
 
 #ifdef _MSC_VER
-#pragma warning(disable : 6001)
+#	pragma warning(disable : 6001)
 #endif
 
 #define ARENA_CHUNK_COUNT 1024
 #define ARENA_INSTR_CHUNK_COUNT 2048
-#define RESOLVE_TYPE_FN_NAME make_str(".type", 5)
-#define RESOLVE_EXPR_FN_NAME make_str(".expr", 5)
-#define INIT_VALUE_FN_NAME make_str(".init", 5)
-#define IMPL_FN_NAME make_str(".impl", 5)
-#define IMPL_VARGS_TMP_ARR make_str(".vargs.arr", 10)
-#define IMPL_VARGS_TMP make_str(".vargs", 6)
-#define IMPL_ANY_TMP make_str(".any", 4)
-#define IMPL_ANY_EXPR_TMP make_str(".any.expr", 9)
-#define IMPL_COMPOUND_TMP make_str(".compound", 9)
-#define IMPL_RTTI_ENTRY make_str(".rtti", 5)
-#define IMPL_TESTCASES_TMP make_str(".testcases", 10)
-#define IMPL_ARG_DEFAULT make_str(".arg.default", 12)
-#define IMPL_CALL_LOC make_str(".call.loc", 9)
-#define IMPL_RET_TMP make_str(".ret", 4)
-#define IMPL_UNROLL_TMP make_str(".unroll", 7)
-#define IMPL_TOSLICE_TMP make_str(".toslice", 8)
+#define RESOLVE_TYPE_FN_NAME cstr(".type")
+#define RESOLVE_EXPR_FN_NAME cstr(".expr")
+#define INIT_VALUE_FN_NAME cstr(".init")
+#define IMPL_FN_NAME cstr(".impl")
+#define IMPL_VARGS_TMP_ARR cstr(".vargs.arr")
+#define IMPL_VARGS_TMP cstr(".vargs")
+#define IMPL_ANY_TMP cstr(".any")
+#define IMPL_ANY_EXPR_TMP cstr(".any.expr")
+#define IMPL_COMPOUND_TMP cstr(".compound")
+#define IMPL_RTTI_ENTRY cstr(".rtti")
+#define IMPL_TESTCASES_TMP cstr(".testcases")
+#define IMPL_ARG_DEFAULT cstr(".arg.default")
+#define IMPL_CALL_LOC cstr(".call.loc")
+#define IMPL_RET_TMP cstr(".ret")
+#define IMPL_UNROLL_TMP cstr(".unroll")
+#define IMPL_TOSLICE_TMP cstr(".toslice")
 #define NO_REF_COUNTING (-1)
 
 #define analyze_instr_rq(i)                                                                        \
@@ -1584,8 +1584,10 @@ static inline void analyze_notify_provided(struct context *ctx, hash_t hash)
 #define unique_name(C, P) _unique_name(C, (P).ptr, (P).len)
 static inline str_t _unique_name(struct context *ctx, char *prefix_ptr, s32 prefix_len)
 {
-	static u64 ui = 0;
-	return scprint2(&ctx->assembly->string_cache, "%.*s.%llu", prefix_len, prefix_ptr, ui++);
+	zone();
+	static u64  ui  = 0;
+	const str_t tmp = make_str(prefix_ptr, prefix_len);
+	return_zone(scprint(&ctx->assembly->string_cache, "{str}.{u64}", tmp, ui++));
 }
 
 static inline bool is_builtin(struct ast *ident, enum builtin_id_kind kind)
@@ -2196,7 +2198,7 @@ struct mir_type *create_type_null(struct context *ctx, struct mir_type *base_typ
 	struct mir_type *tmp;
 
 	str_buf_t name = get_tmp_str();
-	str_buf_append(&name, make_str("n.", 2));
+	str_buf_append(&name, cstr("n."));
 	str_buf_append(&name, base_type->id.str);
 
 	hash_t hash = strhash2(name);
@@ -2227,7 +2229,7 @@ struct mir_type *create_type_ptr(struct context *ctx, struct mir_type *src_type)
 	struct mir_type *tmp;
 
 	str_buf_t name = get_tmp_str();
-	str_buf_append(&name, make_str("p.", 2));
+	str_buf_append(&name, cstr("p."));
 	str_buf_append(&name, src_type->id.str);
 
 	hash_t hash = strhash2(name);
@@ -2256,8 +2258,7 @@ struct mir_type *create_type_poly(struct context *ctx, struct id *user_id, bool 
 	bassert(user_id);
 
 	str_buf_t name = get_tmp_str();
-	str_buf_append_fmt(
-	    &name, "?%s.%.*s", is_master ? "M" : "S", user_id->str.len, user_id->str.ptr);
+	str_buf_append_fmt2(&name, "?{s}.{str}", is_master ? "M" : "S", user_id->str);
 
 	hash_t hash = strhash2(name);
 
@@ -2285,7 +2286,7 @@ struct mir_type *create_type_placeholder(struct context *ctx)
 {
 	// We call this only once and then reuse the type, no need to use cache here.
 
-	str_t  name = make_str("@", 1);
+	str_t  name = cstr("@");
 	hash_t hash = strhash2(name);
 
 	struct mir_type *tmp =
@@ -2302,15 +2303,15 @@ struct mir_type *create_type_fn(struct context *ctx, create_type_fn_args_t *args
 	struct mir_type *ret_type = args->ret_type ? args->ret_type : ctx->builtin_types->t_void;
 
 	str_buf_t name = get_tmp_str();
-	str_buf_append(&name, make_str("f.(", 3));
+	str_buf_append(&name, cstr("f.("));
 	for (usize i = 0; i < sarrlenu(args->args); ++i) {
 		struct mir_arg *arg = sarrpeek(args->args, i);
 		str_buf_append(&name, arg->type->id.str);
 		if (i != sarrlenu(args->args) - 1) {
-			str_buf_append(&name, make_str(",", 1));
+			str_buf_append(&name, cstr(","));
 		}
 	}
-	str_buf_append(&name, make_str(")", 1));
+	str_buf_append(&name, cstr(")"));
 	const hash_t argument_hash = strhash2(name);
 
 	str_buf_append(&name, ret_type->id.str);
@@ -2338,16 +2339,16 @@ create_type_fn_group(struct context *ctx, struct id *user_id, mir_types_t *varia
 	bassert(sarrlenu(variants));
 
 	str_buf_t name = get_tmp_str();
-	str_buf_append(&name, make_str("f.{", 3));
+	str_buf_append(&name, cstr("f.{"));
 	// Note we use function hashses directly to have smaller strings processed...
 	for (usize i = 0; i < sarrlenu(variants); ++i) {
 		struct mir_type *variant = sarrpeek(variants, i);
-		str_buf_append_fmt(&name, "%lu", variant->id.hash);
+		str_buf_append_fmt2(&name, "{u32}", variant->id.hash);
 		if (i != sarrlenu(variants) - 1) {
-			str_buf_append(&name, make_str(",", 1));
+			str_buf_append(&name, cstr(","));
 		}
 	}
-	str_buf_append(&name, make_str("}", 1));
+	str_buf_append(&name, cstr("}"));
 
 	// No caching here...
 
@@ -2374,8 +2375,7 @@ create_type_array(struct context *ctx, struct id *user_id, struct mir_type *elem
 	str_buf_t name = get_tmp_str();
 
 	const str_t elem_type_name = elem_type->id.str;
-	str_buf_append_fmt(
-	    &name, "%llu.%.*s", (unsigned long long)len, elem_type_name.len, elem_type_name.ptr);
+	str_buf_append_fmt2(&name, "{u64}.{str}", (unsigned long long)len, elem_type_name);
 
 	const hash_t hash = strhash2(name);
 
@@ -2407,22 +2407,18 @@ static void generate_struct_signature(str_buf_t *name, create_type_struct_args_t
 	static u64 serial = 0;
 	if (args->user_id) {
 		const str_t user_name = args->user_id->str;
-		str_buf_append_fmt(name,
-		                   "%s.%llu.%.*s",
-		                   args->is_union ? "u" : "s",
-		                   serial++,
-		                   user_name.len,
-		                   user_name.ptr);
+		str_buf_append_fmt2(
+		    name, "{s}.{u64}.{str}", args->is_union ? "u" : "s", serial++, user_name);
 		return;
 	}
 	// Implicit struct type...
-	str_buf_append(name, args->is_union ? make_str("u.{", 3) : make_str("s.{", 3));
+	str_buf_append(name, args->is_union ? cstr("u.{") : cstr("s.{"));
 	for (usize i = 0; i < sarrlenu(args->members); ++i) {
 		struct mir_member *member = sarrpeek(args->members, i);
 		str_buf_append(name, member->type->id.str);
-		if (i != sarrlenu(args->members) - 1) str_buf_append(name, make_str(",", 1));
+		if (i != sarrlenu(args->members) - 1) str_buf_append(name, cstr(","));
 	}
-	str_buf_append(name, make_str("}", 1));
+	str_buf_append(name, cstr("}"));
 }
 
 struct mir_type *
@@ -2568,13 +2564,11 @@ struct mir_type *create_type_slice(struct context    *ctx,
 		break;
 	case MIR_TYPE_SLICE:
 	case MIR_TYPE_VARGS: {
-		str_t prefix    = kind == MIR_TYPE_SLICE ? make_str("sl.", 3) : make_str("sv.", 3);
-		str_t len_name  = len_type->id.str;
-		str_t elem_name = elem_ptr_type->id.str;
-		str_buf_append(&name, prefix);
-		/* if (user_id) str_buf_append(&name, user_id->str); */
-		str_buf_append_fmt(
-		    &name, "{%.*s,%.*s}", len_name.len, len_name.ptr, elem_name.len, elem_name.ptr);
+		const str_t prefix    = kind == MIR_TYPE_SLICE ? cstr("sl") : cstr("sv");
+		const str_t len_name  = len_type->id.str;
+		const str_t elem_name = elem_ptr_type->id.str;
+
+		str_buf_append_fmt2(&name, "{str}.{{{str},{str}}}", prefix, len_name, elem_name);
 		break;
 	}
 
@@ -2644,16 +2638,12 @@ create_type_struct_dynarr(struct context *ctx, struct id *user_id, struct mir_ty
 	const bool can_use_cache = elem_ptr_type->can_use_cache;
 	str_buf_t  name          = get_tmp_str();
 
-	str_buf_append_fmt(&name,
-	                   "da.{%.*s,%.*s,%.*s,%.*s}",
-	                   len_type->id.str.len,
-	                   len_type->id.str.ptr,
-	                   elem_ptr_type->id.str.len,
-	                   elem_ptr_type->id.str.ptr,
-	                   allocated_type->id.str.len,
-	                   allocated_type->id.str.ptr,
-	                   allocator_type->id.str.len,
-	                   allocator_type->id.str.ptr);
+	str_buf_append_fmt2(&name,
+	                    "da.{{{str},{str},{str},{str}}}",
+	                    len_type->id.str,
+	                    elem_ptr_type->id.str,
+	                    allocated_type->id.str,
+	                    allocator_type->id.str);
 
 	const hash_t hash = strhash2(name);
 	if (can_use_cache) {
@@ -2730,9 +2720,9 @@ static struct mir_type *create_type_enum(struct context *ctx, create_type_enum_a
 	static u64 serial = 0;
 	if (args->user_id) {
 		const str_t user_name = args->user_id->str;
-		str_buf_append_fmt(&name, "e%llu.%.*s", serial++, user_name.len, user_name.ptr);
+		str_buf_append_fmt2(&name, "e{u64}.{str{", serial++, user_name);
 	} else {
-		str_buf_append_fmt(&name, "e%llu", serial++);
+		str_buf_append_fmt2(&name, "e{u64}", serial++);
 	}
 
 	const hash_t hash = strhash2(name);
@@ -3222,7 +3212,7 @@ void append_current_block(struct context *ctx, struct mir_instr *instr)
 		// Append this instruction into unreachable block if current block was terminated
 		// already. Unreachable block will never be generated into LLVM and compiler can
 		// complain later about this and give hit to the user.
-		block = append_block(ctx, block->owner_fn, make_str(".unreachable", 12));
+		block = append_block(ctx, block->owner_fn, cstr(".unreachable"));
 		set_current_block(ctx, block);
 	}
 
@@ -3302,8 +3292,8 @@ enum mir_cast_op get_cast_op(struct mir_type *from, struct mir_type *to)
 	if (to->kind == MIR_TYPE_PLACEHOLDER) return MIR_CAST_NONE;
 	if (from->kind == MIR_TYPE_PLACEHOLDER) return MIR_CAST_NONE;
 #ifndef _MSC_VER
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#	pragma GCC diagnostic push
+#	pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 #endif
 
 	switch (from->kind) {
@@ -3395,7 +3385,7 @@ enum mir_cast_op get_cast_op(struct mir_type *from, struct mir_type *to)
 	}
 
 #ifndef _MSC_VER
-#pragma GCC diagnostic pop
+#	pragma GCC diagnostic pop
 #endif
 }
 
@@ -6693,12 +6683,8 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 	if (fn->id && !fn->linkage_name.len) { // Has ID and has no linkage name specified.
 		// Setup function full name.
 		if (name_prefix.len) {
-			fn->full_name = scprint2(&ctx->assembly->string_cache,
-			                         "%.*s.%.*s",
-			                         name_prefix.len,
-			                         name_prefix.ptr,
-			                         fn->id->str.len,
-			                         fn->id->str.ptr);
+			fn->full_name =
+			    scprint(&ctx->assembly->string_cache, "{str}.{str}", name_prefix, fn->id->str);
 		} else {
 			fn->full_name = fn->id->str;
 		}
@@ -10669,8 +10655,8 @@ void ast_stmt_if(struct context *ctx, struct ast *stmt_if)
 
 	const bool              is_static      = stmt_if->data.stmt_if.is_static;
 	struct mir_instr_block *tmp_block      = NULL;
-	struct mir_instr_block *then_block     = append_block(ctx, fn, make_str("if_then", 7));
-	struct mir_instr_block *continue_block = append_block(ctx, fn, make_str("if_continue", 11));
+	struct mir_instr_block *then_block     = append_block(ctx, fn, cstr("if_then"));
+	struct mir_instr_block *continue_block = append_block(ctx, fn, cstr("if_continue"));
 	struct mir_instr       *cond           = ast(ctx, ast_condition);
 
 	// Note: Else block is optional in this case i.e. if (true) { ... } expression does not have
@@ -10681,7 +10667,7 @@ void ast_stmt_if(struct context *ctx, struct ast *stmt_if)
 	const bool              has_else_branch = ast_else;
 	struct mir_instr_block *else_block      = NULL;
 	if (has_else_branch) {
-		else_block = append_block(ctx, fn, make_str("if_else", 7));
+		else_block = append_block(ctx, fn, cstr("if_else"));
 		append_instr_cond_br(ctx, stmt_if, cond, then_block, else_block, is_static);
 	} else {
 		append_instr_cond_br(ctx, stmt_if, cond, then_block, continue_block, is_static);
@@ -10728,11 +10714,11 @@ void ast_stmt_loop(struct context *ctx, struct ast *loop)
 	// prepare all blocks
 	struct mir_instr_block *tmp_block = NULL;
 	struct mir_instr_block *increment_block =
-	    ast_increment ? append_block(ctx, fn, make_str("loop_increment", 14)) : NULL;
-	struct mir_instr_block *decide_block     = append_block(ctx, fn, make_str("loop_decide", 11));
-	struct mir_instr_block *body_block       = append_block(ctx, fn, make_str("loop_body", 9));
-	struct mir_instr_block *continue_block   = append_block(ctx, fn, make_str("loop_continue", 13));
-	struct mir_instr_block *prev_break_block = ctx->ast.break_block;
+	    ast_increment ? append_block(ctx, fn, cstr("loop_increment")) : NULL;
+	struct mir_instr_block *decide_block        = append_block(ctx, fn, cstr("loop_decide"));
+	struct mir_instr_block *body_block          = append_block(ctx, fn, cstr("loop_body"));
+	struct mir_instr_block *continue_block      = append_block(ctx, fn, cstr("loop_continue"));
+	struct mir_instr_block *prev_break_block    = ctx->ast.break_block;
 	struct mir_instr_block *prev_continue_block = ctx->ast.continue_block;
 	ctx->ast.break_block                        = continue_block;
 	ctx->ast.continue_block                     = ast_increment ? increment_block : decide_block;
@@ -10784,9 +10770,9 @@ void ast_stmt_switch(struct context *ctx, struct ast *stmt_switch)
 	struct mir_fn *fn = ast_current_fn(ctx);
 	bassert(fn);
 
-	struct mir_instr_block *src_block     = ast_current_block(ctx);
-	struct mir_instr_block *cont_block    = append_block(ctx, fn, make_str("switch_continue", 15));
-	struct mir_instr_block *default_block = cont_block;
+	struct mir_instr_block *src_block            = ast_current_block(ctx);
+	struct mir_instr_block *cont_block           = append_block(ctx, fn, cstr("switch_continue"));
+	struct mir_instr_block *default_block        = cont_block;
 	bool                    user_defined_default = false;
 
 	for (usize i = sarrlenu(ast_cases); i-- > 0;) {
@@ -10796,8 +10782,8 @@ void ast_stmt_switch(struct context *ctx, struct ast *stmt_switch)
 		struct mir_instr_block *case_block = NULL;
 
 		if (ast_case->data.stmt_case.block) {
-			case_block = append_block(
-			    ctx, fn, is_default ? make_str("switch_default", 14) : make_str("switch_case", 11));
+			case_block =
+			    append_block(ctx, fn, is_default ? cstr("switch_default") : cstr("switch_case"));
 			set_current_block(ctx, case_block);
 			ast(ctx, ast_case->data.stmt_case.block);
 
@@ -11265,7 +11251,7 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
 	fn->body_scope = ast_block->owner_scope;
 
 	// create block for initialization locals and arguments
-	struct mir_instr_block *init_block = append_block(ctx, fn, make_str("entry", 5));
+	struct mir_instr_block *init_block = append_block(ctx, fn, cstr("entry"));
 	init_block->base.ref_count         = NO_REF_COUNTING;
 	// Every user generated function must contain exit block; this block is invoked last
 	// in every function eventually can return .ret value stored in temporary storage.
@@ -11274,7 +11260,7 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
 	// defer statement, because we need to call defer blocks after return value
 	// evaluation and before terminal instruction of the function. Last defer block
 	// always breaks into the exit block.
-	struct mir_instr_block *exit_block = append_block(ctx, fn, make_str("exit", 4));
+	struct mir_instr_block *exit_block = append_block(ctx, fn, cstr("exit"));
 	fn->exit_block =
 	    (struct mir_instr_block *)ref_instr(&exit_block->base); // Exit block is always referenced
 
@@ -11469,7 +11455,7 @@ struct mir_instr *ast_expr_binop(struct context *ctx, struct ast *binop)
 	case BINOP_LOGIC_OR: {
 		const bool              swap_condition   = op == BINOP_LOGIC_AND;
 		struct mir_fn          *fn               = ast_current_fn(ctx);
-		struct mir_instr_block *rhs_block        = append_block(ctx, fn, make_str("rhs_block", 9));
+		struct mir_instr_block *rhs_block        = append_block(ctx, fn, cstr("rhs_block"));
 		struct mir_instr_block *end_block        = ctx->ast.current_phi_end_block;
 		struct mir_instr_phi   *phi              = ctx->ast.current_phi;
 		bool                    append_end_block = false;
@@ -11478,7 +11464,7 @@ struct mir_instr *ast_expr_binop(struct context *ctx, struct ast *binop)
 		// created PHI gather incomes from all nested branches created by expression.
 		if (!end_block) {
 			bassert(!phi);
-			end_block                      = create_block(ctx, make_str("end_block", 9));
+			end_block                      = create_block(ctx, cstr("end_block"));
 			phi                            = (struct mir_instr_phi *)create_instr_phi(ctx, binop);
 			ctx->ast.current_phi_end_block = end_block;
 			ctx->ast.current_phi           = phi;
@@ -12283,7 +12269,7 @@ struct mir_instr *ast_create_expr_resolver_call(struct context  *ctx,
 	MIR_CEV_WRITE_AS(struct mir_fn *, &fn_proto->value, fn);
 
 	fn->type                      = fn_type;
-	struct mir_instr_block *entry = append_block(ctx, fn, make_str("entry", 5));
+	struct mir_instr_block *entry = append_block(ctx, fn, cstr("entry"));
 	entry->base.ref_count         = NO_REF_COUNTING;
 	set_current_block(ctx, entry);
 	struct mir_instr *result = ast(ctx, ast_expr);
@@ -12573,7 +12559,7 @@ struct mir_fn *mir_get_callee(const struct mir_instr_call *call)
 static void _type2str(str_buf_t *buf, const struct mir_type *type, bool prefer_name)
 {
 	if (!type) {
-		str_buf_append(buf, make_str("<unknown>", 9));
+		str_buf_append(buf, cstr("<unknown>"));
 		return;
 	}
 
@@ -12584,16 +12570,16 @@ static void _type2str(str_buf_t *buf, const struct mir_type *type, bool prefer_n
 
 	switch (type->kind) {
 	case MIR_TYPE_TYPE:
-		str_buf_append(buf, make_str("type", 4));
+		str_buf_append(buf, cstr("type"));
 		break;
 
 	case MIR_TYPE_PLACEHOLDER:
-		str_buf_append(buf, make_str("@placeholder", 12));
+		str_buf_append(buf, cstr("@placeholder"));
 		break;
 
 	case MIR_TYPE_SLICE: {
 		const bool has_members = type->data.strct.members;
-		str_buf_append(buf, make_str("[]", 2));
+		str_buf_append(buf, cstr("[]"));
 
 		if (has_members) {
 			struct mir_type *tmp = mir_get_struct_elem_type(type, MIR_SLICE_PTR_INDEX);
@@ -12605,7 +12591,7 @@ static void _type2str(str_buf_t *buf, const struct mir_type *type, bool prefer_n
 
 	case MIR_TYPE_DYNARR: {
 		const bool has_members = type->data.strct.members;
-		str_buf_append(buf, make_str("[..]", 4));
+		str_buf_append(buf, cstr("[..]"));
 
 		if (has_members) {
 			struct mir_type *tmp = mir_get_struct_elem_type(type, MIR_SLICE_PTR_INDEX);
@@ -12617,7 +12603,7 @@ static void _type2str(str_buf_t *buf, const struct mir_type *type, bool prefer_n
 
 	case MIR_TYPE_VARGS: {
 		const bool has_members = type->data.strct.members;
-		str_buf_append(buf, make_str("...", 3));
+		str_buf_append(buf, cstr("..."));
 
 		if (has_members) {
 			struct mir_type *tmp = mir_get_struct_elem_type(type, MIR_SLICE_PTR_INDEX);
@@ -12630,59 +12616,59 @@ static void _type2str(str_buf_t *buf, const struct mir_type *type, bool prefer_n
 	case MIR_TYPE_STRUCT: {
 		mir_members_t *members = type->data.strct.members;
 		if (type->data.strct.is_union) {
-			str_buf_append(buf, make_str("union{", 6));
+			str_buf_append(buf, cstr("union{"));
 		} else {
-			str_buf_append(buf, make_str("struct{", 7));
+			str_buf_append(buf, cstr("struct{"));
 		}
 		for (usize i = 0; i < sarrlenu(members); ++i) {
 			struct mir_member *member = sarrpeek(members, i);
 			_type2str(buf, member->type, true);
-			if (i < sarrlenu(members) - 1) str_buf_append(buf, make_str(", ", 2));
+			if (i < sarrlenu(members) - 1) str_buf_append(buf, cstr(", "));
 		}
-		str_buf_append(buf, make_str("}", 1));
+		str_buf_append(buf, cstr("}"));
 		break;
 	}
 
 	case MIR_TYPE_ENUM: {
 		mir_variants_t *variants = type->data.enm.variants;
-		str_buf_append(buf, make_str("enum{", 5));
+		str_buf_append(buf, cstr("enum{"));
 		for (usize i = 0; i < sarrlenu(variants); ++i) {
 			struct mir_variant *variant = sarrpeek(variants, i);
 			const str_t         name    = variant->id->str;
 			str_buf_append_fmt(buf, "%.*s :: %lld", name.len, name.ptr, variant->value);
-			if (i < sarrlenu(variants) - 1) str_buf_append(buf, make_str(", ", 2));
+			if (i < sarrlenu(variants) - 1) str_buf_append(buf, cstr(", "));
 		}
-		str_buf_append(buf, make_str("}", 1));
+		str_buf_append(buf, cstr("}"));
 		break;
 	}
 
 	case MIR_TYPE_FN: {
-		str_buf_append(buf, make_str("fn(", 3));
+		str_buf_append(buf, cstr("fn("));
 		mir_args_t *args = type->data.fn.args;
 		for (usize i = 0; i < sarrlenu(args); ++i) {
 			struct mir_arg *arg = sarrpeek(args, i);
 			_type2str(buf, arg->type, true);
-			if (i < sarrlenu(args) - 1) str_buf_append(buf, make_str(", ", 2));
+			if (i < sarrlenu(args) - 1) str_buf_append(buf, cstr(", "));
 		}
-		str_buf_append(buf, make_str(") ", 2));
+		str_buf_append(buf, cstr(") "));
 		_type2str(buf, type->data.fn.ret_type, true);
 		break;
 	}
 
 	case MIR_TYPE_FN_GROUP: {
-		str_buf_append(buf, make_str("fn{", 3));
+		str_buf_append(buf, cstr("fn{"));
 		mir_types_t *variants = type->data.fn_group.variants;
 		for (usize i = 0; i < sarrlenu(variants); ++i) {
 			struct mir_type *it = sarrpeek(variants, i);
 			_type2str(buf, it, true);
-			if (i < sarrlenu(variants) - 1) str_buf_append(buf, make_str("; ", 2));
+			if (i < sarrlenu(variants) - 1) str_buf_append(buf, cstr("; "));
 		}
-		str_buf_append(buf, make_str("} ", 2));
+		str_buf_append(buf, cstr("} "));
 		break;
 	}
 
 	case MIR_TYPE_PTR: {
-		str_buf_append(buf, make_str("*", 1));
+		str_buf_append(buf, cstr("*"));
 		_type2str(buf, mir_deref_type(type), prefer_name);
 		break;
 	}
@@ -12694,7 +12680,7 @@ static void _type2str(str_buf_t *buf, const struct mir_type *type, bool prefer_n
 	}
 
 	default: {
-		const str_t name = type->user_id ? type->user_id->str : make_str("<INVALID>", 9);
+		const str_t name = type->user_id ? type->user_id->str : cstr("<INVALID>");
 		str_buf_append(buf, name);
 	}
 	}
@@ -12874,32 +12860,32 @@ str_t get_intrinsic(const str_t name)
 	if (!name.len) return str_empty;
 	// clang-format off
 	const str_t map[] = {
-        make_str("memset.p0i8.i64", 15), make_str("__intrinsic_memset_p0i8_i64", 27),
+        cstr("memset.p0i8.i64"), cstr("__intrinsic_memset_p0i8_i64"),
 
-        make_str("sin.f32", 7), make_str("__intrinsic_sin_f32", 19),
-        make_str("sin.f64", 7), make_str("__intrinsic_sin_f64", 19),
-        make_str("cos.f32", 7), make_str("__intrinsic_cos_f32", 19),
-        make_str("cos.f64", 7), make_str("__intrinsic_cos_f64", 19),
-        make_str("pow.f32", 7), make_str("__intrinsic_pow_f32", 19),
-        make_str("pow.f64", 7), make_str("__intrinsic_pow_f64", 19),
-        make_str("log.f32", 7), make_str("__intrinsic_log_f32", 19),
-        make_str("log.f64", 7), make_str("__intrinsic_log_f64", 19),
+        cstr("sin.f32"), cstr("__intrinsic_sin_f32"),
+        cstr("sin.f64"), cstr("__intrinsic_sin_f64"),
+        cstr("cos.f32"), cstr("__intrinsic_cos_f32"),
+        cstr("cos.f64"), cstr("__intrinsic_cos_f64"),
+        cstr("pow.f32"), cstr("__intrinsic_pow_f32"),
+        cstr("pow.f64"), cstr("__intrinsic_pow_f64"),
+        cstr("log.f32"), cstr("__intrinsic_log_f32"),
+        cstr("log.f64"), cstr("__intrinsic_log_f64"),
         
-        make_str("log2.f32", 8), make_str("__intrinsic_log2_f32", 20),
-        make_str("log2.f64", 8), make_str("__intrinsic_log2_f64", 20),
-        make_str("sqrt.f32", 8), make_str("__intrinsic_sqrt_f32", 20),
-        make_str("sqrt.f64", 8), make_str("__intrinsic_sqrt_f64", 20),
-        make_str("ceil.f32", 8), make_str("__intrinsic_ceil_f32", 20),
-        make_str("ceil.f64", 8), make_str("__intrinsic_ceil_f64", 20),
+        cstr("log2.f32"), cstr("__intrinsic_log2_f32"),
+        cstr("log2.f64"), cstr("__intrinsic_log2_f64"),
+        cstr("sqrt.f32"), cstr("__intrinsic_sqrt_f32"),
+        cstr("sqrt.f64"), cstr("__intrinsic_sqrt_f64"),
+        cstr("ceil.f32"), cstr("__intrinsic_ceil_f32"),
+        cstr("ceil.f64"), cstr("__intrinsic_ceil_f64"),
         
-        make_str("round.f32", 9), make_str("__intrinsic_round_f32", 21),
-        make_str("round.f64", 9), make_str("__intrinsic_round_f64", 21),
-        make_str("floor.f32", 9), make_str("__intrinsic_floor_f32", 21),
-        make_str("floor.f64", 9), make_str("__intrinsic_floor_f64", 21),
-        make_str("log10.f32", 9), make_str("__intrinsic_log10_f32", 21),
-        make_str("log10.f64", 9), make_str("__intrinsic_log10_f64", 21),
-        make_str("trunc.f32", 9), make_str("__intrinsic_trunc_f32", 21),
-        make_str("trunc.f64", 9), make_str("__intrinsic_trunc_f64", 21),
+        cstr("round.f32"), cstr("__intrinsic_round_f32"),
+        cstr("round.f64"), cstr("__intrinsic_round_f64"),
+        cstr("floor.f32"), cstr("__intrinsic_floor_f32"),
+        cstr("floor.f64"), cstr("__intrinsic_floor_f64"),
+        cstr("log10.f32"), cstr("__intrinsic_log10_f32"),
+        cstr("log10.f64"), cstr("__intrinsic_log10_f64"),
+        cstr("trunc.f32"), cstr("__intrinsic_trunc_f32"),
+        cstr("trunc.f64"), cstr("__intrinsic_trunc_f64"),
     };
 
 	// clang-format on

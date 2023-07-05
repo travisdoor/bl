@@ -34,9 +34,9 @@
 #include "llvm-c/Types.h"
 
 #if BL_DEBUG
-#define NAMED_VARS true
+#	define NAMED_VARS true
 #else
-#define NAMED_VARS false
+#	define NAMED_VARS false
 #endif
 
 #define STORE_MAX_SIZE_BYTES 16
@@ -316,30 +316,29 @@ static void process_queue(struct context *ctx)
 str_t get_intrinsic(const str_t name)
 {
 	if (!name.len) return str_empty;
-	if (str_match(name, make_str("sin.f32", 7))) return make_str("llvm.sin.f32", 12);
-	if (str_match(name, make_str("sin.f64", 7))) return make_str("llvm.sin.f64", 12);
-	if (str_match(name, make_str("cos.f32", 7))) return make_str("llvm.cos.f32", 12);
-	if (str_match(name, make_str("cos.f64", 7))) return make_str("llvm.cos.f64", 12);
-	if (str_match(name, make_str("pow.f32", 7))) return make_str("llvm.pow.f32", 12);
-	if (str_match(name, make_str("pow.f64", 7))) return make_str("llvm.pow.f64", 12);
-	if (str_match(name, make_str("log.f32", 7))) return make_str("llvm.log.f32", 12);
-	if (str_match(name, make_str("log.f64", 7))) return make_str("llvm.log.f64", 12);
-	if (str_match(name, make_str("log2.f32", 8))) return make_str("llvm.log2.f32", 13);
-	if (str_match(name, make_str("log2.f64", 8))) return make_str("llvm.log2.f64", 13);
-	if (str_match(name, make_str("sqrt.f32", 8))) return make_str("llvm.sqrt.f32", 13);
-	if (str_match(name, make_str("sqrt.f64", 8))) return make_str("llvm.sqrt.f64", 13);
-	if (str_match(name, make_str("ceil.f32", 8))) return make_str("llvm.ceil.f32", 13);
-	if (str_match(name, make_str("ceil.f64", 8))) return make_str("llvm.ceil.f64", 13);
-	if (str_match(name, make_str("round.f32", 9))) return make_str("llvm.round.f32", 14);
-	if (str_match(name, make_str("round.f64", 9))) return make_str("llvm.round.f64", 14);
-	if (str_match(name, make_str("floor.f32", 9))) return make_str("llvm.floor.f32", 14);
-	if (str_match(name, make_str("floor.f64", 9))) return make_str("llvm.floor.f64", 14);
-	if (str_match(name, make_str("log10.f32", 9))) return make_str("llvm.log10.f32", 14);
-	if (str_match(name, make_str("log10.f64", 9))) return make_str("llvm.log10.f64", 14);
-	if (str_match(name, make_str("trunc.f32", 9))) return make_str("llvm.trunc.f32", 14);
-	if (str_match(name, make_str("trunc.f64", 9))) return make_str("llvm.trunc.f64", 14);
-	if (str_match(name, make_str("memset.inline.p0i8.i64", 22)))
-		return make_str("llvm.memset.inline.p0i8.i64", 27);
+	if (str_match(name, cstr("sin.f32"))) return cstr("llvm.sin.f32");
+	if (str_match(name, cstr("sin.f64"))) return cstr("llvm.sin.f64");
+	if (str_match(name, cstr("cos.f32"))) return cstr("llvm.cos.f32");
+	if (str_match(name, cstr("cos.f64"))) return cstr("llvm.cos.f64");
+	if (str_match(name, cstr("pow.f32"))) return cstr("llvm.pow.f32");
+	if (str_match(name, cstr("pow.f64"))) return cstr("llvm.pow.f64");
+	if (str_match(name, cstr("log.f32"))) return cstr("llvm.log.f32");
+	if (str_match(name, cstr("log.f64"))) return cstr("llvm.log.f64");
+	if (str_match(name, cstr("log2.f32"))) return cstr("llvm.log2.f32");
+	if (str_match(name, cstr("log2.f64"))) return cstr("llvm.log2.f64");
+	if (str_match(name, cstr("sqrt.f32"))) return cstr("llvm.sqrt.f32");
+	if (str_match(name, cstr("sqrt.f64"))) return cstr("llvm.sqrt.f64");
+	if (str_match(name, cstr("ceil.f32"))) return cstr("llvm.ceil.f32");
+	if (str_match(name, cstr("ceil.f64"))) return cstr("llvm.ceil.f64");
+	if (str_match(name, cstr("round.f32"))) return cstr("llvm.round.f32");
+	if (str_match(name, cstr("round.f64"))) return cstr("llvm.round.f64");
+	if (str_match(name, cstr("floor.f32"))) return cstr("llvm.floor.f32");
+	if (str_match(name, cstr("floor.f64"))) return cstr("llvm.floor.f64");
+	if (str_match(name, cstr("log10.f32"))) return cstr("llvm.log10.f32");
+	if (str_match(name, cstr("log10.f64"))) return cstr("llvm.log10.f64");
+	if (str_match(name, cstr("trunc.f32"))) return cstr("llvm.trunc.f32");
+	if (str_match(name, cstr("trunc.f64"))) return cstr("llvm.trunc.f64");
+	if (str_match(name, cstr("memset.inline.p0i8.i64"))) return cstr("llvm.memset.inline.p0i8.i64");
 
 	return str_empty;
 }
@@ -455,7 +454,7 @@ LLVMMetadataRef DI_type_init(struct context *ctx, struct mir_type *type)
 			file_meta = scope_meta;
 		}
 		struct mir_type *base_type  = type->data.enm.base_type;
-		const str_t      enm_name   = type->user_id ? type->user_id->str : make_str_from_c("enum");
+		const str_t      enm_name   = type->user_id ? type->user_id->str : cstr("enum");
 		llvm_metas_t     llvm_elems = SARR_ZERO;
 		mir_variants_t  *variants   = type->data.enm.variants;
 		for (usize i = 0; i < sarrlenu(variants); ++i) {
@@ -542,7 +541,7 @@ LLVMMetadataRef DI_complete_type(struct context *ctx, struct mir_type *type)
 
 		bassert(llvm_file);
 		bassert(llvm_scope);
-		str_t struct_name = make_str("<implicit_struct>", 17);
+		str_t struct_name = cstr("<implicit_struct>");
 		if (type->user_id) {
 			struct_name = type->user_id->str;
 		} else {

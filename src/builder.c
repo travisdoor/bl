@@ -34,10 +34,29 @@
 #include <stdarg.h>
 
 #if !BL_PLATFORM_WIN
-#include <unistd.h>
+#	include <unistd.h>
 #endif
 
 struct builder builder;
+
+struct builder_thread_local {
+	array(str_buf_t) temporary_strings;
+};
+
+static _Thread_local struct builder_thread_local thread_data;
+
+static void init_thread_data(void)
+{
+	arrsetcap(thread_data.temporary_strings, 16);
+}
+
+static void terminate_thread_data(void)
+{
+	for (usize i = 0; i < arrlenu(thread_data.temporary_strings); ++i) {
+		str_buf_free(&thread_data.temporary_strings[i]);
+	}
+	arrfree(thread_data.temporary_strings);
+}
 
 // =================================================================================================
 // Stages
@@ -94,12 +113,11 @@ struct threading_impl {
 	volatile s32  will_exit;    // true when main thread will exit
 	volatile bool is_compiling; // true when async compilation is running
 
-	pthread_spinlock_t str_tmp_lock;
-	pthread_mutex_t    log_mutex;
-	pthread_mutex_t    queue_mutex;
-	pthread_cond_t     queue_condition;
-	pthread_mutex_t    active_mutex;
-	pthread_cond_t     active_condition;
+	pthread_mutex_t log_mutex;
+	pthread_mutex_t queue_mutex;
+	pthread_cond_t  queue_condition;
+	pthread_mutex_t active_mutex;
+	pthread_cond_t  active_condition;
 
 	const unit_stage_fn_t *unit_pipeline;
 };
@@ -128,7 +146,6 @@ static struct threading_impl *threading_new(void)
 {
 	struct threading_impl *t = bmalloc(sizeof(struct threading_impl));
 	memset(t, 0, sizeof(struct threading_impl));
-	pthread_spin_init(&t->str_tmp_lock, 0);
 	pthread_mutex_init(&t->queue_mutex, NULL);
 	pthread_mutex_init(&t->active_mutex, NULL);
 	pthread_mutex_init(&t->log_mutex, NULL);
@@ -148,7 +165,6 @@ static void threading_delete(struct threading_impl *t)
 	for (usize i = 0; i < arrlenu(t->workers); ++i) {
 		pthread_join(t->workers[i], NULL);
 	}
-	pthread_spin_destroy(&t->str_tmp_lock);
 	pthread_mutex_destroy(&t->queue_mutex);
 	pthread_mutex_destroy(&t->active_mutex);
 	pthread_mutex_destroy(&t->log_mutex);
@@ -162,6 +178,8 @@ static void threading_delete(struct threading_impl *t)
 static void *worker(void UNUSED(*args))
 {
 	bl_alloc_thread_init();
+	init_thread_data();
+
 	struct threading_impl *threading = builder.threading;
 	while (true) {
 		pthread_mutex_lock(&threading->queue_mutex);
@@ -186,6 +204,8 @@ static void *worker(void UNUSED(*args))
 		pthread_cond_signal(&threading->active_condition);
 		pthread_mutex_unlock(&threading->active_mutex);
 	}
+
+	terminate_thread_data();
 	bl_alloc_thread_terminate();
 	pthread_exit(NULL);
 	return NULL;
@@ -473,24 +493,19 @@ void builder_init(const struct builder_options *options, const char *exec_dir)
 	for (s32 i = 0; i < _BUILTIN_ID_COUNT; ++i) {
 		builtin_ids[i].hash = strhash2(builtin_ids[i].str);
 	}
-	arrsetcap(builder.tmp_strs, 16);
 	start_threads();
 
 	builder.is_initialized = true;
+	init_thread_data();
 }
 
 void builder_terminate(void)
 {
+	terminate_thread_data();
 	for (usize i = 0; i < arrlenu(builder.targets); ++i) {
 		target_delete(builder.targets[i]);
 	}
 	arrfree(builder.targets);
-
-	for (usize i = 0; i < arrlenu(builder.tmp_strs); ++i) {
-		str_buf_free(&builder.tmp_strs[i]);
-	}
-	blog("Used %llu temp-strings.", arrlenu(builder.tmp_strs));
-	arrfree(builder.tmp_strs);
 
 	confdelete(builder.config);
 	llvm_terminate();
@@ -749,25 +764,19 @@ void builder_msg(enum builder_msg_type type,
 str_buf_t get_tmp_str(void)
 {
 	zone();
-	struct threading_impl *threading = builder.threading;
-	pthread_spin_lock(&threading->str_tmp_lock);
 	str_buf_t str = {0};
-	if (arrlenu(builder.tmp_strs)) {
-		str = arrpop(builder.tmp_strs);
+	if (arrlenu(thread_data.temporary_strings)) {
+		str = arrpop(thread_data.temporary_strings);
 	} else {
 		str_buf_setcap(&str, 255);
 	}
 	str_buf_clr(&str); // also set zero terminator
-	pthread_spin_unlock(&threading->str_tmp_lock);
 	return_zone(str);
 }
 
 void put_tmp_str(str_buf_t str)
 {
-	struct threading_impl *threading = builder.threading;
-	pthread_spin_lock(&threading->str_tmp_lock);
-	arrput(builder.tmp_strs, str);
-	pthread_spin_unlock(&threading->str_tmp_lock);
+	arrput(thread_data.temporary_strings, str);
 }
 
 void builder_async_submit_unit(struct unit *unit)

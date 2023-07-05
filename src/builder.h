@@ -65,7 +65,6 @@ struct builder {
 	s32                           last_script_mode_run_status;
 	struct config                *config;
 	array(struct target *) targets;
-	array(str_buf_t) tmp_strs;
 	struct threading_impl *threading;
 
 	bool is_initialized;

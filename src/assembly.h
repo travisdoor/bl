@@ -180,9 +180,9 @@ struct target {
 	array(char *) files;
 	array(char *) default_lib_paths;
 	array(char *) default_libs;
-	char *default_custom_linker_opt;
-	char *out_dir;
-	char *module_dir;
+	str_buf_t default_custom_linker_opt;
+	str_buf_t out_dir;
+	str_buf_t module_dir;
 
 	enum module_import_policy module_policy;
 

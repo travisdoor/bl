@@ -780,9 +780,9 @@ struct ast *parse_decl_member(struct context *ctx, s32 UNUSED(index))
 		char      buf[64]; // More than enough.
 		const s32 len = snprintf(buf, static_arrlenu(buf), "_%d", index);
 		bassert(len >= 0 && len < (s32)static_arrlenu(buf) && "Buffer overflow!");
-		char *ident = scdup(&ctx->unit->string_cache, buf, len);
-		name        = ast_create_node(ctx->ast_arena, AST_IDENT, tok_begin, scope_get(ctx));
-		id_init(&name->data.ident.id, make_str(ident, len));
+		const str_t ident = scdup2(&ctx->unit->string_cache, make_str(buf, len));
+		name              = ast_create_node(ctx->ast_arena, AST_IDENT, tok_begin, scope_get(ctx));
+		id_init(&name->data.ident.id, ident);
 	}
 
 	enum hash_directive_flags found_hd = HD_NONE;

@@ -44,7 +44,7 @@ static void copy_user_libs(struct assembly *assembly)
 {
 	str_buf_t            dest_path = get_tmp_str();
 	const struct target *target    = assembly->target;
-	const char          *out_dir   = target->out_dir;
+	const str_t          out_dir   = str_buf_view(target->out_dir);
 	for (usize i = 0; i < arrlenu(assembly->libs); ++i) {
 		struct native_lib *lib = &assembly->libs[i];
 		if (lib->is_internal) continue;
@@ -68,7 +68,12 @@ static void copy_user_libs(struct assembly *assembly)
 		}
 #endif
 
-		str_buf_append_fmt(&dest_path, "%s/%.*s", out_dir, lib_dest_name.len, lib_dest_name.ptr);
+		str_buf_append_fmt(&dest_path,
+		                   "%.*s/%.*s",
+		                   out_dir.len,
+		                   out_dir.ptr,
+		                   lib_dest_name.len,
+		                   lib_dest_name.ptr);
 		if (file_exists2(dest_path)) continue;
 
 		builder_info("Copy '%.*s' to '%.*s'.",
@@ -100,7 +105,7 @@ void native_bin_run(struct assembly *assembly)
 #error "Unknown platform"
 #endif
 
-	const char *out_dir = assembly->target->out_dir;
+	const str_t out_dir = str_buf_view(assembly->target->out_dir);
 	zone();
 	if (linker(assembly) != 0) {
 		builder_msg(MSG_ERR, ERR_LIB_NOT_FOUND, NULL, CARET_WORD, "Native link execution failed.");
@@ -108,7 +113,7 @@ void native_bin_run(struct assembly *assembly)
 	}
 
 	if (assembly->target->copy_deps) {
-		builder_log("Copy assembly dependencies into '%s'.", out_dir);
+		builder_log("Copy assembly dependencies into '%.*s'.", out_dir.len, out_dir.ptr);
 		copy_user_libs(assembly);
 	}
 DONE:

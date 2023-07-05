@@ -31,7 +31,7 @@
 #include "stb_ds.h"
 
 #if BL_PLATFORM_WIN
-#include "wbs.h"
+#	include "wbs.h"
 #endif
 
 struct context {
@@ -80,7 +80,7 @@ bool setup(const str_t filepath, const char *triple)
 		put_tmp_str(libdir);
 		return false;
 	}
-	ctx.lib_dir = scprint2(&ctx.cache, "%.*s", libdir.len, libdir.ptr);
+	ctx.lib_dir = scprint(&ctx.cache, "{str}", libdir);
 	put_tmp_str(libdir);
 
 	if (strcmp(ctx.triple, "x86_64-pc-windows-msvc") == 0) {
@@ -205,25 +205,19 @@ bool default_config(struct context UNUSED(*ctx))
 #ifdef BL_WBS
 bool x86_64_pc_windows_msvc(struct context *ctx)
 {
-	ctx->preload_file      = make_str("os/_windows.bl", 14);
+	ctx->preload_file      = cstr("os/_windows.bl");
 	ctx->linker_executable = str_empty;
 	ctx->linker_opt_exec =
-	    make_str("/NOLOGO /ENTRY:__os_start /SUBSYSTEM:CONSOLE /INCREMENTAL:NO /MACHINE:x64", 73);
-	ctx->linker_opt_shared = make_str("/NOLOGO /INCREMENTAL:NO /MACHINE:x64 /DLL", 41);
+	    cstr("/NOLOGO /ENTRY:__os_start /SUBSYSTEM:CONSOLE /INCREMENTAL:NO /MACHINE:x64");
+	ctx->linker_opt_shared = cstr("/NOLOGO /INCREMENTAL:NO /MACHINE:x64 /DLL");
 
 	struct wbs *wbs = wbslookup();
 	if (!wbs->is_valid) {
 		builder_error("Configuration failed!");
 		goto FAILED;
 	}
-	ctx->linker_lib_path = scprint2(&ctx->cache,
-	                                "%.*s;%.*s;%.*s",
-	                                wbs->ucrt_path.len,
-	                                wbs->ucrt_path.ptr,
-	                                wbs->um_path.len,
-	                                wbs->um_path.ptr,
-	                                wbs->msvc_lib_path.len,
-	                                wbs->msvc_lib_path.ptr);
+	ctx->linker_lib_path =
+	    scprint(&ctx->cache, "{str};{str};{str}", wbs->ucrt_path, wbs->um_path, wbs->msvc_lib_path);
 
 	wbsfree(wbs);
 	return true;
@@ -240,7 +234,7 @@ bool x86_64_pc_linux_gnu(struct context *ctx)
 	const char *LINKER_OPT_EXEC   = "-dynamic-linker /lib64/ld-linux-x86-64.so.2 -e _start";
 	const char *LINKER_OPT_SHARED = "--shared";
 
-	ctx->preload_file = make_str("os/_linux.bl", 12);
+	ctx->preload_file = cstr("os/_linux.bl");
 
 	str_buf_t ldpath = execute("which ld");
 	if (ldpath.len == 0) {
@@ -257,10 +251,9 @@ bool x86_64_pc_linux_gnu(struct context *ctx)
 		put_tmp_str(runtime);
 		return false;
 	}
-	ctx->linker_opt_exec =
-	    scprint2(&ctx->cache, "%.*s %s", runtime.len, runtime.ptr, LINKER_OPT_EXEC);
-	ctx->linker_opt_shared = scprint2(&ctx->cache, "%s", LINKER_OPT_SHARED);
-	ctx->linker_lib_path   = scprint2(&ctx->cache, "%s", LINKER_LIB_PATH);
+	ctx->linker_opt_exec   = scprint(&ctx->cache, "{str} {s}", runtime, LINKER_OPT_EXEC);
+	ctx->linker_opt_shared = scprint(&ctx->cache, "{s}", LINKER_OPT_SHARED);
+	ctx->linker_lib_path   = scprint(&ctx->cache, "{s}", LINKER_LIB_PATH);
 
 	put_tmp_str(runtime);
 	return true;
@@ -274,7 +267,7 @@ static bool x86_64_apple_darwin(struct context *ctx)
 	const char *LINKER_OPT_EXEC    = "-e ___os_start";
 	const char *LINKER_OPT_SHARED  = "-dylib";
 
-	ctx->preload_file = make_str("os/_macos.bl", 12);
+	ctx->preload_file = cstr("os/_macos.bl");
 
 	if (!dir_exists(COMMAND_LINE_TOOLS)) {
 		builder_error("Cannot find Command Line Tools on '%s', use 'xcode-select --install'.",
@@ -341,11 +334,11 @@ static bool arm64_apple_darwin(struct context *ctx)
 {
 	const char *COMMAND_LINE_TOOLS = "/Library/Developer/CommandLineTools";
 	const char *MACOS_SDK          = "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib";
-	const str_t LINKER_LIB_PATH    = make_str("/usr/lib:/usr/local/lib", 23);
-	const str_t LINKER_OPT_EXEC    = make_str("-e ___os_start -arch arm64", 26);
-	const str_t LINKER_OPT_SHARED  = make_str("-dylib -arch arm64", 18);
+	const str_t LINKER_LIB_PATH    = cstr("/usr/lib:/usr/local/lib");
+	const str_t LINKER_OPT_EXEC    = cstr("-e ___os_start -arch arm64");
+	const str_t LINKER_OPT_SHARED  = cstr("-dylib -arch arm64");
 
-	ctx->preload_file = make_str("os/_macos.bl", 12);
+	ctx->preload_file = cstr("os/_macos.bl");
 
 	if (!dir_exists(COMMAND_LINE_TOOLS)) {
 		builder_error("Cannot find Command Line Tools on '%s', use 'xcode-select --install'.",

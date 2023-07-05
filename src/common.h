@@ -49,31 +49,36 @@ struct target;
 struct config;
 
 #if BL_PLATFORM_WIN
-#include <Shlwapi.h>
-#define PATH_MAX MAX_PATH
-#ifndef strtok_r
-#define strtok_r strtok_s
-#endif
+#	include <Shlwapi.h>
+#	define PATH_MAX MAX_PATH
+#	ifndef strtok_r
+#		define strtok_r strtok_s
+#	endif
 #endif
 
 #if BL_COMPILER_CLANG || BL_COMPILER_GNUC
+
 // clang-format off
-#define _SHUT_UP_BEGIN \
-	_Pragma("GCC diagnostic push") \
-	_Pragma("GCC diagnostic ignored \"-Wcast-qual\"") \
-	_Pragma("GCC diagnostic ignored \"-Wpedantic\"") \
-	_Pragma("GCC diagnostic ignored \"-Wsign-conversion\"")
+#	define _SHUT_UP_BEGIN \
+		_Pragma("GCC diagnostic push") \
+        _Pragma("GCC diagnostic ignored \"-Wcast-qual\"") \
+		_Pragma("GCC diagnostic ignored \"-Wpedantic\"") \
+		_Pragma("GCC diagnostic ignored \"-Wsign-conversion\"")
 // clang-format on
-#define _SHUT_UP_END _Pragma("GCC diagnostic pop")
-#define UNUSED(x) __attribute__((unused)) x
+
+#	define _SHUT_UP_END _Pragma("GCC diagnostic pop")
+#	define UNUSED(x) __attribute__((unused)) x
+#	define _Thread_local __thread
 
 #elif BL_COMPILER_MSVC
-#define _SHUT_UP_BEGIN __pragma(warning(push, 0))
-#define _SHUT_UP_END __pragma(warning(pop))
-#define UNUSED(x) __pragma(warning(suppress : 4100)) x
+
+#	define _SHUT_UP_BEGIN __pragma(warning(push, 0))
+#	define _SHUT_UP_END __pragma(warning(pop))
+#	define UNUSED(x) __pragma(warning(suppress : 4100)) x
+#	define _Thread_local __declspec(thread)
 
 #else
-#error "Unsuported compiler!"
+#	error "Unsuported compiler!"
 #endif
 
 #define alignment_of(T) _Alignof(T)
@@ -97,13 +102,13 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 #define is_str_valid_nonempty(S) ((S) && (S)[0] != '\0')
 
 #ifndef MIN
-#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#	define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #endif
 #ifndef MAX
-#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#	define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #endif
 #ifndef CLAMP
-#define CLAMP(v, min, max) ((v) < (min) ? (v) = (min) : ((v) > (max) ? (v) = (max) : (v)))
+#	define CLAMP(v, min, max) ((v) < (min) ? (v) = (min) : ((v) > (max) ? (v) = (max) : (v)))
 #endif
 
 // =================================================================================================
@@ -114,6 +119,12 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 	(str_t)                                                                                        \
 	{                                                                                              \
 		.ptr = (char *)(p), .len = (s32)(l)                                                        \
+	}
+
+#define cstr(P)                                                                                    \
+	(str_t)                                                                                        \
+	{                                                                                              \
+		.ptr = (P), .len = (sizeof(P) / sizeof((P)[0])) - 1                                        \
 	}
 
 #define make_str_from_c(p)                                                                         \
@@ -189,11 +200,13 @@ void str_buf_setcap(str_buf_t *buf, s32 cap);
 void      _str_buf_append(str_buf_t *buf, char *ptr, s32 len);
 str_buf_t _str_buf_dup(char *ptr, s32 len);
 void      str_buf_append_fmt(str_buf_t *buf, const char *fmt, ...);
+void      str_buf_append_fmt2(str_buf_t *buf, const char *fmt, ...);
 void      str_buf_clr(str_buf_t *buf); // This is also setting the zero
 
 static inline const char *_str_to_c_checked(char *ptr, s32 len)
 {
-	if (!ptr) return "";
+	if (!len) return "";
+	bassert(ptr);
 	bassert(ptr[len] == '\0' && "String is not zero terminated!");
 	return ptr;
 }
@@ -222,6 +235,9 @@ static inline const char *_str_to_c_checked(char *ptr, s32 len)
 	{                                                                                              \
 		.len = (B).len, .ptr = (B).ptr                                                             \
 	}
+
+s32 bsnprint(char *buf, s32 buf_len, const char *fmt, ...);
+s32 bvsnprint(char *buf, s32 buf_len, const char *fmt, va_list args);
 
 // =================================================================================================
 // STB utils
@@ -314,8 +330,7 @@ char *scdup(struct string_cache **cache, const char *str, usize len);
 str_t _scdup2(struct string_cache **cache, char *str, s32 len);
 
 void  scfree(struct string_cache **cache);
-char *scprint(struct string_cache **cache, const char *fmt, ...); // @Cleanup
-str_t scprint2(struct string_cache **cache, const char *fmt, ...);
+str_t scprint(struct string_cache **cache, const char *fmt, ...);
 
 // =================================================================================================
 // Hashing

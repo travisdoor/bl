@@ -33,13 +33,13 @@
 #include "stb_ds.h"
 
 #if BL_PLATFORM_MACOS
-#define SHARED_EXT "dylib"
-#define SHARED_PREFIX "lib"
-#define LLD_FLAVOR "darwin"
+#	define SHARED_EXT "dylib"
+#	define SHARED_PREFIX "lib"
+#	define LLD_FLAVOR "darwin"
 #else
-#define SHARED_EXT "so"
-#define SHARED_PREFIX "lib"
-#define LLD_FLAVOR "gnu"
+#	define SHARED_EXT "so"
+#	define SHARED_PREFIX "lib"
+#	define LLD_FLAVOR "gnu"
 #endif
 #define OBJECT_EXT "o"
 
@@ -118,7 +118,7 @@ static void append_linker_exec(struct assembly *assembly, str_buf_t *buf)
 	    read_config(builder.config, assembly->target, "linker_executable", "");
 	if (strlen(custom_linker)) {
 		str_buf_append(buf, make_str_from_c(custom_linker));
-		str_buf_append(buf, make_str(" ", 1));
+		str_buf_append(buf, cstr(" "));
 		return;
 	}
 	// Use LLD as default.
@@ -133,20 +133,21 @@ s32 lld_ld(struct assembly *assembly)
 	runtime_measure_begin(linking);
 	str_buf_t            buf     = get_tmp_str();
 	const struct target *target  = assembly->target;
-	const char          *out_dir = target->out_dir;
+	const str_t          out_dir = str_buf_view(target->out_dir);
 	const char          *name    = target->name;
 
 	// set executable
 	append_linker_exec(assembly, &buf);
 	// set input file
-	str_buf_append_fmt(&buf, "%s/%s.%s ", out_dir, name, OBJECT_EXT);
+	str_buf_append_fmt(&buf, "%.*s/%s.%s ", out_dir.len, out_dir.ptr, name, OBJECT_EXT);
 	// set output file
 	const char *ext    = get_out_extension(assembly);
 	const char *prefix = get_out_prefix(assembly);
 	if (strlen(ext)) {
-		str_buf_append_fmt(&buf, "%s %s/%s%s.%s ", FLAG_OUT, out_dir, prefix, name, ext);
+		str_buf_append_fmt(
+		    &buf, "%s %.*s/%s%s.%s ", FLAG_OUT, out_dir.len, out_dir.ptr, prefix, name, ext);
 	} else {
-		str_buf_append_fmt(&buf, "%s %s/%s%s ", FLAG_OUT, out_dir, prefix, name);
+		str_buf_append_fmt(&buf, "%s %.*s/%s%s ", FLAG_OUT, out_dir.len, out_dir.ptr, prefix, name);
 	}
 	append_lib_paths(assembly, &buf);
 	append_libs(assembly, &buf);

@@ -321,10 +321,10 @@ void scope_get_full_name(str_buf_t *buf, struct scope *scope)
 		scope = scope->parent;
 	}
 
-	str_t dot = make_str(".", 1);
+	str_t dot = cstr(".");
 	for (usize i = sarrlenu(&tmp); i-- > 0;) {
 		const str_t subname = sarrpeek(&tmp, i);
-		//str_buf_append(buf, dot);
+		// str_buf_append(buf, dot);
 		str_buf_append(buf, subname);
 		if (i > 0) {
 			str_buf_append(buf, dot);

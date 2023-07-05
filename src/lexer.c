@@ -34,8 +34,8 @@
 #include <string.h>
 
 #ifdef BL_USE_SIMD
-#include <emmintrin.h>
-#include <intrin.h>
+#	include <emmintrin.h>
+#	include <intrin.h>
 #endif
 
 #define is_ident(c) (isalnum(c) || (c) == '_')
@@ -120,7 +120,7 @@ bool scan_docs(struct context *ctx, struct token *tok)
 		ctx->c++;
 	}
 
-	tok->value.str    = make_str(scdup(&ctx->unit->string_cache, begin, len_str), len_str);
+	tok->value.str    = scdup2(&ctx->unit->string_cache, make_str(begin, len_str));
 	tok->location.len = len_parsed + 3; // + 3 = '///'
 	ctx->col += len_parsed;
 	return true;
@@ -197,7 +197,8 @@ bool scan_ident(struct context *ctx, struct token *tok)
 #endif
 
 	if (len == 0) return_zone(false);
-	/* tok->value.str    = make_str(scdup(&ctx->unit->string_cache, begin, len), len); */
+	// Note that we use the string identificators directly (no copy is done). That means those might
+	// not to be zero terminated! This way we reduce amount of string duplication.
 	tok->value.str    = make_str(begin, len);
 	tok->location.len = len;
 	ctx->col += len;
@@ -267,8 +268,7 @@ bool scan_string(struct context *ctx, struct token *tok)
 	}
 DONE:
 	tok->value.str =
-	    make_str(scdup(&ctx->unit->string_cache, sarrdata(&ctx->strtmp), sarrlenu(&ctx->strtmp)),
-	             sarrlenu(&ctx->strtmp));
+	    scdup2(&ctx->unit->string_cache, make_str(sarrdata(&ctx->strtmp), sarrlenu(&ctx->strtmp)));
 
 	tok->location.len = len;
 	tok->location.col += 1;
@@ -327,8 +327,8 @@ bool scan_char(struct context *ctx, struct token *tok)
 inline s32 c_to_number(char c, s32 base)
 {
 #ifndef _MSC_VER
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#	pragma GCC diagnostic push
+#	pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 #endif
 	switch (base) {
 	case 16:
@@ -354,7 +354,7 @@ inline s32 c_to_number(char c, s32 base)
 
 	return -1;
 #ifndef _MSC_VER
-#pragma GCC diagnostic pop
+#	pragma GCC diagnostic pop
 #endif
 }
 
@@ -510,8 +510,8 @@ SCAN:
 			}
 
 #ifndef _MSC_VER
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#	pragma GCC diagnostic push
+#	pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 #endif
 			switch (tok.sym) {
 			case SYM_DCOMMENT:
@@ -539,7 +539,7 @@ SCAN:
 				goto PUSH_TOKEN;
 			}
 #ifndef _MSC_VER
-#pragma GCC diagnostic pop
+#	pragma GCC diagnostic pop
 #endif
 		}
 	}

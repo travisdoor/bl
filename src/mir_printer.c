@@ -34,9 +34,9 @@
 #include "stb_ds.h"
 
 #if BL_DEBUG
-#define PRINT_ANALYZED_COMPTIMES true
+#	define PRINT_ANALYZED_COMPTIMES true
 #else
-#define PRINT_ANALYZED_COMPTIMES false
+#	define PRINT_ANALYZED_COMPTIMES false
 #endif
 
 struct context {
@@ -206,7 +206,7 @@ _print_const_value(struct context *ctx, struct mir_type *type, vm_stack_ptr_t va
 			while ((c = *(str_ptr++))) {
 				switch (c) {
 				case '\n':
-					str_buf_append(&tmp, make_str("\\n", 2));
+					str_buf_append(&tmp, cstr("\\n"));
 					break;
 				default:
 					str_buf_append_fmt(&tmp, "%c", c);
@@ -735,7 +735,7 @@ void print_instr_designator(struct context *ctx, struct mir_instr_designator *de
 	if (designator->ident && designator->ident->kind == AST_IDENT) {
 		name = designator->ident->data.ident.id.str;
 	} else {
-		name = make_str("<INVALID>", 9);
+		name = cstr("<INVALID>");
 	}
 	fprintf(ctx->stream, "%.*s = ", name.len, name.ptr);
 	print_comptime_value_or_id(ctx, designator->value);
@@ -805,7 +805,7 @@ void print_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl)
 	struct mir_var *var = decl->var;
 	bassert(var);
 
-	const str_t name = var->linkage_name.len ? var->linkage_name : make_str("<UNKNOWN>", 9);
+	const str_t name = var->linkage_name.len ? var->linkage_name : cstr("<UNKNOWN>");
 
 	if (isflag(var->iflags, MIR_VAR_GLOBAL)) {
 		// global scope variable
@@ -857,7 +857,7 @@ void print_instr_decl_arg(struct context *ctx, struct mir_instr_decl_arg *decl)
 	struct mir_arg *arg = decl->arg;
 	bassert(arg);
 
-	const str_t name = arg->id ? arg->id->str : make_str("-", 1);
+	const str_t name = arg->id ? arg->id->str : cstr("-");
 	fprintf(ctx->stream, "%.*s : ", name.len, name.ptr);
 	print_comptime_value_or_id(ctx, decl->type);
 

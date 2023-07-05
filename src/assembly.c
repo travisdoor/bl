@@ -258,7 +258,7 @@ static inline void mir_terminate(struct assembly *assembly)
 }
 
 // Create directory tree and set out_path.
-static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, char **out_path)
+static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, str_buf_t *out_path)
 {
 	bassert(_path);
 	bassert(out_path);
@@ -281,7 +281,8 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, char **out
 	if (!brealpath(path, full_path, PATH_MAX)) {
 		return false;
 	}
-	strprint(*out_path, "%s", full_path);
+	str_buf_clr(out_path);
+	str_buf_append_fmt(out_path, "%s", full_path);
 #if BL_PLATFORM_WIN
 	free(path);
 #endif
@@ -409,14 +410,14 @@ struct target *target_new(const char *name)
 	struct target *target = bmalloc(sizeof(struct target));
 	memset(target, 0, sizeof(struct target));
 	bmagic_set(target);
-	str_init(target->default_custom_linker_opt, 128);
-	str_init(target->module_dir, 128);
-	str_init(target->out_dir, 128);
+	str_buf_setcap(&target->default_custom_linker_opt, 128);
+	str_buf_setcap(&target->module_dir, 128);
+	str_buf_setcap(&target->out_dir, 128);
 	target->name = strdup(name);
 
 	// Default target uses current working directory which may be changed by user compiler flags
 	// later (--work-dir).
-	str_append(target->out_dir, ".");
+	str_buf_append(&target->out_dir, cstr("."));
 
 	// Setup some defaults.
 	target->opt           = ASSEMBLY_OPT_DEBUG;
@@ -444,7 +445,7 @@ struct target *target_dup(const char *name, const struct target *other)
 	bmagic_assert(other);
 	struct target *target = target_new(name);
 	memcpy(target, other, sizeof(struct {TARGET_COPYABLE_CONTENT}));
-	target_set_output_dir(target, other->out_dir);
+	target_set_output_dir(target, str_to_c(other->out_dir));
 	target->vm = other->vm;
 	bmagic_set(target);
 	return target;
@@ -462,9 +463,9 @@ void target_delete(struct target *target)
 	arrfree(target->files);
 	arrfree(target->default_lib_paths);
 	arrfree(target->default_libs);
-	str_free(target->out_dir);
-	str_free(target->default_custom_linker_opt);
-	str_free(target->module_dir);
+	str_buf_free(&target->out_dir);
+	str_buf_free(&target->default_custom_linker_opt);
+	str_buf_free(&target->module_dir);
 	free(target->name);
 	bfree(target);
 }
@@ -516,7 +517,7 @@ void target_append_linker_options(struct target *target, const char *option)
 {
 	bmagic_assert(target);
 	if (!option) return;
-	str_append(target->default_custom_linker_opt, "%s ", option);
+	str_buf_append_fmt(&target->default_custom_linker_opt, "%s ", option);
 }
 
 void target_set_module_dir(struct target *target, const char *dir, enum module_import_policy policy)
@@ -645,7 +646,7 @@ struct assembly *assembly_new(const struct target *target)
 		assembly_add_native_lib_safe(assembly, target->default_libs[i], NULL, false);
 
 	// Append custom linker options
-	assembly_append_linker_options_safe(assembly, target->default_custom_linker_opt);
+	assembly_append_linker_options_safe(assembly, str_to_c(target->default_custom_linker_opt));
 
 	return assembly;
 }
@@ -780,7 +781,7 @@ bool assembly_import_module(struct assembly *assembly,
 	str_buf_t            local_path = get_tmp_str();
 	struct config       *config     = NULL;
 	const struct target *target     = assembly->target;
-	const char          *module_dir = str_lenu(target->module_dir) > 0 ? target->module_dir : NULL;
+	const char *module_dir = target->module_dir.len > 0 ? str_to_c(target->module_dir) : NULL;
 	const enum module_import_policy policy = assembly->target->module_policy;
 	const bool local_found = module_dir ? module_exist(module_dir, modulepath) : false;
 
