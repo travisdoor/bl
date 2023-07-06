@@ -32,7 +32,7 @@
 #include <string.h>
 
 #if BL_PLATFORM_WIN
-#include <windows.h>
+#	include <windows.h>
 #endif
 
 #define EXPECTED_ARRAY_COUNT 64
@@ -48,7 +48,8 @@ hash_t unit_hash(const char *filepath, struct token *load_from)
 	char        *real_path   = NULL;
 	search_source_file(
 	    filepath, SEARCH_FLAG_ALL, parent_unit ? parent_unit->dirpath : NULL, &real_path, NULL);
-	const hash_t hash = strhash(real_path ? real_path : filepath);
+	const char  *path = real_path ? real_path : filepath;
+	const hash_t hash = strhash(make_str_from_c(path));
 	free(real_path);
 	return hash;
 }
@@ -72,7 +73,8 @@ struct unit *unit_new(const char *filepath, struct token *load_from)
 		babort("invalid file");
 	}
 	unit->loaded_from = load_from;
-	unit->hash        = strhash(unit->filepath ? unit->filepath : unit->name);
+	const char *path  = unit->filepath ? unit->filepath : unit->name;
+	unit->hash        = strhash(make_str_from_c(path));
 	ast_arena_init(&unit->ast_arena);
 	arena_init(&unit->sarr_arena,
 	           sarr_total_size,

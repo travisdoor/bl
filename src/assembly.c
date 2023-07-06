@@ -282,7 +282,7 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, str_buf_t 
 		return false;
 	}
 	str_buf_clr(out_path);
-	str_buf_append_fmt2(out_path, "{s}", full_path);
+	str_buf_append_fmt(out_path, "{s}", full_path);
 #if BL_PLATFORM_WIN
 	free(path);
 #endif
@@ -292,7 +292,7 @@ static bool create_auxiliary_dir_tree_if_not_exist(const char *_path, str_buf_t 
 static struct config *load_module_config(const char *modulepath, struct token *import_from)
 {
 	str_buf_t path = get_tmp_str();
-	str_buf_append_fmt2(&path, "{s}/{s}", modulepath, MODULE_CONFIG_FILE);
+	str_buf_append_fmt(&path, "{s}/{s}", modulepath, MODULE_CONFIG_FILE);
 	struct config *conf = confload(str_to_c(path));
 	put_tmp_str(path);
 	return conf;
@@ -320,7 +320,7 @@ typedef struct {
 static void import_source(import_elem_context_t *ctx, const char *srcfile)
 {
 	str_buf_t path = get_tmp_str();
-	str_buf_append_fmt2(&path, "{s}/{s}", ctx->modulepath, srcfile);
+	str_buf_append_fmt(&path, "{s}/{s}", ctx->modulepath, srcfile);
 	// @Cleanup: should we pass the import_from token here?
 	assembly_add_unit_safe(ctx->assembly, str_to_c(path), NULL);
 	put_tmp_str(path);
@@ -329,7 +329,7 @@ static void import_source(import_elem_context_t *ctx, const char *srcfile)
 static void import_lib_path(import_elem_context_t *ctx, const char *dirpath)
 {
 	str_buf_t path = get_tmp_str();
-	str_buf_append_fmt2(&path, "{s}/{s}", ctx->modulepath, dirpath);
+	str_buf_append_fmt(&path, "{s}/{s}", ctx->modulepath, dirpath);
 	if (!dir_exists2(path)) {
 		builder_msg(MSG_ERR,
 		            ERR_FILE_NOT_FOUND,
@@ -517,7 +517,7 @@ void target_append_linker_options(struct target *target, const char *option)
 {
 	bmagic_assert(target);
 	if (!option) return;
-	str_buf_append_fmt2(&target->default_custom_linker_opt, "{s} ", option);
+	str_buf_append_fmt(&target->default_custom_linker_opt, "{s} ", option);
 }
 
 void target_set_module_dir(struct target *target, const char *dir, enum module_import_policy policy)
@@ -737,7 +737,7 @@ void assembly_add_native_lib_safe(struct assembly *assembly,
 {
 	AssemblySyncImpl *sync = assembly->sync;
 	pthread_spin_lock(&sync->link_lock);
-	const hash_t hash = strhash(lib_name);
+	const hash_t hash = strhash(make_str_from_c(lib_name));
 	{ // Search for duplicity.
 		for (usize i = 0; i < arrlenu(assembly->libs); ++i) {
 			struct native_lib *lib = &assembly->libs[i];
@@ -757,7 +757,7 @@ DONE:
 static inline bool module_exist(const char *module_dir, const char *modulepath)
 {
 	str_buf_t path = get_tmp_str();
-	str_buf_append_fmt2(&path, "{s}/{s}/{s}", module_dir, modulepath, MODULE_CONFIG_FILE);
+	str_buf_append_fmt(&path, "{s}/{s}/{s}", module_dir, modulepath, MODULE_CONFIG_FILE);
 	const bool found = search_source_file(str_to_c(path), SEARCH_FLAG_ABS, NULL, NULL, NULL);
 	put_tmp_str(path);
 	return found;
@@ -788,9 +788,9 @@ bool assembly_import_module(struct assembly *assembly,
 	switch (policy) {
 	case IMPORT_POLICY_SYSTEM: {
 		if (local_found) {
-			str_buf_append_fmt2(&local_path, "{s}/{s}", module_dir, modulepath);
+			str_buf_append_fmt(&local_path, "{s}/{s}", module_dir, modulepath);
 		} else {
-			str_buf_append_fmt2(&local_path, "{s}/{s}", builder_get_lib_dir(), modulepath);
+			str_buf_append_fmt(&local_path, "{s}/{s}", builder_get_lib_dir(), modulepath);
 		}
 		config = load_module_config(str_to_c(local_path), import_from);
 		break;
@@ -801,8 +801,8 @@ bool assembly_import_module(struct assembly *assembly,
 		bassert(module_dir);
 		str_buf_t  system_path   = get_tmp_str();
 		const bool check_version = policy == IMPORT_POLICY_BUNDLE_LATEST;
-		str_buf_append_fmt2(&local_path, "{s}/{s}", module_dir, modulepath);
-		str_buf_append_fmt2(&system_path, "{s}/{s}", builder_get_lib_dir(), modulepath);
+		str_buf_append_fmt(&local_path, "{s}/{s}", module_dir, modulepath);
+		str_buf_append_fmt(&system_path, "{s}/{s}", builder_get_lib_dir(), modulepath);
 		const bool system_found = module_exist(builder_get_lib_dir(), modulepath);
 		// Check if module is present in module directory.
 		bool do_copy = !local_found;
@@ -810,7 +810,7 @@ bool assembly_import_module(struct assembly *assembly,
 			s32 system_version = 0;
 			s32 local_version  = 0;
 			str_buf_clr(&system_path);
-			str_buf_append_fmt2(&system_path, "{s}/{s}", builder_get_lib_dir(), modulepath);
+			str_buf_append_fmt(&system_path, "{s}/{s}", builder_get_lib_dir(), modulepath);
 			config = load_module_config(str_to_c(system_path), import_from);
 			if (config) system_version = get_module_version(config);
 			struct config *local_config = load_module_config(str_to_c(local_path), import_from);
@@ -824,7 +824,7 @@ bool assembly_import_module(struct assembly *assembly,
 				str_buf_t backup_name = get_tmp_str();
 				char      date[26];
 				date_time(date, static_arrlenu(date), "%d-%m-%Y_%H-%M-%S");
-				str_buf_append_fmt2(&backup_name, "{str}_{s}.bak", local_path, date);
+				str_buf_append_fmt(&backup_name, "{str}_{s}.bak", local_path, date);
 				copy_dir(str_to_c(local_path), str_to_c(backup_name));
 				remove_dir(str_to_c(local_path));
 				builder_info("Backup module '%.*s'.", backup_name.len, backup_name.ptr);

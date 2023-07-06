@@ -61,7 +61,7 @@ struct config *confload(const char *filepath)
 
 	// insert special entry for filename
 	struct entry entry;
-	entry.key   = strhash(CONF_FILEPATH);
+	entry.key   = strhash(make_str_from_c(CONF_FILEPATH));
 	entry.value = scdup(&conf->cache, filepath, strlen(filepath));
 	hmputs(conf->data, entry);
 
@@ -106,8 +106,8 @@ struct config *confload(const char *filepath)
 				str_buf_append(&key, make_str_from_c(value));
 			} else {
 				str_buf_clr(&path);
-				str_buf_append_fmt(&path, "%s/%.*s", blockpath, key.len, key.ptr);
-				entry.key   = strhash2(path);
+				str_buf_append_fmt(&path, "{s}/{str}", blockpath, key);
+				entry.key   = strhash(path);
 				entry.value = scdup(&conf->cache, value, token.data.scalar.length);
 				hmputs(conf->data, entry);
 			}
@@ -151,7 +151,7 @@ void confdelete(struct config *conf)
 const char *confreads(struct config *conf, const char *path, const char *default_value)
 {
 	bassert(conf);
-	const hash_t hash  = strhash(path);
+	const hash_t hash  = strhash(make_str_from_c(path));
 	const s64    index = hmgeti(conf->data, hash);
 	if (index == -1) {
 		if (default_value) return default_value;

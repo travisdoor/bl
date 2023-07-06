@@ -368,7 +368,7 @@ parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive
 	if (tok_directive->sym != SYM_IDENT) goto INVALID;
 
 	const str_t  directive = tok_directive->value.str;
-	const hash_t hash      = strhash2(directive);
+	const hash_t hash      = strhash(directive);
 	const s64    index     = hmgeti(ctx->hash_directive_table, hash);
 	if (index == -1) goto INVALID;
 	const enum hash_directive_flags hd_flag = ctx->hash_directive_table[index].value;
@@ -2545,7 +2545,7 @@ void init_hash_directives(struct context *ctx)
 	};
 
 	for (usize i = 0; i < static_arrlenu(hash_directive_names); ++i) {
-		const hash_t hash = strhash(hash_directive_names[i]);
+		const hash_t hash = strhash(make_str_from_c(hash_directive_names[i]));
 		hmput(ctx->hash_directive_table, hash, hash_directive_flags[i]);
 	}
 }

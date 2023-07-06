@@ -73,7 +73,7 @@ bool setup(const str_t filepath, const char *triple)
 	// common config
 	ctx.version      = make_str_from_c(BL_VERSION);
 	str_buf_t libdir = get_tmp_str();
-	str_buf_append_fmt(&libdir, "%s/%s", builder_get_exec_dir(), BL_API_DIR);
+	str_buf_append_fmt(&libdir, "{s}/{s}", builder_get_exec_dir(), BL_API_DIR);
 	if (!normalize_path2(&libdir)) {
 		builder_error(
 		    "BL API directory not found. (Expected location is '%.*s').", libdir.len, libdir.ptr);
@@ -110,7 +110,7 @@ bool setup(const str_t filepath, const char *triple)
 		str_buf_t bakfilepath = get_tmp_str();
 		char      date[26];
 		date_time(date, static_arrlenu(date), "%d-%m-%Y_%H-%M-%S");
-		str_buf_append_fmt(&bakfilepath, "%.*s.%s", ctx.filepath.len, ctx.filepath.ptr, date);
+		str_buf_append_fmt(&bakfilepath, "{str}.{s}", ctx.filepath, date);
 		builder_warning("Creating backup of previous configuration file at '%.*s'.",
 		                bakfilepath.len,
 		                bakfilepath.ptr);
@@ -148,42 +148,35 @@ str_buf_t make_content(const struct context *ctx)
 	"# Automatically generated configuration file used by 'blc' compiler.\n"                       \
 	"# To generate new one use 'blc --configure' command.\n\n"                                     \
 	"# Compiler version, this should match the executable version 'blc --version'.\n"              \
-	"version: \"%.*s\"\n\n"                                                                        \
+	"version: \"{str}\"\n\n"                                                                       \
 	"# Main API directory containing all modules and source files. This option is mandatory.\n"    \
-	"lib_dir: \"%.*s\"\n"                                                                          \
+	"lib_dir: \"{str}\"\n"                                                                         \
 	"\n"                                                                                           \
 	"# Current default environment configuration.\n"                                               \
-	"%s:\n"                                                                                        \
+	"{s}:\n"                                                                                       \
 	"    # Platform operating system preload file (relative to 'lib_dir').\n"                      \
-	"    preload_file: \"%.*s\"\n"                                                                 \
+	"    preload_file: \"{str}\"\n"                                                                \
 	"    # Optional path to the linker executable, 'lld' linker is used by default on some "       \
 	"platforms.\n"                                                                                 \
-	"    linker_executable: \"%.*s\"\n"                                                            \
+	"    linker_executable: \"{str}\"\n"                                                           \
 	"    # Linker flags and options used to produce executable binaries.\n"                        \
-	"    linker_opt_exec: \"%.*s\"\n"                                                              \
+	"    linker_opt_exec: \"{str}\"\n"                                                             \
 	"    # Linker flags and options used to produce shared libraries.\n"                           \
-	"    linker_opt_shared: \"%.*s\"\n"                                                            \
+	"    linker_opt_shared: \"{str}\"\n"                                                           \
 	"    # File system location where linker should lookup for dependencies.\n"                    \
-	"    linker_lib_path: \"%.*s\"\n\n"
+	"    linker_lib_path: \"{str}\"\n\n"
 
 	str_buf_t tmp = get_tmp_str();
 	str_buf_append_fmt(&tmp,
-	                   TEMPLATE,
-	                   ctx->version.len,
-	                   ctx->version.ptr,
-	                   ctx->lib_dir.len,
-	                   ctx->lib_dir.ptr,
-	                   ctx->triple,
-	                   ctx->preload_file.len,
-	                   ctx->preload_file.ptr,
-	                   ctx->linker_executable.len,
-	                   ctx->linker_executable.ptr,
-	                   ctx->linker_opt_exec.len,
-	                   ctx->linker_opt_exec.ptr,
-	                   ctx->linker_opt_shared.len,
-	                   ctx->linker_opt_shared.ptr,
-	                   ctx->linker_lib_path.len,
-	                   ctx->linker_lib_path.ptr);
+	                    TEMPLATE,
+	                    ctx->version,
+	                    ctx->lib_dir,
+	                    ctx->triple,
+	                    ctx->preload_file,
+	                    ctx->linker_executable,
+	                    ctx->linker_opt_exec,
+	                    ctx->linker_opt_shared,
+	                    ctx->linker_lib_path);
 	return tmp;
 
 #undef TEMPLATE
@@ -244,7 +237,7 @@ bool x86_64_pc_linux_gnu(struct context *ctx)
 	put_tmp_str(ldpath);
 
 	str_buf_t runtime = get_tmp_str();
-	str_buf_append_fmt(&runtime, "%s/../%s", builder_get_exec_dir(), RUNTIME_PATH);
+	str_buf_append_fmt(&runtime, "{s}/../{s}", builder_get_exec_dir(), RUNTIME_PATH);
 	if (!normalize_path2(&runtime)) {
 		builder_error(
 		    "Runtime loader not found. (Expected location is '%.*s').", runtime.len, runtime.ptr);
@@ -291,26 +284,18 @@ static bool x86_64_apple_darwin(struct context *ctx)
 				if (!dir_exists(MACOS_SDK)) {
 					builder_error("Cannot find macOS SDK on '%s'.", MACOS_SDK);
 				} else {
-					str_buf_append_fmt(&libpath, ":%s", MACOS_SDK);
+					str_buf_append_fmt(&libpath, ":{s}", MACOS_SDK);
 				}
 			}
 		}
-		str_buf_append_fmt(&optexec,
-		                   "-macosx_version_min %.*s -sdk_version %.*s ",
-		                   osver.len,
-		                   osver.ptr,
-		                   osver.len,
-		                   osver.ptr);
-		str_buf_append_fmt(&optshared,
-		                   "-macosx_version_min %.*s -sdk_version %.*s ",
-		                   osver.len,
-		                   osver.ptr,
-		                   osver.len,
-		                   osver.ptr);
+		str_buf_append_fmt(
+		    &optexec, "-macosx_version_min {str} -sdk_version {str} ", osver, osver);
+		str_buf_append_fmt(
+		    &optshared, "-macosx_version_min {str} -sdk_version {str} ", osver, osver);
 	}
 
-	str_buf_append_fmt(&optexec, "%s", LINKER_OPT_EXEC);
-	str_buf_append_fmt(&optshared, "%s", LINKER_OPT_SHARED);
+	str_buf_append_fmt(&optexec, "{s}", LINKER_OPT_EXEC);
+	str_buf_append_fmt(&optshared, "{s}", LINKER_OPT_SHARED);
 
 	ctx->linker_lib_path   = scdup2(&ctx->cache, libpath);
 	ctx->linker_opt_exec   = scdup2(&ctx->cache, optexec);
@@ -362,22 +347,14 @@ static bool arm64_apple_darwin(struct context *ctx)
 				if (!dir_exists(MACOS_SDK)) {
 					builder_error("Cannot find macOS SDK on '%s'.", MACOS_SDK);
 				} else {
-					str_buf_append_fmt(&libpath, ":%s", MACOS_SDK);
+					str_buf_append_fmt(&libpath, ":{s}", MACOS_SDK);
 				}
 			}
 		}
-		str_buf_append_fmt(&optexec,
-		                   "-macosx_version_min %.*s -sdk_version %.*s ",
-		                   osver.len,
-		                   osver.ptr,
-		                   osver.len,
-		                   osver.ptr);
-		str_buf_append_fmt(&optshared,
-		                   "-macosx_version_min %.*s -sdk_version %.*s ",
-		                   osver.len,
-		                   osver.ptr,
-		                   osver.len,
-		                   osver.ptr);
+		str_buf_append_fmt(
+		    &optexec, "-macosx_version_min {str} -sdk_version {str} ", osver, osver);
+		str_buf_append_fmt(
+		    &optshared, "-macosx_version_min {str} -sdk_version {str} ", osver, osver);
 	}
 
 	str_buf_append(&optexec, LINKER_OPT_EXEC);

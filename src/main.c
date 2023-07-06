@@ -59,7 +59,7 @@ static bool generate_conf(void)
 	target_triple_to_string(&triple, triple_str, static_arrlenu(triple_str));
 	blog("Triple: %s", triple_str);
 	str_buf_t filepath = get_tmp_str();
-	str_buf_append_fmt2(&filepath, "{s}/../{s}", builder_get_exec_dir(), BL_CONFIG_FILE);
+	str_buf_append_fmt(&filepath, "{s}/../{s}", builder_get_exec_dir(), BL_CONFIG_FILE);
 	const bool state = setup(str_buf_view(filepath), triple_str);
 	put_tmp_str(filepath);
 	return state;
@@ -69,10 +69,10 @@ static bool load_conf_file(const char *custom_conf_filepath)
 {
 	str_buf_t filepath = get_tmp_str();
 	if (custom_conf_filepath) {
-		str_buf_append_fmt2(&filepath, "{s}", custom_conf_filepath);
+		str_buf_append_fmt(&filepath, "{s}", custom_conf_filepath);
 		builder_info("Using custom configuration file: '%.*s'", filepath.len, filepath.ptr);
 	} else {
-		str_buf_append_fmt2(&filepath, "{s}/../{s}", builder_get_exec_dir(), BL_CONFIG_FILE);
+		str_buf_append_fmt(&filepath, "{s}/../{s}", builder_get_exec_dir(), BL_CONFIG_FILE);
 	}
 	if (!file_exists2(filepath)) {
 		if (custom_conf_filepath) {

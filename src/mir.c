@@ -2201,7 +2201,7 @@ struct mir_type *create_type_null(struct context *ctx, struct mir_type *base_typ
 	str_buf_append(&name, cstr("n."));
 	str_buf_append(&name, base_type->id.str);
 
-	hash_t hash = strhash2(name);
+	hash_t hash = strhash(name);
 	if (is_cached) {
 		tmp = lookup_type(ctx, hash);
 		if (tmp) goto DONE;
@@ -2232,7 +2232,7 @@ struct mir_type *create_type_ptr(struct context *ctx, struct mir_type *src_type)
 	str_buf_append(&name, cstr("p."));
 	str_buf_append(&name, src_type->id.str);
 
-	hash_t hash = strhash2(name);
+	hash_t hash = strhash(name);
 	if (is_cached) {
 		tmp = lookup_type(ctx, hash);
 		if (tmp) goto DONE;
@@ -2258,9 +2258,9 @@ struct mir_type *create_type_poly(struct context *ctx, struct id *user_id, bool 
 	bassert(user_id);
 
 	str_buf_t name = get_tmp_str();
-	str_buf_append_fmt2(&name, "?{s}.{str}", is_master ? "M" : "S", user_id->str);
+	str_buf_append_fmt(&name, "?{s}.{str}", is_master ? "M" : "S", user_id->str);
 
-	hash_t hash = strhash2(name);
+	hash_t hash = strhash(name);
 
 	struct mir_type *tmp = lookup_type(ctx, hash);
 	if (tmp) goto DONE;
@@ -2287,7 +2287,7 @@ struct mir_type *create_type_placeholder(struct context *ctx)
 	// We call this only once and then reuse the type, no need to use cache here.
 
 	str_t  name = cstr("@");
-	hash_t hash = strhash2(name);
+	hash_t hash = strhash(name);
 
 	struct mir_type *tmp =
 	    create_type(ctx, MIR_TYPE_PLACEHOLDER, &builtin_ids[BUILTIN_ID_TYPE_PLACEHOLDER]);
@@ -2312,10 +2312,10 @@ struct mir_type *create_type_fn(struct context *ctx, create_type_fn_args_t *args
 		}
 	}
 	str_buf_append(&name, cstr(")"));
-	const hash_t argument_hash = strhash2(name);
+	const hash_t argument_hash = strhash(name);
 
 	str_buf_append(&name, ret_type->id.str);
-	const hash_t hash = strhash2(name);
+	const hash_t hash = strhash(name);
 
 	struct mir_type *tmp          = create_type(ctx, MIR_TYPE_FN, args->id);
 	tmp->id.str                   = scdup2(&ctx->assembly->string_cache, name);
@@ -2343,7 +2343,7 @@ create_type_fn_group(struct context *ctx, struct id *user_id, mir_types_t *varia
 	// Note we use function hashses directly to have smaller strings processed...
 	for (usize i = 0; i < sarrlenu(variants); ++i) {
 		struct mir_type *variant = sarrpeek(variants, i);
-		str_buf_append_fmt2(&name, "{u32}", variant->id.hash);
+		str_buf_append_fmt(&name, "{u32}", variant->id.hash);
 		if (i != sarrlenu(variants) - 1) {
 			str_buf_append(&name, cstr(","));
 		}
@@ -2353,7 +2353,7 @@ create_type_fn_group(struct context *ctx, struct id *user_id, mir_types_t *varia
 	// No caching here...
 
 	struct mir_type *tmp        = create_type(ctx, MIR_TYPE_FN_GROUP, user_id);
-	tmp->id.hash                = strhash2(name);
+	tmp->id.hash                = strhash(name);
 	tmp->id.str                 = scdup2(&ctx->assembly->string_cache, name);
 	tmp->data.fn_group.variants = variants;
 
@@ -2375,9 +2375,9 @@ create_type_array(struct context *ctx, struct id *user_id, struct mir_type *elem
 	str_buf_t name = get_tmp_str();
 
 	const str_t elem_type_name = elem_type->id.str;
-	str_buf_append_fmt2(&name, "{u64}.{str}", (unsigned long long)len, elem_type_name);
+	str_buf_append_fmt(&name, "{u64}.{str}", (unsigned long long)len, elem_type_name);
 
-	const hash_t hash = strhash2(name);
+	const hash_t hash = strhash(name);
 
 	if (can_use_cache) {
 		result = lookup_type(ctx, hash);
@@ -2407,7 +2407,7 @@ static void generate_struct_signature(str_buf_t *name, create_type_struct_args_t
 	static u64 serial = 0;
 	if (args->user_id) {
 		const str_t user_name = args->user_id->str;
-		str_buf_append_fmt2(
+		str_buf_append_fmt(
 		    name, "{s}.{u64}.{str}", args->is_union ? "u" : "s", serial++, user_name);
 		return;
 	}
@@ -2435,7 +2435,7 @@ create_type_struct_incomplete(struct context *ctx, struct id *user_id, bool is_u
 
 	// The user_id is required so we can use cache every time? See comments in create_type_struct.
 
-	const hash_t     hash   = strhash2(name);
+	const hash_t     hash   = strhash(name);
 	struct mir_type *result = lookup_type(ctx, hash);
 	if (result) goto DONE;
 
@@ -2473,7 +2473,7 @@ struct mir_type *create_type_struct(struct context *ctx, create_type_struct_args
 			can_use_cache = args->is_multiple_return_type;
 		}
 
-		const hash_t hash = strhash2(name);
+		const hash_t hash = strhash(name);
 
 		if (can_use_cache) {
 			result = lookup_type(ctx, hash);
@@ -2568,7 +2568,7 @@ struct mir_type *create_type_slice(struct context    *ctx,
 		const str_t len_name  = len_type->id.str;
 		const str_t elem_name = elem_ptr_type->id.str;
 
-		str_buf_append_fmt2(&name, "{str}.{{{str},{str}}}", prefix, len_name, elem_name);
+		str_buf_append_fmt(&name, "{str}.{{{str},{str}}}", prefix, len_name, elem_name);
 		break;
 	}
 
@@ -2577,7 +2577,7 @@ struct mir_type *create_type_slice(struct context    *ctx,
 	}
 
 	bassert(name.len);
-	const hash_t hash = strhash2(name);
+	const hash_t hash = strhash(name);
 
 	if (can_use_cache) {
 		result = lookup_type(ctx, hash);
@@ -2638,14 +2638,14 @@ create_type_struct_dynarr(struct context *ctx, struct id *user_id, struct mir_ty
 	const bool can_use_cache = elem_ptr_type->can_use_cache;
 	str_buf_t  name          = get_tmp_str();
 
-	str_buf_append_fmt2(&name,
-	                    "da.{{{str},{str},{str},{str}}}",
-	                    len_type->id.str,
-	                    elem_ptr_type->id.str,
-	                    allocated_type->id.str,
-	                    allocator_type->id.str);
+	str_buf_append_fmt(&name,
+	                   "da.{{{str},{str},{str},{str}}}",
+	                   len_type->id.str,
+	                   elem_ptr_type->id.str,
+	                   allocated_type->id.str,
+	                   allocator_type->id.str);
 
-	const hash_t hash = strhash2(name);
+	const hash_t hash = strhash(name);
 	if (can_use_cache) {
 		result = lookup_type(ctx, hash);
 		if (result) goto DONE;
@@ -2720,12 +2720,12 @@ static struct mir_type *create_type_enum(struct context *ctx, create_type_enum_a
 	static u64 serial = 0;
 	if (args->user_id) {
 		const str_t user_name = args->user_id->str;
-		str_buf_append_fmt2(&name, "e{u64}.{str}", serial++, user_name);
+		str_buf_append_fmt(&name, "e{u64}.{str}", serial++, user_name);
 	} else {
-		str_buf_append_fmt2(&name, "e{u64}", serial++);
+		str_buf_append_fmt(&name, "e{u64}", serial++);
 	}
 
-	const hash_t hash = strhash2(name);
+	const hash_t hash = strhash(name);
 
 	struct mir_type *result = lookup_type(ctx, hash);
 	if (result) goto DONE;
@@ -5073,8 +5073,8 @@ struct result analyze_instr_phi(struct context *ctx, struct mir_instr_phi *phi)
 	bassert(phi->incoming_blocks && phi->incoming_values);
 	bassert(sarrlenu(phi->incoming_values) == sarrlenu(phi->incoming_blocks));
 	// @Performance: Recreating small arrays here is probably faster then removing elements?
-	mir_instrs_t	             *new_blocks      = arena_alloc(&ctx->assembly->arenas.sarr);
-	mir_instrs_t	             *new_values      = arena_alloc(&ctx->assembly->arenas.sarr);
+	mir_instrs_t                 *new_blocks      = arena_alloc(&ctx->assembly->arenas.sarr);
+	mir_instrs_t                 *new_values      = arena_alloc(&ctx->assembly->arenas.sarr);
 	const struct mir_instr_block *phi_owner_block = phi->base.owner_block;
 	struct mir_type              *type            = NULL;
 	bool                          is_comptime     = true;
@@ -8024,8 +8024,8 @@ struct result analyze_instr_call_loc(struct context *ctx, struct mir_instr_call_
 
 	// Generate source location hash.
 	str_buf_t str_hash = get_tmp_str();
-	str_buf_append_fmt2(&str_hash, "{s}{u32}", filepath, (u32)loc->call_location->line);
-	const hash_t hash = strhash2(str_hash);
+	str_buf_append_fmt(&str_hash, "{s}{u32}", filepath, (u32)loc->call_location->line);
+	const hash_t hash = strhash(str_hash);
 	put_tmp_str(str_hash);
 
 	vm_write_string(ctx->vm, dest_file_type, dest_file, make_str_from_c(filepath));
@@ -8926,7 +8926,7 @@ struct result analyze_call_stage_generate(struct context *ctx, struct mir_instr_
 				}
 
 				str_buf_t type_name = mir_type2str(matching_type, /* prefer_name */ true);
-				str_buf_append_fmt2(
+				str_buf_append_fmt(
 				    &debug_replacement_str, "{str} = {str}; ", poly_type->user_id->str, type_name);
 				put_tmp_str(type_name);
 
@@ -12632,7 +12632,7 @@ static void _type2str(str_buf_t *buf, const struct mir_type *type, bool prefer_n
 		for (usize i = 0; i < sarrlenu(variants); ++i) {
 			struct mir_variant *variant = sarrpeek(variants, i);
 			const str_t         name    = variant->id->str;
-			str_buf_append_fmt2(buf, "{str} :: {s64}", name, variant->value);
+			str_buf_append_fmt(buf, "{str} :: {s64}", name, variant->value);
 			if (i < sarrlenu(variants) - 1) str_buf_append(buf, cstr(", "));
 		}
 		str_buf_append(buf, cstr("}"));
@@ -12671,7 +12671,7 @@ static void _type2str(str_buf_t *buf, const struct mir_type *type, bool prefer_n
 	}
 
 	case MIR_TYPE_ARRAY: {
-		str_buf_append_fmt2(buf, "[{u64}]", (u64)type->data.array.len);
+		str_buf_append_fmt(buf, "[{u64}]", (u64)type->data.array.len);
 		_type2str(buf, type->data.array.elem_type, true);
 		break;
 	}
@@ -12708,8 +12708,10 @@ static void provide_builtin_arch(struct context *ctx)
 	mir_variants_t  *variants = arena_alloc(&ctx->assembly->arenas.sarr);
 	static struct id ids[static_arrlenu(arch_names)];
 	for (usize i = 0; i < static_arrlenu(arch_names); ++i) {
-		str_t name = (str_t){.len = (s32)strlen(arch_names[i])};
-		name.ptr   = str_toupper(scdup(&ctx->assembly->string_cache, arch_names[i], name.len));
+		str_t name = make_str_from_c(arch_names[i]);
+		name       = scdup2(&ctx->assembly->string_cache, name);
+		name       = str_toupper(name);
+
 		struct mir_variant *variant = create_variant(ctx, id_init(&ids[i], name), bt->t_s32, i);
 		sarrput(variants, variant);
 		provide_builtin_variant(ctx, scope, variant);
@@ -12736,8 +12738,10 @@ static void provide_builtin_os(struct context *ctx)
 	mir_variants_t  *variants = arena_alloc(&ctx->assembly->arenas.sarr);
 	static struct id ids[static_arrlenu(os_names)];
 	for (usize i = 0; i < static_arrlenu(os_names); ++i) {
-		str_t name = (str_t){.len = (s32)strlen(os_names[i])};
-		name.ptr   = str_toupper(scdup(&ctx->assembly->string_cache, os_names[i], name.len));
+		str_t name = make_str_from_c(os_names[i]);
+		name       = scdup2(&ctx->assembly->string_cache, name);
+		name       = str_toupper(name);
+
 		struct mir_variant *variant = create_variant(ctx, id_init(&ids[i], name), bt->t_s32, i);
 		sarrput(variants, variant);
 		provide_builtin_variant(ctx, scope, variant);
@@ -12764,8 +12768,10 @@ static void provide_builtin_env(struct context *ctx)
 	mir_variants_t  *variants = arena_alloc(&ctx->assembly->arenas.sarr);
 	static struct id ids[static_arrlenu(env_names)];
 	for (usize i = 0; i < static_arrlenu(env_names); ++i) {
-		str_t name = (str_t){.len = (s32)strlen(env_names[i])};
-		name.ptr   = str_toupper(scdup(&ctx->assembly->string_cache, env_names[i], name.len));
+		str_t name = make_str_from_c(env_names[i]);
+		name       = scdup2(&ctx->assembly->string_cache, name);
+		name       = str_toupper(name);
+
 		struct mir_variant *variant = create_variant(ctx, id_init(&ids[i], name), bt->t_s32, i);
 		sarrput(variants, variant);
 		provide_builtin_variant(ctx, scope, variant);

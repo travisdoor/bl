@@ -236,29 +236,6 @@ void str_buf_append_fmt(str_buf_t *buf, const char *fmt, ...)
 	va_list args, args2;
 	va_start(args, fmt);
 	va_copy(args2, args);
-	const s32 len = vsnprintf(NULL, 0, fmt, args);
-	bassert(len > 0);
-
-	str_buf_setcap(buf, buf->len + len);
-
-	const s32 wlen = vsprintf(&buf->ptr[buf->len], fmt, args2);
-	bassert(wlen == len);
-	(void)wlen;
-
-	buf->len += len;
-
-	bassert(buf->len < buf->cap);
-	buf->ptr[buf->len] = '\0';
-
-	va_end(args2);
-	va_end(args);
-}
-
-void str_buf_append_fmt2(str_buf_t *buf, const char *fmt, ...)
-{
-	va_list args, args2;
-	va_start(args, fmt);
-	va_copy(args2, args);
 	const s32 len = bvsnprint(NULL, 0, fmt, args);
 	bassert(len > 0);
 
@@ -331,13 +308,14 @@ s32 bvsnprint(char *buf, s32 buf_len, const char *fmt, va_list args)
 			goto PASSED;
 		}
 		if (str_match(f, cstr("u64"))) {
-			const u64 s       = va_arg(args, u64);
-			const s32 tmp_len = snprintf(tmp, static_arrlenu(tmp), "%llu", s);
+			const u64 s = va_arg(args, u64);
 			if (buf) {
-				const s32 len = MIN(space_left, tmp_len);
+				const s32 tmp_len = snprintf(tmp, static_arrlenu(tmp), "%llu", s);
+				const s32 len     = MIN(space_left, tmp_len);
 				memcpy(&buf[buf_index], tmp, len);
 				buf_index += len;
 			} else {
+				const s32 tmp_len = snprintf(NULL, 0, "%llu", s);
 				buf_index += tmp_len;
 			}
 
@@ -345,13 +323,14 @@ s32 bvsnprint(char *buf, s32 buf_len, const char *fmt, va_list args)
 			goto PASSED;
 		}
 		if (str_match(f, cstr("s64"))) {
-			const s64 s       = va_arg(args, s64);
-			const s32 tmp_len = snprintf(tmp, static_arrlenu(tmp), "%lli", s);
+			const s64 s = va_arg(args, s64);
 			if (buf) {
-				const s32 len = MIN(space_left, tmp_len);
+				const s32 tmp_len = snprintf(tmp, static_arrlenu(tmp), "%lli", s);
+				const s32 len     = MIN(space_left, tmp_len);
 				memcpy(&buf[buf_index], tmp, len);
 				buf_index += len;
 			} else {
+				const s32 tmp_len = snprintf(NULL, 0, "%lli", s);
 				buf_index += tmp_len;
 			}
 
@@ -359,13 +338,14 @@ s32 bvsnprint(char *buf, s32 buf_len, const char *fmt, va_list args)
 			goto PASSED;
 		}
 		if (str_match(f, cstr("u32"))) {
-			const u32 s       = va_arg(args, u32);
-			const s32 tmp_len = snprintf(tmp, static_arrlenu(tmp), "%u", s);
+			const u32 s = va_arg(args, u32);
 			if (buf) {
-				const s32 len = MIN(space_left, tmp_len);
+				const s32 tmp_len = snprintf(tmp, static_arrlenu(tmp), "%u", s);
+				const s32 len     = MIN(space_left, tmp_len);
 				memcpy(&buf[buf_index], tmp, len);
 				buf_index += len;
 			} else {
+				const s32 tmp_len = snprintf(NULL, 0, "%u", s);
 				buf_index += tmp_len;
 			}
 
@@ -420,12 +400,10 @@ str_buf_t _str_buf_dup(char *ptr, s32 len)
 // Utils
 // =================================================================================================
 
-char *str_toupper(char *str)
+str_t str_toupper(str_t str)
 {
-	char *s = str;
-	while (*s) {
-		(*s) = toupper(*s);
-		s++;
+	for (s32 i = 0; i < str.len; ++i) {
+		str.ptr[i] = toupper(str.ptr[i]);
 	}
 	return str;
 }
@@ -506,7 +484,7 @@ bool search_source_file(const char *filepath,
 
 	// Lookup in working directory.
 	if (wdir && isflag(flags, SEARCH_FLAG_WDIR)) {
-		str_buf_append_fmt2(&tmp, "{s}" PATH_SEPARATOR "{s}", wdir, filepath);
+		str_buf_append_fmt(&tmp, "{s}" PATH_SEPARATOR "{s}", wdir, filepath);
 		if (brealpath(str_to_c(tmp), tmp_result, static_arrlenu(tmp_result))) {
 			result = &tmp_result[0];
 			goto FOUND;
@@ -516,7 +494,7 @@ bool search_source_file(const char *filepath,
 	// file has not been found in current working directory -> search in LIB_DIR
 	if (builder_get_lib_dir() && isflag(flags, SEARCH_FLAG_LIB_DIR)) {
 		str_buf_clr(&tmp);
-		str_buf_append_fmt2(&tmp, "{s}" PATH_SEPARATOR "{s}", builder_get_lib_dir(), filepath);
+		str_buf_append_fmt(&tmp, "{s}" PATH_SEPARATOR "{s}", builder_get_lib_dir(), filepath);
 		if (brealpath(str_to_c(tmp), tmp_result, static_arrlenu(tmp_result))) {
 			result = &tmp_result[0];
 			goto FOUND;
@@ -534,7 +512,7 @@ bool search_source_file(const char *filepath,
 				p[0] = 0;
 			}
 			str_buf_clr(&tmp);
-			str_buf_append_fmt2(&tmp, "{s}" PATH_SEPARATOR "{s}", s, filepath);
+			str_buf_append_fmt(&tmp, "{s}" PATH_SEPARATOR "{s}", s, filepath);
 			if (brealpath(str_to_c(tmp), tmp_result, static_arrlenu(tmp_result)))
 				result = &tmp_result[0];
 			s = p + 1;
@@ -749,7 +727,7 @@ bool copy_dir(const char *src, const char *dest)
 	char *_dest = strdup(dest);
 	unix_path_to_win(_src, strlen(_src));
 	unix_path_to_win(_dest, strlen(_dest));
-	str_buf_append_fmt2(&tmp, "xcopy /H /E /Y /I \"{s}\" \"{s}\" 2>nul 1>nul", _src, _dest);
+	str_buf_append_fmt(&tmp, "xcopy /H /E /Y /I \"{s}\" \"{s}\" 2>nul 1>nul", _src, _dest);
 	free(_src);
 	free(_dest);
 #else
@@ -769,7 +747,7 @@ bool copy_file(const char *src, const char *dest)
 	char *_dest = strdup(dest);
 	unix_path_to_win(_src, strlen(_src));
 	unix_path_to_win(_dest, strlen(_dest));
-	str_buf_append_fmt2(&tmp, "copy /Y /B \"{s}\" \"{s}\" 2>nul 1>nul", _src, _dest);
+	str_buf_append_fmt(&tmp, "copy /Y /B \"{s}\" \"{s}\" 2>nul 1>nul", _src, _dest);
 	free(_src);
 	free(_dest);
 #else
@@ -786,7 +764,7 @@ bool remove_dir(const char *path)
 #if BL_PLATFORM_WIN
 	char *_path = strdup(path);
 	unix_path_to_win(_path, strlen(_path));
-	str_buf_append_fmt2(&tmp, "del \"{s}\" /q /s 2>nul 1>nul", _path);
+	str_buf_append_fmt(&tmp, "del \"{s}\" /q /s 2>nul 1>nul", _path);
 	free(_path);
 #else
 	str_buf_append_fmt2(&tmp, "rm -rf {s}", path);
@@ -888,7 +866,7 @@ str_buf_t platform_lib_name2(const str_t name)
 #elif BL_PLATFORM_LINUX
 	str_buf_append_fmt2(&tmp, "lib{str}.so", name);
 #elif BL_PLATFORM_WIN
-	str_buf_append_fmt2(&tmp, "{str}.dll", name);
+	str_buf_append_fmt(&tmp, "{str}.dll", name);
 #else
 	babort("Unknown dynamic library format.");
 #endif
@@ -1078,7 +1056,7 @@ const char *read_config(struct config       *config,
 	str_buf_t fullpath = get_tmp_str();
 	char      triple_str[128];
 	target_triple_to_string(&target->triple, triple_str, static_arrlenu(triple_str));
-	str_buf_append_fmt2(&fullpath, "/{s}/{s}", triple_str, path);
+	str_buf_append_fmt(&fullpath, "/{s}/{s}", triple_str, path);
 	const char *result = confreads(config, str_to_c(fullpath), default_value);
 	put_tmp_str(fullpath);
 	return result;

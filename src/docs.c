@@ -129,9 +129,9 @@ void doc_decl_entity(struct context *ctx, struct ast *decl)
 
 	str_buf_t full_name = get_tmp_str();
 	if (scope_name.len) {
-		str_buf_append_fmt2(&full_name, "{str}.{str}", scope_name, name);
+		str_buf_append_fmt(&full_name, "{str}.{str}", scope_name, name);
 	} else {
-		str_buf_append_fmt2(&full_name, "{str}", name);
+		str_buf_append_fmt(&full_name, "{str}", name);
 	}
 
 	H1(ctx->stream, str_to_c(full_name));
@@ -447,15 +447,14 @@ void doc(struct context *ctx, struct ast *node)
 void doc_unit(struct context *ctx, struct unit *unit)
 {
 	if (!unit->filename) return;
-	str_buf_t unit_name = get_tmp_str();
-	str_buf_append_fmt(
-	    &unit_name, "%.*s", (s32)strlen(unit->filename) - 3, unit->filename); // -3 ('.bl')
+	str_buf_t   unit_name = get_tmp_str();
+	const str_t name      = make_str(unit->filename, (s32)strlen(unit->filename) - 3); // -3 ('.bl')
+	str_buf_append_fmt(&unit_name, "{str}", name);
 	ctx->unit = unit;
 
 	// write unit global docs
 	str_buf_t export_file = get_tmp_str();
-	str_buf_append_fmt(
-	    &export_file, "%s/%.*s.md", ctx->output_directory, unit_name.len, unit_name.ptr);
+	str_buf_append_fmt(&export_file, "{s}/{str}.md", ctx->output_directory, unit_name);
 	FILE *f = fopen(str_to_c(export_file), "w");
 	if (f == NULL) {
 		builder_error("Cannot open file '%s'", export_file);

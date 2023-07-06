@@ -208,8 +208,10 @@ _print_const_value(struct context *ctx, struct mir_type *type, vm_stack_ptr_t va
 				case '\n':
 					str_buf_append(&tmp, cstr("\\n"));
 					break;
-				default:
-					str_buf_append_fmt(&tmp, "%c", c);
+				default: {
+					char character[1] = {c};
+					str_buf_append(&tmp, make_str(character, 1));
+				}
 				}
 			}
 			fprintf(ctx->stream, "%.*s\"}", tmp.len, tmp.ptr);

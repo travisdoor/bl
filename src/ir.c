@@ -271,7 +271,7 @@ static inline void emit_DI_instr_loc(struct context *ctx, struct mir_instr *inst
 
 static inline LLVMValueRef llvm_lookup_fn(struct context *ctx, const str_t name)
 {
-	const hash_t hash  = strhash2(name);
+	const hash_t hash  = strhash(name);
 	const s64    index = hmgeti(ctx->llvm_fn_cache, hash);
 	if (index == -1) return NULL;
 	return ctx->llvm_fn_cache[index].value;
@@ -279,7 +279,7 @@ static inline LLVMValueRef llvm_lookup_fn(struct context *ctx, const str_t name)
 
 static inline LLVMValueRef llvm_cache_fn(struct context *ctx, str_t name, LLVMValueRef llvm_fn)
 {
-	const hash_t hash = strhash2(name);
+	const hash_t hash = strhash(name);
 	hmput(ctx->llvm_fn_cache, hash, llvm_fn);
 	return llvm_fn;
 }
@@ -868,7 +868,7 @@ LLVMValueRef emit_const_string(struct context *ctx, const str_t s)
 	struct mir_type *type     = ctx->builtin_types->t_string_literal;
 	LLVMValueRef     llvm_str = NULL;
 	if (s.len) {
-		const hash_t hash  = strhash2(s);
+		const hash_t hash  = strhash(s);
 		const s64    index = hmgeti(ctx->gstring_cache, hash);
 		if (index != -1) {
 			llvm_str = ctx->gstring_cache[index].value;

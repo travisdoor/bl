@@ -61,8 +61,7 @@ static bool search_library(struct context *ctx,
 		builder_log("- Search in: '%s'", dir);
 
 		str_buf_clr(&lib_filepath);
-		str_buf_append_fmt(
-		    &lib_filepath, "%s/%.*s", dir, lib_platform_name.len, lib_platform_name.ptr);
+		str_buf_append_fmt(&lib_filepath, "{s}/{str}", dir, lib_platform_name);
 
 		if (file_exists2(lib_filepath)) {
 			builder_log("  Found: '%.*s'", lib_filepath.len, lib_filepath.ptr);

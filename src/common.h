@@ -178,7 +178,7 @@ bool str_match(str_t a, str_t b);
 	}                                                                                              \
 	(void)0
 
-char *str_toupper(char *str);
+str_t str_toupper(str_t str);
 s32   levenshtein(const str_t s1, const str_t s2);
 
 // String dynamic array buffer.
@@ -200,7 +200,6 @@ void str_buf_setcap(str_buf_t *buf, s32 cap);
 void      _str_buf_append(str_buf_t *buf, char *ptr, s32 len);
 str_buf_t _str_buf_dup(char *ptr, s32 len);
 void      str_buf_append_fmt(str_buf_t *buf, const char *fmt, ...);
-void      str_buf_append_fmt2(str_buf_t *buf, const char *fmt, ...);
 void      str_buf_clr(str_buf_t *buf); // This is also setting the zero
 
 static inline const char *_str_to_c_checked(char *ptr, s32 len)
@@ -343,28 +342,8 @@ struct id {
 };
 
 // Reference implementation: https://github.com/haipome/fnv/blob/master/fnv.c
-static inline hash_t strhash(const char *str)
-{
-#if 1
-	// FNV 32-bit hash
-	hash_t hash = 2166136261;
-	char   c;
-	while ((c = *str++)) {
-		hash = hash ^ (u8)c;
-		hash = hash * 16777619;
-	}
-	return hash;
-#else
-	hash_t hash = 5381;
-	char   c;
-	while ((c = *str++))
-		hash = ((hash << 5) + hash) + (hash_t)c;
-	return hash;
-#endif
-}
-
-#define strhash2(S) _strhash2((S).ptr, (S).len)
-static inline hash_t _strhash2(char *ptr, s32 len)
+#define strhash(S) _strhash((S).ptr, (S).len)
+static inline hash_t _strhash(char *ptr, s32 len)
 {
 	// FNV 32-bit hash
 	hash_t hash = 2166136261;
@@ -385,7 +364,7 @@ static inline hash_t hashcomb(hash_t first, hash_t second)
 static inline struct id *id_init(struct id *id, str_t str)
 {
 	bassert(id);
-	id->hash = strhash2(str);
+	id->hash = strhash(str);
 	id->str  = str;
 	return id;
 }
