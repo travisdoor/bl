@@ -2720,7 +2720,7 @@ static struct mir_type *create_type_enum(struct context *ctx, create_type_enum_a
 	static u64 serial = 0;
 	if (args->user_id) {
 		const str_t user_name = args->user_id->str;
-		str_buf_append_fmt2(&name, "e{u64}.{str{", serial++, user_name);
+		str_buf_append_fmt2(&name, "e{u64}.{str}", serial++, user_name);
 	} else {
 		str_buf_append_fmt2(&name, "e{u64}", serial++);
 	}
@@ -5073,8 +5073,8 @@ struct result analyze_instr_phi(struct context *ctx, struct mir_instr_phi *phi)
 	bassert(phi->incoming_blocks && phi->incoming_values);
 	bassert(sarrlenu(phi->incoming_values) == sarrlenu(phi->incoming_blocks));
 	// @Performance: Recreating small arrays here is probably faster then removing elements?
-	mir_instrs_t                 *new_blocks      = arena_alloc(&ctx->assembly->arenas.sarr);
-	mir_instrs_t                 *new_values      = arena_alloc(&ctx->assembly->arenas.sarr);
+	mir_instrs_t	             *new_blocks      = arena_alloc(&ctx->assembly->arenas.sarr);
+	mir_instrs_t	             *new_values      = arena_alloc(&ctx->assembly->arenas.sarr);
 	const struct mir_instr_block *phi_owner_block = phi->base.owner_block;
 	struct mir_type              *type            = NULL;
 	bool                          is_comptime     = true;
@@ -8024,7 +8024,7 @@ struct result analyze_instr_call_loc(struct context *ctx, struct mir_instr_call_
 
 	// Generate source location hash.
 	str_buf_t str_hash = get_tmp_str();
-	str_buf_append_fmt(&str_hash, "%s%d", filepath, loc->call_location->line);
+	str_buf_append_fmt2(&str_hash, "{s}{u32}", filepath, (u32)loc->call_location->line);
 	const hash_t hash = strhash2(str_hash);
 	put_tmp_str(str_hash);
 
@@ -8926,11 +8926,8 @@ struct result analyze_call_stage_generate(struct context *ctx, struct mir_instr_
 				}
 
 				str_buf_t type_name = mir_type2str(matching_type, /* prefer_name */ true);
-				str_buf_append_fmt(&debug_replacement_str,
-				                   "%.*s = %s; ",
-				                   poly_type->user_id->str.len,
-				                   poly_type->user_id->str.ptr,
-				                   str_to_c(type_name));
+				str_buf_append_fmt2(
+				    &debug_replacement_str, "{str} = {str}; ", poly_type->user_id->str, type_name);
 				put_tmp_str(type_name);
 
 				sarrput(queue, matching_type);
@@ -12635,7 +12632,7 @@ static void _type2str(str_buf_t *buf, const struct mir_type *type, bool prefer_n
 		for (usize i = 0; i < sarrlenu(variants); ++i) {
 			struct mir_variant *variant = sarrpeek(variants, i);
 			const str_t         name    = variant->id->str;
-			str_buf_append_fmt(buf, "%.*s :: %lld", name.len, name.ptr, variant->value);
+			str_buf_append_fmt2(buf, "{str} :: {s64}", name, variant->value);
 			if (i < sarrlenu(variants) - 1) str_buf_append(buf, cstr(", "));
 		}
 		str_buf_append(buf, cstr("}"));
@@ -12674,7 +12671,7 @@ static void _type2str(str_buf_t *buf, const struct mir_type *type, bool prefer_n
 	}
 
 	case MIR_TYPE_ARRAY: {
-		str_buf_append_fmt(buf, "[%llu]", (unsigned long long)type->data.array.len);
+		str_buf_append_fmt2(buf, "[{u64}]", (u64)type->data.array.len);
 		_type2str(buf, type->data.array.elem_type, true);
 		break;
 	}

@@ -281,6 +281,7 @@ s32 bvsnprint(char *buf, s32 buf_len, const char *fmt, va_list args)
 {
 	const char *i         = fmt;
 	s32         buf_index = 0;
+	char        tmp[64];
 
 	while (*i != '\0') {
 		if (buf && buf_index >= buf_len) break;
@@ -316,10 +317,8 @@ s32 bvsnprint(char *buf, s32 buf_len, const char *fmt, va_list args)
 			goto PASSED;
 		}
 		if (str_match(f, cstr("s32"))) {
-			const s32 s = va_arg(args, s32);
-			char      tmp[11];
-			itoa(s, tmp, 10);
-			const s32 tmp_len = (s32)strlen(tmp);
+			const s32 s       = va_arg(args, s32);
+			const s32 tmp_len = snprintf(tmp, static_arrlenu(tmp), "%i", s);
 			if (buf) {
 				const s32 len = MIN(space_left, tmp_len);
 				memcpy(&buf[buf_index], tmp, len);
@@ -332,10 +331,22 @@ s32 bvsnprint(char *buf, s32 buf_len, const char *fmt, va_list args)
 			goto PASSED;
 		}
 		if (str_match(f, cstr("u64"))) {
-			const u64 s = va_arg(args, u64);
-			char      tmp[20];
-			_i64toa(s, tmp, 10);
-			const s32 tmp_len = (s32)strlen(tmp);
+			const u64 s       = va_arg(args, u64);
+			const s32 tmp_len = snprintf(tmp, static_arrlenu(tmp), "%llu", s);
+			if (buf) {
+				const s32 len = MIN(space_left, tmp_len);
+				memcpy(&buf[buf_index], tmp, len);
+				buf_index += len;
+			} else {
+				buf_index += tmp_len;
+			}
+
+			i += f.len;
+			goto PASSED;
+		}
+		if (str_match(f, cstr("s64"))) {
+			const s64 s       = va_arg(args, s64);
+			const s32 tmp_len = snprintf(tmp, static_arrlenu(tmp), "%lli", s);
 			if (buf) {
 				const s32 len = MIN(space_left, tmp_len);
 				memcpy(&buf[buf_index], tmp, len);
@@ -348,10 +359,8 @@ s32 bvsnprint(char *buf, s32 buf_len, const char *fmt, va_list args)
 			goto PASSED;
 		}
 		if (str_match(f, cstr("u32"))) {
-			const u32 s = va_arg(args, u32);
-			char      tmp[20];
-			ultoa(s, tmp, 10);
-			const s32 tmp_len = (s32)strlen(tmp);
+			const u32 s       = va_arg(args, u32);
+			const s32 tmp_len = snprintf(tmp, static_arrlenu(tmp), "%u", s);
 			if (buf) {
 				const s32 len = MIN(space_left, tmp_len);
 				memcpy(&buf[buf_index], tmp, len);
@@ -497,7 +506,7 @@ bool search_source_file(const char *filepath,
 
 	// Lookup in working directory.
 	if (wdir && isflag(flags, SEARCH_FLAG_WDIR)) {
-		str_buf_append_fmt(&tmp, "%s" PATH_SEPARATOR "%s", wdir, filepath);
+		str_buf_append_fmt2(&tmp, "{s}" PATH_SEPARATOR "{s}", wdir, filepath);
 		if (brealpath(str_to_c(tmp), tmp_result, static_arrlenu(tmp_result))) {
 			result = &tmp_result[0];
 			goto FOUND;
@@ -507,7 +516,7 @@ bool search_source_file(const char *filepath,
 	// file has not been found in current working directory -> search in LIB_DIR
 	if (builder_get_lib_dir() && isflag(flags, SEARCH_FLAG_LIB_DIR)) {
 		str_buf_clr(&tmp);
-		str_buf_append_fmt(&tmp, "%s" PATH_SEPARATOR "%s", builder_get_lib_dir(), filepath);
+		str_buf_append_fmt2(&tmp, "{s}" PATH_SEPARATOR "{s}", builder_get_lib_dir(), filepath);
 		if (brealpath(str_to_c(tmp), tmp_result, static_arrlenu(tmp_result))) {
 			result = &tmp_result[0];
 			goto FOUND;
@@ -525,7 +534,7 @@ bool search_source_file(const char *filepath,
 				p[0] = 0;
 			}
 			str_buf_clr(&tmp);
-			str_buf_append_fmt(&tmp, "%s" PATH_SEPARATOR "%s", s, filepath);
+			str_buf_append_fmt2(&tmp, "{s}" PATH_SEPARATOR "{s}", s, filepath);
 			if (brealpath(str_to_c(tmp), tmp_result, static_arrlenu(tmp_result)))
 				result = &tmp_result[0];
 			s = p + 1;
@@ -740,11 +749,11 @@ bool copy_dir(const char *src, const char *dest)
 	char *_dest = strdup(dest);
 	unix_path_to_win(_src, strlen(_src));
 	unix_path_to_win(_dest, strlen(_dest));
-	str_buf_append_fmt(&tmp, "xcopy /H /E /Y /I \"%s\" \"%s\" 2>nul 1>nul", _src, _dest);
+	str_buf_append_fmt2(&tmp, "xcopy /H /E /Y /I \"{s}\" \"{s}\" 2>nul 1>nul", _src, _dest);
 	free(_src);
 	free(_dest);
 #else
-	str_buf_append_fmt(&tmp, "mkdir -p %s && cp -rf %s/* %s", dest, src, dest);
+	str_buf_append_fmt2(&tmp, "mkdir -p {s} && cp -rf {s}/* {s}", dest, src, dest);
 	blog("%s", tmp);
 #endif
 	const bool result = system(str_to_c(tmp)) == 0;
@@ -760,11 +769,11 @@ bool copy_file(const char *src, const char *dest)
 	char *_dest = strdup(dest);
 	unix_path_to_win(_src, strlen(_src));
 	unix_path_to_win(_dest, strlen(_dest));
-	str_buf_append_fmt(&tmp, "copy /Y /B \"%s\" \"%s\" 2>nul 1>nul", _src, _dest);
+	str_buf_append_fmt2(&tmp, "copy /Y /B \"{s}\" \"{s}\" 2>nul 1>nul", _src, _dest);
 	free(_src);
 	free(_dest);
 #else
-	str_buf_append_fmt(&tmp, "cp -f %s %s", src, dest);
+	str_buf_append_fmt2(&tmp, "cp -f {s} {s}", src, dest);
 #endif
 	const bool result = system(str_to_c(tmp)) == 0;
 	put_tmp_str(tmp);
@@ -777,10 +786,10 @@ bool remove_dir(const char *path)
 #if BL_PLATFORM_WIN
 	char *_path = strdup(path);
 	unix_path_to_win(_path, strlen(_path));
-	str_buf_append_fmt(&tmp, "del \"%s\" /q /s 2>nul 1>nul", _path);
+	str_buf_append_fmt2(&tmp, "del \"{s}\" /q /s 2>nul 1>nul", _path);
 	free(_path);
 #else
-	str_buf_append_fmt(&tmp, "rm -rf %s", path);
+	str_buf_append_fmt2(&tmp, "rm -rf {s}", path);
 #endif
 	const bool result = system(str_to_c(tmp)) == 0;
 	put_tmp_str(tmp);
@@ -875,11 +884,11 @@ str_buf_t platform_lib_name2(const str_t name)
 	if (!name.len) return tmp;
 
 #if BL_PLATFORM_MACOS
-	str_buf_append_fmt(&tmp, "lib%.*s.dylib", name.len, name.ptr);
+	str_buf_append_fmt2(&tmp, "lib{str}.dylib", name);
 #elif BL_PLATFORM_LINUX
-	str_buf_append_fmt(&tmp, "lib%.*s.so", name.len, name.ptr);
+	str_buf_append_fmt2(&tmp, "lib{str}.so", name);
 #elif BL_PLATFORM_WIN
-	str_buf_append_fmt(&tmp, "%.*s.dll", name.len, name.ptr);
+	str_buf_append_fmt2(&tmp, "{str}.dll", name);
 #else
 	babort("Unknown dynamic library format.");
 #endif
@@ -1069,7 +1078,7 @@ const char *read_config(struct config       *config,
 	str_buf_t fullpath = get_tmp_str();
 	char      triple_str[128];
 	target_triple_to_string(&target->triple, triple_str, static_arrlenu(triple_str));
-	str_buf_append_fmt(&fullpath, "/%s/%s", triple_str, path);
+	str_buf_append_fmt2(&fullpath, "/{s}/{s}", triple_str, path);
 	const char *result = confreads(config, str_to_c(fullpath), default_value);
 	put_tmp_str(fullpath);
 	return result;
