@@ -731,7 +731,7 @@ bool copy_dir(const char *src, const char *dest)
 	free(_src);
 	free(_dest);
 #else
-	str_buf_append_fmt2(&tmp, "mkdir -p {s} && cp -rf {s}/* {s}", dest, src, dest);
+	str_buf_append_fmt(&tmp, "mkdir -p {s} && cp -rf {s}/* {s}", dest, src, dest);
 	blog("%s", tmp);
 #endif
 	const bool result = system(str_to_c(tmp)) == 0;
@@ -751,7 +751,7 @@ bool copy_file(const char *src, const char *dest)
 	free(_src);
 	free(_dest);
 #else
-	str_buf_append_fmt2(&tmp, "cp -f {s} {s}", src, dest);
+	str_buf_append_fmt(&tmp, "cp -f {s} {s}", src, dest);
 #endif
 	const bool result = system(str_to_c(tmp)) == 0;
 	put_tmp_str(tmp);
@@ -767,7 +767,7 @@ bool remove_dir(const char *path)
 	str_buf_append_fmt(&tmp, "del \"{s}\" /q /s 2>nul 1>nul", _path);
 	free(_path);
 #else
-	str_buf_append_fmt2(&tmp, "rm -rf {s}", path);
+	str_buf_append_fmt(&tmp, "rm -rf {s}", path);
 #endif
 	const bool result = system(str_to_c(tmp)) == 0;
 	put_tmp_str(tmp);
@@ -862,9 +862,9 @@ str_buf_t platform_lib_name2(const str_t name)
 	if (!name.len) return tmp;
 
 #if BL_PLATFORM_MACOS
-	str_buf_append_fmt2(&tmp, "lib{str}.dylib", name);
+	str_buf_append_fmt(&tmp, "lib{str}.dylib", name);
 #elif BL_PLATFORM_LINUX
-	str_buf_append_fmt2(&tmp, "lib{str}.so", name);
+	str_buf_append_fmt(&tmp, "lib{str}.so", name);
 #elif BL_PLATFORM_WIN
 	str_buf_append_fmt(&tmp, "{str}.dll", name);
 #else
