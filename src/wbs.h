@@ -248,8 +248,7 @@ static bool _lookup_ucrt(struct wbs *ctx)
 static bool _lookup_um(struct wbs *ctx)
 {
 	str_buf_t tmppath = {0};
-	str_buf_append_fmt(
-	    &tmppath, "{str}/{s}", ctx->windows_sdk_path.len, ctx->windows_sdk_path.ptr, UM);
+	str_buf_append_fmt(&tmppath, "{str}/{s}", ctx->windows_sdk_path, UM);
 	if (!dir_exists2(tmppath)) {
 		builder_error(
 		    "UM lib-path not found. (Expected location is '%.*s')", tmppath.len, tmppath.ptr);

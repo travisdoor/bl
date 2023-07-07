@@ -53,7 +53,7 @@ static bool search_library(struct context *ctx,
 	bool found = false;
 
 	str_buf_t lib_filepath      = get_tmp_str();
-	str_buf_t lib_platform_name = platform_lib_name2(lib_name);
+	str_buf_t lib_platform_name = platform_lib_name(lib_name);
 
 	builder_log("- Looking for: '%.*s'", lib_platform_name.len, lib_platform_name.ptr);
 	for (usize i = 0; i < arrlenu(ctx->assembly->lib_paths); ++i) {

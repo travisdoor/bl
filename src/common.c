@@ -841,22 +841,7 @@ bool get_filename_from_filepath(char *buf, const usize l, const char *filepath)
 	return true;
 }
 
-void platform_lib_name(const char *name, char *buffer, usize max_len)
-{
-	if (!name) return;
-
-#if BL_PLATFORM_MACOS
-	snprintf(buffer, max_len, "lib%s.dylib", name);
-#elif BL_PLATFORM_LINUX
-	snprintf(buffer, max_len, "lib%s.so", name);
-#elif BL_PLATFORM_WIN
-	snprintf(buffer, max_len, "%s.dll", name);
-#else
-	babort("Unknown dynamic library format.");
-#endif
-}
-
-str_buf_t platform_lib_name2(const str_t name)
+str_buf_t platform_lib_name(const str_t name)
 {
 	str_buf_t tmp = get_tmp_str();
 	if (!name.len) return tmp;
@@ -1042,7 +1027,8 @@ str_buf_t execute(const char *cmd)
 	}
 	pclose(pipe);
 	if (tmp.len > 0 && tmp.ptr[tmp.len - 1] == '\n') {
-		tmp.ptr[tmp.len - 1] = '\0';
+		tmp.len -= 1;
+		tmp.ptr[tmp.len] = '\0';
 	}
 	return tmp;
 }
