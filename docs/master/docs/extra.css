@@ -4,4 +4,5 @@ body {
 }
 code {
   font-family: Consolas, Menlo, monospace;
+  white-space : pre-wrap !important;
 }

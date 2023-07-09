@@ -1812,23 +1812,6 @@ void ast_free_defer_stack(struct context *ctx)
 	arrfree(ctx->ast.defer_stack);
 }
 
-static void gen_id_struct(char *tmp, struct mir_type *type)
-{
-	if (type->user_id) {
-		const str_t name = type->user_id->str;
-		str_append(tmp, "%.*s", name.len, name.ptr);
-	}
-	str_append(tmp, "{");
-	for (usize i = 0; i < sarrlenu(type->data.strct.members); ++i) {
-		struct mir_member *member = sarrpeek(type->data.strct.members, i);
-		const str_t        name   = member->type->id.str;
-		bassert(name.len);
-		str_append(tmp, "%.*s", name.len, name.ptr);
-		if (i != sarrlenu(type->data.strct.members) - 1) str_append(tmp, ",");
-	}
-	str_append(tmp, "}");
-}
-
 struct mir_type *create_type(struct context *ctx, enum mir_type_kind kind, struct id *user_id)
 {
 	struct mir_type *type = arena_alloc(&ctx->assembly->arenas.mir.type);

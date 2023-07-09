@@ -1,19 +1,17 @@
+
+/// This is cool!
+Foo :: struct {
+	a: s32; /// Hello
+	b: s32; /// World
+}
+
+
 main :: fn() s32 {
-	print("%\n", typeid(Foo));
-	print("%\n", typeid(Bar.Foo));
-	
 	return 0;
 }
 
-Foo :: struct {
-	b: s32;
-}
-#private
-#scope Bar
-
-Foo :: struct {
-	a: s32;
-}
+/// Nice!
+foo :: fn (a := false, ptr : *u32 = null, str := "Hello", loc := #call_location) {}
 
 /*
 

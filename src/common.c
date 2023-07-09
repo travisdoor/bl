@@ -668,17 +668,7 @@ bool brealpath(const char *file, char *out, s32 out_len)
 #endif
 }
 
-bool normalize_path(char **path)
-{
-	char buf[PATH_MAX] = "";
-	if (!brealpath(*path, buf, static_arrlenu(buf))) {
-		return false;
-	}
-	strprint(*path, "%s", buf);
-	return true;
-}
-
-bool normalize_path2(str_buf_t *path)
+bool normalize_path(str_buf_t *path)
 {
 	char buf[PATH_MAX] = "";
 	if (!brealpath(str_to_c(*path), buf, static_arrlenu(buf))) {

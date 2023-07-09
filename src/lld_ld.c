@@ -108,8 +108,8 @@ static void append_default_opt(struct assembly *assembly, str_buf_t *buf)
 
 static void append_custom_opt(struct assembly *assembly, str_buf_t *buf)
 {
-	const char *custom_opt = assembly->custom_linker_opt;
-	if (str_lenu(custom_opt)) str_buf_append_fmt(buf, "{s} ", custom_opt);
+	const str_buf_t *custom_opt = &assembly->custom_linker_opt;
+	if (custom_opt->len) str_buf_append_fmt(buf, "{str} ", custom_opt);
 }
 
 static void append_linker_exec(struct assembly *assembly, str_buf_t *buf)

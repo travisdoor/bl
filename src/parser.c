@@ -82,7 +82,6 @@ struct context {
 	struct scope *current_private_scope;
 	struct scope *current_named_scope;
 	struct ast   *current_docs;
-	array(char) unit_docs_tmp;
 };
 
 // helpers
@@ -194,9 +193,9 @@ static inline bool rq_semicolon_after_decl_entity(struct ast *node)
 	}
 }
 
-static inline const char *pop_docs(struct context *ctx)
+static inline str_t pop_docs(struct context *ctx)
 {
-	const char *text = NULL;
+	str_t text = str_empty;
 	if (ctx->current_docs) {
 		text              = ctx->current_docs->data.docs.text;
 		ctx->current_docs = NULL;
@@ -299,16 +298,17 @@ bool parse_docs(struct context *ctx)
 	struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_DCOMMENT);
 	if (!tok_begin) return false;
 	zone();
-	const char *str = tok_begin->value.str.ptr;
+	str_t str = tok_begin->value.str;
 	if (tokens_peek(ctx->tokens)->sym == SYM_DCOMMENT) {
-		char *tmp = NULL;
-		strprint(tmp, "%s\n", str);
+		str_buf_t tmp = get_tmp_str();
+		str_buf_append_fmt(&tmp, "{str}\n", str);
+
 		struct token *tok;
 		while ((tok = tokens_consume_if(ctx->tokens, SYM_DCOMMENT))) {
-			str_append(tmp, "%s\n", tok->value.str.ptr);
+			str_buf_append_fmt(&tmp, "{str}\n", tok->value.str);
 		}
-		arrput(ctx->unit->large_string_cache, tmp);
-		str = tmp;
+		str = scdup2(&ctx->unit->string_cache, tmp);
+		put_tmp_str(tmp);
 	}
 
 	struct ast *docs     = ast_create_node(ctx->ast_arena, AST_DOCS, tok_begin, scope_get(ctx));
@@ -324,10 +324,8 @@ bool parse_unit_docs(struct context *ctx)
 	zone();
 	struct token *tok;
 	while ((tok = tokens_consume_if(ctx->tokens, SYM_DGCOMMENT))) {
-		if (arrlen(ctx->unit_docs_tmp) > 0) arrput(ctx->unit_docs_tmp, '\n');
-		const usize len  = tok->value.str.len;
-		char       *dest = arraddnptr(ctx->unit_docs_tmp, len);
-		memcpy(dest, tok->value.str.ptr, len);
+		if (ctx->unit->file_docs_cache.len) str_buf_append(&ctx->unit->file_docs_cache, cstr("\n"));
+		str_buf_append(&ctx->unit->file_docs_cache, tok->value.str);
 	}
 	return_zone(true);
 }
@@ -788,7 +786,8 @@ struct ast *parse_decl_member(struct context *ctx, s32 UNUSED(index))
 	enum hash_directive_flags found_hd = HD_NONE;
 	struct ast               *tag      = parse_hash_directive(ctx, HD_TAG, &found_hd);
 	struct ast *mem = ast_create_node(ctx->ast_arena, AST_DECL_MEMBER, tok_begin, scope_get(ctx));
-	mem->docs       = pop_docs(ctx);
+
+	mem->docs           = pop_docs(ctx);
 	mem->data.decl.type = type;
 	mem->data.decl.name = name;
 	mem->data.decl.tag  = tag;
@@ -1484,17 +1483,15 @@ struct ast *parse_expr_lit(struct context *ctx)
 		lit = ast_create_node(ctx->ast_arena, AST_EXPR_LIT_STRING, tok, scope_get(ctx));
 		struct token *tok_next = tokens_peek_2nd(ctx->tokens);
 		if (tok_next->sym == SYM_STRING) {
-			array(char) tmp = NULL;
+			str_buf_t tmp = get_tmp_str();
+
 			while ((tok = tokens_consume_if(ctx->tokens, SYM_STRING))) {
-				str_t s = tok->value.str;
-				bassert(s.ptr);
-				char *dest = arraddnptr(tmp, s.len);
-				memcpy(dest, s.ptr, s.len);
+				str_buf_append(&tmp, tok->value.str);
 			}
-			arrput(tmp, '\0'); // !!!
-			// Store into unit's cache to be freed later.
-			arrput(ctx->unit->large_string_cache, tmp);
-			lit->data.expr_string.val = make_str(tmp, arrlen(tmp) - 1); // -1 terminator
+			const str_t dup = scdup2(&ctx->unit->string_cache, tmp);
+			put_tmp_str(tmp);
+
+			lit->data.expr_string.val = dup;
 		} else {
 			tokens_consume(ctx->tokens);
 			lit->data.expr_string.val = tok->value.str;
@@ -2573,10 +2570,7 @@ void parser_run(struct assembly *assembly, struct unit *unit)
 	unit->ast              = root;
 
 	parse_ublock_content(&ctx, unit->ast);
-	if (ctx.unit_docs_tmp) {
-		arrput(ctx.unit_docs_tmp, '\0');
-		unit->ast->docs = ctx.unit_docs_tmp;
-	}
+	unit->ast->docs = str_buf_view(unit->file_docs_cache);
 
 	hmfree(ctx.hash_directive_table);
 	arrfree(ctx.decl_stack);

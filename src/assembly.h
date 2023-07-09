@@ -196,7 +196,7 @@ struct target {
 
 struct assembly {
 	const struct target *target;
-	char                *custom_linker_opt;
+	str_buf_t            custom_linker_opt;
 	array(char *) lib_paths;
 	array(struct native_lib) libs;
 	struct string_cache  *string_cache;

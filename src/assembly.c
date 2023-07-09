@@ -593,7 +593,7 @@ struct assembly *assembly_new(const struct target *target)
 
 	llvm_init(assembly);
 	arrsetcap(assembly->units, 64);
-	str_init(assembly->custom_linker_opt, 128);
+	str_buf_setcap(&assembly->custom_linker_opt, 128);
 	vm_init(&assembly->vm, VM_STACK_SIZE);
 
 	// set defaults
@@ -666,7 +666,7 @@ void assembly_delete(struct assembly *assembly)
 	arrfree(assembly->testing.cases);
 	arrfree(assembly->units);
 
-	str_free(assembly->custom_linker_opt);
+	str_buf_free(&assembly->custom_linker_opt);
 	vm_terminate(&assembly->vm);
 	arena_terminate(&assembly->arenas.sarr);
 	scopes_context_terminate(&assembly->scopes_context);
@@ -697,7 +697,7 @@ void assembly_append_linker_options_safe(struct assembly *assembly, const char *
 
 	AssemblySyncImpl *sync = assembly->sync;
 	pthread_spin_lock(&sync->linker_opt_lock);
-	str_append(assembly->custom_linker_opt, "%s ", opt);
+	str_buf_append_fmt(&assembly->custom_linker_opt, "{s} ", opt);
 	pthread_spin_unlock(&sync->linker_opt_lock);
 }
 

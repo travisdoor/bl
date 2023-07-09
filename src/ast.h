@@ -107,7 +107,7 @@ enum unop_kind {
 };
 
 struct ast_docs {
-	const char *text;
+	str_t text;
 };
 
 struct ast_load {
@@ -378,7 +378,7 @@ struct ast {
 	enum ast_kind    kind;
 	struct location *location;
 	struct scope    *owner_scope;
-	const char      *docs; // Optional documentation string.
+	str_t            docs; // Optional documentation string.
 
 	union {
 #define GEN_AST_DATA

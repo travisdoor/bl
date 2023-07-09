@@ -53,7 +53,7 @@ struct unit {
 	struct token        *loaded_from;
 	LLVMMetadataRef      llvm_file_meta;
 	struct string_cache *string_cache;
-	array(char *) large_string_cache;
+	str_buf_t            file_docs_cache;
 };
 
 hash_t       unit_hash(const char *filepath, struct token *load_from);

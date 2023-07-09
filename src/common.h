@@ -156,28 +156,6 @@ bool str_match(str_t a, str_t b);
 // String Buffer
 // =================================================================================================
 
-#define str_init(A, C) (str_setcap(A, C), (A)[0] = '\0')
-#define str_free(A) (arrfree(A))
-#define str_lenu(A) (arrlenu(A) ? arrlenu(A) - 1 : 0)
-#define str_clr(A) (arrsetlen(A, 1), (A)[0] = '\0')
-#define str_setcap(A, C) (arrsetcap(A, (C) + 1))
-#define str_append(A, fmt, ...)                                                                    \
-	{                                                                                              \
-		const usize orig_len = str_lenu(A);                                                        \
-		const usize text_len = (usize)snprintf(NULL, 0, fmt, ##__VA_ARGS__) + 1;                   \
-		arrsetlen(A, orig_len + text_len);                                                         \
-		snprintf((A) + orig_len, text_len, fmt, ##__VA_ARGS__);                                    \
-	}                                                                                              \
-	(void)0
-
-#define strprint(A, fmt, ...)                                                                      \
-	{                                                                                              \
-		const usize l = (usize)snprintf(NULL, 0, fmt, ##__VA_ARGS__) + 1;                          \
-		arrsetlen(A, l);                                                                           \
-		snprintf(A, l, fmt, ##__VA_ARGS__);                                                        \
-	}                                                                                              \
-	(void)0
-
 str_t str_toupper(str_t str);
 s32   levenshtein(const str_t s1, const str_t s2);
 
@@ -223,6 +201,7 @@ static inline const char *_str_to_c_checked(char *ptr, s32 len)
 									  str_buf_t: _str_buf_append(B, (S).ptr, (S).len), \
 									  str_t:     _str_buf_append(B, (S).ptr, (S).len))
 
+ 
 #define str_buf_dup(S) _Generic((S), \
 								str_buf_t: _str_buf_dup((S).ptr, (S).len), \
 								str_t:     _str_buf_dup((S).ptr, (S).len))
@@ -442,8 +421,7 @@ void        win_path_to_unix(char *buf, usize buf_size);
 void        unix_path_to_win(char *buf, usize buf_size);
 bool        file_exists(const char *filepath);
 bool        dir_exists(const char *dirpath);
-bool        normalize_path(char **path);
-bool        normalize_path2(str_buf_t *path);
+bool        normalize_path(str_buf_t *path);
 bool        brealpath(const char *file, char *out, s32 out_len);
 bool        get_current_working_dir(char *buf, usize buf_size);
 bool        set_current_working_dir(const char *path);

@@ -74,7 +74,7 @@ bool setup(const str_t filepath, const char *triple)
 	ctx.version      = make_str_from_c(BL_VERSION);
 	str_buf_t libdir = get_tmp_str();
 	str_buf_append_fmt(&libdir, "{s}/{s}", builder_get_exec_dir(), BL_API_DIR);
-	if (!normalize_path2(&libdir)) {
+	if (!normalize_path(&libdir)) {
 		builder_error(
 		    "BL API directory not found. (Expected location is '%.*s').", libdir.len, libdir.ptr);
 		put_tmp_str(libdir);
@@ -238,7 +238,7 @@ bool x86_64_pc_linux_gnu(struct context *ctx)
 
 	str_buf_t runtime = get_tmp_str();
 	str_buf_append_fmt(&runtime, "{s}/../{s}", builder_get_exec_dir(), RUNTIME_PATH);
-	if (!normalize_path2(&runtime)) {
+	if (!normalize_path(&runtime)) {
 		builder_error(
 		    "Runtime loader not found. (Expected location is '%.*s').", runtime.len, runtime.ptr);
 		put_tmp_str(runtime);

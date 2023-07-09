@@ -59,7 +59,8 @@ struct unit *unit_new(const char *filepath, struct token *load_from)
 {
 	struct unit *parent_unit = load_from ? load_from->location.unit : NULL;
 	struct unit *unit        = bmalloc(sizeof(struct unit));
-	memset(unit, 0, sizeof(struct unit));
+	bl_zeromem(unit, sizeof(struct unit));
+
 	search_source_file(filepath,
 	                   SEARCH_FLAG_ALL,
 	                   parent_unit ? parent_unit->dirpath : NULL,
@@ -88,12 +89,9 @@ struct unit *unit_new(const char *filepath, struct token *load_from)
 
 void unit_delete(struct unit *unit)
 {
-	for (usize i = 0; i < arrlenu(unit->large_string_cache); ++i) {
-		arrfree(unit->large_string_cache[i]);
-	}
-	arrfree(unit->large_string_cache);
 	arrfree(unit->ublock_ast);
 	scfree(&unit->string_cache);
+	str_buf_free(&unit->file_docs_cache);
 	bfree(unit->src);
 	free(unit->filepath);
 	free(unit->dirpath);

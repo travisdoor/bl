@@ -38,7 +38,12 @@
 #define CODE_BLOCK_BEGIN(stream) fprintf(stream, "\n```c\n")
 #define CODE_BLOCK_END(stream) fprintf(stream, "\n```\n\n")
 #define CODE_INDENTED(stream, indentation)                                                         \
-	fprintf(stream, "\n%*c", INDENTATION_CHARS *(indentation), ' ')
+	if (indentation) {                                                                             \
+		fprintf(stream, "\n%*c", INDENTATION_CHARS *(indentation), ' ');                           \
+	} else {                                                                                       \
+		fprintf(stream, "\n");                                                                     \
+	}                                                                                              \
+	(void)0
 
 #define PUSH_IS_INLINE(ctx)                                                                        \
 	const bool _prev_is_inline = ctx->is_inline;                                                   \
@@ -57,18 +62,17 @@ struct context {
 	FILE        *stream;
 	bool         is_inline;
 	bool         is_multi_return;
-	char        *section_variants;
-	char        *section_members;
+	str_buf_t    section_variants;
+	str_buf_t    section_members;
 	char        *output_directory;
 	s32          indentation;
 };
 
-static void append_section(struct context *ctx, const char *name, const char *content);
+static void append_section(struct context *ctx, const char *name, const str_t content);
 
 static void doc(struct context *ctx, struct ast *node);
 static void doc_unit(struct context *ctx, struct unit *unit);
 static void doc_ublock(struct context *ctx, struct ast *block);
-static void doc_lit_int(struct context *ctx, struct ast *lit);
 static void doc_decl_entity(struct context *ctx, struct ast *decl);
 static void doc_decl_arg(struct context *ctx, struct ast *decl);
 static void doc_decl_variant(struct context *ctx, struct ast *decl);
@@ -83,10 +87,10 @@ static void doc_type_vargs(struct context *ctx, struct ast *type);
 static void doc_type_poly(struct context *ctx, struct ast *type);
 static void doc_expr_lit_fn_group(struct context *ctx, struct ast *lit);
 
-void append_section(struct context *ctx, const char *name, const char *content)
+void append_section(struct context *ctx, const char *name, const str_t content)
 {
 	H2(ctx->stream, name);
-	fprintf(ctx->stream, "%s", content);
+	fprintf(ctx->stream, "%.*s", content.len, content.ptr);
 }
 
 void doc_ublock(struct context *ctx, struct ast *block)
@@ -96,19 +100,13 @@ void doc_ublock(struct context *ctx, struct ast *block)
 	}
 }
 
-void doc_lit_int(struct context *ctx, struct ast *lit)
-{
-	u64 value = lit->data.expr_integer.val;
-	fprintf(ctx->stream, "%llu", value);
-}
-
 void doc_decl_entity(struct context *ctx, struct ast *decl)
 {
 	struct ast *ident = decl->data.decl.name;
 	struct ast *type  = decl->data.decl.type;
 	struct ast *value = decl->data.decl_entity.value;
 	if (!ident) return;
-	const char *text       = decl->docs;
+	const str_t text       = decl->docs;
 	const str_t name       = ident->data.ident.id.str;
 	const bool  is_mutable = decl->data.decl_entity.mut;
 
@@ -116,8 +114,8 @@ void doc_decl_entity(struct context *ctx, struct ast *decl)
 	if (name.ptr[0] == '_') return;
 
 	// @Performance: we can do it better I guess.
-	if (text && (strstr(text, "@INCOMPLETE") || strstr(text, "@Incomplete") ||
-	             strstr(text, "@incomplete"))) {
+	if (text.len && (str_match(text, cstr("@INCOMPLETE")) || str_match(text, cstr("@Incomplete")) ||
+	                 str_match(text, cstr("@incomplete")))) {
 		builder_msg(MSG_WARN, 0, ident->location, CARET_WORD, "Found incomplete documentation!");
 	}
 
@@ -149,43 +147,19 @@ void doc_decl_entity(struct context *ctx, struct ast *decl)
 	if (decl->data.decl.flags & FLAG_EXTERN) fprintf(ctx->stream, " #extern");
 	if (decl->data.decl.flags & FLAG_INLINE) fprintf(ctx->stream, " #inline");
 	CODE_BLOCK_END(ctx->stream);
-	if (text) fprintf(ctx->stream, "%s\n\n", text);
+	if (text.len) fprintf(ctx->stream, "%.*s\n\n", text.len, text.ptr);
 
-	if (str_lenu(ctx->section_variants) > 0) {
-		append_section(ctx, "Variants", ctx->section_variants);
-		str_clr(ctx->section_variants);
+	if (ctx->section_variants.len) {
+		append_section(ctx, "Variants", str_buf_view(ctx->section_variants));
+		str_buf_clr(&ctx->section_variants);
 	}
 
-	if (str_lenu(ctx->section_members) > 0) {
-		append_section(ctx, "Members", ctx->section_members);
-		str_clr(ctx->section_members);
+	if (ctx->section_members.len) {
+		append_section(ctx, "Members", str_buf_view(ctx->section_members));
+		str_buf_clr(&ctx->section_members);
 	}
 
 	fprintf(ctx->stream, "\n\n*File: %s*\n\n", ctx->unit->filename);
-}
-
-// @Cleanup: put this into general doc() procedure???
-// @Cleanup: this is nothing else then parsing all expressions!
-static void doc_value(struct context *ctx, struct ast *value)
-{
-	if (!value) return;
-	switch (value->kind) {
-	case AST_EXPR_UNARY:
-		switch (value->data.expr_unary.kind) { // @Incomplete
-		case UNOP_NEG:
-			fprintf(ctx->stream, "-");
-			break;
-		default:
-			break;
-		}
-		doc_value(ctx, value->data.expr_unary.next); // @Cleanup
-		break;
-	case AST_EXPR_LIT_INT:
-		fprintf(ctx->stream, "%llu", value->data.expr_integer.val);
-		break;
-	default:
-		break;
-	}
 }
 
 void doc_decl_arg(struct context *ctx, struct ast *decl)
@@ -198,13 +172,13 @@ void doc_decl_arg(struct context *ctx, struct ast *decl)
 		fprintf(ctx->stream, "%.*s : ", name.len, name.ptr);
 		doc(ctx, type);
 		fprintf(ctx->stream, ": ");
-		doc_value(ctx, value);
+		doc(ctx, value);
 	} else if (type && !value) {
 		fprintf(ctx->stream, "%.*s: ", name.len, name.ptr);
 		doc(ctx, type);
 	} else if (value) {
 		fprintf(ctx->stream, "%.*s :: ", name.len, name.ptr);
-		doc_value(ctx, value);
+		doc(ctx, value);
 	}
 }
 
@@ -215,8 +189,8 @@ void doc_decl_variant(struct context *ctx, struct ast *decl)
 	if (ident) {
 		const str_t name = ident->data.ident.id.str;
 		fprintf(ctx->stream, "%.*s", name.len, name.ptr);
-		if (decl->docs) {
-			str_append(ctx->section_variants, "* `%.*s` - %s\n", name.len, name.ptr, decl->docs);
+		if (decl->docs.len) {
+			str_buf_append_fmt(&ctx->section_variants, "* `{str}` - {str}\n", name, decl->docs);
 		}
 	}
 	if (value && value->kind == AST_EXPR_LIT_INT) {
@@ -233,8 +207,8 @@ void doc_decl_member(struct context *ctx, struct ast *decl)
 		const str_t name = ident->data.ident.id.str;
 		fprintf(ctx->stream, "%.*s: ", name.len, name.ptr);
 
-		if (decl->docs) {
-			str_append(ctx->section_members, "* `%.*s` - %s\n", name.len, name.ptr, decl->docs);
+		if (decl->docs.len) {
+			str_buf_append_fmt(&ctx->section_members, "* `{str}` - {str}\n", name, decl->docs);
 		}
 	}
 	doc(ctx, type);
@@ -381,9 +355,6 @@ void doc(struct context *ctx, struct ast *node)
 	case AST_UBLOCK:
 		doc_ublock(ctx, node);
 		break;
-	case AST_EXPR_LIT_INT:
-		doc_lit_int(ctx, node);
-		break;
 	case AST_DECL_ENTITY:
 		doc_decl_entity(ctx, node);
 		break;
@@ -432,6 +403,41 @@ void doc(struct context *ctx, struct ast *node)
 	case AST_TYPE_POLY:
 		doc_type_poly(ctx, node);
 		break;
+	case AST_EXPR_UNARY:
+		switch (node->data.expr_unary.kind) { // @Incomplete
+		case UNOP_NEG:
+			fprintf(ctx->stream, "-");
+			break;
+		default:
+			break;
+		}
+		doc(ctx, node->data.expr_unary.next);
+		break;
+	case AST_EXPR_LIT_INT:
+		fprintf(ctx->stream, "%llu", node->data.expr_integer.val);
+		break;
+	case AST_EXPR_LIT_BOOL:
+		fprintf(ctx->stream, "%s", node->data.expr_boolean.val ? "true" : "false");
+		break;
+	case AST_EXPR_LIT_FLOAT:
+		fprintf(ctx->stream, "%f", node->data.expr_float.val);
+		break;
+	case AST_EXPR_LIT_DOUBLE:
+		fprintf(ctx->stream, "%f", node->data.expr_double.val);
+		break;
+	case AST_EXPR_NULL:
+		fprintf(ctx->stream, "null");
+		break;
+	case AST_CALL_LOC:
+		fprintf(ctx->stream, "#call_location");
+		break;
+	case AST_EXPR_LIT_STRING:
+		fprintf(ctx->stream,
+		        "\"%.*s\"",
+		        node->data.expr_string.val.len,
+		        node->data.expr_string.val.ptr);
+		break;
+
 	case AST_LOAD:
 	case AST_PRIVATE:
 	case AST_LINK:
@@ -462,8 +468,9 @@ void doc_unit(struct context *ctx, struct unit *unit)
 	}
 
 	ctx->stream = f;
-	if (unit->ast->docs) {
-		fprintf(f, "%s\n", unit->ast->docs);
+	if (unit->ast->docs.len) {
+		const str_t docs = unit->ast->docs;
+		fprintf(f, "%.*s\n", docs.len, docs.ptr);
 	} else {
 		H0(f, unit->filename);
 	}
@@ -480,8 +487,8 @@ void docs_run(struct assembly *assembly)
 	zone();
 	struct context ctx;
 	memset(&ctx, 0, sizeof(struct context));
-	str_init(ctx.section_variants, 128);
-	str_init(ctx.section_members, 128);
+	str_buf_setcap(&ctx.section_variants, 128);
+	str_buf_setcap(&ctx.section_members, 128);
 	ctx.output_directory = builder.options->doc_out_dir;
 
 	// prepare output directory
@@ -493,8 +500,8 @@ void docs_run(struct assembly *assembly)
 	}
 
 	// cleanup
-	str_free(ctx.section_variants);
-	str_free(ctx.section_members);
+	str_buf_free(&ctx.section_variants);
+	str_buf_free(&ctx.section_members);
 
 	builder_info("Documentation written into '%s' directory.", ctx.output_directory);
 	return_zone();
