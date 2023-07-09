@@ -4,6 +4,7 @@ Rewrite string handling inside the compiler.
 Improved documentation generator (added more value expressions).
 Add SIMD implementation for some hot code paths (Windows only).
 Reduced amount of types generated internally by the compiler (use cache).
+RPMalloc used for the compiler.
 Add fmod and trunc math functions.
 
 0.10.0 - PRE-RELEASE
