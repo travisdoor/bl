@@ -8866,13 +8866,15 @@ struct result analyze_call_stage_generate(struct context *ctx, struct mir_instr_
 					    mir_type2str(recipe_fn_arg->type, /* prefer_name */ true);
 					str_buf_t arg_type_name = mir_type2str(call_arg_type, /* prefer_name */ true);
 
-					report_error(INVALID_POLY_MATCH,
-					             err_node,
-					             "Cannot deduce polymorph function argument type '%s'. Expected is "
-					             "'%s' but call-side argument type is '%s'.",
-					             poly_type->user_id->str,
-					             str_to_c(recipe_type_name),
-					             str_to_c(arg_type_name));
+					report_error(
+					    INVALID_POLY_MATCH,
+					    err_node,
+					    "Cannot deduce polymorph function argument type '%.*s'. Expected is "
+					    "'%s' but call-side argument type is '%s'.",
+					    poly_type->user_id->str.len,
+					    poly_type->user_id->str.ptr,
+					    str_to_c(recipe_type_name),
+					    str_to_c(arg_type_name));
 
 					put_tmp_str(recipe_type_name);
 					put_tmp_str(arg_type_name);
@@ -8881,8 +8883,9 @@ struct result analyze_call_stage_generate(struct context *ctx, struct mir_instr_
 					// reported only for vargs (see the check above).
 					report_error(INVALID_POLY_MATCH,
 					             err_node,
-					             "Cannot deduce polymorph function argument type '%s'.",
-					             poly_type->user_id->str);
+					             "Cannot deduce polymorph function argument type '%.*s'.",
+					             poly_type->user_id->str.len,
+					             poly_type->user_id->str.ptr);
 				}
 				report_note(call->base.node, "Called from here.");
 				goto DONE;

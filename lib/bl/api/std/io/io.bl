@@ -134,9 +134,7 @@ read_all :: fn (stream: *Stream, dest: *u8, bytes_to_read: s64, buffer_size := 5
 	loop read_bytes < bytes_to_read {
 		bytes, err :: read(stream, tmp.ptr, min(tmp.len, bytes_to_read - read_bytes));
 		if err { return err; }
-		if bytes == 0 {
-			return error("Unable to read all data!");
-		}
+		if bytes == 0 { break; }
 		memcpy(&dest_buf[read_bytes], tmp.ptr, auto bytes);
 		read_bytes += bytes;
 	}

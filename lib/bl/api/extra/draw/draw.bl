@@ -84,7 +84,7 @@ init :: fn (viewport_width: s32, viewport_height: s32) Error {
 	gl.Hint(auto GL_TEXTURE_COMPRESSION_HINT, GL_NICEST);
 	gl.Hint(auto GL_POLYGON_SMOOTH_HINT, GL_NICEST);
 	gl.CullFace(GL_BACK);
-	gl.Viewport(0, 0, viewport_width, viewport_height);
+	set_viewport_size(viewport_width, viewport_height);
 	generate_gl_buffers();
 
 	err: Error;
@@ -100,14 +100,19 @@ init :: fn (viewport_width: s32, viewport_height: s32) Error {
 	err = shader_init(&text_alpha_shader, SHADER_TEXT_ALPHA_SOURCE, "text-alpha");
 	if err { return err; }
 
-	glm.mat4_init_ortho(&view_matrix, 0.f, auto viewport_width, auto viewport_height, 0.f, 0.f, 1.f);
-
 	err = font_library_init();
 	if err { return err; }
 
 	gl_check();
 	is_initialized = true;
 	return OK;
+}
+
+/// Set the size of the viewport, this is done automatically in the `init` function call, however this one
+/// can be used e.g. in case of the window resize.
+set_viewport_size :: fn (viewport_width: s32, viewport_height: s32) {
+	gl.Viewport(0, 0, viewport_width, viewport_height);
+	glm.mat4_init_ortho(&view_matrix, 0.f, auto viewport_width, auto viewport_height, 0.f, 0.f, 1.f);
 }
 
 /// Release all resources used by the module. This should be called when the module is not needed anymore.
@@ -1183,7 +1188,7 @@ SHADER_TEXT_SOURCE ::
 	"in vec4 bg_color;\n"
 	"out vec4 frag_color;\n"
 	"void main(void) {\n"
-	"    const float eps = 0.1f;\n"
+	"    const float eps = 0.15f;\n"
 	"    vec4 sample = texture(diffuse, st);\n"
 	"    sample = mix(bg_color, fg_color, sample);\n"
 	"    if (abs(sample.r - bg_color.r) < eps && abs(sample.g - bg_color.g) < eps && abs(sample.b - bg_color.b) < eps) { sample.a = 0.f; }\n"
