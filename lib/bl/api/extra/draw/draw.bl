@@ -209,10 +209,13 @@ rect_centered_rotated :: fn (center_x: f32, center_y: f32, width: f32, height: f
 
 /// Draw text into the frame buffer.
 text :: fn (position_x: f32, position_y: f32, text: string_view, text_color: glm.v4 = glm.v4_one, background_color: glm.v4 = glm.v4_zero) {
+	using glm;
+	
 	assert(context.font, "No font set, please call 'set_shader_font' first.");
 	assert(context.shader == &text_shader || context.shader == &text_alpha_shader, "Invalid current shader in use, please call 'set_shader_font' first.");
-	using glm;
+
 	if text.len == 0 { return; }
+	
 	is_subpixel :: context.font.mode == FontAntialiasing.SUBPIXEL;
 	fixed_position_x := position_x;
 	fixed_position_y := position_y;
@@ -220,16 +223,33 @@ text :: fn (position_x: f32, position_y: f32, text: string_view, text_color: glm
 		fixed_position_x = std.ceil(position_x); 
 		fixed_position_y = std.ceil(position_y); 
 	}
+	
 	aw :: cast(f32) context.font.atlas.width;
 	ah :: cast(f32) context.font.atlas.height;
+
 	directing_glyph_info :: get_glyph_utf32(context.font, cast(u32) 'X');
+	space_glyph_info     :: get_glyph_utf32(context.font, cast(u32) ' ');
+
 	p := v2.{ y = directing_glyph_info.bt};
+	
 	converted_bytes: s32;
 	loop converted_bytes < text.len {
 		word :: std.str_sub(text, converted_bytes);
-		utf32char, decoded_bytes, err_decode :: utf8_to_utf32_single_char(word);
-		if err_decode { continue; }
-		converted_bytes += decoded_bytes;
+		
+		utf32char, decoded_bytes, err_decode := utf8_to_utf32_single_char(word);
+		if err_decode {
+			utf32char = auto '?';
+			decoded_bytes = 1;
+		}
+		converted_bytes += decoded_bytes; 
+		
+		if utf32char == cast(u32) '\t' {
+			loop i := 0; i < font.tab_size; i += 1 {
+				p.x += space_glyph_info.ax;
+			}
+			continue;
+		}
+		
 		ci :: get_glyph_utf32(context.font, utf32char);
 		x2 := p.x + ci.bl;
 		y2 := -p.y - ci.bt;
@@ -401,6 +421,7 @@ Font :: struct {
 	size: f32;
 	height: f32;
 	mode: FontAntialiasing;
+	tab_size: s32;
 }
 
 GlyphInfo :: struct {
@@ -437,25 +458,21 @@ font_generate_char_set :: fn (chars: string_view, out_set: *[..]u32) {
 /// we need to render some non-ascii unicode characters. Each loaded font must be terminated by [font_terminate](#drawfont_terminate).
 font_init_at_size :: fn (font: *Font, directory: string_view, filename: string_view, size: s32, mode := FontAntialiasing.ALPHA, char_set := []u32.{}) Error {
 	filepath :: tprint("%/%", directory, filename);
+	
 	zeromem(auto font, sizeof(@font));
+	
 	face: *FreeType.Face;
-	matrix :: FreeType.Matrix.{
-		auto ((1.0f/HRES) * 65536.f),
-		auto ((0.0f)      * 65536.f),
-		auto ((0.0f)      * 65536.f),
-		auto ((1.0f)      * 65536.f)};
-	DPI  := 72.f;
 	err := FreeType.New_Face(freetype_library, filepath.ptr, 0, &face);
 	defer FreeType.Done_Face(face);
 	if err != 0 {
 		return error("Cannot load font %!", filepath);
 	}
-	err = FreeType.Set_Char_Size(face, auto (cast(f32)size * HRES), 0, auto DPI * HRES, auto DPI);
+	
+	err = FreeType.Set_Char_Size(face, 0, 64 * size, 72, 72);
 	if err != 0 {
 		return error("Cannot set font size! (%)", err);
 	}
-	FreeType.Set_Transform(face, &matrix, null);
-
+	
 	font.mode = mode;
 	font.size = auto size;
 	std.tbl_init(&font.char_table, 256);
@@ -466,8 +483,11 @@ font_init_at_size :: fn (font: *Font, directory: string_view, filename: string_v
 	} else {
 		get_char_table(font, char_set);
 	}
+	
 	prepare_atlas(font, face);
 	gen_glyphs(font, face);
+	font.tab_size = 4;
+	
 	return OK;
 }
 
@@ -478,6 +498,37 @@ font_terminate :: fn (font: *Font) {
 	texture_terminate(&font.atlas);
 }
 
+/// Set size of a tab character as `space_count` count of spaces.
+font_set_tab_size :: fn (font: *Font, space_count: s32) {
+	assert(font);
+	assert(space_count >= 0);
+	font.tab_size = space_count;
+}
+
+text_size :: fn (text: string_view, font: *Font, _len := -1) (width: f32, height: f32) {
+	using std;
+	assert(font);
+
+	len := text.len;
+	if _len > -1 { len = _len; }
+
+	w := 0.f;
+	converted_bytes: s32;
+	loop converted_bytes < len {
+		word :: str_sub(text, converted_bytes);
+		
+		utf32char, decoded_bytes, err_decode := utf8_to_utf32_single_char(word);
+		if err_decode {
+			utf32char = auto '?';
+			decoded_bytes = 1;
+		}
+		converted_bytes += decoded_bytes;
+		
+		ci :: get_glyph_utf32(font, utf32char);
+		w += ci.ax;
+	}
+	return ceil(w), font.height;
+}
 
 #private
 Context :: struct {
@@ -511,25 +562,26 @@ make_context_font :: fn (font: *Font) Context #inline {
 	return Context.{ shader = shader, font = font, texture = &font.atlas };
 }
 
-context: Context;
-view_matrix: glm.mat4;
+context:             Context;
+view_matrix:         glm.mat4;
 simple_color_shader: Shader;
-texture_shader: Shader;
-text_shader: Shader;
-text_alpha_shader: Shader;
-vertex_buffer: [..]glm.v2;
-fg_color_buffer: [..]glm.v4;
-bg_color_buffer: [..]glm.v4;
-uv_buffer: [..]glm.v2;
-index_buffer: [..]u32;
-draw_call_data: [..]f32;
+texture_shader:      Shader;
+text_shader:         Shader;
+text_alpha_shader:   Shader;
+vertex_buffer:       [..]glm.v2;
+fg_color_buffer:     [..]glm.v4;
+bg_color_buffer:     [..]glm.v4;
+uv_buffer:           [..]glm.v2;
+index_buffer:        [..]u32;
+draw_call_data:      [..]f32;
+
 glbuffers: struct {
 	vbo: GLuint;
 	ebo: GLuint;
 	vao: GLuint;
 };
-freetype_library : FreeType.Library;
 
+freetype_library: FreeType.Library;
 
 is_initialized: bool;
 
@@ -946,7 +998,7 @@ png_reader :: fn (png_ptr: png.structp, out_bytes: png.bytep, count: png.size_t)
 // =================================================================================================
 // Font Rendering
 // =================================================================================================
-HRES :: 64.f;
+EMPTY_GLYPH :: GlyphInfo.{};
 
 ASCII_CHAR_TABLE :: [96]u32.{
 	32, 33, 34, 35,
@@ -992,7 +1044,12 @@ font_library_terminate :: fn () {
 }
 
 get_glyph_utf32 :: fn (font: *Font, c: u32) *GlyphInfo #inline {
-	// @Incomplete: new line???
+	switch c {
+		'\r' { return &EMPTY_GLYPH; }
+		'\n' { return &EMPTY_GLYPH; }
+		default;
+	}
+	
 	glyph_info :: std.tbl_lookup_ptr(&font.char_table, c);
 	if glyph_info == null { return std.tbl_lookup_ptr(&font.char_table, auto '?'); }
 	return glyph_info;
@@ -1188,7 +1245,7 @@ SHADER_TEXT_SOURCE ::
 	"in vec4 bg_color;\n"
 	"out vec4 frag_color;\n"
 	"void main(void) {\n"
-	"    const float eps = 0.15f;\n"
+	"    const float eps = 0.01f;\n"
 	"    vec4 sample = texture(diffuse, st);\n"
 	"    sample = mix(bg_color, fg_color, sample);\n"
 	"    if (abs(sample.r - bg_color.r) < eps && abs(sample.g - bg_color.g) < eps && abs(sample.b - bg_color.b) < eps) { sample.a = 0.f; }\n"
