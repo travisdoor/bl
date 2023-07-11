@@ -510,22 +510,29 @@ text_size :: fn (text: string_view, font: *Font, _len := -1) (width: f32, height
 	assert(font);
 
 	len := text.len;
-	if _len > -1 { len = _len; }
+	if _len > -1 { len = min(text.len, _len); }
 
 	w := 0.f;
 	converted_bytes: s32;
 	loop converted_bytes < len {
 		word :: str_sub(text, converted_bytes);
+		glyph: *GlyphInfo;
 		
-		utf32char, decoded_bytes, err_decode := utf8_to_utf32_single_char(word);
-		if err_decode {
-			utf32char = auto '?';
-			decoded_bytes = 1;
+		if word[0] == '\t' {
+			glyph = get_glyph_utf32(font, cast(u32) ' ');
+			converted_bytes += 1;
+			w += glyph.ax * auto font.tab_size;
+			continue;
+		} else {
+			utf32char, decoded_bytes, err_decode := utf8_to_utf32_single_char(word);
+			if err_decode {
+				utf32char = auto '?';
+				decoded_bytes = 1;
+			}
+			converted_bytes += decoded_bytes;
+			glyph = get_glyph_utf32(font, utf32char);
+			w += glyph.ax;
 		}
-		converted_bytes += decoded_bytes;
-		
-		ci :: get_glyph_utf32(font, utf32char);
-		w += ci.ax;
 	}
 	return ceil(w), font.height;
 }
@@ -1248,7 +1255,7 @@ SHADER_TEXT_SOURCE ::
 	"    const float eps = 0.01f;\n"
 	"    vec4 sample = texture(diffuse, st);\n"
 	"    sample = mix(bg_color, fg_color, sample);\n"
-	"    if (abs(sample.r - bg_color.r) < eps && abs(sample.g - bg_color.g) < eps && abs(sample.b - bg_color.b) < eps) { sample.a = 0.f; }\n"
+	"    //if (abs(sample.r - bg_color.r) < eps && abs(sample.g - bg_color.g) < eps && abs(sample.b - bg_color.b) < eps) { sample.a = 0.f; }\n"
 	"    frag_color = sample;\n"
 	"}\n"
 	"#endif\n"
