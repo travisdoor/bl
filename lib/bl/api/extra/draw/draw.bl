@@ -76,7 +76,7 @@ init :: fn (viewport_width: s32, viewport_height: s32) Error {
 		return error("Minimal supported OpenGL version is 3.3, current context version is %.%.", current_gl_major_version, current_gl_minor_version);
 	}
 	gl.Enable(GL_BLEND);
-	gl.Enable(GL_FRAMEBUFFER_SRGB);
+	//gl.Enable(GL_FRAMEBUFFER_SRGB);
 	gl.Enable(GL_LINE_SMOOTH);
 	gl.Enable(GL_MULTISAMPLE);
 	gl.DepthFunc(GL_LEQUAL);
@@ -647,7 +647,7 @@ do_render :: fn () {
 	}
 	if has_uvs {
 		uv_offset = draw_call_data.len * cast(s64) sizeof(f32);
-		array_push_all(&draw_call_data, []f32.{ uv_buffer.len * 4, auto uv_buffer.ptr });
+		array_push_all(&draw_call_data, []f32.{ uv_buffer.len * 2, auto uv_buffer.ptr });
 		assert(shader_has_attribute(context.shader, UV));
 	}
 
