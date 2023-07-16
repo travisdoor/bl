@@ -264,6 +264,9 @@ memset :: fn (destination: *u8, value: u8, size: usize) *u8 {
 	return destination;
 }
 
+/// Copy 'size' bytes of data from memory location at 'source' to the 'destination'.
+memmove :: fn (destination: *u8, source: *u8, size: usize) *u8 #intrinsic "memmove.p0.p0.i64";
+
 // This is actually slower on Windows.
 // memset :: fn (dest: *u8, v: u8, size: usize) *u8 #intrinsic "memset.p0i8.i64";
 

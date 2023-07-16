@@ -339,6 +339,7 @@ str_t get_intrinsic(const str_t name)
 	if (str_match(name, cstr("trunc.f32"))) return cstr("llvm.trunc.f32");
 	if (str_match(name, cstr("trunc.f64"))) return cstr("llvm.trunc.f64");
 	if (str_match(name, cstr("memset.inline.p0i8.i64"))) return cstr("llvm.memset.inline.p0i8.i64");
+	if (str_match(name, cstr("memmove.p0.p0.i64"))) return cstr("llvm.memmove.p0.p0.i64");
 
 	return str_empty;
 }

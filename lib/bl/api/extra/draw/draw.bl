@@ -1255,7 +1255,7 @@ SHADER_TEXT_SOURCE ::
 	"    const float eps = 0.01f;\n"
 	"    vec4 sample = texture(diffuse, st);\n"
 	"    sample = mix(bg_color, fg_color, sample);\n"
-	"    //if (abs(sample.r - bg_color.r) < eps && abs(sample.g - bg_color.g) < eps && abs(sample.b - bg_color.b) < eps) { sample.a = 0.f; }\n"
+	"    if (abs(sample.r - bg_color.r) < eps && abs(sample.g - bg_color.g) < eps && abs(sample.b - bg_color.b) < eps) { sample.a = 0.f; }\n"
 	"    frag_color = sample;\n"
 	"}\n"
 	"#endif\n"
