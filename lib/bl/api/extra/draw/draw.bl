@@ -457,38 +457,30 @@ font_generate_char_set :: fn (chars: string_view, out_set: *[..]u32) {
 /// Initialize new `font` from the 'TTF' file at `directory/filename` at required `size`. Custom `char_set` can be specified in case
 /// we need to render some non-ascii unicode characters. Each loaded font must be terminated by [font_terminate](#drawfont_terminate).
 font_init_at_size :: fn (font: *Font, directory: string_view, filename: string_view, size: s32, mode := FontAntialiasing.ALPHA, char_set := []u32.{}) Error {
+	using FreeType;
 	filepath :: tprint("%/%", directory, filename);
-	
-	zeromem(auto font, sizeof(@font));
-	
-	face: *FreeType.Face;
-	err := FreeType.New_Face(freetype_library, filepath.ptr, 0, &face);
-	defer FreeType.Done_Face(face);
+
+	face: *Face;
+	err :: New_Face(freetype_library, filepath.ptr, 0, &face);
+	defer Done_Face(face);
 	if err != 0 {
 		return error("Cannot load font %!", filepath);
 	}
-	
-	err = FreeType.Set_Char_Size(face, 0, 64 * size, 72, 72);
-	if err != 0 {
-		return error("Cannot set font size! (%)", err);
-	}
-	
-	font.mode = mode;
-	font.size = auto size;
-	std.tbl_init(&font.char_table, 256);
 
-	// Use default char set if not specified.
-	if char_set.len == 0 { 
-		get_char_table(font, font_default_char_set());
-	} else {
-		get_char_table(font, char_set);
+	return font_init(font, face, size, mode, char_set);
+}
+
+font_init_at_size_from_memory :: fn (font: *Font, file_data: []u8, size: s32, mode := FontAntialiasing.ALPHA, char_set := []u32.{}) Error {
+	using FreeType;
+	
+	face: *Face;
+	err :: New_Memory_Face(freetype_library, file_data.ptr, auto file_data.len, 0, &face);
+	defer Done_Face(face);
+	if err != 0 {
+		return error("Cannot load font!");
 	}
-	
-	prepare_atlas(font, face);
-	gen_glyphs(font, face);
-	font.tab_size = 4;
-	
-	return OK;
+
+	return font_init(font, face, size, mode, char_set);
 }
 
 /// Terminate loaded font.
@@ -1048,6 +1040,32 @@ font_library_init :: fn () Error {
 
 font_library_terminate :: fn () {
 	FreeType.Done_FreeType(freetype_library);
+}
+
+font_init :: fn (font: *Font, face: *FreeType.Face, size: s32, mode: FontAntialiasing, char_set: []u32) Error {
+	zeromem(auto font, sizeof(@font));
+	
+	err :: FreeType.Set_Char_Size(face, 0, 64 * size, 72, 72);
+	if err != 0 {
+		return error("Cannot set font size! (%)", err);
+	}
+	
+	font.mode = mode;
+	font.size = auto size;
+	std.tbl_init(&font.char_table, 256);
+
+	// Use default char set if not specified.
+	if char_set.len == 0 { 
+		get_char_table(font, font_default_char_set());
+	} else {
+		get_char_table(font, char_set);
+	}
+	
+	prepare_atlas(font, face);
+	gen_glyphs(font, face);
+	font.tab_size = 4;
+	
+	return OK;
 }
 
 get_glyph_utf32 :: fn (font: *Font, c: u32) *GlyphInfo #inline {

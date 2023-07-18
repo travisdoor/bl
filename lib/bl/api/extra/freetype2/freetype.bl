@@ -311,6 +311,7 @@ LCD_FILTER_LEGACY  :: 16;
 Init_FreeType :: fn (alibrary: *Library) Error #extern "FT_Init_FreeType";
 Done_FreeType :: fn (library: Library) Error #extern "FT_Done_FreeType";
 New_Face :: fn (library: Library, filepathname: *u8, face_index: Long, aface: **Face) Error #extern "FT_New_Face";
+New_Memory_Face :: fn (library: Library, file_base: *u8, file_size: Long, face_index: Long, aface: **Face) Error #extern "FT_New_Memory_Face";
 Done_Face :: fn (face: *Face) Error #extern "FT_Done_Face";
 Set_Pixel_Sizes :: fn (face: *Face, pixel_width: UInt, pixel_height: UInt) Error #extern "FT_Set_Pixel_Sizes";
 Load_Char :: fn (face: *Face, char_code: ULong, load_flags: Int32) Error #extern "FT_Load_Char";

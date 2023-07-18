@@ -1,17 +1,29 @@
+#import "std/fs"
 
-/// This is cool!
-Foo :: struct {
-	a: s32; /// Hello
-	b: s32; /// World
+text_file_to_heap :: fn (filename: string_view) string_view #comptime {
+	using std;
+    stream, open_err :: open_file(filename);
+    defer close_file(&stream);
+    if open_err { 
+        panic(open_err);
+    }
+    str := str_new();
+    read_err :: read_string(&stream, &str);
+    if read_err { 
+        panic(read_err);
+    }
+    return str;
 }
 
+DATA :: text_file_to_heap("data.txt");
 
 main :: fn() s32 {
+	print("%\n", DATA);
 	return 0;
 }
 
-/// Nice!
-foo :: fn (a := false, ptr : *u32 = null, str := "Hello", loc := #call_location) {}
+
+
 
 /*
 
