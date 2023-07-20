@@ -72,9 +72,10 @@
 init :: fn (viewport_width: s32, viewport_height: s32) Error {
 	gl_init();
 	current_gl_major_version, current_gl_minor_version :: gl_get_version_numbers();
-	if !(current_gl_major_version >= 3 && current_gl_minor_version >= 3) {
+	if current_gl_major_version < 3 && current_gl_minor_version < 3 {
 		return error("Minimal supported OpenGL version is 3.3, current context version is %.%.", current_gl_major_version, current_gl_minor_version);
 	}
+
 	gl.Enable(GL_BLEND);
 	//gl.Enable(GL_FRAMEBUFFER_SRGB);
 	gl.Enable(GL_LINE_SMOOTH);
@@ -85,9 +86,13 @@ init :: fn (viewport_width: s32, viewport_height: s32) Error {
 	gl.Hint(auto GL_POLYGON_SMOOTH_HINT, GL_NICEST);
 	gl.CullFace(GL_BACK);
 	set_viewport_size(viewport_width, viewport_height);
+
 	generate_gl_buffers();
 
 	err: Error;
+	err = font_library_init();
+	if err { return err; }
+
 	err = shader_init(&simple_color_shader, SHADER_SIMPLE_COLOR_SOURCE, "simple-color");
 	if err { return err; }
 
@@ -98,9 +103,6 @@ init :: fn (viewport_width: s32, viewport_height: s32) Error {
 	if err { return err; }
 
 	err = shader_init(&text_alpha_shader, SHADER_TEXT_ALPHA_SOURCE, "text-alpha");
-	if err { return err; }
-
-	err = font_library_init();
 	if err { return err; }
 
 	gl_check();
@@ -464,7 +466,7 @@ font_init_at_size :: fn (font: *Font, directory: string_view, filename: string_v
 	err :: New_Face(freetype_library, filepath.ptr, 0, &face);
 	defer Done_Face(face);
 	if err != 0 {
-		return error("Cannot load font %!", filepath);
+		return error("Cannot load font % with error %!", filepath, err);
 	}
 
 	return font_init(font, face, size, mode, char_set);
@@ -477,7 +479,7 @@ font_init_at_size_from_memory :: fn (font: *Font, file_data: []u8, size: s32, mo
 	err :: New_Memory_Face(freetype_library, file_data.ptr, auto file_data.len, 0, &face);
 	defer Done_Face(face);
 	if err != 0 {
-		return error("Cannot load font!");
+		return error("Cannot load font with error %!", err);
 	}
 
 	return font_init(font, face, size, mode, char_set);
@@ -1031,10 +1033,10 @@ font_library_init :: fn () Error {
 	if err != 0 {
 		return error("Cannot initialize freetype! (%)", err);
 	}
-	module :: "cff";
-	prop :: "hinting-engine";
-	hinting_engine :: FreeType.HINTING_ADOBE;
-	FreeType.Property_Set(freetype_library, auto module.ptr, auto prop.ptr, auto &hinting_engine);
+	//module :: "cff";
+	//prop :: "hinting-engine";
+	//hinting_engine :: FreeType.HINTING_ADOBE;
+	//FreeType.Property_Set(freetype_library, auto module.ptr, auto prop.ptr, auto &hinting_engine);
 	return OK;
 }
 
