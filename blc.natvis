@@ -11,6 +11,8 @@ SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
             <Item Name="[id]">id</Item>
             <Item Name="[kind]">kind</Item>
             <Item Name="[state]">state</Item>
+			<Item Name="[file]">node->location->unit->name</Item>
+			<Item Name="[line]">node->location->line</Item>
         </Expand>
     </Type>
     <Type Name="str_t">

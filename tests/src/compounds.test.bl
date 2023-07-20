@@ -279,6 +279,28 @@ compound_structs :: fn () #test {
     }
 }
 
+compound_naked_structs_big :: fn () #test {
+    Foo :: struct {
+        i: s32;
+        j: s32;
+		k: [8]s32;
+    };
+
+    validate :: fn (v: Foo) {
+		test_eq(v.i, 10);
+		test_eq(v.j, 20);
+		loop i := 0; i < v.k.len; i += 1 {
+			test_eq(v.k[i], i);
+		}
+    };
+
+    validate(Foo.{
+		i = 10,
+		j = 20,
+		k = [8]s32.{ 0, 1, 2, 3, 4, 5, 6, 7 }
+	});
+}
+
 compound_fundamentals :: fn () #test {
     Days :: enum { MON; };
 

@@ -12849,7 +12849,6 @@ str_t get_intrinsic(const str_t name)
 	if (!name.len) return str_empty;
 	// clang-format off
 	const str_t map[] = {
-        cstr("memset.p0i8.i64"), cstr("__intrinsic_memset_p0i8_i64"),
 		cstr("memmove.p0.p0.i64"), cstr("__intrinsic_memmove_p0_p0_i64"),
 
         cstr("sin.f32"), cstr("__intrinsic_sin_f32"),

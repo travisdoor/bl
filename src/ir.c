@@ -338,7 +338,6 @@ str_t get_intrinsic(const str_t name)
 	if (str_match(name, cstr("log10.f64"))) return cstr("llvm.log10.f64");
 	if (str_match(name, cstr("trunc.f32"))) return cstr("llvm.trunc.f32");
 	if (str_match(name, cstr("trunc.f64"))) return cstr("llvm.trunc.f64");
-	if (str_match(name, cstr("memset.inline.p0i8.i64"))) return cstr("llvm.memset.inline.p0i8.i64");
 	if (str_match(name, cstr("memmove.p0.p0.i64"))) return cstr("llvm.memmove.p0.p0.i64");
 
 	return str_empty;
@@ -2045,7 +2044,7 @@ LLVMValueRef _emit_instr_compound_zero_initialized(struct context            *ct
 		args[1] = ctx->llvm_const_i8_zero;
 		args[2] =
 		    LLVMConstInt(get_type(ctx, ctx->builtin_types->t_u64), type->store_size_bytes, false);
-		args[3] = LLVMConstInt(get_type(ctx, ctx->builtin_types->t_bool), 0, false);
+		args[3] = LLVMConstInt(get_type(ctx, ctx->builtin_types->t_bool), 1, false);
 		LLVMBuildCall2(ctx->llvm_builder,
 		               ctx->intrinsic_memset_type,
 		               ctx->intrinsic_memset,
@@ -2227,6 +2226,7 @@ void emit_instr_compound(struct context            *ctx,
 		} else {
 			llvm_value = value->llvm_value;
 			bassert(llvm_value && "Missing LLVM value for nested compound expression member.");
+
 			LLVMBuildStore(ctx->llvm_builder, llvm_value, llvm_value_dest);
 		}
 	}
@@ -2496,18 +2496,26 @@ enum state emit_instr_call(struct context *ctx, struct mir_instr_call *call)
 
 			case LLVM_EASGM_BYVAL: { // Struct is too big and must be passed by value.
 				if (!has_byval_arg) has_byval_arg = true;
-				LLVMValueRef llvm_tmp = insert_easgm_tmp(ctx, call, arg->type);
-				if (arg_instr->kind == MIR_INSTR_LOAD) {
-					struct mir_instr_load *load = (struct mir_instr_load *)arg_instr;
-					llvm_arg                    = load->src->llvm_value;
-					LLVMInstructionEraseFromParent(load->base.llvm_value);
-					build_call_memcpy(ctx, llvm_arg, llvm_tmp, arg->type->store_size_bytes);
+				if (arg_instr->kind == MIR_INSTR_COMPOUND) {
+					blog("HERE!!!");
+					LLVMValueRef tmp =
+					    ((struct mir_instr_compound *)arg_instr)->tmp_var->llvm_value;
+					sarrput(&llvm_args, tmp);
 				} else {
-					// @Performance: This can explode into lot of ASM instructions in some cases, we
-					// should probably use memcpy intrinsic everytime.
-					LLVMBuildStore(ctx->llvm_builder, llvm_arg, llvm_tmp);
+					LLVMValueRef llvm_tmp = insert_easgm_tmp(ctx, call, arg->type);
+					if (arg_instr->kind == MIR_INSTR_LOAD) {
+						struct mir_instr_load *load = (struct mir_instr_load *)arg_instr;
+						llvm_arg                    = load->src->llvm_value;
+						LLVMInstructionEraseFromParent(load->base.llvm_value);
+						build_call_memcpy(ctx, llvm_arg, llvm_tmp, arg->type->store_size_bytes);
+					} else {
+						// @Performance: This can explode into lot of ASM instructions in some
+						// cases, we should probably use memcpy intrinsic everytime.
+						LLVMBuildStore(ctx->llvm_builder, llvm_arg, llvm_tmp);
+						// build_call_memcpy(ctx, llvm_arg, llvm_tmp, arg->type->store_size_bytes);
+					}
+					sarrput(&llvm_args, llvm_tmp);
 				}
-				sarrput(&llvm_args, llvm_tmp);
 				break;
 			}
 			}
@@ -2545,7 +2553,7 @@ enum state emit_instr_call(struct context *ctx, struct mir_instr_call *call)
 	// @Performance: LLVM API requires to set call side attributes after call is created.
 	// @Incomplete: Disabled for now, this for some reason does not work on ARM. Check if it's
 	// needed on other platforms.
-	if (has_byval_arg && false) {
+	if (has_byval_arg) {
 		bassert(has_args);
 		mir_args_t *args = callee_type->data.fn.args;
 		for (usize i = 0; i < sarrlenu(args); ++i) {

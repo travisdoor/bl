@@ -271,9 +271,6 @@ memmove :: fn (destination: *u8, source: *u8, size: usize) *u8 {
 	return destination;
 }
 
-// This is actually slower on Windows.
-// memset :: fn (dest: *u8, v: u8, size: usize) *u8 #intrinsic "memset.p0i8.i64";
-
 /// Zero out `destination` memory of `size` and return the original `destination` pointer. 
 /// This function is internally optimized to zero the `destination` memory in 64 bit blocks if possible.
 zeromem :: fn (destination: *u8, size: usize) *u8 {

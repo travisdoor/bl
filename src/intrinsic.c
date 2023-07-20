@@ -29,14 +29,9 @@
 #include "common.h"
 #include <math.h>
 
-BL_EXPORT u8 *__intrinsic_memset_p0i8_i64(u8 *dest, u8 v, usize size)
+BL_EXPORT void __intrinsic_memmove_p0_p0_i64(u8 *dest, u8 *src, usize size, bool is_volatile)
 {
-	return memset(dest, v, size);
-}
-
-BL_EXPORT u8 *__intrinsic_memmove_p0_p0_i64(u8 *dest, u8 *src, usize size)
-{
-	return memmove(dest, src, size);
+	memmove(dest, src, size);
 }
 
 BL_EXPORT f32 __intrinsic_sin_f32(f32 v)
