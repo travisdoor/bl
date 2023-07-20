@@ -60,6 +60,10 @@ main :: fn () s32 {
 
 See more examples [here](https://biscuitlang.org/how-to/).
 
+# Discord Server
+
+https://discord.gg/5brmdDSR
+
 ### Vulkan Renderer & The Game
 
 Screenshot of unnamed 3D game created using BL.
