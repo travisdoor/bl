@@ -55,7 +55,7 @@ _SHUT_UP_END
 #define LLVM_ATTR_ALIGNMENT LLVMGetEnumAttributeKindForName("align", 5)
 
 #define LLVM_MEMSET_INTRINSIC_ID LLVMLookupIntrinsicID("llvm.memset", 11)
-#define LLVM_MEMCPY_INTRINSIC_ID LLVMLookupIntrinsicID("llvm.memcpy.inline", 18)
+#define LLVM_MEMCPY_INTRINSIC_ID LLVMLookupIntrinsicID("llvm.memcpy", 11)
 
 typedef enum {
 	DW_ATE_adderess      = 1,

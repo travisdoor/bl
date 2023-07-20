@@ -1100,3 +1100,4 @@ SetCapture :: fn (hWnd: HWND) HWND #extern "SetCapture";
 ChangeDisplaySettingsA :: fn (lpDevMode: *DEVMODEA, dwFlags: DWORD) LONG #extern "ChangeDisplaySettingsA";
 GetConsoleScreenBufferInfo :: fn (hConsoleOutput: HANDLE , lpConsoleScreenBufferInfo: PCONSOLE_SCREEN_BUFFER_INFO) BOOL #extern "GetConsoleScreenBufferInfo";
 SetConsoleTextAttribute :: fn (hConsoleOutput: HANDLE, wAttributes: WORD) BOOL #extern "SetConsoleTextAttribute";
+GetLogicalDrives :: fn () DWORD #extern "GetLogicalDrives";

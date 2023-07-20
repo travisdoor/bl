@@ -1,3 +1,7 @@
+// To examples!!!
+// To examples!!!
+// To examples!!!
+
 #import "std/fs"
 
 text_file_to_heap :: fn (filename: string_view) string_view #comptime {
@@ -29,6 +33,7 @@ main :: fn() s32 {
 
 TODO:
 
+- !array => array.len == 0
 - #comptime - automatically comptime evaluated in case all the arguments are compile-time known.
 What about functions returning types?
 - Invalid - operator precedence!

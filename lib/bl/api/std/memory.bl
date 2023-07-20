@@ -264,8 +264,12 @@ memset :: fn (destination: *u8, value: u8, size: usize) *u8 {
 	return destination;
 }
 
-/// Copy 'size' bytes of data from memory location at 'source' to the 'destination'.
-memmove :: fn (destination: *u8, source: *u8, size: usize) *u8 #intrinsic "memmove.p0.p0.i64";
+/// Copy 'size' bytes of data from memory location at 'source' to the 'destination' and returns 'destination'.
+memmove :: fn (destination: *u8, source: *u8, size: usize) *u8 {
+	_memmove :: fn (destination: *u8, source: *u8, size: usize, is_volatile: bool) #intrinsic "memmove.p0.p0.i64";
+	_memmove(destination, source, size, false);
+	return destination;
+}
 
 // This is actually slower on Windows.
 // memset :: fn (dest: *u8, v: u8, size: usize) *u8 #intrinsic "memset.p0i8.i64";
