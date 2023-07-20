@@ -57,7 +57,7 @@ void mir_writer_run(struct assembly *assembly)
 	const char          *name   = assembly->target->name;
 	const struct target *target = assembly->target;
 
-	str_buf_append_fmt(&export_file, "{s}/{s}.blm", target->out_dir, name);
+	str_buf_append_fmt(&export_file, "{str}/{s}.blm", target->out_dir, name);
 
 	FILE *f = fopen(str_to_c(export_file), "w");
 	if (f == NULL) {
