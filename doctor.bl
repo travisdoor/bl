@@ -53,6 +53,8 @@ TestKind :: enum {
     BUILD;
     // Compile and execute + include custom main.
     TEST_EXECUTE;
+	// Compile and execute + include custom main.
+    TEST_EXECUTE_RELEASE;
     // Compile and execute in compile-time + include custom main.
     TEST_RUN;
     // Compile and expect fail.
@@ -137,7 +139,7 @@ main :: fn () s32 {
 
     // Test main suite
     if print_sections {
-        print("\nMain suite execution:\n");
+        print("\nMain suite execution DEBUG:\n");
     } else {
         print("Testing: %\n", args.cases);
     }
@@ -145,15 +147,25 @@ main :: fn () s32 {
     loop i := 0; i < files.len; i += 1 {
         test_file(&results, files[i], TEST_EXECUTE);
     }
+	
+	if print_sections { print("\nMain suite execution RELEASE:\n"); }
+	loop i := 0; i < files.len; i += 1 {
+        test_file(&results, files[i], TEST_EXECUTE_RELEASE);
+    }
+
     if print_sections { print("\nMain suite interpretation:\n"); }
     loop i := 0; i < files.len; i += 1 {
         test_file(&results, files[i], TEST_RUN);
     }
 
     // Test modules
-    if print_sections { print("\nModules:\n"); }
+    if print_sections { print("\nModules DEBUG:\n"); }
     loop i := 0; i < MODULES.len; i += 1 {
         test_file(&results, get_full_path(MODULES[i]), TEST_EXECUTE);
+    }
+    if print_sections { print("\nModules RELEASE:\n"); }
+    loop i := 0; i < MODULES.len; i += 1 {
+        test_file(&results, get_full_path(MODULES[i]), TEST_EXECUTE_RELEASE);
     }
 
     // Test examples
@@ -268,6 +280,14 @@ test_file :: fn (results: *[..]Result, filepath: string_view, kind: TestKind) {
 
         TEST_EXECUTE {
             if os_execute(tprint("% % % %", compiler, "--no-warning --silent", main_file, filepath)) != 0 {
+                result.state |= FAILED_COMPILE;
+            } else if os_execute(get_exe_name()) != 0 {
+                result.state |= FAILED_EXECUTE;
+            }
+        }
+
+        TEST_EXECUTE_RELEASE {
+            if os_execute(tprint("% % % %", compiler, "--no-warning --silent -release", main_file, filepath)) != 0 {
                 result.state |= FAILED_COMPILE;
             } else if os_execute(get_exe_name()) != 0 {
                 result.state |= FAILED_EXECUTE;
