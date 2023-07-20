@@ -2496,26 +2496,19 @@ enum state emit_instr_call(struct context *ctx, struct mir_instr_call *call)
 
 			case LLVM_EASGM_BYVAL: { // Struct is too big and must be passed by value.
 				if (!has_byval_arg) has_byval_arg = true;
+				LLVMValueRef llvm_tmp = NULL;
 				if (arg_instr->kind == MIR_INSTR_COMPOUND) {
-					blog("HERE!!!");
-					LLVMValueRef tmp =
+					llvm_tmp =
 					    ((struct mir_instr_compound *)arg_instr)->tmp_var->llvm_value;
-					sarrput(&llvm_args, tmp);
+				} else if (arg_instr->kind != MIR_INSTR_LOAD) {
+					llvm_tmp = insert_easgm_tmp(ctx, call, arg->type);
+					LLVMBuildStore(ctx->llvm_builder, llvm_arg, llvm_tmp);
 				} else {
-					LLVMValueRef llvm_tmp = insert_easgm_tmp(ctx, call, arg->type);
-					if (arg_instr->kind == MIR_INSTR_LOAD) {
-						struct mir_instr_load *load = (struct mir_instr_load *)arg_instr;
-						llvm_arg                    = load->src->llvm_value;
-						LLVMInstructionEraseFromParent(load->base.llvm_value);
-						build_call_memcpy(ctx, llvm_arg, llvm_tmp, arg->type->store_size_bytes);
-					} else {
-						// @Performance: This can explode into lot of ASM instructions in some
-						// cases, we should probably use memcpy intrinsic everytime.
-						LLVMBuildStore(ctx->llvm_builder, llvm_arg, llvm_tmp);
-						// build_call_memcpy(ctx, llvm_arg, llvm_tmp, arg->type->store_size_bytes);
-					}
-					sarrput(&llvm_args, llvm_tmp);
+					bassert(arg_instr->kind == MIR_INSTR_LOAD);
+					llvm_tmp = ((struct mir_instr_load *)arg_instr)->src->llvm_value;
 				}
+				bassert(llvm_tmp);
+				sarrput(&llvm_args, llvm_tmp);
 				break;
 			}
 			}
