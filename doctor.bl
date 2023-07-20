@@ -70,7 +70,9 @@ Test :: struct {
 State :: enum #flags {
     PASSED = 0;
     FAILED_COMPILE;
+	FAILED_COMPILE_RELEASE;
     FAILED_EXECUTE;
+	FAILED_EXECUTE_RELEASE;
     FAILED_RUN;
     FAILED_EXPECT_FAIL;
 }
@@ -288,9 +290,9 @@ test_file :: fn (results: *[..]Result, filepath: string_view, kind: TestKind) {
 
         TEST_EXECUTE_RELEASE {
             if os_execute(tprint("% % % %", compiler, "--no-warning --silent -release", main_file, filepath)) != 0 {
-                result.state |= FAILED_COMPILE;
+                result.state |= FAILED_COMPILE_RELEASE;
             } else if os_execute(get_exe_name()) != 0 {
-                result.state |= FAILED_EXECUTE;
+                result.state |= FAILED_EXECUTE_RELEASE;
             }
         }
 
