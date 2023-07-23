@@ -176,14 +176,26 @@ set_shader_font :: fn (font: *Font) #inline {
 }
 
 /// Draw a single colored rectangle or texture into the frame buffer.
-rect :: fn (position_x: f32, position_y: f32, width: f32, height: f32, color := glm.v4_one) #inline {
-	using glm;
-	add_rect([4]v2.{
-		v2.{ position_x,         position_y          },
-		v2.{ position_x + width, position_y          },
-		v2.{ position_x,         position_y + height },
-		v2.{ position_x + width, position_y + height }
-	}, color);
+rect :: fn {
+	fn (position_x: f32, position_y: f32, width: f32, height: f32, color := glm.v4_one) #inline {
+		using glm;
+		add_rect([4]v2.{
+			v2.{ position_x,         position_y          },
+			v2.{ position_x + width, position_y          },
+			v2.{ position_x,         position_y + height },
+			v2.{ position_x + width, position_y + height }
+		}, [4]v4.{ color, color, color, color });
+	};
+	fn (position_x: f32, position_y: f32, width: f32, height: f32, colors: []glm.v4) #inline {
+		using glm;
+		assert(colors.len == 4, "You have to provide color for each rectangle corner.");
+		add_rect([4]v2.{
+			v2.{ position_x,         position_y          },
+			v2.{ position_x + width, position_y          },
+			v2.{ position_x,         position_y + height },
+			v2.{ position_x + width, position_y + height }
+		}, colors);
+	};
 }
 
 /// Draw a single colored rectangle or texture into the frame buffer.
@@ -206,7 +218,7 @@ rect_centered_rotated :: fn (center_x: f32, center_y: f32, width: f32, height: f
 		v2.{ v_2.x + center_x, v_2.y + center_y},
 		v2.{ v_3.x + center_x, v_3.y + center_y},
 		v2.{ v_4.x + center_x, v_4.y + center_y},
-	}, color);
+	}, [4]v4.{ color, color, color, color });
 }
 
 /// Draw text into the frame buffer.
@@ -590,13 +602,13 @@ is_initialized: bool;
 // Rendering
 // =================================================================================================
 
-add_rect :: fn (v: []glm.v2, color: glm.v4) {
+add_rect :: fn (v: []glm.v2, colors: []glm.v4) {
 	assert(context.shader == &simple_color_shader || context.shader == &texture_shader, "Invalid current shader in use, please call 'set_shader_*' first.");
 	using glm;
 	base_index :: cast(u32) vertex_buffer.len;
 	array_push_all(&vertex_buffer, v);
 	if shader_has_attribute(context.shader, ShaderAttribute.FG_COLOR) {
-		array_push_all(&fg_color_buffer, [4]v4.{ color, color, color, color });
+		array_push_all(&fg_color_buffer, colors);
 	}
 	if shader_has_attribute(context.shader, ShaderAttribute.UV) {
 		array_push_all(&uv_buffer, [4]v2.{
