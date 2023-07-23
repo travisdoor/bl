@@ -2044,7 +2044,7 @@ LLVMValueRef _emit_instr_compound_zero_initialized(struct context            *ct
 		args[1] = ctx->llvm_const_i8_zero;
 		args[2] =
 		    LLVMConstInt(get_type(ctx, ctx->builtin_types->t_u64), type->store_size_bytes, false);
-		args[3] = LLVMConstInt(get_type(ctx, ctx->builtin_types->t_bool), 1, false);
+		args[3] = LLVMConstInt(get_type(ctx, ctx->builtin_types->t_bool), 0, false);
 		LLVMBuildCall2(ctx->llvm_builder,
 		               ctx->intrinsic_memset_type,
 		               ctx->intrinsic_memset,

@@ -7009,8 +7009,13 @@ struct result analyze_instr_switch(struct context *ctx, struct mir_instr_switch 
 				}
 			}
 			if (!hit) {
-				builder_msg(
-				    MSG_ERR_NOTE, 0, NULL, CARET_NONE, "Missing case for: %s", variant->id->str);
+				builder_msg(MSG_ERR_NOTE,
+				            0,
+				            NULL,
+				            CARET_NONE,
+				            "Missing case for: %.*s",
+				            variant->id->str.len,
+				            variant->id->str.ptr);
 			}
 		}
 	}
