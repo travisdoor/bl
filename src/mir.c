@@ -5354,12 +5354,15 @@ static struct result analyze_instr_compound_regular(struct context            *c
 				                                         });
 				if (!found) {
 					str_buf_t type_name = mir_type2str(type, /* prefer_name */ true);
-					report_error(INVALID_INITIALIZER,
-					             designator->ident,
-					             "Structure member designator '%s' does not refer to any member of "
-					             "initialized structure type '%s'.",
-					             id->str,
-					             str_to_c(type_name));
+					report_error(
+					    INVALID_INITIALIZER,
+					    designator->ident,
+					    "Structure member designator '%.*s' does not refer to any member of "
+					    "initialized structure type '%.*s'.",
+					    id->str.len,
+					    id->str.ptr,
+					    type_name.len,
+					    type_name.ptr);
 					put_tmp_str(type_name);
 					goto STRUCT_FAILED;
 				}

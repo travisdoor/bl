@@ -119,6 +119,21 @@ array_erase :: fn (_arr: *[..]?T, i: s64) {
 	arr.len -= 1;
 }
 
+/// Erase element on index `i` and move all following elements left. This might be slow in case the array is
+/// large.
+array_erase_keep_order :: fn (_arr: *[..]?T, i: s64) {
+	arr := cast(*_Array) _arr;
+	if i >= arr.len { panic("Index overflow!"); }
+	if i == arr.len - 1 {
+		arr.len -= 1;
+		return;
+	}
+	elem_size :: sizeof(T);
+	size_to_move :: (arr.len - i - 1) * auto elem_size;
+	memmove(get_elem_ptr(arr, elem_size, i), get_elem_ptr(arr, elem_size, i + 1), auto size_to_move);
+	arr.len -= 1;
+}
+
 // @Cleanup: We tend to use directly arr.len = 0 in our code base, so we can remove this function eventually...
 /// Erase all elements in dynamic array but keep allocated memory.
 array_clear :: fn (_arr: *[..]?T) #inline {
