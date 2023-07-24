@@ -852,11 +852,8 @@ static struct mir_var *rtti_gen_fn_group(struct context *ctx, struct mir_type *t
 // INLINES
 
 #define report_error(code, node, format, ...) _report(MSG_ERR, ERR_##code, (node), CARET_WORD, (format), ##__VA_ARGS__)
-
 #define report_error_after(code, node, format, ...) _report(MSG_ERR, ERR_##code, (node), CARET_AFTER, (format), ##__VA_ARGS__)
-
 #define report_warning(node, format, ...) _report(MSG_WARN, 0, (node), CARET_WORD, (format), ##__VA_ARGS__)
-
 #define report_note(node, format, ...) _report(MSG_ERR_NOTE, 0, (node), CARET_WORD, (format), ##__VA_ARGS__)
 
 static inline void _report(enum builder_msg_type type, s32 code, const struct ast *node, enum builder_cur_pos cursor_position, const char *format, ...) {
@@ -1166,7 +1163,7 @@ static inline struct mir_fn *ast_current_fn(struct context *ctx) {
 
 static inline void terminate_block(struct mir_instr_block *block, struct mir_instr *terminator) {
 	bassert(block);
-	if (block->terminal) babort("basic block '%s' already terminated!", block->name);
+	if (block->terminal) babort("basic block '%.*s' already terminated!", block->name.len, block->name.ptr);
 	block->terminal = terminator;
 }
 
@@ -1569,8 +1566,8 @@ struct scope_entry *register_symbol(struct context *ctx, struct ast *node, struc
 	return entry;
 
 COLLIDE : {
-	char *err_msg = (collision->is_builtin || is_builtin) ? "Symbol name collision with compiler builtin '%s'." : "Duplicate symbol";
-	report_error(DUPLICATE_SYMBOL, node, err_msg, id->str);
+	char *err_msg = (collision->is_builtin || is_builtin) ? "Symbol name collision with compiler builtin '%.*s'." : "Duplicate symbol";
+	report_error(DUPLICATE_SYMBOL, node, err_msg, id->str.len, id->str.ptr);
 	if (collision->node) {
 		report_note(collision->node, "Previous declaration found here.");
 	}
@@ -1587,7 +1584,7 @@ struct mir_type *lookup_builtin_type(struct context *ctx, enum builtin_id_kind k
 	                                             .in_tree = true,
 	                                         });
 
-	if (!found) babort("Missing compiler internal symbol '%s'", id->str);
+	if (!found) babort("Missing compiler internal symbol '%.*s'", id->str.len, id->str.ptr);
 	if (found->kind == SCOPE_ENTRY_INCOMPLETE) return NULL;
 
 	if (!found->is_builtin) {
@@ -1617,7 +1614,7 @@ struct mir_fn *lookup_builtin_fn(struct context *ctx, enum builtin_id_kind kind)
 	                                             .in_tree = true,
 	                                         });
 
-	if (!found) babort("Missing compiler internal symbol '%s'", id->str);
+	if (!found) babort("Missing compiler internal symbol '%.*s'", id->str.len, id->str.ptr);
 	if (found->kind == SCOPE_ENTRY_INCOMPLETE) return NULL;
 
 	if (!found->is_builtin) {
@@ -5307,7 +5304,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
 
 	// Invalid
 	str_buf_t type_name = mir_type2str(target_ptr->value.type, /* prefer_name */ true);
-	report_error(INVALID_TYPE, target_ptr->node, "Expected structure or enumerator type, got '%s'.", str_to_c(type_name));
+	report_error(INVALID_TYPE, target_ptr->node, "Expected structure or enumerator type, got '%.*s'.", type_name.len, type_name.ptr);
 	put_tmp_str(type_name);
 	return_zone(FAIL);
 }
@@ -5977,8 +5974,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 		// internal name mapping in this case.
 		const str_t intrinsic_name = get_intrinsic(fn->linkage_name);
 		if (!intrinsic_name.len) {
-			report_error(UNKNOWN_SYMBOL, fn_proto->base.node, "Unknown compiler intrinsic '%s'.", fn->linkage_name);
-
+			report_error(UNKNOWN_SYMBOL, fn_proto->base.node, "Unknown compiler intrinsic '%.*s'.", fn->linkage_name.len, fn->linkage_name.ptr);
 			return_zone(FAIL);
 		}
 
@@ -6281,7 +6277,7 @@ struct result analyze_instr_load(struct context *ctx, struct mir_instr_load *loa
 INVALID_SRC : {
 	bassert(err_type);
 	str_buf_t type_name = mir_type2str(err_type, /* prefer_name */ true);
-	report_error(INVALID_TYPE, src->node, "Expected value of pointer type, got '%s'.", str_to_c(type_name));
+	report_error(INVALID_TYPE, src->node, "Expected value of pointer type, got '%.*s'.", type_name.len, type_name.ptr);
 	put_tmp_str(type_name);
 	return_zone(FAIL);
 }
@@ -6335,7 +6331,7 @@ struct result analyze_instr_type_fn(struct context *ctx, struct mir_instr_type_f
 			case MIR_TYPE_FN_GROUP:
 			case MIR_TYPE_NAMED_SCOPE: {
 				str_buf_t type_name = mir_type2str(arg->type, /* prefer_name */ true);
-				report_error(INVALID_TYPE, arg->decl_node, "Invalid function argument type '%s'.", str_to_c(type_name));
+				report_error(INVALID_TYPE, arg->decl_node, "Invalid function argument type '%.*s'.", type_name.len, type_name.ptr);
 				put_tmp_str(type_name);
 				return_zone(FAIL);
 			}
@@ -6472,7 +6468,7 @@ struct result analyze_instr_decl_member(struct context *ctx, struct mir_instr_de
 	}
 	if (decl->type->value.type->kind != MIR_TYPE_TYPE && !mir_is_placeholder(decl->type)) {
 		str_buf_t type_name = mir_type2str(decl->type->value.type, /* prefer_name */ true);
-		report_error(INVALID_TYPE, decl->type->node, "Invalid type of the structure member, expected is 'type', got '%s'", str_to_c(type_name));
+		report_error(INVALID_TYPE, decl->type->node, "Invalid type of the structure member, expected is 'type', got '%.*s'", type_name.len, type_name.ptr);
 		put_tmp_str(type_name);
 		return_zone(FAIL);
 	}
@@ -6530,10 +6526,12 @@ struct result analyze_instr_decl_variant(struct context *ctx, struct mir_instr_d
 			str_buf_t base_type_name = mir_type2str(base_type, /* prefer_name */ true);
 			report_error(NUM_LIT_OVERFLOW,
 			             variant_instr->base.node,
-			             "Enum variant value overflow on variant '%s', maximum value for type "
-			             "'%s' is %llu.",
-			             variant->id->str,
-			             str_to_c(base_type_name),
+			             "Enum variant value overflow on variant '%.*s', maximum value for type "
+			             "'%.*s' is %llu.",
+			             variant->id->str.len,
+			             variant->id->str.ptr,
+			             base_type_name.len,
+			             base_type_name.ptr,
 			             max_value);
 			put_tmp_str(base_type_name);
 			return_zone(FAIL);
@@ -6604,8 +6602,9 @@ struct result analyze_instr_decl_arg(struct context *ctx, struct mir_instr_decl_
 		report_error(INVALID_TYPE,
 		             decl->base.node,
 		             "Types can be passed only as comptime arguments into the functions. Consider "
-		             "using the '#comptime' directive for the argument '%s'.",
-		             arg->id->str);
+		             "using the '#comptime' directive for the argument '%.*s'.",
+		             arg->id->str.len,
+		             arg->id->str.ptr);
 		return_zone(FAIL);
 	} else if (arg->type->kind == MIR_TYPE_VARGS && isflag(arg->flags, FLAG_COMPTIME)) {
 		report_error(INVALID_TYPE, decl->base.node, "Compile-time VArgs are not supported for now.");
@@ -7180,9 +7179,10 @@ struct result analyze_instr_unop(struct context *ctx, struct mir_instr_unop *uno
 			str_buf_t type_name = mir_type2str(expr_type, /* prefer_name */ true);
 			report_error_after(INVALID_TYPE,
 			                   unop->base.node,
-			                   "Invalid operation for type '%s'. This operation "
+			                   "Invalid operation for type '%.*s'. This operation "
 			                   "is valid for integer or enum flags types only.",
-			                   str_to_c(type_name));
+			                   type_name.len,
+			                   type_name.ptr);
 			put_tmp_str(type_name);
 			return_zone(FAIL);
 		}
@@ -7195,9 +7195,10 @@ struct result analyze_instr_unop(struct context *ctx, struct mir_instr_unop *uno
 			str_buf_t type_name = mir_type2str(expr_type, /* prefer_name */ true);
 			report_error_after(INVALID_TYPE,
 			                   unop->base.node,
-			                   "Invalid operation for type '%s'. This operation "
+			                   "Invalid operation for type '%.*s'. This operation "
 			                   "is valid for integer or real types only.",
-			                   str_to_c(type_name));
+			                   type_name.len,
+			                   type_name.ptr);
 			put_tmp_str(type_name);
 			return_zone(FAIL);
 		}
