@@ -145,30 +145,30 @@ struct native_lib {
 };
 
 // ABI sync!!! Keep this updated with target representation in build.bl.
-#define TARGET_COPYABLE_CONTENT                                                                    \
-	enum assembly_kind    kind;                                                                    \
-	enum assembly_opt     opt;                                                                     \
-	enum assembly_di_kind di;                                                                      \
-	bool                  reg_split;                                                               \
-	bool                  verify_llvm;                                                             \
-	bool                  run_tests;                                                               \
-	bool                  tests_minimal_output;                                                    \
-	bool                  no_api;                                                                  \
-	bool                  copy_deps;                                                               \
-	bool                  run;                                                                     \
-	bool                  print_tokens;                                                            \
-	bool                  print_ast;                                                               \
-	bool                  emit_llvm;                                                               \
-	bool                  emit_mir;                                                                \
-	bool                  emit_asm;                                                                \
-	bool                  no_bin;                                                                  \
-	bool                  no_llvm;                                                                 \
-	bool                  no_analyze;                                                              \
-	enum assert_mode      assert_mode;                                                             \
-	bool                  syntax_only;                                                             \
-	bool                  vmdbg_enabled;                                                           \
-	s32                   vmdbg_break_on;                                                          \
-	bool                  enable_experimental_targets;                                             \
+#define TARGET_COPYABLE_CONTENT                        \
+	enum assembly_kind    kind;                        \
+	enum assembly_opt     opt;                         \
+	enum assembly_di_kind di;                          \
+	bool                  reg_split;                   \
+	bool                  verify_llvm;                 \
+	bool                  run_tests;                   \
+	bool                  tests_minimal_output;        \
+	bool                  no_api;                      \
+	bool                  copy_deps;                   \
+	bool                  run;                         \
+	bool                  print_tokens;                \
+	bool                  print_ast;                   \
+	bool                  emit_llvm;                   \
+	bool                  emit_mir;                    \
+	bool                  emit_asm;                    \
+	bool                  no_bin;                      \
+	bool                  no_llvm;                     \
+	bool                  no_analyze;                  \
+	enum assert_mode      assert_mode;                 \
+	bool                  syntax_only;                 \
+	bool                  vmdbg_enabled;               \
+	s32                   vmdbg_break_on;              \
+	bool                  enable_experimental_targets; \
 	struct target_triple  triple;
 
 struct target {
@@ -290,7 +290,7 @@ s32            target_triple_to_string(const struct target_triple *triple, char 
 
 struct assembly *assembly_new(const struct target *target);
 void             assembly_delete(struct assembly *assembly);
-struct unit *
+struct unit           *
 assembly_add_unit_safe(struct assembly *assembly, const char *filepath, struct token *load_from);
 void      assembly_add_lib_path_safe(struct assembly *assembly, const char *path);
 void      assembly_append_linker_options_safe(struct assembly *assembly, const char *opt);
@@ -304,11 +304,10 @@ bool      assembly_import_module(struct assembly *assembly,
 DCpointer assembly_find_extern(struct assembly *assembly, const str_t symbol);
 
 struct mir_var *assembly_get_rtti(struct assembly *assembly, hash_t type_hash);
-void assembly_add_rtti(struct assembly *assembly, hash_t type_hash, struct mir_var *rtti_var);
+void            assembly_add_rtti(struct assembly *assembly, hash_t type_hash, struct mir_var *rtti_var);
 
 // Convert opt level to string.
-static inline const char *opt_to_str(enum assembly_opt opt)
-{
+static inline const char *opt_to_str(enum assembly_opt opt) {
 	switch (opt) {
 	case ASSEMBLY_OPT_DEBUG:
 		return "DEBUG";
@@ -323,8 +322,7 @@ static inline const char *opt_to_str(enum assembly_opt opt)
 }
 
 // Convert opt level to LLVM.
-static inline LLVMCodeGenOptLevel opt_to_LLVM(enum assembly_opt opt)
-{
+static inline LLVMCodeGenOptLevel opt_to_LLVM(enum assembly_opt opt) {
 	switch (opt) {
 	case ASSEMBLY_OPT_DEBUG:
 		return LLVMCodeGenLevelNone;

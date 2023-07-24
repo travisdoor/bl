@@ -47,92 +47,89 @@ static void
 calculate_unop(vm_stack_ptr_t dest, vm_stack_ptr_t v, enum unop_kind op, struct mir_type *type);
 
 // zero max nesting = unlimited nesting
-static void dyncall_cb_read_arg(struct virtual_machine      *vm,
-                                struct mir_const_expr_value *dest_value,
-                                DCArgs                      *src);
-static char dyncall_cb_handler(DCCallback *cb, DCArgs *args, DCValue *result, void *userdata);
-static void _dyncall_generate_signature(struct virtual_machine *vm, struct mir_type *type);
+static void        dyncall_cb_read_arg(struct virtual_machine      *vm,
+                                       struct mir_const_expr_value *dest_value,
+                                       DCArgs                      *src);
+static char        dyncall_cb_handler(DCCallback *cb, DCArgs *args, DCValue *result, void *userdata);
+static void        _dyncall_generate_signature(struct virtual_machine *vm, struct mir_type *type);
 static const char *dyncall_generate_signature(struct virtual_machine *vm, struct mir_type *type);
 static DCCallback *dyncall_fetch_callback(struct virtual_machine *vm, struct mir_fn *fn);
 static void
-dyncall_push_arg(struct virtual_machine *vm, vm_stack_ptr_t val_ptr, struct mir_type *type);
+                            dyncall_push_arg(struct virtual_machine *vm, vm_stack_ptr_t val_ptr, struct mir_type *type);
 static enum vm_interp_state execute_function(struct virtual_machine *vm,
                                              struct mir_fn          *fn,
                                              struct mir_instr_call  *optional_call,
                                              const bool              resume);
 static enum vm_interp_state interp_instr(struct virtual_machine *vm, struct mir_instr *instr);
 static void
-interp_extern_call(struct virtual_machine *vm, struct mir_fn *fn, struct mir_instr_call *call);
-static void interp_instr_toany(struct virtual_machine *vm, struct mir_instr_to_any *toany);
-static void interp_instr_unreachable(struct virtual_machine *vm, struct mir_instr_unreachable *unr);
-static void interp_instr_debugbreak(struct virtual_machine      *vm,
-                                    struct mir_instr_debugbreak *debug_break);
-static void interp_instr_phi(struct virtual_machine *vm, struct mir_instr_phi *phi);
-static void interp_instr_cast(struct virtual_machine *vm, struct mir_instr_cast *cast);
-static void interp_instr_addrof(struct virtual_machine *vm, struct mir_instr_addrof *addrof);
-static void interp_instr_br(struct virtual_machine *vm, struct mir_instr_br *br);
-static void interp_instr_switch(struct virtual_machine *vm, struct mir_instr_switch *sw);
-static void interp_instr_elem_ptr(struct virtual_machine *vm, struct mir_instr_elem_ptr *elem_ptr);
-static void interp_instr_member_ptr(struct virtual_machine      *vm,
-                                    struct mir_instr_member_ptr *member_ptr);
-static void interp_instr_unroll(struct virtual_machine *vm, struct mir_instr_unroll *unroll);
-static void interp_instr_arg(struct virtual_machine *vm, struct mir_instr_arg *arg);
-static void interp_instr_cond_br(struct virtual_machine *vm, struct mir_instr_cond_br *br);
-static void interp_instr_load(struct virtual_machine *vm, struct mir_instr_load *load);
-static void interp_instr_store(struct virtual_machine *vm, struct mir_instr_store *store);
-static void interp_instr_binop(struct virtual_machine *vm, struct mir_instr_binop *binop);
-static void interp_instr_unop(struct virtual_machine *vm, struct mir_instr_unop *unop);
+                            interp_extern_call(struct virtual_machine *vm, struct mir_fn *fn, struct mir_instr_call *call);
+static void                 interp_instr_toany(struct virtual_machine *vm, struct mir_instr_to_any *toany);
+static void                 interp_instr_unreachable(struct virtual_machine *vm, struct mir_instr_unreachable *unr);
+static void                 interp_instr_debugbreak(struct virtual_machine      *vm,
+                                                    struct mir_instr_debugbreak *debug_break);
+static void                 interp_instr_phi(struct virtual_machine *vm, struct mir_instr_phi *phi);
+static void                 interp_instr_cast(struct virtual_machine *vm, struct mir_instr_cast *cast);
+static void                 interp_instr_addrof(struct virtual_machine *vm, struct mir_instr_addrof *addrof);
+static void                 interp_instr_br(struct virtual_machine *vm, struct mir_instr_br *br);
+static void                 interp_instr_switch(struct virtual_machine *vm, struct mir_instr_switch *sw);
+static void                 interp_instr_elem_ptr(struct virtual_machine *vm, struct mir_instr_elem_ptr *elem_ptr);
+static void                 interp_instr_member_ptr(struct virtual_machine      *vm,
+                                                    struct mir_instr_member_ptr *member_ptr);
+static void                 interp_instr_unroll(struct virtual_machine *vm, struct mir_instr_unroll *unroll);
+static void                 interp_instr_arg(struct virtual_machine *vm, struct mir_instr_arg *arg);
+static void                 interp_instr_cond_br(struct virtual_machine *vm, struct mir_instr_cond_br *br);
+static void                 interp_instr_load(struct virtual_machine *vm, struct mir_instr_load *load);
+static void                 interp_instr_store(struct virtual_machine *vm, struct mir_instr_store *store);
+static void                 interp_instr_binop(struct virtual_machine *vm, struct mir_instr_binop *binop);
+static void                 interp_instr_unop(struct virtual_machine *vm, struct mir_instr_unop *unop);
 static enum vm_interp_state interp_instr_call(struct virtual_machine *vm,
                                               struct mir_instr_call  *call);
 static void                 interp_instr_ret(struct virtual_machine *vm, struct mir_instr_ret *ret);
 static void                 interp_instr_compound(struct virtual_machine    *vm,
                                                   vm_stack_ptr_t             tmp_ptr,
                                                   struct mir_instr_compound *cmp);
-static void interp_instr_vargs(struct virtual_machine *vm, struct mir_instr_vargs *vargs);
-static void interp_instr_decl_var(struct virtual_machine *vm, struct mir_instr_decl_var *decl);
-static void interp_instr_decl_ref(struct virtual_machine *vm, struct mir_instr_decl_ref *ref);
-static void interp_instr_decl_direct_ref(struct virtual_machine           *vm,
-                                         struct mir_instr_decl_direct_ref *ref);
-static void eval_instr(struct virtual_machine *vm, struct mir_instr *instr);
-static void eval_instr_type_info(struct virtual_machine *vm, struct mir_instr_type_info *type_info);
-static void eval_instr_typeof(struct virtual_machine *vm, struct mir_instr_typeof *type_of);
-static void eval_instr_call_loc(struct virtual_machine *vm, struct mir_instr_call_loc *loc);
-static void eval_instr_test_cases(struct virtual_machine *vm, struct mir_instr_test_case *tc);
-static void eval_instr_member_ptr(struct virtual_machine      *vm,
-                                  struct mir_instr_member_ptr *member_ptr);
-static void eval_instr_elem_ptr(struct virtual_machine *vm, struct mir_instr_elem_ptr *elem_ptr);
-static void eval_instr_decl_var(struct virtual_machine *vm, struct mir_instr_decl_var *decl_var);
-static void eval_instr_decl_ref(struct virtual_machine *vm, struct mir_instr_decl_ref *decl_ref);
-static void eval_instr_decl_direct_ref(struct virtual_machine           *vm,
-                                       struct mir_instr_decl_direct_ref *decl_ref);
-static void eval_instr_binop(struct virtual_machine *vm, struct mir_instr_binop *binop);
-static void eval_instr_unop(struct virtual_machine *vm, struct mir_instr_unop *unop);
-static void eval_instr_load(struct virtual_machine *vm, struct mir_instr_load *load);
-static void eval_instr_addrof(struct virtual_machine *vm, struct mir_instr_addrof *addrof);
-static void eval_instr_set_initializer(struct virtual_machine           *vm,
-                                       struct mir_instr_set_initializer *si);
-static void eval_instr_cast(struct virtual_machine *vm, struct mir_instr_cast *cast);
-static void eval_instr_compound(struct virtual_machine *vm, struct mir_instr_compound *cmp);
-static void eval_instr_unroll(struct virtual_machine *vm, struct mir_instr_unroll *unroll);
-static void eval_instr_arg(struct virtual_machine *vm, struct mir_instr_arg *arg);
+static void                 interp_instr_vargs(struct virtual_machine *vm, struct mir_instr_vargs *vargs);
+static void                 interp_instr_decl_var(struct virtual_machine *vm, struct mir_instr_decl_var *decl);
+static void                 interp_instr_decl_ref(struct virtual_machine *vm, struct mir_instr_decl_ref *ref);
+static void                 interp_instr_decl_direct_ref(struct virtual_machine           *vm,
+                                                         struct mir_instr_decl_direct_ref *ref);
+static void                 eval_instr(struct virtual_machine *vm, struct mir_instr *instr);
+static void                 eval_instr_type_info(struct virtual_machine *vm, struct mir_instr_type_info *type_info);
+static void                 eval_instr_typeof(struct virtual_machine *vm, struct mir_instr_typeof *type_of);
+static void                 eval_instr_call_loc(struct virtual_machine *vm, struct mir_instr_call_loc *loc);
+static void                 eval_instr_test_cases(struct virtual_machine *vm, struct mir_instr_test_case *tc);
+static void                 eval_instr_member_ptr(struct virtual_machine      *vm,
+                                                  struct mir_instr_member_ptr *member_ptr);
+static void                 eval_instr_elem_ptr(struct virtual_machine *vm, struct mir_instr_elem_ptr *elem_ptr);
+static void                 eval_instr_decl_var(struct virtual_machine *vm, struct mir_instr_decl_var *decl_var);
+static void                 eval_instr_decl_ref(struct virtual_machine *vm, struct mir_instr_decl_ref *decl_ref);
+static void                 eval_instr_decl_direct_ref(struct virtual_machine           *vm,
+                                                       struct mir_instr_decl_direct_ref *decl_ref);
+static void                 eval_instr_binop(struct virtual_machine *vm, struct mir_instr_binop *binop);
+static void                 eval_instr_unop(struct virtual_machine *vm, struct mir_instr_unop *unop);
+static void                 eval_instr_load(struct virtual_machine *vm, struct mir_instr_load *load);
+static void                 eval_instr_addrof(struct virtual_machine *vm, struct mir_instr_addrof *addrof);
+static void                 eval_instr_set_initializer(struct virtual_machine           *vm,
+                                                       struct mir_instr_set_initializer *si);
+static void                 eval_instr_cast(struct virtual_machine *vm, struct mir_instr_cast *cast);
+static void                 eval_instr_compound(struct virtual_machine *vm, struct mir_instr_compound *cmp);
+static void                 eval_instr_unroll(struct virtual_machine *vm, struct mir_instr_unroll *unroll);
+static void                 eval_instr_arg(struct virtual_machine *vm, struct mir_instr_arg *arg);
 
 // =================================================================================================
 // Inlines
 // =================================================================================================
-static inline bool fn_does_return(struct mir_fn *fn)
-{
+static inline bool fn_does_return(struct mir_fn *fn) {
 	return fn->type->data.fn.ret_type->kind != MIR_TYPE_VOID;
 }
 
 // Checks whether constant value needs some extra space or if it fits into small memory block hold
 // by the value itself.
-static inline bool needs_allocation(struct mir_const_expr_value *v)
-{
+static inline bool needs_allocation(struct mir_const_expr_value *v) {
 	return v->type->store_size_bytes > sizeof(v->_tmp);
 }
 
-static inline void eval_abort(struct virtual_machine *vm)
-{
+static inline void eval_abort(struct virtual_machine *vm) {
 	vm->aborted = true;
 }
 
@@ -143,8 +140,7 @@ static inline void eval_abort(struct virtual_machine *vm)
 
 static inline struct vm_stack *reset_stack(struct vm_stack *stack);
 
-static struct vm_stack *create_stack(const usize bytes)
-{
+static struct vm_stack *create_stack(const usize bytes) {
 	bassert(bytes > 0 && "Invalid stack size!");
 	struct vm_stack *stack = bmalloc(sizeof(char) * bytes);
 	stack->allocated_bytes = bytes;
@@ -152,13 +148,11 @@ static struct vm_stack *create_stack(const usize bytes)
 	return stack;
 }
 
-static inline void terminate_stack(struct vm_stack *stack)
-{
+static inline void terminate_stack(struct vm_stack *stack) {
 	bfree(stack);
 }
 
-struct vm_stack *reset_stack(struct vm_stack *stack)
-{
+struct vm_stack *reset_stack(struct vm_stack *stack) {
 	bassert(stack && stack->allocated_bytes > 0);
 	stack->pc         = NULL;
 	stack->ra         = NULL;
@@ -168,8 +162,7 @@ struct vm_stack *reset_stack(struct vm_stack *stack)
 }
 
 static inline struct vm_stack *swap_current_stack(struct virtual_machine *vm,
-                                                  struct vm_stack        *stack)
-{
+                                                  struct vm_stack        *stack) {
 	bassert(stack);
 	struct vm_stack *previous_stack = vm->stack;
 	vm->stack                       = stack;
@@ -177,8 +170,7 @@ static inline struct vm_stack *swap_current_stack(struct virtual_machine *vm,
 	return previous_stack;
 }
 
-static inline vm_stack_ptr_t stack_alloc(struct virtual_machine *vm, usize size)
-{
+static inline vm_stack_ptr_t stack_alloc(struct virtual_machine *vm, usize size) {
 	bassert(size && "trying to allocate 0 bytes on stack");
 	size               = stack_alloc_size(size);
 	vm_stack_ptr_t mem = vm->stack->top_ptr;
@@ -192,8 +184,7 @@ static inline vm_stack_ptr_t stack_alloc(struct virtual_machine *vm, usize size)
 }
 
 // shift stack top by the size in bytes
-static inline vm_stack_ptr_t stack_free(struct virtual_machine *vm, usize size)
-{
+static inline vm_stack_ptr_t stack_free(struct virtual_machine *vm, usize size) {
 	size                   = stack_alloc_size(size);
 	vm_stack_ptr_t new_top = vm->stack->top_ptr - size;
 	if (new_top < (u8 *)(vm->stack->ra + 1)) {
@@ -204,8 +195,7 @@ static inline vm_stack_ptr_t stack_free(struct virtual_machine *vm, usize size)
 	return new_top;
 }
 
-static inline void push_ra(struct virtual_machine *vm, struct mir_instr_call *caller)
-{
+static inline void push_ra(struct virtual_machine *vm, struct mir_instr_call *caller) {
 	struct vm_frame *tmp = (struct vm_frame *)stack_alloc(vm, sizeof(struct vm_frame));
 	tmp->caller          = caller;
 	tmp->prev            = vm->stack->ra;
@@ -213,8 +203,7 @@ static inline void push_ra(struct virtual_machine *vm, struct mir_instr_call *ca
 	vmdbg_notify_stack_op(VMDBG_PUSH_RA, NULL, tmp);
 }
 
-static inline struct mir_instr_call *pop_ra(struct virtual_machine *vm)
-{
+static inline struct mir_instr_call *pop_ra(struct virtual_machine *vm) {
 	if (!vm->stack->ra) return NULL;
 	struct mir_instr_call *caller = vm->stack->ra->caller;
 	// rollback
@@ -225,8 +214,7 @@ static inline struct mir_instr_call *pop_ra(struct virtual_machine *vm)
 	return caller;
 }
 
-static inline vm_stack_ptr_t stack_push_empty(struct virtual_machine *vm, struct mir_type *type)
-{
+static inline vm_stack_ptr_t stack_push_empty(struct virtual_machine *vm, struct mir_type *type) {
 	bassert(type);
 	const usize size = type->store_size_bytes;
 	bassert(size && "pushing zero sized data on stack");
@@ -236,16 +224,14 @@ static inline vm_stack_ptr_t stack_push_empty(struct virtual_machine *vm, struct
 }
 
 static inline vm_stack_ptr_t
-stack_push(struct virtual_machine *vm, void *value, struct mir_type *type)
-{
+stack_push(struct virtual_machine *vm, void *value, struct mir_type *type) {
 	bassert(value && "try to push NULL value");
 	vm_stack_ptr_t tmp = stack_push_empty(vm, type);
 	memcpy(tmp, value, type->store_size_bytes);
 	return tmp;
 }
 
-static inline vm_stack_ptr_t stack_pop(struct virtual_machine *vm, struct mir_type *type)
-{
+static inline vm_stack_ptr_t stack_pop(struct virtual_machine *vm, struct mir_type *type) {
 	bassert(type);
 	const usize size = type->store_size_bytes;
 	bassert(size && "Popping zero sized data from stack.");
@@ -254,8 +240,7 @@ static inline vm_stack_ptr_t stack_pop(struct virtual_machine *vm, struct mir_ty
 	return ptr;
 }
 
-static inline vm_stack_ptr_t stack_peek(struct virtual_machine *vm, struct mir_type *type)
-{
+static inline vm_stack_ptr_t stack_peek(struct virtual_machine *vm, struct mir_type *type) {
 	usize size = type->store_size_bytes;
 	bassert(size && "Peeking zero sized data on stack.");
 	size               = stack_alloc_size(size);
@@ -266,8 +251,7 @@ static inline vm_stack_ptr_t stack_peek(struct virtual_machine *vm, struct mir_t
 
 // Convert relative local address of variable into absolute address in memory.
 static inline vm_stack_ptr_t stack_rel_to_abs_ptr(struct virtual_machine *vm,
-                                                  vm_relative_stack_ptr_t rel_ptr)
-{
+                                                  vm_relative_stack_ptr_t rel_ptr) {
 	bassert(rel_ptr);
 	vm_stack_ptr_t base = (vm_stack_ptr_t)vm->stack->ra;
 	bassert(base);
@@ -279,9 +263,8 @@ static inline vm_stack_ptr_t stack_rel_to_abs_ptr(struct virtual_machine *vm,
 // =================================================================================================
 #define DATA_BUFFER_PAGE_SIZE 2048 // bytes
 
-static struct vm_bufpage *data_page_alloc(struct vm_bufpage *prev, usize size_needed)
-{
-	size_needed = size_needed > DATA_BUFFER_PAGE_SIZE ? size_needed : DATA_BUFFER_PAGE_SIZE;
+static struct vm_bufpage *data_page_alloc(struct vm_bufpage *prev, usize size_needed) {
+	size_needed             = size_needed > DATA_BUFFER_PAGE_SIZE ? size_needed : DATA_BUFFER_PAGE_SIZE;
 	struct vm_bufpage *page = bmalloc(size_needed + sizeof(struct vm_bufpage));
 	page->prev              = prev;
 	page->len               = 0;
@@ -290,8 +273,7 @@ static struct vm_bufpage *data_page_alloc(struct vm_bufpage *prev, usize size_ne
 	return page;
 }
 
-static vm_stack_ptr_t data_alloc(struct virtual_machine *vm, struct mir_type *type)
-{
+static vm_stack_ptr_t data_alloc(struct virtual_machine *vm, struct mir_type *type) {
 	zone();
 	bassert(type->store_size_bytes > 0);
 	const usize size_needed = type->store_size_bytes + (usize)type->alignment;
@@ -316,8 +298,7 @@ static vm_stack_ptr_t data_alloc(struct virtual_machine *vm, struct mir_type *ty
 	return_zone(ptr);
 }
 
-static void data_free(struct virtual_machine *vm)
-{
+static void data_free(struct virtual_machine *vm) {
 	struct vm_bufpage *current = vm->data;
 	while (current) {
 		struct vm_bufpage *tmp = current;
@@ -329,36 +310,30 @@ static void data_free(struct virtual_machine *vm)
 
 // Fetch value; use internal ConstExprValue storage if value is compile time known, otherwise use
 // stack.
-static inline vm_stack_ptr_t fetch_value(struct virtual_machine *vm, struct mir_const_expr_value *v)
-{
+static inline vm_stack_ptr_t fetch_value(struct virtual_machine *vm, struct mir_const_expr_value *v) {
 	if (v->is_comptime) return v->data;
 	return stack_pop(vm, v->type);
 }
 
 // Similar to fetch_value but in case value comes from stack we keep it there.
-static inline vm_stack_ptr_t peek_value(struct virtual_machine *vm, struct mir_const_expr_value *v)
-{
+static inline vm_stack_ptr_t peek_value(struct virtual_machine *vm, struct mir_const_expr_value *v) {
 	if (v->is_comptime) return v->data;
 	return stack_peek(vm, v->type);
 }
 
-static inline struct mir_instr *get_pc(struct virtual_machine *vm)
-{
+static inline struct mir_instr *get_pc(struct virtual_machine *vm) {
 	return vm->stack->pc;
 }
 
-static inline struct vm_frame *get_ra(struct virtual_machine *vm)
-{
+static inline struct vm_frame *get_ra(struct virtual_machine *vm) {
 	return vm->stack->ra;
 }
 
-static inline void set_pc(struct virtual_machine *vm, struct mir_instr *instr)
-{
+static inline void set_pc(struct virtual_machine *vm, struct mir_instr *instr) {
 	vm->stack->pc = instr;
 }
 
-static inline void stack_alloc_var(struct virtual_machine *vm, struct mir_var *var)
-{
+static inline void stack_alloc_var(struct virtual_machine *vm, struct mir_var *var) {
 	bassert(var);
 	bassert(!var->value.is_comptime && "Cannot allocate compile time constant");
 	bassert(isnotflag(var->iflags, MIR_VAR_GLOBAL) &&
@@ -368,8 +343,7 @@ static inline void stack_alloc_var(struct virtual_machine *vm, struct mir_var *v
 	var->vm_ptr.local  = tmp - (vm_stack_ptr_t)vm->stack->ra;
 }
 
-static inline void stack_alloc_local_vars(struct virtual_machine *vm, struct mir_fn *fn)
-{
+static inline void stack_alloc_local_vars(struct virtual_machine *vm, struct mir_fn *fn) {
 	bassert(fn);
 	// Init all stack variables.
 	for (usize i = 0; i < arrlenu(fn->variables); ++i) {
@@ -387,70 +361,69 @@ void calculate_binop(struct mir_type *src_type,
                      vm_stack_ptr_t   dest,
                      vm_stack_ptr_t   lhs,
                      vm_stack_ptr_t   rhs,
-                     enum binop_kind  op)
-{
-#define ARITHMETIC(T)                                                                              \
-	case BINOP_ADD:                                                                                \
-		vm_write_as(T, dest, vm_read_as(T, lhs) + vm_read_as(T, rhs));                             \
-		break;                                                                                     \
-	case BINOP_SUB:                                                                                \
-		vm_write_as(T, dest, vm_read_as(T, lhs) - vm_read_as(T, rhs));                             \
-		break;                                                                                     \
-	case BINOP_MUL:                                                                                \
-		vm_write_as(T, dest, vm_read_as(T, lhs) * vm_read_as(T, rhs));                             \
+                     enum binop_kind  op) {
+#define ARITHMETIC(T)                                                  \
+	case BINOP_ADD:                                                    \
+		vm_write_as(T, dest, vm_read_as(T, lhs) + vm_read_as(T, rhs)); \
+		break;                                                         \
+	case BINOP_SUB:                                                    \
+		vm_write_as(T, dest, vm_read_as(T, lhs) - vm_read_as(T, rhs)); \
+		break;                                                         \
+	case BINOP_MUL:                                                    \
+		vm_write_as(T, dest, vm_read_as(T, lhs) * vm_read_as(T, rhs)); \
 		break;
 
-#define ARITHMETIC_DIV_INT(T)                                                                      \
-	case BINOP_DIV:                                                                                \
-		if (vm_read_as(T, rhs) == 0) babort("Divide by zero, this should be an error!");           \
-		vm_write_as(T, dest, vm_read_as(T, lhs) / vm_read_as(T, rhs));                             \
+#define ARITHMETIC_DIV_INT(T)                                                            \
+	case BINOP_DIV:                                                                      \
+		if (vm_read_as(T, rhs) == 0) babort("Divide by zero, this should be an error!"); \
+		vm_write_as(T, dest, vm_read_as(T, lhs) / vm_read_as(T, rhs));                   \
 		break;
 
-#define ARITHMETIC_DIV_FLOAT(T)                                                                    \
-	case BINOP_DIV:                                                                                \
-		vm_write_as(T, dest, vm_read_as(T, lhs) / vm_read_as(T, rhs));                             \
+#define ARITHMETIC_DIV_FLOAT(T)                                        \
+	case BINOP_DIV:                                                    \
+		vm_write_as(T, dest, vm_read_as(T, lhs) / vm_read_as(T, rhs)); \
 		break;
 
-#define RELATIONAL(T)                                                                              \
-	case BINOP_EQ:                                                                                 \
-		vm_write_as(bool, dest, vm_read_as(T, lhs) == vm_read_as(T, rhs));                         \
-		break;                                                                                     \
-	case BINOP_NEQ:                                                                                \
-		vm_write_as(bool, dest, vm_read_as(T, lhs) != vm_read_as(T, rhs));                         \
-		break;                                                                                     \
-	case BINOP_GREATER:                                                                            \
-		vm_write_as(bool, dest, vm_read_as(T, lhs) > vm_read_as(T, rhs));                          \
-		break;                                                                                     \
-	case BINOP_LESS:                                                                               \
-		vm_write_as(bool, dest, vm_read_as(T, lhs) < vm_read_as(T, rhs));                          \
-		break;                                                                                     \
-	case BINOP_LESS_EQ:                                                                            \
-		vm_write_as(bool, dest, vm_read_as(T, lhs) <= vm_read_as(T, rhs));                         \
-		break;                                                                                     \
-	case BINOP_GREATER_EQ:                                                                         \
-		vm_write_as(bool, dest, vm_read_as(T, lhs) >= vm_read_as(T, rhs));                         \
+#define RELATIONAL(T)                                                      \
+	case BINOP_EQ:                                                         \
+		vm_write_as(bool, dest, vm_read_as(T, lhs) == vm_read_as(T, rhs)); \
+		break;                                                             \
+	case BINOP_NEQ:                                                        \
+		vm_write_as(bool, dest, vm_read_as(T, lhs) != vm_read_as(T, rhs)); \
+		break;                                                             \
+	case BINOP_GREATER:                                                    \
+		vm_write_as(bool, dest, vm_read_as(T, lhs) > vm_read_as(T, rhs));  \
+		break;                                                             \
+	case BINOP_LESS:                                                       \
+		vm_write_as(bool, dest, vm_read_as(T, lhs) < vm_read_as(T, rhs));  \
+		break;                                                             \
+	case BINOP_LESS_EQ:                                                    \
+		vm_write_as(bool, dest, vm_read_as(T, lhs) <= vm_read_as(T, rhs)); \
+		break;                                                             \
+	case BINOP_GREATER_EQ:                                                 \
+		vm_write_as(bool, dest, vm_read_as(T, lhs) >= vm_read_as(T, rhs)); \
 		break;
 
-#define LOGICAL(T)                                                                                 \
-	case BINOP_AND:                                                                                \
-		vm_write_as(T, dest, vm_read_as(T, lhs) & vm_read_as(T, rhs));                             \
-		break;                                                                                     \
-	case BINOP_OR:                                                                                 \
-		vm_write_as(T, dest, vm_read_as(T, lhs) | vm_read_as(T, rhs));                             \
-		break;                                                                                     \
-	case BINOP_XOR:                                                                                \
-		vm_write_as(T, dest, vm_read_as(T, lhs) ^ vm_read_as(T, rhs));                             \
+#define LOGICAL(T)                                                     \
+	case BINOP_AND:                                                    \
+		vm_write_as(T, dest, vm_read_as(T, lhs) & vm_read_as(T, rhs)); \
+		break;                                                         \
+	case BINOP_OR:                                                     \
+		vm_write_as(T, dest, vm_read_as(T, lhs) | vm_read_as(T, rhs)); \
+		break;                                                         \
+	case BINOP_XOR:                                                    \
+		vm_write_as(T, dest, vm_read_as(T, lhs) ^ vm_read_as(T, rhs)); \
 		break;
 
-#define OTHER(T)                                                                                   \
-	case BINOP_MOD:                                                                                \
-		vm_write_as(T, dest, vm_read_as(T, lhs) % vm_read_as(T, rhs));                             \
-		break;                                                                                     \
-	case BINOP_SHR:                                                                                \
-		vm_write_as(T, dest, vm_read_as(T, lhs) >> vm_read_as(T, rhs));                            \
-		break;                                                                                     \
-	case BINOP_SHL:                                                                                \
-		vm_write_as(T, dest, vm_read_as(T, lhs) << vm_read_as(T, rhs));                            \
+#define OTHER(T)                                                        \
+	case BINOP_MOD:                                                     \
+		vm_write_as(T, dest, vm_read_as(T, lhs) % vm_read_as(T, rhs));  \
+		break;                                                          \
+	case BINOP_SHR:                                                     \
+		vm_write_as(T, dest, vm_read_as(T, lhs) >> vm_read_as(T, rhs)); \
+		break;                                                          \
+	case BINOP_SHL:                                                     \
+		vm_write_as(T, dest, vm_read_as(T, lhs) << vm_read_as(T, rhs)); \
 		break;
 
 	// Valid types: integers, floats, doubles, enums (as ints), bool, pointers.
@@ -579,43 +552,42 @@ void calculate_binop(struct mir_type *src_type,
 #undef OTHER
 }
 
-void calculate_unop(vm_stack_ptr_t dest, vm_stack_ptr_t v, enum unop_kind op, struct mir_type *type)
-{
-#define UNOP_CASE(T)                                                                               \
-	case sizeof(T): {                                                                              \
-		switch (op) {                                                                              \
-		case UNOP_NOT:                                                                             \
-			vm_write_as(T, dest, !vm_read_as(T, v));                                               \
-			break;                                                                                 \
-		case UNOP_BIT_NOT:                                                                         \
-			vm_write_as(T, dest, ~vm_read_as(T, v));                                               \
-			break;                                                                                 \
-		case UNOP_NEG:                                                                             \
-			vm_write_as(T, dest, vm_read_as(T, v) * -1);                                           \
-			break;                                                                                 \
-		case UNOP_POS:                                                                             \
-			vm_write_as(T, dest, vm_read_as(T, v));                                                \
-			break;                                                                                 \
-		default:                                                                                   \
-			BL_UNIMPLEMENTED;                                                                      \
-		}                                                                                          \
+void calculate_unop(vm_stack_ptr_t dest, vm_stack_ptr_t v, enum unop_kind op, struct mir_type *type) {
+#define UNOP_CASE(T)                                     \
+	case sizeof(T): {                                    \
+		switch (op) {                                    \
+		case UNOP_NOT:                                   \
+			vm_write_as(T, dest, !vm_read_as(T, v));     \
+			break;                                       \
+		case UNOP_BIT_NOT:                               \
+			vm_write_as(T, dest, ~vm_read_as(T, v));     \
+			break;                                       \
+		case UNOP_NEG:                                   \
+			vm_write_as(T, dest, vm_read_as(T, v) * -1); \
+			break;                                       \
+		case UNOP_POS:                                   \
+			vm_write_as(T, dest, vm_read_as(T, v));      \
+			break;                                       \
+		default:                                         \
+			BL_UNIMPLEMENTED;                            \
+		}                                                \
 	} break
 
-#define UNOP_CASE_REAL(T)                                                                          \
-	case sizeof(T): {                                                                              \
-		switch (op) {                                                                              \
-		case UNOP_NOT:                                                                             \
-			vm_write_as(T, dest, !vm_read_as(T, v));                                               \
-			break;                                                                                 \
-		case UNOP_NEG:                                                                             \
-			vm_write_as(T, dest, vm_read_as(T, v) * -1);                                           \
-			break;                                                                                 \
-		case UNOP_POS:                                                                             \
-			vm_write_as(T, dest, vm_read_as(T, v));                                                \
-			break;                                                                                 \
-		default:                                                                                   \
-			BL_UNIMPLEMENTED;                                                                      \
-		}                                                                                          \
+#define UNOP_CASE_REAL(T)                                \
+	case sizeof(T): {                                    \
+		switch (op) {                                    \
+		case UNOP_NOT:                                   \
+			vm_write_as(T, dest, !vm_read_as(T, v));     \
+			break;                                       \
+		case UNOP_NEG:                                   \
+			vm_write_as(T, dest, vm_read_as(T, v) * -1); \
+			break;                                       \
+		case UNOP_POS:                                   \
+			vm_write_as(T, dest, vm_read_as(T, v));      \
+			break;                                       \
+		default:                                         \
+			BL_UNIMPLEMENTED;                            \
+		}                                                \
 	} break
 
 	const usize s = type->store_size_bytes;
@@ -669,8 +641,7 @@ void calculate_unop(vm_stack_ptr_t dest, vm_stack_ptr_t v, enum unop_kind op, st
 
 void dyncall_cb_read_arg(struct virtual_machine       UNUSED(*vm),
                          struct mir_const_expr_value *dest_value,
-                         DCArgs                      *src)
-{
+                         DCArgs                      *src) {
 	vm_stack_ptr_t   dest = dest_value->data;
 	struct mir_type *type = dest_value->type;
 
@@ -735,8 +706,7 @@ void dyncall_cb_read_arg(struct virtual_machine       UNUSED(*vm),
 	}
 }
 
-char dyncall_cb_handler(DCCallback UNUSED(*cb), DCArgs *dc_args, DCValue *result, void *userdata)
-{
+char dyncall_cb_handler(DCCallback UNUSED(*cb), DCArgs *dc_args, DCValue *result, void *userdata) {
 	// TODO: External callback can be invoked from different thread. This can cause problems for
 	//  now since interpreter is strictly single-threaded, but we must handle such situation in
 	//  future.
@@ -783,8 +753,7 @@ char dyncall_cb_handler(DCCallback UNUSED(*cb), DCArgs *dc_args, DCValue *result
 }
 
 // @Performance: Remove recursive calls.
-void _dyncall_generate_signature(struct virtual_machine *vm, struct mir_type *type)
-{
+void _dyncall_generate_signature(struct virtual_machine *vm, struct mir_type *type) {
 	switch (type->kind) {
 	case MIR_TYPE_FN: {
 		mir_args_t *args = type->data.fn.args;
@@ -868,16 +837,14 @@ void _dyncall_generate_signature(struct virtual_machine *vm, struct mir_type *ty
 	}
 }
 
-const char *dyncall_generate_signature(struct virtual_machine *vm, struct mir_type *type)
-{
+const char *dyncall_generate_signature(struct virtual_machine *vm, struct mir_type *type) {
 	arrsetlen(vm->dcsigtmp, 0);
 	_dyncall_generate_signature(vm, type);
 	arrput(vm->dcsigtmp, '\0');
 	return vm->dcsigtmp;
 }
 
-DCCallback *dyncall_fetch_callback(struct virtual_machine *vm, struct mir_fn *fn)
-{
+DCCallback *dyncall_fetch_callback(struct virtual_machine *vm, struct mir_fn *fn) {
 	if (fn->dyncall.extern_callback_handle) return fn->dyncall.extern_callback_handle;
 	const char *sig     = dyncall_generate_signature(vm, fn->type);
 	fn->dyncall.context = (struct dyncall_cb_context){.fn = fn, .vm = vm};
@@ -886,8 +853,7 @@ DCCallback *dyncall_fetch_callback(struct virtual_machine *vm, struct mir_fn *fn
 	return fn->dyncall.extern_callback_handle;
 }
 
-void dyncall_push_arg(struct virtual_machine *vm, vm_stack_ptr_t val_ptr, struct mir_type *type)
-{
+void dyncall_push_arg(struct virtual_machine *vm, vm_stack_ptr_t val_ptr, struct mir_type *type) {
 	bassert(type);
 
 	DCCallVM *dvm = vm->assembly->dc_vm;
@@ -973,8 +939,7 @@ void dyncall_push_arg(struct virtual_machine *vm, vm_stack_ptr_t val_ptr, struct
 	}
 }
 
-void interp_extern_call(struct virtual_machine *vm, struct mir_fn *fn, struct mir_instr_call *call)
-{
+void interp_extern_call(struct virtual_machine *vm, struct mir_fn *fn, struct mir_instr_call *call) {
 	struct mir_type *ret_type = fn->type->data.fn.ret_type;
 	bassert(ret_type);
 
@@ -1080,8 +1045,7 @@ void interp_extern_call(struct virtual_machine *vm, struct mir_fn *fn, struct mi
 enum vm_interp_state execute_function(struct virtual_machine *vm,
                                       struct mir_fn          *fn,
                                       struct mir_instr_call  *optional_call,
-                                      const bool              resume)
-{
+                                      const bool              resume) {
 	const struct mir_instr *fn_terminal_instr = &fn->terminal_instr->base;
 	// Reset eventual previous failed state.
 	vm->aborted = false;
@@ -1126,8 +1090,7 @@ enum vm_interp_state execute_function(struct virtual_machine *vm,
 	return state;
 }
 
-enum vm_interp_state interp_instr(struct virtual_machine *vm, struct mir_instr *instr)
-{
+enum vm_interp_state interp_instr(struct virtual_machine *vm, struct mir_instr *instr) {
 	bassert(instr);
 	bassert(instr->state == MIR_IS_COMPLETE);
 	if (vm->assembly->target->vmdbg_break_on == (s32)instr->id) {
@@ -1223,8 +1186,7 @@ enum vm_interp_state interp_instr(struct virtual_machine *vm, struct mir_instr *
 	return vm->aborted ? VM_INTERP_ABORT : state;
 }
 
-void interp_instr_toany(struct virtual_machine *vm, struct mir_instr_to_any *toany)
-{
+void interp_instr_toany(struct virtual_machine *vm, struct mir_instr_to_any *toany) {
 	struct mir_var *dest_var  = toany->tmp;
 	struct mir_var *type_info = assembly_get_rtti(vm->assembly, toany->rtti_type->id.hash);
 	bassert(type_info->value.is_comptime);
@@ -1241,7 +1203,7 @@ void interp_instr_toany(struct virtual_machine *vm, struct mir_instr_to_any *toa
 
 	// data
 	struct mir_type *dest_data_type = mir_get_struct_elem_type(dest_type, 1);
-	vm_stack_ptr_t dest_data = vm_get_struct_elem_ptr(vm->assembly, dest_var->value.type, dest, 1);
+	vm_stack_ptr_t   dest_data      = vm_get_struct_elem_ptr(vm->assembly, dest_var->value.type, dest, 1);
 
 	struct mir_type *data_type = toany->expr->value.type;
 
@@ -1269,8 +1231,7 @@ void interp_instr_toany(struct virtual_machine *vm, struct mir_instr_to_any *toa
 	stack_push(vm, &dest, toany->base.value.type);
 }
 
-void interp_instr_phi(struct virtual_machine *vm, struct mir_instr_phi *phi)
-{
+void interp_instr_phi(struct virtual_machine *vm, struct mir_instr_phi *phi) {
 	struct mir_instr_block *prev_block = vm->stack->prev_block;
 	bassert(prev_block && "Invalid previous block for phi instruction.");
 	bassert(phi->incoming_blocks && phi->incoming_values);
@@ -1294,8 +1255,7 @@ void interp_instr_phi(struct virtual_machine *vm, struct mir_instr_phi *phi)
 	}
 }
 
-void interp_instr_addrof(struct virtual_machine *vm, struct mir_instr_addrof *addrof)
-{
+void interp_instr_addrof(struct virtual_machine *vm, struct mir_instr_addrof *addrof) {
 	struct mir_instr *src  = addrof->src;
 	struct mir_type  *type = src->value.type;
 	bassert(type);
@@ -1310,8 +1270,7 @@ void interp_instr_addrof(struct virtual_machine *vm, struct mir_instr_addrof *ad
 	stack_push(vm, (vm_stack_ptr_t)&ptr, type);
 }
 
-void interp_instr_elem_ptr(struct virtual_machine *vm, struct mir_instr_elem_ptr *elem_ptr)
-{
+void interp_instr_elem_ptr(struct virtual_machine *vm, struct mir_instr_elem_ptr *elem_ptr) {
 	// pop index from stack
 	struct mir_type *arr_type   = mir_deref_type(elem_ptr->arr_ptr->value.type);
 	vm_stack_ptr_t   index_ptr  = fetch_value(vm, &elem_ptr->index->value);
@@ -1381,8 +1340,7 @@ void interp_instr_elem_ptr(struct virtual_machine *vm, struct mir_instr_elem_ptr
 	stack_push(vm, (vm_stack_ptr_t)&result_ptr, elem_ptr->base.value.type);
 }
 
-void interp_instr_member_ptr(struct virtual_machine *vm, struct mir_instr_member_ptr *member_ptr)
-{
+void interp_instr_member_ptr(struct virtual_machine *vm, struct mir_instr_member_ptr *member_ptr) {
 	bassert(member_ptr->target_ptr);
 	struct mir_type *target_type = member_ptr->target_ptr->value.type;
 
@@ -1425,8 +1383,7 @@ void interp_instr_member_ptr(struct virtual_machine *vm, struct mir_instr_member
 	stack_push(vm, (vm_stack_ptr_t)&result, member_ptr->base.value.type);
 }
 
-void interp_instr_unroll(struct virtual_machine *vm, struct mir_instr_unroll *unroll)
-{
+void interp_instr_unroll(struct virtual_machine *vm, struct mir_instr_unroll *unroll) {
 	bassert(unroll->src);
 	struct mir_type *src_type = unroll->src->value.type;
 	const s32        index    = unroll->index;
@@ -1440,8 +1397,7 @@ void interp_instr_unroll(struct virtual_machine *vm, struct mir_instr_unroll *un
 	stack_push(vm, (vm_stack_ptr_t)&result, unroll->base.value.type);
 }
 
-void interp_instr_unreachable(struct virtual_machine *vm, struct mir_instr_unreachable *unr)
-{
+void interp_instr_unreachable(struct virtual_machine *vm, struct mir_instr_unreachable *unr) {
 	vmdbg_break();
 	builder_msg(
 	    MSG_ERR, ERR_COMPILE_TIME_ABORT, NULL, CARET_AFTER, "Execution reached unreachable code.");
@@ -1449,20 +1405,17 @@ void interp_instr_unreachable(struct virtual_machine *vm, struct mir_instr_unrea
 }
 
 void interp_instr_debugbreak(struct virtual_machine     *vm,
-                             struct mir_instr_debugbreak UNUSED(*debug_break))
-{
+                             struct mir_instr_debugbreak UNUSED(*debug_break)) {
 	vmdbg_break();
 }
 
-void interp_instr_br(struct virtual_machine *vm, struct mir_instr_br *br)
-{
+void interp_instr_br(struct virtual_machine *vm, struct mir_instr_br *br) {
 	bassert(br->then_block);
 	vm->stack->prev_block = br->base.owner_block;
 	set_pc(vm, br->then_block->entry_instr);
 }
 
-void interp_instr_switch(struct virtual_machine *vm, struct mir_instr_switch *sw)
-{
+void interp_instr_switch(struct virtual_machine *vm, struct mir_instr_switch *sw) {
 	struct mir_type *value_type = sw->value->value.type;
 	vm_stack_ptr_t   value_ptr  = fetch_value(vm, &sw->value->value);
 	bassert(value_ptr);
@@ -1482,8 +1435,7 @@ void interp_instr_switch(struct virtual_machine *vm, struct mir_instr_switch *sw
 	set_pc(vm, sw->default_block->entry_instr);
 }
 
-void interp_instr_cast(struct virtual_machine *vm, struct mir_instr_cast *cast)
-{
+void interp_instr_cast(struct virtual_machine *vm, struct mir_instr_cast *cast) {
 	if (cast->op == MIR_CAST_NONE) return;
 	struct mir_type *dest_type = cast->base.value.type;
 	struct mir_type *src_type  = cast->expr->value.type;
@@ -1493,8 +1445,7 @@ void interp_instr_cast(struct virtual_machine *vm, struct mir_instr_cast *cast)
 	stack_push(vm, &tmp, dest_type);
 }
 
-void interp_instr_arg(struct virtual_machine *vm, struct mir_instr_arg *arg)
-{
+void interp_instr_arg(struct virtual_machine *vm, struct mir_instr_arg *arg) {
 	// Caller is optional, when we call function implicitly there is no call instruction which
 	// we can use, so we need to handle also this situation. In such case we expect all
 	// arguments to be already pushed on the stack.
@@ -1544,8 +1495,7 @@ void interp_instr_arg(struct virtual_machine *vm, struct mir_instr_arg *arg)
 	stack_push(vm, (vm_stack_ptr_t)arg_ptr, arg->base.value.type);
 }
 
-void interp_instr_cond_br(struct virtual_machine *vm, struct mir_instr_cond_br *br)
-{
+void interp_instr_cond_br(struct virtual_machine *vm, struct mir_instr_cond_br *br) {
 	bassert(br->cond);
 	struct mir_type *type = br->cond->value.type;
 	// pop condition from stack
@@ -1566,8 +1516,7 @@ void interp_instr_cond_br(struct virtual_machine *vm, struct mir_instr_cond_br *
 	}
 }
 
-void interp_instr_decl_ref(struct virtual_machine *vm, struct mir_instr_decl_ref *ref)
-{
+void interp_instr_decl_ref(struct virtual_machine *vm, struct mir_instr_decl_ref *ref) {
 	struct scope_entry *entry = ref->scope_entry;
 	bassert(entry);
 
@@ -1645,8 +1594,7 @@ void interp_instr_decl_ref(struct virtual_machine *vm, struct mir_instr_decl_ref
 	}
 }
 
-void interp_instr_decl_direct_ref(struct virtual_machine *vm, struct mir_instr_decl_direct_ref *ref)
-{
+void interp_instr_decl_direct_ref(struct virtual_machine *vm, struct mir_instr_decl_direct_ref *ref) {
 	bassert(ref->ref->kind == MIR_INSTR_DECL_VAR);
 	struct mir_var *var = ((struct mir_instr_decl_var *)ref->ref)->var;
 	bassert(var);
@@ -1657,8 +1605,7 @@ void interp_instr_decl_direct_ref(struct virtual_machine *vm, struct mir_instr_d
 
 void interp_instr_compound(struct virtual_machine    *vm,
                            vm_stack_ptr_t             tmp_ptr,
-                           struct mir_instr_compound *cmp)
-{
+                           struct mir_instr_compound *cmp) {
 	bassert(!mir_is_comptime(&cmp->base));
 	const bool will_push = tmp_ptr == NULL;
 	if (will_push) {
@@ -1704,8 +1651,7 @@ void interp_instr_compound(struct virtual_machine    *vm,
 	if (will_push) stack_push(vm, tmp_ptr, cmp->base.value.type);
 }
 
-void interp_instr_vargs(struct virtual_machine *vm, struct mir_instr_vargs *vargs)
-{
+void interp_instr_vargs(struct virtual_machine *vm, struct mir_instr_vargs *vargs) {
 	mir_instrs_t   *values    = vargs->values;
 	struct mir_var *arr_tmp   = vargs->arr_tmp;
 	struct mir_var *vargs_tmp = vargs->vargs_tmp;
@@ -1749,8 +1695,7 @@ void interp_instr_vargs(struct virtual_machine *vm, struct mir_instr_vargs *varg
 	}
 }
 
-void interp_instr_decl_var(struct virtual_machine *vm, struct mir_instr_decl_var *decl)
-{
+void interp_instr_decl_var(struct virtual_machine *vm, struct mir_instr_decl_var *decl) {
 	struct mir_var *var = decl->var;
 	bassert(var);
 	bassert(decl->base.value.type);
@@ -1771,8 +1716,7 @@ void interp_instr_decl_var(struct virtual_machine *vm, struct mir_instr_decl_var
 	}
 }
 
-void interp_instr_load(struct virtual_machine *vm, struct mir_instr_load *load)
-{
+void interp_instr_load(struct virtual_machine *vm, struct mir_instr_load *load) {
 	// pop source from stack or load directly when src is declaration, push on
 	// to stack dereferenced value of source
 	struct mir_type *dest_type = load->base.value.type;
@@ -1783,8 +1727,7 @@ void interp_instr_load(struct virtual_machine *vm, struct mir_instr_load *load)
 	stack_push(vm, src_ptr, dest_type);
 }
 
-void interp_instr_store(struct virtual_machine *vm, struct mir_instr_store *store)
-{
+void interp_instr_store(struct virtual_machine *vm, struct mir_instr_store *store) {
 	// loads destination (in case it is not direct reference to declaration) and
 	// source from stack
 	vm_stack_ptr_t dest_ptr = fetch_value(vm, &store->dest->value);
@@ -1809,8 +1752,7 @@ void interp_instr_store(struct virtual_machine *vm, struct mir_instr_store *stor
 	memcpy(dest_ptr, src_ptr, src_type->store_size_bytes);
 }
 
-enum vm_interp_state interp_instr_call(struct virtual_machine *vm, struct mir_instr_call *call)
-{
+enum vm_interp_state interp_instr_call(struct virtual_machine *vm, struct mir_instr_call *call) {
 	// Call instruction expects all arguments already pushed on the stack in reverse order.
 	bassert(call->callee && call->base.value.type);
 	bassert(call->callee->value.type);
@@ -1853,8 +1795,7 @@ enum vm_interp_state interp_instr_call(struct virtual_machine *vm, struct mir_in
 	return VM_INTERP_PASSED;
 }
 
-void interp_instr_ret(struct virtual_machine *vm, struct mir_instr_ret *ret)
-{
+void interp_instr_ret(struct virtual_machine *vm, struct mir_instr_ret *ret) {
 	struct mir_fn *fn = ret->base.owner_block->owner_fn;
 	bassert(fn);
 	struct mir_type *ret_type     = fn->type->data.fn.ret_type;
@@ -1907,8 +1848,7 @@ void interp_instr_ret(struct virtual_machine *vm, struct mir_instr_ret *ret)
 	set_pc(vm, do_post_process ? pc->base.next : NULL);
 }
 
-void interp_instr_binop(struct virtual_machine *vm, struct mir_instr_binop *binop)
-{
+void interp_instr_binop(struct virtual_machine *vm, struct mir_instr_binop *binop) {
 	// binop expects lhs and rhs on stack in exact order and push result again
 	// to the stack
 	vm_stack_ptr_t lhs_ptr = fetch_value(vm, &binop->lhs->value);
@@ -1937,8 +1877,7 @@ void interp_instr_binop(struct virtual_machine *vm, struct mir_instr_binop *bino
 	stack_push(vm, &tmp, dest_type);
 }
 
-void interp_instr_unop(struct virtual_machine *vm, struct mir_instr_unop *unop)
-{
+void interp_instr_unop(struct virtual_machine *vm, struct mir_instr_unop *unop) {
 	struct mir_type *type  = unop->base.value.type;
 	vm_stack_ptr_t   v_ptr = fetch_value(vm, &unop->expr->value);
 
@@ -1948,8 +1887,7 @@ void interp_instr_unop(struct virtual_machine *vm, struct mir_instr_unop *unop)
 	stack_push(vm, &tmp, type);
 }
 
-void eval_instr(struct virtual_machine *vm, struct mir_instr *instr)
-{
+void eval_instr(struct virtual_machine *vm, struct mir_instr *instr) {
 	if (!instr) return;
 	bassert(instr->value.is_comptime);
 
@@ -2058,8 +1996,7 @@ void eval_instr(struct virtual_machine *vm, struct mir_instr *instr)
 	}
 }
 
-void eval_instr_type_info(struct virtual_machine *vm, struct mir_instr_type_info *type_info)
-{
+void eval_instr_type_info(struct virtual_machine *vm, struct mir_instr_type_info *type_info) {
 	bassert(type_info->rtti_type && "Missing RTTI type!");
 	struct mir_var *rtti_var = assembly_get_rtti(vm->assembly, type_info->rtti_type->id.hash);
 #if BL_ASSERT_ENABLE
@@ -2074,19 +2011,16 @@ void eval_instr_type_info(struct virtual_machine *vm, struct mir_instr_type_info
 	MIR_CEV_WRITE_AS(vm_stack_ptr_t, &type_info->base.value, rtti_var->value.data);
 }
 
-void eval_instr_typeof(struct virtual_machine *vm, struct mir_instr_typeof *type_of)
-{
+void eval_instr_typeof(struct virtual_machine *vm, struct mir_instr_typeof *type_of) {
 	MIR_CEV_WRITE_AS(struct mir_type *, &type_of->base.value, type_of->expr->value.type);
 }
 
-void eval_instr_call_loc(struct virtual_machine UNUSED(*vm), struct mir_instr_call_loc *loc)
-{
+void eval_instr_call_loc(struct virtual_machine UNUSED(*vm), struct mir_instr_call_loc *loc) {
 	if (!loc->meta_var) return;
 	MIR_CEV_WRITE_AS(vm_stack_ptr_t, &loc->base.value, loc->meta_var->value.data);
 }
 
-void eval_instr_test_cases(struct virtual_machine *vm, struct mir_instr_test_case *tc)
-{
+void eval_instr_test_cases(struct virtual_machine *vm, struct mir_instr_test_case *tc) {
 	struct mir_var  *var     = vm->assembly->testing.meta_var;
 	struct mir_type *tc_type = tc->base.value.type;
 
@@ -2111,8 +2045,7 @@ void eval_instr_test_cases(struct virtual_machine *vm, struct mir_instr_test_cas
 	}
 }
 
-void eval_instr_elem_ptr(struct virtual_machine *vm, struct mir_instr_elem_ptr *elem_ptr)
-{
+void eval_instr_elem_ptr(struct virtual_machine *vm, struct mir_instr_elem_ptr *elem_ptr) {
 	struct mir_type *arr_type   = mir_deref_type(elem_ptr->arr_ptr->value.type);
 	vm_stack_ptr_t   arr_ptr    = MIR_CEV_READ_AS(vm_stack_ptr_t, &elem_ptr->arr_ptr->value);
 	vm_stack_ptr_t   result_ptr = NULL;
@@ -2169,17 +2102,16 @@ void eval_instr_elem_ptr(struct virtual_machine *vm, struct mir_instr_elem_ptr *
 }
 
 void eval_instr_member_ptr(struct virtual_machine       UNUSED(*vm),
-                           struct mir_instr_member_ptr *member_ptr)
-{
+                           struct mir_instr_member_ptr *member_ptr) {
 	switch (member_ptr->scope_entry->kind) {
 	case SCOPE_ENTRY_UNNAMED:
 		// @Hack: This is used as dummy scope entry for sub-type members. They are evaluated
 		// directly inside the analyze pass, but it should be here.
 		break;
 	case SCOPE_ENTRY_MEMBER: {
-		struct mir_member *member = member_ptr->scope_entry->data.member;
-		vm_stack_ptr_t strct_ptr  = MIR_CEV_READ_AS(vm_stack_ptr_t, &member_ptr->target_ptr->value);
-		vm_stack_ptr_t result_ptr = NULL;
+		struct mir_member *member     = member_ptr->scope_entry->data.member;
+		vm_stack_ptr_t     strct_ptr  = MIR_CEV_READ_AS(vm_stack_ptr_t, &member_ptr->target_ptr->value);
+		vm_stack_ptr_t     result_ptr = NULL;
 
 		result_ptr = strct_ptr + member->offset_bytes;
 
@@ -2198,8 +2130,7 @@ void eval_instr_member_ptr(struct virtual_machine       UNUSED(*vm),
 	}
 }
 
-void eval_instr_compound(struct virtual_machine *vm, struct mir_instr_compound *cmp)
-{
+void eval_instr_compound(struct virtual_machine *vm, struct mir_instr_compound *cmp) {
 	struct mir_const_expr_value *value = &cmp->base.value;
 	if (needs_allocation(value)) {
 		// Compound data doesn't fit into default static memory register, we need to
@@ -2235,7 +2166,7 @@ void eval_instr_compound(struct virtual_machine *vm, struct mir_instr_compound *
 		case MIR_TYPE_SLICE:
 		case MIR_TYPE_VARGS: {
 			struct mir_type *member_type = mir_get_struct_elem_type(value->type, index);
-			ptrdiff_t offset = vm_get_struct_elem_offset(vm->assembly, value->type, (u32)index);
+			ptrdiff_t        offset      = vm_get_struct_elem_offset(vm->assembly, value->type, (u32)index);
 			dest_ptr += offset;
 			memcpy(dest_ptr, src_ptr, member_type->store_size_bytes);
 			break;
@@ -2257,8 +2188,7 @@ void eval_instr_compound(struct virtual_machine *vm, struct mir_instr_compound *
 	}
 }
 
-void eval_instr_unroll(struct virtual_machine *vm, struct mir_instr_unroll *unroll)
-{
+void eval_instr_unroll(struct virtual_machine *vm, struct mir_instr_unroll *unroll) {
 	struct mir_instr *src = unroll->src;
 	bassert(src);
 	struct mir_type *src_type = src->value.type;
@@ -2274,8 +2204,7 @@ void eval_instr_unroll(struct virtual_machine *vm, struct mir_instr_unroll *unro
 	unroll->base.value.data = src->value.data;
 }
 
-void eval_instr_arg(struct virtual_machine UNUSED(*vm), struct mir_instr_arg *arg)
-{
+void eval_instr_arg(struct virtual_machine UNUSED(*vm), struct mir_instr_arg *arg) {
 	struct mir_fn *fn = arg->base.owner_block->owner_fn;
 	bmagic_assert(fn);
 	struct mir_arg *arg_data = mir_get_fn_arg(fn->type, arg->i);
@@ -2287,29 +2216,25 @@ void eval_instr_arg(struct virtual_machine UNUSED(*vm), struct mir_instr_arg *ar
 	arg->base.value.data = sarrpeek(call->args, arg->i)->value.data;
 }
 
-void eval_instr_decl_var(struct virtual_machine UNUSED(*vm), struct mir_instr_decl_var *decl_var)
-{
+void eval_instr_decl_var(struct virtual_machine UNUSED(*vm), struct mir_instr_decl_var *decl_var) {
 	bassert(decl_var->init && "Missing variable initializer!");
 	struct mir_var *var = decl_var->var;
 	var->value.data     = decl_var->init->value.data;
 	bassert(var->value.data && "Invalid variable initializer!");
 }
 
-void eval_instr_cast(struct virtual_machine UNUSED(*vm), struct mir_instr_cast *cast)
-{
+void eval_instr_cast(struct virtual_machine UNUSED(*vm), struct mir_instr_cast *cast) {
 	struct mir_type *dest_type = cast->base.value.type;
 	struct mir_type *src_type  = cast->expr->value.type;
 	vm_stack_ptr_t   src       = cast->expr->value.data;
 	vm_do_cast(cast->base.value.data, src, dest_type, src_type, cast->op);
 }
 
-void eval_instr_addrof(struct virtual_machine UNUSED(*vm), struct mir_instr_addrof *addrof)
-{
+void eval_instr_addrof(struct virtual_machine UNUSED(*vm), struct mir_instr_addrof *addrof) {
 	addrof->base.value.data = addrof->src->value.data;
 }
 
-void eval_instr_load(struct virtual_machine *vm, struct mir_instr_load *load)
-{
+void eval_instr_load(struct virtual_machine *vm, struct mir_instr_load *load) {
 	if (load->src->value.type->kind == MIR_TYPE_TYPE) {
 		struct mir_type *src_type = MIR_CEV_READ_AS(struct mir_type *, &load->src->value);
 		bmagic_assert(src_type);
@@ -2338,8 +2263,7 @@ void eval_instr_load(struct virtual_machine *vm, struct mir_instr_load *load)
 	}
 }
 
-void eval_instr_set_initializer(struct virtual_machine *vm, struct mir_instr_set_initializer *si)
-{
+void eval_instr_set_initializer(struct virtual_machine *vm, struct mir_instr_set_initializer *si) {
 	for (usize i = 0; i < sarrlenu(si->dests); ++i) {
 		struct mir_instr *dest = sarrpeek(si->dests, i);
 		struct mir_var   *var  = ((struct mir_instr_decl_var *)dest)->var;
@@ -2362,8 +2286,7 @@ void eval_instr_set_initializer(struct virtual_machine *vm, struct mir_instr_set
 	}
 }
 
-void eval_instr_unop(struct virtual_machine UNUSED(*vm), struct mir_instr_unop *unop)
-{
+void eval_instr_unop(struct virtual_machine UNUSED(*vm), struct mir_instr_unop *unop) {
 	struct mir_type *type = unop->base.value.type;
 
 	vm_stack_ptr_t v_data    = unop->expr->value.data;
@@ -2372,8 +2295,7 @@ void eval_instr_unop(struct virtual_machine UNUSED(*vm), struct mir_instr_unop *
 	calculate_unop(dest_data, v_data, unop->op, type);
 }
 
-void eval_instr_binop(struct virtual_machine UNUSED(*vm), struct mir_instr_binop *binop)
-{
+void eval_instr_binop(struct virtual_machine UNUSED(*vm), struct mir_instr_binop *binop) {
 	bassert(binop->lhs->value.is_comptime && binop->rhs->value.is_comptime);
 
 	vm_stack_ptr_t lhs_ptr  = binop->lhs->value.data;
@@ -2398,8 +2320,7 @@ void eval_instr_binop(struct virtual_machine UNUSED(*vm), struct mir_instr_binop
 	calculate_binop(src_type, dest_ptr, lhs_ptr, rhs_ptr, binop->op);
 }
 
-void eval_instr_decl_ref(struct virtual_machine UNUSED(*vm), struct mir_instr_decl_ref *decl_ref)
-{
+void eval_instr_decl_ref(struct virtual_machine UNUSED(*vm), struct mir_instr_decl_ref *decl_ref) {
 	struct scope_entry *entry = decl_ref->scope_entry;
 	bassert(entry);
 
@@ -2441,8 +2362,7 @@ void eval_instr_decl_ref(struct virtual_machine UNUSED(*vm), struct mir_instr_de
 }
 
 void eval_instr_decl_direct_ref(struct virtual_machine            UNUSED(*vm),
-                                struct mir_instr_decl_direct_ref *decl_ref)
-{
+                                struct mir_instr_decl_direct_ref *decl_ref) {
 	struct mir_var *var = ((struct mir_instr_decl_var *)decl_ref->ref)->var;
 	MIR_CEV_WRITE_AS(vm_stack_ptr_t, &decl_ref->base.value, var->value.data);
 }
@@ -2450,14 +2370,12 @@ void eval_instr_decl_direct_ref(struct virtual_machine            UNUSED(*vm),
 // =================================================================================================
 // Public
 // =================================================================================================
-void vm_init(struct virtual_machine *vm, usize stack_size)
-{
+void vm_init(struct virtual_machine *vm, usize stack_size) {
 	vm->main_stack = create_stack(stack_size);
 	swap_current_stack(vm, vm->main_stack);
 }
 
-void vm_terminate(struct virtual_machine *vm)
-{
+void vm_terminate(struct virtual_machine *vm) {
 	data_free(vm);
 	arrfree(vm->dcsigtmp);
 	for (u64 i = 0; i < arrlenu(vm->available_comptime_call_stacks); ++i) {
@@ -2471,8 +2389,7 @@ void vm_terminate(struct virtual_machine *vm)
 	terminate_stack(vm->main_stack);
 }
 
-void vm_print_backtrace(struct virtual_machine *vm)
-{
+void vm_print_backtrace(struct virtual_machine *vm) {
 	builder_note("\nBacktrace:");
 	struct mir_instr *instr = vm->stack->pc;
 	struct vm_frame  *fr    = vm->stack->ra;
@@ -2505,14 +2422,12 @@ void vm_print_backtrace(struct virtual_machine *vm)
 	}
 }
 
-void vm_abort(struct virtual_machine *vm)
-{
+void vm_abort(struct virtual_machine *vm) {
 	vm_print_backtrace(vm);
 	vm->aborted = true;
 }
 
-bool vm_eval_instr(struct virtual_machine *vm, struct assembly *assembly, struct mir_instr *instr)
-{
+bool vm_eval_instr(struct virtual_machine *vm, struct assembly *assembly, struct mir_instr *instr) {
 	zone();
 	vm->aborted  = false;
 	vm->assembly = assembly;
@@ -2520,8 +2435,7 @@ bool vm_eval_instr(struct virtual_machine *vm, struct assembly *assembly, struct
 	return_zone(!vm->aborted);
 }
 
-void vm_provide_command_line_arguments(struct virtual_machine *vm, const s32 argc, char *argv[])
-{
+void vm_provide_command_line_arguments(struct virtual_machine *vm, const s32 argc, char *argv[]) {
 	bassert(argc > 0 && "At least one command line argument must be provided!");
 	bassert(argv && "Invalid arguments value pointer!");
 	struct mir_type *slice_type;
@@ -2549,8 +2463,7 @@ void vm_provide_command_line_arguments(struct virtual_machine *vm, const s32 arg
 	vm_write_slice(vm, slice_type, slice_dest, args_dest, argc);
 }
 
-void vm_override_var(struct virtual_machine *vm, struct mir_var *var, const u64 value)
-{
+void vm_override_var(struct virtual_machine *vm, struct mir_var *var, const u64 value) {
 	bassert(var);
 	struct mir_type *type     = var->value.type;
 	vm_stack_ptr_t   dest_ptr = vm_read_var(vm, var);
@@ -2562,8 +2475,7 @@ enum vm_interp_state vm_execute_fn(struct virtual_machine *vm,
                                    struct assembly        *assembly,
                                    struct mir_fn          *fn,
                                    mir_const_values_t     *optional_args,
-                                   vm_stack_ptr_t         *optional_return)
-{
+                                   vm_stack_ptr_t         *optional_return) {
 	bmagic_assert(fn);
 	vm->assembly = assembly;
 	if (optional_args) {
@@ -2595,15 +2507,13 @@ enum vm_interp_state vm_execute_fn(struct virtual_machine *vm,
 	return state;
 }
 
-static inline void release_snapshot(struct virtual_machine *vm, struct vm_stack *stack)
-{
+static inline void release_snapshot(struct virtual_machine *vm, struct vm_stack *stack) {
 	bassert(stack);
 	arrput(vm->available_comptime_call_stacks, reset_stack(stack));
 }
 
 static inline void
-store_snapshot(struct virtual_machine *vm, struct vm_stack *stack, struct mir_instr_call *call)
-{
+store_snapshot(struct virtual_machine *vm, struct vm_stack *stack, struct mir_instr_call *call) {
 	bassert(hmgeti(vm->comptime_call_stacks, call) == -1);
 	hmputs(vm->comptime_call_stacks,
 	       ((struct vm_snapshot){
@@ -2620,8 +2530,7 @@ struct get_snapshot_result {
 // Tries to find stack used for previous execution (in case the call was postponed). If there is
 // no such stack, new one is created or reused from cache.
 static struct get_snapshot_result get_snapshot(struct virtual_machine *vm,
-                                               struct mir_instr_call  *call)
-{
+                                               struct mir_instr_call  *call) {
 	bassert(call);
 	struct get_snapshot_result result = {0};
 
@@ -2646,8 +2555,7 @@ static struct get_snapshot_result get_snapshot(struct virtual_machine *vm,
 
 enum vm_interp_state vm_execute_comptime_call(struct virtual_machine *vm,
                                               struct assembly        *assembly,
-                                              struct mir_instr_call  *call)
-{
+                                              struct mir_instr_call  *call) {
 	zone();
 	vm->assembly = assembly;
 	bassert(call && isflag(call->base.state, MIR_IS_ANALYZED));
@@ -2709,8 +2617,7 @@ enum vm_interp_state vm_execute_comptime_call(struct virtual_machine *vm,
 	return_zone(state);
 }
 
-void vm_alloc_global(struct virtual_machine *vm, struct assembly *assembly, struct mir_var *var)
-{
+void vm_alloc_global(struct virtual_machine *vm, struct assembly *assembly, struct mir_var *var) {
 	vm->assembly = assembly;
 	bassert(var);
 	bassert(isflag(var->iflags, MIR_VAR_GLOBAL) &&
@@ -2729,14 +2636,12 @@ void vm_alloc_global(struct virtual_machine *vm, struct assembly *assembly, stru
 }
 
 vm_stack_ptr_t
-vm_alloc_raw(struct virtual_machine *vm, struct assembly UNUSED(*assembly), struct mir_type *type)
-{
+vm_alloc_raw(struct virtual_machine *vm, struct assembly UNUSED(*assembly), struct mir_type *type) {
 	return data_alloc(vm, type);
 }
 
 // Try to fetch variable allocation pointer.
-vm_stack_ptr_t vm_read_var(struct virtual_machine *vm, const struct mir_var *var)
-{
+vm_stack_ptr_t vm_read_var(struct virtual_machine *vm, const struct mir_var *var) {
 	vm_stack_ptr_t ptr = NULL;
 	if (var->value.is_comptime) {
 		ptr = var->value.data;
@@ -2750,16 +2655,14 @@ vm_stack_ptr_t vm_read_var(struct virtual_machine *vm, const struct mir_var *var
 	return ptr;
 }
 
-u64 vm_read_int(struct mir_type const *type, vm_stack_ptr_t src)
-{
+u64 vm_read_int(struct mir_type const *type, vm_stack_ptr_t src) {
 	bassert(src && "Attempt to read null source!");
 	u64 result = 0;
 	memcpy(&result, src, type->store_size_bytes);
 	return result;
 }
 
-f64 vm_read_double(const struct mir_type *type, vm_stack_ptr_t src)
-{
+f64 vm_read_double(const struct mir_type *type, vm_stack_ptr_t src) {
 	const usize size = type->store_size_bytes;
 	bassert(src && "Attempt to read null source!");
 	bassert(size == sizeof(f64) && "Target type is not f64 type!");
@@ -2768,8 +2671,7 @@ f64 vm_read_double(const struct mir_type *type, vm_stack_ptr_t src)
 	return result;
 }
 
-vm_stack_ptr_t vm_read_ptr(const struct mir_type *type, vm_stack_ptr_t src)
-{
+vm_stack_ptr_t vm_read_ptr(const struct mir_type *type, vm_stack_ptr_t src) {
 	const usize size = type->store_size_bytes;
 	bassert(src && "Attempt to read null source!");
 	bassert(size == sizeof(vm_stack_ptr_t) && "Target type is not pointer type!");
@@ -2778,8 +2680,7 @@ vm_stack_ptr_t vm_read_ptr(const struct mir_type *type, vm_stack_ptr_t src)
 	return result;
 }
 
-f32 vm_read_float(const struct mir_type *type, vm_stack_ptr_t src)
-{
+f32 vm_read_float(const struct mir_type *type, vm_stack_ptr_t src) {
 	const usize size = type->store_size_bytes;
 	bassert(src && "Attempt to read null source!");
 	bassert(size == sizeof(f32) && "Target type is not f64 type!");
@@ -2789,47 +2690,41 @@ f32 vm_read_float(const struct mir_type *type, vm_stack_ptr_t src)
 	return result;
 }
 
-str_t vm_read_string(struct virtual_machine *vm, const struct mir_type *type, vm_stack_ptr_t src)
-{
+str_t vm_read_string(struct virtual_machine *vm, const struct mir_type *type, vm_stack_ptr_t src) {
 	bassert((type->kind == MIR_TYPE_SLICE || type->kind == MIR_TYPE_STRING) &&
 	        "Expected slice or string type!");
 	struct mir_type *len_type = mir_get_struct_elem_type(type, MIR_SLICE_LEN_INDEX);
 	struct mir_type *ptr_type = mir_get_struct_elem_type(type, MIR_SLICE_PTR_INDEX);
-	vm_stack_ptr_t   len = vm_get_struct_elem_ptr(vm->assembly, type, src, MIR_SLICE_LEN_INDEX);
-	vm_stack_ptr_t   ptr = vm_get_struct_elem_ptr(vm->assembly, type, src, MIR_SLICE_PTR_INDEX);
+	vm_stack_ptr_t   len      = vm_get_struct_elem_ptr(vm->assembly, type, src, MIR_SLICE_LEN_INDEX);
+	vm_stack_ptr_t   ptr      = vm_get_struct_elem_ptr(vm->assembly, type, src, MIR_SLICE_PTR_INDEX);
 	return make_str((char *)vm_read_ptr(ptr_type, ptr), vm_read_int(len_type, len));
 }
 
-void vm_write_int(const struct mir_type *type, vm_stack_ptr_t dest, u64 i)
-{
+void vm_write_int(const struct mir_type *type, vm_stack_ptr_t dest, u64 i) {
 	bassert(dest && "Attempt to write to the null destination!");
 	memcpy(dest, &i, type->store_size_bytes);
 }
 
-void vm_write_double(const struct mir_type *type, vm_stack_ptr_t dest, f64 i)
-{
+void vm_write_double(const struct mir_type *type, vm_stack_ptr_t dest, f64 i) {
 	const usize size = type->store_size_bytes;
 	bassert(size == sizeof(f64) && "Target type is not f64 type!");
 	bassert(dest && "Attempt to write to the null destination!");
 	memcpy(dest, &i, size);
 }
 
-void vm_write_float(const struct mir_type *type, vm_stack_ptr_t dest, f32 i)
-{
+void vm_write_float(const struct mir_type *type, vm_stack_ptr_t dest, f32 i) {
 	const usize size = type->store_size_bytes;
 	bassert(size == sizeof(f32) && "Target type is not f64 type!");
 	bassert(dest && "Attempt to write to the null destination!");
 	memcpy(dest, &i, size);
 }
 
-void vm_write_ptr(const struct mir_type *type, vm_stack_ptr_t dest, vm_stack_ptr_t ptr)
-{
+void vm_write_ptr(const struct mir_type *type, vm_stack_ptr_t dest, vm_stack_ptr_t ptr) {
 	bassert(dest && "Attempt to write to the null destination!");
 	memcpy(dest, &ptr, type->store_size_bytes);
 }
 
-void _vm_write_value(usize dest_size, vm_stack_ptr_t dest, vm_stack_ptr_t src)
-{
+void _vm_write_value(usize dest_size, vm_stack_ptr_t dest, vm_stack_ptr_t src) {
 	bassert(dest && "Attempt to write to the null destination!");
 	memcpy(dest, src, dest_size);
 }
@@ -2837,8 +2732,7 @@ void _vm_write_value(usize dest_size, vm_stack_ptr_t dest, vm_stack_ptr_t src)
 void vm_write_string(struct virtual_machine *vm,
                      const struct mir_type  *type,
                      vm_stack_ptr_t          dest,
-                     str_t                   str)
-{
+                     str_t                   str) {
 	bassert(str.len >= 0 && "Invalid string constant length.");
 	bassert(type->kind == MIR_TYPE_SLICE && "Expected slice type!");
 	vm_write_slice(vm, type, dest, (void *)str.ptr, str.len);
@@ -2848,20 +2742,18 @@ void vm_write_slice(struct virtual_machine *vm,
                     const struct mir_type  *type,
                     vm_stack_ptr_t          dest,
                     void                   *ptr,
-                    s64                     len)
-{
+                    s64                     len) {
 	bassert((type->kind == MIR_TYPE_SLICE || type->kind == MIR_TYPE_STRING) &&
 	        "Expected slice or string type!");
 	struct mir_type *dest_len_type = mir_get_struct_elem_type(type, MIR_SLICE_LEN_INDEX);
 	struct mir_type *dest_ptr_type = mir_get_struct_elem_type(type, MIR_SLICE_PTR_INDEX);
-	vm_stack_ptr_t dest_len = vm_get_struct_elem_ptr(vm->assembly, type, dest, MIR_SLICE_LEN_INDEX);
-	vm_stack_ptr_t dest_ptr = vm_get_struct_elem_ptr(vm->assembly, type, dest, MIR_SLICE_PTR_INDEX);
+	vm_stack_ptr_t   dest_len      = vm_get_struct_elem_ptr(vm->assembly, type, dest, MIR_SLICE_LEN_INDEX);
+	vm_stack_ptr_t   dest_ptr      = vm_get_struct_elem_ptr(vm->assembly, type, dest, MIR_SLICE_PTR_INDEX);
 	vm_write_int(dest_len_type, dest_len, (u64)len);
 	vm_write_ptr(dest_ptr_type, dest_ptr, (vm_stack_ptr_t)ptr);
 }
 
-ptrdiff_t vm_get_struct_elem_offset(struct assembly *assembly, const struct mir_type *type, u32 i)
-{
+ptrdiff_t vm_get_struct_elem_offset(struct assembly *assembly, const struct mir_type *type, u32 i) {
 	bassert(mir_is_composite_type(type) && "Expected structure type");
 	if (type->data.strct.is_union) {
 		return 0;
@@ -2870,8 +2762,7 @@ ptrdiff_t vm_get_struct_elem_offset(struct assembly *assembly, const struct mir_
 	return (ptrdiff_t)LLVMOffsetOfElement(assembly->llvm.TD, type->llvm_type, i);
 }
 
-ptrdiff_t vm_get_array_elem_offset(const struct mir_type *type, u32 i)
-{
+ptrdiff_t vm_get_array_elem_offset(const struct mir_type *type, u32 i) {
 	bassert(type->kind == MIR_TYPE_ARRAY && "Expected array type");
 	struct mir_type *elem_type = type->data.array.elem_type;
 	bassert(elem_type);
@@ -2881,8 +2772,7 @@ ptrdiff_t vm_get_array_elem_offset(const struct mir_type *type, u32 i)
 vm_stack_ptr_t vm_get_struct_elem_ptr(struct assembly       *assembly,
                                       const struct mir_type *type,
                                       vm_stack_ptr_t         ptr,
-                                      u32                    i)
-{
+                                      u32                    i) {
 	bassert(mir_is_composite_type(type) && "Expected structure type");
 	if (type->data.strct.is_union) {
 		return ptr;
@@ -2891,8 +2781,7 @@ vm_stack_ptr_t vm_get_struct_elem_ptr(struct assembly       *assembly,
 	return ptr + vm_get_struct_elem_offset(assembly, type, i);
 }
 
-vm_stack_ptr_t vm_get_array_elem_ptr(const struct mir_type *type, vm_stack_ptr_t ptr, u32 i)
-{
+vm_stack_ptr_t vm_get_array_elem_ptr(const struct mir_type *type, vm_stack_ptr_t ptr, u32 i) {
 	return ptr + vm_get_array_elem_offset(type, i);
 }
 
@@ -2900,8 +2789,7 @@ void vm_do_cast(vm_stack_ptr_t   dest,
                 vm_stack_ptr_t   src,
                 struct mir_type *dest_type,
                 struct mir_type *src_type,
-                s32              op)
-{
+                s32              op) {
 	bassert(dest && "Missing cast destination!");
 	bassert(src && "Missing cast source!");
 	bassert(src != dest && "Cast operation src and dest points to same memory.");

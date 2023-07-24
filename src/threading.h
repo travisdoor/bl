@@ -31,34 +31,30 @@
 
 #include "config.h"
 #if BL_PLATFORM_MACOS
-#include <pthread.h>
+#	include <pthread.h>
 // Apple pthread implementation is missing spinlocks!
-#include <stdatomic.h>
+#	include <stdatomic.h>
 
 typedef atomic_flag pthread_spinlock_t;
 
-static inline int pthread_spin_init(pthread_spinlock_t *l, int pshared)
-{
+static inline int pthread_spin_init(pthread_spinlock_t *l, int pshared) {
 	(void)pshared;
 	*l = (pthread_spinlock_t)ATOMIC_FLAG_INIT;
 	return 0;
 }
 
-static inline int pthread_spin_destroy(pthread_spinlock_t *l)
-{
+static inline int pthread_spin_destroy(pthread_spinlock_t *l) {
 	(void)l;
 	return 0;
 }
 
-static inline int pthread_spin_lock(pthread_spinlock_t *l)
-{
+static inline int pthread_spin_lock(pthread_spinlock_t *l) {
 	while (atomic_flag_test_and_set_explicit(l, memory_order_acquire))
 		;
 	return 0;
 }
 
-static inline int pthread_spin_unlock(pthread_spinlock_t *l)
-{
+static inline int pthread_spin_unlock(pthread_spinlock_t *l) {
 	atomic_flag_clear_explicit(l, memory_order_release);
 	return 0;
 }
@@ -82,6 +78,6 @@ __pragma(warning(pop))
 #endif
 // clang-format on
 #elif BL_PLATFORM_LINUX
-#include <pthread.h>
+#	include <pthread.h>
 #endif
 #endif

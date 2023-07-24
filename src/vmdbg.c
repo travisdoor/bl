@@ -47,8 +47,7 @@ static bool                    verbose_stack          = false;
 static struct virtual_machine *current_vm             = NULL;
 static hash_table(struct stack_context) stack_context = NULL;
 
-static void print(struct mir_instr *instr)
-{
+static void print(struct mir_instr *instr) {
 	if (!mir_mode && instr->node && instr->node->location) {
 		builder_print_location(stdout, instr->node->location, 0, 0);
 	} else {
@@ -65,8 +64,7 @@ static void print(struct mir_instr *instr)
 	}
 }
 
-static void print_data(struct mir_type *type, vm_stack_ptr_t ptr)
-{
+static void print_data(struct mir_type *type, vm_stack_ptr_t ptr) {
 	printf("(%p) ", ptr);
 	if (!type) return;
 
@@ -128,8 +126,7 @@ static void print_data(struct mir_type *type, vm_stack_ptr_t ptr)
 	}
 }
 
-static void print_variable(struct mir_var *var)
-{
+static void print_variable(struct mir_var *var) {
 	bassert(var);
 
 	if (var->value.type) {
@@ -149,8 +146,7 @@ static void print_variable(struct mir_var *var)
 	printf("\n");
 }
 
-static void print_local_variables(struct mir_instr *instr)
-{
+static void print_local_variables(struct mir_instr *instr) {
 	bassert(instr);
 	const struct mir_fn *fn = mir_instr_owner_fn(instr);
 	if (!fn) return;
@@ -165,8 +161,7 @@ static void print_local_variables(struct mir_instr *instr)
 	}
 }
 
-static void cmd(void)
-{
+static void cmd(void) {
 #define CMD(s, l) ((strcmp(buf, s) == 0) || (strcmp(buf, l) == 0))
 	static s32  i          = 0;
 	static char tmp[2][64] = {{0}, {0}};
@@ -236,14 +231,12 @@ NEXT:
 // Public
 // =================================================================================================
 
-void vmdbg_attach(struct virtual_machine *vm)
-{
+void vmdbg_attach(struct virtual_machine *vm) {
 	bassert(current_vm == NULL);
 	current_vm = vm;
 }
 
-void vmdbg_detach(void)
-{
+void vmdbg_detach(void) {
 	for (u64 i = 0; i < hmlenu(stack_context); ++i) {
 		arrfree(stack_context[i].stackops);
 	}
@@ -253,8 +246,7 @@ void vmdbg_detach(void)
 	state      = CONTINUE;
 }
 
-void vmdbg_notify_instr(struct mir_instr *instr)
-{
+void vmdbg_notify_instr(struct mir_instr *instr) {
 	static struct unit *last_unit = NULL;
 	static u16          last_line = -1;
 	if (!current_vm) return;
@@ -275,8 +267,7 @@ void vmdbg_notify_instr(struct mir_instr *instr)
 	cmd();
 }
 
-static struct stack_context *get_stack_context(void)
-{
+static struct stack_context *get_stack_context(void) {
 	bassert(current_vm->stack);
 	struct vm_stack *stack = current_vm->stack;
 	bassert(stack);
@@ -289,15 +280,13 @@ static struct stack_context *get_stack_context(void)
 	return &stack_context[index];
 }
 
-static bool pop_is_valid(void *ptr)
-{
+static bool pop_is_valid(void *ptr) {
 	struct stack_context *sctx = get_stack_context();
 	if (arrlenu(sctx->stackops) == 0) return false;
 	return arrpop(sctx->stackops) == (uintptr_t)ptr;
 }
 
-static bool rollback_is_valid(void *ptr)
-{
+static bool rollback_is_valid(void *ptr) {
 	struct stack_context *sctx = get_stack_context();
 	while (arrlenu(sctx->stackops)) {
 		if (arrpop(sctx->stackops) == (uintptr_t)ptr) return true;
@@ -305,8 +294,7 @@ static bool rollback_is_valid(void *ptr)
 	return false;
 }
 
-void vmdbg_notify_stack_op(enum vmdbg_stack_op op, struct mir_type *type, void *ptr)
-{
+void vmdbg_notify_stack_op(enum vmdbg_stack_op op, struct mir_type *type, void *ptr) {
 	if (!current_vm) return;
 	struct virtual_machine *vm = current_vm;
 
@@ -407,14 +395,12 @@ void vmdbg_notify_stack_op(enum vmdbg_stack_op op, struct mir_type *type, void *
 	}
 }
 
-void vmdbg_notify_stack_swap(void)
-{
+void vmdbg_notify_stack_swap(void) {
 	if (!current_vm) return;
 	printf("     -                       SWAP\n");
 }
 
-void vmdbg_break(void)
-{
+void vmdbg_break(void) {
 	if (!current_vm) return;
 	printf("\nHit breakpoint in assembly '%s'.\n", current_vm->assembly->target->name);
 	state = STEPPING;

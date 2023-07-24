@@ -31,8 +31,7 @@
 #include "stb_ds.h"
 #include <stdio.h>
 
-static inline void print_address(struct ast *node, FILE *stream)
-{
+static inline void print_address(struct ast *node, FILE *stream) {
 #if BL_DEBUG
 	if (node)
 		fprintf(stream, " %llu ", node->_serial);
@@ -45,8 +44,7 @@ static inline void print_address(struct ast *node, FILE *stream)
 
 #define print_head(_node, _pad, _stream) _print_head((struct ast *)(_node), (_pad), (_stream))
 
-static inline void _print_head(struct ast *node, s32 pad, FILE *stream)
-{
+static inline void _print_head(struct ast *node, s32 pad, FILE *stream) {
 	if (node->location)
 		fprintf(stream,
 		        "\n%*s%s <%d:%d>",
@@ -61,8 +59,7 @@ static inline void _print_head(struct ast *node, s32 pad, FILE *stream)
 	print_address(node, stream);
 }
 
-static inline void print_flags(u32 flags, FILE *stream)
-{
+static inline void print_flags(u32 flags, FILE *stream) {
 	if (!flags) return;
 	if (isflag(flags, FLAG_EXTERN)) fprintf(stream, " #extern");
 	if (isflag(flags, FLAG_TEST_FN)) fprintf(stream, " #test");
@@ -122,8 +119,7 @@ static void print_expr_call(struct ast *call, s32 pad, FILE *stream);
 static void print_expr_elem(struct ast *elem, s32 pad, FILE *stream);
 
 // impl
-void print_ublock(struct ast *ublock, s32 pad, FILE *stream)
-{
+void print_ublock(struct ast *ublock, s32 pad, FILE *stream) {
 	print_head(ublock, pad, stream);
 	fprintf(stream, "%s", ublock->data.ublock.unit->name);
 	for (usize i = 0; i < arrlenu(ublock->data.ublock.nodes); ++i) {
@@ -131,8 +127,7 @@ void print_ublock(struct ast *ublock, s32 pad, FILE *stream)
 	}
 }
 
-void print_block(struct ast *block, s32 pad, FILE *stream)
-{
+void print_block(struct ast *block, s32 pad, FILE *stream) {
 	print_head(block, pad, stream);
 	for (usize i = 0; i < sarrlenu(block->data.block.nodes); ++i) {
 		struct ast *tmp = sarrpeek(block->data.block.nodes, i);
@@ -140,31 +135,26 @@ void print_block(struct ast *block, s32 pad, FILE *stream)
 	}
 }
 
-void print_load(struct ast *load, s32 pad, FILE *stream)
-{
+void print_load(struct ast *load, s32 pad, FILE *stream) {
 	print_head(load, pad, stream);
 	fprintf(stream, "%s", load->data.load.filepath);
 }
 
-void print_import(struct ast *import, s32 pad, FILE *stream)
-{
+void print_import(struct ast *import, s32 pad, FILE *stream) {
 	print_head(import, pad, stream);
 	fprintf(stream, "%s", import->data.load.filepath);
 }
 
-void print_link(struct ast *link, s32 pad, FILE *stream)
-{
+void print_link(struct ast *link, s32 pad, FILE *stream) {
 	print_head(link, pad, stream);
 	fprintf(stream, "%s", link->data.link.lib);
 }
 
-void print_private(struct ast *private, s32 pad, FILE *stream)
-{
+void print_private(struct ast *private, s32 pad, FILE *stream) {
 	print_head(private, pad, stream);
 }
 
-void print_scope(struct ast *scope, s32 pad, FILE *stream)
-{
+void print_scope(struct ast *scope, s32 pad, FILE *stream) {
 	print_head(scope, pad, stream);
 	struct ast *ident = scope->data.scope.ident;
 	if (ident) {
@@ -173,23 +163,19 @@ void print_scope(struct ast *scope, s32 pad, FILE *stream)
 	}
 }
 
-void print_call_loc(struct ast *call_loc, s32 pad, FILE *stream)
-{
+void print_call_loc(struct ast *call_loc, s32 pad, FILE *stream) {
 	print_head(call_loc, pad, stream);
 }
 
-void print_unrecheable(struct ast *unr, s32 pad, FILE *stream)
-{
+void print_unrecheable(struct ast *unr, s32 pad, FILE *stream) {
 	print_head(unr, pad, stream);
 }
 
-void print_debugbreak(struct ast *debug_break, s32 pad, FILE *stream)
-{
+void print_debugbreak(struct ast *debug_break, s32 pad, FILE *stream) {
 	print_head(debug_break, pad, stream);
 }
 
-void print_type_polymorph(struct ast *poly, s32 pad, FILE *stream)
-{
+void print_type_polymorph(struct ast *poly, s32 pad, FILE *stream) {
 	print_head(poly, pad, stream);
 	struct ast *ident = poly->data.type_poly.ident;
 	if (ident) {
@@ -198,8 +184,7 @@ void print_type_polymorph(struct ast *poly, s32 pad, FILE *stream)
 	}
 }
 
-void print_type_struct(struct ast *strct, s32 pad, FILE *stream)
-{
+void print_type_struct(struct ast *strct, s32 pad, FILE *stream) {
 	print_head(strct, pad, stream);
 
 	ast_nodes_t *members = strct->data.type_strct.members;
@@ -209,14 +194,12 @@ void print_type_struct(struct ast *strct, s32 pad, FILE *stream)
 	}
 }
 
-void print_type_slice(struct ast *slice, s32 pad, FILE *stream)
-{
+void print_type_slice(struct ast *slice, s32 pad, FILE *stream) {
 	print_head(slice, pad, stream);
 	print_node(slice->data.type_slice.elem_type, pad + 1, stream);
 }
 
-void print_ref(struct ast *ref, s32 pad, FILE *stream)
-{
+void print_ref(struct ast *ref, s32 pad, FILE *stream) {
 	print_head(ref, pad, stream);
 
 	struct ast *ident = ref->data.ref.ident;
@@ -229,8 +212,7 @@ void print_ref(struct ast *ref, s32 pad, FILE *stream)
 	if (next) print_node(next, pad + 1, stream);
 }
 
-void print_type_fn_group(struct ast *group, s32 pad, FILE *stream)
-{
+void print_type_fn_group(struct ast *group, s32 pad, FILE *stream) {
 	print_head(group, pad, stream);
 
 	ast_nodes_t *variants = group->data.type_fn_group.variants;
@@ -240,8 +222,7 @@ void print_type_fn_group(struct ast *group, s32 pad, FILE *stream)
 	}
 }
 
-void print_type_fn(struct ast *fn, s32 pad, FILE *stream)
-{
+void print_type_fn(struct ast *fn, s32 pad, FILE *stream) {
 	print_head(fn, pad, stream);
 	ast_nodes_t *args = fn->data.type_fn.args;
 	for (usize i = 0; i < sarrlenu(args); ++i) {
@@ -251,8 +232,7 @@ void print_type_fn(struct ast *fn, s32 pad, FILE *stream)
 	print_node(fn->data.type_fn.ret_type, pad + 1, stream);
 }
 
-void print_type_enum(struct ast *enm, s32 pad, FILE *stream)
-{
+void print_type_enum(struct ast *enm, s32 pad, FILE *stream) {
 	print_head(enm, pad, stream);
 	ast_nodes_t *variants = enm->data.type_enm.variants;
 	for (usize i = 0; i < sarrlenu(variants); ++i) {
@@ -261,16 +241,14 @@ void print_type_enum(struct ast *enm, s32 pad, FILE *stream)
 	}
 }
 
-void print_stmt_if(struct ast *stmt_if, s32 pad, FILE *stream)
-{
+void print_stmt_if(struct ast *stmt_if, s32 pad, FILE *stream) {
 	print_head(stmt_if, pad, stream);
 	print_node(stmt_if->data.stmt_if.test, pad + 1, stream);
 	print_node(stmt_if->data.stmt_if.true_stmt, pad + 1, stream);
 	print_node(stmt_if->data.stmt_if.false_stmt, pad + 1, stream);
 }
 
-void print_stmt_switch(struct ast *stmt_switch, s32 pad, FILE *stream)
-{
+void print_stmt_switch(struct ast *stmt_switch, s32 pad, FILE *stream) {
 	print_head(stmt_switch, pad, stream);
 	print_node(stmt_switch->data.stmt_switch.expr, pad + 1, stream);
 
@@ -281,8 +259,7 @@ void print_stmt_switch(struct ast *stmt_switch, s32 pad, FILE *stream)
 	}
 }
 
-void print_stmt_case(struct ast *stmt_case, s32 pad, FILE *stream)
-{
+void print_stmt_case(struct ast *stmt_case, s32 pad, FILE *stream) {
 	print_head(stmt_case, pad, stream);
 	if (stmt_case->data.stmt_case.is_default) fprintf(stream, "default");
 
@@ -297,8 +274,7 @@ void print_stmt_case(struct ast *stmt_case, s32 pad, FILE *stream)
 	}
 }
 
-void print_stmt_loop(struct ast *loop, s32 pad, FILE *stream)
-{
+void print_stmt_loop(struct ast *loop, s32 pad, FILE *stream) {
 	print_head(loop, pad, stream);
 	print_node(loop->data.stmt_loop.init, pad + 1, stream);
 	print_node(loop->data.stmt_loop.condition, pad + 1, stream);
@@ -306,24 +282,20 @@ void print_stmt_loop(struct ast *loop, s32 pad, FILE *stream)
 	print_node(loop->data.stmt_loop.block, pad + 1, stream);
 }
 
-void print_stmt_break(struct ast *br, s32 pad, FILE *stream)
-{
+void print_stmt_break(struct ast *br, s32 pad, FILE *stream) {
 	print_head(br, pad, stream);
 }
 
-void print_stmt_continue(struct ast *ctx, s32 pad, FILE *stream)
-{
+void print_stmt_continue(struct ast *ctx, s32 pad, FILE *stream) {
 	print_head(ctx, pad, stream);
 }
 
-void print_stmt_using(struct ast *using, s32 pad, FILE *stream)
-{
+void print_stmt_using(struct ast *using, s32 pad, FILE *stream) {
 	print_head(using, pad, stream);
 	print_node(using->data.stmt_using.scope_expr, pad + 1, stream);
 }
 
-void print_stmt_return(struct ast *ret, s32 pad, FILE *stream)
-{
+void print_stmt_return(struct ast *ret, s32 pad, FILE *stream) {
 	print_head(ret, pad, stream);
 	for (usize i = 0; i < sarrlenu(ret->data.stmt_return.exprs); ++i) {
 		struct ast *value = sarrpeek(ret->data.stmt_return.exprs, i);
@@ -331,14 +303,12 @@ void print_stmt_return(struct ast *ret, s32 pad, FILE *stream)
 	}
 }
 
-void print_stmt_defer(struct ast *defer, s32 pad, FILE *stream)
-{
+void print_stmt_defer(struct ast *defer, s32 pad, FILE *stream) {
 	print_head(defer, pad, stream);
 	print_node(defer->data.stmt_defer.expr, pad + 1, stream);
 }
 
-void print_decl_entity(struct ast *entity, s32 pad, FILE *stream)
-{
+void print_decl_entity(struct ast *entity, s32 pad, FILE *stream) {
 	print_head(entity, pad, stream);
 
 	const str_t name = entity->data.decl.name->data.ident.id.str;
@@ -353,37 +323,32 @@ void print_decl_entity(struct ast *entity, s32 pad, FILE *stream)
 	print_node((struct ast *)entity->data.decl_entity.value, pad + 1, stream);
 }
 
-void print_decl_arg(struct ast *arg, s32 pad, FILE *stream)
-{
+void print_decl_arg(struct ast *arg, s32 pad, FILE *stream) {
 	print_head(arg, pad, stream);
 	const str_t name = arg->data.decl.name->data.ident.id.str;
 	fprintf(stream, "'%.*s'", name.len, name.ptr);
 	print_node(arg->data.decl.type, pad + 1, stream);
 }
 
-void print_decl_member(struct ast *member, s32 pad, FILE *stream)
-{
+void print_decl_member(struct ast *member, s32 pad, FILE *stream) {
 	print_head(member, pad, stream);
 	const str_t name = member->data.decl.name->data.ident.id.str;
 	fprintf(stream, "'%.*s'", name.len, name.ptr);
 	print_node(member->data.decl.type, pad + 1, stream);
 }
 
-void print_decl_variant(struct ast *variant, s32 pad, FILE *stream)
-{
+void print_decl_variant(struct ast *variant, s32 pad, FILE *stream) {
 	print_head(variant, pad, stream);
 	const str_t name = variant->data.decl.name->data.ident.id.str;
 	fprintf(stream, "'%.*s'", name.len, name.ptr);
 	print_node(variant->data.decl.type, pad + 1, stream);
 }
 
-void print_bad(struct ast *bad, s32 pad, FILE *stream)
-{
+void print_bad(struct ast *bad, s32 pad, FILE *stream) {
 	print_head(bad, pad, stream);
 }
 
-void print_expr_cast(struct ast *cast, s32 pad, FILE *stream)
-{
+void print_expr_cast(struct ast *cast, s32 pad, FILE *stream) {
 	print_head(cast, pad, stream);
 	if (cast->data.expr_cast.auto_cast) {
 		fprintf(stream, "<auto>");
@@ -393,8 +358,7 @@ void print_expr_cast(struct ast *cast, s32 pad, FILE *stream)
 	print_node(cast->data.expr_cast.next, pad + 1, stream);
 }
 
-void print_expr_unary(struct ast *unary, s32 pad, FILE *stream)
-{
+void print_expr_unary(struct ast *unary, s32 pad, FILE *stream) {
 	print_head(unary, pad, stream);
 
 	const char *op = NULL;
@@ -420,76 +384,64 @@ void print_expr_unary(struct ast *unary, s32 pad, FILE *stream)
 	print_node(unary->data.expr_unary.next, pad + 1, stream);
 }
 
-void print_expr_addrof(struct ast *addrof, s32 pad, FILE *stream)
-{
+void print_expr_addrof(struct ast *addrof, s32 pad, FILE *stream) {
 	print_head(addrof, pad, stream);
 	print_node(addrof->data.expr_addrof.next, pad + 1, stream);
 }
 
-void print_expr_test_cases(struct ast *type_info, s32 pad, FILE *stream)
-{
+void print_expr_test_cases(struct ast *type_info, s32 pad, FILE *stream) {
 	print_head(type_info, pad, stream);
 }
 
-void print_expr_deref(struct ast *deref, s32 pad, FILE *stream)
-{
+void print_expr_deref(struct ast *deref, s32 pad, FILE *stream) {
 	print_head(deref, pad, stream);
 	print_node(deref->data.expr_deref.next, pad + 1, stream);
 }
 
-void print_expr_elem(struct ast *elem, s32 pad, FILE *stream)
-{
+void print_expr_elem(struct ast *elem, s32 pad, FILE *stream) {
 	print_head(elem, pad, stream);
 	print_node(elem->data.expr_elem.index, pad + 1, stream);
 	print_node(elem->data.expr_elem.next, pad + 1, stream);
 }
 
-void print_expr_binop(struct ast *binop, s32 pad, FILE *stream)
-{
+void print_expr_binop(struct ast *binop, s32 pad, FILE *stream) {
 	print_head(binop, pad, stream);
 	fprintf(stream, "'%s' ", ast_binop_to_str(binop->data.expr_binop.kind));
 	print_node(binop->data.expr_binop.lhs, pad + 1, stream);
 	print_node(binop->data.expr_binop.rhs, pad + 1, stream);
 }
 
-void print_expr_type(struct ast *expr_type, s32 pad, FILE *stream)
-{
+void print_expr_type(struct ast *expr_type, s32 pad, FILE *stream) {
 	print_head(expr_type, pad, stream);
 	print_node(expr_type->data.expr_type.type, pad + 1, stream);
 }
 
-void print_expr_lit_int(struct ast *lit, s32 pad, FILE *stream)
-{
+void print_expr_lit_int(struct ast *lit, s32 pad, FILE *stream) {
 	print_head(lit, pad, stream);
 	fprintf(stream, "%llu ", (long long unsigned)lit->data.expr_integer.val);
 }
 
-void print_expr_lit_float(struct ast *lit, s32 pad, FILE *stream)
-{
+void print_expr_lit_float(struct ast *lit, s32 pad, FILE *stream) {
 	print_head(lit, pad, stream);
 	fprintf(stream, "%f ", lit->data.expr_float.val);
 }
 
-void print_expr_lit_double(struct ast *lit, s32 pad, FILE *stream)
-{
+void print_expr_lit_double(struct ast *lit, s32 pad, FILE *stream) {
 	print_head(lit, pad, stream);
 	fprintf(stream, "%f ", lit->data.expr_double.val);
 }
 
-void print_expr_lit_char(struct ast *lit, s32 pad, FILE *stream)
-{
+void print_expr_lit_char(struct ast *lit, s32 pad, FILE *stream) {
 	print_head(lit, pad, stream);
 	fprintf(stream, "%c ", lit->data.expr_character.val);
 }
 
-void print_expr_lit_bool(struct ast *lit, s32 pad, FILE *stream)
-{
+void print_expr_lit_bool(struct ast *lit, s32 pad, FILE *stream) {
 	print_head(lit, pad, stream);
 	fprintf(stream, "%s ", lit->data.expr_boolean.val ? "true" : "false");
 }
 
-void print_expr_lit_string(struct ast *lit, s32 pad, FILE *stream)
-{
+void print_expr_lit_string(struct ast *lit, s32 pad, FILE *stream) {
 	print_head(lit, pad, stream);
 
 	char *tmp = strdup(lit->data.expr_string.val.ptr);
@@ -499,16 +451,14 @@ void print_expr_lit_string(struct ast *lit, s32 pad, FILE *stream)
 	free(tmp);
 }
 
-void print_expr_lit_fn(struct ast *fn, s32 pad, FILE *stream)
-{
+void print_expr_lit_fn(struct ast *fn, s32 pad, FILE *stream) {
 	print_head(fn, pad, stream);
 	print_node(fn->data.expr_fn.type, pad + 1, stream);
 	print_node(fn->data.expr_fn.enable_if, pad + 1, stream);
 	print_node(fn->data.expr_fn.block, pad + 1, stream);
 }
 
-void print_expr_lit_fn_group(struct ast *group, s32 pad, FILE *stream)
-{
+void print_expr_lit_fn_group(struct ast *group, s32 pad, FILE *stream) {
 	print_head(group, pad, stream);
 	ast_nodes_t *variants = group->data.expr_fn_group.variants;
 	for (usize i = 0; i < sarrlenu(variants); ++i) {
@@ -517,8 +467,7 @@ void print_expr_lit_fn_group(struct ast *group, s32 pad, FILE *stream)
 	}
 }
 
-void print_expr_call(struct ast *call, s32 pad, FILE *stream)
-{
+void print_expr_call(struct ast *call, s32 pad, FILE *stream) {
 	print_head(call, pad, stream);
 
 	print_node(call->data.expr_call.ref, pad + 1, stream);
@@ -530,8 +479,7 @@ void print_expr_call(struct ast *call, s32 pad, FILE *stream)
 	}
 }
 
-void print_expr_compound(struct ast *expr_compound, s32 pad, FILE *stream)
-{
+void print_expr_compound(struct ast *expr_compound, s32 pad, FILE *stream) {
 	print_head(expr_compound, pad, stream);
 
 	ast_nodes_t *exprs = expr_compound->data.expr_compound.values;
@@ -541,8 +489,7 @@ void print_expr_compound(struct ast *expr_compound, s32 pad, FILE *stream)
 	}
 }
 
-void print_node(struct ast *node, s32 pad, FILE *stream)
-{
+void print_node(struct ast *node, s32 pad, FILE *stream) {
 	if (!node) return;
 	switch (node->kind) {
 	case AST_BAD:
@@ -752,8 +699,7 @@ void print_node(struct ast *node, s32 pad, FILE *stream)
 	}
 }
 
-void ast_printer_run(struct assembly *assembly)
-{
+void ast_printer_run(struct assembly *assembly) {
 	for (usize i = 0; i < arrlenu(assembly->units); ++i) {
 		struct unit *unit = assembly->units[i];
 		print_node(unit->ast, 0, stdout);

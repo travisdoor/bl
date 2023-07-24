@@ -31,8 +31,7 @@
 #include <string.h>
 
 #if BL_PLATFORM_WIN
-void file_loader_run(struct assembly *UNUSED(assembly), struct unit *unit)
-{
+void file_loader_run(struct assembly *UNUSED(assembly), struct unit *unit) {
 	char error_buf[256];
 	zone();
 	const char *path = unit->filepath;
@@ -93,8 +92,7 @@ void file_loader_run(struct assembly *UNUSED(assembly), struct unit *unit)
 	return_zone();
 }
 #else
-void file_loader_run(struct assembly *UNUSED(assembly), struct unit *unit)
-{
+void file_loader_run(struct assembly *UNUSED(assembly), struct unit *unit) {
 	zone();
 	if (!unit->filepath) {
 		builder_msg(MSG_ERR,

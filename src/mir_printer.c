@@ -47,8 +47,7 @@ struct context {
 static void print_comptime_value_or_id(struct context *ctx, struct mir_instr *instr);
 
 static inline void
-print_type(struct context *ctx, struct mir_type *type, bool aligned, bool prefer_name)
-{
+print_type(struct context *ctx, struct mir_type *type, bool aligned, bool prefer_name) {
 	str_buf_t type_name = mir_type2str(type, prefer_name);
 	if (aligned) {
 		fprintf(ctx->stream, "%16s", str_to_c(type_name));
@@ -58,8 +57,7 @@ print_type(struct context *ctx, struct mir_type *type, bool aligned, bool prefer
 	put_tmp_str(type_name);
 }
 
-static inline void print_instr_head(struct context *ctx, struct mir_instr *instr, const char *name)
-{
+static inline void print_instr_head(struct context *ctx, struct mir_instr *instr, const char *name) {
 	if (!instr) return;
 
 #if BL_DEBUG
@@ -75,8 +73,7 @@ static inline void print_instr_head(struct context *ctx, struct mir_instr *instr
 	fprintf(ctx->stream, " %s ", name);
 }
 
-static inline void print_flags(struct context *ctx, u32 flags)
-{
+static inline void print_flags(struct context *ctx, u32 flags) {
 	if (flags == 0) return;
 
 	if (isflag(flags, FLAG_EXTERN)) fprintf(ctx->stream, "#extern");
@@ -92,8 +89,7 @@ static inline void print_flags(struct context *ctx, u32 flags)
 #define print_const_value(C, V) _print_const_value((C), (V)->type, (V)->data)
 
 static inline void
-_print_const_value(struct context *ctx, struct mir_type *type, vm_stack_ptr_t value)
-{
+_print_const_value(struct context *ctx, struct mir_type *type, vm_stack_ptr_t value) {
 	if (!type) return;
 	if (!value) {
 		fprintf(ctx->stream, "<NULL>");
@@ -319,8 +315,7 @@ static void print_instr_designator(struct context *ctx, struct mir_instr_designa
 static void print_instr(struct context *ctx, struct mir_instr *instr);
 
 // impl
-void print_comptime_value_or_id(struct context *ctx, struct mir_instr *instr)
-{
+void print_comptime_value_or_id(struct context *ctx, struct mir_instr *instr) {
 	if (!instr) {
 		fprintf(ctx->stream, "<NULL>");
 		return;
@@ -341,8 +336,7 @@ void print_comptime_value_or_id(struct context *ctx, struct mir_instr *instr)
 	print_const_value(ctx, &instr->value);
 }
 
-void print_instr_type_fn(struct context *ctx, struct mir_instr_type_fn *type_fn)
-{
+void print_instr_type_fn(struct context *ctx, struct mir_instr_type_fn *type_fn) {
 	print_instr_head(ctx, &type_fn->base, "const fn");
 	fprintf(ctx->stream, "(");
 	for (usize i = 0; i < sarrlenu(type_fn->args); ++i) {
@@ -357,8 +351,7 @@ void print_instr_type_fn(struct context *ctx, struct mir_instr_type_fn *type_fn)
 		fprintf(ctx->stream, " %%%llu", (unsigned long long)type_fn->ret_type->id);
 }
 
-void print_instr_type_fn_group(struct context *ctx, struct mir_instr_type_fn_group *group)
-{
+void print_instr_type_fn_group(struct context *ctx, struct mir_instr_type_fn_group *group) {
 	print_instr_head(ctx, &group->base, "const fn");
 	fprintf(ctx->stream, "{");
 	for (usize i = 0; i < sarrlenu(group->variants); ++i) {
@@ -369,8 +362,7 @@ void print_instr_type_fn_group(struct context *ctx, struct mir_instr_type_fn_gro
 	fprintf(ctx->stream, "}");
 }
 
-void print_instr_set_initializer(struct context *ctx, struct mir_instr_set_initializer *si)
-{
+void print_instr_set_initializer(struct context *ctx, struct mir_instr_set_initializer *si) {
 	print_instr_head(ctx, &si->base, "setinit");
 	print_comptime_value_or_id(ctx, si->src);
 	fprintf(ctx->stream, " -> ");
@@ -387,8 +379,7 @@ void print_instr_set_initializer(struct context *ctx, struct mir_instr_set_initi
 	}
 }
 
-void print_instr_phi(struct context *ctx, struct mir_instr_phi *phi)
-{
+void print_instr_phi(struct context *ctx, struct mir_instr_phi *phi) {
 	print_instr_head(ctx, &phi->base, "phi");
 
 	if (sarrlen(phi->incoming_blocks) != sarrlen(phi->incoming_values)) {
@@ -420,14 +411,12 @@ void print_instr_phi(struct context *ctx, struct mir_instr_phi *phi)
 	}
 }
 
-void print_instr_toany(struct context *ctx, struct mir_instr_to_any *toany)
-{
+void print_instr_toany(struct context *ctx, struct mir_instr_to_any *toany) {
 	print_instr_head(ctx, &toany->base, "toany");
 	print_comptime_value_or_id(ctx, toany->expr);
 }
 
-void print_instr_type_struct(struct context *ctx, struct mir_instr_type_struct *type_struct)
-{
+void print_instr_type_struct(struct context *ctx, struct mir_instr_type_struct *type_struct) {
 	// @Inclomplete: Missing printing of tags and meta data.
 	print_instr_head(ctx, &type_struct->base, "const struct");
 	fprintf(ctx->stream, "{");
@@ -442,8 +431,7 @@ void print_instr_type_struct(struct context *ctx, struct mir_instr_type_struct *
 	fprintf(ctx->stream, "}");
 }
 
-void print_instr_type_enum(struct context *ctx, struct mir_instr_type_enum *type_enum)
-{
+void print_instr_type_enum(struct context *ctx, struct mir_instr_type_enum *type_enum) {
 	print_instr_head(ctx, &type_enum->base, "const enum");
 	fprintf(ctx->stream, "{");
 
@@ -457,14 +445,12 @@ void print_instr_type_enum(struct context *ctx, struct mir_instr_type_enum *type
 	fprintf(ctx->stream, "}");
 }
 
-void print_instr_type_ptr(struct context *ctx, struct mir_instr_type_ptr *type_ptr)
-{
+void print_instr_type_ptr(struct context *ctx, struct mir_instr_type_ptr *type_ptr) {
 	print_instr_head(ctx, &type_ptr->base, "const");
 	fprintf(ctx->stream, "*%%%llu", (unsigned long long)type_ptr->type->id);
 }
 
-void print_instr_type_poly(struct context *ctx, struct mir_instr_type_poly *type_poly)
-{
+void print_instr_type_poly(struct context *ctx, struct mir_instr_type_poly *type_poly) {
 	print_instr_head(ctx, &type_poly->base, "const");
 	if (type_poly->T_id) {
 		const str_t s = type_poly->T_id->str;
@@ -474,8 +460,7 @@ void print_instr_type_poly(struct context *ctx, struct mir_instr_type_poly *type
 	}
 }
 
-void print_instr_type_array(struct context *ctx, struct mir_instr_type_array *type_array)
-{
+void print_instr_type_array(struct context *ctx, struct mir_instr_type_array *type_array) {
 	print_instr_head(ctx, &type_array->base, "const");
 	fprintf(ctx->stream,
 	        "[%%%llu]%%%llu",
@@ -483,27 +468,23 @@ void print_instr_type_array(struct context *ctx, struct mir_instr_type_array *ty
 	        (unsigned long long)type_array->elem_type->id);
 }
 
-void print_instr_type_slice(struct context *ctx, struct mir_instr_type_slice *type_slice)
-{
+void print_instr_type_slice(struct context *ctx, struct mir_instr_type_slice *type_slice) {
 	print_instr_head(ctx, &type_slice->base, "const");
 	fprintf(ctx->stream, "[]%%%llu", (unsigned long long)type_slice->elem_type->id);
 }
 
-void print_instr_type_dynarr(struct context *ctx, struct mir_instr_type_dyn_arr *type_dynarr)
-{
+void print_instr_type_dynarr(struct context *ctx, struct mir_instr_type_dyn_arr *type_dynarr) {
 	print_instr_head(ctx, &type_dynarr->base, "const");
 	fprintf(ctx->stream, "[..]%%%llu", (unsigned long long)type_dynarr->elem_type->id);
 }
 
-void print_instr_type_vargs(struct context *ctx, struct mir_instr_type_vargs *type_vargs)
-{
+void print_instr_type_vargs(struct context *ctx, struct mir_instr_type_vargs *type_vargs) {
 	print_instr_head(ctx, &type_vargs->base, "const");
 	if (!type_vargs->elem_type) return;
 	fprintf(ctx->stream, "...%%%llu", (unsigned long long)type_vargs->elem_type->id);
 }
 
-void print_instr_cast(struct context *ctx, struct mir_instr_cast *cast)
-{
+void print_instr_cast(struct context *ctx, struct mir_instr_cast *cast) {
 	switch (cast->op) {
 	case MIR_CAST_NONE:
 		print_instr_head(ctx, &cast->base, "nocast");
@@ -555,8 +536,7 @@ void print_instr_cast(struct context *ctx, struct mir_instr_cast *cast)
 	fprintf(ctx->stream, "%%%llu", (unsigned long long)cast->expr->id);
 }
 
-void print_instr_compound(struct context *ctx, struct mir_instr_compound *init)
-{
+void print_instr_compound(struct context *ctx, struct mir_instr_compound *init) {
 	print_instr_head(ctx, &init->base, "compound");
 	if (init->type) {
 		print_comptime_value_or_id(ctx, init->type);
@@ -580,8 +560,7 @@ void print_instr_compound(struct context *ctx, struct mir_instr_compound *init)
 	if (init->is_naked) fprintf(ctx->stream, " /* naked */");
 }
 
-void print_instr_vargs(struct context *ctx, struct mir_instr_vargs *vargs)
-{
+void print_instr_vargs(struct context *ctx, struct mir_instr_vargs *vargs) {
 	print_instr_head(ctx, &vargs->base, "vargs");
 	print_type(ctx, vargs->type, false, true);
 
@@ -599,42 +578,36 @@ void print_instr_vargs(struct context *ctx, struct mir_instr_vargs *vargs)
 	fprintf(ctx->stream, "}");
 }
 
-void print_instr_sizeof(struct context *ctx, struct mir_instr_sizeof *szof)
-{
+void print_instr_sizeof(struct context *ctx, struct mir_instr_sizeof *szof) {
 	print_instr_head(ctx, &szof->base, "sizeof");
 	fprintf(ctx->stream, " ");
 	print_comptime_value_or_id(ctx, szof->expr);
 }
 
-void print_instr_type_info(struct context *ctx, struct mir_instr_type_info *type_info)
-{
+void print_instr_type_info(struct context *ctx, struct mir_instr_type_info *type_info) {
 	print_instr_head(ctx, &type_info->base, "typeinfo");
 	print_comptime_value_or_id(ctx, type_info->expr);
 }
 
-void print_instr_typeof(struct context *ctx, struct mir_instr_typeof *type_of)
-{
+void print_instr_typeof(struct context *ctx, struct mir_instr_typeof *type_of) {
 	print_instr_head(ctx, &type_of->base, "typeof");
 	print_comptime_value_or_id(ctx, type_of->expr);
 }
 
-void print_instr_alignof(struct context *ctx, struct mir_instr_alignof *szof)
-{
+void print_instr_alignof(struct context *ctx, struct mir_instr_alignof *szof) {
 	print_instr_head(ctx, &szof->base, "alignof");
 	fprintf(ctx->stream, " ");
 	print_comptime_value_or_id(ctx, szof->expr);
 }
 
-void print_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_ptr *elem_ptr)
-{
+void print_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_ptr *elem_ptr) {
 	print_instr_head(ctx, &elem_ptr->base, "elemptr");
 	fprintf(ctx->stream, "%%%llu[", (unsigned long long)elem_ptr->arr_ptr->id);
 	print_comptime_value_or_id(ctx, elem_ptr->index);
 	fprintf(ctx->stream, "]");
 }
 
-void print_instr_member_ptr(struct context *ctx, struct mir_instr_member_ptr *member_ptr)
-{
+void print_instr_member_ptr(struct context *ctx, struct mir_instr_member_ptr *member_ptr) {
 	print_instr_head(ctx, &member_ptr->base, "memberptr");
 	if (!member_ptr->target_ptr) {
 		fprintf(ctx->stream, "<UNKNOWN>.");
@@ -665,8 +638,7 @@ void print_instr_member_ptr(struct context *ctx, struct mir_instr_member_ptr *me
 	}
 }
 
-void print_instr_unop(struct context *ctx, struct mir_instr_unop *unop)
-{
+void print_instr_unop(struct context *ctx, struct mir_instr_unop *unop) {
 	print_instr_head(ctx, &unop->base, "unop");
 
 	const char *op = ast_unop_to_str(unop->op);
@@ -674,8 +646,7 @@ void print_instr_unop(struct context *ctx, struct mir_instr_unop *unop)
 	print_comptime_value_or_id(ctx, unop->expr);
 }
 
-void print_instr_cond_br(struct context *ctx, struct mir_instr_cond_br *cond_br)
-{
+void print_instr_cond_br(struct context *ctx, struct mir_instr_cond_br *cond_br) {
 	print_instr_head(ctx, &cond_br->base, "br");
 	print_comptime_value_or_id(ctx, cond_br->cond);
 	const str_t then_block = cond_br->then_block->name;
@@ -690,48 +661,40 @@ void print_instr_cond_br(struct context *ctx, struct mir_instr_cond_br *cond_br)
 	        (unsigned long long)cond_br->else_block->base.id);
 }
 
-void print_instr_arg(struct context *ctx, struct mir_instr_arg *arg)
-{
+void print_instr_arg(struct context *ctx, struct mir_instr_arg *arg) {
 	print_instr_head(ctx, &arg->base, "arg");
 	fprintf(ctx->stream, "$%u", arg->i);
 }
 
-void print_instr_unreachable(struct context *ctx, struct mir_instr_unreachable *unr)
-{
+void print_instr_unreachable(struct context *ctx, struct mir_instr_unreachable *unr) {
 	print_instr_head(ctx, &unr->base, "unreachable");
 }
 
-void print_instr_debugbreak(struct context *ctx, struct mir_instr_debugbreak *debug_break)
-{
+void print_instr_debugbreak(struct context *ctx, struct mir_instr_debugbreak *debug_break) {
 	print_instr_head(ctx, &debug_break->base, "debugbreak");
 }
 
-void print_instr_test_cases(struct context *ctx, struct mir_instr_test_case *tc)
-{
+void print_instr_test_cases(struct context *ctx, struct mir_instr_test_case *tc) {
 	print_instr_head(ctx, &tc->base, "testcases");
 }
 
-void print_instr_call_loc(struct context *ctx, struct mir_instr_call_loc *loc)
-{
+void print_instr_call_loc(struct context *ctx, struct mir_instr_call_loc *loc) {
 	print_instr_head(ctx, &loc->base, "call_location");
 }
 
-void print_instr_unroll(struct context *ctx, struct mir_instr_unroll *unroll)
-{
+void print_instr_unroll(struct context *ctx, struct mir_instr_unroll *unroll) {
 	print_instr_head(ctx, &unroll->base, "unroll");
 	print_comptime_value_or_id(ctx, unroll->src);
 	fprintf(ctx->stream, ".%d : ", unroll->index);
 	print_comptime_value_or_id(ctx, unroll->prev);
 }
 
-void print_instr_using(struct context *ctx, struct mir_instr_using *using)
-{
+void print_instr_using(struct context *ctx, struct mir_instr_using *using) {
 	print_instr_head(ctx, &using->base, "using");
 	print_comptime_value_or_id(ctx, using->scope_expr);
 }
 
-void print_instr_designator(struct context *ctx, struct mir_instr_designator *designator)
-{
+void print_instr_designator(struct context *ctx, struct mir_instr_designator *designator) {
 	print_instr_head(ctx, &designator->base, "designator");
 	str_t name;
 	if (designator->ident && designator->ident->kind == AST_IDENT) {
@@ -743,14 +706,12 @@ void print_instr_designator(struct context *ctx, struct mir_instr_designator *de
 	print_comptime_value_or_id(ctx, designator->value);
 }
 
-void print_instr_msg(struct context *ctx, struct mir_instr_msg *msg)
-{
+void print_instr_msg(struct context *ctx, struct mir_instr_msg *msg) {
 	print_instr_head(ctx, &msg->base, "msg");
 	print_comptime_value_or_id(ctx, msg->expr);
 }
 
-void print_instr_br(struct context *ctx, struct mir_instr_br *br)
-{
+void print_instr_br(struct context *ctx, struct mir_instr_br *br) {
 	print_instr_head(ctx, &br->base, "br");
 	const str_t then_block = br->then_block->name;
 	fprintf(ctx->stream,
@@ -760,8 +721,7 @@ void print_instr_br(struct context *ctx, struct mir_instr_br *br)
 	        (unsigned long long)br->then_block->base.id);
 }
 
-void print_instr_switch(struct context *ctx, struct mir_instr_switch *sw)
-{
+void print_instr_switch(struct context *ctx, struct mir_instr_switch *sw) {
 	print_instr_head(ctx, &sw->base, "switch");
 	print_comptime_value_or_id(ctx, sw->value);
 	fprintf(ctx->stream, " {");
@@ -786,8 +746,7 @@ void print_instr_switch(struct context *ctx, struct mir_instr_switch *sw)
 	        (unsigned long long)sw->default_block->base.id);
 }
 
-void print_instr_load(struct context *ctx, struct mir_instr_load *load)
-{
+void print_instr_load(struct context *ctx, struct mir_instr_load *load) {
 	if (load->is_deref)
 		print_instr_head(ctx, &load->base, "deref");
 	else
@@ -796,14 +755,12 @@ void print_instr_load(struct context *ctx, struct mir_instr_load *load)
 	print_comptime_value_or_id(ctx, load->src);
 }
 
-void print_instr_addrof(struct context *ctx, struct mir_instr_addrof *addrof)
-{
+void print_instr_addrof(struct context *ctx, struct mir_instr_addrof *addrof) {
 	print_instr_head(ctx, &addrof->base, "addrof");
 	fprintf(ctx->stream, "%%%llu", (unsigned long long)addrof->src->id);
 }
 
-void print_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl)
-{
+void print_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl) {
 	struct mir_var *var = decl->var;
 	bassert(var);
 
@@ -835,8 +792,7 @@ void print_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl)
 	print_flags(ctx, var->flags);
 }
 
-void print_instr_decl_variant(struct context *ctx, struct mir_instr_decl_variant *var)
-{
+void print_instr_decl_variant(struct context *ctx, struct mir_instr_decl_variant *var) {
 	print_instr_head(ctx, &var->base, "declvariant");
 	bassert(var->variant);
 
@@ -852,8 +808,7 @@ void print_instr_decl_variant(struct context *ctx, struct mir_instr_decl_variant
 	}
 }
 
-void print_instr_decl_arg(struct context *ctx, struct mir_instr_decl_arg *decl)
-{
+void print_instr_decl_arg(struct context *ctx, struct mir_instr_decl_arg *decl) {
 	print_instr_head(ctx, &decl->base, "declarg");
 
 	struct mir_arg *arg = decl->arg;
@@ -869,8 +824,7 @@ void print_instr_decl_arg(struct context *ctx, struct mir_instr_decl_arg *decl)
 	}
 }
 
-void print_instr_decl_member(struct context *ctx, struct mir_instr_decl_member *decl)
-{
+void print_instr_decl_member(struct context *ctx, struct mir_instr_decl_member *decl) {
 	print_instr_head(ctx, &decl->base, "declmember");
 
 	struct mir_member *member = decl->member;
@@ -881,8 +835,7 @@ void print_instr_decl_member(struct context *ctx, struct mir_instr_decl_member *
 	print_comptime_value_or_id(ctx, decl->type);
 }
 
-void print_instr_decl_ref(struct context *ctx, struct mir_instr_decl_ref *ref)
-{
+void print_instr_decl_ref(struct context *ctx, struct mir_instr_decl_ref *ref) {
 	print_instr_head(ctx, &ref->base, "declref");
 
 	const str_t name = ref->rid->str;
@@ -890,22 +843,19 @@ void print_instr_decl_ref(struct context *ctx, struct mir_instr_decl_ref *ref)
 	if (ref->accept_incomplete_type) fprintf(ctx->stream, " /* accept incomplete */");
 }
 
-void print_instr_decl_direct_ref(struct context *ctx, struct mir_instr_decl_direct_ref *ref)
-{
+void print_instr_decl_direct_ref(struct context *ctx, struct mir_instr_decl_direct_ref *ref) {
 	print_instr_head(ctx, &ref->base, "declref");
 
 	print_comptime_value_or_id(ctx, ref->ref);
 	fprintf(ctx->stream, " /* direct */");
 }
 
-void print_instr_const(struct context *ctx, struct mir_instr_const *cnst)
-{
+void print_instr_const(struct context *ctx, struct mir_instr_const *cnst) {
 	print_instr_head(ctx, &cnst->base, "const");
 	print_const_value(ctx, &cnst->base.value);
 }
 
-void print_instr_call(struct context *ctx, struct mir_instr_call *call)
-{
+void print_instr_call(struct context *ctx, struct mir_instr_call *call) {
 	print_instr_head(ctx, &call->base, "call");
 
 	struct mir_fn *callee = mir_is_comptime(call->callee)
@@ -928,14 +878,12 @@ void print_instr_call(struct context *ctx, struct mir_instr_call *call)
 	fprintf(ctx->stream, ")");
 }
 
-void print_instr_ret(struct context *ctx, struct mir_instr_ret *ret)
-{
+void print_instr_ret(struct context *ctx, struct mir_instr_ret *ret) {
 	print_instr_head(ctx, &ret->base, "ret");
 	if (ret->value) print_comptime_value_or_id(ctx, ret->value);
 }
 
-void print_instr_store(struct context *ctx, struct mir_instr_store *store)
-{
+void print_instr_store(struct context *ctx, struct mir_instr_store *store) {
 	print_instr_head(ctx, &store->base, "store");
 	bassert(store->src);
 	print_comptime_value_or_id(ctx, store->src);
@@ -943,8 +891,7 @@ void print_instr_store(struct context *ctx, struct mir_instr_store *store)
 	// print_comptime_value_or_id(ctx,store->dest);
 }
 
-void print_instr_binop(struct context *ctx, struct mir_instr_binop *binop)
-{
+void print_instr_binop(struct context *ctx, struct mir_instr_binop *binop) {
 	print_instr_head(ctx, &binop->base, "binop");
 	bassert(binop->lhs && binop->rhs);
 	const char *op = ast_binop_to_str(binop->op);
@@ -953,8 +900,7 @@ void print_instr_binop(struct context *ctx, struct mir_instr_binop *binop)
 	print_comptime_value_or_id(ctx, binop->rhs);
 }
 
-void print_instr_fn_group(struct context *ctx, struct mir_instr_fn_group *group)
-{
+void print_instr_fn_group(struct context *ctx, struct mir_instr_fn_group *group) {
 	print_instr_head(ctx, &group->base, "const fn");
 	fprintf(ctx->stream, "{");
 	mir_instrs_t *variants = group->variants;
@@ -966,8 +912,7 @@ void print_instr_fn_group(struct context *ctx, struct mir_instr_fn_group *group)
 	fprintf(ctx->stream, "}");
 }
 
-void print_instr_block(struct context *ctx, struct mir_instr_block *block)
-{
+void print_instr_block(struct context *ctx, struct mir_instr_block *block) {
 	const bool is_global = !block->owner_fn;
 	// if (block->base.prev || is_global) fprintf(ctx->stream, "\n");
 #if BL_DEBUG
@@ -1010,8 +955,7 @@ void print_instr_block(struct context *ctx, struct mir_instr_block *block)
 	}
 }
 
-void print_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_proto)
-{
+void print_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_proto) {
 	struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &fn_proto->base.value);
 	bassert(fn);
 
@@ -1044,8 +988,7 @@ void print_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_pro
 }
 
 // public
-void print_instr(struct context *ctx, struct mir_instr *instr)
-{
+void print_instr(struct context *ctx, struct mir_instr *instr) {
 #if !PRINT_ANALYZED_COMPTIMES
 	if ((instr->owner_block || instr->kind == MIR_INSTR_BLOCK) &&
 	    (instr->kind != MIR_INSTR_DECL_VAR) && instr->value.is_comptime &&
@@ -1231,23 +1174,20 @@ void print_instr(struct context *ctx, struct mir_instr *instr)
 	fprintf(ctx->stream, "\n");
 }
 
-void mir_print_instr(FILE *stream, struct assembly *assembly, struct mir_instr *instr)
-{
+void mir_print_instr(FILE *stream, struct assembly *assembly, struct mir_instr *instr) {
 	if (!instr) return;
 	struct context ctx = {.assembly = assembly, .stream = stream};
 	print_instr(&ctx, instr);
 }
 
-void mir_print_fn(FILE *stream, struct assembly *assembly, struct mir_fn *fn)
-{
+void mir_print_fn(FILE *stream, struct assembly *assembly, struct mir_fn *fn) {
 	if (!fn) return;
 	if (!fn->prototype) return;
 	struct context ctx = {.assembly = assembly, .stream = stream};
 	print_instr(&ctx, fn->prototype);
 }
 
-void mir_print_assembly(FILE *stream, struct assembly *assembly)
-{
+void mir_print_assembly(FILE *stream, struct assembly *assembly) {
 	struct context ctx = {.assembly = assembly, .stream = stream};
 	for (usize i = 0; i < arrlenu(assembly->MIR.global_instrs); ++i) {
 		print_instr(&ctx, assembly->MIR.global_instrs[i]);

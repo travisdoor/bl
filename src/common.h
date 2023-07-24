@@ -89,7 +89,12 @@ struct config;
 #define clrflag(_v, _flag) ((_v) &= ~(_flag))
 #define setflagif(_v, _flag, _toggle) ((_toggle) ? setflag(_v, _flag) : clrflag(_v, _flag))
 
-enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
+enum { BL_RED,
+	   BL_BLUE,
+	   BL_YELLOW,
+	   BL_GREEN,
+	   BL_CYAN,
+	   BL_NO_COLOR = -1 };
 
 #define runtime_measure_begin(name) f64 __##name = get_tick_ms()
 #define runtime_measure_end(name) ((get_tick_ms() - __##name) / 1000.)
@@ -115,28 +120,24 @@ enum { BL_RED, BL_BLUE, BL_YELLOW, BL_GREEN, BL_CYAN, BL_NO_COLOR = -1 };
 // String View
 // =================================================================================================
 
-#define make_str(p, l)                                                                             \
-	(str_t)                                                                                        \
-	{                                                                                              \
-		.ptr = (char *)(p), .len = (s32)(l)                                                        \
+#define make_str(p, l)                      \
+	(str_t) {                               \
+		.ptr = (char *)(p), .len = (s32)(l) \
 	}
 
-#define cstr(P)                                                                                    \
-	(str_t)                                                                                        \
-	{                                                                                              \
-		.ptr = (P), .len = (sizeof(P) / sizeof((P)[0])) - 1                                        \
+#define cstr(P)                                             \
+	(str_t) {                                               \
+		.ptr = (P), .len = (sizeof(P) / sizeof((P)[0])) - 1 \
 	}
 
-#define make_str_from_c(p)                                                                         \
-	(str_t)                                                                                        \
-	{                                                                                              \
-		.ptr = (char *)(p), .len = (s32)strlen((char *)p)                                          \
+#define make_str_from_c(p)                                \
+	(str_t) {                                             \
+		.ptr = (char *)(p), .len = (s32)strlen((char *)p) \
 	}
 
-#define str_empty                                                                                  \
-	(str_t)                                                                                        \
-	{                                                                                              \
-		0                                                                                          \
+#define str_empty \
+	(str_t) {     \
+		0         \
 	}
 
 // Non-owning string representation with cached size. Note that the string might not be zero
@@ -180,8 +181,7 @@ str_buf_t _str_buf_dup(char *ptr, s32 len);
 void      str_buf_append_fmt(str_buf_t *buf, const char *fmt, ...);
 void      str_buf_clr(str_buf_t *buf); // This is also setting the zero
 
-static inline const char *_str_to_c_checked(char *ptr, s32 len)
-{
+static inline const char *_str_to_c_checked(char *ptr, s32 len) {
 	if (!len) return "";
 	bassert(ptr);
 	bassert(ptr[len] == '\0' && "String is not zero terminated!");
@@ -208,10 +208,9 @@ static inline const char *_str_to_c_checked(char *ptr, s32 len)
 
 // clang-format on
 
-#define str_buf_view(B)                                                                            \
-	(str_t)                                                                                        \
-	{                                                                                              \
-		.len = (B).len, .ptr = (B).ptr                                                             \
+#define str_buf_view(B)                \
+	(str_t) {                          \
+		.len = (B).len, .ptr = (B).ptr \
 	}
 
 s32 bsnprint(char *buf, s32 buf_len, const char *fmt, ...);
@@ -224,18 +223,18 @@ s32 bvsnprint(char *buf, s32 buf_len, const char *fmt, va_list args);
 #define array(T) T *
 #define hash_table(T) T *
 
-#define queue_t(T)                                                                                 \
-	struct {                                                                                       \
-		T  *q[2];                                                                                  \
-		s64 i;                                                                                     \
-		s32 qi;                                                                                    \
+#define queue_t(T) \
+	struct {       \
+		T  *q[2];  \
+		s64 i;     \
+		s32 qi;    \
 	}
 
 #define _qcurrent(Q) ((Q)->q[(Q)->qi])
 #define _qother(Q) ((Q)->q[(Q)->qi ^ 1])
-#define qmaybeswap(Q)                                                                              \
-	((Q)->i >= arrlen(_qcurrent(Q))                                                                \
-	     ? (arrsetlen(_qcurrent(Q), 0), (Q)->qi ^= 1, (Q)->i = 0, arrlen(_qcurrent(Q)) > 0)        \
+#define qmaybeswap(Q)                                                                       \
+	((Q)->i >= arrlen(_qcurrent(Q))                                                         \
+	     ? (arrsetlen(_qcurrent(Q), 0), (Q)->qi ^= 1, (Q)->i = 0, arrlen(_qcurrent(Q)) > 0) \
 	     : (true))
 #define qfree(Q) (arrfree((Q)->q[0]), arrfree((Q)->q[1]))
 #define qpush_back(Q, V) arrput(_qother(Q), (V))
@@ -245,25 +244,25 @@ s32 bvsnprint(char *buf, s32 buf_len, const char *fmt, va_list args);
 // =================================================================================================
 // Small Array
 // =================================================================================================
-#define sarr_t(T, C)                                                                               \
-	struct {                                                                                       \
-		u32 len, cap;                                                                              \
-		union {                                                                                    \
-			T *_data;                                                                              \
-			T  _buf[C];                                                                            \
-		};                                                                                         \
+#define sarr_t(T, C)    \
+	struct {            \
+		u32 len, cap;   \
+		union {         \
+			T *_data;   \
+			T  _buf[C]; \
+		};              \
 	}
 
 typedef sarr_t(u8, 1) sarr_any_t;
 
-#define SARR_ZERO                                                                                  \
-	{                                                                                              \
-		.len = 0, .cap = 0                                                                         \
+#define SARR_ZERO          \
+	{                      \
+		.len = 0, .cap = 0 \
 	}
 
 #define sarradd(A) sarraddn(A, 1)
-#define sarraddn(A, N)                                                                             \
-	(sarradd_impl((A), sizeof((A)->_buf[0]), sizeof((A)->_buf) / sizeof((A)->_buf[0]), N),         \
+#define sarraddn(A, N)                                                                     \
+	(sarradd_impl((A), sizeof((A)->_buf[0]), sizeof((A)->_buf) / sizeof((A)->_buf[0]), N), \
 	 &sarrpeek(A, sarrlenu(A) - N))
 #define sarrput(A, V) (*sarradd(A) = (V))
 #define sarrpop(A) (sarrlenu(A) > 0 ? sarrpeek(A, --(A)->len) : (abort(), (A)->_data[0]))
@@ -274,11 +273,11 @@ typedef sarr_t(u8, 1) sarr_any_t;
 #define sarrpeekor(A, I, D) ((I) < sarrlenu(A) ? sarrdata(A)[I] : (D))
 #define sarrclear(A) ((A)->len = 0)
 #define sarrfree(A) ((A)->cap ? bfree((A)->_data) : (void)0, (A)->len = 0, (A)->cap = 0)
-#define sarrsetlen(A, L)                                                                           \
-	{                                                                                              \
-		const s64 d = ((s64)(L)) - sarrlen(A);                                                     \
-		if (d) sarraddn(A, d);                                                                     \
-	}                                                                                              \
+#define sarrsetlen(A, L)                       \
+	{                                          \
+		const s64 d = ((s64)(L)) - sarrlen(A); \
+		if (d) sarraddn(A, d);                 \
+	}                                          \
 	(void)0
 
 void sarradd_impl(void *ptr, usize elem_size, usize static_elem_count, usize new_elem_count);
@@ -322,8 +321,7 @@ struct id {
 
 // Reference implementation: https://github.com/haipome/fnv/blob/master/fnv.c
 #define strhash(S) _strhash((S).ptr, (S).len)
-static inline hash_t _strhash(char *ptr, s32 len)
-{
+static inline hash_t _strhash(char *ptr, s32 len) {
 	// FNV 32-bit hash
 	hash_t hash = 2166136261;
 	char   c;
@@ -335,21 +333,18 @@ static inline hash_t _strhash(char *ptr, s32 len)
 	return hash;
 }
 
-static inline hash_t hashcomb(hash_t first, hash_t second)
-{
+static inline hash_t hashcomb(hash_t first, hash_t second) {
 	return first ^ (second + 0x9e3779b9 + (first << 6) + (first >> 2));
 }
 
-static inline struct id *id_init(struct id *id, str_t str)
-{
+static inline struct id *id_init(struct id *id, str_t str) {
 	bassert(id);
 	id->hash = strhash(str);
 	id->str  = str;
 	return id;
 }
 
-static inline bool is_ignored_id(struct id *id)
-{
+static inline bool is_ignored_id(struct id *id) {
 	bassert(id);
 	if (id->str.len != 1) return false;
 	return id->str.ptr[0] == '_';
@@ -382,13 +377,11 @@ bool search_source_file(const char *filepath,
                         char      **out_filepath,
                         char      **out_dirpath);
 
-static inline bool is_aligned(const void *p, usize alignment)
-{
+static inline bool is_aligned(const void *p, usize alignment) {
 	return (uintptr_t)p % alignment == 0;
 }
 
-static inline void align_ptr_up(void **p, usize alignment, ptrdiff_t *adjustment)
-{
+static inline void align_ptr_up(void **p, usize alignment, ptrdiff_t *adjustment) {
 	ptrdiff_t adj;
 	if (is_aligned(*p, alignment)) {
 		if (adjustment) *adjustment = 0;
@@ -405,8 +398,7 @@ static inline void align_ptr_up(void **p, usize alignment, ptrdiff_t *adjustment
 	if (adjustment) *adjustment = adj;
 }
 
-static inline void *next_aligned(void *p, usize alignment)
-{
+static inline void *next_aligned(void *p, usize alignment) {
 	align_ptr_up(&p, alignment, NULL);
 	return p;
 }

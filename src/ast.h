@@ -401,8 +401,7 @@ const char *ast_binop_to_str(enum binop_kind op);
 const char *ast_unop_to_str(enum unop_kind op);
 const char *ast_get_name(const struct ast *n);
 
-static inline bool ast_binop_is_logic(enum binop_kind op)
-{
+static inline bool ast_binop_is_logic(enum binop_kind op) {
 	return op >= BINOP_EQ && op <= BINOP_LOGIC_OR;
 }
 

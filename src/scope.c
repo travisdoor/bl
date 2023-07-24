@@ -36,22 +36,19 @@ typedef struct scope_sync_impl {
 	pthread_spinlock_t lock;
 } scope_sync_impl;
 
-static scope_sync_impl *sync_new(void)
-{
+static scope_sync_impl *sync_new(void) {
 	scope_sync_impl *impl = bmalloc(sizeof(scope_sync_impl));
 	pthread_spin_init(&impl->lock, 0);
 	return impl;
 }
 
-static void sync_delete(scope_sync_impl *impl)
-{
+static void sync_delete(scope_sync_impl *impl) {
 	if (!impl) return;
 	pthread_spin_destroy(&impl->lock);
 	bfree(impl);
 }
 
-static void scope_dtor(struct scope *scope)
-{
+static void scope_dtor(struct scope *scope) {
 	bmagic_assert(scope);
 	hmfree(scope->entries);
 	arrfree(scope->usings);
@@ -59,8 +56,7 @@ static void scope_dtor(struct scope *scope)
 }
 
 static inline struct scope_entry *
-lookup_usings(struct scope *scope, struct id *id, struct scope_entry **out_ambiguous)
-{
+lookup_usings(struct scope *scope, struct id *id, struct scope_entry **out_ambiguous) {
 	zone();
 	bassert(scope && id && out_ambiguous);
 	struct scope_entry *found = NULL;
@@ -78,8 +74,7 @@ lookup_usings(struct scope *scope, struct id *id, struct scope_entry **out_ambig
 	return_zone(found);
 }
 
-void scopes_context_init(struct scopes_context *ctx)
-{
+void scopes_context_init(struct scopes_context *ctx) {
 	arena_init(&ctx->arenas.scopes,
 	           sizeof(struct scope),
 	           alignment_of(struct scope),
@@ -92,8 +87,7 @@ void scopes_context_init(struct scopes_context *ctx)
 	           NULL);
 }
 
-void scopes_context_terminate(struct scopes_context *ctx)
-{
+void scopes_context_terminate(struct scopes_context *ctx) {
 	arena_terminate(&ctx->arenas.scopes);
 	arena_terminate(&ctx->arenas.entries);
 }
@@ -101,8 +95,7 @@ void scopes_context_terminate(struct scopes_context *ctx)
 struct scope *scope_create(struct scopes_context *ctx,
                            enum scope_kind        kind,
                            struct scope          *parent,
-                           struct location       *loc)
-{
+                           struct location       *loc) {
 	bassert(kind != SCOPE_NONE && "Invalid scope kind.");
 	struct scope *scope = arena_alloc(&ctx->arenas.scopes);
 	scope->parent       = parent;
@@ -119,8 +112,7 @@ struct scope *scope_create(struct scopes_context *ctx,
 struct scope *scope_safe_create(struct scopes_context *ctx,
                                 enum scope_kind        kind,
                                 struct scope          *parent,
-                                struct location       *loc)
-{
+                                struct location       *loc) {
 	bassert(kind != SCOPE_NONE && "Invalid scope kind.");
 	struct scope *scope = arena_safe_alloc(&ctx->arenas.scopes);
 	scope->parent       = parent;
@@ -138,8 +130,7 @@ struct scope_entry *scope_create_entry(struct scopes_context *ctx,
                                        enum scope_entry_kind  kind,
                                        struct id             *id,
                                        struct ast            *node,
-                                       bool                   is_builtin)
-{
+                                       bool                   is_builtin) {
 	struct scope_entry *entry = arena_safe_alloc(&ctx->arenas.entries);
 	entry->id                 = id;
 	entry->kind               = kind;
@@ -150,8 +141,7 @@ struct scope_entry *scope_create_entry(struct scopes_context *ctx,
 	return entry;
 }
 
-void scope_insert(struct scope *scope, hash_t layer, struct scope_entry *entry)
-{
+void scope_insert(struct scope *scope, hash_t layer, struct scope_entry *entry) {
 	zone();
 	bassert(scope);
 	bassert(entry && entry->id);
@@ -162,8 +152,7 @@ void scope_insert(struct scope *scope, hash_t layer, struct scope_entry *entry)
 	return_zone();
 }
 
-struct scope_entry *scope_lookup(struct scope *scope, scope_lookup_args_t *args)
-{
+struct scope_entry *scope_lookup(struct scope *scope, scope_lookup_args_t *args) {
 	zone();
 	bassert(scope && args->id);
 	struct scope_entry *found       = NULL;
@@ -237,25 +226,21 @@ struct scope_entry *scope_lookup(struct scope *scope, scope_lookup_args_t *args)
 	return_zone(found);
 }
 
-void scope_dirty_clear_tree(struct scope *scope)
-{
+void scope_dirty_clear_tree(struct scope *scope) {
 	bassert(scope);
 }
 
-void scope_lock(struct scope *scope)
-{
+void scope_lock(struct scope *scope) {
 	bassert(scope && scope->sync);
 	pthread_spin_lock(&scope->sync->lock);
 }
 
-void scope_unlock(struct scope *scope)
-{
+void scope_unlock(struct scope *scope) {
 	bassert(scope && scope->sync);
 	pthread_spin_unlock(&scope->sync->lock);
 }
 
-bool scope_using_add(struct scope *scope, struct scope *other)
-{
+bool scope_using_add(struct scope *scope, struct scope *other) {
 	bmagic_assert(scope);
 	bmagic_assert(other);
 	for (usize i = 0; i < arrlenu(scope->usings); ++i) {
@@ -267,8 +252,7 @@ bool scope_using_add(struct scope *scope, struct scope *other)
 	return true;
 }
 
-bool scope_is_subtree_of_kind(const struct scope *scope, enum scope_kind kind)
-{
+bool scope_is_subtree_of_kind(const struct scope *scope, enum scope_kind kind) {
 	while (scope) {
 		if (scope->kind == kind) return true;
 		scope = scope->parent;
@@ -276,8 +260,7 @@ bool scope_is_subtree_of_kind(const struct scope *scope, enum scope_kind kind)
 	return false;
 }
 
-bool scope_is_subtree_of(const struct scope *scope, const struct scope *other)
-{
+bool scope_is_subtree_of(const struct scope *scope, const struct scope *other) {
 	while (scope) {
 		if (scope == other) return true;
 		scope = scope->parent;
@@ -285,8 +268,7 @@ bool scope_is_subtree_of(const struct scope *scope, const struct scope *other)
 	return false;
 }
 
-const char *scope_kind_name(const struct scope *scope)
-{
+const char *scope_kind_name(const struct scope *scope) {
 	if (!scope) return "<INVALID>";
 	switch (scope->kind) {
 	case SCOPE_NONE:
@@ -312,8 +294,7 @@ const char *scope_kind_name(const struct scope *scope)
 	return "<INVALID>";
 }
 
-void scope_get_full_name(str_buf_t *buf, struct scope *scope)
-{
+void scope_get_full_name(str_buf_t *buf, struct scope *scope) {
 	bassert(scope && buf);
 	sarr_t(str_t, 8) tmp = SARR_ZERO;
 	while (scope) {

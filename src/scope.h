@@ -165,14 +165,12 @@ const char *scope_kind_name(const struct scope *scope);
 // Resolve the full name of the scope (containing all namespaces separated by '.'.
 void scope_get_full_name(str_buf_t *buf, struct scope *scope);
 
-static inline bool scope_is_local(const struct scope *scope)
-{
+static inline bool scope_is_local(const struct scope *scope) {
 	return scope->kind != SCOPE_GLOBAL && scope->kind != SCOPE_PRIVATE &&
 	       scope->kind != SCOPE_NAMED;
 }
 
-static inline struct scope_entry *scope_entry_ref(struct scope_entry *entry)
-{
+static inline struct scope_entry *scope_entry_ref(struct scope_entry *entry) {
 	bmagic_assert(entry);
 	++entry->ref_count;
 	return entry;

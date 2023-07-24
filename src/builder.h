@@ -81,7 +81,10 @@ enum builder_msg_type {
 	MSG_ERR,
 };
 
-enum builder_cur_pos { CARET_WORD = 0, CARET_BEFORE, CARET_AFTER, CARET_NONE };
+enum builder_cur_pos { CARET_WORD = 0,
+	                   CARET_BEFORE,
+	                   CARET_AFTER,
+	                   CARET_NONE };
 
 struct location;
 
@@ -103,9 +106,9 @@ void builder_async_submit_unit(struct unit *unit);
 
 #define builder_log(format, ...) builder_msg(MSG_LOG, -1, NULL, CARET_NONE, format, ##__VA_ARGS__)
 #define builder_info(format, ...) builder_msg(MSG_INFO, -1, NULL, CARET_NONE, format, ##__VA_ARGS__)
-#define builder_note(format, ...)                                                                  \
+#define builder_note(format, ...) \
 	builder_msg(MSG_ERR_NOTE, -1, NULL, CARET_NONE, format, ##__VA_ARGS__)
-#define builder_warning(format, ...)                                                               \
+#define builder_warning(format, ...) \
 	builder_msg(MSG_WARN, -1, NULL, CARET_NONE, format, ##__VA_ARGS__)
 #define builder_error(format, ...) builder_msg(MSG_ERR, -1, NULL, CARET_NONE, format, ##__VA_ARGS__)
 

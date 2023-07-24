@@ -32,8 +32,7 @@
 
 #define TEXT_LINE "--------------------------------------------------------------------------------"
 
-void vm_tests_run(struct assembly *assembly)
-{
+void vm_tests_run(struct assembly *assembly) {
 	struct virtual_machine *vm             = &assembly->vm;
 	struct mir_fn         **cases          = assembly->testing.cases;
 	const bool              minimal_output = assembly->target->tests_minimal_output;
@@ -95,8 +94,7 @@ void vm_tests_run(struct assembly *assembly)
 	assembly->vm_run.last_execution_status = failed_count;
 }
 
-void vm_build_entry_run(struct assembly *assembly)
-{
+void vm_build_entry_run(struct assembly *assembly) {
 	struct virtual_machine *vm     = &assembly->vm;
 	struct mir_fn          *entry  = assembly->vm_run.build_entry;
 	const struct target    *target = assembly->target;
@@ -114,8 +112,7 @@ void vm_build_entry_run(struct assembly *assembly)
 	assembly->vm_run.last_execution_status = EXIT_SUCCESS;
 }
 
-void vm_entry_run(struct assembly *assembly)
-{
+void vm_entry_run(struct assembly *assembly) {
 	struct virtual_machine *vm     = &assembly->vm;
 	struct mir_fn          *entry  = assembly->vm_run.entry;
 	const struct target    *target = assembly->target;

@@ -40,21 +40,18 @@ struct arena_sync_impl {
 	pthread_spinlock_t lock;
 };
 
-static struct arena_sync_impl *sync_new(void)
-{
+static struct arena_sync_impl *sync_new(void) {
 	struct arena_sync_impl *s = bmalloc(sizeof(struct arena_sync_impl));
 	pthread_spin_init(&s->lock, 0);
 	return s;
 }
 
-static void sync_delete(struct arena_sync_impl *s)
-{
+static void sync_delete(struct arena_sync_impl *s) {
 	pthread_spin_destroy(&s->lock);
 	bfree(s);
 }
 
-static inline struct arena_chunk *alloc_chunk(struct arena *arena)
-{
+static inline struct arena_chunk *alloc_chunk(struct arena *arena) {
 	zone();
 	const usize chunk_size =
 	    sizeof(struct arena_chunk) + total_elem_size(arena) * arena->elems_per_chunk;
@@ -64,18 +61,16 @@ static inline struct arena_chunk *alloc_chunk(struct arena *arena)
 	return_zone(chunk);
 }
 
-static inline void *get_from_chunk(struct arena *arena, struct arena_chunk *chunk, s32 i)
-{
+static inline void *get_from_chunk(struct arena *arena, struct arena_chunk *chunk, s32 i) {
 	bassert(i >= 0 && i < arena->elems_per_chunk);
-	void *elem = (void *)((char *)chunk + sizeof(struct arena_chunk) + i * total_elem_size(arena));
+	void     *elem = (void *)((char *)chunk + sizeof(struct arena_chunk) + i * total_elem_size(arena));
 	ptrdiff_t adj;
 	align_ptr_up(&elem, arena->elem_alignment, &adj);
 	bassert(adj < arena->elem_alignment);
 	return elem;
 }
 
-static inline struct arena_chunk *free_chunk(struct arena *arena, struct arena_chunk *chunk)
-{
+static inline struct arena_chunk *free_chunk(struct arena *arena, struct arena_chunk *chunk) {
 	if (!chunk) return NULL;
 	struct arena_chunk *next = chunk->next;
 	if (arena->elem_dtor) {
@@ -91,8 +86,7 @@ void arena_init(struct arena     *arena,
                 usize             elem_size_bytes,
                 s32               elem_alignment,
                 s32               elems_per_chunk,
-                arena_elem_dtor_t elem_dtor)
-{
+                arena_elem_dtor_t elem_dtor) {
 	arena->elem_size_bytes = elem_size_bytes;
 	arena->elems_per_chunk = elems_per_chunk;
 	arena->elem_alignment  = elem_alignment;
@@ -102,8 +96,7 @@ void arena_init(struct arena     *arena,
 	arena->sync            = sync_new();
 }
 
-void arena_terminate(struct arena *arena)
-{
+void arena_terminate(struct arena *arena) {
 	struct arena_chunk *chunk = arena->first_chunk;
 	while (chunk) {
 		chunk = free_chunk(arena, chunk);
@@ -111,8 +104,7 @@ void arena_terminate(struct arena *arena)
 	sync_delete(arena->sync);
 }
 
-void *arena_alloc(struct arena *arena)
-{
+void *arena_alloc(struct arena *arena) {
 	zone();
 	if (!arena->current_chunk) {
 		arena->current_chunk = alloc_chunk(arena);
@@ -131,8 +123,7 @@ void *arena_alloc(struct arena *arena)
 	return_zone(elem);
 }
 
-void *arena_safe_alloc(struct arena *arena)
-{
+void *arena_safe_alloc(struct arena *arena) {
 	zone();
 	pthread_spin_lock(&arena->sync->lock);
 	void *mem = arena_alloc(arena);

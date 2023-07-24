@@ -31,8 +31,7 @@
 #include "mir_printer.h"
 #include "stb_ds.h"
 
-static void print_header(const char *name, const char *filename, FILE *stream)
-{
+static void print_header(const char *name, const char *filename, FILE *stream) {
 	char date[26];
 	date_time(date, 26, "%d-%m-%Y %H:%M:%S");
 
@@ -50,8 +49,7 @@ static void print_header(const char *name, const char *filename, FILE *stream)
 	        BL_VERSION);
 }
 
-void mir_writer_run(struct assembly *assembly)
-{
+void mir_writer_run(struct assembly *assembly) {
 	str_buf_t export_file = get_tmp_str();
 
 	const char          *name   = assembly->target->name;

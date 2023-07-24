@@ -44,8 +44,7 @@ struct config {
 	struct string_cache *cache;
 };
 
-struct config *confload(const char *filepath)
-{
+struct config *confload(const char *filepath) {
 	FILE *input = fopen(filepath, "rb");
 	if (!input) {
 		return NULL;
@@ -65,7 +64,8 @@ struct config *confload(const char *filepath)
 	entry.value = scdup(&conf->cache, filepath, strlen(filepath));
 	hmputs(conf->data, entry);
 
-	enum state { STATE_KEY, STATE_VALUE } state = STATE_KEY;
+	enum state { STATE_KEY,
+		         STATE_VALUE } state = STATE_KEY;
 
 	char blockpath[256] = "";
 
@@ -140,16 +140,14 @@ LOAD_ERROR:
 	return NULL;
 }
 
-void confdelete(struct config *conf)
-{
+void confdelete(struct config *conf) {
 	if (!conf) return;
 	hmfree(conf->data);
 	scfree(&conf->cache);
 	bfree(conf);
 }
 
-const char *confreads(struct config *conf, const char *path, const char *default_value)
-{
+const char *confreads(struct config *conf, const char *path, const char *default_value) {
 	bassert(conf);
 	const hash_t hash  = strhash(make_str_from_c(path));
 	const s64    index = hmgeti(conf->data, hash);

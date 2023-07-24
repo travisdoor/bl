@@ -39,34 +39,29 @@ _SHUT_UP_END
 
 using namespace llvm;
 
-LLVMTypeRef llvm_struct_create_named(LLVMContextRef C, str_t Name)
-{
+LLVMTypeRef llvm_struct_create_named(LLVMContextRef C, str_t Name) {
 	StringRef sName(Name.ptr, (size_t)Name.len);
 	return wrap(StructType::create(*unwrap(C), sName));
 }
 
-LLVMValueRef llvm_add_global(LLVMModuleRef M, LLVMTypeRef Ty, str_t Name)
-{
+LLVMValueRef llvm_add_global(LLVMModuleRef M, LLVMTypeRef Ty, str_t Name) {
 	StringRef sName(Name.ptr, (size_t)Name.len);
 	return wrap(new GlobalVariable(
 	    *unwrap(M), unwrap(Ty), false, GlobalValue::ExternalLinkage, nullptr, sName));
 }
 
-LLVMValueRef llvm_add_function(LLVMModuleRef M, str_t Name, LLVMTypeRef FunctionTy)
-{
+LLVMValueRef llvm_add_function(LLVMModuleRef M, str_t Name, LLVMTypeRef FunctionTy) {
 	StringRef sName(Name.ptr, (size_t)Name.len);
 	return wrap(Function::Create(
 	    unwrap<FunctionType>(FunctionTy), GlobalValue::ExternalLinkage, sName, unwrap(M)));
 }
 
-LLVMValueRef llvm_build_alloca(LLVMBuilderRef B, LLVMTypeRef Ty, str_t Name)
-{
+LLVMValueRef llvm_build_alloca(LLVMBuilderRef B, LLVMTypeRef Ty, str_t Name) {
 	StringRef sName(Name.ptr, (size_t)Name.len);
 	return wrap(unwrap(B)->CreateAlloca(unwrap(Ty), nullptr, sName));
 }
 
-LLVMBasicBlockRef llvm_append_basic_block_in_context(LLVMContextRef C, LLVMValueRef Fn, str_t Name)
-{
+LLVMBasicBlockRef llvm_append_basic_block_in_context(LLVMContextRef C, LLVMValueRef Fn, str_t Name) {
 	StringRef sName(Name.ptr, (size_t)Name.len);
 	return wrap(BasicBlock::Create(*unwrap(C), sName, unwrap<Function>(Fn)));
 }

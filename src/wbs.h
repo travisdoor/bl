@@ -67,8 +67,7 @@ static void        wbsfree(struct wbs *wbs);
 // =================================================================================================
 // PRIVATE STUFF
 // =================================================================================================
-static bool _listdir(struct wbs *ctx, const str_buf_t dirpath, array(char *) * outdirs)
-{
+static bool _listdir(struct wbs *ctx, const str_buf_t dirpath, array(char *) * outdirs) {
 	str_buf_t search = get_tmp_str();
 	str_buf_append_fmt(&search, "{str}\\*", dirpath);
 	WIN32_FIND_DATAA find_data;
@@ -88,8 +87,7 @@ static bool _listdir(struct wbs *ctx, const str_buf_t dirpath, array(char *) * o
 	return true;
 }
 
-static bool _lookup_program_files(struct wbs *ctx)
-{
+static bool _lookup_program_files(struct wbs *ctx) {
 	char *program_files_path = getenv("ProgramFiles(x86)");
 	if (!program_files_path || !strlen(program_files_path)) {
 		builder_error(
@@ -103,8 +101,7 @@ static bool _lookup_program_files(struct wbs *ctx)
 	return true;
 }
 
-static bool _lookup_vs(struct wbs *ctx)
-{
+static bool _lookup_vs(struct wbs *ctx) {
 	str_buf_t vspath = execute("vswhere.exe -latest -nologo -property installationPath");
 	if (!vspath.len) {
 		// try to use Build Tools instead!
@@ -126,16 +123,14 @@ static bool _lookup_vs(struct wbs *ctx)
 	return true;
 }
 
-static void _listfile_delete(char ***list)
-{
+static void _listfile_delete(char ***list) {
 	for (usize i = 0; i < arrlenu(*list); ++i) {
 		free((*list)[i]);
 	}
 	arrfree(*list);
 }
 
-static bool _lookup_windows_sdk(struct wbs *ctx)
-{
+static bool _lookup_windows_sdk(struct wbs *ctx) {
 	str_buf_t sdkpath = {0};
 	str_buf_append_fmt(&sdkpath, "{str}/{s}", ctx->program_files_path, WIN_SDK);
 	if (!dir_exists2(sdkpath)) {
@@ -181,8 +176,7 @@ static bool _lookup_windows_sdk(struct wbs *ctx)
 	return true;
 }
 
-static bool _lookup_msvc_libs(struct wbs *ctx)
-{
+static bool _lookup_msvc_libs(struct wbs *ctx) {
 	str_buf_t sdkpath = {0};
 	str_buf_append_fmt(&sdkpath, "{str}/{s}", ctx->vs_path, MSVC_TOOLS);
 	if (!dir_exists2(sdkpath)) {
@@ -231,8 +225,7 @@ static bool _lookup_msvc_libs(struct wbs *ctx)
 	return true;
 }
 
-static bool _lookup_ucrt(struct wbs *ctx)
-{
+static bool _lookup_ucrt(struct wbs *ctx) {
 	str_buf_t tmppath = {0};
 	str_buf_append_fmt(&tmppath, "{str}/{s}", ctx->windows_sdk_path, UCRT);
 	if (!dir_exists2(tmppath)) {
@@ -245,8 +238,7 @@ static bool _lookup_ucrt(struct wbs *ctx)
 	return true;
 }
 
-static bool _lookup_um(struct wbs *ctx)
-{
+static bool _lookup_um(struct wbs *ctx) {
 	str_buf_t tmppath = {0};
 	str_buf_append_fmt(&tmppath, "{str}/{s}", ctx->windows_sdk_path, UM);
 	if (!dir_exists2(tmppath)) {
@@ -259,8 +251,7 @@ static bool _lookup_um(struct wbs *ctx)
 	return true;
 }
 
-struct wbs *wbslookup(void)
-{
+struct wbs *wbslookup(void) {
 	struct wbs *wbs = bmalloc(sizeof(struct wbs));
 	memset(wbs, 0, sizeof(struct wbs));
 	if (!_lookup_program_files(wbs)) goto FAILED;
@@ -275,8 +266,7 @@ FAILED:
 	return wbs;
 }
 
-void wbsfree(struct wbs *wbs)
-{
+void wbsfree(struct wbs *wbs) {
 	if (!wbs) return;
 	str_buf_free(&wbs->msvc_lib_path);
 	str_buf_free(&wbs->program_files_path);

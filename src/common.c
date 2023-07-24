@@ -83,8 +83,7 @@ u64 main_thread_id = 0;
 // Small Array
 // =================================================================================================
 
-void sarradd_impl(void *ptr, usize elem_size, usize static_elem_count, usize new_elem_count)
-{
+void sarradd_impl(void *ptr, usize elem_size, usize static_elem_count, usize new_elem_count) {
 	if (new_elem_count < 1) return;
 	sarr_any_t *arr        = (sarr_any_t *)ptr;
 	const bool  on_heap    = arr->cap;
@@ -117,8 +116,7 @@ struct string_cache {
 	struct string_cache *prev;
 };
 
-static struct string_cache *new_block(usize len, struct string_cache *prev)
-{
+static struct string_cache *new_block(usize len, struct string_cache *prev) {
 	zone();
 	const usize          cap   = len > SC_BLOCK_BYTES ? len : SC_BLOCK_BYTES;
 	struct string_cache *cache = bmalloc(sizeof(struct string_cache) + cap);
@@ -128,8 +126,7 @@ static struct string_cache *new_block(usize len, struct string_cache *prev)
 	return_zone(cache);
 }
 
-char *scdup(struct string_cache **cache, const char *str, usize len)
-{
+char *scdup(struct string_cache **cache, const char *str, usize len) {
 	zone();
 	len += 1; // +zero terminator
 	if (!*cache) {
@@ -146,8 +143,7 @@ char *scdup(struct string_cache **cache, const char *str, usize len)
 	return_zone(mem);
 }
 
-str_t _scdup2(struct string_cache **cache, char *str, s32 len)
-{
+str_t _scdup2(struct string_cache **cache, char *str, s32 len) {
 	len += 1; // +zero terminator
 	if (!*cache) {
 		(*cache) = new_block(len, NULL);
@@ -163,8 +159,7 @@ str_t _scdup2(struct string_cache **cache, char *str, s32 len)
 	return make_str(mem, len - 1); // -1 zero terminator!
 }
 
-void scfree(struct string_cache **cache)
-{
+void scfree(struct string_cache **cache) {
 	struct string_cache *c = (*cache);
 	while (c) {
 		struct string_cache *prev = c->prev;
@@ -174,8 +169,7 @@ void scfree(struct string_cache **cache)
 	(*cache) = NULL;
 }
 
-str_t scprint(struct string_cache **cache, const char *fmt, ...)
-{
+str_t scprint(struct string_cache **cache, const char *fmt, ...) {
 	va_list args, args2;
 	va_start(args, fmt);
 	va_copy(args2, args);
@@ -194,22 +188,19 @@ str_t scprint(struct string_cache **cache, const char *fmt, ...)
 // String Buffer
 // =================================================================================================
 
-void str_buf_free(str_buf_t *buf)
-{
+void str_buf_free(str_buf_t *buf) {
 	bfree(buf->ptr);
 	buf->cap = 0;
 	buf->len = 0;
 	buf->ptr = NULL;
 }
 
-void str_buf_clr(str_buf_t *buf)
-{
+void str_buf_clr(str_buf_t *buf) {
 	buf->len = 0;
 	if (buf->ptr && buf->cap) buf->ptr[0] = '\0';
 }
 
-void str_buf_setcap(str_buf_t *buf, s32 cap)
-{
+void str_buf_setcap(str_buf_t *buf, s32 cap) {
 	if (cap < 1) return;
 	cap += 1; // This is for zero terminator.
 	if (buf->cap >= cap) return;
@@ -218,8 +209,7 @@ void str_buf_setcap(str_buf_t *buf, s32 cap)
 	buf->cap = cap;
 }
 
-void _str_buf_append(str_buf_t *buf, char *ptr, s32 len)
-{
+void _str_buf_append(str_buf_t *buf, char *ptr, s32 len) {
 	if (len == 0) return;
 	bassert(ptr);
 	if (buf->len + len >= buf->cap) {
@@ -231,8 +221,7 @@ void _str_buf_append(str_buf_t *buf, char *ptr, s32 len)
 	buf->ptr[buf->len] = '\0';
 }
 
-void str_buf_append_fmt(str_buf_t *buf, const char *fmt, ...)
-{
+void str_buf_append_fmt(str_buf_t *buf, const char *fmt, ...) {
 	va_list args, args2;
 	va_start(args, fmt);
 	va_copy(args2, args);
@@ -254,8 +243,7 @@ void str_buf_append_fmt(str_buf_t *buf, const char *fmt, ...)
 	va_end(args);
 }
 
-s32 bvsnprint(char *buf, s32 buf_len, const char *fmt, va_list args)
-{
+s32 bvsnprint(char *buf, s32 buf_len, const char *fmt, va_list args) {
 	const char *i         = fmt;
 	s32         buf_index = 0;
 	char        tmp[64];
@@ -380,8 +368,7 @@ s32 bvsnprint(char *buf, s32 buf_len, const char *fmt, va_list args)
 	return buf_index;
 }
 
-s32 bsnprint(char *buf, s32 buf_len, const char *fmt, ...)
-{
+s32 bsnprint(char *buf, s32 buf_len, const char *fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
 	const s32 c = bvsnprint(buf, buf_len, fmt, args);
@@ -389,8 +376,7 @@ s32 bsnprint(char *buf, s32 buf_len, const char *fmt, ...)
 	return c;
 }
 
-str_buf_t _str_buf_dup(char *ptr, s32 len)
-{
+str_buf_t _str_buf_dup(char *ptr, s32 len) {
 	str_buf_t result = {0};
 	_str_buf_append(&result, ptr, len);
 	return result;
@@ -400,16 +386,14 @@ str_buf_t _str_buf_dup(char *ptr, s32 len)
 // Utils
 // =================================================================================================
 
-str_t str_toupper(str_t str)
-{
+str_t str_toupper(str_t str) {
 	for (s32 i = 0; i < str.len; ++i) {
 		str.ptr[i] = toupper(str.ptr[i]);
 	}
 	return str;
 }
 
-bool str_match(str_t a, str_t b)
-{
+bool str_match(str_t a, str_t b) {
 	if (a.len != b.len) return false;
 
 #ifdef BL_USE_SIMD
@@ -446,8 +430,7 @@ bool str_match(str_t a, str_t b)
 // LEVENSHTEIN_MAX_LENGTH).
 // Copy-paste from
 // https://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Levenshtein_distance#C
-s32 levenshtein(const str_t s1, const str_t s2)
-{
+s32 levenshtein(const str_t s1, const str_t s2) {
 	u32   x, y, lastdiag, olddiag;
 	usize s1len = MIN(s1.len, LEVENSHTEIN_MAX_LENGTH);
 	usize s2len = MIN(s2.len, LEVENSHTEIN_MAX_LENGTH);
@@ -471,8 +454,7 @@ bool search_source_file(const char *filepath,
                         const u32   flags,
                         const char *wdir,
                         char      **out_filepath,
-                        char      **out_dirpath)
-{
+                        char      **out_dirpath) {
 	str_buf_t tmp = get_tmp_str();
 	if (!filepath) goto NOT_FOUND;
 	char        tmp_result[PATH_MAX] = {0};
@@ -539,8 +521,7 @@ FOUND:
 	return true;
 }
 
-void win_path_to_unix(char *buf, usize buf_size)
-{
+void win_path_to_unix(char *buf, usize buf_size) {
 	if (!buf) return;
 	for (usize i = 0; i < buf_size; ++i) {
 		const char c = buf[i];
@@ -550,8 +531,7 @@ void win_path_to_unix(char *buf, usize buf_size)
 	}
 }
 
-void unix_path_to_win(char *buf, usize buf_size)
-{
+void unix_path_to_win(char *buf, usize buf_size) {
 	if (!buf) return;
 	for (usize i = 0; i < buf_size; ++i) {
 		const char c = buf[i];
@@ -561,8 +541,7 @@ void unix_path_to_win(char *buf, usize buf_size)
 	}
 }
 
-bool get_current_exec_path(char *buf, usize buf_size)
-{
+bool get_current_exec_path(char *buf, usize buf_size) {
 #if BL_PLATFORM_WIN
 	if (GetModuleFileNameA(NULL, buf, (DWORD)buf_size)) {
 		win_path_to_unix(buf, buf_size);
@@ -578,21 +557,18 @@ bool get_current_exec_path(char *buf, usize buf_size)
 #endif
 }
 
-bool get_current_exec_dir(char *buf, usize buf_size)
-{
+bool get_current_exec_dir(char *buf, usize buf_size) {
 	char tmp[PATH_MAX] = {0};
 	if (!get_current_exec_path(tmp, PATH_MAX)) return false;
 	if (!get_dir_from_filepath(buf, buf_size, tmp)) return false;
 	return true;
 }
 
-bool get_current_working_dir(char *buf, usize buf_size)
-{
+bool get_current_working_dir(char *buf, usize buf_size) {
 	return brealpath(".", buf, (s32)buf_size);
 }
 
-bool set_current_working_dir(const char *path)
-{
+bool set_current_working_dir(const char *path) {
 #if BL_PLATFORM_WIN
 	return SetCurrentDirectoryA(path);
 #else
@@ -600,8 +576,7 @@ bool set_current_working_dir(const char *path)
 #endif
 }
 
-bool file_exists(const char *filepath)
-{
+bool file_exists(const char *filepath) {
 #if BL_PLATFORM_WIN
 	return (bool)PathFileExistsA(filepath);
 #else
@@ -610,8 +585,7 @@ bool file_exists(const char *filepath)
 #endif
 }
 
-bool _file_exists(const char *ptr, s32 len)
-{
+bool _file_exists(const char *ptr, s32 len) {
 	bassert(ptr && len && ptr[len] == '\0');
 #if BL_PLATFORM_WIN
 	return (bool)PathFileExistsA(ptr);
@@ -621,8 +595,7 @@ bool _file_exists(const char *ptr, s32 len)
 #endif
 }
 
-bool dir_exists(const char *dirpath)
-{
+bool dir_exists(const char *dirpath) {
 #if BL_PLATFORM_WIN
 	DWORD dwAttrib = GetFileAttributesA(dirpath);
 	return (dwAttrib != INVALID_FILE_ATTRIBUTES && (dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
@@ -632,8 +605,7 @@ bool dir_exists(const char *dirpath)
 #endif
 }
 
-bool _dir_exists(const char *ptr, s32 len)
-{
+bool _dir_exists(const char *ptr, s32 len) {
 	bassert(ptr && len && ptr[len] == '\0');
 #if BL_PLATFORM_WIN
 	DWORD dwAttrib = GetFileAttributesA(ptr);
@@ -644,8 +616,7 @@ bool _dir_exists(const char *ptr, s32 len)
 #endif
 }
 
-bool brealpath(const char *file, char *out, s32 out_len)
-{
+bool brealpath(const char *file, char *out, s32 out_len) {
 	bassert(out);
 	bassert(out_len);
 	if (!file) return false;
@@ -668,8 +639,7 @@ bool brealpath(const char *file, char *out, s32 out_len)
 #endif
 }
 
-bool normalize_path(str_buf_t *path)
-{
+bool normalize_path(str_buf_t *path) {
 	char buf[PATH_MAX] = "";
 	if (!brealpath(str_to_c(*path), buf, static_arrlenu(buf))) {
 		return false;
@@ -679,8 +649,7 @@ bool normalize_path(str_buf_t *path)
 	return true;
 }
 
-bool create_dir(const char *dirpath)
-{
+bool create_dir(const char *dirpath) {
 #if BL_PLATFORM_WIN
 	return CreateDirectoryA(dirpath, NULL) != 0;
 #else
@@ -688,8 +657,7 @@ bool create_dir(const char *dirpath)
 #endif
 }
 
-bool create_dir_tree(const char *dirpath)
-{
+bool create_dir_tree(const char *dirpath) {
 	char tmp[PATH_MAX] = {0};
 	s32  prev_i        = 0;
 	for (s32 i = 0; dirpath[i]; ++i) {
@@ -709,8 +677,7 @@ bool create_dir_tree(const char *dirpath)
 	return true;
 }
 
-bool copy_dir(const char *src, const char *dest)
-{
+bool copy_dir(const char *src, const char *dest) {
 	str_buf_t tmp = get_tmp_str();
 #if BL_PLATFORM_WIN
 	char *_src  = strdup(src);
@@ -729,8 +696,7 @@ bool copy_dir(const char *src, const char *dest)
 	return result;
 }
 
-bool copy_file(const char *src, const char *dest)
-{
+bool copy_file(const char *src, const char *dest) {
 	str_buf_t tmp = get_tmp_str();
 #if BL_PLATFORM_WIN
 	char *_src  = strdup(src);
@@ -748,8 +714,7 @@ bool copy_file(const char *src, const char *dest)
 	return result;
 }
 
-bool remove_dir(const char *path)
-{
+bool remove_dir(const char *path) {
 	str_buf_t tmp = get_tmp_str();
 #if BL_PLATFORM_WIN
 	char *_path = strdup(path);
@@ -763,8 +728,7 @@ bool remove_dir(const char *path)
 	put_tmp_str(tmp);
 	return result;
 }
-void date_time(char *buf, s32 len, const char *format)
-{
+void date_time(char *buf, s32 len, const char *format) {
 	bassert(buf && len);
 	time_t     timer;
 	struct tm *tm_info;
@@ -773,8 +737,7 @@ void date_time(char *buf, s32 len, const char *format)
 	strftime(buf, len, format, tm_info);
 }
 
-void print_bits(s32 const size, void const *const ptr)
-{
+void print_bits(s32 const size, void const *const ptr) {
 	unsigned char *b = (unsigned char *)ptr;
 	unsigned char  byte;
 	s32            i, j;
@@ -788,8 +751,7 @@ void print_bits(s32 const size, void const *const ptr)
 	puts("");
 }
 
-int count_bits(u64 n)
-{
+int count_bits(u64 n) {
 	int count = 0;
 	while (n) {
 		count++;
@@ -798,8 +760,7 @@ int count_bits(u64 n)
 	return count;
 }
 
-bool get_dir_from_filepath(char *buf, const usize l, const char *filepath)
-{
+bool get_dir_from_filepath(char *buf, const usize l, const char *filepath) {
 	if (!filepath) return false;
 	char *ptr = strrchr(filepath, PATH_SEPARATORC);
 	if (!ptr) return false;
@@ -814,8 +775,7 @@ bool get_dir_from_filepath(char *buf, const usize l, const char *filepath)
 	return true;
 }
 
-bool get_filename_from_filepath(char *buf, const usize l, const char *filepath)
-{
+bool get_filename_from_filepath(char *buf, const usize l, const char *filepath) {
 	if (!filepath) return false;
 
 	char *ptr = strrchr(filepath, PATH_SEPARATORC);
@@ -831,8 +791,7 @@ bool get_filename_from_filepath(char *buf, const usize l, const char *filepath)
 	return true;
 }
 
-str_buf_t platform_lib_name(const str_t name)
-{
+str_buf_t platform_lib_name(const str_t name) {
 	str_buf_t tmp = get_tmp_str();
 	if (!name.len) return tmp;
 
@@ -848,8 +807,7 @@ str_buf_t platform_lib_name(const str_t name)
 	return tmp;
 }
 
-f64 get_tick_ms(void)
-{
+f64 get_tick_ms(void) {
 #if BL_PLATFORM_MACOS
 	struct mach_timebase_info convfact;
 	if (mach_timebase_info(&convfact) != 0) {
@@ -879,8 +837,7 @@ f64 get_tick_ms(void)
 #endif
 }
 
-s32 get_last_error(char *buf, s32 buf_len)
-{
+s32 get_last_error(char *buf, s32 buf_len) {
 #if BL_PLATFORM_MACOS
 	const s32 error_code = errno;
 	if (!error_code) return 0;
@@ -910,8 +867,7 @@ s32 get_last_error(char *buf, s32 buf_len)
 #endif
 }
 
-u32 next_pow_2(u32 n)
-{
+u32 next_pow_2(u32 n) {
 	u32 p = 1;
 	if (n && !(n & (n - 1))) return n;
 
@@ -921,8 +877,7 @@ u32 next_pow_2(u32 n)
 	return p;
 }
 
-void color_print(FILE *stream, s32 color, const char *format, ...)
-{
+void color_print(FILE *stream, s32 color, const char *format, ...) {
 	if (builder.is_initialized && builder.options->no_color) color = BL_NO_COLOR;
 	va_list args;
 	va_start(args, format);
@@ -992,8 +947,7 @@ void color_print(FILE *stream, s32 color, const char *format, ...)
 	va_end(args);
 }
 
-s32 cpu_thread_count(void)
-{
+s32 cpu_thread_count(void) {
 #if BL_PLATFORM_WIN
 	SYSTEM_INFO sysinfo;
 	GetSystemInfo(&sysinfo);
@@ -1003,8 +957,7 @@ s32 cpu_thread_count(void)
 #endif
 }
 
-str_buf_t execute(const char *cmd)
-{
+str_buf_t execute(const char *cmd) {
 	str_buf_t tmp  = get_tmp_str();
 	FILE     *pipe = popen(cmd, "r");
 	if (!pipe) {
@@ -1026,8 +979,7 @@ str_buf_t execute(const char *cmd)
 const char *read_config(struct config       *config,
                         const struct target *target,
                         const char          *path,
-                        const char          *default_value)
-{
+                        const char          *default_value) {
 	bassert(config && target && path);
 	str_buf_t fullpath = get_tmp_str();
 	char      triple_str[128];
@@ -1038,8 +990,7 @@ const char *read_config(struct config       *config,
 	return result;
 }
 
-s32 process_tokens(void *ctx, const char *input, const char *delimiter, process_tokens_fn_t fn)
-{
+s32 process_tokens(void *ctx, const char *input, const char *delimiter, process_tokens_fn_t fn) {
 	if (!is_str_valid_nonempty(input)) return 0;
 	str_buf_t tmp = get_tmp_str();
 	str_buf_append(&tmp, make_str_from_c(input));
@@ -1057,15 +1008,13 @@ s32 process_tokens(void *ctx, const char *input, const char *delimiter, process_
 	return count;
 }
 
-static char *ltrim(char *s)
-{
+static char *ltrim(char *s) {
 	while (isspace(*s))
 		s++;
 	return s;
 }
 
-static char *rtrim(char *s)
-{
+static char *rtrim(char *s) {
 	char *back = s + strlen(s);
 	while (isspace(*--back))
 		;
@@ -1073,7 +1022,6 @@ static char *rtrim(char *s)
 	return s;
 }
 
-char *strtrim(char *str)
-{
+char *strtrim(char *str) {
 	return rtrim(ltrim(str));
 }

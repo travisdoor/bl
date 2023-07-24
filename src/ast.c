@@ -33,8 +33,7 @@
 #define ARENA_CHUNK_COUNT 2048
 
 struct ast *
-ast_create_node(struct arena *arena, enum ast_kind c, struct token *tok, struct scope *parent_scope)
-{
+ast_create_node(struct arena *arena, enum ast_kind c, struct token *tok, struct scope *parent_scope) {
 	struct ast *node  = arena_alloc(arena);
 	node->kind        = c;
 	node->owner_scope = parent_scope;
@@ -47,18 +46,15 @@ ast_create_node(struct arena *arena, enum ast_kind c, struct token *tok, struct 
 }
 
 // public
-void ast_arena_init(struct arena *arena)
-{
+void ast_arena_init(struct arena *arena) {
 	arena_init(arena, sizeof(struct ast), alignment_of(struct ast), ARENA_CHUNK_COUNT, NULL);
 }
 
-void ast_arena_terminate(struct arena *arena)
-{
+void ast_arena_terminate(struct arena *arena) {
 	arena_terminate(arena);
 }
 
-const char *ast_get_name(const struct ast *n)
-{
+const char *ast_get_name(const struct ast *n) {
 	bassert(n);
 	switch (n->kind) {
 	case AST_BAD:
@@ -179,8 +175,7 @@ const char *ast_get_name(const struct ast *n)
 	babort("invalid ast node");
 }
 
-const char *ast_binop_to_str(enum binop_kind op)
-{
+const char *ast_binop_to_str(enum binop_kind op) {
 	switch (op) {
 	case BINOP_INVALID:
 		return "<invalid>";
@@ -243,8 +238,7 @@ const char *ast_binop_to_str(enum binop_kind op)
 	return "invalid";
 }
 
-const char *ast_unop_to_str(enum unop_kind op)
-{
+const char *ast_unop_to_str(enum unop_kind op) {
 	switch (op) {
 	case UNOP_NEG:
 		return "-";

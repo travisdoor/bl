@@ -37,13 +37,11 @@
 
 #define EXPECTED_ARRAY_COUNT 64
 
-static void sarr_dtor(sarr_any_t *arr)
-{
+static void sarr_dtor(sarr_any_t *arr) {
 	sarrfree(arr);
 }
 
-hash_t unit_hash(const char *filepath, struct token *load_from)
-{
+hash_t unit_hash(const char *filepath, struct token *load_from) {
 	struct unit *parent_unit = load_from ? load_from->location.unit : NULL;
 	char        *real_path   = NULL;
 	search_source_file(
@@ -55,8 +53,7 @@ hash_t unit_hash(const char *filepath, struct token *load_from)
 }
 
 // public
-struct unit *unit_new(const char *filepath, struct token *load_from)
-{
+struct unit *unit_new(const char *filepath, struct token *load_from) {
 	struct unit *parent_unit = load_from ? load_from->location.unit : NULL;
 	struct unit *unit        = bmalloc(sizeof(struct unit));
 	bl_zeromem(unit, sizeof(struct unit));
@@ -87,8 +84,7 @@ struct unit *unit_new(const char *filepath, struct token *load_from)
 	return unit;
 }
 
-void unit_delete(struct unit *unit)
-{
+void unit_delete(struct unit *unit) {
 	arrfree(unit->ublock_ast);
 	scfree(&unit->string_cache);
 	str_buf_free(&unit->file_docs_cache);
@@ -103,8 +99,7 @@ void unit_delete(struct unit *unit)
 	bfree(unit);
 }
 
-const char *unit_get_src_ln(struct unit *unit, s32 line, long *len)
-{
+const char *unit_get_src_ln(struct unit *unit, s32 line, long *len) {
 	if (line < 1) return NULL;
 	// Iterate from begin of the file looking for a specific line.
 	const char *c     = unit->src;

@@ -32,8 +32,7 @@
 #define ASM_EXT "s"
 
 // Emit assembly file.
-void asm_writer_run(struct assembly *assembly)
-{
+void asm_writer_run(struct assembly *assembly) {
 	zone();
 	str_buf_t buf = get_tmp_str();
 

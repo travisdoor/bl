@@ -43,20 +43,17 @@ s32 sym_lens[] = {
 
 struct token *token_end = &(struct token){.sym = SYM_EOF};
 
-void tokens_init(struct tokens *tokens)
-{
+void tokens_init(struct tokens *tokens) {
 	tokens->buf  = NULL;
 	tokens->iter = 0;
 	arrsetcap(tokens->buf, 2048);
 }
 
-void tokens_terminate(struct tokens *tokens)
-{
+void tokens_terminate(struct tokens *tokens) {
 	arrfree(tokens->buf);
 }
 
-bool token_is_unary(struct token *token)
-{
+bool token_is_unary(struct token *token) {
 	switch (token->sym) {
 	case SYM_MINUS:
 	case SYM_PLUS:
@@ -68,8 +65,7 @@ bool token_is_unary(struct token *token)
 	}
 }
 
-struct token_precedence token_prec(struct token *token)
-{
+struct token_precedence token_prec(struct token *token) {
 	switch (token->sym) {
 		// . [ (
 	case SYM_DOT:

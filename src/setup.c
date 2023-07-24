@@ -57,8 +57,7 @@ static bool arm64_apple_darwin(struct context *ctx);
 
 static str_buf_t make_content(const struct context *ctx);
 
-bool setup(const str_t filepath, const char *triple)
-{
+bool setup(const str_t filepath, const char *triple) {
 	struct context ctx    = {0};
 	ctx.triple            = triple;
 	ctx.filepath          = filepath;
@@ -142,41 +141,40 @@ bool setup(const str_t filepath, const char *triple)
 	return true;
 }
 
-str_buf_t make_content(const struct context *ctx)
-{
-#define TEMPLATE                                                                                   \
-	"# Automatically generated configuration file used by 'blc' compiler.\n"                       \
-	"# To generate new one use 'blc --configure' command.\n\n"                                     \
-	"# Compiler version, this should match the executable version 'blc --version'.\n"              \
-	"version: \"{str}\"\n\n"                                                                       \
-	"# Main API directory containing all modules and source files. This option is mandatory.\n"    \
-	"lib_dir: \"{str}\"\n"                                                                         \
-	"\n"                                                                                           \
-	"# Current default environment configuration.\n"                                               \
-	"{s}:\n"                                                                                       \
-	"    # Platform operating system preload file (relative to 'lib_dir').\n"                      \
-	"    preload_file: \"{str}\"\n"                                                                \
-	"    # Optional path to the linker executable, 'lld' linker is used by default on some "       \
-	"platforms.\n"                                                                                 \
-	"    linker_executable: \"{str}\"\n"                                                           \
-	"    # Linker flags and options used to produce executable binaries.\n"                        \
-	"    linker_opt_exec: \"{str}\"\n"                                                             \
-	"    # Linker flags and options used to produce shared libraries.\n"                           \
-	"    linker_opt_shared: \"{str}\"\n"                                                           \
-	"    # File system location where linker should lookup for dependencies.\n"                    \
+str_buf_t make_content(const struct context *ctx) {
+#define TEMPLATE                                                                                \
+	"# Automatically generated configuration file used by 'blc' compiler.\n"                    \
+	"# To generate new one use 'blc --configure' command.\n\n"                                  \
+	"# Compiler version, this should match the executable version 'blc --version'.\n"           \
+	"version: \"{str}\"\n\n"                                                                    \
+	"# Main API directory containing all modules and source files. This option is mandatory.\n" \
+	"lib_dir: \"{str}\"\n"                                                                      \
+	"\n"                                                                                        \
+	"# Current default environment configuration.\n"                                            \
+	"{s}:\n"                                                                                    \
+	"    # Platform operating system preload file (relative to 'lib_dir').\n"                   \
+	"    preload_file: \"{str}\"\n"                                                             \
+	"    # Optional path to the linker executable, 'lld' linker is used by default on some "    \
+	"platforms.\n"                                                                              \
+	"    linker_executable: \"{str}\"\n"                                                        \
+	"    # Linker flags and options used to produce executable binaries.\n"                     \
+	"    linker_opt_exec: \"{str}\"\n"                                                          \
+	"    # Linker flags and options used to produce shared libraries.\n"                        \
+	"    linker_opt_shared: \"{str}\"\n"                                                        \
+	"    # File system location where linker should lookup for dependencies.\n"                 \
 	"    linker_lib_path: \"{str}\"\n\n"
 
 	str_buf_t tmp = get_tmp_str();
 	str_buf_append_fmt(&tmp,
-	                    TEMPLATE,
-	                    ctx->version,
-	                    ctx->lib_dir,
-	                    ctx->triple,
-	                    ctx->preload_file,
-	                    ctx->linker_executable,
-	                    ctx->linker_opt_exec,
-	                    ctx->linker_opt_shared,
-	                    ctx->linker_lib_path);
+	                   TEMPLATE,
+	                   ctx->version,
+	                   ctx->lib_dir,
+	                   ctx->triple,
+	                   ctx->preload_file,
+	                   ctx->linker_executable,
+	                   ctx->linker_opt_exec,
+	                   ctx->linker_opt_shared,
+	                   ctx->linker_lib_path);
 	return tmp;
 
 #undef TEMPLATE
@@ -185,8 +183,7 @@ str_buf_t make_content(const struct context *ctx)
 // =================================================================================================
 // Targets
 // =================================================================================================
-bool default_config(struct context UNUSED(*ctx))
-{
+bool default_config(struct context UNUSED(*ctx)) {
 	builder_warning("Automatic generation of configuration file is not supported for target triple "
 	                "'%s' empty file will be generated at '%.*s'.",
 	                ctx->triple,
@@ -196,8 +193,7 @@ bool default_config(struct context UNUSED(*ctx))
 }
 
 #ifdef BL_WBS
-bool x86_64_pc_windows_msvc(struct context *ctx)
-{
+bool x86_64_pc_windows_msvc(struct context *ctx) {
 	ctx->preload_file      = cstr("os/_windows.bl");
 	ctx->linker_executable = str_empty;
 	ctx->linker_opt_exec =
@@ -220,8 +216,7 @@ FAILED:
 }
 #endif
 
-bool x86_64_pc_linux_gnu(struct context *ctx)
-{
+bool x86_64_pc_linux_gnu(struct context *ctx) {
 	const char *RUNTIME_PATH      = "lib/bl/rt/blrt_x86_64_linux.o";
 	const char *LINKER_LIB_PATH   = "/usr/lib:/usr/local/lib:/lib64:/usr/lib/x86_64-linux-gnu";
 	const char *LINKER_OPT_EXEC   = "-dynamic-linker /lib64/ld-linux-x86-64.so.2 -e _start";
@@ -252,8 +247,7 @@ bool x86_64_pc_linux_gnu(struct context *ctx)
 	return true;
 }
 
-static bool x86_64_apple_darwin(struct context *ctx)
-{
+static bool x86_64_apple_darwin(struct context *ctx) {
 	const char *COMMAND_LINE_TOOLS = "/Library/Developer/CommandLineTools";
 	const char *MACOS_SDK          = "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib";
 	const char *LINKER_LIB_PATH    = "/usr/lib:/usr/local/lib";
@@ -315,8 +309,7 @@ static bool x86_64_apple_darwin(struct context *ctx)
 	return true;
 }
 
-static bool arm64_apple_darwin(struct context *ctx)
-{
+static bool arm64_apple_darwin(struct context *ctx) {
 	const char *COMMAND_LINE_TOOLS = "/Library/Developer/CommandLineTools";
 	const char *MACOS_SDK          = "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib";
 	const str_t LINKER_LIB_PATH    = cstr("/usr/lib:/usr/local/lib");

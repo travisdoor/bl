@@ -45,7 +45,7 @@
 #if BL_DEBUG
 vm_stack_ptr_t _mir_cev_read(struct mir_const_expr_value *value);
 #else
-#define _mir_cev_read(expr) (expr)->data
+#	define _mir_cev_read(expr) (expr)->data
 #endif
 
 // Helper macro for reading Const Expression Values of fundamental types.
@@ -913,27 +913,23 @@ struct mir_instr_switch {
 };
 
 // public
-static inline bool mir_is_pointer_type(const struct mir_type *type)
-{
+static inline bool mir_is_pointer_type(const struct mir_type *type) {
 	bassert(type);
 	return type->kind == MIR_TYPE_PTR;
 }
 
-static inline bool mir_is_placeholder(const struct mir_instr *instr)
-{
+static inline bool mir_is_placeholder(const struct mir_instr *instr) {
 	bassert(instr);
 	bassert(instr->value.type);
 	return instr->value.type->kind == MIR_TYPE_PLACEHOLDER;
 }
 
-static inline struct mir_type *mir_deref_type(const struct mir_type *ptr)
-{
+static inline struct mir_type *mir_deref_type(const struct mir_type *ptr) {
 	bassert(mir_is_pointer_type(ptr) && "Attempt to dereference non-pointer type!");
 	return ptr->data.ptr.expr;
 }
 
-static inline bool mir_is_composite_type(const struct mir_type *type)
-{
+static inline bool mir_is_composite_type(const struct mir_type *type) {
 	switch (type->kind) {
 	case MIR_TYPE_STRUCT:
 	case MIR_TYPE_STRING:
@@ -949,16 +945,14 @@ static inline bool mir_is_composite_type(const struct mir_type *type)
 	return false;
 }
 
-static inline struct mir_type *mir_get_struct_elem_type(const struct mir_type *type, usize i)
-{
+static inline struct mir_type *mir_get_struct_elem_type(const struct mir_type *type, usize i) {
 	bassert(mir_is_composite_type(type) && "Expected structure type");
 	mir_members_t *members = type->data.strct.members;
 	bassert(sarrlenu(members) > i);
 	return sarrpeek(members, i)->type;
 }
 
-static inline struct mir_arg *mir_get_fn_arg(const struct mir_type *type, usize i)
-{
+static inline struct mir_arg *mir_get_fn_arg(const struct mir_type *type, usize i) {
 	bassert(type->kind == MIR_TYPE_FN && "Expected function type");
 	mir_args_t *args = type->data.fn.args;
 	if (!args) return NULL;
@@ -966,55 +960,47 @@ static inline struct mir_arg *mir_get_fn_arg(const struct mir_type *type, usize 
 	return sarrpeek(args, i);
 }
 
-static inline struct mir_type *mir_get_fn_arg_type(const struct mir_type *type, usize i)
-{
+static inline struct mir_type *mir_get_fn_arg_type(const struct mir_type *type, usize i) {
 	struct mir_arg *arg = mir_get_fn_arg(type, i);
 	bassert(arg);
 	return arg->type;
 }
 
 // Determinate if the instruction has compile time known value.
-static inline bool mir_is_comptime(const struct mir_instr *instr)
-{
+static inline bool mir_is_comptime(const struct mir_instr *instr) {
 	bassert(instr);
 	return instr->value.is_comptime;
 }
 
-static inline bool mir_is_global_block(const struct mir_instr_block *instr)
-{
+static inline bool mir_is_global_block(const struct mir_instr_block *instr) {
 	bassert(instr);
 	return instr->owner_fn == NULL;
 }
 
 // Determinate if the instruction is in the global block.
-static inline bool mir_is_global(const struct mir_instr *instr)
-{
+static inline bool mir_is_global(const struct mir_instr *instr) {
 	// Instructions without owner block lives in global scope.
 	if (!instr->owner_block) return true;
 	return mir_is_global_block(instr->owner_block);
 }
 
-static inline bool mir_type_has_llvm_representation(const struct mir_type *type)
-{
+static inline bool mir_type_has_llvm_representation(const struct mir_type *type) {
 	bassert(type);
 	return type->kind != MIR_TYPE_TYPE && type->kind != MIR_TYPE_FN_GROUP &&
 	       type->kind != MIR_TYPE_NAMED_SCOPE && type->kind != MIR_TYPE_POLY;
 }
 
-static inline bool mir_type_cmp(const struct mir_type *first, const struct mir_type *second)
-{
+static inline bool mir_type_cmp(const struct mir_type *first, const struct mir_type *second) {
 	bassert(first && second);
 	return first->id.hash == second->id.hash;
 }
 
-static inline bool mir_is_zero_initialized(const struct mir_instr_compound *compound)
-{
+static inline bool mir_is_zero_initialized(const struct mir_instr_compound *compound) {
 	bassert(compound);
 	return compound->values == NULL;
 }
 
-static inline struct mir_fn *mir_instr_owner_fn(struct mir_instr *instr)
-{
+static inline struct mir_fn *mir_instr_owner_fn(struct mir_instr *instr) {
 	bassert(instr);
 	if (instr->kind == MIR_INSTR_BLOCK) {
 		return ((struct mir_instr_block *)instr)->owner_fn;

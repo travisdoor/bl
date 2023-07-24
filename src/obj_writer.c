@@ -30,14 +30,13 @@
 #include "stb_ds.h"
 
 #if BL_PLATFORM_WIN
-#define OBJ_EXT "obj"
+#	define OBJ_EXT "obj"
 #else
-#define OBJ_EXT "o"
+#	define OBJ_EXT "o"
 #endif
 
 // Emit assembly object file.
-void obj_writer_run(struct assembly *assembly)
-{
+void obj_writer_run(struct assembly *assembly) {
 	zone();
 	runtime_measure_begin(llvm_obj_generation);
 

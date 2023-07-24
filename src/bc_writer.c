@@ -31,8 +31,7 @@
 #include "stb_ds.h"
 #include <string.h>
 
-void bc_writer_run(struct assembly *assembly)
-{
+void bc_writer_run(struct assembly *assembly) {
 	zone();
 	str_buf_t export_file = get_tmp_str();
 

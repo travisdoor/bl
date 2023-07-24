@@ -81,15 +81,13 @@ struct tokens {
 	usize         iter;
 };
 
-static inline bool sym_is_binop(enum sym sym)
-{
+static inline bool sym_is_binop(enum sym sym) {
 	return sym >= SYM_EQ && sym <= SYM_ASTERISK;
 }
 
 #define token_is_binop(token) (sym_is_binop((token)->sym))
 
-static inline bool token_is(struct token *token, enum sym sym)
-{
+static inline bool token_is(struct token *token, enum sym sym) {
 	if (!token) return false;
 	return token->sym == sym;
 }

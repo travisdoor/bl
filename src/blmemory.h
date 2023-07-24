@@ -33,10 +33,10 @@
 #include "config.h"
 
 #if BL_PLATFORM_WIN && BL_DEBUG
-#define BL_CRTDBG_ALLOC 0
+#	define BL_CRTDBG_ALLOC 0
 #else
 // This is available only on windows.
-#define BL_CRTDBG_ALLOC 0
+#	define BL_CRTDBG_ALLOC 0
 #endif
 
 #define bmalloc(size) bl_malloc_impl(size, __FILE__, __LINE__)
@@ -53,8 +53,7 @@ void *bl_realloc_impl(void *ptr, const size_t size, const char *filename, s32 li
 void *bl_malloc_impl(const size_t size, const char *filename, s32 line);
 void  bl_free_impl(void *ptr, const char *filename, s32 line);
 
-static inline void *bl_zeromem(void *dest, usize size)
-{
+static inline void *bl_zeromem(void *dest, usize size) {
 	void       *orig = dest;
 	const usize m    = size / sizeof(usize);
 	const usize d    = size - m * sizeof(usize);

@@ -40,8 +40,7 @@
 
 bool setup(const str_t filepath, const char *triple);
 
-static char *get_exec_dir(void)
-{
+static char *get_exec_dir(void) {
 	char tmp[PATH_MAX] = "";
 	if (!get_current_exec_dir(tmp, PATH_MAX)) {
 		babort("Cannot locate compiler executable path.");
@@ -49,8 +48,7 @@ static char *get_exec_dir(void)
 	return strdup(tmp);
 }
 
-static bool generate_conf(void)
-{
+static bool generate_conf(void) {
 	struct target_triple triple;
 	if (!target_init_default_triple(&triple)) {
 		return false;
@@ -65,8 +63,7 @@ static bool generate_conf(void)
 	return state;
 }
 
-static bool load_conf_file(const char *custom_conf_filepath)
-{
+static bool load_conf_file(const char *custom_conf_filepath) {
 	str_buf_t filepath = get_tmp_str();
 	if (custom_conf_filepath) {
 		str_buf_append_fmt(&filepath, "{s}", custom_conf_filepath);
@@ -146,8 +143,7 @@ struct getarg_opt {
 };
 
 static s32
-getarg(s32 argc, char *argv[], struct getarg_opt *opts, s32 *optindex, const char **positional)
-{
+getarg(s32 argc, char *argv[], struct getarg_opt *opts, s32 *optindex, const char **positional) {
 	bassert(opts && optindex);
 	(*positional) = NULL;
 	(*optindex) += 1;
@@ -226,8 +222,7 @@ getarg(s32 argc, char *argv[], struct getarg_opt *opts, s32 *optindex, const cha
 	return 0;
 }
 
-int _cmpfunc(const void *a, const void *b)
-{
+int _cmpfunc(const void *a, const void *b) {
 	struct getarg_opt *first  = (struct getarg_opt *)a;
 	struct getarg_opt *second = (struct getarg_opt *)b;
 	// List -<name> before --<name>
@@ -236,16 +231,14 @@ int _cmpfunc(const void *a, const void *b)
 	return strcmp(first->name + fs, second->name + ss);
 }
 
-static void sort_optlist(struct getarg_opt *opts)
-{
+static void sort_optlist(struct getarg_opt *opts) {
 	s32 len = 0;
 	for (; opts[len].name; ++len)
 		;
 	qsort(opts, len, sizeof(struct getarg_opt), &_cmpfunc);
 }
 
-void print_help(FILE *stream, struct getarg_opt *opts)
-{
+void print_help(FILE *stream, struct getarg_opt *opts) {
 	const char *text = "Usage:\n"
 	                   "  blc [options] [source-files]\n\n"
 	                   "Alternative usage:\n"
@@ -277,8 +270,7 @@ void print_help(FILE *stream, struct getarg_opt *opts)
 	}
 }
 
-void print_about(FILE *stream)
-{
+void print_about(FILE *stream) {
 	const char *text =
 #include "about_text.txt"
 	    ;
@@ -286,13 +278,11 @@ void print_about(FILE *stream)
 	fprintf(stream, text, BL_VERSION, LLVM_VERSION_STRING);
 }
 
-void print_where_is_api(FILE *stream)
-{
+void print_where_is_api(FILE *stream) {
 	fprintf(stream, "%s", builder_get_lib_dir());
 }
 
-void print_host_triple(FILE *stream)
-{
+void print_host_triple(FILE *stream) {
 	struct target_triple triple;
 	if (target_init_default_triple(&triple)) {
 		char triple_str[128];
@@ -302,8 +292,7 @@ void print_host_triple(FILE *stream)
 	}
 }
 
-void print_supported(FILE *stream)
-{
+void print_supported(FILE *stream) {
 	char **list = builder_get_supported_targets();
 	char **it   = list;
 	for (; *it; it++) {
@@ -315,12 +304,11 @@ void print_supported(FILE *stream)
 // =================================================================================================
 // MAIN
 // =================================================================================================
-int main(s32 argc, char *argv[])
-{
+int main(s32 argc, char *argv[]) {
 	// _crtBreakAlloc = 1782;
 
-#define EXIT(_state)                                                                               \
-	state = _state;                                                                                \
+#define EXIT(_state) \
+	state = _state;  \
 	goto RELEASE;
 
 #ifdef BL_DEBUG
@@ -397,17 +385,17 @@ int main(s32 argc, char *argv[])
 	        .property.b = &opt.app.print_version,
 	    },
 	    {
-	        .kind = STRING,
-	        .name = "--doc-out-dir",
-	        .help = "Set documentation output directory. (Use 'out' in current working directory "
-	                "by default.)",
+	        .kind       = STRING,
+	        .name       = "--doc-out-dir",
+	        .help       = "Set documentation output directory. (Use 'out' in current working directory "
+	                      "by default.)",
 	        .property.s = &opt.builder.doc_out_dir,
 	    },
 	    {
-	        .kind = STRING,
-	        .name = "--work-dir",
-	        .help = "Set current working directory. Compiler use by default the current working "
-	                "directory to output all files.",
+	        .kind       = STRING,
+	        .name       = "--work-dir",
+	        .help       = "Set current working directory. Compiler use by default the current working "
+	                      "directory to output all files.",
 	        .property.s = &user_working_directory,
 	    },
 	    {
@@ -444,7 +432,7 @@ int main(s32 argc, char *argv[])
 	    {
 	        .name       = "--target-supported",
 	        .property.b = &opt.app.print_supported,
-	        .help = "Print all supported targets and exit. (Cross compilation is not allowed yet!)",
+	        .help       = "Print all supported targets and exit. (Cross compilation is not allowed yet!)",
 	    },
 	    {
 	        .name       = "--target-experimental",
@@ -555,8 +543,8 @@ int main(s32 argc, char *argv[])
 	        .kind       = ENUM,
 	        .property.n = (s32 *)&opt.target->reg_split,
 	        .variants   = "off|on",
-	        .help = "Enable/disable splitting of structures passed into the function by value into "
-	                "registers.",
+	        .help       = "Enable/disable splitting of structures passed into the function by value into "
+	                      "registers.",
 	    },
 	    {
 	        .name       = "--verify-llvm",
@@ -571,7 +559,7 @@ int main(s32 argc, char *argv[])
 	    {
 	        .name       = "--tests-minimal-output",
 	        .property.b = &opt.target->tests_minimal_output,
-	        .help = "Reduce compile-time tests (--run-tests) output (remove results section).",
+	        .help       = "Reduce compile-time tests (--run-tests) output (remove results section).",
 	    },
 	    {
 	        .name       = "--no-api",
@@ -765,7 +753,7 @@ RELEASE:
 	// Report memory leaks...
 #if BL_CRTDBG_ALLOC
 #	ifdef BL_DIRTY_ENABLE
-#		pragma message(                                                                           \
+#		pragma message( \
 		    "WARNING: Dirty memory mode is enabled, this leads intentionally to some memory not being freed, so memory leaks cannot be properly detected!")
 #	endif
 	_CrtDumpMemoryLeaks();

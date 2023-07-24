@@ -29,8 +29,7 @@
 #include "builder.h"
 #include "stb_ds.h"
 
-void token_printer_run(struct assembly *UNUSED(assembly), struct unit *unit)
-{
+void token_printer_run(struct assembly *UNUSED(assembly), struct unit *unit) {
 	struct token *tokens_arr = unit->tokens.buf;
 	fprintf(stdout, "Tokens: \n");
 	struct token *tok;

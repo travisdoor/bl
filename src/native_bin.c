@@ -40,8 +40,7 @@ typedef s32 (*LinkerFn)(struct assembly *);
 s32 lld_link(struct assembly *assembly);
 s32 lld_ld(struct assembly *assembly);
 
-static void copy_user_libs(struct assembly *assembly)
-{
+static void copy_user_libs(struct assembly *assembly) {
 	str_buf_t            dest_path = get_tmp_str();
 	const struct target *target    = assembly->target;
 	const str_t          out_dir   = str_buf_view(target->out_dir);
@@ -88,8 +87,7 @@ static void copy_user_libs(struct assembly *assembly)
 	put_tmp_str(dest_path);
 }
 
-void native_bin_run(struct assembly *assembly)
-{
+void native_bin_run(struct assembly *assembly) {
 	builder_log("Running native runtime linker...");
 	LinkerFn linker = NULL;
 #if BL_PLATFORM_WIN

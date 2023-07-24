@@ -29,8 +29,7 @@
 #include "bldebug.h"
 #include "builder.h"
 
-void ir_opt_run(struct assembly *assembly)
-{
+void ir_opt_run(struct assembly *assembly) {
 	zone();
 	LLVMModuleRef             llvm_module     = assembly->llvm.modules[0];
 	LLVMTargetMachineRef      llvm_tm         = assembly->llvm.TM;

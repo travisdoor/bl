@@ -31,13 +31,13 @@
 #include "conf.h"
 #include "stb_ds.h"
 
-#define link_error(code, tok, pos, format, ...)                                                    \
-	{                                                                                              \
-		if (tok)                                                                                   \
-			builder_msg(MSG_ERR, (code), &(tok)->location, (pos), (format), ##__VA_ARGS__);        \
-		else                                                                                       \
-			builder_error((format), ##__VA_ARGS__);                                                \
-	}                                                                                              \
+#define link_error(code, tok, pos, format, ...)                                             \
+	{                                                                                       \
+		if (tok)                                                                            \
+			builder_msg(MSG_ERR, (code), &(tok)->location, (pos), (format), ##__VA_ARGS__); \
+		else                                                                                \
+			builder_error((format), ##__VA_ARGS__);                                         \
+	}                                                                                       \
 	(void)0
 
 struct context {
@@ -48,8 +48,7 @@ static bool search_library(struct context *ctx,
                            str_t           lib_name,
                            str_t          *out_lib_name,
                            str_t          *out_lib_dir,
-                           str_t          *out_lib_filepath)
-{
+                           str_t          *out_lib_filepath) {
 	bool found = false;
 
 	str_buf_t lib_filepath      = get_tmp_str();
@@ -88,8 +87,7 @@ DONE:
 	return found;
 }
 
-static void set_lib_paths(struct context *ctx)
-{
+static void set_lib_paths(struct context *ctx) {
 	char        tmp[PATH_MAX] = {0};
 	const char *lib_path =
 	    read_config(builder.config, ctx->assembly->target, "linker_lib_path", "");
@@ -128,8 +126,7 @@ static void set_lib_paths(struct context *ctx)
 	}
 }
 
-static bool link_lib(struct context *ctx, struct native_lib *lib)
-{
+static bool link_lib(struct context *ctx, struct native_lib *lib) {
 	if (!lib) babort("invalid lib");
 	if (!lib->user_name.len) babort("invalid lib name");
 	if (!search_library(ctx, lib->user_name, &lib->filename, &lib->dir, &lib->filepath)) {
@@ -145,8 +142,7 @@ static bool link_lib(struct context *ctx, struct native_lib *lib)
 	return lib->handle;
 }
 
-static bool link_working_environment(struct context *ctx, const char *lib_name)
-{
+static bool link_working_environment(struct context *ctx, const char *lib_name) {
 	DLLib *handle = dlLoadLibrary(lib_name);
 	if (!handle) return false;
 
@@ -158,8 +154,7 @@ static bool link_working_environment(struct context *ctx, const char *lib_name)
 	return true;
 }
 
-void linker_run(struct assembly *assembly)
-{
+void linker_run(struct assembly *assembly) {
 	zone();
 	struct context ctx;
 	ctx.assembly = assembly;

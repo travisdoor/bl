@@ -38,13 +38,12 @@
 #endif
 
 #if BL_PLATFORM_MACOS || BL_PLATFORM_LINUX
-#include <execinfo.h>
+#	include <execinfo.h>
 #endif
 
 #define MAX_LOG_MSG_SIZE 2048
 
-void log_impl(log_msg_kind_t t, const char *file, s32 line, const char *msg, ...)
-{
+void log_impl(log_msg_kind_t t, const char *file, s32 line, const char *msg, ...) {
 	char    buffer[MAX_LOG_MSG_SIZE];
 	va_list args;
 	va_start(args, msg);
@@ -77,8 +76,7 @@ void log_impl(log_msg_kind_t t, const char *file, s32 line, const char *msg, ...
 	va_end(args);
 }
 
-void print_trace_impl(void)
-{
+void print_trace_impl(void) {
 #if BL_PLATFORM_MACOS || BL_PLATFORM_LINUX
 	void  *tmp[128];
 	usize  size    = backtrace(tmp, static_arrlenu(tmp));

@@ -40,11 +40,11 @@
 
 #define is_ident(c) (isalnum(c) || (c) == '_')
 
-#define report_error(code, format, ...)                                                            \
-	{                                                                                              \
-		builder_msg(MSG_ERR, ERR_##code, NULL, CARET_NONE, (format), ##__VA_ARGS__);               \
-		longjmp((ctx)->jmp_error, ERR_##code);                                                     \
-	}                                                                                              \
+#define report_error(code, format, ...)                                              \
+	{                                                                                \
+		builder_msg(MSG_ERR, ERR_##code, NULL, CARET_NONE, (format), ##__VA_ARGS__); \
+		longjmp((ctx)->jmp_error, ERR_##code);                                       \
+	}                                                                                \
 	(void)0
 
 struct context {
@@ -68,8 +68,7 @@ static bool       scan_number(struct context *ctx, struct token *tok);
 static inline int c_to_number(char c, s32 base);
 static char       scan_specch(char c);
 
-bool scan_comment(struct context *ctx, struct token *tok, const char *term)
-{
+bool scan_comment(struct context *ctx, struct token *tok, const char *term) {
 	if (tok->sym == SYM_SHEBANG && ctx->line != 1) {
 		report_error(INVALID_TOKEN,
 		             "%s %d:%d Shebang is allowed only on the first line of the file.",
@@ -98,8 +97,7 @@ bool scan_comment(struct context *ctx, struct token *tok, const char *term)
 	return true;
 }
 
-bool scan_docs(struct context *ctx, struct token *tok)
-{
+bool scan_docs(struct context *ctx, struct token *tok) {
 	bassert(token_is(tok, SYM_DCOMMENT) || token_is(tok, SYM_DGCOMMENT));
 	tok->location.line = ctx->line;
 	tok->location.col  = ctx->col;
@@ -126,8 +124,7 @@ bool scan_docs(struct context *ctx, struct token *tok)
 	return true;
 }
 
-bool scan_ident(struct context *ctx, struct token *tok)
-{
+bool scan_ident(struct context *ctx, struct token *tok) {
 	zone();
 	tok->location.line = ctx->line;
 	tok->location.col  = ctx->col;
@@ -205,8 +202,7 @@ bool scan_ident(struct context *ctx, struct token *tok)
 	return_zone(true);
 }
 
-inline char scan_specch(char c)
-{
+inline char scan_specch(char c) {
 	switch (c) {
 	case 'n':
 		return '\n';
@@ -227,8 +223,7 @@ inline char scan_specch(char c)
 	}
 }
 
-bool scan_string(struct context *ctx, struct token *tok)
-{
+bool scan_string(struct context *ctx, struct token *tok) {
 	if (*ctx->c != '"') return false;
 	zone();
 	sarrclear(&ctx->strtmp);
@@ -276,8 +271,7 @@ DONE:
 	return_zone(true);
 }
 
-bool scan_char(struct context *ctx, struct token *tok)
-{
+bool scan_char(struct context *ctx, struct token *tok) {
 	if (*ctx->c != '\'') return false;
 	tok->location.line = ctx->line;
 	tok->location.col  = ctx->col;
@@ -324,8 +318,7 @@ bool scan_char(struct context *ctx, struct token *tok)
 	return true;
 }
 
-inline s32 c_to_number(char c, s32 base)
-{
+inline s32 c_to_number(char c, s32 base) {
 #ifndef _MSC_VER
 #	pragma GCC diagnostic push
 #	pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
@@ -358,8 +351,7 @@ inline s32 c_to_number(char c, s32 base)
 #endif
 }
 
-bool scan_number(struct context *ctx, struct token *tok)
-{
+bool scan_number(struct context *ctx, struct token *tok) {
 	tok->location.line = ctx->line;
 	tok->location.col  = ctx->col;
 	// tok->value.str     = ctx->c; @Incomplete: check this
@@ -456,8 +448,7 @@ SCAN_DOUBLE : {
 }
 }
 
-void scan(struct context *ctx)
-{
+void scan(struct context *ctx) {
 	struct token tok = {0};
 SCAN:
 	tok.location.line = ctx->line;
@@ -565,8 +556,7 @@ PUSH_TOKEN:
 	goto SCAN;
 }
 
-void lexer_run(struct assembly *assembly, struct unit *unit)
-{
+void lexer_run(struct assembly *assembly, struct unit *unit) {
 	struct context ctx = {
 	    .assembly = assembly,
 	    .tokens   = &unit->tokens,
