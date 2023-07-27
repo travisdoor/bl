@@ -330,7 +330,9 @@ Set_Char_Size :: fn (face: *Face, char_width: F26Dot6, char_height: F26Dot6, hor
 Property_Set :: fn (library: Library, module_name: *String, property_name: *String, value: *u8) Error #extern "FT_Property_Set";
 Select_Charmap :: fn (face: *Face, encoding: UInt) Error #extern "FT_Select_Charmap";
 
-ENC_TAG :: fn (a: u8, b: u8, c: u8, d: u8) UInt #inline {
+ENCODING_UNICODE :: ENC_TAG('u', 'n', 'i', 'c');
+
+ENC_TAG :: fn (a: u8, b: u8, c: u8, d: u8) UInt #comptime {
 	return 
 		(cast(UInt)(a) << 24) |
 		(cast(UInt)(b) << 16) |

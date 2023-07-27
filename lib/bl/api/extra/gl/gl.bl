@@ -113,6 +113,9 @@ GL_SRC_ALPHA           : u32 : 0x0302;
 GL_ONE_MINUS_SRC_ALPHA : u32 : 0x0303;
 GL_DST_ALPHA           : u32 : 0x0304;
 GL_ONE_MINUS_DST_ALPHA : u32 : 0x0305;
+GL_SRC1_COLOR          : u32 : 0x88F9;
+GL_ONE_MINUS_SRC1_COLOR : u32 : 0x88FA;
+GL_ONE_MINUS_SRC1_ALPHA : u32 : 0x88FB;
 
 GL_BYTE           : u32 : 0x1400;
 GL_UNSIGNED_BYTE  : u32 : 0x1401;
@@ -515,6 +518,12 @@ GL_COLOR_ATTACHMENT31 : u32 : 0x8CFF;
 GL_DEPTH_ATTACHMENT   : u32 : 0x8D00;
 GL_STENCIL_ATTACHMENT : u32 : 0x8D20;
 
+GL_SRC0_RGB   : u32 : 0x8580;
+GL_SRC1_RGB   : u32 : 0x8581;
+GL_SRC2_RGB   : u32 : 0x8582;
+GL_SRC0_ALPHA : u32 : 0x8588;
+GL_SRC1_ALPHA : u32 : 0x8589;
+
 GL_FRAMEBUFFER_COMPLETE                      : u32 : 0x8CD5;
 GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT         : u32 : 0x8CD6;
 GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT : u32 : 0x8CD7;
@@ -527,6 +536,8 @@ GL_DEPTH_COMPONENT24 : u32 : 0x81A6;
 GL_DEPTH_COMPONENT32 : u32 : 0x81A7;
 
 GL_COLOR : u32 : 0x1800;
+
+GL_TEXTURE_MAX_ANISOTROPY_EXT : u32 : 0x84FE;
 
 // OpenGL extensions must be loaded in runtime on Windows so we can do the same even on Unix.
 _Gl :: struct {
@@ -542,6 +553,7 @@ _Gl :: struct {
 	GetError: *fn () GLenum;
 	BlendFunc: *fn (sfactor: GLenum, dfactor: GLenum);
 	TexParameteri: *fn (target: GLenum, pname: GLenum, param: GLint);
+    TexParameterf: *fn (target: GLenum, pname: GLenum, param: GLfloat);
 	TexSubImage2D: *fn (target: GLenum, level: GLint, xoffset: GLint, yoffset: GLint, width: GLsizei, height: GLsizei, format: GLenum, t: GLenum, data: *u8);
 	Hint: *fn (target: GLenum, mode: GLenum);
 	PolygonMode: *fn (face: GLenum, mode: GLenum);

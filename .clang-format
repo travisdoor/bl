@@ -3,9 +3,9 @@ IndentWidth: 4
 TabWidth: 4
 AccessModifierOffset: -4
 UseTab: ForIndentation 
-BreakBeforeBraces: Linux
+BreakBeforeBraces: Attach
 IndentCaseLabels: false
-ColumnLimit: 100
+ColumnLimit: 0
 AlignTrailingComments: true
 AlignConsecutiveAssignments: true
 AlignConsecutiveDeclarations: true

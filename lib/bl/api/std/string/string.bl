@@ -669,6 +669,12 @@ ctostr :: fn (cstr: *C.char, len : s64 = -1) string_view #inline {
 	return string_view.{ l, auto cstr };
 }
 
+is_alpha :: fn (c: u8) bool #inline {
+    if c >= 'a' && c <= 'z' { return true; }
+    if c >= 'A' && c <= 'Z' { return true; }
+    return false;
+}
+
 #private
 
 make_string :: fn (data: string_view, cap: s64, allocator: *Allocator) string {
