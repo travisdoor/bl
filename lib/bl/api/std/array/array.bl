@@ -67,7 +67,7 @@ array_push_all :: fn (_arr: *[..]?T, data: []T) {
 	if data.len < 1 { return; }
 	elem_size :: sizeof(T);
 	arr.len += data.len;
-	ensure_space(auto arr, elem_size, auto arr.len, false, alignof(T));
+	ensure_space(auto arr, elem_size, auto arr.len, alignof(T));
 	dest_ptr :: get_elem_ptr(auto arr, elem_size, arr.len - data.len);
 	memcpy(dest_ptr, auto data.ptr, elem_size * auto data.len);
 }
@@ -86,13 +86,13 @@ array_pop :: fn (_arr: *[..]?T, out: *T = null) bool #inline {
 	return true;
 }
 
-/// Reserve heap memory for `n` elements in array. Does nothing in case the already allocaed block is
-/// large enough to hold `n` elements.
+/// Reserve heap memory for `n` elements in array. Does nothing in case the already allocated block is
+/// large enough to hold `n` elements, the allocated memory block might be bigger then requested size.
 array_reserve :: fn (_arr: *[..]?T, n: s64) #inline {
 	arr := cast(*_Array) _arr;
 	if n == 0 { return; }
 	if n < 0 { panic("Invalid array capacity!"); }
-	ensure_space(arr, sizeof(T), auto n, true, alignof(T));
+	ensure_space(arr, sizeof(T), auto n, alignof(T));
 }
 
 array_resize :: fn (_arr: *[..]?T, n: s64) #inline {
@@ -141,8 +141,14 @@ array_clear :: fn (_arr: *[..]?T) #inline {
 	arr.len = 0;
 }
 
+array_allocated_bytes :: fn (_arr: *[..]?T) usize #inline {
+    arr :: cast(*_Array) _arr;
+    return arr.allocated_elems;
+}
+
 #private
 ALLOC_BLOCK_SIZE : usize : 32;
+GROW_FACTOR      : f32   : 1.5f;
 
 get_elem_ptr :: fn (arr: *_Array, elem_size: usize, i: s64) *u8 #inline {
 	if i >= arr.len {
@@ -151,16 +157,16 @@ get_elem_ptr :: fn (arr: *_Array, elem_size: usize, i: s64) *u8 #inline {
 	return ptr_shift_bytes(arr.ptr, i * cast(s64) elem_size);
 };
 
-ensure_space :: fn (arr: *_Array, elem_size: usize, needed_elems: usize, exact: bool, alignement: usize) {
+ensure_space :: fn (arr: *_Array, elem_size: usize, needed_elems: usize, alignement: usize) {
 	if needed_elems == 0                   { return; }
 	if arr.allocated_elems >= needed_elems { return; }
 
 	// Allocated larger block for later use.
 	extended_needed_elems := needed_elems;
 	if arr.allocated_elems == 0 {
-		if !exact { extended_needed_elems = std.max(ALLOC_BLOCK_SIZE, extended_needed_elems); }
+		extended_needed_elems = std.max(ALLOC_BLOCK_SIZE, extended_needed_elems);
 	} else {
-		extended_needed_elems *= 2;
+		extended_needed_elems = auto (GROW_FACTOR * auto extended_needed_elems);
 	}
 
 	assert(extended_needed_elems > 0);
@@ -184,6 +190,6 @@ impl_push :: fn (arr: *[..]?T, v: T) *T #inline {
 impl_push_empty :: fn (arr: *[..]?T) *T {
 	elem_size :: sizeof(T);
 	arr.len += 1;
-	ensure_space(auto arr, elem_size, auto arr.len, false, alignof(T));
+	ensure_space(auto arr, elem_size, auto arr.len, alignof(T));
 	return auto get_elem_ptr(auto arr, elem_size, arr.len - 1);
 }

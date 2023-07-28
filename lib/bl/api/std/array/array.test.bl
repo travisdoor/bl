@@ -217,6 +217,6 @@ test_custom_allocator :: fn () #test {
 		test_eq(arr[i], i);
 	}
 	array_terminate(&arr);
-	test_eq(6, alloc_count);
-	test_eq(1, free_count);
+	test_eq(alloc_count, 10);
+	test_eq(free_count, 1);
 }
