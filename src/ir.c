@@ -849,8 +849,15 @@ LLVMValueRef emit_const_string(struct context *ctx, const str_t s) {
 	struct mir_type *type     = ctx->builtin_types->t_string_literal;
 	LLVMValueRef     llvm_str = NULL;
 	if (s.len) {
-		const hash_t hash  = strhash(s);
-		const s64    index = hmgeti(ctx->gstring_cache, hash);
+		s64    index = -1;
+		hash_t hash;
+
+		const bool use_cache = s.len < 256;
+		// There is probably no good reason to try cache large string data.
+		if (use_cache) {
+			hash  = strhash(s);
+			index = hmgeti(ctx->gstring_cache, hash);
+		}
 		if (index != -1) {
 			llvm_str = ctx->gstring_cache[index].value;
 		} else {
@@ -861,7 +868,8 @@ LLVMValueRef emit_const_string(struct context *ctx, const str_t s) {
 			LLVMSetInitializer(llvm_str, llvm_str_content);
 			LLVMSetLinkage(llvm_str, LLVMPrivateLinkage);
 			LLVMSetGlobalConstant(llvm_str, true);
-			hmput(ctx->gstring_cache, hash, llvm_str);
+
+			if (use_cache) hmput(ctx->gstring_cache, hash, llvm_str);
 		}
 	} else {
 		// null string content
