@@ -45,7 +45,7 @@ main :: fn () s32 {
     defer draw.terminate();
 
     // Load font from the file using draw module helper functin.
-    err := draw.font_init_at_size(&font, ".", "LiberationMono-Regular.ttf", 14, draw.FontAntialiasing.ALPHA);
+    err := draw.font_init_at_size(&font, ".", "LiberationMono-Regular.ttf", 14);
     if err { panic(err); }
     defer draw.font_terminate(&font);
 

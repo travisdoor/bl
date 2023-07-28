@@ -140,7 +140,7 @@ main :: fn () s32 {
     if err { panic(err); }
     defer draw.texture_terminate(&power_texture);
 
-    err = draw.font_init_at_size(&font, ".", "font.ttf", 32, draw.FontAntialiasing.ALPHA);
+    err = draw.font_init_at_size(&font, ".", "font.ttf", 32);
     if err { panic(err); }
     defer draw.font_terminate(&font);
 
@@ -476,7 +476,7 @@ draw_game :: fn () {
     text(10.f, 10.f, tprint("Score: %", score));
 
     set_shader_color();
-    rect(0.f, auto WINDOW_HEIGHT - 4, (cast(f32) WINDOW_WIDTH) * ship.power, 4.f, v4.{ 1.f, 0.f, 0.f, 1.f });
+    rect(0.f, cast(f32) (WINDOW_HEIGHT - 4), (cast(f32) WINDOW_WIDTH) * ship.power, 4.f, v4.{ 1.f, 0.f, 0.f, 1.f });
 }
 
 draw_after_screen :: fn (_: f32) {
