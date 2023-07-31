@@ -177,3 +177,40 @@ mixed_type_array :: fn () #test {
     ptr_int: *[4]s32 = foo(s32);
     ptr_bool: *[4]bool = foo(bool);
 }
+
+get_number_back :: fn (v: s32 #comptime) s32 #comptime {
+    return v;
+}
+
+placeholder_in_nested_call :: fn () #test {
+    foo :: fn (n: s32 #comptime) [get_number_back(n)]s32 {
+        tmp: [n]s32;
+        return tmp;
+    };
+
+    v :: foo(10);
+    test_eq(v.len, 10);
+}
+
+MyEnum :: enum {
+    A;
+    B;
+    C;
+}
+
+get_enum_variant_value_array :: fn (T: type #comptime) [enum_count(T)]s32 #comptime {
+    tmp: [enum_count(T)]s32;
+    info :: cast(*TypeInfoEnum) typeinfo(T);
+    loop i := 0; i < info.variants.len; i += 1 {
+        tmp[i] = auto info.variants[i].value;
+    }
+    return tmp;
+}
+
+generate_enum_names :: fn () #test {
+    vals :: get_enum_variant_value_array(MyEnum);
+    test_eq(vals.len, 3);
+    test_eq(vals[0], 0);
+    test_eq(vals[1], 1);
+    test_eq(vals[2], 2);
+}

@@ -7725,6 +7725,7 @@ static struct result analyze_call_stage_resolve_overload(struct context *ctx, st
 static struct result analyze_call_stage_prescan_arguments(struct context *ctx, struct mir_instr_call *call);
 static struct result analyze_call_stage_generate(struct context *ctx, struct mir_instr_call *call);
 static struct result analyze_call_stage_finalize(struct context *ctx, struct mir_instr_call *call);
+static struct result analyze_call_stage_finalize_dummy_with_placeholders(struct context *ctx, struct mir_instr_call *call);
 
 static mir_call_analyze_stage_fn_t analyze_call_default_pipeline[] = {
     &analyze_call_stage_resolve_called_object,
@@ -7749,6 +7750,11 @@ static mir_call_analyze_stage_fn_t analyze_call_generated_pipeline[] = {
     &analyze_call_stage_resolve_called_object,
     &analyze_call_stage_validate_called_object,
     &analyze_call_stage_finalize,
+    NULL,
+};
+
+static mir_call_analyze_stage_fn_t analyze_call_generated_with_placeholders_pipeline[] = {
+    &analyze_call_stage_finalize_dummy_with_placeholders,
     NULL,
 };
 
@@ -7785,7 +7791,25 @@ struct result analyze_call_stage_validate_called_object(struct context *ctx, str
 			bmagic_assert(call->called_function);
 
 			if (is_generated_function(call->called_function)) {
-				call->analyze_pipeline = analyze_call_generated_pipeline;
+				// In case the call is generated as a part of function signature, we may have some of arguments which are of
+				// placeholder type, such function cannot be generated because placeholder argument is basically unknown. So
+				// we have to switch to a simpler analyze pipeline. This is sad because the call arguments might be invalid
+				// and it will stay uncovered until true implementation of parent generated function is resolved.
+				//
+				// We may have to find a better solution for this, but currently I have to other ideas...
+				bool is_called_with_placeholder = false;
+				for (usize index = 0; index < sarrlenu(call->args); ++index) {
+					struct mir_instr *arg = sarrpeek(call->args, index);
+					if (arg->value.type && arg->value.type->kind == MIR_TYPE_PLACEHOLDER) {
+						is_called_with_placeholder = true;
+						break;
+					}
+				}
+				if (is_called_with_placeholder) {
+					call->analyze_pipeline = analyze_call_generated_with_placeholders_pipeline;
+				} else {
+					call->analyze_pipeline = analyze_call_generated_pipeline;
+				}
 			}
 
 			if (isflag(call->called_function->flags, FLAG_COMPTIME)) {
@@ -7805,6 +7829,18 @@ struct result analyze_call_stage_validate_called_object(struct context *ctx, str
 		report_error(EXPECTED_FUNC, call->callee->node, "Expected function or function group name.");
 		return_zone(FAIL);
 	}
+	return_zone(PASS);
+}
+
+struct result analyze_call_stage_finalize_dummy_with_placeholders(struct context *ctx, struct mir_instr_call *call) {
+	// This stage is only dummy finalizer for the call analyze pass, the called object must be generated, but
+	// call side provides at least one placeholder argument, so the function canot be properly generated.
+
+	// We might can check more stuff here?
+	assert(call->is_inside_recipe && "This is valid only in case the call is generated as a part of function recipe!");
+	assert(!call->base.value.type && "Function type is supposed to be null and replaced by placeholder type!");
+	call->base.value.type = ctx->builtin_types->t_placeholer;
+
 	return_zone(PASS);
 }
 
