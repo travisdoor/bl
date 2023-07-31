@@ -191,6 +191,14 @@ str_match_one_of :: fn (str: string_view, list: []string_view) bool {
 	return false;
 }
 
+/// Returns index of the first matching string in the input list or -1 if there is no match.
+str_first_match :: fn (str: string_view, list: []string_view) s32 {
+	loop i := 0; i < list.len; i += 1 {
+		if str_match(str, list[i]) { return i; }
+	}
+	return -1;
+}
+
 /// Converts the first `count` of characters from `str` to `s64` and return OK on success. Use the whole
 /// string in case the `count` is not specified.
 ///

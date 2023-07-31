@@ -419,7 +419,7 @@ number_type :: fn (size_bytes: usize, is_signed: bool) type #comptime {
 }
 
 // !!!
-// @Incomplete: Following funcitons might be comptime, but we may use them also with runtime known arguments,
+// @Incomplete: Following functions might be comptime, but we may use them also with runtime known arguments,
 // change this after #comptime semantic will be "optional" based on arguments + #run directive will be supported
 // by the compiler.
 // !!!
@@ -447,6 +447,13 @@ has_member2 :: fn (TStruct: type #comptime, member_name: string_view) bool #comp
 	}
 	return false;
 }
+
+// Returns count of structure members resolved in compile time.
+struct_count :: fn (TStruct: type #comptime) s32 #comptime {
+	info :: cast(*TypeInfoStruct) typeinfo(TStruct);
+	static_assert(info.kind == TypeKind.STRUCT);
+    return auto info.members.len;
+}    
 
 // Resolve structure member `member_name` offset in bytes inside the `TStruct` memory layout.
 member_offset_bytes :: fn (TStruct: type #comptime, member_name: string_view) s64 {
