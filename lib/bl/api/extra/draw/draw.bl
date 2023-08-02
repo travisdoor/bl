@@ -366,14 +366,28 @@ png_load_from_file :: fn (filepath: string_view, out_data: **u8, out_width: *u32
 	stream, err_input :: open_file(filepath, OpenFileMode.READ);
 	if err_input { return err_input; }
 	defer close_file(&stream);
-	err_sig :: png_validate_signature(&stream, filepath);
+	
+	return png_load_from_stream(&stream, out_data, out_width, out_height, out_bit_depth, out_format);
+}
+
+png_load_from_memory :: fn (data: []u8, out_data: **u8, out_width: *u32, out_height: *u32, out_bit_depth: *u8, out_format: *TextureFormat) Error {
+	using std;
+	stream :: make_data_stream(data);
+	return png_load_from_stream(&stream, out_data, out_width, out_height, out_bit_depth, out_format);
+}
+
+png_load_from_stream :: fn (stream: *std.Stream, out_data: **u8, out_width: *u32, out_height: *u32, out_bit_depth: *u8, out_format: *TextureFormat) Error {
+	using std;
+
+	assert(stream);
+	err_sig :: png_validate_signature(stream);
 	if err_sig { return err_sig; }
 
 	png_ptr :: png.create_read_struct(png.LIBPNG_VER_STRING.ptr, null, &png_handle_error, &png_handle_warning);
 	assert(png_ptr);
 	info_ptr :: png.create_info_struct(png_ptr);
 	assert(info_ptr);
-	png.set_read_fn(png_ptr, auto &stream, &png_reader);
+	png.set_read_fn(png_ptr, auto stream, &png_reader);
 	png.set_sig_bytes(png_ptr, auto PNG_SIG_LENGTH);
 	png.read_info(png_ptr, info_ptr);
 
@@ -413,7 +427,7 @@ png_load_from_file :: fn (filepath: string_view, out_data: **u8, out_width: *u32
 			png.COLOR_TYPE_RGBA { (@out_format) = TextureFormat.RGBA; }
 			default {
 				free(image_data);
-				return error("Unsupported color format % in file '%'.", color_type, filepath);
+				return error("Unsupported color format %.", color_type);
 			}
 		}
 	}
@@ -964,17 +978,17 @@ compile_unit :: fn (kind: u32, source: string_view) u32 {
 // =================================================================================================
 PNG_SIG_LENGTH :: 8;
 
-png_validate_signature :: fn (stream: *std.Stream, filepath: string_view) Error {
+png_validate_signature :: fn (stream: *std.Stream) Error {
 	using std;
 
 	data: [PNG_SIG_LENGTH]u8 #noinit;
 	read_bytes, err_read :: read(stream, data.ptr, data.len);
 	if err_read { return err_read; }
 	if read_bytes != PNG_SIG_LENGTH {
-		return error("File '%' stream malformed.", filepath);
+		return error("Png data stream malformed.");
 	}
 	if png.sig_cmp(data.ptr, 0, auto PNG_SIG_LENGTH) != 0 {
-		return error("File '%' is not recognized as a PNG file.", filepath);
+		return error("Png data is not recognized as a PNG file format.");
 	}
 
 	return OK;
@@ -995,6 +1009,33 @@ png_reader :: fn (png_ptr: png.structp, out_bytes: png.bytep, count: png.size_t)
 	stream :: cast(*Stream) png.get_io_ptr(png_ptr);
 	_, err_read :: read(stream, out_bytes, auto count);
 	if err_read { panic(); }
+}
+
+ReadDataStream :: struct #base std.Stream {
+	buf:      []u8;
+	position: s64;
+}
+
+READ_DATA_STREAM_VTABLE :: std.StreamVTable.{
+    read  = auto &data_read,
+};
+
+// Actual read function implementation.
+data_read :: fn (stream: *ReadDataStream, dest: *u8, bytes_to_read: s64) (s64, Error) {
+	if stream.position + bytes_to_read >= stream.buf.len {
+		return 0, error("Data read overflow!");
+	}
+	memcpy(dest, &stream.buf[stream.position], auto bytes_to_read);
+	stream.position += bytes_to_read;
+	return bytes_to_read, OK;
+}
+
+make_data_stream :: fn (data: []u8) ReadDataStream {
+	using std;
+	tmp: ReadDataStream;
+	tmp.vtable = &READ_DATA_STREAM_VTABLE;
+	tmp.buf    = data;
+	return tmp;
 }
 
 // =================================================================================================
