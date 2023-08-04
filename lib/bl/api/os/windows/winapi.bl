@@ -25,6 +25,7 @@ LPCWSTR      :: *C.ushort;
 LPCSTR       :: *C.char;
 LPSTR        :: *C.char;
 LPCTSTR      :: *C.uchar;
+LPBYTE       :: *C.char;
 PCSTR        :: *C.char;
 PCHAR        :: *C.char;
 HLOCAL       :: *C.uchar;
@@ -73,6 +74,11 @@ HDC          :: C.void_ptr;
 HGLRC        :: C.void_ptr;
 HMONITOR     :: C.void_ptr;
 HRESULT      :: C.void_ptr;
+
+PHANDLE :: *HANDLE;
+
+HANDLE_FLAG_INHERIT : u32 : 0x00000001;
+HANDLE_FLAG_PROTECT_FROM_CLOSE : u32 : 0x00000002;
 
 DPI_AWARENESS_CONTEXT :: *u8;
 
@@ -1101,3 +1107,61 @@ ChangeDisplaySettingsA :: fn (lpDevMode: *DEVMODEA, dwFlags: DWORD) LONG #extern
 GetConsoleScreenBufferInfo :: fn (hConsoleOutput: HANDLE , lpConsoleScreenBufferInfo: PCONSOLE_SCREEN_BUFFER_INFO) BOOL #extern "GetConsoleScreenBufferInfo";
 SetConsoleTextAttribute :: fn (hConsoleOutput: HANDLE, wAttributes: WORD) BOOL #extern "SetConsoleTextAttribute";
 GetLogicalDrives :: fn () DWORD #extern "GetLogicalDrives";
+CreatePipe :: fn (hReadPipe: PHANDLE, hWritePipe: PHANDLE, lpPipeAttributes: LPSECURITY_ATTRIBUTES, nSize: DWORD) BOOL #extern "CreatePipe";
+SetHandleInformation :: fn (hObject: HANDLE, dwMask: DWORD, dwFlags: DWORD) BOOL #extern "SetHandleInformation";
+
+STARTUPINFOA :: struct {
+	cb: DWORD;
+	lpReserved: LPSTR;
+	lpDesktop: LPSTR;
+	lpTitle: LPSTR;
+	dwX: DWORD;
+	dwY: DWORD;
+	dwXSize: DWORD;
+	dwYSize: DWORD;
+	dwXCountChars: DWORD;
+	dwYCountChars: DWORD;
+	dwFillAttribute: DWORD;
+	dwFlags: DWORD;
+	wShowWindow: WORD;
+	cbReserved2: WORD;
+	lpReserved2: LPBYTE;
+	hStdInput: HANDLE;
+	hStdOutput: HANDLE;
+	hStdError: HANDLE;
+}
+
+LPSTARTUPINFOA :: *STARTUPINFOA;
+
+PROCESS_INFORMATION :: struct {
+	hProcess: HANDLE;
+	hThread: HANDLE;
+	dwProcessId: DWORD;
+	dwThreadId: DWORD;
+};
+
+LPPROCESS_INFORMATION :: *PROCESS_INFORMATION;
+
+STARTF_USESTDHANDLES : u32 : 0x00000100;
+
+CreateProcessA :: fn (
+	lpApplicationName: LPCSTR, 
+	lpCommandLine: LPSTR,
+	lpProcessAttributes: LPSECURITY_ATTRIBUTES,
+	lpThreadAttributes: LPSECURITY_ATTRIBUTES, 
+	bInheritHandles: BOOL,
+	dwCreationFlags: DWORD,
+	lpEnvironment: LPVOID,
+	lpCurrentDirectory: LPCSTR,
+	lpStartupInfo: LPSTARTUPINFOA, 
+	lpProcessInformation: LPPROCESS_INFORMATION
+) BOOL #extern "CreateProcessA";
+
+PeekNamedPipe :: fn (
+	hNamedPipe: HANDLE,
+	lpBuffer: LPVOID,
+	nBufferSize: DWORD,
+	lpBytesRead: LPDWORD,
+	lpTotalBytesAvail: LPDWORD,
+	lpBytesLeftThisMessage: LPDWORD
+) BOOL #extern "PeekNamedPipe";
