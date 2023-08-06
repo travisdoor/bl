@@ -406,7 +406,7 @@ get_expected_error :: fn (filepath: string_view) (is_present: bool, error: s32) 
     if err_read { print_err("%", err_read); return false, 0; }
 
     tmp :: str_split_by(content, '@');
-    defer free_slice(&tmp);
+    defer array_terminate(&tmp);
     if tmp.len < 3 { return false, 0; }
     err :: strtoerr(tmp[1]);
     if err == -1 { return false, 0; }

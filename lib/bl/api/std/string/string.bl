@@ -467,20 +467,17 @@ str_erase :: fn (str: *string, index: s32) bool {
 ///
 /// !!! warning
 ///     Slice elements are not guaranteed to be zero terminated.
-str_split_by :: fn (str: string_view, delimiter: u8) []string_view {
-	count :: str_count_of(str, delimiter) + 1;
-	ret: []string_view;
-	alloc_slice(&ret, count);
-	ri: s32;
+str_split_by :: fn (str: string_view, delimiter: u8, allocator: *Allocator = null) [..]string_view {
+	ret: [..]string_view;
+	array_init(&ret, 256, allocator);
 	lhs, rhs: string_view;
 	rest := str;
 	loop str_split_by_first(rest, delimiter, &lhs, &rhs) {
-		ret[ri] = lhs;
-		ri += 1;
+		array_push(&ret, lhs);
 		rest = rhs;
 	}
-	if ri == 0 { ret[ri] = lhs; }
-	else       { ret[ri] = rhs; }
+	if ret.len == 0 { array_push(&ret, lhs); }
+	else            { array_push(&ret, rhs); }
 	return ret;
 }
 

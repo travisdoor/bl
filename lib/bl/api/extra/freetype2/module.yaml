@@ -1,9 +1,13 @@
-version: 20220923
+# FreeType2 2.9
+
+version: 20230806
 src: "freetype.bl"
 
 x86_64-pc-windows-msvc:
-  linker_lib_path: "win32"
-  link: "freetype"
+  #linker_lib_path: "win32"
+  #link: "freetype"
+  linker_lib_path: "win32_static"
+  linker_opt: "freetype.lib"
 
 x86_64-pc-linux-gnu:
   linker_opt: "-lfreetype"
