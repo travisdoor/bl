@@ -129,7 +129,7 @@ tprint :: fn (format: string_view, args: ...) string #inline {
 /// See also [print](#print).
 sprint :: fn (format: string_view, args: ...) string {
 	buf := std.str_new(format.len);
-	_print_impl(&buf, format, args);    
+	_print_impl(&buf, format, args);
 	return buf;
 }
 
@@ -155,13 +155,13 @@ fmt_real :: fn (v: Any, trailing: s8) FmtReal #inline {
 /// Number base used for formatted printing.
 FmtIntBase :: enum u8 {
 	/// Format as binary number.
-	BIN;
-	/// Format as decimal number.
-	DEC;
+	BIN = 2;
 	/// Format as octal number.
-	OCT;
+	OCT = 8;
+	/// Format as decimal number.
+	DEC = 10;
 	/// Format as haxadecimal number.
-	HEX;
+	HEX = 16;
 }
 
 /// Specify number printing format. Use [fmt_int](#fmt_int) helper function to create instance of 
@@ -342,10 +342,10 @@ print_any :: fn (buf: *?T, cur: *s32, any: *Any) {
 			print_string(buf, cur, string_view.{1, &char});
 			return;
 		}
-		
+
 		info := cast(*TypeInfoStruct) any.type_info;
 		tmp : Any;
-		
+
 		if info.is_slice || info.is_dynamic_array {
 			// Slices and dynamic arrays are printed as arrays.
 			len := u64_from_u8_ptr(cast(*u8) (cast(usize) any.data + auto info.members[0].offset_bytes), 64);
@@ -378,9 +378,9 @@ print_any :: fn (buf: *?T, cur: *s32, any: *Any) {
 			}
 			print_string(buf, cur, "]");
 			return;
-			
+
 		}
-		// Regular struct printing all members.        
+		// Regular struct printing all members.
 		print_string(buf, cur, info.name);
 		print_string(buf, cur, " {");
 		loop i := 0; i < info.members.len; i += 1 {
@@ -593,23 +593,20 @@ print_string :: fn {
 
 print_u64 :: fn (buf: *?T, cur: *s32, v: u64, base: FmtIntBase, digits: s32, print_prefix := true) {
 	tbl :: "0123456789abcdef";
-	b: u64 #noinit;
 	n := v;
 	switch base {
-		FmtIntBase.DEC { b = 10; }
+		FmtIntBase.DEC;
 		FmtIntBase.BIN { 
-			b = 2;  
 			if print_prefix { print_string(buf, cur, "0b"); }
 		}
 		FmtIntBase.OCT { 
-			b = 8;  
 			if print_prefix { print_string(buf, cur, "0"); }
 		}
 		FmtIntBase.HEX { 
-			b = 16; 
 			if print_prefix { print_string(buf, cur, "0x"); }
 		}
 	}
+	b : u64 : auto base;
 	prev_cur :: @cur;
 	loop n > 0 {
 		d :: n % b;

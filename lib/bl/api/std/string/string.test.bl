@@ -182,12 +182,13 @@ test_str_compare2 :: fn () #test {
 
 test_strtos64 :: fn () #test {
 	using std;
+	using FmtIntBase;
 	{
 		v, err :: strtos64("");
 		test_not_ok(err);
 	}
 	{
-		v, err :: strtos64("", 0);
+		v, err :: strtos64("", DEC, 0);
 		test_ok(err);
 		test_eq(v, 0);
 	}
@@ -221,6 +222,31 @@ test_strtos64 :: fn () #test {
 	{
 		v, err :: strtos64("-");
 		test_not_ok(err);
+	}
+	{
+		v, err :: strtos64("1010011010", BIN);
+		test_ok(err);
+		test_eq(v, 666);
+	}
+	{
+		v, err :: strtos64("-1010011010", BIN);
+		test_ok(err);
+		test_eq(v, -666);
+	}
+	{
+		v, err :: strtos64("29A", HEX);
+		test_ok(err);
+		test_eq(v, 0x29A);
+	}
+	{
+		v, err :: strtos64("AaBbCcDd", HEX);
+		test_ok(err);
+		test_eq(v, 0xaabbccdd);
+	}
+	{
+		v, err :: strtos64("EeFf", HEX);
+		test_ok(err);
+		test_eq(v, 0xeeff);
 	}
 }
 

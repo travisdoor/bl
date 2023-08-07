@@ -199,15 +199,19 @@ str_first_match :: fn (str: string_view, list: []string_view) s32 {
 	return -1;
 }
 
-/// Converts the first `count` of characters from `str` to `s64` and return OK on success. Use the whole
-/// string in case the `count` is not specified.
+/// Converts the first `count` of characters from `str` to `s64` number and return OK on success. Whole string 
+/// will be used in case the `count` is less than zero. The base of expected number can be specified as `base`
+/// argument. Note that in case of binary, octal and hex encoding, we do not expect any prefixes as `0b`, `0`
+/// and `0x`.
+///
+/// Negative values can be converted too.
 ///
 /// Returns error when:
 ///
 ///     - The input string is empty and `count` greater than zero.
 ///     - Converted number cause overflow of s64.
 ///     - The input string contains invalid characters.
-strtos64 :: fn (str: string_view, count := -1) (s64, Error) {
+strtos64 :: fn (str: string_view, base := FmtIntBase.DEC, count := -1) (s64, Error) {
 	c := count;
 	s := str;
 
@@ -218,16 +222,23 @@ strtos64 :: fn (str: string_view, count := -1) (s64, Error) {
 	if c == 0 { return 0, error("Cannot convert string to number, the input string is empty."); }
 
 	n: s64;
+	b: s64 = auto base;
 	is_negative := false;
 	got_numbers := false;
 	loop c > 0 {
 		char :: s[0];
 		if char == '-' && is_negative == false {
 			is_negative = true;
-		} else if char >= '0' && char <= '9' {
+		} else if is_digit(char, base) {
 			got_numbers = true;
 			prev_n :: n;
-			n = n * 10 + (auto char - '0');
+			digit : s64 #noinit;
+			if      char <= '9' { digit = auto char - '0'; }
+			else if char <= 'F' { digit = auto char - 55;  }
+			else if char <= 'f' { digit = auto char - 87;  }
+			else                { panic();                 }
+
+			n = n * b + digit;
 			if n < prev_n {
 				return n, error("Cannot convert string to number, the input number is out of s64 range.");
 			}
@@ -684,11 +695,30 @@ ctostr :: fn (cstr: *C.char, len : s64 = -1) string_view #inline {
 	return string_view.{ l, auto cstr };
 }
 
+/// Check whether the input ascii character is an alphabet.
 is_alpha :: fn (c: u8) bool #inline {
     if c >= 'a' && c <= 'z' { return true; }
     if c >= 'A' && c <= 'Z' { return true; }
     return false;
 }
+
+/// Check wheter the input character represents a digit of number of `base`.
+is_digit :: fn (c: u8, base := FmtIntBase.DEC) bool #inline {
+	using FmtIntBase;
+	switch base {
+		BIN  { return c == '0' || c == '1'; }
+		OCT  { return c >= '0' && c <= '7'; }
+		DEC  { return c >= '0' && c <= '9'; }
+		HEX { 
+			if c >= '0' && c <= '9' { return true; }
+			if c >= 'a' && c <= 'f' { return true; }
+			if c >= 'A' && c <= 'F' { return true; }
+		}
+		default { panic(); }
+	}
+	return false;
+}
+
 
 #private
 
