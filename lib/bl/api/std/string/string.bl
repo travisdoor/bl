@@ -108,7 +108,7 @@ str_append :: fn {
 
 _str_append_str :: fn (v: *string, other: string_view) s32 {
 	new_len :: v.len + other.len;
-	v.ptr = make_more_room_if_needed(v.ptr, auto new_len);        
+	v.ptr = make_more_room_if_needed(v.ptr, auto new_len);
 	memcpy(ptr_shift_bytes(v.ptr, auto v.len), other.ptr, auto other.len);
 	v.len = new_len;
 	set_terminator(v);
@@ -433,7 +433,7 @@ str_split_by_first :: fn (str: string_view, delimiter: u8, lhs: *string_view, rh
 }
 
 /// Overloaded function inserting one character or other string at desired position.
-///  
+///
 /// **Overloads:**
 /// ```c
 /// fn (str: *string, index: s32, v: u8) bool #inline
@@ -548,12 +548,17 @@ str_count_of :: fn (str: string_view, c: u8) s32 #inline {
 	return count;
 }
 
-/// Converts input string to lower case.
-str_lower :: fn (str: *string) #inline {
+/// Converts ascii input string to lower case and returns count of changed characters.
+str_lower :: fn (str: *string) s32 #inline {
 	assert(str);
-	loop i := 0; i < (@str).len; i += 1 {
-		(@str)[i] = auto C.tolower(auto (@str)[i]);
+	s :: @str;
+	changed_num: s32;
+	loop i := 0; i < s.len; i += 1 {
+		c :: s[i];
+		s[i] = auto C.tolower(auto c);
+		if c != s[i] { changed_num += 1; }
 	}
+	return changed_num;
 }
 
 /// Converts single character from the `str` at index `index` to lower case. String `str` must be
@@ -564,12 +569,17 @@ str_lower_single_character :: fn (str: *string, index: s64) #inline {
 	(@str)[index] = auto C.tolower(auto (@str)[index]);
 }
 
-/// Converts input string to upper case.
-str_upper :: fn (str: *string) #inline {
+/// Converts ascii input string to upper case and returns count of changed characters.
+str_upper :: fn (str: *string) s32 #inline {
 	assert(str);
+	s :: @str;
+	changed_num: s32;
 	loop i := 0; i < (@str).len; i += 1 {
-		(@str)[i] = auto C.toupper(auto (@str)[i]);
+		c :: s[i];
+		s[i] = auto C.toupper(auto s[i]);
+		if c != s[i] { changed_num += 1; }
 	}
+	return changed_num;
 }
 
 /// Converts single character from the `str` at index `index` to upper case. String `str` must be
