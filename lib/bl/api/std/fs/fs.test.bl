@@ -501,7 +501,7 @@ VisitData :: struct {
 	include_ext: string_view;
 }
 
-visitor :: fn (info: *std.Info, data: *VisitData) Error {
+visitor :: fn (info: *std.FileVisitInfo, data: *VisitData) Error {
 	using std;
 	test_neq(info.filename, ".");
 	test_neq(info.filename, "..");

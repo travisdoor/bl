@@ -67,7 +67,7 @@ blc_ver :: fn () string_view #inline {
 list_files_recursive :: fn (dirpath: string_view, out: *string) {
     using std;
 
-    visitor :: fn (info: *std.Info, data: *string) Error {
+    visitor :: fn (info: *std.FileVisitInfo, data: *string) Error {
         using std;
         if info.is_directory  { return OK; }
         if info.filename[0] == '_' { return OK; }

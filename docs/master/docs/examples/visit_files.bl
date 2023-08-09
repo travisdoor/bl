@@ -3,7 +3,7 @@
 main :: fn () s32 {
     using std;
 
-    visitor :: fn (info: *Info, list: *[..]string) Error {
+    visitor :: fn (info: *FileVisitInfo, list: *[..]string) Error {
         using std;
         if info.is_directory { return OK; }
         _, ext :: path_splitext(info.filename);

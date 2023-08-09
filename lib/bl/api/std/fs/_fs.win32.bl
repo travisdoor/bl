@@ -98,7 +98,7 @@ is_directory :: fn (path: string_view) (bool, Error) #inline {
 	return is_flag(attributes, auto win32.FILE_ATTRIBUTE_DIRECTORY), OK;
 }
 
-visit_files :: fn (dirpath: string_view, is_recursive: bool, leaf_first: bool, visitor: *fn(info: *std.Info, ctx: *u8) Error, ctx: *u8 = null) Error #inline {
+visit_files :: fn (dirpath: string_view, is_recursive: bool, leaf_first: bool, visitor: *fn(info: *std.FileVisitInfo, ctx: *u8) Error, ctx: *u8 = null) Error #inline {
 	using std;
 	if dirpath.len > (win32.MAX_PATH-3) { return error("Path too long!"); }
 	directory := str_new(dirpath);
@@ -121,9 +121,10 @@ visit_files :: fn (dirpath: string_view, is_recursive: bool, leaf_first: bool, v
 	filepath :: str_new();
 	defer str_delete(&filepath);
 	loop {
-		info: Info;
+		info: FileVisitInfo;
 		if is_flag(find_data.dwFileAttributes, auto win32.FILE_ATTRIBUTE_DIRECTORY) {
 			info.is_directory = true;
+			info.step_into_directory = is_recursive;
 		}
 		filename :: ctostr(auto find_data.cFileName.ptr);
 		// We skip these, but maybe in some cases we need them???
@@ -131,14 +132,18 @@ visit_files :: fn (dirpath: string_view, is_recursive: bool, leaf_first: bool, v
 			str_clear_concat(&filepath, directory, "/", filename);
 			info.filename = filename;
 			info.filepath = filepath;
+
 			if !leaf_first {
 				visit_err :: visitor(&info, ctx);
 				if visit_err { return visit_err; }
 			}
-			if is_recursive && info.is_directory {
+
+			may_step_into :: info.step_into_directory || leaf_first;
+			if is_recursive && info.is_directory && may_step_into {
 				err :: _fs_impl.visit_files(filepath, is_recursive, leaf_first, visitor, ctx);
 				if err { return err; }
 			}
+
 			if leaf_first {
 				visit_err :: visitor(&info, ctx);
 				if visit_err { return visit_err; }

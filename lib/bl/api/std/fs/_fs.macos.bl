@@ -21,13 +21,13 @@ open :: fn (filepath: string_view, mode: std.OpenFileMode) (File, Error) {
 	if handle < 0 { // error
 		ec, estr :: os_get_last_error();
 		return 0, error(ec, "Cannot open file '%': %.", filepath, estr);
-	}    
+	}
 	// This is for some reason required on some versions on macOS.
 	if C.fchmod(handle, mode_flags) < 0 {
 		ec, estr :: os_get_last_error();
 		return 0, error(ec, "Cannot set file permissions '%': %.", filepath, estr);
-	}    
-	return handle, OK;   
+	}
+	return handle, OK;
 }
 
 remove :: fn (filepath: string_view) Error #inline {
@@ -103,7 +103,7 @@ remove_dir :: fn (dirpath: string_view) Error {
 	return OK;
 }
 
-visit_files :: fn (dirpath: string_view, is_recursive: bool, leaf_first: bool, visitor: *fn(info: *std.Info, ctx: *u8) Error, ctx: *u8 = null) Error #inline {
+visit_files :: fn (dirpath: string_view, is_recursive: bool, leaf_first: bool, visitor: *fn(info: *std.FileVisitInfo, ctx: *u8) Error, ctx: *u8 = null) Error #inline {
 	using std;
 	directory := str_new(dirpath);
 	defer str_delete(&directory);
@@ -122,9 +122,11 @@ visit_files :: fn (dirpath: string_view, is_recursive: bool, leaf_first: bool, v
 	loop {
 		stat :: C.readdir(dir);
 		if stat == null { break; }
-		info: Info;
+		info: FileVisitInfo;
 		info.is_directory = stat.d_type == auto C.DT_DIR;
 		info.filename = ctostr(stat.d_name.ptr);
+		info.step_into_directory = is_recursive && info.is_directory;
+
 		if (!str_match(info.filename, ".")) && (!str_match(info.filename, "..")) {
 			str_clear_concat(&filepath, directory, "/", info.filename);
 			info.filepath = filepath;
@@ -132,7 +134,8 @@ visit_files :: fn (dirpath: string_view, is_recursive: bool, leaf_first: bool, v
 				visit_err :: visitor(&info, ctx);
 				if visit_err { return visit_err; }
 			}
-			if is_recursive && info.is_directory {
+			may_step_into :: info.step_into_directory || leaf_first;
+			if is_recursive && info.is_directory && may_step_into {
 				err :: _fs_impl.visit_files(filepath, is_recursive, leaf_first, visitor, ctx);
 				if err { return err; }
 			}

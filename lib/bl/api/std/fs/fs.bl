@@ -161,16 +161,6 @@ remove_dir :: fn (dirpath: string_view) Error #inline {
 	return _fs_impl.remove_dir(dirpath);
 }
 
-/// Filesystem entry description.
-Info :: struct {
-	/// `True` in case the entry is a directory.
-	is_directory: bool;
-	/// File or directory name.
-	filename: string_view;
-	/// File or directory full path.
-	filepath: string_view;
-}
-
 /// Remove (even non-empty) directory specified by `dirpath` and return `OK` on success, otherwise return
 /// an error. Root directory is removed if `remove_root` is `true`. Custom file `filter` function
 /// can be specified as needed.
@@ -179,7 +169,7 @@ Info :: struct {
 ///
 /// ```c
 /// fn (dirpath: string_view, remove_root := true) Error #inline
-/// fn (dirpath: string_view, remove_root: bool, filter: *fn(info: *Info, ctx: *?T) bool, ctx: *T = null) Error
+/// fn (dirpath: string_view, remove_root: bool, filter: *fn(info: *FileVisitInfo, ctx: *?T) bool, ctx: *T = null) Error
 /// ```
 ///
 /// When the `filter` callback is specified, it's called for each visited file or directory. Returning `true`
@@ -199,6 +189,23 @@ remove_all_dir :: fn {
 	impl_remove_all_dir_with_filter_and_context;
 }
 
+
+/// Information about file entry.
+FileVisitInfo :: struct {
+	/// `True` in case the entry is a directory.
+	is_directory: bool;
+	/// File or directory name.
+	filename: string_view;
+	/// File or directory full path.
+	filepath: string_view;
+	/// In case the file visitor is in recursive mode the visitor callback might change this
+	/// value to `false` in case the current directory should be ignored. 
+	///
+	/// !!! note
+	///     Does not take any effect in case the `leaf_first` is set in visit options.
+	step_into_directory: bool;
+}
+
 /// Visit file options used in [visit_files](visit_files).
 VisitOpt :: struct {
 	/// Visit all subfolders when `true`.
@@ -213,8 +220,8 @@ VisitOpt :: struct {
 /// **Overloads:**
 ///
 /// ```c
-/// fn (dirpath: string_view, opt: VisitOpt, ctx: *?T, visitor: *fn(info: *Info, ctx: *T) Error) Error #inline
-/// fn (dirpath: string_view, opt: VisitOpt, visitor: *fn(info: *Info) Error) Error #inline
+/// fn (dirpath: string_view, opt: VisitOpt, ctx: *?T, visitor: *fn(info: *FileVisitInfo, ctx: *T) Error) Error #inline
+/// fn (dirpath: string_view, opt: VisitOpt, visitor: *fn(info: *FileVisitInfo) Error) Error #inline
 /// ```
 ///
 /// ### Example
@@ -223,17 +230,17 @@ VisitOpt :: struct {
 /// {% include "../examples/visit_files.bl" %}
 /// ```
 visit_files :: fn {
-	fn (dirpath: string_view, opt: VisitOpt, ctx: *?T, visitor: *fn(info: *Info, ctx: *T) Error) Error #inline {
+	fn (dirpath: string_view, opt: VisitOpt, ctx: *?T, visitor: *fn(info: *FileVisitInfo, ctx: *T) Error) Error #inline {
 		assert(visitor);
 		return _fs_impl.visit_files(dirpath, opt.recursive, opt.leaf_first, auto visitor, auto ctx);
 	};
 
-	fn (dirpath: string_view, opt: VisitOpt, visitor: *fn(info: *Info) Error) Error #inline {
+	fn (dirpath: string_view, opt: VisitOpt, visitor: *fn(info: *FileVisitInfo) Error) Error #inline {
 		assert(visitor);
 		// @Note: We use wrapper function instead of making the '_fs_impl.visit_files' generic.
-		visitor_wrapper :: fn (info: *std.Info, ctx: *u8) Error {
+		visitor_wrapper :: fn (info: *std.FileVisitInfo, ctx: *u8) Error {
 			assert(ctx);
-			orig_visitor :: cast(*fn(info: *Info) Error) ctx;
+			orig_visitor :: cast(*fn(info: *FileVisitInfo) Error) ctx;
 			return orig_visitor(info);
 		};
 
@@ -361,24 +368,24 @@ impl_remove_all_dir :: fn (dirpath: string_view, remove_root := true) Error #inl
 	return impl_remove_all_dir_with_filter_and_context(dirpath, remove_root, dummy_ctx, null);
 }
 
-impl_remove_all_dir_with_filter :: fn (dirpath: string_view, remove_root: bool, filter: *fn(info: *Info) bool) Error #inline {
+impl_remove_all_dir_with_filter :: fn (dirpath: string_view, remove_root: bool, filter: *fn(info: *FileVisitInfo) bool) Error #inline {
 	assert(filter);
-	filter_wrapper :: fn (info: *Info, ctx: *fn(info: *Info) bool) bool {
+	filter_wrapper :: fn (info: *FileVisitInfo, ctx: *fn(info: *FileVisitInfo) bool) bool {
 		return ctx(info);
 	};
 
 	return impl_remove_all_dir_with_filter_and_context(dirpath, remove_root, filter, &filter_wrapper);
 }
 
-impl_remove_all_dir_with_filter_and_context :: fn (dirpath: string_view, remove_root: bool, ctx: *?T, filter: *fn(info: *Info, ctx: *T) bool) Error {
+impl_remove_all_dir_with_filter_and_context :: fn (dirpath: string_view, remove_root: bool, ctx: *?T, filter: *fn(info: *FileVisitInfo, ctx: *T) bool) Error {
 	if str_is_empty(dirpath) { return OK; }
 
 	Data :: struct {
-		filter: *fn(info: *Info, ctx: *T) bool;
+		filter: *fn(info: *FileVisitInfo, ctx: *T) bool;
 		ctx: *T;
 	};
 
-	visitor :: fn (info: *Info, data: *Data) Error {
+	visitor :: fn (info: *FileVisitInfo, data: *Data) Error {
 		if (!data.filter) || data.filter(info, data.ctx) {
 			if (info.is_directory) {
 				return _fs_impl.remove_dir(info.filepath);

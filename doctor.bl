@@ -335,9 +335,9 @@ list_dir :: fn (paths: *[..]string_view, dir: string_view) {
         paths: *[..]string_view;
     };
 
-    // @Cleanup: std.Info should work also as Info -> remove std. after fix
+    // @Cleanup: std.FileVisitInfo should work also as Info -> remove std. after fix
     //           using propagation into nested functions.
-    visitor :: fn (info: *std.Info, data: *VisitData) Error {
+    visitor :: fn (info: *std.FileVisitInfo, data: *VisitData) Error {
         using std;
         if !info.is_directory {
             _, ext :: path_splitext(info.filepath);
