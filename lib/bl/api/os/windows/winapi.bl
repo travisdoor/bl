@@ -564,7 +564,7 @@ CreateEvent :: fn (
   lpName: LPCSTR 
 ) HANDLE #extern "CreateEventA";
 SetEvent :: fn (hEvent: HANDLE) BOOL #extern "SetEvent";
-FindFirstChangeNotification :: fn (
+FindFirstChangeNotificationA :: fn (
   lpPathName: LPCSTR,
   bWatchSubtree: BOOL,
   dwNotifyFilter: DWORD
@@ -576,7 +576,7 @@ WaitForMultipleObjects :: fn (
 	nCount: DWORD,
 	lpHandles: *HANDLE,
 	bWaitAll: BOOL,
-	dwMilliseconds: DWORD        
+	dwMilliseconds: DWORD
 ) DWORD #extern "WaitForMultipleObjects";
 CreateSemaphoreA :: fn (lpSemaphoreAttributes: LPSECURITY_ATTRIBUTES, lInitialCount: LONG, lMaximumCount: LONG, lpName: LPCSTR) HANDLE #extern "CreateSemaphoreA";
 ReleaseSemaphore :: fn (hSemaphore: HANDLE, lReleaseCount: LONG, lpPreviousCount: LPLONG) BOOL #extern "ReleaseSemaphore";

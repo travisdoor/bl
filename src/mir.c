@@ -11632,14 +11632,14 @@ str_t get_intrinsic(const str_t name) {
         cstr("pow.f64"), cstr("__intrinsic_pow_f64"),
         cstr("log.f32"), cstr("__intrinsic_log_f32"),
         cstr("log.f64"), cstr("__intrinsic_log_f64"),
-        
+
         cstr("log2.f32"), cstr("__intrinsic_log2_f32"),
         cstr("log2.f64"), cstr("__intrinsic_log2_f64"),
         cstr("sqrt.f32"), cstr("__intrinsic_sqrt_f32"),
         cstr("sqrt.f64"), cstr("__intrinsic_sqrt_f64"),
         cstr("ceil.f32"), cstr("__intrinsic_ceil_f32"),
         cstr("ceil.f64"), cstr("__intrinsic_ceil_f64"),
-        
+
         cstr("round.f32"), cstr("__intrinsic_round_f32"),
         cstr("round.f64"), cstr("__intrinsic_round_f64"),
         cstr("floor.f32"), cstr("__intrinsic_floor_f32"),

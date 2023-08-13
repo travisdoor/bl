@@ -145,7 +145,7 @@ FSEventStreamCreate :: fn (
 	pathsToWatch: CFArrayRef,
 	sinceWhen: FSEventStreamEventId,
 	latency: CFTimeInterval,
-	flags: FSEventStreamCreateFlags   
+	flags: FSEventStreamCreateFlags
 ) FSEventStreamRef #extern "FSEventStreamCreate"; 
 
 FSEventStreamScheduleWithRunLoop :: fn (
