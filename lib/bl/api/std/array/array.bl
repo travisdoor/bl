@@ -134,6 +134,33 @@ array_erase_keep_order :: fn (_arr: *[..]?T, i: s64) {
 	arr.len -= 1;
 }
 
+/// Insert a new element into the array before position `before_index` and return index of the new
+/// inserted element. All elements after the new one are moved in the memory by one slot.
+///
+/// Value of `before_index` must be in range <0, arr.len>. Inserting at `before_index` = 0 basically
+/// adds a new element at the array begin; insering at `before_index` = arr.len is the same as
+/// `array_push`.
+///
+/// Order of already existing elements is preserved.
+array_insert :: fn (_arr: *[..]?T, before_index: s64, value: T) s64 {
+	arr := cast(*_Array) _arr;
+	assert(arr);
+	assert(before_index >= 0 && before_index <= arr.len);
+	if before_index == arr.len {
+		// Last (insert before the end).
+		array_push(_arr, value);
+		return _arr.len - 1;
+	}
+	// Make room for one element at the end of the allocated block.
+	array_push(_arr);
+	elem_size :: sizeof(T);
+	size_to_move :: (arr.len - before_index) * auto elem_size;
+	memmove(get_elem_ptr(arr, elem_size, before_index+1), get_elem_ptr(arr, elem_size, before_index), auto size_to_move);
+	dest_ptr :: get_elem_ptr(auto arr, elem_size, before_index);
+	memcpy(dest_ptr, auto &value, elem_size);
+	return before_index;
+}
+
 // @Cleanup: We tend to use directly arr.len = 0 in our code base, so we can remove this function eventually...
 /// Erase all elements in dynamic array but keep allocated memory.
 array_clear :: fn (_arr: *[..]?T) #inline {

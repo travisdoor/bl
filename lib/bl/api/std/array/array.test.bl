@@ -220,3 +220,59 @@ test_custom_allocator :: fn () #test {
 	test_eq(alloc_count, 10);
 	test_eq(free_count, 1);
 }
+
+test_insert_at_begin_empty :: fn () #test {
+	arr: [..]s32;
+	defer array_terminate(&arr);
+
+	i := array_insert(&arr, 0, 666);
+	test_eq(i, 0);
+	test_eq(arr.len, 1);
+	test_eq(arr[0], 666);
+}
+
+test_insert_at_begin :: fn () #test {
+	arr: [..]s32;
+	defer array_terminate(&arr);
+
+	array_push_all(&arr, [9]s32.{ 1, 2, 3, 4, 5, 6, 7, 8, 9 });
+	
+	i := array_insert(&arr, 0, 666);
+	test_eq(i, 0);
+	test_eq(arr.len, 10);
+	test_eq(arr[0], 666);
+
+	loop i := 1; i < arr.len; i += 1 {
+		test_eq(arr[i], i);
+	}
+}
+
+test_insert_at_end :: fn () #test {
+	arr: [..]s32;
+	defer array_terminate(&arr);
+
+	array_push_all(&arr, [9]s32.{ 0, 1, 2, 3, 4, 5, 6, 7, 8 });
+	
+	i := array_insert(&arr, arr.len, 9);
+	test_eq(i, 9);
+	test_eq(arr.len, 10);
+
+	loop i := 0; i < arr.len; i += 1 {
+		test_eq(arr[i], i);
+	}
+}
+
+test_insert_mid :: fn () #test {
+	arr: [..]s32;
+	defer array_terminate(&arr);
+
+	array_push_all(&arr, [9]s32.{ 0, 1, 2, 3, 5, 6, 7, 8, 9 });
+	
+	i := array_insert(&arr, 4, 4);
+	test_eq(i, 4);
+	test_eq(arr.len, 10);
+
+	loop i := 0; i < arr.len; i += 1 {
+		test_eq(arr[i], i);
+	}
+}
