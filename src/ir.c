@@ -2496,13 +2496,13 @@ enum state emit_instr_call(struct context *ctx, struct mir_instr_call *call) {
 			    llvm_call,
 			    arg->llvm_index + 1,
 			    LLVMCreateTypeAttribute(ctx->llvm_cnt, LLVM_ATTR_BYVAL, llvm_arg_type));
-
+			/*
 			LLVMAddAttributeAtIndex(
 			    fn->llvm_value,
 			    arg->llvm_index + 1,
 			    LLVMCreateEnumAttribute(ctx->llvm_cnt,
 			                            LLVM_ATTR_ALIGNMENT,
-			                            (uint64_t)ctx->builtin_types->t_u8_ptr->alignment));
+			                            (uint64_t)ctx->builtin_types->t_u8_ptr->alignment));*/
 		}
 	}
 	arrfree(llvm_callee_arg_types);
