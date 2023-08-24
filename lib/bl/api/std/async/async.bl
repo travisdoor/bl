@@ -1,14 +1,14 @@
-//! # Async Job System 
-//! 
+//! # Async Job System
+//!
 //! ```
 //! #import "std/async"
 //! ```
-//! 
+//!
 //! Async module provides high-level interface for thread manipulation. In general, it's suitable for longer running
 //! parallel tasks expecting some input context and results returned back to the caller.
 //!
-//! !!! warning 
-//!     This module is in experimental state, new features or API changes may come in the future. 
+//! !!! warning
+//!     This module is in experimental state, new features or API changes may come in the future.
 
 #import "std/thread"
 
@@ -26,13 +26,23 @@ Async :: fn (TWorkerContext: type #comptime, TResult: type #comptime) type #comp
 	};
 }
 
-/// Setup the async `ctx` context structure and starts internally a new thread executing the `worker` function. The 
+Async2 :: fn (TWorkerContext: type #comptime, TResult: type #comptime) type #comptime {
+	return struct {
+		thread: Thread;
+		result: TResult;
+		worker_context: TWorkerContext;
+		worker: *fn (ctx: *TWorkerContext) TResult;
+	};
+}
+
+
+/// Setup the async `ctx` context structure and starts internally a new thread executing the `worker` function. The
 /// worker runtime context must be specified as `worker_context`. The execution (worker return) result value is not
-/// returned immediately since call to this function is not blocking. Use [async_wait](#async_wait) to get the cached 
+/// returned immediately since call to this function is not blocking. Use [async_wait](#async_wait) to get the cached
 /// result value back.
 async :: fn (
-	ctx: *?TAsync, 
-	worker_context: async_typeof_worker_context(TAsync), 
+	ctx: *?TAsync,
+	worker_context: async_typeof_worker_context(TAsync),
 	worker: *fn (ctx: async_typeof_worker_context(TAsync)) async_typeof_result(TAsync)
 ) {
 	ctx.worker = worker;
@@ -40,6 +50,25 @@ async :: fn (
 
 	thread, thread_err :: thread_create(auto &fn (ctx: *TAsync) s32 {
 		ctx.result = ctx.worker(ctx.worker_context);
+		temporary_release();
+		return 0;
+	}, auto ctx);
+
+	if thread_err { panic(thread_err); }
+	ctx.thread = thread;
+}
+
+// @Cleanup
+async2 :: fn (
+	ctx: *?TAsync,
+	worker_context: async_typeof_worker_context(TAsync),
+	worker: *fn (ctx: *async_typeof_worker_context(TAsync)) async_typeof_result(TAsync)
+) {
+	ctx.worker = worker;
+	ctx.worker_context = worker_context;
+
+	thread, thread_err :: thread_create(auto &fn (ctx: *TAsync) s32 {
+		ctx.result = ctx.worker(&ctx.worker_context);
 		temporary_release();
 		return 0;
 	}, auto ctx);

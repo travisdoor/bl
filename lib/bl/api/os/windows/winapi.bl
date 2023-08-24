@@ -18,6 +18,8 @@ ERROR_FILE_EXISTS :: 80;
 ERROR_ACCESS_DENIED  :: 5;
 ERROR_INVALID_HANDLE :: 6;
 ERROR_DIRECTORY :: 267;
+ERROR_BROKEN_PIPE :: 109;
+
 CP_UTF8 : u32 : 65001;
 WCHAR        :: *C.ushort;
 LPWSTR       :: *C.ushort;
@@ -38,8 +40,8 @@ LPBOOL       :: C.int;
 HMODULE      :: *C.uchar;
 BOOL         :: C.int;
 PBOOL        :: *BOOL;
-FARPROC      :: *C.uchar; 
-LPVOID       :: *C.uchar; 
+FARPROC      :: *C.uchar;
+LPVOID       :: *C.uchar;
 LPOVERLAPPED :: *OVERLAPPED;
 LPDWORD      :: *DWORD;
 HANDLE       :: *C.uchar;
@@ -49,8 +51,8 @@ ULONG        :: C.ulong;
 ULONG_PTR    :: *ULONG;
 ULONG64      :: *s64;
 SIZE_T       :: C.ulong;
-PVOID        :: *C.uchar; 
-CHAR         :: C.uchar; 
+PVOID        :: *C.uchar;
+CHAR         :: C.uchar;
 LONG_PTR     :: *C.long;
 UINT_PTR     :: *C.uint;
 LARGE_INTEGER :: C.longlong;
@@ -473,7 +475,7 @@ WAIT_OBJECT_0 :: 0;
 LIST_ENTRY :: struct {
    Flink: *LIST_ENTRY;
    Blink: *LIST_ENTRY;
-} 
+}
 RTL_CRITICAL_SECTION_DEBUG :: struct {
 	Type: WORD;
 	CreatorBackTraceIndex: WORD;
@@ -490,7 +492,7 @@ RTL_CRITICAL_SECTION :: struct {
 	DebugInfo: PRTL_CRITICAL_SECTION_DEBUG;
 	LockCount: LONG;
 	RecursionCount: LONG;
-	OwningThread: HANDLE; 
+	OwningThread: HANDLE;
 	LockSemaphore: HANDLE;
 	SpinCount: ULONG_PTR;
 }
@@ -532,7 +534,7 @@ CreateFile :: fn (
 	dwCreationDisposition: DWORD,
 	dwFlagsAndAttributes: DWORD,
 	hTemplateFile: HANDLE
-) *u8 #extern "CreateFileA"; 
+) *u8 #extern "CreateFileA";
 CreateDirectoryA :: fn (
 	lpPathName: LPCSTR,
 	lpSecurityAttributes: LPSECURITY_ATTRIBUTES,
@@ -545,7 +547,7 @@ ReadDirectoryChanges :: fn (
 	dwNotifyFilter: DWORD,
 	lpBytesReturned: LPDWORD,
 	lpOverlapped: LPOVERLAPPED,
-	lpCompletionRoutine: LPOVERLAPPED_COMPLETION_ROUTINE 
+	lpCompletionRoutine: LPOVERLAPPED_COMPLETION_ROUTINE
 ) s32 #extern "ReadDirectoryChangesW";
 WideCharToMultiByte :: fn (
 	CodePage: UINT,
@@ -561,7 +563,7 @@ CreateEvent :: fn (
   lpEventAttributes: LPSECURITY_ATTRIBUTES,
   bManualReset: BOOL,
   bInitialState: BOOL,
-  lpName: LPCSTR 
+  lpName: LPCSTR
 ) HANDLE #extern "CreateEventA";
 SetEvent :: fn (hEvent: HANDLE) BOOL #extern "SetEvent";
 FindFirstChangeNotificationA :: fn (
@@ -599,7 +601,7 @@ SECURITY_ATTRIBUTES :: struct {
 	nLength: DWORD;
 	lpSecurityDescriptor: LPVOID;
 	bInheritHandle: BOOL;
-} 
+}
 PSECURITY_ATTRIBUTES  :: *SECURITY_ATTRIBUTES;
 LPSECURITY_ATTRIBUTES :: *SECURITY_ATTRIBUTES;
 LPTHREAD_START_ROUTINE :: *fn (args: LPVOID) DWORD;
@@ -610,7 +612,7 @@ CreateThread :: fn (
 	lpStartAddress: LPTHREAD_START_ROUTINE,
 	lpParameter: LPVOID,
 	dwCreationFlags: DWORD,
-	lpThreadId: LPDWORD 
+	lpThreadId: LPDWORD
 ) HANDLE #extern "CreateThread";
 
 GetCurrentThread :: fn () HANDLE #extern "GetCurrentThread";
@@ -618,6 +620,8 @@ GetCurrentThreadId :: fn () DWORD #extern "GetCurrentThreadId";
 GetCurrentProcess :: fn () HANDLE #extern "GetCurrentProcess";
 TerminateThread :: fn (handle: HANDLE, exit_code: DWORD) BOOL #extern "TerminateThread";
 GetExitCodeThread :: fn (hThread: HANDLE, lpExitCode: LPDWORD) BOOL #extern "GetExitCodeThread";
+
+TerminateProcess :: fn (hProcess: HANDLE, uExitCode: UINT) BOOL #extern "TerminateProcess";
 
 CreateMutexA :: fn (
 	lpMutexAttributes: LPSECURITY_ATTRIBUTES,
@@ -1149,15 +1153,15 @@ LPPROCESS_INFORMATION :: *PROCESS_INFORMATION;
 STARTF_USESTDHANDLES : u32 : 0x00000100;
 
 CreateProcessA :: fn (
-	lpApplicationName: LPCSTR, 
+	lpApplicationName: LPCSTR,
 	lpCommandLine: LPSTR,
 	lpProcessAttributes: LPSECURITY_ATTRIBUTES,
-	lpThreadAttributes: LPSECURITY_ATTRIBUTES, 
+	lpThreadAttributes: LPSECURITY_ATTRIBUTES,
 	bInheritHandles: BOOL,
 	dwCreationFlags: DWORD,
 	lpEnvironment: LPVOID,
 	lpCurrentDirectory: LPCSTR,
-	lpStartupInfo: LPSTARTUPINFOA, 
+	lpStartupInfo: LPSTARTUPINFOA,
 	lpProcessInformation: LPPROCESS_INFORMATION
 ) BOOL #extern "CreateProcessA";
 
@@ -1172,3 +1176,7 @@ PeekNamedPipe :: fn (
 
 WinExec :: fn (lpCmdLine: LPCSTR, uCmdShow: UINT) UINT #extern "WinExec";
 ShellExecuteA :: fn (hwnd: HWND, lpOperation: LPCSTR, lpFile: LPCSTR, lpParameters: LPCSTR, lpDirectory: LPCSTR, nShowCmd: INT) HINSTANCE #extern "ShellExecuteA";
+
+PROCESS_TERMINATE : u32 : 0x0001;
+
+OpenProcess :: fn (dwDesiredAccess: DWORD, bInheritHandle: BOOL, dwProcessId: DWORD) HANDLE #extern "OpenProcess";
