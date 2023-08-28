@@ -2,19 +2,19 @@
 #load "std/utils.bl"
 
 GLbitfield :: u32;
-GLboolean  :: u8; 
+GLboolean  :: u8;
 GLbyte     :: s8;
-GLclampf   :: f32; 
+GLclampf   :: f32;
 GLenum     :: u32;
 GLfloat    :: f32;
 GLint      :: s32;
 GLshort    :: s16;
 GLsizei    :: s32;
 GLubyte    :: u8;
-GLuint     :: u32; 
-GLushort   :: u16; 
-GLvoid     :: u8; 
-GLchar     :: u8; 
+GLuint     :: u32;
+GLushort   :: u16;
+GLvoid     :: u8;
+GLchar     :: u8;
 GLintptr   :: *GLint;
 GLsizeiptr   :: *GLsizei;
 
@@ -546,7 +546,7 @@ _Gl :: struct {
 	ClearColor: *fn (red: f32, green: f32, blue: f32, alpha: f32);
 	Clear: *fn (mask: u32);
 	TexImage2D: *fn (target: GLenum, level: GLint, internalformat: GLint, width: GLsizei, height: GLsizei, border: GLint, format: GLenum, t: GLenum, data: *u8);
-	PixelStorei: *fn (pname: GLenum, param: GLint); 
+	PixelStorei: *fn (pname: GLenum, param: GLint);
 	DrawArrays: *fn (mode: GLenum, first: GLint, count: GLsizei);
 	Enable: *fn (cap: GLenum);
 	Disable: *fn (cap: GLenum);
@@ -563,11 +563,11 @@ _Gl :: struct {
 	ReadPixels: *fn (x: GLint, y: GLint, width: GLsizei, height: GLsizei, format: GLenum, t: GLenum, data: *u8);
 	Flush: *fn ();
 	Finish: *fn ();
-	GenTextures: *fn (n: GLsizei, textures: *GLuint); 
-	BindTexture: *fn (target: GLenum, texture: GLuint); 
+	GenTextures: *fn (n: GLsizei, textures: *GLuint);
+	BindTexture: *fn (target: GLenum, texture: GLuint);
 	DrawElements: *fn (mode: u32, count: s32, tp: u32, indices: *u8);
 	GetIntegerv: *fn (pname: GLenum, data: *GLint);
-	
+
 	// Extensions
 	CreateShader: *fn (kind: u32) u32;
 	ShaderSource: *fn (shader: u32, count: s32, str: **u8, lenght: s32);
@@ -575,10 +575,10 @@ _Gl :: struct {
 	CreateProgram: *fn () u32;
 	AttachShader: *fn (program: u32, shader: u32);
 	DetachShader: *fn (program: u32, shader: u32);
-	GetShaderiv: *fn (shader: u32, pname: u32, params: *s32); 
-	GetProgramiv: *fn (program: u32, pname: u32, params: *s32); 
-	GetShaderInfoLog: *fn (shader: u32, bufSize: s32, length: *s32, infoLog: *u8); 
-	GetProgramInfoLog: *fn (program: u32, bufSize: s32, length: *s32, infoLog: *u8); 
+	GetShaderiv: *fn (shader: u32, pname: u32, params: *s32);
+	GetProgramiv: *fn (program: u32, pname: u32, params: *s32);
+	GetShaderInfoLog: *fn (shader: u32, bufSize: s32, length: *s32, infoLog: *u8);
+	GetProgramInfoLog: *fn (program: u32, bufSize: s32, length: *s32, infoLog: *u8);
 	DeleteProgram: *fn (program: u32);
 	DeleteShader: *fn (shader: u32);
 	LinkProgram: *fn (program: u32);
@@ -661,6 +661,7 @@ _Gl :: struct {
 	GetString: *fn (name: GLenum) *GLubyte;
 	MapBuffer: *fn (target: GLenum, access: GLenum) *u8;
 	UnmapBuffer: *fn (target: GLenum) GLboolean;
+	Scissor: *fn (x: GLint, y: GLint, width: GLsizei, height: GLsizei);
 }
 
 gl: _Gl;
@@ -671,7 +672,7 @@ gl_init :: fn () {
 	if gl.is_initialized { return; }
 	tmp := str_new();
 	defer str_delete(&tmp);
-	
+
 	info :: cast(*TypeInfoStruct) typeinfo(_Gl);
 	loop i := 0; i < info.members.len; i += 1 {
 		member :: info.members[i];

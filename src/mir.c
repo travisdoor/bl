@@ -26,11 +26,11 @@
 // SOFTWARE.
 // =================================================================================================
 
-#include "mir.h"
 #include "basic_types.h"
 #include "bldebug.h"
 #include "builder.h"
 #include "common.h"
+#include "mir.h"
 #include "mir_printer.h"
 #include "stb_ds.h"
 #include <stdarg.h>

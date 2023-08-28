@@ -1,3 +1,31 @@
+/*
+enum_variants_to_string_list :: fn (TEnum: type #comptime) [enum_count(TEnum)]string_view #comptime {
+	assert(is_enum(TEnum));
+	tmp: [enum_count(TEnum)]string_view #noinit;
+	info :: cast(*TypeInfoEnum) typeinfo(TEnum);
+	loop i := 0; i < tmp.len; i += 1 {
+		using std;
+		name :: str_new(info.variants[i].name);
+		str_lower(&name);
+		str_replace_all(&name, '_', '-');
+		
+		tmp[i] = name;
+	}
+	return tmp;
+}
+*/
+
+get :: fn (v: s32 #comptime, u: s32) s32 #comptime {
+    return v;
+}
+
+foo :: fn (v: s32 #comptime) [get(v, "hello")]s32 {}
+
+
+main :: fn () s32 { return 0; }
+
+/*
+
 // To examples!!!
 // To examples!!!
 // To examples!!!
@@ -26,10 +54,6 @@ main :: fn() s32 {
 	return 0;
 }
 
-
-
-
-/*
 
 TODO:
 

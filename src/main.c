@@ -758,7 +758,6 @@ RELEASE:
 #	endif
 	_CrtDumpMemoryLeaks();
 #endif
-
 	blog("Exit with state %d.", state);
 	return state;
 #undef EXIT
