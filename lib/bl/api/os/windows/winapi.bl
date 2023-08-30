@@ -29,6 +29,7 @@ LPSTR        :: *C.char;
 LPCTSTR      :: *C.uchar;
 LPBYTE       :: *C.char;
 PCSTR        :: *C.char;
+PSTR         :: *C.char;
 PCHAR        :: *C.char;
 HLOCAL       :: *C.uchar;
 UINT         :: C.uint;
@@ -1181,3 +1182,5 @@ ShellExecuteA :: fn (hwnd: HWND, lpOperation: LPCSTR, lpFile: LPCSTR, lpParamete
 PROCESS_TERMINATE : u32 : 0x0001;
 
 OpenProcess :: fn (dwDesiredAccess: DWORD, bInheritHandle: BOOL, dwProcessId: DWORD) HANDLE #extern "OpenProcess";
+
+PathCreateFromUrlA :: fn (pszUrl: PCSTR, pszPath: PSTR, pcchPath: *DWORD, dwFlags: DWORD) HRESULT #extern "PathCreateFromUrlA";
