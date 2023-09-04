@@ -197,6 +197,105 @@ rect_centered :: fn (center_x: f32, center_y: f32, width: f32, height: f32, colo
 	rect(center_x - width * 0.5f, center_y - height * 0.5f, width, height, color);
 }
 
+rect_rounded :: fn (position_x: f32, position_y: f32, width: f32, height: f32, r: f32, inner_color := glm.v4_one, outer_color := glm.v4_one) #inline {
+	using glm;
+	using std;
+
+	px :: position_x;
+	py :: position_y;
+	w  :: width;
+	h  :: height;
+	iw :: w - r;
+	ih :: h - r;
+
+	base_index :: cast(u32) vertex_buffer.len;
+
+	vertices :: [12]v2.{
+		v2.{ px + r, py },
+		v2.{ px + iw, py },
+		v2.{ px + r, py + r },
+		v2.{ px + iw, py + r },
+		v2.{ px + r, py + ih },
+		v2.{ px + iw, py + ih },
+		v2.{ px + r, py + h },
+		v2.{ px + iw, py + h },
+		v2.{ px, py + r },
+		v2.{ px, py + ih },
+		v2.{ px + r + iw, py + r },
+		v2.{ px + r + iw, py + ih },
+	};
+	array_push_all(&vertex_buffer, vertices);
+
+
+	array_push_all(&color_buffer, [12]v4.{
+		outer_color, outer_color,
+		inner_color, inner_color,
+	    inner_color, inner_color,
+		outer_color, outer_color,
+		outer_color, outer_color,
+		outer_color, outer_color,
+	});
+
+	indices :: [30]u32.{
+		base_index + 0,
+		base_index + 1,
+		base_index + 2,
+		base_index + 1,
+		base_index + 3,
+		base_index + 2,
+		base_index + 2,
+		base_index + 3,
+		base_index + 4,
+		base_index + 3,
+		base_index + 5,
+		base_index + 4,
+		base_index + 4,
+		base_index + 5,
+		base_index + 6,
+		base_index + 5,
+		base_index + 7,
+		base_index + 6,
+		base_index + 8,
+		base_index + 2,
+		base_index + 9,
+		base_index + 2,
+		base_index + 4,
+		base_index + 9,
+		base_index + 3,
+		base_index + 10,
+		base_index + 5,
+		base_index + 10,
+		base_index + 11,
+		base_index + 5,
+	};
+	array_push_all(&index_buffer, indices);
+
+	add_segment :: fn (px: f32, py: f32, r: f32, c: glm.v4, corner_index: u32, segment: s32) #inline {
+		using std;
+		base_index :: cast(u32) vertex_buffer.len;
+		steps :: max(cast(u32) (r * 0.25f), 3);
+
+		loop i : u32 = 0; i < steps+1; i += 1 {
+			a :: (cast(f32) i / cast(f32) steps) * F32_HALF_PI + F32_HALF_PI * auto segment;
+			array_push(&vertex_buffer, v2.{ px - r * sin(a), py - r * cos(a) } );
+			array_push(&color_buffer, c);
+		}
+
+		loop i : u32 = 0; i < steps; i += 1 {
+			array_push_all(&index_buffer, [3]u32.{
+				corner_index,
+				base_index + i + 1,
+				base_index + i,
+			});
+		}
+	};
+
+	add_segment(px + r, py + r, r, outer_color, base_index + 2, 0);
+	add_segment(px + r, py + ih, r, outer_color, base_index + 4, 1);
+	add_segment(px + iw, py + ih, r, outer_color, base_index + 5, 2);
+	add_segment(px + iw, py + r, r, outer_color, base_index + 3, 3);
+}
+
 /// Draw a single colored rectangle or texture with rotation into the frame buffer.
 rect_centered_rotated :: fn (center_x: f32, center_y: f32, width: f32, height: f32, angle_in_radians: f32, color := glm.v4_one) #inline {
 	using glm;
