@@ -632,7 +632,6 @@ text_size :: fn (text: string_view, font: *Font, _len := -1) (width: f32, height
 			glyph = get_glyph_utf32(font, cast(u32) ' ');
 			converted_bytes += 1;
 			w += glyph.advance_x * auto font.tab_size;
-			continue;
 		} else {
 			utf32char, decoded_bytes, err_decode := utf8_to_utf32_single_char(word);
 			if err_decode {
@@ -645,6 +644,35 @@ text_size :: fn (text: string_view, font: *Font, _len := -1) (width: f32, height
 		}
 	}
 	return ceil(w), font.height;
+}
+
+get_character_count_to_fit :: fn (text: string_view, font: *Font, fit_to: f32) s32 {
+	assert(font);
+	w := 0.f;
+	converted_bytes, num: s32;
+	loop converted_bytes < text.len {
+		word :: std.str_sub(text, converted_bytes);
+		glyph: *GlyphInfo;
+		if word[0] == '\t' {
+			glyph = get_glyph_utf32(font, cast(u32) ' ');
+			converted_bytes += 1;
+			w += glyph.advance_x * auto font.tab_size;
+		} else {
+			utf32char, decoded_bytes, err_decode := utf8_to_utf32_single_char(word);
+			if err_decode {
+				utf32char = auto '?';
+				decoded_bytes = 1;
+			}
+			converted_bytes += decoded_bytes;
+			glyph = get_glyph_utf32(font, utf32char);
+			w += glyph.advance_x;
+		}
+		if w > fit_to {
+			return num;
+		}
+		num += 1;
+	}
+	return num;
 }
 
 set_scissor :: fn (position_x: f32, position_y: f32, width: f32, height: f32) {

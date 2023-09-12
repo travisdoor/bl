@@ -1,9 +1,9 @@
 // =================================================================================================
-// blc
+// bl
 //
-// File:   builder.c
+// File:   builder.h
 // Author: Martin Dorazil
-// Date:   14.2.18
+// Date:   02/03/2018
 //
 // Copyright 2018 Martin Dorazil
 //

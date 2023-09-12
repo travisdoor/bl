@@ -320,7 +320,6 @@ int main(s32 argc, char *argv[]) {
 
 	s32   state     = EXIT_SUCCESS;
 	char *exec_dir  = NULL;
-	char *conf_file = NULL;
 
 	bl_alloc_init();
 
@@ -745,7 +744,6 @@ RELEASE:
 #ifndef BL_DIRTY_ENABLE
 	builder_terminate();
 	free(exec_dir);
-	free(conf_file);
 
 	bl_alloc_terminate();
 #endif
