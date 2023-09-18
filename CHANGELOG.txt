@@ -7,6 +7,7 @@ Reduced amount of types generated internally by the compiler (use cache).
 RPMalloc used for the compiler.
 Add fmod and trunc math functions.
 Fix invalid position of vargs generated before call causing stack problem in VM execution.
+Fix reports of unused symbols declared after usage in local scopes.
 
 0.10.0 - PRE-RELEASE
 ---------------------------------------------------------------------------------------

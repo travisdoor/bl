@@ -194,18 +194,6 @@ struct scope_entry *scope_lookup(struct scope *scope, scope_lookup_args_t *args)
 				(*args->out_ambiguous) = found_using;
 			}
 			break;
-		} else if (args->out_most_similar) {
-			bassert(args->out_most_similar_last_distance);
-			// @Performance: This might be expensive so we should do this only in rare cases
-			// (i.e. compilation failed due to unknown symbol...).
-			for (usize i = 0; i < hmlenu(scope->entries); ++i) {
-				struct scope_entry *entry = scope->entries[i].value;
-				const s32           d     = levenshtein(args->id->str, entry->id->str);
-				if (d < *args->out_most_similar_last_distance) {
-					(*args->out_most_similar_last_distance) = d;
-					(*args->out_most_similar)               = entry->id->str;
-				}
-			}
 		}
 		// Lookup in parent.
 		if (!args->in_tree) break;

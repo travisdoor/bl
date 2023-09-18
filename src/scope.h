@@ -149,11 +149,6 @@ typedef struct {
 
 	// When set lookup in usings is enabled automatically.
 	struct scope_entry **out_ambiguous;
-
-	// When set, lookup will try to find most similar symbol in the scope tree, this might be
-	// expensive!
-	str_t *out_most_similar;
-	s32   *out_most_similar_last_distance;
 } scope_lookup_args_t;
 
 struct scope_entry *scope_lookup(struct scope *scope, scope_lookup_args_t *args);

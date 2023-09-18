@@ -5554,7 +5554,7 @@ struct result analyze_instr_type_info(struct context *ctx, struct mir_instr_type
 	return_zone(PASS);
 }
 
-static struct result lookup_ref(struct context *ctx, const struct mir_instr_decl_ref *ref, struct scope_entry **out_found, bool *out_of_local, str_t *out_most_similar) {
+static struct result lookup_ref(struct context *ctx, const struct mir_instr_decl_ref *ref, struct scope_entry **out_found, bool *out_of_local) {
 	zone();
 	bassert(out_found);
 	struct scope_entry *found         = NULL;
@@ -5564,16 +5564,12 @@ static struct result lookup_ref(struct context *ctx, const struct mir_instr_decl
 		private_scope = NULL;
 	}
 
-	s32 similar_distance = INT_MAX;
-
 	scope_lookup_args_t lookup_args = {
-	    .layer                          = ref->scope_layer,
-	    .id                             = ref->rid,
-	    .in_tree                        = !ref->is_explicit,
-	    .out_of_local                   = out_of_local,
-	    .out_ambiguous                  = &ambiguous,
-	    .out_most_similar               = out_most_similar,
-	    .out_most_similar_last_distance = &similar_distance,
+	    .layer         = ref->scope_layer,
+	    .id            = ref->rid,
+	    .in_tree       = !ref->is_explicit,
+	    .out_of_local  = out_of_local,
+	    .out_ambiguous = &ambiguous,
 	};
 
 	if (!private_scope) { // reference in unit without private scope
@@ -5609,7 +5605,7 @@ struct result analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_
 	bool                out_of_local = false;
 
 	if (!found) {
-		struct result r = lookup_ref(ctx, ref, &found, &out_of_local, NULL);
+		struct result r = lookup_ref(ctx, ref, &found, &out_of_local);
 		if (r.state != ANALYZE_PASSED) return_zone(r);
 		bassert(found);
 		ref->scope_entry = found;
@@ -8945,8 +8941,9 @@ void analyze_report_unresolved(struct context *ctx) {
 		for (usize j = 0; j < sarrlenu(wq); ++j) {
 			struct mir_instr *instr = sarrpeek(wq, j);
 			bassert(instr);
-			str_t sym_name         = str_empty;
-			str_t sym_similar_name = str_empty;
+			str_t       sym_name                  = str_empty;
+			bool        used_before_declared      = false;
+			struct ast *used_before_declared_node = NULL;
 			switch (instr->kind) {
 			case MIR_INSTR_DECL_REF: {
 				struct mir_instr_decl_ref *ref = (struct mir_instr_decl_ref *)instr;
@@ -8954,8 +8951,15 @@ void analyze_report_unresolved(struct context *ctx) {
 				if (!ref->rid) continue;
 				sym_name                  = ref->rid->str;
 				struct scope_entry *found = NULL;
-				lookup_ref(ctx, ref, &found, NULL, &sym_similar_name);
-				if (found) continue;
+				lookup_ref(ctx, ref, &found, NULL);
+				if (found) {
+					if (found->kind == SCOPE_ENTRY_INCOMPLETE && scope_is_local(found->parent_scope)) {
+						used_before_declared      = true;
+						used_before_declared_node = found->node;
+					} else {
+						continue;
+					}
+				}
 				break;
 			}
 			default:
@@ -8963,8 +8967,11 @@ void analyze_report_unresolved(struct context *ctx) {
 				continue;
 			}
 			bassert(sym_name.len && "Invalid unresolved symbol name!");
-			if (sym_similar_name.len) {
-				report_error(UNKNOWN_SYMBOL, instr->node, "Unknown symbol '%.*s'. Did you mean '%.*s'?", sym_name.len, sym_name.ptr, sym_similar_name.len, sym_similar_name.ptr);
+			if (used_before_declared) {
+				report_error(UNKNOWN_SYMBOL, instr->node, "Symbol '%.*s' is used before it is declared.", sym_name.len, sym_name.ptr);
+				if (used_before_declared_node) {
+					report_note(used_before_declared_node, "Symbol declaration found here.");
+				}
 			} else {
 				report_error(UNKNOWN_SYMBOL, instr->node, "Unknown symbol '%.*s'.", sym_name.len, sym_name.ptr);
 			}
