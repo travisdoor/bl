@@ -26,11 +26,11 @@
 // SOFTWARE.
 // =================================================================================================
 
+#include "mir.h"
 #include "basic_types.h"
 #include "bldebug.h"
 #include "builder.h"
 #include "common.h"
-#include "mir.h"
 #include "mir_printer.h"
 #include "stb_ds.h"
 #include <stdarg.h>
@@ -1276,6 +1276,7 @@ static inline void insert_instr_after(struct mir_instr *after, struct mir_instr 
 static inline void insert_instr_before(struct mir_instr *before, struct mir_instr *instr) {
 	bassert(before && instr);
 
+	bassert(before->state != MIR_IS_ERASED && "Attempt to insert instruction before erased one!");
 	struct mir_instr_block *block = before->owner_block;
 
 	instr->next = before;
@@ -8166,6 +8167,18 @@ struct result analyze_call_stage_finalize(struct context *ctx, struct mir_instr_
 
 	struct mir_type *expected_vargs_elem_type = NULL;
 
+	// We need to store original instruction of the last call-side argument which is used in case we need to
+	// properly place the vargs. This solves situation when vargs is empty and the last call-side argument is
+	// replaced by load instruction, vargs is later placed before the load which is incorrect for the interpreter
+	// and causing execution stack inconsistency problems. So we store the original argument instruction (the one
+	// before it's analyzed and replaced eventually).
+	//
+	// Note that the argument instruction can be erased after compile-time evaluation (and replaced by constant),
+	// in this case we need to use the up-to date argument as an instruction location...
+	//
+	// We might come with a better solution I don't like it...
+	struct mir_instr *last_call_arg = call_argc ? sarrpeek(call->args, call_argc - 1) : NULL;
+
 	for (usize index = 0; index < MAX(func_argc, call_argc); ++index) {
 		struct mir_arg   *fn_arg         = sarrpeekor(fn_type->data.fn.args, index, NULL);
 		struct mir_instr *call_arg_instr = sarrpeekor(call->args, index, NULL);
@@ -8203,7 +8216,13 @@ struct result analyze_call_stage_finalize(struct context *ctx, struct mir_instr_
 			if (vargsc > 0) {
 				insert_instr_after(sarrpeek(call->args, func_argc - 1), vargs);
 			} else if (call_argc > 0) {
-				insert_instr_before(sarrpeek(call->args, call_argc - 1), vargs);
+				assert(last_call_arg);
+				if (last_call_arg->state == MIR_IS_ERASED) {
+					// The last argument was erased so we cannot use it as a valid location.
+					insert_instr_before(sarrpeek(call->args, call_argc - 1), vargs);
+				} else {
+					insert_instr_before(last_call_arg, vargs);
+				}
 			} else {
 				insert_instr_before(&call->base, vargs);
 			}

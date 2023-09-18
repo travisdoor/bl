@@ -2001,9 +2001,11 @@ void eval_instr_type_info(struct virtual_machine *vm, struct mir_instr_type_info
 	struct mir_var *rtti_var = assembly_get_rtti(vm->assembly, type_info->rtti_type->id.hash);
 #if BL_ASSERT_ENABLE
 	if (!rtti_var) {
+#	if defined(BL_DEBUG)
 		const str_t  name = type_info->rtti_type->id.str;
 		const hash_t hash = type_info->rtti_type->id.hash;
 		blog("Rtti type %.*s [%lu] not found!", name.len, name.ptr, hash);
+#	endif
 		bassert(rtti_var);
 	}
 #endif

@@ -7,17 +7,17 @@
 
 [![Twitter URL](https://img.shields.io/twitter/url/https/twitter.com/MTravisDoor.svg?style=social&label=Follow%20%40MTravisDoor)](https://twitter.com/MTravisDoor)
 
-The Biscuit Language (BL) is a simple imperative programming language using LLVM backend and compiler implemented in C. 
+The Biscuit Language (BL) is a simple imperative programming language using LLVM backend and compiler implemented in C.
 Language syntax and all its features are still in development. Biscuit is designed to be simple, fast and explicit.
 
-Project homepage: [biscuitlang.org](https://biscuitlang.org) 
+Project homepage: [biscuitlang.org](https://biscuitlang.org)
 Contact email: [biscuitlang@gmail.com](mailto:biscuitlang@gmail.com)
 
 # Features
 * Strongly typed.
 * Embedded rich runtime type information.
 * Polymorphic functions and structures (generics).
-* Simple structure inheritance. 
+* Simple structure inheritance.
 * Compile-time execution (experimental).
 * Compile-time function arguments; allow passing types as values (experimental).
 * C ABI compatible (C library functions can be directly called).
@@ -53,7 +53,7 @@ main :: fn () s32 {
         print("% ", info.members[i].name);
     }
     print("!!!\n");
-    
+
     return 0;
 }
 ```
@@ -62,7 +62,14 @@ See more examples [here](https://biscuitlang.org/how-to/).
 
 # Discord Server
 
-https://discord.gg/5brmdDSR
+https://discord.gg/DDTCcYzb9h
+
+
+### Tine Text Editor
+
+Text editor I use.
+
+<div style="text-align:center"><img src="logo/the_editor.png" /></div>
 
 ### Vulkan Renderer & The Game
 
