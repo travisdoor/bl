@@ -15,11 +15,9 @@ enum_variants_to_string_list :: fn (TEnum: type #comptime) [enum_count(TEnum)]st
 }
 */
 
-#import "std/test"
+#import "std/dlib"
 
 main :: fn () s32 {
-	i = 0;
-	i: s32;
 	return 0;
 }
 

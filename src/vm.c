@@ -639,6 +639,25 @@ void calculate_unop(vm_stack_ptr_t dest, vm_stack_ptr_t v, enum unop_kind op, st
 #undef UNOP_CASE_REAL
 }
 
+//
+// Dyncall
+//
+
+BL_EXPORT void *__dlib_open(const char *libname) {
+	babort("Unimplemented");
+	return NULL;
+}
+
+BL_EXPORT void __dlib_close(void *lib) {
+	babort("Unimplemented");
+	if (!lib) return;
+}
+
+BL_EXPORT void *__dlib_symbol(void *lib, const char *symname) {
+	babort("Unimplemented");
+	return NULL;
+}
+
 void dyncall_cb_read_arg(struct virtual_machine       UNUSED(*vm),
                          struct mir_const_expr_value *dest_value,
                          DCArgs                      *src) {

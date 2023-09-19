@@ -134,7 +134,7 @@ if(NOT EXISTS ${LLD_BIN})
     if(NOT EXISTS ${LLD_LOCAL_ZIP})
         message(STATUS "Downloading LLD binaries.")
         file(
-        DOWNLOAD ${LLD_REMOTE_ZIP} 
+        DOWNLOAD ${LLD_REMOTE_ZIP}
         ${LLD_LOCAL_ZIP}
         SHOW_PROGRESS
         EXPECTED_HASH MD5=${LLD_ZIP_MD5})
@@ -154,7 +154,7 @@ option(BL_SIMD_ENABLE "Enable or disable SIMD." ON)
 if(BL_SIMD_ENABLE)
     if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	  message(STATUS "SIMD enabled.")
-      add_definitions(-DBL_USE_SIMD)	  
+      add_definitions(-DBL_USE_SIMD)
     endif()
 endif()
 
@@ -246,6 +246,31 @@ target_include_directories(
 set_target_properties(dyncall_s dyncallback_s dynload_s PROPERTIES FOLDER dyncall)
 set_target_properties(acc_gen intrinsics_gen omp_gen PROPERTIES FOLDER LLVM)
 set_target_properties(yaml PROPERTIES FOLDER yaml)
+
+# dlib runtime
+add_library(dlib STATIC src/dlib/dlib_runtime.c ${HEADER_FILES})
+
+target_include_directories(
+    dlib
+    PRIVATE src
+)
+
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    set(BL_DLIB_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib/bl/api/std/dlib/win32)
+elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+	set(BL_DLIB_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib/bl/api/std/dlib/darwin)
+elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+    set(BL_DLIB_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib/bl/api/std/dlib/linux)
+endif()
+
+
+set_target_properties(dlib
+    PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY ${BL_DLIB_OUTPUT_DIRECTORY}
+	ARCHIVE_OUTPUT_DIRECTORY ${BL_DLIB_OUTPUT_DIRECTORY} # Works on windows for .lib
+)
+
+# Installation
 
 # 'make install' to the correct locations (provided by GNUInstallDirs).
 install(TARGETS blc RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

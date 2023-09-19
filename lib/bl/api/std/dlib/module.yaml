@@ -1,14 +1,23 @@
 version: 20220923
 
 x86_64-pc-windows-msvc:
-  src: "_dlib.win32.bl"
+   src: "_dlib.win32.bl"
+   linker_lib_path: "win32"
+   linker_opt: "dlib.lib"
 
 x86_64-pc-linux-gnu:
-  src: "_dlib.posix.bl"
-  linker_opt: "-ldl"
+   src: "_dlib.posix.bl"
+   linker_opt: "-ldl"
+   linker_lib_path: "linux"
+   linker_opt: "-ldlib"
 
 x86_64-apple-darwin:
-  src: "_dlib.posix.bl"
+   src: "_dlib.posix.bl"
+   linker_lib_path: "darwin"
+   linker_opt: "-ldlib"
 
 arm64-apple-darwin:
-  src: "_dlib.posix.bl"
+   src: "_dlib.posix.bl"
+   linker_lib_path: "darwin"
+   linker_opt: "-ldlib"
+

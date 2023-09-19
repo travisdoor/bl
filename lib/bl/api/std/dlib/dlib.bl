@@ -13,16 +13,33 @@ Library :: _dlib_impl.Library;
 /// When `lib_name` is empty, current binary will be loaded. Use `library_close` call to close
 /// library when it's not needed anymore.
 library_open :: fn (lib_name := std.str_view_empty) (Library, Error) #inline {
-	return _dlib_impl.open(lib_name);
+	lib :: __dlib_open(std.strtoc(lib_name));
+	if !lib {
+		return null, error("Failed to load library '%'.", lib_name);
+	}
+	return lib, OK;
 }
 
 /// Resolve named symbol in library and return pointer to it.
 library_get_symbol :: fn (lib: Library, sym_name: string_view) (*u8, Error) #inline {
-	assert(!IS_COMPTIME_RUN);
-	return _dlib_impl.sym(lib, sym_name);
+	sym :: __dlib_symbol(lib, std.strtoc(sym_name));
+	if !sym {
+		return null, error("Cannot find symbol '%' in the library.", sym_name);
+	}
+	return sym, OK;
 }
 
 /// Close library opened by `lirary_open` call.
 library_close :: fn (lib: Library) #inline {
-	_dlib_impl.close(lib);
+	__dlib_close(lib);
 }
+
+#private
+
+//
+// VM execution api
+//
+
+__dlib_open :: fn (libname: *C.char) C.void_ptr #extern;
+__dlib_close :: fn (lib: C.void_ptr) #extern;
+__dlib_symbol :: fn (lib: C.void_ptr, symname: *C.char) C.void_ptr #extern;
