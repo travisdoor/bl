@@ -6,7 +6,10 @@
 
 #scope std
 
-// @Incomplete: Comment about why we use static lib written in C.
+// In order to support dynamic library loading even in VM runtime we need to internally pass the
+// symbol resolve through dyncall wrapper, this cannot be done on client side, thus we have compiler
+// support for it. All '__dlib_*' external functions are provided by the compiler binary in case of
+// VM execution and by C static library in case of native runtime.
 
 /// Platform specific library handle.
 Library :: *u8;
