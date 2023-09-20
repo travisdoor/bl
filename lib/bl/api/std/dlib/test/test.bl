@@ -1,0 +1,7 @@
+simple :: fn () #export {}
+
+pass_s32 :: fn (n: s32) s32 #export { return n; }
+
+pass_f32 :: fn (n: f32) f32 #export { return n; }
+
+add :: fn (a: s32, b: s32) s32 #export { return a + b; }

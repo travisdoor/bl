@@ -54,15 +54,18 @@ static char        dyncall_cb_handler(DCCallback *cb, DCArgs *args, DCValue *res
 static void        _dyncall_generate_signature(struct virtual_machine *vm, struct mir_type *type);
 static const char *dyncall_generate_signature(struct virtual_machine *vm, struct mir_type *type);
 static DCCallback *dyncall_fetch_callback(struct virtual_machine *vm, struct mir_fn *fn);
+
 static void
-                            dyncall_push_arg(struct virtual_machine *vm, vm_stack_ptr_t val_ptr, struct mir_type *type);
+dyncall_push_arg(struct virtual_machine *vm, vm_stack_ptr_t val_ptr, struct mir_type *type);
+
 static enum vm_interp_state execute_function(struct virtual_machine *vm,
                                              struct mir_fn          *fn,
                                              struct mir_instr_call  *optional_call,
                                              const bool              resume);
 static enum vm_interp_state interp_instr(struct virtual_machine *vm, struct mir_instr *instr);
-static void
-                            interp_extern_call(struct virtual_machine *vm, struct mir_fn *fn, struct mir_instr_call *call);
+
+static void interp_extern_call(struct virtual_machine *vm, struct mir_instr_call *call, str_t linkage_name, struct mir_type *fn_type, DCpointer handle);
+
 static void                 interp_instr_toany(struct virtual_machine *vm, struct mir_instr_to_any *toany);
 static void                 interp_instr_unreachable(struct virtual_machine *vm, struct mir_instr_unreachable *unr);
 static void                 interp_instr_debugbreak(struct virtual_machine      *vm,
@@ -643,19 +646,40 @@ void calculate_unop(vm_stack_ptr_t dest, vm_stack_ptr_t v, enum unop_kind op, st
 // Dyncall
 //
 
+// Exported dlib_* might be used by dlib.bl module in case we're in VM runtime. For regular binary
+// execution linked static library (exporting these functions) is used.
+
 BL_EXPORT void *__dlib_open(const char *libname) {
-	babort("Unimplemented");
-	return NULL;
+	struct assembly *assembly = builder.current_executed_assembly;
+	bassert(assembly);
+	return dlLoadLibrary(libname);
 }
 
-BL_EXPORT void __dlib_close(void *lib) {
-	babort("Unimplemented");
+BL_EXPORT void __dlib_close(DLLib *lib) {
 	if (!lib) return;
+	dlFreeLibrary(lib);
 }
 
-BL_EXPORT void *__dlib_symbol(void *lib, const char *symname) {
-	babort("Unimplemented");
-	return NULL;
+BL_EXPORT void *__dlib_symbol(DLLib *lib, const char *symname) {
+	struct assembly *assembly = builder.current_executed_assembly;
+	bassert(assembly);
+
+	if (!symname || strlen(symname) == 0) return NULL;
+	if (!lib) return NULL;
+
+	void *sym = dlFindSymbol(lib, symname);
+	if (!sym) return NULL;
+
+	// Create function for the found symbol.
+
+	struct mir_fn *fn = arena_alloc(&assembly->arenas.mir.fn);
+	bmagic_set(fn);
+	fn->flags                = FLAG_EXTERN;
+	fn->is_global            = true;
+	fn->dyncall.extern_entry = sym;
+	fn->is_fully_analyzed    = true;
+
+	return fn;
 }
 
 void dyncall_cb_read_arg(struct virtual_machine       UNUSED(*vm),
@@ -958,17 +982,19 @@ void dyncall_push_arg(struct virtual_machine *vm, vm_stack_ptr_t val_ptr, struct
 	}
 }
 
-void interp_extern_call(struct virtual_machine *vm, struct mir_fn *fn, struct mir_instr_call *call) {
-	struct mir_type *ret_type = fn->type->data.fn.ret_type;
+void interp_extern_call(struct virtual_machine *vm, struct mir_instr_call *call, str_t linkage_name, struct mir_type *fn_type, DCpointer handle) {
+	bassert(fn_type && fn_type->kind == MIR_TYPE_FN);
+	bassert(call);
+	struct mir_type *ret_type = fn_type->data.fn.ret_type;
 	bassert(ret_type);
 
 	DCCallVM *dvm = vm->assembly->dc_vm;
 	bassert(vm);
 
 	// call setup and clenup
-	if (!fn->dyncall.extern_entry) {
+	if (!handle) {
 		builder_error(
-		    "External function '%.*s' not found!", fn->linkage_name.len, fn->linkage_name.ptr);
+		    "External function '%.*s' not found!", linkage_name.len, linkage_name.ptr);
 		vm_abort(vm);
 		return;
 	}
@@ -991,16 +1017,16 @@ void interp_extern_call(struct virtual_machine *vm, struct mir_fn *fn, struct mi
 	case MIR_TYPE_INT:
 		switch (ret_type->store_size_bytes) {
 		case 1:
-			vm_write_as(s8, &result, dcCallChar(dvm, fn->dyncall.extern_entry));
+			vm_write_as(s8, &result, dcCallChar(dvm, handle));
 			break;
 		case 2:
-			vm_write_as(s16, &result, dcCallShort(dvm, fn->dyncall.extern_entry));
+			vm_write_as(s16, &result, dcCallShort(dvm, handle));
 			break;
 		case 4:
-			vm_write_as(s32, &result, dcCallInt(dvm, fn->dyncall.extern_entry));
+			vm_write_as(s32, &result, dcCallInt(dvm, handle));
 			break;
 		case 8:
-			vm_write_as(s64, &result, dcCallLongLong(dvm, fn->dyncall.extern_entry));
+			vm_write_as(s64, &result, dcCallLongLong(dvm, handle));
 			break;
 		default:
 			babort("unsupported integer size for external call result");
@@ -1008,40 +1034,40 @@ void interp_extern_call(struct virtual_machine *vm, struct mir_fn *fn, struct mi
 		break;
 
 	case MIR_TYPE_PTR:
-		vm_write_as(vm_stack_ptr_t, &result, dcCallPointer(dvm, fn->dyncall.extern_entry));
+		vm_write_as(vm_stack_ptr_t, &result, dcCallPointer(dvm, handle));
 		break;
 
 	case MIR_TYPE_REAL: {
 		switch (ret_type->store_size_bytes) {
 		case 4:
-			vm_write_as(f32, &result, dcCallFloat(dvm, fn->dyncall.extern_entry));
+			vm_write_as(f32, &result, dcCallFloat(dvm, handle));
 			break;
 		case 8:
-			vm_write_as(f64, &result, dcCallDouble(dvm, fn->dyncall.extern_entry));
+			vm_write_as(f64, &result, dcCallDouble(dvm, handle));
 			break;
 		default:
-			babort("Unsupported real number size for external call "
-			       "result");
+			babort("Unsupported real number size for external call result");
 		}
 		break;
 	}
 
 	case MIR_TYPE_VOID:
-		dcCallVoid(dvm, fn->dyncall.extern_entry);
+		dcCallVoid(dvm, handle);
 		does_return = false;
 		break;
 
 	case MIR_TYPE_STRUCT: {
-		babort("External function '%s' returning structure cannot be executed by "
-		       "interpreter on "
+		babort("External function '%.*s' returning structure cannot be executed by interpreter on "
 		       "this platform.",
-		       fn->id->str);
+		       linkage_name.len,
+		       linkage_name.ptr);
 	}
 
 	case MIR_TYPE_ARRAY: {
-		babort("External function '%s' returning array cannot be executed by interpreter on "
+		babort("External function '%.*s' returning array cannot be executed by interpreter on "
 		       "this platform.",
-		       fn->id->str);
+		       linkage_name.len,
+		       linkage_name.ptr);
 	}
 
 	default: {
@@ -1778,11 +1804,15 @@ enum vm_interp_state interp_instr_call(struct virtual_machine *vm, struct mir_in
 
 	vm_stack_ptr_t   callee_ptr      = fetch_value(vm, &call->callee->value);
 	struct mir_type *callee_ptr_type = call->callee->value.type;
+	struct mir_type *callee_type     = NULL;
 
 	// Function called via pointer.
 	if (mir_is_pointer_type(call->callee->value.type)) {
-		bassert(mir_deref_type(call->callee->value.type)->kind == MIR_TYPE_FN);
+		callee_type = mir_deref_type(call->callee->value.type);
+	} else {
+		callee_type = call->callee->value.type;
 	}
+	bassert(callee_type && callee_type->kind == MIR_TYPE_FN);
 
 	struct mir_fn *fn = (struct mir_fn *)vm_read_ptr(callee_ptr_type, callee_ptr);
 	if (!fn) {
@@ -1794,15 +1824,14 @@ enum vm_interp_state interp_instr_call(struct virtual_machine *vm, struct mir_in
 
 	if (!fn->is_fully_analyzed) {
 		// In case the fetched callee value is coming from the stack, we have to push it back to the
-		// stack get proper address on next try!
+		// stack to get proper address on next try!
 		if (!call->callee->value.is_comptime) {
 			stack_push(vm, callee_ptr, callee_ptr_type);
 		}
 		return VM_INTERP_POSTPONE;
 	}
-	bassert(fn->type);
 	if (isflag(fn->flags, FLAG_EXTERN) || isflag(fn->flags, FLAG_INTRINSIC)) {
-		interp_extern_call(vm, fn, call);
+		interp_extern_call(vm, call, fn->linkage_name, callee_type, fn->dyncall.extern_entry);
 	} else {
 		// Push current frame stack top. (Later popped by ret instruction)
 		push_ra(vm, call);

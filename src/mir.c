@@ -410,8 +410,7 @@ typedef struct
 	enum mir_fn_generated_flavor_flags generated_flags;
 } create_fn_args_t;
 
-static struct mir_fn *create_fn(struct context *ctx, create_fn_args_t *args);
-
+static struct mir_fn                  *create_fn(struct context *ctx, create_fn_args_t *args);
 static struct mir_fn_group            *create_fn_group(struct context *ctx, struct ast *decl_node, mir_fns_t *variants);
 static struct mir_fn_generated_recipe *create_fn_generation_recipe(struct context *ctx, struct ast *ast_lit_fn);
 
@@ -2732,7 +2731,8 @@ struct mir_fn *create_fn(struct context *ctx, create_fn_args_t *args) {
 	tmp->builtin_id        = args->builtin_id;
 	tmp->llvm_module_index = args->prototype->base.id % ctx->llvm_module_count;
 	tmp->generated_flavor  = args->generated_flags;
-	arrsetcap(tmp->variables, 8);
+	// arrsetcap(tmp->variables, 8);
+
 	return tmp;
 }
 

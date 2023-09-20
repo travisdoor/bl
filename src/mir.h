@@ -256,6 +256,7 @@ struct mir_fn {
 		struct dyncall_cb_context context;
 	} dyncall;              // dyncall external context
 	str_t obsolete_message; // Optional, check len!
+
 	bmagic_member
 };
 

@@ -1,0 +1,5 @@
+build :: fn () #build_entry {
+	lib :: add_library("test");
+	add_unit(lib, "test.bl");
+	compile(lib);
+}

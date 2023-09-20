@@ -6,14 +6,18 @@
 
 #scope std
 
+// @Incomplete: Comment about why we use static lib written in C.
+
 /// Platform specific library handle.
-Library :: _dlib_impl.Library;
+Library :: *u8;
 
 /// Dynamically loads library specified by `lib_name` and return it's handle or null with error.
 /// When `lib_name` is empty, current binary will be loaded. Use `library_close` call to close
 /// library when it's not needed anymore.
 library_open :: fn (lib_name := std.str_view_empty) (Library, Error) #inline {
-	lib :: __dlib_open(std.strtoc(lib_name));
+	clib_name : *s8 = null;
+	if lib_name.len > 0 { clib_name = std.strtoc(lib_name); }
+	lib :: __dlib_open(clib_name);
 	if !lib {
 		return null, error("Failed to load library '%'.", lib_name);
 	}

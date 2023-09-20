@@ -67,6 +67,8 @@ struct builder {
 	array(struct target *) targets;
 	struct threading_impl *threading;
 
+	struct assembly *current_executed_assembly;
+
 	bool is_initialized;
 };
 

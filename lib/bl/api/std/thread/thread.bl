@@ -1,10 +1,10 @@
 //! # Thread
-//! 
+//!
 //! `#import "std/thread"`
-//! 
-//! This module contains tools for managing multithreading. It's basically wrapper for Windows thread 
+//!
+//! This module contains tools for managing multithreading. It's basically wrapper for Windows thread
 //! system and pthread on posix systems.
-//! 
+//!
 //! **warning**: This module is experimental and not fully supported across all platforms.
 
 #scope std
@@ -15,19 +15,20 @@ ThreadEntryFn :: *fn (ctx: *u8) s32;
 /// Thread handle.
 Thread :: _thread_impl.Handle;
 
-/// Create and start new thread with specified `entry` function. Pointer to custom `ctx` can be 
+/// Create and start new thread with specified `entry` function. Pointer to custom `ctx` can be
 /// optionally passed to the entry function here.
 thread_create :: fn (entry: ThreadEntryFn, ctx: *u8 = null) (Thread, Error) #inline {
+	assert(!IS_COMPTIME_RUN, "Multithreading is not supported in VM execution mode.");
 	return _thread_impl.create(entry, ctx);
 }
 
-/// Blocks until `thread` exits. Return value from worker function is returned as `exit_code`. When 
+/// Blocks until `thread` exits. Return value from worker function is returned as `exit_code`. When
 /// execution is successful all thread resources are released.
 thread_join :: fn (thread: Thread) (exit_code: s32, err: Error) #inline {
 	return _thread_impl.join(thread);
 }
 
-/// Blocks until all `threads` exits. 
+/// Blocks until all `threads` exits.
 thread_join_all :: fn (threads: []Thread) Error #inline {
 	loop i := 0; i < threads.len; i += 1 {
 		_, err :: _thread_impl.join(threads[i]);
