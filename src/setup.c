@@ -345,9 +345,9 @@ static bool arm64_apple_darwin(struct context *ctx) {
 			}
 		}
 		str_buf_append_fmt(
-		    &optexec, "-macosx_version_min {str} -sdk_version {str} ", osver, osver);
+		    &optexec, "-macos_version_min {str} ", osver);
 		str_buf_append_fmt(
-		    &optshared, "-macosx_version_min {str} -sdk_version {str} ", osver, osver);
+		    &optshared, "-macos_version_min {str} ", osver);
 	}
 
 	str_buf_append(&optexec, LINKER_OPT_EXEC);
