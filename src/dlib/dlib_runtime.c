@@ -22,5 +22,20 @@ BL_EXPORT void *__dlib_symbol(void *lib, const char *symname) {
 }
 
 #else
-#	error "Unsupported platform."
+
+#include <dlfcn.h>
+
+BL_EXPORT void *__dlib_open(const char *libname) {
+	return dlopen(libname, RTLD_LAZY);
+}
+
+BL_EXPORT void __dlib_close(void *lib) {
+	if (!lib) return;
+	dlclose(lib);
+}
+
+BL_EXPORT void *__dlib_symbol(void *lib, const char *symname) {
+	return dlsym(lib, symname);
+}
+
 #endif

@@ -27,7 +27,18 @@ dl_test_lib :: fn () #test {
 	lib_name :: str_new(head);
 	defer str_delete(&lib_name);
 	// @Incomplete: Platform specific
-	str_append(&lib_name, "test/test.dll");
+	using Platform;
+	switch PLATFORM {
+		WINDOWS {
+			str_append(&lib_name, "test/test.dll");
+		}
+		LINUX {
+			str_append(&lib_name, "test/libtest.so");
+		}
+		DARWIN {
+			str_append(&lib_name, "test/libtest.dylib");
+		}
+	}
 
 	lib, err :: library_open(lib_name);
 	defer library_close(lib);
