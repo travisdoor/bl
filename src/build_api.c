@@ -92,3 +92,11 @@ BL_EXPORT void __get_default_triple(struct target_triple *triple) {
 BL_EXPORT s32 __triple_to_string(struct target_triple *triple, char *buf, s32 buf_len) {
 	return target_triple_to_string(triple, buf, buf_len);
 }
+
+BL_EXPORT void __builder_get_options(struct builder_options *opt) {
+	memcpy(opt, builder.options, sizeof(struct builder_options));
+}
+
+BL_EXPORT void __builder_set_options(struct builder_options *opt) {
+	memcpy(builder.options, opt, sizeof(struct builder_options));
+}

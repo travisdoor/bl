@@ -125,7 +125,7 @@ s32 lld_link(struct assembly *assembly) {
 	append_default_opt(assembly, &buf);
 	append_custom_opt(assembly, &buf);
 
-	builder_log("%s", buf);
+	builder_log("%.*s", buf.len, buf.ptr);
 	s32 state = system(str_to_c(buf));
 	put_tmp_str(buf);
 	assembly->stats.linking_s = runtime_measure_end(linking);

@@ -72,14 +72,6 @@ void bl_alloc_thread_terminate(void) {
 
 #else
 
-#	if BL_CRTDBG_ALLOC
-#		define _CRTDBG_MAP_ALLOC
-// clang-format off
-#include <stdlib.h>
-#include <crtdbg.h>
-// clang-format on
-#	endif
-
 #	include "TracyC.h"
 #	include <memory.h>
 #	include <stdio.h>

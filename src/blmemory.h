@@ -32,13 +32,6 @@
 #include "basic_types.h"
 #include "config.h"
 
-#if BL_PLATFORM_WIN && BL_DEBUG
-#	define BL_CRTDBG_ALLOC 0
-#else
-// This is available only on windows.
-#	define BL_CRTDBG_ALLOC 0
-#endif
-
 #define bmalloc(size) bl_malloc_impl(size, __FILE__, __LINE__)
 #define brealloc(ptr, size) bl_realloc_impl(ptr, size, __FILE__, __LINE__)
 #define bfree(ptr) bl_free_impl(ptr, __FILE__, __LINE__)

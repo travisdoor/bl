@@ -38,6 +38,7 @@ dl_test_lib :: fn () #test {
 		DARWIN {
 			str_append(&lib_name, "test/libtest.dylib");
 		}
+		UNKNOWN { panic(); }
 	}
 
 	lib, err :: library_open(lib_name);

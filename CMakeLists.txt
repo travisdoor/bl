@@ -37,12 +37,6 @@ else()
         $<$<CONFIG:Release>:BL_ASSERT_ENABLE=0>)
 endif()
 
-option(BL_DIRTY_ENABLE "Turn on dirty mode, compiler executable leaves freeing of allocated memory on the operating system." ON)
-if(BL_DIRTY_ENABLE)
-    add_definitions(-DBL_DIRTY_ENABLE)
-    message(STATUS "Dirty memory mode enabled to gain some speed.")
-endif()
-
 option(TRACY_ENABLE "Turn on Tracy profiler." OFF)
 set(TRACY_VER "0.9.1" CACHE STRING "Set Tracy profiler version.")
 

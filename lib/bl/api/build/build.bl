@@ -27,21 +27,21 @@
 // =================================================================================================
 
 //! # Build System
-//! 
+//!
 //! `#load "build/build.bl"`
-//! 
-//! Compiler integrated build pipeline. Build pipline can be used to manage whole project compilation 
+//!
+//! Compiler integrated build pipeline. Build pipline can be used to manage whole project compilation
 //! process directly in BL. All you need is to create the build file called `build.bl` and specify the
 //! `build_entry` function inside. When `-b` flag is used without need of specifying any files, the
-//! compiler will lookup `build.bl` file in the current directory and execute it in compile time. All 
-//! compilation steps, target input and output can be specified here. 
+//! compiler will lookup `build.bl` file in the current directory and execute it in compile time. All
+//! compilation steps, target input and output can be specified here.
 //!
 //! Example of minimal build.bl:
 //! ```
 //! build :: fn () #build_entry {
 //!     // create new executable target
 //!     exe :: add_executable("MyProgram");
-//! 
+//!
 //!     // add 'main.bl' file into the target 'exe'
 //!     add_unit(exe, "main.bl");
 //!
@@ -49,11 +49,11 @@
 //!     compile(exe);
 //! }
 //! ```
-//! 
+//!
 //! Start build pipeline using our build.bl file:
-//! ``` 
+//! ```
 //! $ blc -build
-//! ``` 
+//! ```
 //!
 //! Compiler will automatically use build.bl file as build script and execute build function in compile time.
 //! SDK file build/build.bl containing compiler API for build pipeline manipulation is loaded implicitly.
@@ -63,30 +63,30 @@
 //! ## Basics
 //!
 //! ### Create new executable target
-//! 
+//!
 //! Target is a single build target defined as consisting of build Units representing source files
 //! needed for compilation. It`s basically a target compiled into an executable or binary file. Use
-//! [add_executable](#add_executable) function to specify your target. There are several options 
+//! [add_executable](#add_executable) function to specify your target. There are several options
 //! related to target, described later  in this documentation.
-//! 
+//!
 //! ```
 //! exe :: add_executable("MyProgram");
 //! ```
-//! 
+//!
 //! ### Add file into target
-//! 
-//! Use [add_unit](#add_unit) function to add source files into the target. There is no need to add 
-//! all files you want to use, general `load` and `import` will do so automatically. Only `main` or 
+//!
+//! Use [add_unit](#add_unit) function to add source files into the target. There is no need to add
+//! all files you want to use, general `load` and `import` will do so automatically. Only `main` or
 //! entry files must be included.
-//! 
+//!
 //! ```
 //! add_unit(exe, "main.bl");
 //! ```
-//! 
+//!
 //! ### Specify output directory
-//! 
-//! Output directory is a directory where all compiler-produced files will be written (i.e. native 
-//! executables). Use [set_output_dir](#set_output_dir) function to specify this directory, current 
+//!
+//! Output directory is a directory where all compiler-produced files will be written (i.e. native
+//! executables). Use [set_output_dir](#set_output_dir) function to specify this directory, current
 //! directory is used by default.
 //!
 //! ```
@@ -102,7 +102,50 @@
 //! All argumets passed after ``-build`` compiler flag are automatically forwarded into
 //! `command_line_arguments` global variable.
 
-/// Target is representation of whole program workspace, it's a consist of Units, every unit 
+/// Global builder options.
+BuilderOptions :: struct {
+	/// Toggle verbose mode. (Off by default.)
+	verbose: bool;
+	/// Toggle coloring the terminal output. (Off by default.)
+	no_color: bool;
+	/// Silent mode reduces amount of stuff printed to the standard output to minimum. (Off by default.)
+	silent: bool;
+	/// Toggle multithreading. (On by default.)
+	no_jobs: bool;
+	/// Disable all compiler warnings. (Off by default.)
+	no_warning: bool;
+	/// Use full (absolute) paths in compiler reports. (Off by default.)
+	full_path_reports: bool;
+	/// Toggle check of unused symbols. (Off by default.)
+	no_usage_check: bool;
+	/// Toggle printing of some compilation statistics. (Off by default.)
+	stats: bool;
+	/// Toggle experimantal targets. (Off by default.)
+	enable_experimental_targets: bool;
+	/// Release memory after compilation. When compiler is executed as a single-shot application (start -> compile -> end)
+	/// all the time, we can leave releasing of allocated memory to the operating system to get some compilation speed boost.
+	/// (Off by default.)
+	do_cleanup_when_done: bool;
+	/// Maximum count of error reported by the compiler.
+	error_limit: s32;
+
+	_doc_out_dir: *C.char; // private for now
+}
+
+/// Returns copy of current builder options. These are by default initializad from command line
+/// arguments passed to the compiler.
+get_builder_options :: fn () BuilderOptions {
+	opt: BuilderOptions;
+	__builder_get_options(&opt);
+	return opt;
+}
+
+/// Overrides current builder options previously set from the command line or by calling this function.
+set_builder_options :: fn (opt: BuilderOptions) {
+	__builder_set_options(&opt);
+}
+
+/// Target is representation of whole program workspace, it's a consist of Units, every unit
 /// represents one source file.
 Target :: struct { // !!! ABI sync TargetOptions !!!
 	/// See :ref:`TargetKind`.
@@ -150,7 +193,7 @@ Target :: struct { // !!! ABI sync TargetOptions !!!
 	/// Specify MIR instruction ID to break on if virtual machine debugger is attached.
 	vmdbg_break_on: s32;
 	/// Enable experimental build targets.
-	enable_experimental_targets: bool; 
+	enable_experimental_targets: bool;
 	/// Target triple according to LLVM.
 	triple: TargetTriple;
 }
@@ -195,7 +238,7 @@ TargetTriple :: struct {
 	env: TargetEnvironment;
 }
 
-/// Specify target build mode. Every [Target](#target) can be compiled with various configuration 
+/// Specify target build mode. Every [Target](#target) can be compiled with various configuration
 /// options. The `BuildMode` can specify which set of options compiler should use.
 BuildMode :: enum s32 {
 	/// Generates debug symbols and produce binary without any optimizations. `IS_DEBUG` global variable is
@@ -223,7 +266,7 @@ DebugInfo :: enum s32 {
 
 /// Specification of `assert` mode used for `Target`.
 AssertMode :: enum s32 {
-	/// By default compiler emits  all assertions in [BuildMode](#buildmode). Debug and skips all 
+	/// By default compiler emits  all assertions in [BuildMode](#buildmode). Debug and skips all
 	/// assertions in all optimized release modes.
 	DEFAULT = 0;
 	/// Force-enable assertion in all build modes.
@@ -232,22 +275,22 @@ AssertMode :: enum s32 {
 	ALWAYS_DISABLED = 2;
 }
 
-/// Add new executable target into the current compilation queue. Target with specified name is 
-/// compiled into binary or it can be just executed in compile-time without any output created. 
+/// Add new executable target into the current compilation queue. Target with specified name is
+/// compiled into binary or it can be just executed in compile-time without any output created.
 /// Assemblies are compiled after `build_entry` function execution in order they are added.
-/// 
+///
 /// ### Example
 /// ```
 /// build :: fn () #build_entry {
 ///     exe :: add_executable("MyProgram");
 ///     add_unit(exe, "src/main.bl");
-/// 
+///
 ///     mode :: get_build_mode(exe);
 ///     switch mode {
 ///         BuildMode.DEBUG {
 ///             set_output_dir(exe, "build/debug");
 ///         }
-/// 
+///
 ///         BuildMode.RELEASE_SMALL,
 ///         BuildMode.RELEASE_FAST {
 ///             set_output_dir(exe, "build/release");
@@ -267,7 +310,7 @@ add_library :: fn (name: string_view) *Target {
 	return __add_target(std.strtoc(name), cast(s32) TargetKind.SHARED_LIBRARY);
 }
 
-/// Add new source file into the `target`. Function does nothing when `filepath` is already present 
+/// Add new source file into the `target`. Function does nothing when `filepath` is already present
 /// in the `target` assembly.
 add_unit :: fn (target: *Target, filepath: string_view) {
 	if !target { panic("Invalid target!"); }
@@ -276,6 +319,7 @@ add_unit :: fn (target: *Target, filepath: string_view) {
 }
 
 /// Start compilation of the `target` assembly and return `ok` or `error` in case compilation failed.
+/// Target is released after the compilation is done.
 compile :: fn (target: *Target) Error {
 	if !target { panic("Invalid target!"); }
 	state :: __compile(target);
@@ -284,6 +328,7 @@ compile :: fn (target: *Target) Error {
 }
 
 /// Compile all created targets one by one in order they were created. See also [compile](#compile).
+/// All targets are released after the compilation is done.
 compile_all :: fn () Error {
 	state :: __compile_all();
 	if state == 0 { return OK; }
@@ -298,33 +343,33 @@ add_lib_path :: fn (target: *Target, path: string_view) {
 	__add_lib_path(target, std.strtoc(path));
 }
 
-/// Add system library. Only name is required (without extension and prefix). Compiler will lookup 
-/// for this library in working directory, system `PATH` and `LINKER_LIB_PATH` variable specified 
-/// in `bl.conf` file. Linked library can be used also during compile-time execution, in such case 
+/// Add system library. Only name is required (without extension and prefix). Compiler will lookup
+/// for this library in working directory, system `PATH` and `LINKER_LIB_PATH` variable specified
+/// in `bl.conf` file. Linked library can be used also during compile-time execution, in such case
 /// all needed symbols are loaded in compile-time.
 ///
-/// In general there is no need to link libraries manually, all needed dependencies should be 
+/// In general there is no need to link libraries manually, all needed dependencies should be
 /// handled by module import mechanism, however there is still an option do it manually.
-/// 
+///
 /// Library name platform specific rules:
-/// 
+///
 /// * On Linux name will be extended by 'lib' prefix and '.so' extension.
 /// * On MacOS name will be extended by 'lib' prefix and '.dylib' extension.
 /// * On Windows name will be extended only by '.dll' extension.
-/// 
+///
 /// ### Example
 /// ```
 /// build :: fn () #build_entry {
 ///     exe :: add_executable("MyGame");
 ///     add_unit(exe, "src/main.bl");
-/// 
+///
 ///     switch PLATFORM {
 ///         Platform.WINDOWS { target_windows(exe); }
 ///         default          { panic("Unknown build target!"); }
 ///     }
 ///     compile(exe);
 /// }
-/// 
+///
 /// target_windows :: fn (exe: *Target) {
 ///     link_library(exe, "freetype");
 ///     link_library(exe, "zlib");
@@ -338,18 +383,18 @@ link_library :: fn (target: *Target, name: string_view) {
 	__link_library(target, std.strtoc(name));
 }
 
-/// Appends raw string data directly to linker command. Passed option is added without any 
-/// processing and compatibility validation. 
+/// Appends raw string data directly to linker command. Passed option is added without any
+/// processing and compatibility validation.
 append_linker_options :: fn (target: *Target, option: string_view) {
 	if !target { panic("Invalid target!"); }
 	if option.len == 0 { return; }
 	__append_linker_options(target, std.strtoc(option));
 }
 
-/// Set build output directory. This is directory where all output files will be written. For 
+/// Set build output directory. This is directory where all output files will be written. For
 /// example different output directory can be set for any build mode.
-/// 
-/// Directory path `dir`. This can contain non-existing directories separated by `/`, compiler will 
+///
+/// Directory path `dir`. This can contain non-existing directories separated by `/`, compiler will
 /// create all missing directories in passed path.
 ///
 /// Specified directory will be used also for build temporary files.
@@ -362,34 +407,34 @@ set_output_dir :: fn (target: *Target, dir: string_view) {
 /// Get output directory specified by [set_output_dir](#set_output_dir) or empty string.
 get_output_dir :: fn (target: *Target) string_view {
 	if !target { panic("Invalid target!"); }
-	cdir :: __get_output_dir(target);    
+	cdir :: __get_output_dir(target);
 	if !cdir { return std.str_view_empty; }
 	return std.ctostr(cdir);
 }
 
-/// Specify import module policy in [set_module_dir](#set_module_dir) function call. Module 
+/// Specify import module policy in [set_module_dir](#set_module_dir) function call. Module
 /// dependencies of any target can be treated in different ways depending on use case and needs of
-/// programmer. Sometimes program stability and maintainability is more important than use of 
+/// programmer. Sometimes program stability and maintainability is more important than use of
 /// latest versions of modules. These flags can specify how local modules should be updated.
 ModuleImportPolicy :: enum s32 {
-	/// Use system modules but prefer local ones in module directory. This option disables any 
-	/// copying and version check. Local module directory can contain custom project related 
+	/// Use system modules but prefer local ones in module directory. This option disables any
+	/// copying and version check. Local module directory can contain custom project related
 	/// modules you don't want to expose to the whole system. This is the **default** option.
 	SYSTEM = 0;
- 
-	/// Bundle only missing modules from system into the local module folder and ignore if there is 
-	/// newer version available. Individual module updates can be done by renaming old one and 
+
+	/// Bundle only missing modules from system into the local module folder and ignore if there is
+	/// newer version available. Individual module updates can be done by renaming old one and
 	/// re-run compilation. Custom modules (not coming from main API folder are kept untouched.)
 	BUNDLE = 1;
 
-	/// Bundle all missing modules from system into the local module folder and update old ones 
-	/// also. Custom modules (not coming from main API folder are kept untouched.) Compiler will 
+	/// Bundle all missing modules from system into the local module folder and update old ones
+	/// also. Custom modules (not coming from main API folder are kept untouched.) Compiler will
 	/// create `.bak` backup directory for every module before any updates.
 	BUNDLE_LATEST = 2;
 }
 
-/// Sets module directory `dir` for `target`. All imported modules will be copied into this 
-/// directory according to chosen [ModuleImportPolicy](#moduleimportpolicy). Module policy is set 
+/// Sets module directory `dir` for `target`. All imported modules will be copied into this
+/// directory according to chosen [ModuleImportPolicy](#moduleimportpolicy). Module policy is set
 /// to `SYSTEM` by default even if this function has not been called.
 set_module_dir :: fn (target: *Target, dir: string_view, policy := ModuleImportPolicy.SYSTEM) {
 	if !target { panic("Invalid target!"); }
@@ -400,7 +445,7 @@ set_module_dir :: fn (target: *Target, dir: string_view, policy := ModuleImportP
 /// Get module directory specified by [set_module_dir](#set_module_dir) or default one.
 get_module_dir :: fn (target: *Target) string_view {
 	if !target { panic("Invalid target!"); }
-	cdir :: __get_module_dir(target);    
+	cdir :: __get_module_dir(target);
 	if !cdir { return std.str_view_empty; }
 	return std.ctostr(cdir);
 }
@@ -408,7 +453,7 @@ get_module_dir :: fn (target: *Target) string_view {
 /// Get module import policy specified by [set_module_dir](#set_module_dir) or default one.
 get_module_import_policy :: fn (target: *Target) ModuleImportPolicy {
 	if !target { panic("Invalid target!"); }
-	return auto __get_module_import_policy(target);    
+	return auto __get_module_import_policy(target);
 }
 
 /// Returns target triple of the current host machine.
@@ -443,3 +488,5 @@ __get_module_dir :: fn (target: *Target) *C.char #extern;
 __get_module_import_policy :: fn (target: *Target) C.int #extern;
 __get_default_triple :: fn (triple: *TargetTriple) #extern;
 __triple_to_string :: fn (triple: *TargetTriple, buf: *C.char, buf_len: C.int) C.int #extern;
+__builder_get_options :: fn (opt: *BuilderOptions) #extern;
+__builder_set_options :: fn (opt: *BuilderOptions) #extern;

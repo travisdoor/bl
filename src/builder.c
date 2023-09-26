@@ -180,7 +180,7 @@ static void *worker(void UNUSED(*args)) {
 		while (!threading->is_compiling || !(unit = async_pop_unsafe())) {
 			if (threading->will_exit) {
 				pthread_mutex_unlock(&threading->queue_mutex);
-				pthread_exit(NULL);
+				goto EXIT;
 			}
 			pthread_cond_wait(&threading->queue_condition, &threading->queue_mutex);
 		}
@@ -198,6 +198,7 @@ static void *worker(void UNUSED(*args)) {
 		pthread_mutex_unlock(&threading->active_mutex);
 	}
 
+EXIT:
 	terminate_thread_data();
 	bl_alloc_thread_terminate();
 	pthread_exit(NULL);
@@ -452,7 +453,7 @@ static int compile(struct assembly *assembly) {
 // =================================================================================================
 // PUBLIC
 // =================================================================================================
-void builder_init(const struct builder_options *options, const char *exec_dir) {
+void builder_init(struct builder_options *options, const char *exec_dir) {
 	bassert(options && "Invalid builder options!");
 	bassert(exec_dir && "Invalid executable directory!");
 	memset(&builder, 0, sizeof(struct builder));
@@ -566,9 +567,9 @@ s32 builder_compile(const struct target *target) {
 
 	s32 state = compile(assembly);
 
-#ifndef BL_DIRTY_ENABLE
-	assembly_delete(assembly);
-#endif
+	if (builder.options->do_cleanup_when_done) {
+		assembly_delete(assembly);
+	}
 	return state;
 }
 

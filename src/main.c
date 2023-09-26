@@ -34,10 +34,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#if BL_CRTDBG_ALLOC
-#	include <crtdbg.h>
-#endif
-
 bool setup(const str_t filepath, const char *triple);
 
 static char *get_exec_dir(void) {
@@ -114,6 +110,7 @@ typedef struct ApplicationOptions {
 	bool print_supported;
 	bool where_is_api;
 	bool configure;
+	bool do_cleanup_when_done;
 } ApplicationOptions;
 
 typedef struct Options {
@@ -318,8 +315,8 @@ int main(s32 argc, char *argv[]) {
 	Options opt = {0};
 	setlocale(LC_ALL, "C.utf8");
 
-	s32   state     = EXIT_SUCCESS;
-	char *exec_dir  = NULL;
+	s32   state    = EXIT_SUCCESS;
+	char *exec_dir = NULL;
 
 	bl_alloc_init();
 
@@ -604,6 +601,15 @@ int main(s32 argc, char *argv[]) {
 	        .property.n = &opt.builder.error_limit,
 	        .help       = "Set maximum reported error count.",
 	    },
+	    {
+	        .name       = "--dirty-mode",
+	        .help       = "Toggles whether compiler should release allocated memory when compilation is done. "
+	                      "Disabling this might speed up compilation in case the compiler is used as a single shot executable."
+	                      "(on by default)",
+	        .variants   = "off|on",
+	        .kind       = ENUM,
+	        .property.n = (s32 *)&opt.app.do_cleanup_when_done,
+	    },
 	    {0},
 	};
 
@@ -735,28 +741,22 @@ SKIP:
 		}
 	}
 
+	opt.builder.do_cleanup_when_done = opt.app.do_cleanup_when_done;
+
 	state                = builder_compile(opt.target);
 	const f64 runtime_ms = get_tick_ms() - start_time_ms;
 	builder_info("Finished in %.3f seconds.", runtime_ms * 0.001);
 
 RELEASE:
-
-#ifndef BL_DIRTY_ENABLE
-	builder_terminate();
-	free(exec_dir);
+	if (opt.app.do_cleanup_when_done) {
+		builder_terminate();
+		free(exec_dir);
+	}
 
 	bl_alloc_terminate();
-#endif
 
-	// Report memory leaks...
-#if BL_CRTDBG_ALLOC
-#	ifdef BL_DIRTY_ENABLE
-#		pragma message( \
-		    "WARNING: Dirty memory mode is enabled, this leads intentionally to some memory not being freed, so memory leaks cannot be properly detected!")
-#	endif
-	_CrtDumpMemoryLeaks();
-#endif
 	blog("Exit with state %d.", state);
 	return state;
+
 #undef EXIT
 }

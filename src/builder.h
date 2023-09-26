@@ -40,30 +40,33 @@ struct config;
 typedef void (*unit_stage_fn_t)(struct assembly *, struct unit *);
 typedef void (*assembly_stage_fn_t)(struct assembly *);
 
+// Keep in sync with build.bl API!!!
 struct builder_options {
-	bool  verbose;
-	bool  no_color;
-	bool  silent;
-	bool  no_jobs;
-	bool  no_warning;
-	bool  full_path_reports;
-	bool  no_usage_check;
-	bool  stats;
-	s32   error_limit;
+	bool verbose;
+	bool no_color;
+	bool silent;
+	bool no_jobs;
+	bool no_warning;
+	bool full_path_reports;
+	bool no_usage_check;
+	bool stats;
+	bool enable_experimental_targets;
+	bool do_cleanup_when_done;
+	s32  error_limit;
+
 	char *doc_out_dir;
-	bool  enable_experimental_targets;
 };
 
 struct builder {
-	const struct builder_options *options;
-	const struct target          *default_target;
-	char                         *exec_dir;
-	volatile s32                  total_lines;
-	s32                           errorc;
-	s32                           max_error;
-	s32                           test_failc;
-	s32                           last_script_mode_run_status;
-	struct config                *config;
+	struct builder_options *options;
+	const struct target    *default_target;
+	char                   *exec_dir;
+	volatile s32            total_lines;
+	s32                     errorc;
+	s32                     max_error;
+	s32                     test_failc;
+	s32                     last_script_mode_run_status;
+	struct config          *config;
 	array(struct target *) targets;
 	struct threading_impl *threading;
 
@@ -91,7 +94,7 @@ enum builder_cur_pos { CARET_WORD = 0,
 struct location;
 
 // Initialize builder global instance with executable directory specified.
-void builder_init(const struct builder_options *options, const char *exec_dir);
+void builder_init(struct builder_options *options, const char *exec_dir);
 void builder_terminate(void);
 // Return zero terminated list of supported target triples. Must be disposed by bfree.
 char         **builder_get_supported_targets(void);
