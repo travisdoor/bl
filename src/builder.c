@@ -409,6 +409,7 @@ static void clear_stats(struct assembly *assembly) {
 static int compile(struct assembly *assembly) {
 	s32 state           = COMPILE_OK;
 	builder.total_lines = 0;
+	builder.errorc      = 0;
 
 	unit_stage_fn_t     *unit_pipeline     = NULL;
 	assembly_stage_fn_t *assembly_pipeline = NULL;

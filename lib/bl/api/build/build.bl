@@ -101,6 +101,7 @@
 //! ### Command line argumets
 //! All argumets passed after ``-build`` compiler flag are automatically forwarded into
 //! `command_line_arguments` global variable.
+//!
 
 /// Global builder options.
 BuilderOptions :: struct {
@@ -135,6 +136,7 @@ BuilderOptions :: struct {
 /// Returns copy of current builder options. These are by default initializad from command line
 /// arguments passed to the compiler.
 get_builder_options :: fn () BuilderOptions {
+	static_assert(sizeof(BuilderOptions) == 24);
 	opt: BuilderOptions;
 	__builder_get_options(&opt);
 	return opt;
@@ -142,6 +144,7 @@ get_builder_options :: fn () BuilderOptions {
 
 /// Overrides current builder options previously set from the command line or by calling this function.
 set_builder_options :: fn (opt: BuilderOptions) {
+	static_assert(sizeof(BuilderOptions) == 24);
 	__builder_set_options(&opt);
 }
 
@@ -319,7 +322,6 @@ add_unit :: fn (target: *Target, filepath: string_view) {
 }
 
 /// Start compilation of the `target` assembly and return `ok` or `error` in case compilation failed.
-/// Target is released after the compilation is done.
 compile :: fn (target: *Target) Error {
 	if !target { panic("Invalid target!"); }
 	state :: __compile(target);

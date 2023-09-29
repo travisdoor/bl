@@ -30,13 +30,13 @@ dl_test_lib :: fn () #test {
 	using Platform;
 	switch PLATFORM {
 		WINDOWS {
-			str_append(&lib_name, "test/test.dll");
+			str_append(&lib_name, "_test/test.dll");
 		}
 		LINUX {
-			str_append(&lib_name, "test/libtest.so");
+			str_append(&lib_name, "_test/libtest.so");
 		}
 		DARWIN {
-			str_append(&lib_name, "test/libtest.dylib");
+			str_append(&lib_name, "_test/libtest.dylib");
 		}
 		UNKNOWN { panic(); }
 	}

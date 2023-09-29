@@ -22,4 +22,7 @@ compile_commands.json
 /tests/out*
 /vs
 /build.bat
-/lib/bl/api/std/dlib/test
+/lib/bl/api/std/dlib/_test/test.dll
+/lib/bl/api/std/dlib/_test/test.lib
+/lib/bl/api/std/dlib/_test/test.obj
+/lib/bl/api/std/dlib/_test/test.pdb

@@ -94,7 +94,7 @@ void unit_delete(struct unit *unit) {
 	free(unit->name);
 	free(unit->filename);
 	ast_arena_terminate(&unit->ast_arena);
-	arena_terminate(&unit->ast_arena);
+	arena_terminate(&unit->sarr_arena);
 	tokens_terminate(&unit->tokens);
 	bfree(unit);
 }

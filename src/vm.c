@@ -1070,6 +1070,11 @@ void interp_extern_call(struct virtual_machine *vm, struct mir_instr_call *call,
 		       linkage_name.ptr);
 	}
 
+	case MIR_TYPE_BOOL: {
+		vm_write_as(s32, &result, dcCallInt(dvm, handle));
+		break;
+	}
+
 	default: {
 		str_buf_t type_name = mir_type2str(ret_type, true);
 		babort("Unsupported external call return type '%s'", str_to_c(type_name));

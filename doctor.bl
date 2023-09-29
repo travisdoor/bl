@@ -142,7 +142,7 @@ main :: fn () s32 {
 	if print_sections {
 		print("\nPrepare dependencies:\n");
 	}
-	test_file(&results, get_full_path("lib/bl/api/std/dlib/test"), TestKind.BUILD);
+	test_file(&results, get_full_path("lib/bl/api/std/dlib/_test"), TestKind.BUILD);
 
     // Test main suite
     if print_sections {

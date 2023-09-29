@@ -359,7 +359,7 @@ code :: fn (position_x: f32, position_y: f32, code: string_view, character_color
 		converted_bytes += decoded_bytes;
 
 		if utf32char == cast(u32) '\t' {
-			loop i := 0; i < font.tab_size; i += 1 {
+			loop i := 0; i < context.font.tab_size; i += 1 {
 				p.x += space_glyph_info.advance_x;
 			}
 			continue;

@@ -69,8 +69,12 @@ list_files_recursive :: fn (dirpath: string_view, out: *string) {
 
     visitor :: fn (info: *std.FileVisitInfo, data: *string) Error {
         using std;
-        if info.is_directory  { return OK; }
-        if info.filename[0] == '_' { return OK; }
+		ignore :: info.filename.len > 0 && info.filename[0] == '_';
+        if info.is_directory {
+			info.step_into_directory = !ignore;
+			return OK;
+		}
+		if ignore { return OK; }
         name, ext :: path_splitext(info.filename);
         sub_extension: string_view;
         if str_split_by_last(name, '.', null, &sub_extension) && str_match(sub_extension, "test") {
@@ -110,7 +114,7 @@ CONFIG ::
     "markdown_extensions:\n"
     "    - admonition\n"
     "extra_css:\n"
-    "    - extra.css\n" 
+    "    - extra.css\n"
     "extra:\n"
     "    version: 0.11.0\n"
     "nav:\n"
