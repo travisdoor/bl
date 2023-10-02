@@ -646,19 +646,23 @@ text_size :: fn (text: string_view, font: *Font, _len := -1) (width: f32, height
 	return ceil(w), font.height;
 }
 
-get_character_count_to_fit :: fn (text: string_view, font: *Font, fit_to: f32) s32 {
+get_character_count_to_fit :: fn (text: string_view, font: *Font, fit_to: f32, split_by_words := false) s32 {
 	assert(font);
 	w := 0.f;
-	converted_bytes, num: s32;
+	converted_bytes, num, last_space_position: s32;
+	space_glyph :: get_glyph_utf32(font, cast(u32) ' ');
 	loop converted_bytes < text.len {
-		word :: std.str_sub(text, converted_bytes);
+		rest :: std.str_sub(text, converted_bytes);
 		glyph: *GlyphInfo;
-		if word[0] == '\t' {
-			glyph = get_glyph_utf32(font, cast(u32) ' ');
+		if rest[0] == '\t' {
+			w += space_glyph.advance_x * auto font.tab_size;
 			converted_bytes += 1;
-			w += glyph.advance_x * auto font.tab_size;
+		} else if split_by_words && rest[0] == ' ' {
+			w += space_glyph.advance_x;
+			last_space_position = converted_bytes;
+			converted_bytes += 1;
 		} else {
-			utf32char, decoded_bytes, err_decode := utf8_to_utf32_single_char(word);
+			utf32char, decoded_bytes, err_decode := utf8_to_utf32_single_char(rest);
 			if err_decode {
 				utf32char = auto '?';
 				decoded_bytes = 1;
@@ -668,11 +672,23 @@ get_character_count_to_fit :: fn (text: string_view, font: *Font, fit_to: f32) s
 			w += glyph.advance_x;
 		}
 		if w > fit_to {
+			if last_space_position > 0 {
+				return last_space_position;
+			}
 			return num;
 		}
 		num += 1;
 	}
 	return num;
+}
+
+split_text_to_fit :: fn (text: string_view, font: *Font, fit_to: f32, split_by_words := false) (left: string_view, right: string_view) {
+	if text.len == 0 { return "", ""; }
+	num :: get_character_count_to_fit(text, font, fit_to, split_by_words);
+	if num == 0 { return "", text; }
+	if num == text.len { return text, ""; }
+
+	return slice_range(text, 0, num), slice_range(text, num+1, text.len);
 }
 
 set_scissor :: fn (position_x: f32, position_y: f32, width: f32, height: f32) {
