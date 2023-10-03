@@ -8,10 +8,6 @@ __gl_get_proc :: fn (proc_name: string) *u8 {
 		return null;
 	}
 
-	sym, err2 :: std.library_get_symbol(module, proc_name);
-	if err2 {
-		print_err("GL Error: %", err2);
-		return null;
-	}
+	sym :: std.library_get_symbol(module, proc_name);
 	return sym;
 }

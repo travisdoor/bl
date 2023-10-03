@@ -108,11 +108,7 @@ __gl_get_proc :: fn (proc_name: string_view) *u8 {
 	}
 	defer std.library_close(module);
 
-	sym, err2 :: std.library_get_symbol(module, proc_name);
-	if err2 {
-		print_err("[GL]: % (%)", err2, proc_name);
-		return null;
-	}
+	sym :: std.library_get_symbol(module, proc_name);
 	return sym;
 }
 
