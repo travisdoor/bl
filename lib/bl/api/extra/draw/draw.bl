@@ -837,7 +837,7 @@ do_render :: fn () {
 	defer shader_unuse();
 
     if context.shader == &text_shader {
-     	gl.BlendFunc(GL_SRC1_COLOR, GL_ONE_MINUS_SRC1_COLOR);
+		gl.BlendFunc(GL_SRC1_COLOR, GL_ONE_MINUS_SRC1_COLOR);
     } else {
         gl.BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
@@ -1235,10 +1235,10 @@ font_library_init :: fn () Error {
 	if err != 0 {
 		return error("Cannot initialize freetype! (%)", err);
 	}
-	//module :: "cff";
-	//prop :: "hinting-engine";
-	//hinting_engine :: FreeType.HINTING_ADOBE;
-	//FreeType.Property_Set(freetype_library, auto module.ptr, auto prop.ptr, auto &hinting_engine);
+	// module :: "cff";
+	// prop :: "hinting-engine";
+	// hinting_engine :: FreeType.HINTING_ADOBE;
+	// FreeType.Property_Set(freetype_library, auto module.ptr, auto prop.ptr, auto &hinting_engine);
 	return OK;
 }
 

@@ -3,7 +3,7 @@
 #scope glm
 
 //! # GLM
-//! 
+//!
 //! `#import "extra/glm"`
 //!
 //! 3D math tools.
@@ -129,21 +129,24 @@ mat4_zero :: fn (m: *mat4) #inline {
 
 mat4_init_perspective :: fn (m: *mat4, fov_rad: f32, aspect: f32, near: f32, far: f32) #inline {
 	mat4_identity(m);
-	thf :: std.tan(fov_rad * 0.5f );
-	(@m)[0][0] = 1.f / (aspect * thf);
-	(@m)[1][1] = 1.f / thf; 
-	(@m)[2][2] = - (far + near) / (far - near);
-	(@m)[2][3] = - 1.f;
-	(@m)[3][2] = - (2.f * far * near) / (far - near);
+
+	f  :: 1.0f / std.tan(fov_rad * 0.5f);
+	f2 :: 1.0f / (near - far);
+
+	(@m)[0][0] = f / aspect;
+	(@m)[1][1] = f;
+	(@m)[2][2] =-(near + far) * f2;
+	(@m)[2][3] = 1.0f;
+	(@m)[3][2] = 2.0f * near * far * f2;
 }
 
 mat4_init_ortho :: fn (m: *mat4, left: f32, right: f32, bottom: f32, top: f32, near: f32, far: f32) {
 	mat4_identity(m);
-  
+
 	rl :: 1.0f / (right - left);
 	tb :: 1.0f / (top   - bottom);
 	f  ::-1.0f / (far   - near);
-  
+
 	(@m)[0][0] = 2.0f * rl;
 	(@m)[1][1] = 2.0f * tb;
 	(@m)[2][2] = 2.0f * f;
@@ -162,17 +165,20 @@ mat4_init_look :: fn (m: *mat4, eye: v3, direction: v3, up: v3) {
 
 	w :: normalize(direction);
 	u :: normalize(cross(w, up));
-	v :: cross(w, u);
+	v :: cross(u, w);
 
 	(@m)[0][0] = u.x;
-	(@m)[1][0] = u.y;
-	(@m)[2][0] = u.z;
 	(@m)[0][1] = v.x;
-	(@m)[1][1] = v.y;
-	(@m)[2][1] = v.z;
 	(@m)[0][2] = w.x;
+
+	(@m)[1][0] = u.y;
+	(@m)[1][1] = v.y;
 	(@m)[1][2] = w.y;
+
+	(@m)[2][0] = u.z;
+	(@m)[2][1] = v.z;
 	(@m)[2][2] = w.z;
+
 	(@m)[3][0] = -dot(u, eye);
 	(@m)[3][1] = -dot(v, eye);
 	(@m)[3][2] = -dot(w, eye);
@@ -277,7 +283,7 @@ mat4_mul_v3 :: fn (mat: *mat4, v: v3) v3 #inline {
 	return out;
 }
 
-/// Initialize `m` matrix as translation matrix. 
+/// Initialize `m` matrix as translation matrix.
 mat4_init_translation :: fn (m: *mat4, v: v3) #inline {
 	mat4_init(
 		m,
@@ -304,7 +310,7 @@ mat4_get_translation :: fn (m: *mat4) v3 #inline {
 /// Initialize `m` matrix as scale matrix.
 mat4_init_scale :: fn (m: *mat4, s: v3) #inline {
 	mat4_init(
-		m, 
+		m,
 		s.x, 0.f, 0.f, 0.f,
 		0.f, s.y, 0.f, 0.f,
 		0.f, 0.f, s.z, 0.f,
@@ -336,7 +342,7 @@ mat4_get_scale :: fn (m: *mat4) v3 {
 
 /// Initialize rotation matrix `m` from quaternion `q`.
 mat4_init_rotation_quat :: fn (m: *mat4, q: quat) #inline {
-	norm :: length(q); 
+	norm :: length(q);
 	s := 0.f;
 	if norm > 0.f { s = 2.f / norm; }
 
@@ -583,7 +589,7 @@ v2_add_s :: fn (a: v2, v: f32) v2 #inline {
 	return v2.{ a.x + v, a.y + v };
 };
 
-v3_add :: fn (a: v3, b: v3) v3 #inline 
+v3_add :: fn (a: v3, b: v3) v3 #inline
 {
 	return v3.{ a.x + b.x, a.y + b.y, a.z + b.z };
 };
@@ -592,7 +598,7 @@ v3_add_s :: fn (a: v3, b: f32) v3 #inline {
 	return v3.{ a.x + b, a.y + b, a.z + b };
 };
 
-v4_add :: fn (a: v4, b: v4) v4 #inline 
+v4_add :: fn (a: v4, b: v4) v4 #inline
 {
 	return v4.{ a.x + b.x, a.y + b.y, a.z + b.z, a.w - b.w };
 };
@@ -707,7 +713,7 @@ v4_normalize :: fn (v: v4) v4 #inline {
 };
 
 // =================================================================================================
-// compare 
+// compare
 // =================================================================================================
 // @Incomplete: epsilon with default value?
 v2_compare :: fn (a: v2, b: v2, epsilon := std.F32_EPSILON) bool #inline {
