@@ -1799,12 +1799,19 @@ struct ast *parse_type_arr(struct context *ctx) {
 	if (!tok_begin) return_zone(NULL);
 
 	struct ast *arr        = ast_create_node(ctx->ast_arena, AST_TYPE_ARR, tok_begin, scope_get(ctx));
-	arr->data.type_arr.len = parse_expr(ctx);
-	if (!arr->data.type_arr.len) {
+	struct ast *len        = parse_expr(ctx);
+	arr->data.type_arr.len = len;
+
+	if (!len) {
 		struct token *tok_err = tokens_peek(ctx->tokens);
 		report_error(EXPECTED_EXPR, tok_err, CARET_WORD, "Expected array size expression.");
 		tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
 		return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
+	}
+
+	if (len->kind == AST_REF) {
+		bassert(len->data.ref.ident);
+		arr->data.type_arr.is_len_inferred_from_compound = is_ignored_id(&len->data.ref.ident->data.ident.id);
 	}
 
 	struct token *tok_end = tokens_consume_if(ctx->tokens, SYM_RBRACKET);

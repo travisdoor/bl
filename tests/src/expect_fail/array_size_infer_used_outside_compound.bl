@@ -1,0 +1,5 @@
+// @ERR_INVALID_ARR_SIZE@
+main :: fn () s32 {
+	return 0;
+}
+foo :: fn (v: [_]s32) {}

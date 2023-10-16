@@ -1,6 +1,6 @@
 # Types
 
-## Fundamental Types 
+## Fundamental Types
 
 | Name        | Description                   |
 |-------------|-------------------------------|
@@ -36,7 +36,7 @@ pointers :: fn () #test {
 
 ## Array Type
 
-The array is an aggregate type of multiple values of the same type. Size value must be known in compile-time. Arrays can be inline initialized with compound block; type is required. Zero initializers can be used for zero initializations of whole array storage, otherwise, we must specify a value for every element in an array.
+The array is an aggregate type of multiple values of the same type. Size value must be known in compile-time (unless it's not explicitly marked for automatic element count detection based on content of compound expression). Arrays can be inline initialized with compound block; type is required. Zero initializers can be used for zero initializations of whole array storage, otherwise, we must specify a value for every element in an array.
 
 ```rust
 array_type :: fn () #test {
@@ -47,8 +47,9 @@ array_type :: fn () #test {
     arr1.ptr; // yields pointer to first element '&arr[0]'
 
     // inline initialization of array type
-    arr2 := [10].s32{};            // Initialize all elements to 0. 
+    arr2 := [10].s32{};            // Initialize all elements to 0.
     arr3 := [4]s32.{ 1, 2, 3, 4 }; // Initialize array to the sequence 1, 2, 3, 4
+    arr4 := [_]s32.{ 1, 2, 3, 4 ]; // The same as previous one but the legth of the array is set automatically.
 };
 ```
 
@@ -132,19 +133,19 @@ Inline initialization is also possible. We can use a compound expression to set 
 main :: fn () s32 {
     // Set all data in person to 0
     my_person1 := Person.{};
-   
+
     // Initialize all members.
     my_person2 := Person.{ 1, "Martin", 20 };
-    
+
     // We can explicitly name the members we want to initialize.
     my_person3 := Person.{ id = 1, name = "Martin", age = 20 };
 
-    // We can change the order. 
+    // We can change the order.
     my_person4 := Person.{ name = "Martin", age = 20, id = 1 };
-    
+
     // Or initialize only something. In such a case the rest is initialized to 0 by default.
     my_person5 := Person.{ name = "Martin" };
-    
+
     return 0;
 }
 ```
@@ -271,7 +272,7 @@ consumer :: fn (token: *Token, kind: TokenKind) {
 
 ## Any Type
 
-Any type is a special builtin structure containing the pointer to TypeInfo and to the data. Any value can be implicitly casted to this type while passed into a function. 
+Any type is a special builtin structure containing the pointer to TypeInfo and to the data. Any value can be implicitly casted to this type while passed into a function.
 
 ```rust
 Any :: struct #compiler {
@@ -360,7 +361,7 @@ So in comparison to conventional enumerators, bunch of binary operations are all
 
 !!! note
      It's possible to do an implicit casting of flags enumerators to its base type.
-     
+
 
 ## Type Casting
 

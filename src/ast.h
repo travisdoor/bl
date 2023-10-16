@@ -225,6 +225,14 @@ struct ast_decl_variant {
 struct ast_type_arr {
 	struct ast *elem_type;
 	struct ast *len;
+
+	// Array element count might be inferred from count of elements of compound initializer.
+	// This way we allow [_]s32.{ 1, 2, 3 } syntax to automatically "replace" underscore with
+	// number of elements.
+	//
+	// Might be true only when type is used in compound initializer, otherwise error should be
+	// reported to the user.
+	bool is_len_inferred_from_compound;
 };
 
 struct ast_type_poly {

@@ -667,7 +667,7 @@ static struct mir_instr *ast_ref(struct context *ctx, struct ast *ref);
 static struct mir_instr *ast_type_struct(struct context *ctx, struct ast *type_struct);
 static struct mir_instr *ast_type_fn(struct context *ctx, struct ast *type_fn);
 static struct mir_instr *ast_type_fn_group(struct context *ctx, struct ast *group);
-static struct mir_instr *ast_type_arr(struct context *ctx, struct ast *type_arr);
+static struct mir_instr *ast_type_arr(struct context *ctx, struct ast *type_arr, s64 override_len);
 static struct mir_instr *ast_type_slice(struct context *ctx, struct ast *type_slice);
 static struct mir_instr *ast_type_dynarr(struct context *ctx, struct ast *type_dynarr);
 static struct mir_instr *ast_type_ptr(struct context *ctx, struct ast *type_ptr);
@@ -9828,16 +9828,31 @@ struct mir_instr *ast_tag(struct context *ctx, struct ast *tag) {
 	return ast(ctx, tag->data.tag.expr);
 }
 
+static bool is_array_size_inferred(struct ast *node) {
+	if (!node || node->kind != AST_EXPR_TYPE) return false;
+	node = node->data.expr_type.type;
+	if (!node || node->kind != AST_TYPE_ARR) return false;
+	return node->data.type_arr.is_len_inferred_from_compound;
+}
+
 struct mir_instr *ast_expr_compound(struct context *ctx, struct ast *cmp) {
 	ast_nodes_t      *ast_values = cmp->data.expr_compound.values;
 	struct ast       *ast_type   = cmp->data.expr_compound.type;
 	struct mir_instr *type       = NULL;
 	bassert(ast_type);
 
-	type = ast(ctx, ast_type);
+	const usize valc = ast_values ? sarrlenu(ast_values) : 0;
+
+	// Check if type is array type with inferred count of elements [_]T.
+	if (is_array_size_inferred(ast_type)) {
+		bassert(ast_type->kind == AST_EXPR_TYPE);
+		type = ast_type_arr(ctx, ast_type->data.expr_type.type, (s64)valc);
+	} else {
+		type = ast(ctx, ast_type);
+	}
 	bassert(type);
 	if (!ast_values) return append_instr_compound(ctx, cmp, type, NULL, false);
-	const usize   valc   = sarrlenu(ast_values);
+
 	mir_instrs_t *values = arena_alloc(&ctx->assembly->arenas.sarr);
 	sarrsetlen(values, valc);
 	struct ast       *ast_value;
@@ -10845,7 +10860,8 @@ struct mir_instr *ast_type_fn_group(struct context *ctx, struct ast *group) {
 	return append_instr_type_fn_group(ctx, group, id, variants);
 }
 
-struct mir_instr *ast_type_arr(struct context *ctx, struct ast *type_arr) {
+struct mir_instr *ast_type_arr(struct context *ctx, struct ast *type_arr, s64 override_len) {
+	bassert(type_arr && type_arr->kind == AST_TYPE_ARR);
 	struct id *id              = ctx->ast.current_entity_id;
 	ctx->ast.current_entity_id = NULL;
 
@@ -10853,7 +10869,18 @@ struct mir_instr *ast_type_arr(struct context *ctx, struct ast *type_arr) {
 	struct ast *ast_len       = type_arr->data.type_arr.len;
 	bassert(ast_elem_type && ast_len);
 
-	struct mir_instr *len       = ast(ctx, ast_len);
+	struct mir_instr *len;
+	if (override_len == -1) {
+		if (type_arr->data.type_arr.is_len_inferred_from_compound) {
+			report_error(INVALID_ARR_SIZE, ast_len, "Automatic array length detection can be used only in compound array initializers "
+			                                        "where count of elements is explicitly specified.");
+		}
+		len = ast(ctx, ast_len);
+	} else {
+		bassert(override_len >= 0);
+		len = append_instr_const_int(ctx, ast_len, ctx->builtin_types->t_s64, (u64)override_len);
+	}
+
 	struct mir_instr *elem_type = ast(ctx, ast_elem_type);
 	return append_instr_type_array(ctx, type_arr, id, elem_type, len);
 }
@@ -11141,7 +11168,7 @@ struct mir_instr *ast(struct context *ctx, struct ast *node) {
 	case AST_TYPE_FN_GROUP:
 		return ast_type_fn_group(ctx, node);
 	case AST_TYPE_ARR:
-		return ast_type_arr(ctx, node);
+		return ast_type_arr(ctx, node, -1);
 	case AST_TYPE_SLICE:
 		return ast_type_slice(ctx, node);
 	case AST_TYPE_DYNARR:

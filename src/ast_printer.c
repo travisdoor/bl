@@ -482,6 +482,10 @@ void print_expr_call(struct ast *call, s32 pad, FILE *stream) {
 void print_expr_compound(struct ast *expr_compound, s32 pad, FILE *stream) {
 	print_head(expr_compound, pad, stream);
 
+	if (expr_compound->data.expr_compound.type) {
+		print_node(expr_compound->data.expr_compound.type, pad + 1, stream);
+	}
+
 	ast_nodes_t *exprs = expr_compound->data.expr_compound.values;
 	for (usize i = 0; i < sarrlenu(exprs); ++i) {
 		struct ast *value = sarrpeek(exprs, i);

@@ -5,4 +5,9 @@ type_infer :: fn () #test {
     boolean := true;
     float := 0.1f;
     double := 0.1;
-};
+}
+
+array_len_infer :: fn () #test {
+	arr :: [_]s32.{ 1, 2, 3 };
+	test_eq(arr.len, 3);
+}

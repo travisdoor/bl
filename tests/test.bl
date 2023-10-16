@@ -15,10 +15,7 @@ enum_variants_to_string_list :: fn (TEnum: type #comptime) [enum_count(TEnum)]st
 }
 */
 
-#import "std/dlib"
-
 main :: fn () s32 {
-	std.library_open();
 	return 0;
 }
 
