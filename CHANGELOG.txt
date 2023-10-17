@@ -9,6 +9,7 @@ Add fmod and trunc math functions.
 Add dlib VM runtime support.
 Add --dirty-mode compiler flag.
 Add builder configuration api for build pipelines.
+Add automatic static array element count using [_]s32 syntax for compound initializers.
 Fix rpmalloc missing terminations for threads causing deadlocks sometimes.
 Fix invalid position of vargs generated before call causing stack problem in VM execution.
 Fix reports of unused symbols declared after usage in local scopes.
