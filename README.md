@@ -71,9 +71,12 @@ Text editor I use.
 
 <div style="text-align:center"><img src="logo/the_editor.png" /></div>
 
+Download [here](https://travisdp.itch.io/tine).
+Source code [here](https://github.com/travisdoor/tine).
+
 ### Vulkan Renderer & The Game
 
-Screenshot of unnamed 3D game created using BL.
+Screenshot of an unnamed 3D experimental game created using BL.
 
 <div style="text-align:center"><img src="logo/the_game.png" /></div>
 
