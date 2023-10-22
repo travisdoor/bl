@@ -10,8 +10,8 @@
 The Biscuit Language (BL) is a simple imperative programming language using LLVM backend and compiler implemented in C.
 Language syntax and all its features are still in development. Biscuit is designed to be simple, fast and explicit.
 
-Project homepage: [biscuitlang.org](https://biscuitlang.org)
-Contact email: [biscuitlang@gmail.com](mailto:biscuitlang@gmail.com)
+- Project homepage: [biscuitlang.org](https://biscuitlang.org)
+- Contact email: [biscuitlang@gmail.com](mailto:biscuitlang@gmail.com)
 
 # Features
 * Strongly typed.
@@ -70,11 +70,10 @@ https://discord.gg/DDTCcYzb9h
 
 Text editor I use.
 
+- Download [here](https://travisdp.itch.io/tine).
+- Source code [here](https://github.com/travisdoor/tine).
+
 <div style="text-align:center"><img src="logo/the_editor.png" /></div>
-
-Download [here](https://travisdp.itch.io/tine).
-
-Source code [here](https://github.com/travisdoor/tine).
 
 ### Vulkan Renderer & The Game
 
@@ -85,6 +84,6 @@ Screenshot of an unnamed 3D experimental game created using BL.
 
 ### Space Shooter
 
-Source code [here](https://github.com/travisdoor/bl/tree/master/how-to/gunner).
+- Source code [here](https://github.com/travisdoor/bl/tree/master/how-to/gunner).
 
 <div style="text-align:center"><img src="how-to/gunner/gunner.gif" /></div>
