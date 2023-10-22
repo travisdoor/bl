@@ -64,6 +64,7 @@ See more examples [here](https://biscuitlang.org/how-to/).
 
 https://discord.gg/DDTCcYzb9h
 
+# Projects Using BL
 
 ### Tine Text Editor
 
@@ -72,6 +73,7 @@ Text editor I use.
 <div style="text-align:center"><img src="logo/the_editor.png" /></div>
 
 Download [here](https://travisdp.itch.io/tine).
+
 Source code [here](https://github.com/travisdoor/tine).
 
 ### Vulkan Renderer & The Game
