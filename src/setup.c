@@ -88,7 +88,7 @@ bool setup(const str_t filepath, const char *triple) {
 #else
 		state = default_config(&ctx);
 #endif
-	} else if (strcmp(ctx.triple, "x86_64-pc-linux-gnu") == 0) {
+	} else if (strcmp(ctx.triple, "x86_64-pc-linux-gnu") == 0 || strcmp(ctx.triple, "x86_64-unknown-linux-gnu") == 0) {
 		state = x86_64_pc_linux_gnu(&ctx);
 	} else if (strcmp(ctx.triple, "x86_64-apple-darwin") == 0) {
 		state = x86_64_apple_darwin(&ctx);
