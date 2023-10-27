@@ -4,3 +4,5 @@ src: "pthread.bl"
 x86_64-pc-linux-gnu:
   linker_opt: "-lpthread"
 
+x86_64-unknown-linux-gnu:
+  linker_opt: "-lpthread"

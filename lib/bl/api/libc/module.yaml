@@ -8,6 +8,10 @@ x86_64-pc-linux-gnu:
   src: "glibc/libc.bl"
   linker_opt: "-lc -lm"
 
+x86_64-unknown-linux-gnu:
+  src: "glibc/libc.bl"
+  linker_opt: "-lc -lm"
+
 x86_64-apple-darwin:
   src: "darwin/libc.bl:darwin/x86_64.bl"
   linker_opt: "-lc -lm"
