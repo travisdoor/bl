@@ -32,7 +32,7 @@ Loads source code in a single file into the current global scope of your project
 ** Lookup order: **
 
 - Current file parent directory.
-- BL API directory set in `install-location/bl.yaml`.
+- BL API directory set in `install-location/etc/bl.yaml`.
 - System *PATH* environment variable.
 
 ### Import
