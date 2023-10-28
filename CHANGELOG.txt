@@ -13,6 +13,7 @@ Add automatic static array element count using [_]s32 syntax for compound initia
 Fix rpmalloc missing terminations for threads causing deadlocks sometimes.
 Fix invalid position of vargs generated before call causing stack problem in VM execution.
 Fix reports of unused symbols declared after usage in local scopes.
+Add support for x86_64-unknown-linux-gnu target architecture triple.
 
 0.10.0 - PRE-RELEASE
 ---------------------------------------------------------------------------------------
