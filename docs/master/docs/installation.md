@@ -154,3 +154,10 @@ x86_64-pc-windows-msvc:
     linker_lib_path: "C:/Program Files (x86)/Windows Kits/10/Lib/10.0.22000.0/ucrt/x64;C:/Program Files (x86)/Windows Kits/10/Lib/10.0.22000.0/um/x64;C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.32.31326//lib/x64"
 ```
 
+## Unit Tests
+
+To run compiler unit tests use:
+```
+cd path/to/git/root/directory
+blc -run doctor.bl
+```
