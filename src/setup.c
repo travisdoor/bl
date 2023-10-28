@@ -74,8 +74,7 @@ bool setup(const str_t filepath, const char *triple) {
 	str_buf_t libdir = get_tmp_str();
 	str_buf_append_fmt(&libdir, "{s}/{s}", builder_get_exec_dir(), BL_API_DIR);
 	if (!normalize_path(&libdir)) {
-		builder_error(
-		    "BL API directory not found. (Expected location is '%.*s').", libdir.len, libdir.ptr);
+		builder_error("BL API directory not found. (Expected location is '%.*s').", libdir.len, libdir.ptr);
 		put_tmp_str(libdir);
 		return false;
 	}

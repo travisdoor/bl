@@ -44,6 +44,10 @@ static char *get_exec_dir(void) {
 	return strdup(tmp);
 }
 
+static void get_config_file_location(str_buf_t* filepath) {
+	str_buf_append_fmt(filepath, "{s}/../{s}", builder_get_exec_dir(), BL_CONFIG_FILE);
+}
+
 static bool generate_conf(void) {
 	struct target_triple triple;
 	if (!target_init_default_triple(&triple)) {
@@ -53,7 +57,7 @@ static bool generate_conf(void) {
 	target_triple_to_string(&triple, triple_str, static_arrlenu(triple_str));
 	blog("Triple: %s", triple_str);
 	str_buf_t filepath = get_tmp_str();
-	str_buf_append_fmt(&filepath, "{s}/../{s}", builder_get_exec_dir(), BL_CONFIG_FILE);
+	get_config_file_location(&filepath);
 	const bool state = setup(str_buf_view(filepath), triple_str);
 	put_tmp_str(filepath);
 	return state;
@@ -65,7 +69,7 @@ static bool load_conf_file(const char *custom_conf_filepath) {
 		str_buf_append_fmt(&filepath, "{s}", custom_conf_filepath);
 		builder_info("Using custom configuration file: '%.*s'", filepath.len, filepath.ptr);
 	} else {
-		str_buf_append_fmt(&filepath, "{s}/../{s}", builder_get_exec_dir(), BL_CONFIG_FILE);
+		get_config_file_location(&filepath);
 	}
 	if (!file_exists2(filepath)) {
 		if (custom_conf_filepath) {
@@ -109,6 +113,7 @@ typedef struct ApplicationOptions {
 	bool print_host_triple;
 	bool print_supported;
 	bool where_is_api;
+	bool where_is_config;
 	bool configure;
 	bool do_cleanup_when_done;
 } ApplicationOptions;
@@ -279,6 +284,13 @@ void print_where_is_api(FILE *stream) {
 	fprintf(stream, "%s", builder_get_lib_dir());
 }
 
+void print_where_is_config(FILE *stream) {
+	str_buf_t filepath = get_tmp_str();
+	get_config_file_location(&filepath);
+	fprintf(stream, "%.*s", filepath.len, filepath.ptr);
+	put_tmp_str(filepath);
+}
+
 void print_host_triple(FILE *stream) {
 	struct target_triple triple;
 	if (target_init_default_triple(&triple)) {
@@ -419,6 +431,11 @@ int main(s32 argc, char *argv[]) {
 	        .name       = "--where-is-api",
 	        .property.b = &opt.app.where_is_api,
 	        .help       = "Print path to API folder and exit.",
+	    },
+	    {
+	        .name       = "--where-is-config",
+	        .property.b = &opt.app.where_is_config,
+	        .help       = "Print path to default 'bl.yaml' configuration file and exit.",
 	    },
 	    {
 	        .name       = "--target-host",
@@ -714,6 +731,11 @@ SKIP:
 
 	if (opt.app.where_is_api) {
 		print_where_is_api(stdout);
+		EXIT(EXIT_SUCCESS);
+	}
+
+	if (opt.app.where_is_config) {
+		print_where_is_config(stdout);
 		EXIT(EXIT_SUCCESS);
 	}
 

@@ -1,10 +1,6 @@
 cmake_minimum_required(VERSION 3.3)
 project(bl VERSION 0.11.0)
 
-#Must use GNUInstallDirs to install libraries into correct locations on all
-#platforms.
-include(GNUInstallDirs)
-
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -12,6 +8,12 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_INCLUDE_HEADERS_IN_COMPILE_COMMANDS ON)
 set(HAVE_64_BIT 1)
+
+if(NOT CMAKE_INSTALL_PREFIX)
+    set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/bl" CACHE STRING "Destination directory used to install BL." FORCE)
+endif()
+
+message(STATUS "Installation prefix set to: '${CMAKE_INSTALL_PREFIX}'.")
 
 set(BL_DEPS_REMOTE biscuitlang.org/releases)
 set(BL_DEPS_DIR ${CMAKE_SOURCE_DIR}/deps)
@@ -45,7 +47,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 set(PDB_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_SOURCE_DIR}/bin")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_SOURCE_DIR}/bin")
-set(BL_CONFIG_FILE ${CMAKE_INSTALL_SYSCONFDIR}/bl.yaml)
+set(BL_CONFIG_FILE bl.yaml)
 set(BL_API_DIR "../lib/bl/api") # relative to the executable
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
@@ -96,12 +98,12 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     set(BL_LLD_EXE "bl-lld.exe")
     set(BL_LINKER ${BL_LLD_EXE})
 
-#Installation step for VSWHERE
+    # Installation step for VSWHERE
 	install(
-      FILES ${BL_VSWHERE}
-      PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
-      DESTINATION ${CMAKE_INSTALL_BINDIR}
-      RENAME ${BL_VSWHERE_EXE}
+        FILES ${BL_VSWHERE}
+        PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+        RENAME ${BL_VSWHERE_EXE}
 	)
 endif()
 
@@ -267,10 +269,8 @@ set_target_properties(dlib
 # Installation
 
 # 'make install' to the correct locations (provided by GNUInstallDirs).
-install(TARGETS blc RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-
-install(DIRECTORY lib/bl/api DESTINATION ${CMAKE_INSTALL_LIBDIR}/bl)
-install(DIRECTORY lib/bl/rt DESTINATION ${CMAKE_INSTALL_LIBDIR}/bl)
+install(TARGETS blc RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
+install(DIRECTORY lib/bl DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
 
 # Copy LLD executable into output directory
 if(NOT EXISTS ${LLD_BIN})
@@ -287,7 +287,7 @@ endif()
 install(
     FILES ${LLD_BIN}
     PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
-    DESTINATION ${CMAKE_INSTALL_BINDIR}
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
     RENAME ${BL_LLD_EXE}
 )
 

@@ -6,6 +6,7 @@ Currently only installation from the source code is possible.
 
 * `x86_64-pc-windows-msvc`
 * `x86_64-pc-linux-gnu`
+* `x86_64-unknown-linux-gnu`
 * `x86_64-apple-darwin`
 * `arm64-apple-darwin` (experimental)
 
@@ -25,7 +26,7 @@ cmake .. -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Release
 cmake --build . --config Release
 ```
 
-* Add `bin` directory to the system `PATH`. 
+* Add `bin` directory to the system `PATH`.
 
 **In Powershell:**
 ```
@@ -40,7 +41,7 @@ cmake --build . --config Release
 * Install needed tools
 ```bash
 apt-get install git cmake build-essential llvm-16-dev
-```  
+```
 * Download and compile
 
 ```bash
@@ -52,7 +53,7 @@ cmake ..
 make
 ```
 
-* Add `bin` directory to the system `PATH`. 
+* Add `bin` directory to the system `PATH`.
 
 ```bash
 export PATH=$PATH:/path/to/your/bl/bin
@@ -71,13 +72,13 @@ cd build
 cmake ..
 make
 ```
-    
-* Add `bin` directory to the system `PATH`. 
+
+* Add `bin` directory to the system `PATH`.
 
 ```bash
 export PATH=$PATH:/path/to/your/bl/bin
 ```
 
-!!! warning 
-    ARM support is experimental. 
+!!! warning
+    ARM support is experimental.
 

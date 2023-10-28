@@ -69,7 +69,7 @@ Options:
 
 ## Configuration
 
-Use `blc --config` to change compiler configuration; this command generates a new `etc/bl.yaml` configuration file containing all the needed information about your system. This configuration runs automatically in case the config file was not found.
+Use `blc --config` to change compiler configuration; this command generates a new `bl.yaml` configuration file containing all the needed information about your system. This configuration runs automatically in case the config file was not found.
 
 ## Execution Status
 

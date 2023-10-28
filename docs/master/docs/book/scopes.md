@@ -32,7 +32,7 @@ Loads source code in a single file into the current global scope of your project
 ** Lookup order: **
 
 - Current file parent directory.
-- BL API directory set in install location/etc/bl.yaml.
+- BL API directory set in `install-location/bl.yaml`.
 - System *PATH* environment variable.
 
 ### Import
@@ -42,7 +42,7 @@ Loads source code in a single file into the current global scope of your project
 ```
 
 The import is supposed to be used with BL [modules](/book/modules).
- 
+
 See also [Module Import Policy](/modules/build/#moduleimportpolicy).
 
 ## Named Scope
@@ -66,7 +66,7 @@ main :: fn () s32 {
 	return 0;
 }
 ```
-The named scope in *utils.bl* file is now introduced by `#scope` directive followed by the scope name. Everything in the file after the `#scope` directive is added into *utils* named scope. There is currently no possibility to create named scope nested in another named scope; this restriction mainly exists only to keep the scope structure relatively flat. 
+The named scope in *utils.bl* file is now introduced by `#scope` directive followed by the scope name. Everything in the file after the `#scope` directive is added into *utils* named scope. There is currently no possibility to create named scope nested in another named scope; this restriction mainly exists only to keep the scope structure relatively flat.
 
 As you can see, the `print_log` function is now accessible only through `.` operator and it's nested in the named scope called *utils*.
 
@@ -156,7 +156,7 @@ However, we can use this feature in *utils.bl* like this:
 set_output_color :: fn (color: Color) {
     using Color;
 	// Content of Color is now available in current scope.
-    
+
     switch color {
     	// No need to write 'Color.' before each variant.
         NORMAL {}

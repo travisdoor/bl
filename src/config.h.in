@@ -39,7 +39,7 @@
 #define BL_API_DIR "@BL_API_DIR@"
 #define BL_LINKER "@BL_LINKER@"
 
-// MULTIPLATFROM: os preload depends on target build platfrom and should be chosen in runtime later!
+// MULTIPLATFORM: os preload depends on target build platform and should be chosen in runtime later!
 #ifdef _WIN32
 #	define BL_PLATFORM_WIN 1
 #	define BL_PLATFORM_MACOS 0
