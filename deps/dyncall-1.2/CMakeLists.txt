@@ -5,7 +5,7 @@
 #
 # Copyright (c) 2010-2020 Daniel Adler <dadler@uni-goettingen.de>
 #                    2020 armasm64 support: Bernhard Urban-Forster <beurba@microsoft.com>
-# 
+#
 # Permission to use, copy, modify, and distribute this software for any
 # purpose with or without fee is hereby granted, provided that the above
 # copyright notice and this permission notice appear in all copies.
@@ -19,7 +19,7 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.5)
 project(DynCall C)
 
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "dyncall enables dynamic invocation of machine-level function calls")
