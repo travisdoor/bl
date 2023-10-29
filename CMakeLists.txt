@@ -217,6 +217,14 @@ else()
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0 -export-dynamic")
 endif()
 
+if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+    # Additional options just for linux.
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -export-dynamic")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -export-dynamic")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -export-dynamic")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -export-dynamic")
+endif()
+
 target_link_libraries(
     blc
     PRIVATE dynload_s
