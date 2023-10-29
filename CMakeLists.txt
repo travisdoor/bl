@@ -211,10 +211,10 @@ else()
     set(THREADS_PREFER_PTHREAD_FLAG ON)
     find_package(Threads REQUIRED)
     target_link_libraries(blc PRIVATE Threads::Threads)
-    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -O0")
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0")
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -export-dynamic")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -export-dynamic")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -O0 -export-dynamic")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0 -export-dynamic")
 endif()
 
 target_link_libraries(
@@ -268,7 +268,6 @@ set_target_properties(dlib
 
 # Installation
 
-# 'make install' to the correct locations (provided by GNUInstallDirs).
 install(TARGETS blc RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 install(DIRECTORY lib/bl DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
 

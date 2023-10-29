@@ -993,8 +993,7 @@ void interp_extern_call(struct virtual_machine *vm, struct mir_instr_call *call,
 
 	// call setup and clenup
 	if (!handle) {
-		builder_error(
-		    "External function '%.*s' not found!", linkage_name.len, linkage_name.ptr);
+		builder_error("External function '%.*s' not found!", linkage_name.len, linkage_name.ptr);
 		vm_abort(vm);
 		return;
 	}
