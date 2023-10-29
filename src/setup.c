@@ -217,9 +217,19 @@ FAILED:
 
 bool x86_64_pc_linux_gnu(struct context *ctx) {
 	const char *RUNTIME_PATH      = "lib/bl/rt/blrt_x86_64_linux.o";
-	const char *LINKER_LIB_PATH   = "/usr/lib:/usr/local/lib:/lib64:/usr/lib/x86_64-linux-gnu";
 	const char *LINKER_OPT_EXEC   = "-dynamic-linker /lib64/ld-linux-x86-64.so.2 -e _start";
 	const char *LINKER_OPT_SHARED = "--shared";
+
+	const str_t LINKER_LIB_PATHS[] = {
+		cstr("/lib"),
+		cstr("/lib64"),
+		cstr("/usr/lib"),
+		cstr("/usr/lib64"),
+		cstr("/usr/local/lib"),
+		cstr("/usr/local/lib64"),
+		cstr("/usr/lib/x86_64-linux-gnu"),
+		// Extend this in case we have some more known locations...
+	};
 
 	ctx->preload_file = cstr("os/_linux.bl");
 
@@ -233,15 +243,28 @@ bool x86_64_pc_linux_gnu(struct context *ctx) {
 	str_buf_t runtime = get_tmp_str();
 	str_buf_append_fmt(&runtime, "{s}/../{s}", builder_get_exec_dir(), RUNTIME_PATH);
 	if (!normalize_path(&runtime)) {
-		builder_error(
-		    "Runtime loader not found. (Expected location is '%.*s').", runtime.len, runtime.ptr);
+		builder_error("Runtime loader not found. (Expected location is '%.*s').", runtime.len, runtime.ptr);
 		put_tmp_str(runtime);
 		return false;
 	}
+
+	// Lookup all possible lib paths on the system.
+	str_buf_t lib_paths = get_tmp_str();
+	for (s32 i = 0; i < static_arrlenu(LINKER_LIB_PATHS); ++i) {
+		const str_t path = LINKER_LIB_PATHS[i];
+		if (file_exists2(path)) {
+			if (lib_paths.len > 0) {
+				str_buf_append(&lib_paths, cstr(":"));
+			}
+			str_buf_append(&lib_paths, path);
+		}
+	}
+
 	ctx->linker_opt_exec   = scprint(&ctx->cache, "{str} {s}", runtime, LINKER_OPT_EXEC);
 	ctx->linker_opt_shared = scprint(&ctx->cache, "{s}", LINKER_OPT_SHARED);
-	ctx->linker_lib_path   = scprint(&ctx->cache, "{s}", LINKER_LIB_PATH);
+	ctx->linker_lib_path   = scprint(&ctx->cache, "{str}", lib_paths);
 
+	put_tmp_str(lib_paths);
 	put_tmp_str(runtime);
 	return true;
 }
