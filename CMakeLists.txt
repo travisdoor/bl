@@ -217,8 +217,8 @@ else()
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0")
 endif()
 
-if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
-    # Additional options just for linux.
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    # Additional options just for gcc
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -export-dynamic")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -export-dynamic")
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -export-dynamic")
