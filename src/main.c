@@ -35,6 +35,7 @@
 #include <string.h>
 
 bool setup(const str_t filepath, const char *triple);
+void x86_64_run_test(void);
 
 static char *get_exec_dir(void) {
 	char tmp[PATH_MAX] = "";
@@ -44,7 +45,7 @@ static char *get_exec_dir(void) {
 	return strdup(tmp);
 }
 
-static void get_config_file_location(str_buf_t* filepath) {
+static void get_config_file_location(str_buf_t *filepath) {
 	str_buf_append_fmt(filepath, "{s}/../{s}", builder_get_exec_dir(), BL_CONFIG_FILE);
 }
 
@@ -116,6 +117,7 @@ typedef struct ApplicationOptions {
 	bool where_is_config;
 	bool configure;
 	bool do_cleanup_when_done;
+	bool test_x64;
 } ApplicationOptions;
 
 typedef struct Options {
@@ -438,6 +440,11 @@ int main(s32 argc, char *argv[]) {
 	        .help       = "Print path to default 'bl.yaml' configuration file and exit.",
 	    },
 	    {
+	        .name       = "--x64",
+	        .property.b = &opt.app.test_x64,
+	        .help       = "This is just for testing right now.",
+	    },
+	    {
 	        .name       = "--target-host",
 	        .property.b = &opt.app.print_host_triple,
 	        .help       = "Print current host target triple and exit.",
@@ -736,6 +743,12 @@ SKIP:
 
 	if (opt.app.where_is_config) {
 		print_where_is_config(stdout);
+		EXIT(EXIT_SUCCESS);
+	}
+
+	// @Cleanup
+	if (opt.app.test_x64) {
+		x86_64_run_test();
 		EXIT(EXIT_SUCCESS);
 	}
 

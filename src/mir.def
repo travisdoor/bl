@@ -26,7 +26,7 @@ union __INSTR_T {\
     struct mir_instr_addrof          addrof;\
     struct mir_instr_type_array      type_array;\
     struct mir_instr_type_slice      type_slice;\
-    struct mir_instr_type_dyn_arr     type_dynarr;\
+    struct mir_instr_type_dyn_arr    type_dynarr;\
     struct mir_instr_type_vargs      type_vargs;\
     struct mir_instr_type_ptr        type_ptr;\
     struct mir_instr_type_struct     type_struct;\
