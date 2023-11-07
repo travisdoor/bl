@@ -444,7 +444,11 @@ texture_init :: fn (texture: *Texture, directory: string_view, filename: string_
 	// @Incomplete: we should support custom allocators here.
 	assert(texture);
 	data: *u8;
-	err :: png_load_from_file(tprint("%/%", directory, filename), &data, &texture.width, &texture.height, &texture.bit_depth, &texture.format);
+	filepath := filename;
+	if directory.len > 0 {
+		filepath = tprint("%/%", directory, filename);
+	}
+	err :: png_load_from_file(filepath, &data, &texture.width, &texture.height, &texture.bit_depth, &texture.format);
 	if err { return err; }
 	gl_init_texture_2d(texture, data);
 	free(data);
@@ -576,8 +580,10 @@ font_generate_char_set :: fn (chars: string_view, out_set: *[..]u32) {
 /// we need to render some non-ascii unicode characters. Each loaded font must be terminated by [font_terminate](#drawfont_terminate).
 font_init_at_size :: fn (font: *Font, directory: string_view, filename: string_view, size: s32, char_set := []u32.{}) Error {
 	using FreeType;
-	filepath :: tprint("%/%", directory, filename);
-
+	filepath := filename;
+	if directory.len > 0 {
+		filepath = tprint("%/%", directory, filename);
+	}
 	face: *Face;
 	err :: New_Face(freetype_library, filepath.ptr, 0, &face);
 	defer Done_Face(face);
