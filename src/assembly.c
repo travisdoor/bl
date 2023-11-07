@@ -218,10 +218,7 @@ static void llvm_init(struct assembly *assembly) {
 }
 
 static void llvm_terminate(struct assembly *assembly) {
-	for (usize i = 0; i < arrlenu(assembly->llvm.modules); ++i) {
-		LLVMDisposeModule(assembly->llvm.modules[i]);
-	}
-	arrfree(assembly->llvm.modules);
+	LLVMDisposeModule(assembly->llvm.module);
 	LLVMDisposeTargetMachine(assembly->llvm.TM);
 	LLVMDisposeTargetData(assembly->llvm.TD);
 	LLVMContextDispose(assembly->llvm.ctx);

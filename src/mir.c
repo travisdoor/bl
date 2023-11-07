@@ -186,8 +186,6 @@ struct context {
 		s32 expected_test_count;
 	} testing;
 
-	u32 llvm_module_count;
-
 	// Builtins
 	struct BuiltinTypes *builtin_types;
 };
@@ -2729,7 +2727,6 @@ struct mir_fn *create_fn(struct context *ctx, create_fn_args_t *args) {
 	tmp->prototype         = &args->prototype->base;
 	tmp->is_global         = args->is_global;
 	tmp->builtin_id        = args->builtin_id;
-	tmp->llvm_module_index = args->prototype->base.id % ctx->llvm_module_count;
 	tmp->generated_flavor  = args->generated_flags;
 	// arrsetcap(tmp->variables, 8);
 
@@ -11748,9 +11745,6 @@ void mir_run(struct assembly *assembly) {
 	ctx.fn_generate.current_scope_layer = SCOPE_DEFAULT_LAYER;
 	ctx.ast.current_defer_stack_index   = -1;
 	ctx.type_cache                      = NULL;
-
-	// @Incomplete: use available CPU count here?
-	ctx.llvm_module_count = 4;
 
 	arrsetcap(ctx.analyze.usage_check_arr, 256);
 	arrsetcap(ctx.analyze.stack[0], 256);

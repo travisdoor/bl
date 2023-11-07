@@ -44,13 +44,8 @@ void asm_writer_run(struct assembly *assembly) {
 
 	str_buf_append_fmt(&buf, "{str}/{s}.{s}", target->out_dir, name, ASM_EXT);
 	char *error_msg = NULL;
-	if (LLVMTargetMachineEmitToFile(assembly->llvm.TM,
-	                                assembly->llvm.modules[0],
-	                                str_to_c(buf),
-	                                LLVMAssemblyFile,
-	                                &error_msg)) {
-		builder_error(
-		    "Cannot emit assembly file: %.*s with error: %s", buf.len, buf.ptr, error_msg);
+	if (LLVMTargetMachineEmitToFile(assembly->llvm.TM, assembly->llvm.module, str_to_c(buf), LLVMAssemblyFile, &error_msg)) {
+		builder_error("Cannot emit assembly file: %.*s with error: %s", buf.len, buf.ptr, error_msg);
 		LLVMDisposeMessage(error_msg);
 	}
 	builder_info("Assembly code written into %.*s", buf.len, buf.ptr);

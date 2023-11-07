@@ -228,16 +228,12 @@ struct mir_fn {
 	// depending on function flags.
 	str_t linkage_name;
 	// Full name contains full function name with parent scopes.
-	str_t        full_name;
-	LLVMValueRef llvm_value;
-	bool         is_fully_analyzed;
-	bool         is_global;
-	bool         is_disabled; // Set based on optional enable_if expression in function prototype.
-	s32          ref_count;
-	// Module index specify in which LLVM module the function is supposed to be generated, think
-	// about this number as it was thread ID, because every module is generated from MIR in
-	// parallel.
-	u32                  llvm_module_index;
+	str_t                full_name;
+	LLVMValueRef         llvm_value;
+	bool                 is_fully_analyzed;
+	bool                 is_global;
+	bool                 is_disabled; // Set based on optional enable_if expression in function prototype.
+	s32                  ref_count;
 	enum ast_flags       flags;
 	enum builtin_id_kind builtin_id;
 	// pointer to the first block inside function body

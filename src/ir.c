@@ -3134,16 +3134,13 @@ enum state emit_instr(struct context *ctx, struct mir_instr *instr) {
 	return state;
 }
 
-static void init_llvm_modules(struct context *ctx) {
-	// const s32 cpu_count = cpu_thread_count();
+static void init_llvm_module(struct context *ctx) {
 	struct assembly *assembly = ctx->assembly;
 	LLVMModuleRef    llvm_module =
 	    LLVMModuleCreateWithNameInContext(assembly->target->name, assembly->llvm.ctx);
 	LLVMSetTarget(llvm_module, assembly->llvm.triple);
 	LLVMSetModuleDataLayout(llvm_module, assembly->llvm.TD);
-
-	arrput(assembly->llvm.modules, llvm_module);
-	ctx->llvm_module = llvm_module;
+	ctx->llvm_module = assembly->llvm.module = llvm_module;
 }
 
 static void intrinsics_init(struct context *ctx) {
@@ -3185,7 +3182,7 @@ static void DI_init(struct context *ctx) {
 	arrsetcap(ctx->di_incomplete_types, 1024);
 	const char   *producer    = "blc version " BL_VERSION;
 	struct scope *gscope      = ctx->assembly->gscope;
-	LLVMModuleRef llvm_module = ctx->assembly->llvm.modules[0];
+	LLVMModuleRef llvm_module = ctx->assembly->llvm.module;
 
 	// setup module flags for debug
 	if (ctx->assembly->target->di == ASSEMBLY_DI_DWARF) {
@@ -3264,7 +3261,7 @@ void ir_run(struct assembly *assembly) {
 	qsetcap(&ctx.incomplete_queue, 256);
 	qsetcap(&ctx.queue, 256);
 
-	init_llvm_modules(&ctx);
+	init_llvm_module(&ctx);
 
 	if (ctx.generate_debug_info) {
 		DI_init(&ctx);

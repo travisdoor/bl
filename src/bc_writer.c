@@ -38,7 +38,7 @@ void bc_writer_run(struct assembly *assembly) {
 	const struct target *target = assembly->target;
 	str_buf_append_fmt(&export_file, "{str}/{s}.ll", target->out_dir, target->name);
 
-	char *str = LLVMPrintModuleToString(assembly->llvm.modules[0]);
+	char *str = LLVMPrintModuleToString(assembly->llvm.module);
 	FILE *f   = fopen(str_to_c(export_file), "w");
 	if (f == NULL) {
 		builder_error("Cannot open file %.*s", export_file.len, export_file.ptr);

@@ -50,7 +50,7 @@ void obj_writer_run(struct assembly *assembly) {
 	str_buf_append_fmt(&buf, "{str}/{s}.{s}", target->out_dir, name, OBJ_EXT);
 	char *error_msg = NULL;
 	if (LLVMTargetMachineEmitToFile(assembly->llvm.TM,
-	                                assembly->llvm.modules[0],
+	                                assembly->llvm.module,
 	                                str_to_c(buf),
 	                                LLVMObjectFile,
 	                                &error_msg)) {

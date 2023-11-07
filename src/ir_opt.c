@@ -31,7 +31,7 @@
 
 void ir_opt_run(struct assembly *assembly) {
 	zone();
-	LLVMModuleRef             llvm_module     = assembly->llvm.modules[0];
+	LLVMModuleRef             llvm_module     = assembly->llvm.module;
 	LLVMTargetMachineRef      llvm_tm         = assembly->llvm.TM;
 	const LLVMCodeGenOptLevel opt_level       = opt_to_LLVM(assembly->target->opt);
 	LLVMPassManagerBuilderRef llvm_pm_builder = LLVMPassManagerBuilderCreate();

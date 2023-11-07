@@ -217,7 +217,7 @@ struct assembly {
 	} MIR;
 
 	struct {
-		array(LLVMModuleRef) modules;
+		LLVMModuleRef        module;
 		LLVMContextRef       ctx;
 		LLVMTargetDataRef    TD;
 		LLVMTargetMachineRef TM;
