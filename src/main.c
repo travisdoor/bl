@@ -748,7 +748,9 @@ SKIP:
 
 	// @Cleanup
 	if (opt.app.test_x64) {
+		blog("Testing x64 backend...");
 		x86_64_run_test();
+		builder_info("DONE");
 		EXIT(EXIT_SUCCESS);
 	}
 
