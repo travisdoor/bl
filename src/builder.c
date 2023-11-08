@@ -451,9 +451,20 @@ static int compile(struct assembly *assembly) {
 	return EXIT_SUCCESS;
 }
 
+pthread_mutex_t mymutex;
+static s32      jobs_done = 0;
+static void     my_worker(struct job_context UNUSED(*ctx)) {
+    for (s32 i = 0; i < 100000; ++i) {
+    }
+    pthread_mutex_lock(&mymutex);
+    ++jobs_done;
+    pthread_mutex_unlock(&mymutex);
+}
+
 // =================================================================================================
 // PUBLIC
 // =================================================================================================
+
 void builder_init(struct builder_options *options, const char *exec_dir) {
 	bassert(options && "Invalid builder options!");
 	bassert(exec_dir && "Invalid executable directory!");
@@ -472,6 +483,42 @@ void builder_init(struct builder_options *options, const char *exec_dir) {
 		builtin_ids[i].hash = strhash(builtin_ids[i].str);
 	}
 	start_threads();
+
+	// @Cleanup
+	// --------------------------------------------
+	pthread_mutex_init(&mymutex, NULL);
+	threads_init(cpu_thread_count());
+	for (s32 j = 0; j < 100; ++j) {
+		blog("START!!!");
+		for (s32 i = 0; i < 5; ++i) {
+			submit_job(&my_worker, NULL);
+		}
+
+		wait_threads();
+		blog("DONE %d", jobs_done);
+		jobs_done = 0;
+
+		for (s32 i = 0; i < 1000; ++i) {
+			submit_job(&my_worker, NULL);
+		}
+
+		wait_threads();
+		blog("DONE %d", jobs_done);
+		jobs_done = 0;
+
+		for (s32 i = 0; i < 100000; ++i) {
+			submit_job(&my_worker, NULL);
+		}
+		wait_threads();
+		blog("DONE %d", jobs_done);
+		jobs_done = 0;
+	}
+
+	threads_terminate();
+	exit(0);
+
+	// --------------------------------------------
+
 
 	builder.is_initialized = true;
 	init_thread_data();
