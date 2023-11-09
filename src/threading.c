@@ -29,6 +29,8 @@
 #include "threading.h"
 #include "stb_ds.h"
 
+static _Thread_local struct thread_local_storage thread_data;
+
 struct job {
 	struct job_context ctx;
 	job_fn_t           fn;
@@ -42,8 +44,20 @@ static s32             jobs_running = 0;
 static s32             thread_count = 0;
 static bool            should_exit  = false;
 
+static bool pop_job(struct job *job) {
+	s64 len = arrlen(jobs);
+	if (len == 0) return false;
+	memcpy(job, &jobs[len - 1], sizeof(struct job));
+	--len;
+	bassert(len >= 0);
+	arrsetlen(jobs, len);
+	return true;
+}
+
 static void *worker(void UNUSED(*args)) {
 	bl_alloc_thread_init();
+	init_thread_local_storage();
+	struct job job;
 
 	while (true) {
 		pthread_mutex_lock(&jobs_mutex);
@@ -53,13 +67,7 @@ static void *worker(void UNUSED(*args)) {
 		if (should_exit)
 			break;
 
-		struct job job;
-		const bool has_job = arrlenu(jobs) > 0;
-		if (has_job) {
-			job = arrpop(jobs);
-			bassert(arrlen(jobs) >= 0);
-		}
-
+		const bool has_job = pop_job(&job);
 		++jobs_running;
 		bassert(jobs_running <= thread_count);
 		pthread_mutex_unlock(&jobs_mutex);
@@ -84,6 +92,7 @@ static void *worker(void UNUSED(*args)) {
 	pthread_cond_signal(&working_cond);
 	pthread_mutex_unlock(&jobs_mutex);
 
+	terminate_thread_local_storage();
 	bl_alloc_thread_terminate();
 	return NULL;
 }
@@ -92,7 +101,7 @@ static void *worker(void UNUSED(*args)) {
 // PUBLIC
 // =================================================================================================
 
-void threads_init(const s32 n) {
+void start_threads(const s32 n) {
 	bassert(n > 1);
 	thread_count = n;
 
@@ -107,7 +116,7 @@ void threads_init(const s32 n) {
 	}
 }
 
-void threads_terminate(void) {
+void stop_threads(void) {
 	pthread_mutex_lock(&jobs_mutex);
 	arrsetlen(jobs, 0);
 	should_exit = true;
@@ -125,19 +134,16 @@ void threads_terminate(void) {
 
 void wait_threads(void) {
 	pthread_mutex_lock(&jobs_mutex);
-	while (true) {
-		if ((!should_exit && jobs_running != 0) || (should_exit && thread_count != 0)) {
-			pthread_cond_wait(&working_cond, &jobs_mutex);
-		} else {
-			break;
-		}
+	while ((!should_exit && (arrlenu(jobs) > 0 || jobs_running)) || (should_exit && thread_count != 0)) {
+		pthread_cond_wait(&working_cond, &jobs_mutex);
 	}
-	bassert(arrlenu(jobs) == 0);
 	pthread_mutex_unlock(&jobs_mutex);
+	if (arrlenu(jobs) != 0 && should_exit == false) {
+		babort("Parallel compilation failed, not all jobs were completed as expected.");
+	}
 }
 
 void submit_job(job_fn_t fn, struct job_context *ctx) {
-
 	pthread_mutex_lock(&jobs_mutex);
 	bassert(fn);
 	struct job *job = arraddnptr(jobs, 1);
@@ -149,4 +155,19 @@ void submit_job(job_fn_t fn, struct job_context *ctx) {
 
 	pthread_cond_broadcast(&jobs_cond);
 	pthread_mutex_unlock(&jobs_mutex);
+}
+
+struct thread_local_storage *get_thread_local_storage(void) {
+	return &thread_data;
+}
+
+void init_thread_local_storage(void) {
+	arrsetcap(thread_data.temporary_strings, 16);
+}
+
+void terminate_thread_local_storage(void) {
+	for (usize i = 0; i < arrlenu(thread_data.temporary_strings); ++i) {
+		str_buf_free(&thread_data.temporary_strings[i]);
+	}
+	arrfree(thread_data.temporary_strings);
 }

@@ -88,17 +88,24 @@ __pragma(warning(pop))
 
 struct job_context {
 	// This might be extended.
-	union {
-		struct unit *unit;
-	};
+	struct assembly *assembly;
+	struct unit     *unit;
+};
+
+struct thread_local_storage {
+	array(str_buf_t) temporary_strings;
 };
 
 typedef void (*job_fn_t)(struct job_context *ctx);
 
-// @Cleanup: rename to start_threads/stop_threads
-void threads_init(const s32 n);
-void threads_terminate(void);
+void start_threads(const s32 n);
+void stop_threads(void);
 void wait_threads(void);
 void submit_job(job_fn_t fn, struct job_context *ctx);
+s32  get_active_jobs_count(void);
+
+struct thread_local_storage *get_thread_local_storage(void);
+void                         init_thread_local_storage(void);
+void                         terminate_thread_local_storage(void);
 
 #endif
