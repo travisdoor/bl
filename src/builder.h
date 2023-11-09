@@ -34,11 +34,7 @@
 #define COMPILE_OK 0
 #define COMPILE_FAIL 1
 
-struct threading_impl;
 struct config;
-
-typedef void (*unit_stage_fn_t)(struct assembly *, struct unit *);
-typedef void (*assembly_stage_fn_t)(struct assembly *);
 
 // Keep in sync with build.bl API!!!
 struct builder_options {
@@ -68,9 +64,13 @@ struct builder {
 	s32                     last_script_mode_run_status;
 	struct config          *config;
 	array(struct target *) targets;
-	struct threading_impl *threading;
 
-	struct assembly *current_executed_assembly;
+	struct assembly          *current_executed_assembly;
+	struct builder_sync_impl *sync;
+
+	// Used for multithreaded compiling, in case new unit is added while parsing,
+	// new job for it is submitted.
+	bool auto_submit;
 
 	bool is_initialized;
 };
@@ -107,7 +107,7 @@ s32            builder_compile_all(void);
 s32            builder_compile(const struct target *target);
 
 // Submit new unit for async compilation, in case no-jobs flag is set, this function does nothing.
-void builder_async_submit_unit(struct unit *unit);
+void builder_async_submit_unit(struct assembly *assembly, struct unit *unit);
 
 #define builder_log(format, ...) builder_msg(MSG_LOG, -1, NULL, CARET_NONE, format, ##__VA_ARGS__)
 #define builder_info(format, ...) builder_msg(MSG_INFO, -1, NULL, CARET_NONE, format, ##__VA_ARGS__)

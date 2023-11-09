@@ -75,15 +75,15 @@ static void sarr_dtor(sarr_any_t *arr) {
 	sarrfree(arr);
 }
 
-typedef struct AssemblySyncImpl {
+struct asembly_sync_impl {
 	pthread_spinlock_t units_lock;
 	pthread_spinlock_t linker_opt_lock;
 	pthread_spinlock_t lib_path_lock;
 	pthread_spinlock_t link_lock;
-} AssemblySyncImpl;
+};
 
-static AssemblySyncImpl *sync_new(void) {
-	AssemblySyncImpl *impl = bmalloc(sizeof(AssemblySyncImpl));
+static struct asembly_sync_impl *sync_new(void) {
+	struct asembly_sync_impl *impl = bmalloc(sizeof(struct asembly_sync_impl));
 	pthread_spin_init(&impl->units_lock, 0);
 	pthread_spin_init(&impl->linker_opt_lock, 0);
 	pthread_spin_init(&impl->lib_path_lock, 0);
@@ -91,7 +91,7 @@ static AssemblySyncImpl *sync_new(void) {
 	return impl;
 }
 
-static void sync_delete(AssemblySyncImpl *impl) {
+static void sync_delete(struct asembly_sync_impl *impl) {
 	pthread_spin_destroy(&impl->units_lock);
 	pthread_spin_destroy(&impl->linker_opt_lock);
 	pthread_spin_destroy(&impl->lib_path_lock);
@@ -646,7 +646,7 @@ void assembly_add_lib_path_safe(struct assembly *assembly, const char *path) {
 	if (!path) return;
 	char *tmp = strdup(path);
 	if (!tmp) return;
-	AssemblySyncImpl *sync = assembly->sync;
+	struct asembly_sync_impl *sync = assembly->sync;
 	pthread_spin_lock(&sync->lib_path_lock);
 	arrput(assembly->lib_paths, tmp);
 	pthread_spin_unlock(&sync->lib_path_lock);
@@ -656,7 +656,7 @@ void assembly_append_linker_options_safe(struct assembly *assembly, const char *
 	if (!opt) return;
 	if (opt[0] == '\0') return;
 
-	AssemblySyncImpl *sync = assembly->sync;
+	struct asembly_sync_impl *sync = assembly->sync;
 	pthread_spin_lock(&sync->linker_opt_lock);
 	str_buf_append_fmt(&assembly->custom_linker_opt, "{s} ", opt);
 	pthread_spin_unlock(&sync->linker_opt_lock);
@@ -676,14 +676,17 @@ struct unit *
 assembly_add_unit_safe(struct assembly *assembly, const char *filepath, struct token *load_from) {
 	zone();
 	if (!is_str_valid_nonempty(filepath)) return_zone(NULL);
-	struct unit      *unit = NULL;
-	const hash_t      hash = unit_hash(filepath, load_from);
-	AssemblySyncImpl *sync = assembly->sync;
+	struct unit              *unit = NULL;
+	const hash_t              hash = unit_hash(filepath, load_from);
+	struct asembly_sync_impl *sync = assembly->sync;
 	pthread_spin_lock(&sync->units_lock);
 	if (assembly_has_unit(assembly, hash)) goto DONE;
 	unit = unit_new(filepath, load_from);
 	arrput(assembly->units, unit);
-	builder_async_submit_unit(unit);
+
+	if (builder.options->no_jobs == false)
+		builder_async_submit_unit(assembly, unit);
+
 DONE:
 	pthread_spin_unlock(&sync->units_lock);
 	return_zone(unit);
@@ -693,7 +696,7 @@ void assembly_add_native_lib_safe(struct assembly *assembly,
                                   const char      *lib_name,
                                   struct token    *link_token,
                                   bool             runtime_only) {
-	AssemblySyncImpl *sync = assembly->sync;
+	struct asembly_sync_impl *sync = assembly->sync;
 	pthread_spin_lock(&sync->link_lock);
 	const hash_t hash = strhash(make_str_from_c(lib_name));
 	{ // Search for duplicity.
