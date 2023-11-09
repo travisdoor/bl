@@ -299,9 +299,17 @@ static int compile(struct assembly *assembly) {
 		builder.auto_submit = true;
 
 		// Compile all available units in perallel and wait for all threads to finish...
-		for (usize i = 0; i < arrlenu(assembly->units); ++i) {
-			submit_unit(assembly, assembly->units[i]);
+		// !!! we modify original array while compiling !!!
+		usize len = arrlenu(assembly->units);
+
+		struct unit **dup = bmalloc(sizeof(struct unit *) * len);
+		memcpy(dup, assembly->units, sizeof(struct unit *) * len);
+
+		for (usize i = 0; i < len; ++i) {
+			submit_unit(assembly, dup[i]);
 		}
+
+		bfree(dup);
 		wait_threads();
 
 		builder.auto_submit = false;
