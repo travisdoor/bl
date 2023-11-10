@@ -40,9 +40,10 @@ static array(struct job) jobs;
 static pthread_mutex_t jobs_mutex;
 static pthread_cond_t  jobs_cond;
 static pthread_cond_t  working_cond;
-static s32             jobs_running = 0;
-static s32             thread_count = 0;
-static bool            should_exit  = false;
+static s32             jobs_running     = 0;
+static s32             thread_count     = 0;
+static bool            should_exit      = false;
+static bool            is_single_thread = false;
 
 static bool pop_job(struct job *job) {
 	s64 len = arrlen(jobs);
@@ -103,7 +104,8 @@ static void *worker(void UNUSED(*args)) {
 
 void start_threads(const s32 n) {
 	bassert(n > 1);
-	thread_count = n;
+	thread_count     = n;
+	is_single_thread = false;
 
 	pthread_mutex_init(&jobs_mutex, NULL);
 	pthread_cond_init(&jobs_cond, NULL);
@@ -133,6 +135,14 @@ void stop_threads(void) {
 }
 
 void wait_threads(void) {
+	if (is_single_thread) {
+		struct job job;
+		while (pop_job(&job)) {
+			job.fn(&job.ctx);
+		}
+		return;
+	}
+
 	pthread_mutex_lock(&jobs_mutex);
 	while ((!should_exit && (arrlenu(jobs) > 0 || jobs_running)) || (should_exit && thread_count != 0)) {
 		pthread_cond_wait(&working_cond, &jobs_mutex);
@@ -144,7 +154,9 @@ void wait_threads(void) {
 }
 
 void submit_job(job_fn_t fn, struct job_context *ctx) {
-	pthread_mutex_lock(&jobs_mutex);
+	if (!is_single_thread) {
+		pthread_mutex_lock(&jobs_mutex);
+	}
 	bassert(fn);
 	struct job *job = arraddnptr(jobs, 1);
 	if (ctx) {
@@ -153,8 +165,16 @@ void submit_job(job_fn_t fn, struct job_context *ctx) {
 	}
 	job->fn = fn;
 
-	pthread_cond_broadcast(&jobs_cond);
-	pthread_mutex_unlock(&jobs_mutex);
+	if (!is_single_thread) {
+		pthread_cond_broadcast(&jobs_cond);
+		pthread_mutex_unlock(&jobs_mutex);
+	}
+}
+
+void set_single_thread_mode(const bool is_single) {
+	if (is_single_thread == is_single) return;
+	wait_threads();
+	is_single_thread = is_single;
 }
 
 struct thread_local_storage *get_thread_local_storage(void) {

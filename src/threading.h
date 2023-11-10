@@ -114,6 +114,7 @@ void start_threads(const s32 n);
 void stop_threads(void);
 void wait_threads(void);
 void submit_job(job_fn_t fn, struct job_context *ctx);
+void set_single_thread_mode(const bool is_single);
 
 struct thread_local_storage *get_thread_local_storage(void);
 void                         init_thread_local_storage(void);
