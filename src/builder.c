@@ -57,6 +57,7 @@ void bc_writer_run(struct assembly *assembly);
 void native_bin_run(struct assembly *assembly);
 void mir_writer_run(struct assembly *assembly);
 void asm_writer_run(struct assembly *assembly);
+void x86_64run(struct assembly *assembly);
 
 // Virtual Machine
 void vm_entry_run(struct assembly *assembly);
@@ -99,7 +100,7 @@ static bool llvm_initialized = false;
 
 static void unit_job(struct job_context *ctx) {
 	bassert(ctx);
-	compile_unit(ctx->unit, ctx->assembly);
+	compile_unit(ctx->unit.unit, ctx->unit.assembly);
 }
 
 static void submit_unit(struct assembly *assembly, struct unit *unit) {
@@ -107,8 +108,10 @@ static void submit_unit(struct assembly *assembly, struct unit *unit) {
 	bassert(builder.options->no_jobs == false);
 
 	struct job_context ctx = {
-	    .assembly = assembly,
-	    .unit     = unit,
+	    .unit = {
+	        .assembly = assembly,
+	        .unit     = unit,
+	    },
 	};
 	submit_job(&unit_job, &ctx);
 }
@@ -223,13 +226,20 @@ static void setup_assembly_pipeline(struct assembly *assembly) {
 	if (t->no_llvm) return;
 	if (t->kind == ASSEMBLY_BUILD_PIPELINE) return;
 
-	arrput(*stages, &ir_run);
-	arrput(*stages, &ir_opt_run);
-	if (t->emit_llvm) arrput(*stages, &bc_writer_run);
-	if (t->emit_asm) arrput(*stages, &asm_writer_run);
-	if (t->no_bin) return;
-	arrput(*stages, &obj_writer_run);
+	if (t->x64) {
+		// Experimental direct generation MIR -> OBJ.
+		arrput(*stages, &x86_64run);
+	} else {
+		// Old LLVM pipeline.
+		arrput(*stages, &ir_run);
+		arrput(*stages, &ir_opt_run);
+		if (t->emit_llvm) arrput(*stages, &bc_writer_run);
+		if (t->emit_asm) arrput(*stages, &asm_writer_run);
+		if (t->no_bin) return;
+		arrput(*stages, &obj_writer_run);
+	}
 
+	// Linker...
 	arrput(*stages, &native_bin_run);
 }
 

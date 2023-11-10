@@ -35,7 +35,6 @@
 #include <string.h>
 
 bool setup(const str_t filepath, const char *triple);
-void x86_64_run_test(void);
 
 static char *get_exec_dir(void) {
 	char tmp[PATH_MAX] = "";
@@ -117,7 +116,6 @@ typedef struct ApplicationOptions {
 	bool where_is_config;
 	bool configure;
 	bool do_cleanup_when_done;
-	bool test_x64;
 } ApplicationOptions;
 
 typedef struct Options {
@@ -440,11 +438,6 @@ int main(s32 argc, char *argv[]) {
 	        .help       = "Print path to default 'bl.yaml' configuration file and exit.",
 	    },
 	    {
-	        .name       = "--x64",
-	        .property.b = &opt.app.test_x64,
-	        .help       = "This is just for testing right now.",
-	    },
-	    {
 	        .name       = "--target-host",
 	        .property.b = &opt.app.print_host_triple,
 	        .help       = "Print current host target triple and exit.",
@@ -602,6 +595,11 @@ int main(s32 argc, char *argv[]) {
 	        .help       = "Disable analyze pass, only parse and exit.",
 	    },
 	    {
+	        .name       = "--x64",
+	        .property.b = &opt.target->x64,
+	        .help       = "Use experimental x64 backeng instead of LLVM.",
+	    },
+	    {
 	        .name       = "--syntax-only",
 	        .property.b = &opt.target->syntax_only,
 	        .help       = "Check syntax and exit.",
@@ -743,14 +741,6 @@ SKIP:
 
 	if (opt.app.where_is_config) {
 		print_where_is_config(stdout);
-		EXIT(EXIT_SUCCESS);
-	}
-
-	// @Cleanup
-	if (opt.app.test_x64) {
-		blog("Testing x64 backend...");
-		x86_64_run_test();
-		builder_info("DONE");
 		EXIT(EXIT_SUCCESS);
 	}
 

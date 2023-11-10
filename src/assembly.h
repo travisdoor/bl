@@ -164,6 +164,7 @@ struct native_lib {
 	bool                  no_bin;                      \
 	bool                  no_llvm;                     \
 	bool                  no_analyze;                  \
+	bool                  x64;                         \
 	enum assert_mode      assert_mode;                 \
 	bool                  syntax_only;                 \
 	bool                  vmdbg_enabled;               \

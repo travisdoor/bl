@@ -33,6 +33,34 @@
 #include "builder.h"
 #include "common.h"
 #include "stb_ds.h"
+#include "threading.h"
 
-void x86_64_run_test(void) {
+struct context {
+	char *foo;
+};
+
+static void emit_instr(struct context *ctx, struct mir_instr *instr);
+
+void emit_instr(struct context *ctx, struct mir_instr *instr) {
+	(void)instr;
+}
+
+static void job(struct job_context *ctx) {
+	emit_instr(ctx->x64.ctx, ctx->x64.top_instr);
+}
+
+void x86_64run(struct assembly *assembly) {
+	builder_warning("Using experimental x64 backend.");
+
+	struct context ctx = {};
+
+	if (builder.options->no_jobs) {
+		babort("Not implemented.");
+	} else {
+		for (usize i = 0; i < arrlenu(assembly->MIR.exported_instrs); ++i) {
+			struct job_context job_ctx = {.x64 = {.ctx = &ctx, .top_instr = assembly->MIR.exported_instrs[i]}};
+			submit_job(&job, &job_ctx);
+		}
+		wait_threads();
+	}
 }

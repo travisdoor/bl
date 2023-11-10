@@ -86,10 +86,22 @@ __pragma(warning(pop))
 #	include <pthread.h>
 #endif
 
+struct context;
+struct mir_instr;
+
 struct job_context {
 	// This might be extended.
-	struct assembly *assembly;
-	struct unit     *unit;
+	union {
+		struct {
+			struct assembly *assembly;
+			struct unit     *unit;
+		} unit;
+
+		struct x64 {
+			struct context   *ctx;
+			struct mir_instr *top_instr;
+		} x64;
+	};
 };
 
 struct thread_local_storage {

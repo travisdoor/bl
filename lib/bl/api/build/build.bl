@@ -187,6 +187,8 @@ Target :: struct { // !!! ABI sync TargetOptions !!!
 	no_llvm: bool;
 	/// Disable analyze pass of code generation.
 	no_analyze: bool;
+	/// Experimental x64 backend for debug only.
+	x64: bool;
 	/// See :ref:`AssertMode`.
 	assert_mode: AssertMode;
 	/// Check only code syntax.
