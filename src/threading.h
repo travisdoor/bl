@@ -29,7 +29,9 @@
 #ifndef BL_THREADING_H
 #define BL_THREADING_H
 
+#include "common.h"
 #include "config.h"
+
 #if BL_PLATFORM_MACOS
 #	include <pthread.h>
 // Apple pthread implementation is missing spinlocks!
@@ -58,7 +60,9 @@ static inline int pthread_spin_unlock(pthread_spinlock_t *l) {
 	atomic_flag_clear_explicit(l, memory_order_release);
 	return 0;
 }
+
 #elif BL_PLATFORM_WIN
+
 // clang-format off
 #if BL_COMPILER_CLANG || BL_COMPILER_GNUC
 _Pragma("GCC diagnostic push")
@@ -77,7 +81,31 @@ _Pragma("GCC diagnostic pop")
 __pragma(warning(pop))
 #endif
 // clang-format on
+
 #elif BL_PLATFORM_LINUX
 #	include <pthread.h>
 #endif
+
+struct job_context {
+	// This might be extended.
+	struct assembly *assembly;
+	struct unit     *unit;
+};
+
+struct thread_local_storage {
+	array(str_buf_t) temporary_strings;
+};
+
+typedef void (*job_fn_t)(struct job_context *ctx);
+
+void start_threads(const s32 n);
+void stop_threads(void);
+void wait_threads(void);
+void submit_job(job_fn_t fn, struct job_context *ctx);
+s32  get_active_jobs_count(void);
+
+struct thread_local_storage *get_thread_local_storage(void);
+void                         init_thread_local_storage(void);
+void                         terminate_thread_local_storage(void);
+
 #endif

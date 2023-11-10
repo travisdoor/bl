@@ -7827,6 +7827,7 @@ struct result analyze_call_stage_validate_called_object(struct context *ctx, str
 }
 
 struct result analyze_call_stage_finalize_dummy_with_placeholders(struct context *ctx, struct mir_instr_call *call) {
+	zone();
 	// This stage is only dummy finalizer for the call analyze pass, the called object must be generated, but
 	// call side provides at least one placeholder argument, so the function canot be properly generated.
 

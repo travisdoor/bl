@@ -44,6 +44,7 @@
 #include <time.h>
 
 struct assembly;
+struct unit;
 struct scope;
 struct target;
 struct config;
@@ -201,7 +202,7 @@ static inline const char *_str_to_c_checked(char *ptr, s32 len) {
 									  str_buf_t: _str_buf_append(B, (S).ptr, (S).len), \
 									  str_t:     _str_buf_append(B, (S).ptr, (S).len))
 
- 
+
 #define str_buf_dup(S) _Generic((S), \
 								str_buf_t: _str_buf_dup((S).ptr, (S).len), \
 								str_t:     _str_buf_dup((S).ptr, (S).len))
@@ -353,6 +354,9 @@ static inline bool is_ignored_id(struct id *id) {
 // =================================================================================================
 // Utils
 // =================================================================================================
+
+typedef void (*unit_stage_fn_t)(struct assembly *, struct unit *);
+typedef void (*assembly_stage_fn_t)(struct assembly *);
 
 enum search_flags {
 	SEARCH_FLAG_ABS         = 0,

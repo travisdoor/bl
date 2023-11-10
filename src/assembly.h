@@ -269,7 +269,14 @@ struct assembly {
 		bool is_test_cases_ready;
 	} builtin_types;
 
-	struct AssemblySyncImpl *sync;
+	// These are just cached from the builder and valid only in case the assembly is
+	// compiling.
+	struct {
+		unit_stage_fn_t     *unit;
+		assembly_stage_fn_t *assembly;
+	} current_pipelines;
+
+	struct asembly_sync_impl *sync;
 };
 
 struct target *target_new(const char *name);
