@@ -90,7 +90,7 @@ struct context;
 struct mir_instr;
 
 struct job_context {
-	// This might be extended.
+	u32 thread_index;
 	union {
 		struct {
 			struct assembly *assembly;
@@ -115,6 +115,7 @@ void stop_threads(void);
 void wait_threads(void);
 void submit_job(job_fn_t fn, struct job_context *ctx);
 void set_single_thread_mode(const bool is_single);
+u32  get_thread_count(void);
 
 struct thread_local_storage *get_thread_local_storage(void);
 void                         init_thread_local_storage(void);

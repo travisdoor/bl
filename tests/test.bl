@@ -14,6 +14,10 @@ enum_variants_to_string_list :: fn (TEnum: type #comptime) [enum_count(TEnum)]st
 	return tmp;
 }
 */
+Any :: struct #compiler {
+	type_info: *u8;
+	data: *u8
+};
 
 main :: fn () s32 {
 	return 0;

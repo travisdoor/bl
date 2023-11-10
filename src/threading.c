@@ -55,7 +55,8 @@ static bool pop_job(struct job *job) {
 	return true;
 }
 
-static void *worker(void UNUSED(*args)) {
+static void *worker(void *args) {
+	const u32 thread_index = (u32)(u64)args;
 	bl_alloc_thread_init();
 	init_thread_local_storage();
 	struct job job;
@@ -74,8 +75,10 @@ static void *worker(void UNUSED(*args)) {
 		pthread_mutex_unlock(&jobs_mutex);
 
 		// Execute the job
-		if (has_job)
+		if (has_job) {
+			job.ctx.thread_index = thread_index;
 			job.fn(&job.ctx);
+		}
 
 		pthread_mutex_lock(&jobs_mutex);
 		--jobs_running;
@@ -113,7 +116,7 @@ void start_threads(const s32 n) {
 
 	for (s32 i = 0; i < thread_count; ++i) {
 		pthread_t thread;
-		pthread_create(&thread, NULL, &worker, NULL);
+		pthread_create(&thread, NULL, &worker, (void *)(u64)i);
 		pthread_detach(thread);
 	}
 }
@@ -175,6 +178,11 @@ void set_single_thread_mode(const bool is_single) {
 	if (is_single_thread == is_single) return;
 	wait_threads();
 	is_single_thread = is_single;
+}
+
+u32 get_thread_count(void) {
+	if (is_single_thread) return 1;
+	return thread_count;
 }
 
 struct thread_local_storage *get_thread_local_storage(void) {

@@ -35,8 +35,16 @@
 #include "stb_ds.h"
 #include "threading.h"
 
+#define BYTE_CODE_BUFFER_SIZE 1024
+
+struct byte_code_buffer {
+	u8   *bytes;
+	usize i;
+	usize len;
+};
+
 struct context {
-	char *foo;
+	array(struct byte_code_buffer) buffers;
 };
 
 static void emit_instr(struct context *ctx, struct mir_instr *instr);
@@ -51,16 +59,18 @@ static void job(struct job_context *ctx) {
 
 void x86_64run(struct assembly *assembly) {
 	builder_warning("Using experimental x64 backend.");
+	const u32 thread_count = get_thread_count();
 
-	struct context ctx = {};
+	struct context ctx = {0};
+	arrsetlen(ctx.buffers, thread_count);
+	bl_zeromem(ctx.buffers, thread_count * sizeof(struct byte_code_buffer));
 
-	if (builder.options->no_jobs) {
-		babort("Not implemented.");
-	} else {
-		for (usize i = 0; i < arrlenu(assembly->MIR.exported_instrs); ++i) {
-			struct job_context job_ctx = {.x64 = {.ctx = &ctx, .top_instr = assembly->MIR.exported_instrs[i]}};
-			submit_job(&job, &job_ctx);
-		}
-		wait_threads();
+
+	for (usize i = 0; i < arrlenu(assembly->MIR.exported_instrs); ++i) {
+		struct job_context job_ctx = {.x64 = {.ctx = &ctx, .top_instr = assembly->MIR.exported_instrs[i]}};
+		submit_job(&job, &job_ctx);
 	}
+	wait_threads();
+
+	arrfree(ctx.buffers);
 }
