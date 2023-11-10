@@ -310,8 +310,7 @@ static int compile(struct assembly *assembly) {
 
 		// Compile all available units in perallel and wait for all threads to finish...
 		// !!! we modify original array while compiling !!!
-		usize len = arrlenu(assembly->units);
-
+		usize         len = arrlenu(assembly->units);
 		struct unit **dup = bmalloc(sizeof(struct unit *) * len);
 		memcpy(dup, assembly->units, sizeof(struct unit *) * len);
 
@@ -359,8 +358,10 @@ static int compile(struct assembly *assembly) {
 // =================================================================================================
 
 void builder_init(struct builder_options *options, const char *exec_dir) {
-	bassert(options && "Invalid builder options!");
+	bassert(builder.is_initialized == false);
 	bassert(exec_dir && "Invalid executable directory!");
+	bassert(options);
+
 	memset(&builder, 0, sizeof(struct builder));
 	builder.options = options;
 	builder.errorc = builder.max_error = builder.test_failc = 0;
@@ -397,6 +398,7 @@ void builder_terminate(void) {
 	confdelete(builder.config);
 	llvm_terminate();
 	free(builder.exec_dir);
+	builder.is_initialized = false;
 }
 
 char **builder_get_supported_targets(void) {
