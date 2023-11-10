@@ -104,8 +104,6 @@ static void unit_job(struct job_context *ctx) {
 
 static void submit_unit(struct assembly *assembly, struct unit *unit) {
 	bassert(unit);
-	bassert(builder.options->no_jobs == false);
-
 	struct job_context ctx = {
 	    .assembly = assembly,
 	    .unit     = unit,
@@ -287,18 +285,14 @@ static int compile(struct assembly *assembly) {
 	setup_unit_pipeline(assembly);
 	setup_assembly_pipeline(assembly);
 
-	runtime_measure_begin(process_unit);
-
-	if (builder.options->no_jobs) {
+	set_single_thread_mode(builder.options->no_jobs);
+	if (builder.options->no_jobs)
 		blog("Running in single thread mode!");
-		for (usize i = 0; i < arrlenu(assembly->units); ++i) {
-			struct unit *unit = assembly->units[i];
-			if ((state = compile_unit(unit, assembly)) != COMPILE_OK) break;
-		}
-	} else {
+
+	{
+		runtime_measure_begin(process_unit);
 		builder.auto_submit = true;
 
-		// Compile all available units in perallel and wait for all threads to finish...
 		// !!! we modify original array while compiling !!!
 		usize         len = arrlenu(assembly->units);
 		struct unit **dup = bmalloc(sizeof(struct unit *) * len);
@@ -311,10 +305,9 @@ static int compile(struct assembly *assembly) {
 		bfree(dup);
 		wait_threads();
 
-		builder.auto_submit = false;
+		builder.auto_submit              = false;
+		assembly->stats.parsing_lexing_s = runtime_measure_end(process_unit);
 	}
-
-	assembly->stats.parsing_lexing_s = runtime_measure_end(process_unit);
 
 	// Compile assembly using pipeline.
 	if (state == COMPILE_OK) state = compile_assembly(assembly);
@@ -644,9 +637,8 @@ void put_tmp_str(str_buf_t str) {
 	arrput(storage->temporary_strings, str);
 }
 
-void builder_async_submit_unit(struct assembly *assembly, struct unit *unit) {
+void builder_submit_unit(struct assembly *assembly, struct unit *unit) {
 	bassert(unit);
-	bassert(builder.options->no_jobs == false);
 	if (builder.auto_submit) {
 		submit_unit(assembly, unit);
 	}

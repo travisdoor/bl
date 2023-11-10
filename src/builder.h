@@ -107,7 +107,7 @@ s32            builder_compile_all(void);
 s32            builder_compile(const struct target *target);
 
 // Submit new unit for async compilation, in case no-jobs flag is set, this function does nothing.
-void builder_async_submit_unit(struct assembly *assembly, struct unit *unit);
+void builder_submit_unit(struct assembly *assembly, struct unit *unit);
 
 #define builder_log(format, ...) builder_msg(MSG_LOG, -1, NULL, CARET_NONE, format, ##__VA_ARGS__)
 #define builder_info(format, ...) builder_msg(MSG_INFO, -1, NULL, CARET_NONE, format, ##__VA_ARGS__)
