@@ -684,8 +684,7 @@ assembly_add_unit_safe(struct assembly *assembly, const char *filepath, struct t
 	unit = unit_new(filepath, load_from);
 	arrput(assembly->units, unit);
 
-	if (builder.options->no_jobs == false)
-		builder_async_submit_unit(assembly, unit);
+	builder_submit_unit(assembly, unit);
 
 DONE:
 	pthread_spin_unlock(&sync->units_lock);

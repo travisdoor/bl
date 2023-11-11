@@ -57,6 +57,7 @@ void bc_writer_run(struct assembly *assembly);
 void native_bin_run(struct assembly *assembly);
 void mir_writer_run(struct assembly *assembly);
 void asm_writer_run(struct assembly *assembly);
+void x86_64run(struct assembly *assembly);
 
 // Virtual Machine
 void vm_entry_run(struct assembly *assembly);
@@ -99,16 +100,16 @@ static bool llvm_initialized = false;
 
 static void unit_job(struct job_context *ctx) {
 	bassert(ctx);
-	compile_unit(ctx->unit, ctx->assembly);
+	compile_unit(ctx->unit.unit, ctx->unit.assembly);
 }
 
 static void submit_unit(struct assembly *assembly, struct unit *unit) {
 	bassert(unit);
-	bassert(builder.options->no_jobs == false);
-
 	struct job_context ctx = {
-	    .assembly = assembly,
-	    .unit     = unit,
+	    .unit = {
+	        .assembly = assembly,
+	        .unit     = unit,
+	    },
 	};
 	submit_job(&unit_job, &ctx);
 }
@@ -223,13 +224,20 @@ static void setup_assembly_pipeline(struct assembly *assembly) {
 	if (t->no_llvm) return;
 	if (t->kind == ASSEMBLY_BUILD_PIPELINE) return;
 
-	arrput(*stages, &ir_run);
-	arrput(*stages, &ir_opt_run);
-	if (t->emit_llvm) arrput(*stages, &bc_writer_run);
-	if (t->emit_asm) arrput(*stages, &asm_writer_run);
-	if (t->no_bin) return;
-	arrput(*stages, &obj_writer_run);
+	if (t->x64) {
+		// Experimental direct generation MIR -> OBJ.
+		arrput(*stages, &x86_64run);
+	} else {
+		// Old LLVM pipeline.
+		arrput(*stages, &ir_run);
+		arrput(*stages, &ir_opt_run);
+		if (t->emit_llvm) arrput(*stages, &bc_writer_run);
+		if (t->emit_asm) arrput(*stages, &asm_writer_run);
+		if (t->no_bin) return;
+		arrput(*stages, &obj_writer_run);
+	}
 
+	// Linker...
 	arrput(*stages, &native_bin_run);
 }
 
@@ -287,27 +295,29 @@ static int compile(struct assembly *assembly) {
 	setup_unit_pipeline(assembly);
 	setup_assembly_pipeline(assembly);
 
-	runtime_measure_begin(process_unit);
-
-	if (builder.options->no_jobs) {
+	set_single_thread_mode(builder.options->no_jobs);
+	if (builder.options->no_jobs)
 		blog("Running in single thread mode!");
-		for (usize i = 0; i < arrlenu(assembly->units); ++i) {
-			struct unit *unit = assembly->units[i];
-			if ((state = compile_unit(unit, assembly)) != COMPILE_OK) break;
-		}
-	} else {
+
+	{
+		runtime_measure_begin(process_unit);
 		builder.auto_submit = true;
 
-		// Compile all available units in perallel and wait for all threads to finish...
-		for (usize i = 0; i < arrlenu(assembly->units); ++i) {
-			submit_unit(assembly, assembly->units[i]);
+		// !!! we modify original array while compiling !!!
+		usize         len = arrlenu(assembly->units);
+		struct unit **dup = bmalloc(sizeof(struct unit *) * len);
+		memcpy(dup, assembly->units, sizeof(struct unit *) * len);
+
+		for (usize i = 0; i < len; ++i) {
+			submit_unit(assembly, dup[i]);
 		}
+
+		bfree(dup);
 		wait_threads();
 
-		builder.auto_submit = false;
+		builder.auto_submit              = false;
+		assembly->stats.parsing_lexing_s = runtime_measure_end(process_unit);
 	}
-
-	assembly->stats.parsing_lexing_s = runtime_measure_end(process_unit);
 
 	// Compile assembly using pipeline.
 	if (state == COMPILE_OK) state = compile_assembly(assembly);
@@ -341,8 +351,10 @@ static int compile(struct assembly *assembly) {
 // =================================================================================================
 
 void builder_init(struct builder_options *options, const char *exec_dir) {
-	bassert(options && "Invalid builder options!");
+	bassert(builder.is_initialized == false);
 	bassert(exec_dir && "Invalid executable directory!");
+	bassert(options);
+
 	memset(&builder, 0, sizeof(struct builder));
 	builder.options = options;
 	builder.errorc = builder.max_error = builder.test_failc = 0;
@@ -379,6 +391,7 @@ void builder_terminate(void) {
 	confdelete(builder.config);
 	llvm_terminate();
 	free(builder.exec_dir);
+	builder.is_initialized = false;
 }
 
 char **builder_get_supported_targets(void) {
@@ -634,9 +647,8 @@ void put_tmp_str(str_buf_t str) {
 	arrput(storage->temporary_strings, str);
 }
 
-void builder_async_submit_unit(struct assembly *assembly, struct unit *unit) {
+void builder_submit_unit(struct assembly *assembly, struct unit *unit) {
 	bassert(unit);
-	bassert(builder.options->no_jobs == false);
 	if (builder.auto_submit) {
 		submit_unit(assembly, unit);
 	}

@@ -33,6 +33,44 @@
 #include "builder.h"
 #include "common.h"
 #include "stb_ds.h"
+#include "threading.h"
 
-void x86_64_run_test(void) {
+#define BYTE_CODE_BUFFER_SIZE 1024
+
+struct byte_code_buffer {
+	u8   *bytes;
+	usize i;
+	usize len;
+};
+
+struct context {
+	array(struct byte_code_buffer) buffers;
+};
+
+static void emit_instr(struct context *ctx, struct mir_instr *instr);
+
+void emit_instr(struct context *ctx, struct mir_instr *instr) {
+	(void)instr;
+}
+
+static void job(struct job_context *ctx) {
+	emit_instr(ctx->x64.ctx, ctx->x64.top_instr);
+}
+
+void x86_64run(struct assembly *assembly) {
+	builder_warning("Using experimental x64 backend.");
+	const u32 thread_count = get_thread_count();
+
+	struct context ctx = {0};
+	arrsetlen(ctx.buffers, thread_count);
+	bl_zeromem(ctx.buffers, thread_count * sizeof(struct byte_code_buffer));
+
+
+	for (usize i = 0; i < arrlenu(assembly->MIR.exported_instrs); ++i) {
+		struct job_context job_ctx = {.x64 = {.ctx = &ctx, .top_instr = assembly->MIR.exported_instrs[i]}};
+		submit_job(&job, &job_ctx);
+	}
+	wait_threads();
+
+	arrfree(ctx.buffers);
 }
