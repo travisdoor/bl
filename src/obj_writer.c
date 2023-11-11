@@ -29,12 +29,6 @@
 #include "builder.h"
 #include "stb_ds.h"
 
-#if BL_PLATFORM_WIN
-#	define OBJ_EXT "obj"
-#else
-#	define OBJ_EXT "o"
-#endif
-
 // Emit assembly object file.
 void obj_writer_run(struct assembly *assembly) {
 	zone();

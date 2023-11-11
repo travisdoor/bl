@@ -82,6 +82,12 @@ struct config;
 #	error "Unsuported compiler!"
 #endif
 
+#if BL_PLATFORM_WIN
+#	define OBJ_EXT "obj"
+#else
+#	define OBJ_EXT "o"
+#endif
+
 #define alignment_of(T) _Alignof(T)
 
 #define isflag(_v, _flag) ((bool)(((_v) & (_flag)) == (_flag)))

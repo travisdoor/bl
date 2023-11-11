@@ -19,7 +19,7 @@ Any :: struct #compiler {
 	data: *u8
 };
 
-main :: fn () s32 {
+main :: fn () s32 #entry {
 	return 0;
 }
 
