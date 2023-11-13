@@ -32,6 +32,11 @@
 #include "stb_ds.h"
 #include <locale.h>
 #include <stdio.h>
+#ifdef _WIN32
+    #include <direct.h>
+    #define mkdir(path, mode) _mkdir(path)
+#endif
+#include <sys/stat.h>
 #include <string.h>
 
 bool setup(const str_t filepath, const char *triple);
@@ -118,10 +123,17 @@ typedef struct ApplicationOptions {
 	bool do_cleanup_when_done;
 } ApplicationOptions;
 
+
+typedef struct ProjectOptions{
+    bool is_executable;
+    char* project_name;
+} ProjectOptions;
+
 typedef struct Options {
 	ApplicationOptions     app;
 	struct builder_options builder;
 	struct target         *target;
+    ProjectOptions project;
 } Options;
 
 enum getarg_opt_kind {
@@ -245,6 +257,7 @@ void print_help(FILE *stream, struct getarg_opt *opts) {
 	                   "  blc [options] [source-files]\n\n"
 	                   "Alternative usage:\n"
 	                   "  blc [options] <-build> [build-arguments]\n"
+	                   "  blc [options] <--init> <project-name>\n"
 	                   "  blc [options] <-run> <source-file> [arguments] [forwarded-arguments]\n\n"
 	                   "Options:\n";
 	fprintf(stream, "%s", text);
@@ -354,6 +367,7 @@ int main(s32 argc, char *argv[]) {
 #define ID_VMDBG_BREAK_ON 5
 #define ID_RELEASE 6
 #define ID_SILENT_RUN 7
+#define ID_INIT_PROJECT 8
 
 	struct getarg_opt optlist[] = {
 	    {
@@ -361,6 +375,11 @@ int main(s32 argc, char *argv[]) {
 	        .help = "Invoke project build pipeline. All following arguments are forwarded into the "
 	                "build script and ignored by compiler itself. Use as '-build [arguments]'.",
 	        .id   = ID_BUILD,
+	    },
+	    {
+	        .name = "--init",
+	        .help = "Creates a a project setup in your current folder",
+	        .id   = ID_INIT_PROJECT,
 	    },
 	    {
 	        .name = "-run",
@@ -673,6 +692,43 @@ int main(s32 argc, char *argv[]) {
 		case ID_RELEASE:
 			opt.target->opt = ASSEMBLY_OPT_RELEASE_FAST;
 			break;
+        case ID_INIT_PROJECT:
+			if (!argv[index + 1]) {
+                opt.project.project_name = "out";
+            }else{
+                opt.project.project_name = argv[index + 1];
+            }
+            if (access("build.bl", F_OK) != -1){
+                    builder_error("File 'build.bl' exists in the current directory.");
+                    EXIT(EXIT_FAILURE);
+            }
+
+            FILE *build_file = fopen("build.bl", "w+");
+            const char* build_function_code_template = "build :: fn () #build_entry {\n"
+                "    exe := add_executable(\"bin/%s\");\n"
+                "    add_unit(exe, \"src/main.bl\");\n"
+                "    compile(exe);\n"
+                "}\n";
+
+            char* exe_name = opt.project.project_name;
+            char build_function_code[256];
+            snprintf(build_function_code, sizeof(build_function_code), build_function_code_template, exe_name);
+
+            fprintf(build_file, "\n\n\n%s", build_function_code);
+
+            mkdir("src", 0777);
+            mkdir("bin", 0777);
+            FILE *main_file = fopen("src/main.bl", "w+");
+            const char* main_example = "\n\nmain :: fn() s32 {\n"
+                "    print(\"Hello World!\\n\");\n"
+                "    return 0;\n"
+                "}\n";
+            fprintf(main_file, "%s", main_example);
+
+
+            builder_info("INFO: project was initialize successfully");
+            builder_info("INFO: try blc -build");
+            return state;
 		default:
 			if (positional) {
 				target_add_file(opt.target, positional);
