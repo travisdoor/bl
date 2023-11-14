@@ -87,3 +87,7 @@ Screenshot of an unnamed 3D experimental game created using BL.
 - Source code [here](https://github.com/travisdoor/bl/tree/master/how-to/gunner).
 
 <div style="text-align:center"><img src="how-to/gunner/gunner.gif" /></div>
+
+# Contribution
+
+Please follow the instructions on [wiki](https://github.com/travisdoor/bl/wiki/Contribution).
