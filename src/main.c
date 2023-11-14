@@ -701,7 +701,8 @@ int main(s32 argc, char *argv[]) {
                 EXIT(EXIT_FAILURE);
             }
             const char* build_function_code_template = "build :: fn () #build_entry {\n"
-                "    exe := add_executable(\"bin/%s\");\n"
+                "    exe := add_executable(\"%s\");\n"
+                "    set_output_dir(exe,\"bin\");\n"
                 "    add_unit(exe, \"src/main.bl\");\n"
                 "    compile(exe);\n"
                 "}\n";
@@ -711,8 +712,12 @@ int main(s32 argc, char *argv[]) {
             snprintf(build_function_code, sizeof(build_function_code), build_function_code_template, exe_name);
             fprintf(build_file, "\n\n\n%s", build_function_code);
 
-            create_dir("bin");
-            create_dir("src");
+            if (!create_dir("bin")){
+                EXIT(EXIT_FAILURE);
+            }
+            if(!create_dir("src")){
+                EXIT(EXIT_FAILURE);
+            }
 
             FILE *main_file = fopen("./src/main.bl", "w+");
             if (!main_file){
