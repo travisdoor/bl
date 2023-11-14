@@ -684,7 +684,7 @@ int main(s32 argc, char *argv[]) {
 			opt.target->opt = ASSEMBLY_OPT_RELEASE_FAST;
 			break;
 		case ID_INIT_PROJECT:
-			if (access("build.bl", F_OK) != -1) {
+			if (file_exists("build.bl")) {
 				builder_error("File 'build.bl' exists in the current directory.");
 				EXIT(EXIT_FAILURE);
 			}
