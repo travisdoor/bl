@@ -378,7 +378,8 @@ int main(s32 argc, char *argv[]) {
 	    },
 	    {
 	        .name = "--init",
-	        .help = "Creates a a project setup in your current folder",
+	        .help = "Creates a a project setup in your current folder."
+                    "Use as '--init [optional[project-name]]",
 	        .id   = ID_INIT_PROJECT,
 	    },
 	    {
