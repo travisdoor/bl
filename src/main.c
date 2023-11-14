@@ -28,11 +28,11 @@
 
 #include "assembly.h"
 #include "builder.h"
+#include "common.h"
 #include "conf.h"
 #include "stb_ds.h"
 #include <locale.h>
 #include <stdio.h>
-#include "common.h"
 #include <string.h>
 
 bool setup(const str_t filepath, const char *triple);
@@ -45,7 +45,7 @@ static char *get_exec_dir(void) {
 	return strdup(tmp);
 }
 
-static void get_config_file_location(str_buf_t* filepath) {
+static void get_config_file_location(str_buf_t *filepath) {
 	str_buf_append_fmt(filepath, "{s}/../{s}", builder_get_exec_dir(), BL_CONFIG_FILE);
 }
 
@@ -118,8 +118,6 @@ typedef struct ApplicationOptions {
 	bool configure;
 	bool do_cleanup_when_done;
 } ApplicationOptions;
-
-
 
 typedef struct Options {
 	ApplicationOptions     app;
@@ -364,7 +362,7 @@ int main(s32 argc, char *argv[]) {
 	    {
 	        .name = "-init",
 	        .help = "Creates a a project setup in your current folder."
-                    "Use as '-init [optional[project-name]]",
+	                "Use as '-init [optional[project-name]]",
 	        .id   = ID_INIT_PROJECT,
 	    },
 	    {
@@ -685,57 +683,57 @@ int main(s32 argc, char *argv[]) {
 		case ID_RELEASE:
 			opt.target->opt = ASSEMBLY_OPT_RELEASE_FAST;
 			break;
-        case ID_INIT_PROJECT:
-            if (access("build.bl", F_OK) != -1){
-                    builder_error("File 'build.bl' exists in the current directory.");
-                    EXIT(EXIT_FAILURE);
-            }
-            char *project_name = "out";
+		case ID_INIT_PROJECT:
+			if (access("build.bl", F_OK) != -1) {
+				builder_error("File 'build.bl' exists in the current directory.");
+				EXIT(EXIT_FAILURE);
+			}
+			char *project_name = "out";
 			if (argv[index + 1]) {
-                project_name = argv[index + 1];
-            }
+				project_name = argv[index + 1];
+			}
 
-            FILE *build_file = fopen("build.bl", "w+");
-            if (!build_file){
-                builder_error("could not create build file!");
-                EXIT(EXIT_FAILURE);
-            }
-            const char* build_function_code_template = "build :: fn () #build_entry {\n"
-                "    exe := add_executable(\"%s\");\n"
-                "    set_output_dir(exe,\"bin\");\n"
-                "    add_unit(exe, \"src/main.bl\");\n"
-                "    compile(exe);\n"
-                "}\n";
+			FILE *build_file = fopen("build.bl", "w+");
+			if (!build_file) {
+				builder_error("could not create build file!");
+				EXIT(EXIT_FAILURE);
+			}
+			const char *build_function_code_template = "build :: fn () #build_entry {\n"
+			                                           "    exe := add_executable(\"%s\");\n"
+			                                           "    set_output_dir(exe,\"bin\");\n"
+			                                           "    add_unit(exe, \"src/main.bl\");\n"
+			                                           "    compile(exe);\n"
+			                                           "}\n";
 
-            char* exe_name = project_name;
-            char build_function_code[256];
-            snprintf(build_function_code, sizeof(build_function_code), build_function_code_template, exe_name);
-            fprintf(build_file, "\n\n\n%s", build_function_code);
+			char *exe_name = project_name;
+			char  build_function_code[256];
+			snprintf(build_function_code, sizeof(build_function_code), build_function_code_template, exe_name);
+			fprintf(build_file, "\n\n\n%s", build_function_code);
 
-            if (!create_dir("bin")){
-                EXIT(EXIT_FAILURE);
-            }
-            if(!create_dir("src")){
-                EXIT(EXIT_FAILURE);
-            }
+			if (!create_dir("bin")) {
+				EXIT(EXIT_FAILURE);
+			}
+			if (!create_dir("src")) {
+				EXIT(EXIT_FAILURE);
+			}
 
-            FILE *main_file = fopen("./src/main.bl", "w+");
-            if (!main_file){
-                builder_error("could not create build file!");
-                EXIT(EXIT_FAILURE);
-            }
-            const char* main_example = "\n\nmain :: fn() s32 {\n"
-                "    print(\"Hello World!\\n\");\n"
-                "    return 0;\n"
-                "}\n";
-            fprintf(main_file, "%s", main_example);
+			FILE *main_file = fopen("./src/main.bl", "w+");
+			if (!main_file) {
+				builder_error("could not create build file!");
+				EXIT(EXIT_FAILURE);
+			}
+			const char *main_example = "\n\nmain :: fn() s32 {\n"
+			                           "    print(\"Hello World!\\n\");\n"
+			                           "    return 0;\n"
+			                           "}\n";
+			fprintf(main_file, "%s", main_example);
 
-            builder_info("INFO: project was initialize successfully");
-            builder_info("INFO: try blc -build");
+			builder_info("INFO: project was initialize successfully");
+			builder_info("INFO: try blc -build");
 
-            fclose(main_file);
-            fclose(build_file);
-            EXIT(EXIT_SUCCESS);
+			fclose(main_file);
+			fclose(build_file);
+			EXIT(EXIT_SUCCESS);
 		default:
 			if (positional) {
 				target_add_file(opt.target, positional);
