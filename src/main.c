@@ -362,7 +362,7 @@ int main(s32 argc, char *argv[]) {
 	    {
 	        .name = "-init",
 	        .help = "Creates a a project setup in your current folder."
-	                "Use as '-init [optional[project-name]]",
+	                "Use as '-init [project-name]",
 	        .id   = ID_INIT_PROJECT,
 	    },
 	    {
@@ -706,9 +706,9 @@ int main(s32 argc, char *argv[]) {
 			                                           "}\n";
 
 			char *exe_name = project_name;
-			char  build_function_code[256];
-			snprintf(build_function_code, sizeof(build_function_code), build_function_code_template, exe_name);
-			fprintf(build_file, "\n\n\n%s", build_function_code);
+
+			fprintf(build_file, "\n\n\n");
+			fprintf(build_file, build_function_code_template, exe_name);
 
 			if (!create_dir("bin")) {
 				EXIT(EXIT_FAILURE);
