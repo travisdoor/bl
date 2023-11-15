@@ -684,8 +684,8 @@ int main(s32 argc, char *argv[]) {
 			opt.target->opt = ASSEMBLY_OPT_RELEASE_FAST;
 			break;
 		case ID_INIT_PROJECT:
-			if (file_exists(BUILD_SCRIPT_FILE)) {
-				builder_error("Current directory already contains initialized BL project. File '%s' exists", BUILD_SCRIPT_FILE);
+			if (file_exists(BUILD_SCRIPT_FILE) || file_exists("./src/main.bl")) {
+				builder_error("Project seems to be already initialized in this directory.");
 				EXIT(EXIT_FAILURE);
 			}
 			char *project_name = "out";
@@ -714,6 +714,8 @@ int main(s32 argc, char *argv[]) {
 				EXIT(EXIT_FAILURE);
 			}
 
+			if (file_exists("./src/main.bl")) {
+			}
 			FILE *main_file = fopen("./src/main.bl", "w+");
 			if (!main_file) {
 				builder_error("Could not create main file!");
