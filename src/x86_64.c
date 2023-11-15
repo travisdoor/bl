@@ -36,11 +36,13 @@
 
 #define BYTE_CODE_BUFFER_SIZE 1024
 #define SYMBOL_TABLE_SIZE 1024
+#define STRING_TABLE_SIZE (1 * 1024 * 1024)      // 1MB
 #define CODE_BLOCK_BUFFER_SIZE (2 * 1024 * 1024) // 2MB
 
 struct thread_context {
 	array(u8) bytes;
 	array(IMAGE_SYMBOL) syms;
+	array(char) strs;
 };
 
 struct context {
@@ -51,7 +53,10 @@ struct context {
 		pthread_mutex_t mutex;
 		array(u8) bytes;
 		array(IMAGE_SYMBOL) syms;
+		array(char) strs;
 	} code;
+
+	pthread_spinlock_t uq_name_lock;
 };
 
 // Resources:
@@ -78,6 +83,13 @@ struct context {
 
 #define encode_mod_reg_rm(mod, reg, rm) (((mod) << 6) | (reg << 3) | (rm))
 
+static inline void unique_name(struct context *ctx, str_buf_t *dest, const char *prefix, const str_t name) {
+	pthread_spin_lock(&ctx->uq_name_lock);
+	static u64 n = 0;
+	str_buf_append_fmt(dest, "{s}{str}{u64}", prefix, name, n++);
+	pthread_spin_unlock(&ctx->uq_name_lock);
+}
+
 static inline void add_code(struct thread_context *tctx, const void *buf, s32 len) {
 	const usize i = arrlenu(tctx->bytes);
 	arrsetcap(tctx->bytes, BYTE_CODE_BUFFER_SIZE);
@@ -96,14 +108,34 @@ static inline void add_sym(struct thread_context *tctx, str_t linkage_name) {
 	    .StorageClass  = IMAGE_SYM_CLASS_EXTERNAL,
 	    .Value         = (DWORD)arrlenu(tctx->bytes),
 	};
-	// @Incomplete
-	memcpy(sym.N.ShortName, linkage_name.ptr, MIN(8, linkage_name.len));
+
+	if (linkage_name.len > 8) {
+		const u32 str_offset = (u32)arrlenu(tctx->strs);
+		arrsetcap(tctx->strs, 256);
+		arrsetlen(tctx->strs, str_offset + linkage_name.len + 1); // +1 zero terminator
+		memcpy(&tctx->strs[str_offset], linkage_name.ptr, linkage_name.len);
+		tctx->strs[str_offset + linkage_name.len] = '\0';
+
+		sym.N.Name.Long = str_offset + sizeof(u32); // 4 bytes for the table size
+	} else {
+		memcpy(sym.N.ShortName, linkage_name.ptr, linkage_name.len);
+	}
 
 	arrsetcap(tctx->syms, 64);
 	arrput(tctx->syms, sym);
 }
 
 // 64 bit
+static inline void push64_r(struct thread_context *tctx, u8 r) {
+	const u8 buf[] = {REX_W, 0xFF, encode_mod_reg_rm(MOD_REG_ADDR, 0x6, r)};
+	add_code(tctx, buf, 3);
+}
+
+static inline void pop64_r(struct thread_context *tctx, u8 r) {
+	const u8 buf[] = {REX_W, 0x8F, encode_mod_reg_rm(MOD_REG_ADDR, 0x0, r)};
+	add_code(tctx, buf, 3);
+}
+
 static inline void mov64_rr(struct thread_context *tctx, u8 r1, u8 r2) {
 	const u8 buf[] = {REX_W, 0x89, encode_mod_reg_rm(MOD_REG_ADDR, r2, r1)};
 	add_code(tctx, buf, 3);
@@ -145,8 +177,33 @@ static inline void ret(struct thread_context *tctx) {
 // Translate
 //
 
+// @Cleanup: do we need ctx?
 static void emit_instr(struct context *ctx, struct thread_context *tctx, struct mir_instr *instr);
 static void emit_instr_fn_proto(struct context *ctx, struct thread_context *tctx, struct mir_instr_fn_proto *fn_proto);
+static void emit_instr_block(struct context *ctx, struct thread_context *tctx, struct mir_instr_block *block);
+
+void emit_instr_block(struct context *ctx, struct thread_context *tctx, struct mir_instr_block *block) {
+	struct mir_fn *fn        = block->owner_fn;
+	const bool     is_global = fn == NULL;
+	if (!block->terminal) babort("Block '%s', is not terminated", block->name);
+
+	if (!is_global) {
+		add_sym(tctx, block->name);
+		if (fn->first_block == block) {
+			blog("Missing emit of allocas.");
+			// emit_allocas(ctx, fn);
+		}
+	} else {
+		babort("Missing implementation for global blocks!");
+	}
+
+	// Generate all instructions in the block.
+	struct mir_instr *instr = block->entry_instr;
+	while (instr) {
+		emit_instr(ctx, tctx, instr);
+		instr = instr->next;
+	}
+}
 
 void emit_instr_fn_proto(struct context *ctx, struct thread_context *tctx, struct mir_instr_fn_proto *fn_proto) {
 	struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &fn_proto->base.value);
@@ -160,24 +217,42 @@ void emit_instr_fn_proto(struct context *ctx, struct thread_context *tctx, struc
 	}
 	bassert(linkage_name.len && "Invalid function name!");
 
+	// External functions does not have any body block.
+	if (isflag(fn->flags, FLAG_EXTERN) || isflag(fn->flags, FLAG_INTRINSIC)) {
+		bassert("Handling of extern functions not implemented!");
+		return;
+	}
 
 	add_sym(tctx, linkage_name);
 
-	mov64_rr(tctx, RAX, RCX);
+	// Prologue
+	push64_r(tctx, RBP);
 	mov64_rr(tctx, RBP, RSP);
-	mov32_rr(tctx, RAX, RCX);
-	xor64_rr(tctx, RAX, RAX);
-	sub64_ri8(tctx, RSP, 0x20);
-	mov64_ri32(tctx, RAX, 0x10);
+
+	// Generate all blocks in the function body.
+	struct mir_instr *block = (struct mir_instr *)fn->first_block;
+	while (block) {
+		if (!block->is_unreachable) {
+			emit_instr(ctx, tctx, block);
+		}
+		block = block->next;
+	}
+
+	// Epilogue
+	pop64_r(tctx, RBP);
 	ret(tctx);
 }
 
 void emit_instr(struct context *ctx, struct thread_context *tctx, struct mir_instr *instr) {
 	bassert(instr->state == MIR_IS_COMPLETE && "Attempt to emit instruction in incomplete state!");
+	// @Incomplete
 	// if (!mir_type_has_llvm_representation((instr->value.type))) return state;
 	switch (instr->kind) {
 	case MIR_INSTR_FN_PROTO:
 		emit_instr_fn_proto(ctx, tctx, (struct mir_instr_fn_proto *)instr);
+		break;
+	case MIR_INSTR_BLOCK:
+		emit_instr_block(ctx, tctx, (struct mir_instr_block *)instr);
 		break;
 	default:
 		blog("Missing implementation for emmiting '%s' instruction.", mir_instr_name(instr));
@@ -192,6 +267,7 @@ static void job(struct job_context *job_ctx) {
 	// Reset buffers
 	arrsetlen(tctx->bytes, 0);
 	arrsetlen(tctx->syms, 0);
+	arrsetlen(tctx->strs, 0);
 
 	struct mir_instr *top_instr = job_ctx->x64.top_instr;
 	blog("Kind = %s", mir_instr_name(top_instr));
@@ -202,26 +278,38 @@ static void job(struct job_context *job_ctx) {
 	// present.
 	const usize bytes_len = arrlenu(tctx->bytes);
 	const usize syms_len  = arrlenu(tctx->syms);
+	const usize strs_len  = arrlenu(tctx->strs);
+
 	if (bytes_len == 0) return;
 
 	pthread_mutex_lock(&ctx->code.mutex);
 
-	const usize section_offset = arrlenu(ctx->code.bytes);
+	const usize section_offset      = arrlenu(ctx->code.bytes);
+	const usize string_table_offset = arrlenu(ctx->code.strs);
+	const usize syms_offset         = arrlenu(ctx->code.syms);
+
 	arrsetcap(ctx->code.bytes, CODE_BLOCK_BUFFER_SIZE);
 	arrsetlen(ctx->code.bytes, section_offset + bytes_len);
-
 	memcpy(&ctx->code.bytes[section_offset], tctx->bytes, bytes_len);
 
 	// Fixup symbol positions.
 	for (usize i = 0; i < arrlenu(tctx->syms); ++i) {
-		tctx->syms[i].Value += (DWORD)section_offset;
+		IMAGE_SYMBOL *sym = &tctx->syms[i];
+		sym->Value += (DWORD)section_offset;
+		if (sym->N.Name.Long) {
+			sym->N.Name.Long += (DWORD)string_table_offset;
+		}
 	}
 
-	const usize syms_offset = arrlenu(ctx->code.syms);
+	// Copy symbol table to global one.
 	arrsetcap(ctx->code.syms, SYMBOL_TABLE_SIZE);
 	arrsetlen(ctx->code.syms, syms_offset + syms_len);
-
 	memcpy(&ctx->code.syms[syms_offset], tctx->syms, syms_len * sizeof(IMAGE_SYMBOL));
+
+	// Copy string table to global one.
+	arrsetcap(ctx->code.strs, STRING_TABLE_SIZE);
+	arrsetlen(ctx->code.strs, string_table_offset + strs_len);
+	memcpy(&ctx->code.strs[string_table_offset], tctx->strs, strs_len);
 
 	pthread_mutex_unlock(&ctx->code.mutex);
 }
@@ -264,9 +352,9 @@ static void create_object_file(struct context *ctx) {
 	// Symbol table
 	fwrite(ctx->code.syms, IMAGE_SIZEOF_SYMBOL, arrlenu(ctx->code.syms), file);
 	// String table
-	// @Cleanup: Just size...
-	u32 no_strings = 0;
-	fwrite(&no_strings, 1, sizeof(u32), file);
+	u32 strs_len = (u32)arrlenu(ctx->code.strs) + sizeof(u32); // See the COFF specifiction sec 5.6.
+	fwrite(&strs_len, 1, sizeof(u32), file);
+	fwrite(ctx->code.strs, 1, strs_len, file);
 
 	fclose(file);
 }
@@ -299,10 +387,12 @@ void x86_64run(struct assembly *assembly) {
 		struct thread_context *tctx = &ctx.tctx[i];
 		arrfree(tctx->bytes);
 		arrfree(tctx->syms);
+		arrfree(tctx->strs);
 	}
 	arrfree(ctx.tctx);
 	arrfree(ctx.code.bytes);
 	arrfree(ctx.code.syms);
+	arrfree(ctx.code.strs);
 	pthread_mutex_destroy(&ctx.code.mutex);
 }
 
@@ -352,7 +442,7 @@ IMAGE_SYMBOL syms[2] = {
 };
 
 usize file_ptr;
-file_ptr = output(&ctx, &header, IMAGE_SIZEOF_FILE_HEADER);
+file_ptr = output&ctx, &header, IMAGE_SIZEOF_FILE_HEADER);
 printf("Header:  0x%llx\n", file_ptr);
 
 file_ptr = output(&ctx, &section, IMAGE_SIZEOF_SECTION_HEADER);
