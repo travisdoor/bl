@@ -246,7 +246,7 @@ void print_help(FILE *stream, struct getarg_opt *opts) {
 	                   "  blc [options] [source-files]\n\n"
 	                   "Alternative usage:\n"
 	                   "  blc [options] <-build> [build-arguments]\n"
-	                   "  blc [options] <--init> <project-name>\n"
+	                   "  blc [options] <-init> <project-name>\n"
 	                   "  blc [options] <-run> <source-file> [arguments] [forwarded-arguments]\n\n"
 	                   "Options:\n";
 	fprintf(stream, "%s", text);
@@ -361,7 +361,7 @@ int main(s32 argc, char *argv[]) {
 	struct getarg_opt optlist[] = {
 	    {
 	        .name = "-init",
-	        .help = "Creates a a project setup in your current folder."
+	        .help = "Creates a project setup in your current folder. "
 	                "Use as '-init [project-name]",
 	        .id   = ID_INIT_PROJECT,
 	    },
@@ -684,18 +684,16 @@ int main(s32 argc, char *argv[]) {
 			opt.target->opt = ASSEMBLY_OPT_RELEASE_FAST;
 			break;
 		case ID_INIT_PROJECT:
-			if (file_exists("build.bl")) {
-				builder_error("File 'build.bl' exists in the current directory.");
+			if (file_exists(BUILD_SCRIPT_FILE)) {
+				builder_error("Current directory already contains initialized BL project. File '%s' exists", BUILD_SCRIPT_FILE);
 				EXIT(EXIT_FAILURE);
 			}
 			char *project_name = "out";
-			if (argv[index + 1]) {
-				project_name = argv[index + 1];
-			}
+			if (argv[index + 1]) project_name = argv[index + 1];
 
-			FILE *build_file = fopen("build.bl", "w+");
+			FILE *build_file = fopen(BUILD_SCRIPT_FILE, "w+");
 			if (!build_file) {
-				builder_error("could not create build file!");
+				builder_error("Could not create build file!");
 				EXIT(EXIT_FAILURE);
 			}
 			const char *build_function_code_template = "build :: fn () #build_entry {\n"
@@ -705,21 +703,20 @@ int main(s32 argc, char *argv[]) {
 			                                           "    compile(exe);\n"
 			                                           "}\n";
 
-			char *exe_name = project_name;
-
-			fprintf(build_file, "\n\n\n");
-			fprintf(build_file, build_function_code_template, exe_name);
+			fprintf(build_file, build_function_code_template, project_name);
 
 			if (!create_dir("bin")) {
+				builder_error("Could not create bin directory!");
 				EXIT(EXIT_FAILURE);
 			}
 			if (!create_dir("src")) {
+				builder_error("Could not create src directory!");
 				EXIT(EXIT_FAILURE);
 			}
 
 			FILE *main_file = fopen("./src/main.bl", "w+");
 			if (!main_file) {
-				builder_error("could not create build file!");
+				builder_error("Could not create main file!");
 				EXIT(EXIT_FAILURE);
 			}
 			const char *main_example = "\n\nmain :: fn() s32 {\n"
@@ -728,8 +725,8 @@ int main(s32 argc, char *argv[]) {
 			                           "}\n";
 			fprintf(main_file, "%s", main_example);
 
-			builder_info("INFO: project was initialize successfully");
-			builder_info("INFO: try blc -build");
+			builder_info("Project was initialized successfully");
+			builder_info("Try blc -build");
 
 			fclose(main_file);
 			fclose(build_file);
