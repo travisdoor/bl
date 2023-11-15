@@ -714,8 +714,6 @@ int main(s32 argc, char *argv[]) {
 				EXIT(EXIT_FAILURE);
 			}
 
-			if (file_exists("./src/main.bl")) {
-			}
 			FILE *main_file = fopen("./src/main.bl", "w+");
 			if (!main_file) {
 				builder_error("Could not create main file!");
