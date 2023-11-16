@@ -28,6 +28,7 @@
 
 #include "assembly.h"
 #include "builder.h"
+#include "common.h"
 #include "conf.h"
 #include "stb_ds.h"
 #include <locale.h>
@@ -245,7 +246,8 @@ void print_help(FILE *stream, struct getarg_opt *opts) {
 	                   "  blc [options] [source-files]\n\n"
 	                   "Alternative usage:\n"
 	                   "  blc [options] <-build> [build-arguments]\n"
-	                   "  blc [options] <-run> <source-file> [arguments] [forwarded-arguments]\n\n"
+	                   "  blc [options] <-init>  [project-name]\n"
+	                   "  blc [options] <-run>   <source-file> [arguments] [forwarded-arguments]\n\n"
 	                   "Options:\n";
 	fprintf(stream, "%s", text);
 	struct getarg_opt *opt;
@@ -354,8 +356,14 @@ int main(s32 argc, char *argv[]) {
 #define ID_VMDBG_BREAK_ON 5
 #define ID_RELEASE 6
 #define ID_SILENT_RUN 7
+#define ID_INIT_PROJECT 8
 
 	struct getarg_opt optlist[] = {
+	    {
+	        .name = "-init",
+	        .help = "Creates a new project in current folder. Use as '-init [project-name]'.",
+	        .id   = ID_INIT_PROJECT,
+	    },
 	    {
 	        .name = "-build",
 	        .help = "Invoke project build pipeline. All following arguments are forwarded into the "
@@ -678,6 +686,54 @@ int main(s32 argc, char *argv[]) {
 		case ID_RELEASE:
 			opt.target->opt = ASSEMBLY_OPT_RELEASE_FAST;
 			break;
+		case ID_INIT_PROJECT:
+			if (file_exists(BUILD_SCRIPT_FILE) || file_exists("./src/main.bl")) {
+				builder_error("Project seems to be already initialized in this directory.");
+				EXIT(EXIT_FAILURE);
+			}
+			char *project_name = "out";
+			if (argv[index + 1]) project_name = argv[index + 1];
+
+			FILE *build_file = fopen(BUILD_SCRIPT_FILE, "w");
+			if (!build_file) {
+				builder_error("Could not create build file!");
+				EXIT(EXIT_FAILURE);
+			}
+			const char *build_function_code_template = "build :: fn () #build_entry {\n"
+			                                           "\texe := add_executable(\"%s\");\n"
+			                                           "\tset_output_dir(exe,\"bin\");\n"
+			                                           "\tadd_unit(exe, \"src/main.bl\");\n"
+			                                           "\tcompile(exe);\n"
+			                                           "}\n";
+
+			fprintf(build_file, build_function_code_template, project_name);
+			fclose(build_file);
+
+			if (!create_dir("bin")) {
+				builder_error("Could not create bin directory!");
+				EXIT(EXIT_FAILURE);
+			}
+			if (!create_dir("src")) {
+				builder_error("Could not create src directory!");
+				EXIT(EXIT_FAILURE);
+			}
+
+			FILE *main_file = fopen("./src/main.bl", "w");
+			if (!main_file) {
+				builder_error("Could not create main file!");
+				EXIT(EXIT_FAILURE);
+			}
+			const char *main_example = "main :: fn() s32 {\n"
+			                           "\tprint(\"Hello World!\\n\");\n"
+			                           "\treturn 0;\n"
+			                           "}\n";
+			fprintf(main_file, "%s", main_example);
+			fclose(main_file);
+
+			builder_info("Project was initialized successfully.");
+			builder_info("Try 'blc -build'.");
+
+			EXIT(EXIT_SUCCESS);
 		default:
 			if (positional) {
 				target_add_file(opt.target, positional);
