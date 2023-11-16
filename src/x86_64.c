@@ -39,10 +39,29 @@
 #define STRING_TABLE_SIZE (1 * 1024 * 1024)      // 1MB
 #define CODE_BLOCK_BUFFER_SIZE (2 * 1024 * 1024) // 2MB
 
+struct block {
+	u32 start_addr;
+};
+
+struct var {
+	u32 offset;
+};
+
+struct rel_jmp_reloc {
+	struct mir_instr_block *target_block;
+	u32                     addr;
+};
+
 struct thread_context {
 	array(u8) bytes;
 	array(IMAGE_SYMBOL) syms;
 	array(char) strs;
+	array(struct block) blocks;
+	array(struct var) vars;
+	array(struct mir_instr_block *) emit_block_queue;
+	array(struct rel_jmp_reloc) rel_jmp_reloc;
+
+	u32 stack_allocation_size;
 };
 
 struct context {
@@ -71,6 +90,7 @@ struct context {
 #define REX_W 0b01001000
 
 #define MOD_REG_ADDR 0b11
+#define MOD_BYTE_DISP 0b01
 
 #define RAX 0
 #define RCX 1
@@ -81,7 +101,25 @@ struct context {
 #define RSI 6
 #define RDI 7
 
+#define EAX 0
+#define ECX 1
+#define EDX 2
+#define EBX 3
+#define ESP 4
+#define EBP 5
+#define ESI 6
+#define EDI 7
+
 #define encode_mod_reg_rm(mod, reg, rm) (((mod) << 6) | (reg << 3) | (rm))
+
+static inline u32 get_position(struct thread_context *tctx) {
+	return (u32)arrlenu(tctx->bytes);
+}
+
+static inline u32 calculate_distance_from_current_position(struct thread_context *tctx, u32 addr) {
+	const s32 p = (s32)get_position(tctx);
+	return (u32)((s32)addr) - p;
+}
 
 static inline void unique_name(struct context *ctx, str_buf_t *dest, const char *prefix, const str_t name) {
 	pthread_spin_lock(&ctx->uq_name_lock);
@@ -90,24 +128,27 @@ static inline void unique_name(struct context *ctx, str_buf_t *dest, const char 
 	pthread_spin_unlock(&ctx->uq_name_lock);
 }
 
-static inline void add_code(struct thread_context *tctx, const void *buf, s32 len) {
-	const usize i = arrlenu(tctx->bytes);
+static inline s32 add_code(struct thread_context *tctx, const void *buf, s32 len) {
+	const u32 i = get_position(tctx);
 	arrsetcap(tctx->bytes, BYTE_CODE_BUFFER_SIZE);
 	arrsetlen(tctx->bytes, i + len);
 	memcpy(&tctx->bytes[i], buf, len);
+	return i;
 }
 
 // Add new symbol into thread local storage and set it's offset value relative to already generated
 // code in the thread local bytes array. This value must be later fixed according to position in the
 // final code section.
-static inline void add_sym(struct thread_context *tctx, str_t linkage_name) {
+// Returns offet of the symbol in the binary.
+static inline u32 add_sym(struct thread_context *tctx, str_t linkage_name) {
 	bassert(linkage_name.len && linkage_name.ptr);
-	IMAGE_SYMBOL sym = {
-	    .SectionNumber = 1,
-	    .Type          = 0x20,
-	    .StorageClass  = IMAGE_SYM_CLASS_EXTERNAL,
-	    .Value         = (DWORD)arrlenu(tctx->bytes),
-	};
+	const u32    offset = get_position(tctx);
+	IMAGE_SYMBOL sym    = {
+	       .SectionNumber = 1,
+	       .Type          = 0x20,
+	       .StorageClass  = IMAGE_SYM_CLASS_EXTERNAL,
+	       .Value         = offset,
+    };
 
 	if (linkage_name.len > 8) {
 		const u32 str_offset = (u32)arrlenu(tctx->strs);
@@ -123,6 +164,18 @@ static inline void add_sym(struct thread_context *tctx, str_t linkage_name) {
 
 	arrsetcap(tctx->syms, 64);
 	arrput(tctx->syms, sym);
+	return offset;
+}
+
+static inline u64 add_block(struct thread_context *tctx, const str_t name) {
+	const struct block b = {.start_addr = add_sym(tctx, name)};
+	arrput(tctx->blocks, b);
+	return arrlenu(tctx->blocks);
+}
+
+static inline void nop(struct thread_context *tctx) {
+	const u8 buf[] = {0x90};
+	add_code(tctx, buf, 1);
 }
 
 // 64 bit
@@ -157,10 +210,38 @@ static inline void sub64_ri8(struct thread_context *tctx, u8 r, u8 imm) {
 	add_code(tctx, buf, 4);
 }
 
+static inline void sub64_ri32(struct thread_context *tctx, u8 r, u32 imm) {
+	const u8 buf[] = {REX_W, 0x81, encode_mod_reg_rm(MOD_REG_ADDR, 0x5, r)};
+	add_code(tctx, buf, 3);
+	add_code(tctx, &imm, sizeof(imm));
+}
+
+static inline void add64_ri32(struct thread_context *tctx, u8 r, u32 imm) {
+	const u8 buf[] = {REX_W, 0x81, encode_mod_reg_rm(MOD_REG_ADDR, 0x0, r)};
+	add_code(tctx, buf, 3);
+	add_code(tctx, &imm, sizeof(imm));
+}
+
 // 32 bit
 static inline void mov32_rr(struct thread_context *tctx, u8 r1, u8 r2) {
 	const u8 buf[] = {0x89, encode_mod_reg_rm(MOD_REG_ADDR, r2, r1)};
 	add_code(tctx, buf, 2);
+}
+
+static inline void mov32_mi32(struct thread_context *tctx, u8 r, u8 offset, u32 imm) {
+	const u8 buf[] = {0xC7, encode_mod_reg_rm(MOD_BYTE_DISP, 0x0, r), offset};
+	add_code(tctx, buf, 3);
+	add_code(tctx, &imm, sizeof(imm));
+}
+
+static inline void mov32_rm32(struct thread_context *tctx, u8 r1, u8 r2, u8 offset) {
+	const u8 buf[] = {0x8B, encode_mod_reg_rm(MOD_BYTE_DISP, r1, r2), offset};
+	add_code(tctx, buf, 3);
+}
+
+static inline void mov32_m32r(struct thread_context *tctx, u8 r1, u8 offset, u8 r2) {
+	const u8 buf[] = {0x89, encode_mod_reg_rm(MOD_BYTE_DISP, r2, r1), offset};
+	add_code(tctx, buf, 3);
 }
 
 static inline void xor32_rr(struct thread_context *tctx, u8 r1, u8 r2) {
@@ -173,87 +254,344 @@ static inline void ret(struct thread_context *tctx) {
 	add_code(tctx, buf, 1);
 }
 
+static inline void jmp_relative_i32(struct thread_context *tctx, s32 offset) {
+	if (offset != 0)
+		offset = _byteswap_ulong(offset + sizeof(u8) + sizeof(u32));
+
+	const u8 buf[] = {0xE9};
+	add_code(tctx, buf, 1);
+	add_code(tctx, &offset, sizeof(offset));
+}
+
+// 16 bit
+static inline void mov16_mi16(struct thread_context *tctx, u8 r, u8 offset, u16 imm) {
+	const u8 buf[] = {0x66, 0xC7, encode_mod_reg_rm(MOD_BYTE_DISP, 0x0, r), offset};
+	add_code(tctx, buf, 4);
+	add_code(tctx, &imm, sizeof(imm));
+}
+
+// 8 bit
+static inline void mov8_mi8(struct thread_context *tctx, u8 r, u8 offset, u8 imm) {
+	const u8 buf[] = {0xC6, encode_mod_reg_rm(MOD_BYTE_DISP, 0x0, r), offset, imm};
+	add_code(tctx, buf, 4);
+}
+
+static inline void jmp_relative_i8(struct thread_context *tctx, s8 offset) {
+	const u8 buf[] = {0xEB, (u8)offset};
+	add_code(tctx, buf, 2);
+}
+
+// Return true in case the block was found.
+static inline bool jump_to_block_relative(struct thread_context *tctx, struct mir_instr_block *block) {
+	bassert(block);
+	if (!block->base.backend_value) return false;
+
+	// Block already generated we need to jump to its location.
+	const u32 block_address = tctx->blocks[block->base.backend_value - 1].start_addr;
+	jmp_relative_i32(tctx, calculate_distance_from_current_position(tctx, block_address));
+	return true;
+}
+
 //
 // Translate
 //
 
+static void allocate_stack(struct thread_context *tctx, struct mir_fn *fn) {
+	u32 top = 0;
+
+	for (usize i = 0; i < arrlenu(fn->variables); ++i) {
+		struct mir_var *var = fn->variables[i];
+		bassert(var);
+		if (isnotflag(var->iflags, MIR_VAR_EMIT_LLVM)) continue;
+		if (var->ref_count == 0) continue;
+
+		struct mir_type *var_type = var->value.type;
+		bassert(var_type);
+
+		const u32 var_size      = (u32)var_type->store_size_bytes;
+		const u32 var_alignment = (u32)var->value.type->alignment;
+
+		if (!is_aligned((void *)(usize)top, var_alignment)) {
+			top = (u32)(usize)next_aligned((void *)(usize)top, var_alignment);
+		}
+
+		blog("Variable: %dB aligned to: %dB at: 0x%x", var_type->store_size_bytes, var_alignment, top);
+		arrput(tctx->vars, (struct var){.offset = top});
+		var->backend_value = arrlenu(tctx->vars);
+
+		top += var_size;
+	}
+
+	// Adjust stack memory to 16B.
+	top = (u32)(usize)next_aligned((void *)(usize)top, 16);
+
+	// Add shadow space.
+	// @Performance: This is needed only in case this function is not a leaf function
+	// or maybe just in case we call some stuff from C.
+	top += 0x20;
+
+	bassert(is_aligned((void *)(usize)top, 16));
+
+	sub64_ri32(tctx, RSP, top);
+	tctx->stack_allocation_size += top;
+
+	blog("Total allocated: %dB", top);
+}
+
 // @Cleanup: do we need ctx?
-static void emit_instr(struct context *ctx, struct thread_context *tctx, struct mir_instr *instr);
-static void emit_instr_fn_proto(struct context *ctx, struct thread_context *tctx, struct mir_instr_fn_proto *fn_proto);
-static void emit_instr_block(struct context *ctx, struct thread_context *tctx, struct mir_instr_block *block);
-
-void emit_instr_block(struct context *ctx, struct thread_context *tctx, struct mir_instr_block *block) {
-	struct mir_fn *fn        = block->owner_fn;
-	const bool     is_global = fn == NULL;
-	if (!block->terminal) babort("Block '%s', is not terminated", block->name);
-
-	if (!is_global) {
-		add_sym(tctx, block->name);
-		if (fn->first_block == block) {
-			blog("Missing emit of allocas.");
-			// emit_allocas(ctx, fn);
-		}
-	} else {
-		babort("Missing implementation for global blocks!");
-	}
-
-	// Generate all instructions in the block.
-	struct mir_instr *instr = block->entry_instr;
-	while (instr) {
-		emit_instr(ctx, tctx, instr);
-		instr = instr->next;
-	}
-}
-
-void emit_instr_fn_proto(struct context *ctx, struct thread_context *tctx, struct mir_instr_fn_proto *fn_proto) {
-	struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &fn_proto->base.value);
-	bmagic_assert(fn);
-
-	str_t linkage_name = str_empty;
-	if (isflag(fn->flags, FLAG_INTRINSIC)) {
-		babort("Intrinsic are not implemented yet!");
-	} else {
-		linkage_name = fn->linkage_name;
-	}
-	bassert(linkage_name.len && "Invalid function name!");
-
-	// External functions does not have any body block.
-	if (isflag(fn->flags, FLAG_EXTERN) || isflag(fn->flags, FLAG_INTRINSIC)) {
-		bassert("Handling of extern functions not implemented!");
-		return;
-	}
-
-	add_sym(tctx, linkage_name);
-
-	// Prologue
-	push64_r(tctx, RBP);
-	mov64_rr(tctx, RBP, RSP);
-
-	// Generate all blocks in the function body.
-	struct mir_instr *block = (struct mir_instr *)fn->first_block;
-	while (block) {
-		if (!block->is_unreachable) {
-			emit_instr(ctx, tctx, block);
-		}
-		block = block->next;
-	}
-
-	// Epilogue
-	pop64_r(tctx, RBP);
-	ret(tctx);
-}
-
-void emit_instr(struct context *ctx, struct thread_context *tctx, struct mir_instr *instr) {
+static void emit_instr(struct context *ctx, struct thread_context *tctx, struct mir_instr *instr) {
 	bassert(instr->state == MIR_IS_COMPLETE && "Attempt to emit instruction in incomplete state!");
 	// @Incomplete
 	// if (!mir_type_has_llvm_representation((instr->value.type))) return state;
 	switch (instr->kind) {
-	case MIR_INSTR_FN_PROTO:
-		emit_instr_fn_proto(ctx, tctx, (struct mir_instr_fn_proto *)instr);
+
+	case MIR_INSTR_FN_PROTO: {
+		struct mir_instr_fn_proto *fn_proto = (struct mir_instr_fn_proto *)instr;
+		struct mir_fn             *fn       = MIR_CEV_READ_AS(struct mir_fn *, &fn_proto->base.value);
+		bmagic_assert(fn);
+
+		str_t linkage_name = str_empty;
+		if (isflag(fn->flags, FLAG_INTRINSIC)) {
+			BL_UNIMPLEMENTED;
+		} else {
+			linkage_name = fn->linkage_name;
+		}
+		bassert(linkage_name.len && "Invalid function name!");
+
+		// External functions does not have any body block.
+		if (isflag(fn->flags, FLAG_EXTERN) || isflag(fn->flags, FLAG_INTRINSIC)) {
+			BL_UNIMPLEMENTED;
+			return;
+		}
+
+		add_sym(tctx, linkage_name);
+
+		// Prologue
+		push64_r(tctx, RBP);
+		mov64_rr(tctx, RBP, RSP);
+
+		// Generate all blocks in the function body.
+		arrput(tctx->emit_block_queue, fn->first_block);
+		while (arrlenu(tctx->emit_block_queue)) {
+			struct mir_instr_block *block = arrpop(tctx->emit_block_queue);
+			bassert(block->terminal);
+			emit_instr(ctx, tctx, (struct mir_instr *)block);
+		}
+
 		break;
-	case MIR_INSTR_BLOCK:
-		emit_instr_block(ctx, tctx, (struct mir_instr_block *)instr);
+	}
+
+	case MIR_INSTR_BLOCK: {
+		struct mir_instr_block *block     = (struct mir_instr_block *)instr;
+		struct mir_fn          *fn        = block->owner_fn;
+		const bool              is_global = fn == NULL;
+		if (!block->terminal) babort("Block '%s', is not terminated", block->name);
+		blog("Emit block: %.*s", block->name.len, block->name.ptr);
+		bassert(block->base.backend_value == 0 && "Block already generated!");
+
+		if (is_global) {
+			BL_UNIMPLEMENTED;
+		} else {
+			str_buf_t name = get_tmp_str();
+#if BL_DEBUG
+			unique_name(ctx, &name, ".", block->name);
+#else
+			unique_name(ctx, &name, ".", cstr("B"));
+#endif
+
+			block->base.backend_value = add_block(tctx, str_buf_view(name));
+			put_tmp_str(name);
+
+			if (fn->first_block == block) {
+				allocate_stack(tctx, fn);
+			}
+		}
+
+		// @Cleanup
+		const u32 prev_pos = get_position(tctx);
+
+		// Generate all instructions in the block.
+		struct mir_instr *instr = block->entry_instr;
+		while (instr) {
+			emit_instr(ctx, tctx, instr);
+			instr = instr->next;
+		}
+
+		// @Cleanup
+		if (get_position(tctx) == prev_pos)
+			nop(tctx);
+
 		break;
+	}
+
+	case MIR_INSTR_LOAD: {
+		struct mir_instr_load *load = (struct mir_instr_load *)instr;
+		struct mir_type       *type = load->base.value.type;
+		bassert(type->kind == MIR_TYPE_INT && type->store_size_bytes == 4);
+		const u32 rbp_offset_bytes = tctx->vars[load->src->backend_value - 1].offset;
+		bassert(rbp_offset_bytes < 128);
+		mov32_rm32(tctx, EAX, RBP, (u8)rbp_offset_bytes);
+
+		break;
+	}
+
+	case MIR_INSTR_STORE: {
+		struct mir_instr_store *store = (struct mir_instr_store *)instr;
+		struct mir_type        *type  = store->src->value.type;
+		bassert(type->kind == MIR_TYPE_INT && type->store_size_bytes == 4);
+		bassert(store->dest->backend_value);
+		const u32 rbp_offset_bytes = tctx->vars[store->dest->backend_value - 1].offset;
+		bassert(rbp_offset_bytes < 128);
+
+		if (store->src->kind == MIR_INSTR_CONST) {
+			const u64 v = vm_read_int(type, store->src->value.data);
+			mov32_mi32(tctx, RBP, (u8)rbp_offset_bytes, (u32)v);
+		} else {
+			mov32_m32r(tctx, RBP, (u8)rbp_offset_bytes, EAX);
+		}
+		break;
+	}
+
+	case MIR_INSTR_RET: {
+		// Epilogue
+		if (tctx->stack_allocation_size) {
+			// Cleanup stack allocations.
+			add64_ri32(tctx, RSP, tctx->stack_allocation_size);
+		}
+		pop64_r(tctx, RBP);
+		ret(tctx);
+		break;
+	}
+
+	case MIR_INSTR_BR: {
+		struct mir_instr_br    *br         = (struct mir_instr_br *)instr;
+		struct mir_instr_block *then_block = br->then_block;
+		bassert(then_block);
+
+		if (!jump_to_block_relative(tctx, then_block)) {
+			// Generate block immediatelly without jumping.
+			arrput(tctx->emit_block_queue, then_block);
+		}
+
+		break;
+	}
+
+	case MIR_INSTR_COND_BR: {
+		struct mir_instr_cond_br *br = (struct mir_instr_cond_br *)instr;
+		bassert(br->cond && br->then_block && br->else_block);
+		jmp_relative_i32(tctx, 0x0); // @Incomplete
+
+		// Then block.
+		bassert(br->then_block->base.backend_value == 0);
+		arrput(tctx->emit_block_queue, br->then_block);
+
+		// Continue block.
+		// bassert(br->else_block->base.backend_value == 0);
+		// arrput(tctx->emit_block_queue, br->else_block);
+
+		break;
+	}
+
+	case MIR_INSTR_CONST: {
+		struct mir_instr_const *cnst = (struct mir_instr_const *)instr;
+		struct mir_type        *type = cnst->base.value.type;
+		bassert(type);
+		switch (type->kind) {
+		case MIR_TYPE_INT:
+			break;
+		default:
+			BL_UNIMPLEMENTED;
+		}
+		break;
+	}
+
+	case MIR_INSTR_DECL_VAR: {
+		struct mir_instr_decl_var *decl = (struct mir_instr_decl_var *)instr;
+		struct mir_var            *var  = decl->var;
+		bassert(var);
+		if (var->ref_count == 0) break;
+		if (!mir_type_has_llvm_representation(var->value.type)) break;
+		bassert(var->backend_value);
+
+		const u32 rbp_offset_bytes = tctx->vars[var->backend_value - 1].offset;
+
+		if (decl->init) {
+			if (decl->init->kind == MIR_INSTR_COMPOUND) {
+				BL_UNIMPLEMENTED;
+			} else if (decl->init->kind == MIR_INSTR_ARG) {
+				BL_UNIMPLEMENTED;
+			} else {
+				bassert(decl->init->backend_value == 0 && "We currently support only immediate values generated by constants!");
+				struct mir_type *type = var->value.type;
+				bassert(type);
+				switch (type->kind) {
+				case MIR_TYPE_INT: {
+					const u64 v = vm_read_int(type, decl->init->value.data);
+					bassert(rbp_offset_bytes < 128 && "Only short offset is supported for now.");
+					switch (type->store_size_bytes) {
+					case 1:
+						mov8_mi8(tctx, RBP, (u8)rbp_offset_bytes, (u8)v);
+						break;
+					case 2:
+						mov16_mi16(tctx, RBP, (u8)rbp_offset_bytes, (u16)v);
+						break;
+					case 4:
+						mov32_mi32(tctx, RBP, (u8)rbp_offset_bytes, (u32)v);
+						break;
+					case 8:
+						BL_UNIMPLEMENTED;
+						break;
+					default:
+						BL_UNIMPLEMENTED;
+					}
+					break;
+				}
+				default:
+					BL_UNIMPLEMENTED;
+				}
+			}
+		}
+		break;
+	}
+
+	case MIR_INSTR_DECL_REF: {
+		struct mir_instr_decl_ref *ref = (struct mir_instr_decl_ref *)instr;
+
+		struct scope_entry *entry = ref->scope_entry;
+		bassert(entry);
+		switch (entry->kind) {
+		case SCOPE_ENTRY_VAR: {
+			struct mir_var *var = entry->data.var;
+			if (isflag(var->iflags, MIR_VAR_GLOBAL)) {
+				BL_UNIMPLEMENTED;
+			} else {
+				ref->base.backend_value = var->backend_value;
+			}
+			break;
+		}
+		case SCOPE_ENTRY_FN: {
+			BL_UNIMPLEMENTED;
+			break;
+		}
+		default:
+			BL_UNIMPLEMENTED;
+		}
+		bassert(ref->base.llvm_value);
+		break;
+	}
+
+	case MIR_INSTR_DECL_DIRECT_REF: {
+		struct mir_instr_decl_direct_ref *ref = (struct mir_instr_decl_direct_ref *)instr;
+		bassert(ref->ref && ref->ref->kind == MIR_INSTR_DECL_VAR);
+		struct mir_var *var = ((struct mir_instr_decl_var *)ref->ref)->var;
+		bassert(var);
+		if (isflag(var->iflags, MIR_VAR_GLOBAL)) {
+			BL_UNIMPLEMENTED;
+		} else {
+			ref->base.backend_value = var->backend_value;
+		}
+		break;
+	}
 	default:
 		blog("Missing implementation for emmiting '%s' instruction.", mir_instr_name(instr));
 	}
@@ -268,6 +606,11 @@ static void job(struct job_context *job_ctx) {
 	arrsetlen(tctx->bytes, 0);
 	arrsetlen(tctx->syms, 0);
 	arrsetlen(tctx->strs, 0);
+	arrsetlen(tctx->blocks, 0);
+	arrsetlen(tctx->vars, 0);
+	arrsetlen(tctx->emit_block_queue, 0);
+	arrsetlen(tctx->rel_jmp_reloc, 0);
+	tctx->stack_allocation_size = 0;
 
 	struct mir_instr *top_instr = job_ctx->x64.top_instr;
 	blog("Kind = %s", mir_instr_name(top_instr));
@@ -388,6 +731,10 @@ void x86_64run(struct assembly *assembly) {
 		arrfree(tctx->bytes);
 		arrfree(tctx->syms);
 		arrfree(tctx->strs);
+		arrfree(tctx->blocks);
+		arrfree(tctx->vars);
+		arrfree(tctx->emit_block_queue);
+		arrfree(tctx->rel_jmp_reloc);
 	}
 	arrfree(ctx.tctx);
 	arrfree(ctx.code.bytes);
@@ -395,75 +742,3 @@ void x86_64run(struct assembly *assembly) {
 	arrfree(ctx.code.strs);
 	pthread_mutex_destroy(&ctx.code.mutex);
 }
-
-/*
-int main() {
-struct context ctx;
-init_ctx(&ctx);
-
-mov64_rr(&ctx, RAX, RCX);
-mov64_rr(&ctx, RBP, RSP);
-mov32_rr(&ctx, RAX, RCX);
-xor64_rr(&ctx, RAX, RAX);
-sub64_ri8(&ctx, RSP, 0x20);
-mov64_ri32(&ctx, RAX, 0x10);
-ret(&ctx);
-
-usize section_data_pointer = IMAGE_SIZEOF_FILE_HEADER + IMAGE_SIZEOF_SECTION_HEADER;
-usize sym_pointer          = section_data_pointer + ctx.len;
-
-IMAGE_FILE_HEADER header = {
-.Machine              = IMAGE_FILE_MACHINE_AMD64,
-.NumberOfSections     = 1,
-.PointerToSymbolTable = sym_pointer,
-.NumberOfSymbols      = 2,
-.TimeDateStamp        = time(0),
-};
-
-IMAGE_SECTION_HEADER section = {
-.Name             = ".text",
-.Characteristics  = IMAGE_SCN_CNT_CODE | IMAGE_SCN_MEM_READ | IMAGE_SCN_ALIGN_16BYTES | IMAGE_SCN_MEM_EXECUTE,
-.SizeOfRawData    = ctx.len,
-.PointerToRawData = section_data_pointer,
-};
-
-IMAGE_SYMBOL syms[2] = {
-{
-.N.ShortName   = "_start",
-.SectionNumber = 1,
-.Type          = 0x20,
-.StorageClass  = IMAGE_SYM_CLASS_EXTERNAL,
-},
-{
-.N.Name.Long  = 4, // Offset to the string table (contains table len).
-.Type         = 0x20,
-.StorageClass = IMAGE_SYM_CLASS_EXTERNAL,
-},
-};
-
-usize file_ptr;
-file_ptr = output&ctx, &header, IMAGE_SIZEOF_FILE_HEADER);
-printf("Header:  0x%llx\n", file_ptr);
-
-file_ptr = output(&ctx, &section, IMAGE_SIZEOF_SECTION_HEADER);
-printf("Section: 0x%llx\n", file_ptr);
-
-file_ptr = output(&ctx, ctx.code, ctx.len);
-printf("Code:    0x%llx (0x%lx)\n", file_ptr, section.PointerToRawData);
-
-file_ptr = output(&ctx, syms, IMAGE_SIZEOF_SYMBOL * 2);
-printf("Syms:    0x%llx (0x%lx)\n", file_ptr, header.PointerToSymbolTable);
-
-// Size of the string table
-const u32 strs_size = 12 + sizeof(u32);
-output(&ctx, &strs_size, sizeof(u32));
-
-// Content of the string table (zero terminated!).
-const char *strs = "ExitProcess";
-output(&ctx, strs, 12);
-
-terminate_ctx(&ctx);
-printf("Output written!");
-return 0;
-}
-*/

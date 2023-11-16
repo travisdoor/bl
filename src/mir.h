@@ -455,11 +455,14 @@ struct mir_var {
 	struct scope               *decl_scope;
 	struct scope_entry         *entry;
 	struct mir_instr           *initializer_block;
-	LLVMValueRef                llvm_value;
-	str_t                       linkage_name;
-	enum builtin_id_kind        builtin_id;
-	enum ast_flags              flags;  // User flags.
-	enum mir_var_flags          iflags; // Internal flags.
+	union {
+		LLVMValueRef llvm_value;
+		u64          backend_value;
+	};
+	str_t                linkage_name;
+	enum builtin_id_kind builtin_id;
+	enum ast_flags       flags;  // User flags.
+	enum mir_var_flags   iflags; // Internal flags.
 	union {
 		vm_stack_ptr_t          global;
 		vm_relative_stack_ptr_t local;
@@ -483,9 +486,14 @@ struct mir_instr {
 	u64                         id;
 	struct ast                 *node;
 	struct mir_instr_block     *owner_block;
-	LLVMValueRef                llvm_value;
-	struct mir_instr           *prev;
-	struct mir_instr           *next;
+
+	union {
+		LLVMValueRef llvm_value;
+		u64          backend_value;
+	};
+
+	struct mir_instr *prev;
+	struct mir_instr *next;
 
 #if BL_DEBUG
 	enum mir_instr_kind _orig_kind;

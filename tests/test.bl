@@ -19,9 +19,13 @@ Any :: struct #compiler {
 	data: *u8
 };
 
-foo :: fn () #export {}
-
 __os_start :: fn () s32 #entry {
+	number := 64;
+	byte : u8 = 8;
+
+	number;
+	byte;
+
 	return 0;
 }
 
