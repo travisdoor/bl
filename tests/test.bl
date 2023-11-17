@@ -20,13 +20,12 @@ Any :: struct #compiler {
 };
 
 __os_start :: fn () s32 #entry {
-	number := 64;
-	byte : u8 = 8;
+	n1 := 64;
+	n2: u8 = 2;
 
-	number;
-	byte;
+	n2 = 16;
 
-	return 0;
+	return n1;
 }
 
 /*
