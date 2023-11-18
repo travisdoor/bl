@@ -301,14 +301,23 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 	case MIR_INSTR_STORE: {
 		struct mir_instr_store *store = (struct mir_instr_store *)instr;
 		struct mir_type        *type  = store->src->value.type;
-		bassert(type->kind == MIR_TYPE_INT && type->store_size_bytes == 4);
 		bassert(store->dest->backend_value);
+
 		const s32 rbp_offset_bytes = tctx->vars[store->dest->backend_value - 1].offset;
 
 		if (store->src->kind == MIR_INSTR_CONST) {
-			const u64 v = vm_read_int(type, store->src->value.data);
-			mov32_mi32(tctx, RBP, rbp_offset_bytes, (u32)v);
+			switch (type->kind) {
+			case MIR_TYPE_INT: {
+				const u64 v = vm_read_int(type, store->src->value.data);
+				mov_rbp_offset_immediate(tctx, rbp_offset_bytes, v, type->store_size_bytes);
+				break;
+			}
+			default:
+				BL_UNIMPLEMENTED;
+			}
 		} else {
+			bassert(type->kind == MIR_TYPE_INT && type->store_size_bytes == 4);
+			bassert(is_byte_disp(rbp_offset_bytes));
 			mov32_m32r(tctx, RBP, (u8)rbp_offset_bytes, EAX);
 		}
 		break;
