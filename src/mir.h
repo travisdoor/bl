@@ -503,6 +503,8 @@ struct mir_instr {
 	bool is_unreachable;
 	bool is_implicit;
 
+	s32 reg_hint;
+
 	bmagic_member
 };
 

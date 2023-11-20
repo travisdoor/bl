@@ -19,13 +19,23 @@ Any :: struct #compiler {
 	data: *u8
 };
 
+// foo :: fn (a: s32, b: s32, c: s32, d: s32) {}
+
 __os_start :: fn () s32 #entry {
-	n1 := 64;
-	n2: u8 = 2;
+	v := 10;
+	a := 20;
+	v = 30 + a;
+	// loop i := 0; i < 10; i += 1 {
+	// 	v = i;
+	// }
 
-	n2 = 16;
+	// a := 0;
+	// b := 1;
+	// foo(a, b, a + b, 10);
 
-	return n1;
+	v = a + 40;
+	//v += 10;
+	return v;
 }
 
 /*
@@ -42,7 +52,7 @@ if !settings.modal_ctrl && (mods & MOD_CONTROL) == MOD_CONTROL {
 
 #import "std/fs"
 
-text_file_to_heap :: fn (filename: string_view) string_view #comptime {
+text_file_to_stack :: fn (filename: string_view) string_view #comptime {
 	using std;
     stream, open_err :: open_file(filename);
     defer close_file(&stream);

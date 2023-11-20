@@ -2720,14 +2720,14 @@ struct mir_fn *create_fn(struct context *ctx, create_fn_args_t *args) {
 
 	struct mir_fn *tmp = arena_alloc(&ctx->assembly->arenas.mir.fn);
 	bmagic_set(tmp);
-	tmp->linkage_name      = args->linkage_name;
-	tmp->id                = args->id;
-	tmp->flags             = args->flags;
-	tmp->decl_node         = args->node;
-	tmp->prototype         = &args->prototype->base;
-	tmp->is_global         = args->is_global;
-	tmp->builtin_id        = args->builtin_id;
-	tmp->generated_flavor  = args->generated_flags;
+	tmp->linkage_name     = args->linkage_name;
+	tmp->id               = args->id;
+	tmp->flags            = args->flags;
+	tmp->decl_node        = args->node;
+	tmp->prototype        = &args->prototype->base;
+	tmp->is_global        = args->is_global;
+	tmp->builtin_id       = args->builtin_id;
+	tmp->generated_flavor = args->generated_flags;
 	// arrsetcap(tmp->variables, 8);
 
 	return tmp;
@@ -7062,6 +7062,9 @@ struct result analyze_instr_binop(struct context *ctx, struct mir_instr_binop *b
 	binop->base.value.is_comptime = lhs->value.is_comptime && rhs->value.is_comptime;
 	binop->base.value.addr_mode   = MIR_VAM_RVALUE;
 	binop->volatile_type          = is_instr_type_volatile(lhs) && is_instr_type_volatile(rhs);
+
+	binop->lhs->reg_hint = 0;
+	binop->rhs->reg_hint = 1;
 
 	return_zone(PASS);
 }
