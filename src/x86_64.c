@@ -40,7 +40,7 @@
 #define STRING_TABLE_SIZE (1 * 1024 * 1024)      // 1MB
 #define CODE_BLOCK_BUFFER_SIZE (2 * 1024 * 1024) // 2MB
 
-static const u8 call_reg_order[4] = {RCX, RDX, R9, R8};
+static const u8 call_reg_order[5] = {RAX, RCX, RDX, R9, R8};
 
 enum x64_value_kind {
 	ADDRESS,
@@ -105,9 +105,20 @@ static inline void set_value(struct thread_context *tctx, struct mir_instr *inst
 	instr->backend_value = arrlenu(tctx->values);
 }
 
-static inline struct x64_value get_value(struct thread_context *tctx, struct mir_instr *instr) {
+#define get_value(tctx, V) _Generic((V),                \
+	                                struct mir_instr *  \
+	                                : _get_value_instr, \
+	                                  struct mir_var *  \
+	                                : _get_value_var)((tctx), (V))
+
+static inline struct x64_value _get_value_instr(struct thread_context *tctx, struct mir_instr *instr) {
 	bassert(instr->backend_value != 0);
 	return tctx->values[instr->backend_value - 1];
+}
+
+static inline struct x64_value _get_value_var(struct thread_context *tctx, struct mir_var *var) {
+	bassert(var->backend_value != 0);
+	return tctx->values[var->backend_value - 1];
 }
 
 static inline void unique_name(struct context *ctx, str_buf_t *dest, const char *prefix, const str_t name) {
@@ -337,7 +348,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		bassert(tctx->values[load->src->backend_value - 1].kind == OFFSET);
 		const s32 rbp_offset_bytes = tctx->values[load->src->backend_value - 1].offset;
 
-		const s32 reg_index = load->base.reg_hint;
+		const s32 reg_index = load->base.value.reg_hint;
 		if (reg_index >= static_arrlenu(call_reg_order)) {
 			BL_UNIMPLEMENTED;
 		}
@@ -392,7 +403,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		struct x64_value rhs_value = get_value(tctx, binop->rhs);
 
 		if (lhs_value.kind == IMMEDIATE) {
-			const u8 reg = call_reg_order[binop->lhs->reg_hint];
+			const u8 reg = call_reg_order[binop->lhs->value.reg_hint];
 			mov32_ri32(tctx, reg, (u32)lhs_value.imm);
 			lhs_value.kind = REGISTER;
 			lhs_value.reg  = reg;
@@ -521,33 +532,39 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		if (!mir_type_has_llvm_representation(var->value.type)) break;
 		bassert(var->backend_value);
 
-		bassert(tctx->values[var->backend_value - 1].kind == OFFSET);
-		const s32 rbp_offset_bytes = tctx->values[var->backend_value - 1].offset;
+		if (!decl->init) break;
 
-		if (decl->init) {
-			if (decl->init->kind == MIR_INSTR_COMPOUND) {
-				BL_UNIMPLEMENTED;
-			} else if (decl->init->kind == MIR_INSTR_ARG) {
-				BL_UNIMPLEMENTED;
-			} else {
-				struct mir_type *type = var->value.type;
-				bassert(type);
-				if (decl->init->kind == MIR_INSTR_CONST) {
-					switch (type->kind) {
-					case MIR_TYPE_INT: {
-						const u64 v = vm_read_int(type, decl->init->value.data);
-						mov_rbp_offset_immediate(tctx, rbp_offset_bytes, v, type->store_size_bytes);
-						break;
-					}
-					default:
-						BL_UNIMPLEMENTED;
-					}
-				} else {
-					bassert(type->store_size_bytes == 4);
-					mov32_mr(tctx, RBP, (u8)rbp_offset_bytes, RAX);
-				}
-			}
+		if (decl->init->kind == MIR_INSTR_COMPOUND) {
+			BL_UNIMPLEMENTED;
+			break;
 		}
+
+		if (decl->init->kind == MIR_INSTR_ARG) {
+			BL_UNIMPLEMENTED;
+			break;
+		}
+
+		const struct x64_value var_value  = get_value(tctx, var);
+		const struct x64_value init_value = get_value(tctx, decl->init);
+
+		struct mir_type *type = var->value.type;
+
+		bassert(var_value.kind == OFFSET);
+
+		if (init_value.kind == IMMEDIATE) {
+			switch (type->kind) {
+			case MIR_TYPE_INT: {
+				mov_rbp_offset_immediate(tctx, var_value.offset, init_value.imm, type->store_size_bytes);
+				break;
+			}
+			default:
+				BL_UNIMPLEMENTED;
+			}
+		} else if (init_value.kind == REGISTER) {
+			bassert(type->store_size_bytes == 4);
+			mov32_mr(tctx, RBP, (u8)var_value.offset, init_value.reg);
+		}
+
 		break;
 	}
 

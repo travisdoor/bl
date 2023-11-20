@@ -128,6 +128,9 @@ struct mir_const_expr_value {
 	struct mir_type            *type;
 	enum mir_value_address_mode addr_mode;
 	bool                        is_comptime;
+
+	// This might be used by backend to pick correct register during byte code generation.
+	s32 reg_hint;
 };
 
 typedef sarr_t(struct mir_const_expr_value, 32) mir_const_values_t;

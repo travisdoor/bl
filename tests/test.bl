@@ -23,8 +23,10 @@ Any :: struct #compiler {
 
 __os_start :: fn () s32 #entry {
 	v := 10;
-	a := 20;
-	v = 30 + a;
+	a := v;
+	a += 20;
+	// v = a;
+	// v = 30 + a;
 	// loop i := 0; i < 10; i += 1 {
 	// 	v = i;
 	// }
@@ -33,7 +35,7 @@ __os_start :: fn () s32 #entry {
 	// b := 1;
 	// foo(a, b, a + b, 10);
 
-	v = a + 40;
+	// v = a + 40;
 	//v += 10;
 	return v;
 }

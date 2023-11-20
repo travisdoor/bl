@@ -7063,8 +7063,8 @@ struct result analyze_instr_binop(struct context *ctx, struct mir_instr_binop *b
 	binop->base.value.addr_mode   = MIR_VAM_RVALUE;
 	binop->volatile_type          = is_instr_type_volatile(lhs) && is_instr_type_volatile(rhs);
 
-	binop->lhs->reg_hint = 0;
-	binop->rhs->reg_hint = 1;
+	binop->lhs->value.reg_hint = 1;
+	binop->rhs->value.reg_hint = 2;
 
 	return_zone(PASS);
 }
@@ -7334,6 +7334,7 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
 
 		// Immutable and comptime initializer value.
 		is_decl_comptime &= decl->init->value.is_comptime;
+		decl->init->value.reg_hint = 1;
 	} else if (isnotflag(var->flags, FLAG_NO_INIT)) {
 		bassert(isnotflag(var->iflags, MIR_VAR_STRUCT_TYPEDEF) && "Expected initializer for structure type definition.");
 		// Create default initializer for locals without explicit initialization.

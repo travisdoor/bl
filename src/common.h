@@ -198,22 +198,24 @@ static inline const char *_str_to_c_checked(char *ptr, s32 len) {
 // Converts the input string or str_t or str_buf_t to the C string. Zero termination is checked by
 // assert.
 // In case the buffer is not allocated, returns pointer to the static empty C string.
-// clang-format off
-#define str_to_c(B) _Generic((B), \
-							 str_buf_t: _str_to_c_checked((B).ptr, (B).len), \
-							 str_t:     _str_to_c_checked((B).ptr, (B).len))
+#define str_to_c(B) _Generic((B),                                   \
+	                         str_buf_t                              \
+	                         : _str_to_c_checked((B).ptr, (B).len), \
+	                           str_t                                \
+	                         : _str_to_c_checked((B).ptr, (B).len))
 
 // This way we can append another string buffer or view without any casting.
-#define str_buf_append(B, S) _Generic((S), \
-									  str_buf_t: _str_buf_append(B, (S).ptr, (S).len), \
-									  str_t:     _str_buf_append(B, (S).ptr, (S).len))
+#define str_buf_append(B, S) _Generic((S),                                    \
+	                                  str_buf_t                               \
+	                                  : _str_buf_append(B, (S).ptr, (S).len), \
+	                                    str_t                                 \
+	                                  : _str_buf_append(B, (S).ptr, (S).len))
 
-
-#define str_buf_dup(S) _Generic((S), \
-								str_buf_t: _str_buf_dup((S).ptr, (S).len), \
-								str_t:     _str_buf_dup((S).ptr, (S).len))
-
-// clang-format on
+#define str_buf_dup(S) _Generic((S),                              \
+	                            str_buf_t                         \
+	                            : _str_buf_dup((S).ptr, (S).len), \
+	                              str_t                           \
+	                            : _str_buf_dup((S).ptr, (S).len))
 
 #define str_buf_view(B)                \
 	(str_t) {                          \
