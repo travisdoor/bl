@@ -130,7 +130,6 @@ static inline void unique_name(struct context *ctx, str_buf_t *dest, const char 
 
 s32 add_code(struct thread_context *tctx, const void *buf, s32 len) {
 	const u32 i = get_position(tctx);
-	arrsetcap(tctx->bytes, BYTE_CODE_BUFFER_SIZE);
 	arrsetlen(tctx->bytes, i + len);
 	memcpy(&tctx->bytes[i], buf, len);
 	return i;
@@ -235,7 +234,7 @@ static void emit_binop_r_immediate_int(struct thread_context *tctx, enum binop_k
 	case BINOP_GREATER:
 	case BINOP_NEQ:
 	case BINOP_EQ:
-		cmp_r_immediate(tctx, reg, v, vsize);
+		cmp_ri(tctx, reg, v, vsize);
 		break;
 	default:
 		BL_UNIMPLEMENTED;
@@ -293,7 +292,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 		// Prologue
 		push64_r(tctx, RBP);
-		mov64_rr(tctx, RBP, RSP);
+		mov_rr(tctx, RBP, RSP, 8);
 
 		// Generate all blocks in the function body.
 		arrput(tctx->emit_block_queue, fn->first_block);
@@ -353,7 +352,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			BL_UNIMPLEMENTED;
 		}
 		const u8 reg = call_reg_order[reg_index];
-		mov_r_rbp_offset(tctx, reg, rbp_offset_bytes, type->store_size_bytes);
+		mov_rm(tctx, reg, RBP, rbp_offset_bytes, type->store_size_bytes);
 
 		set_value(tctx, &load->base, (struct x64_value){.kind = REGISTER, .reg = reg});
 		break;
@@ -365,24 +364,22 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		bassert(store->dest->backend_value);
 
 		struct x64_value dest_value = get_value(tctx, store->dest);
+		struct x64_value src_value  = get_value(tctx, store->src);
 		bassert(dest_value.kind == OFFSET);
 
-		if (store->src->kind == MIR_INSTR_CONST) {
-			switch (type->kind) {
-			case MIR_TYPE_INT: {
-				const u64 v = vm_read_int(type, store->src->value.data);
-				mov_rbp_offset_immediate(tctx, dest_value.offset, v, type->store_size_bytes);
-				break;
-			}
-			default:
+		switch (type->kind) {
+		case MIR_TYPE_INT: {
+			if (src_value.kind == IMMEDIATE) {
+				mov_mi(tctx, RBP, dest_value.offset, src_value.imm, type->store_size_bytes);
+			} else if (src_value.kind == REGISTER) {
+				mov_mr(tctx, RBP, dest_value.offset, src_value.reg, type->store_size_bytes);
+			} else {
 				BL_UNIMPLEMENTED;
 			}
-		} else {
-			bassert(type->kind == MIR_TYPE_INT && type->store_size_bytes == 4);
-			bassert(is_byte_disp(dest_value.offset));
-			struct x64_value src_value = get_value(tctx, store->src);
-			bassert(src_value.kind == REGISTER);
-			mov32_mr(tctx, RBP, (u8)dest_value.offset, src_value.reg);
+			break;
+		}
+		default:
+			BL_UNIMPLEMENTED;
 		}
 
 		break;
@@ -404,7 +401,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 		if (lhs_value.kind == IMMEDIATE) {
 			const u8 reg = call_reg_order[binop->lhs->value.reg_hint];
-			mov32_ri32(tctx, reg, (u32)lhs_value.imm);
+			mov_ri(tctx, reg, lhs_value.imm, type->store_size_bytes);
 			lhs_value.kind = REGISTER;
 			lhs_value.reg  = reg;
 		}
@@ -554,15 +551,14 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		if (init_value.kind == IMMEDIATE) {
 			switch (type->kind) {
 			case MIR_TYPE_INT: {
-				mov_rbp_offset_immediate(tctx, var_value.offset, init_value.imm, type->store_size_bytes);
+				mov_mi(tctx, RBP, var_value.offset, init_value.imm, type->store_size_bytes);
 				break;
 			}
 			default:
 				BL_UNIMPLEMENTED;
 			}
 		} else if (init_value.kind == REGISTER) {
-			bassert(type->store_size_bytes == 4);
-			mov32_mr(tctx, RBP, (u8)var_value.offset, init_value.reg);
+			mov_mr(tctx, RBP, var_value.offset, init_value.reg, type->store_size_bytes);
 		}
 
 		break;
@@ -579,6 +575,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			if (isflag(var->iflags, MIR_VAR_GLOBAL)) {
 				BL_UNIMPLEMENTED;
 			} else {
+				bassert(var->backend_value);
 				ref->base.backend_value = var->backend_value;
 			}
 			break;
@@ -641,6 +638,8 @@ static void job(struct job_context *job_ctx) {
 	arrsetlen(tctx->emit_block_queue, 0);
 	arrsetlen(tctx->jmp_fixups, 0);
 	tctx->stack_allocation_size = 0;
+
+	arrsetcap(tctx->bytes, BYTE_CODE_BUFFER_SIZE);
 
 	struct mir_instr *top_instr = job_ctx->x64.top_instr;
 	blog("Kind = %s", mir_instr_name(top_instr));

@@ -22,14 +22,10 @@ Any :: struct #compiler {
 // foo :: fn (a: s32, b: s32, c: s32, d: s32) {}
 
 __os_start :: fn () s32 #entry {
-	v := 10;
-	a := v;
-	a += 20;
-	// v = a;
-	// v = 30 + a;
-	// loop i := 0; i < 10; i += 1 {
-	// 	v = i;
-	// }
+	v := 20;
+	loop i := 0; i < 10; i += 1 {
+		v += i;
+	}
 
 	// a := 0;
 	// b := 1;
