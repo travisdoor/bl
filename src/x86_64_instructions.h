@@ -59,10 +59,6 @@ enum x64_register {
 #define encode_mod_reg_rm(mod, reg, rm) (((mod) << 6) | ((reg & 0b111) << 3) | (rm & 0b111))
 #define is_byte_disp(off) ((off) >= -128 && (off) < 128)
 
-#define instr_buf(s) \
-	u8  buf[s];      \
-	s32 i = 0
-
 static inline s32 add_code(struct thread_context *tctx, const void *buf, s32 len);
 
 static inline u8 encode_rex(u8 reg, u8 rm) {
@@ -83,6 +79,16 @@ static inline u8 encode_rex2(bool is64, u8 reg, u8 rm) {
 	if ((rm & 0b1000) > 0) rex |= 0b1;
 	if (rex > 0) rex |= 0b01000000; // Prefix
 	return rex;
+}
+
+static inline void encode_base(struct thread_context *tctx, u8 op_base, u8 mrr, u8 rex, usize size) {
+	u8  buf[4];
+	s32 i = 0;
+	if (size == 2) buf[i++] = 0x66;
+	if (rex) buf[i++] = rex;
+	buf[i++] = size == 1 ? op_base : (op_base + 1);
+	buf[i++] = mrr;
+	add_code(tctx, buf, i);
 }
 
 static inline void nop(struct thread_context *tctx) {
@@ -112,19 +118,13 @@ static inline void mov_mr(struct thread_context *tctx, u8 r1, s32 offset, u8 r2,
 	const u8 disp = is_byte_disp(offset) ? MOD_BYTE_DISP : MOD_FOUR_BYTE_DISP;
 	const u8 mrr  = encode_mod_reg_rm(disp, r2, r1);
 	const u8 rex  = encode_rex2(size == 8, r2, r1);
-
-	instr_buf(4);
-	if (size == 2) buf[i++] = 0x66;
-	if (rex) buf[i++] = rex;
-	buf[i++] = size == 1 ? 0x88 : 0x89;
-	buf[i++] = mrr;
-	add_code(tctx, buf, i);
+	encode_base(tctx, 0x88, mrr, rex, size);
 	add_code(tctx, &offset, disp == MOD_BYTE_DISP ? 1 : 4);
 }
 
 // Immediate to stack. Use RAX for 64bit immediate value.
 static inline void mov_mi(struct thread_context *tctx, u8 r, s32 offset, u64 imm, usize size) {
-	if (size == 8) {
+	if (size == 8 && imm > 0xFFFFFFFF) {
 		// Special case... because why not...
 		movabs64_ri(tctx, RAX, imm);
 		mov_mr(tctx, r, offset, RAX, size);
@@ -134,29 +134,21 @@ static inline void mov_mi(struct thread_context *tctx, u8 r, s32 offset, u64 imm
 	const u8 disp = is_byte_disp(offset) ? MOD_BYTE_DISP : MOD_FOUR_BYTE_DISP;
 	const u8 mrr  = encode_mod_reg_rm(disp, 0x0, r);
 	const u8 rex  = encode_rex2(size == 8, 0x0, r);
-
-	instr_buf(4);
-	if (size == 2) buf[i++] = 0x66;
-	if (rex) buf[i++] = rex;
-	buf[i++] = size == 1 ? 0xC6 : 0xC7;
-	buf[i++] = mrr;
-	add_code(tctx, buf, i);
+	encode_base(tctx, 0xC6, mrr, rex, size);
 	add_code(tctx, &offset, disp == MOD_BYTE_DISP ? 1 : 4);
-	add_code(tctx, &imm, (s32)size);
+	add_code(tctx, &imm, (s32)MIN(size, sizeof(u32)));
 }
 
 // Immediate value to register.
 static inline void mov_ri(struct thread_context *tctx, u8 r, u64 imm, usize size) {
+	if (size == 8 && imm > 0xFFFFFFFF) {
+		movabs64_ri(tctx, r, imm);
+		return;
+	}
 	const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, 0x0, r);
 	const u8 rex = encode_rex2(size == 8, 0x0, r);
-
-	instr_buf(4);
-	if (size == 2) buf[i++] = 0x66;
-	if (rex) buf[i++] = rex;
-	buf[i++] = size == 1 ? 0xC6 : 0xC7;
-	buf[i++] = mrr;
-	add_code(tctx, buf, i);
-	add_code(tctx, &imm, (s32)size);
+	encode_base(tctx, 0xC6, mrr, rex, size);
+	add_code(tctx, &imm, (s32)MIN(size, sizeof(u32)));
 }
 
 // Stack to register
@@ -164,105 +156,69 @@ static inline void mov_rm(struct thread_context *tctx, u8 r1, u8 r2, s32 offset,
 	const u8 disp = is_byte_disp(offset) ? MOD_BYTE_DISP : MOD_FOUR_BYTE_DISP;
 	const u8 mrr  = encode_mod_reg_rm(disp, r1, r2);
 	const u8 rex  = encode_rex2(size == 8, r1, r2);
-
-	instr_buf(4);
-	if (size == 2) buf[i++] = 0x66;
-	if (rex) buf[i++] = rex;
-	buf[i++] = size == 1 ? 0x8A : 0x8B;
-	buf[i++] = mrr;
-	add_code(tctx, buf, i);
+	encode_base(tctx, 0x8A, mrr, rex, size);
 	add_code(tctx, &offset, disp == MOD_BYTE_DISP ? 1 : 4);
 }
 
 static inline void mov_rr(struct thread_context *tctx, u8 r1, u8 r2, usize size) {
 	const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, r2, r1);
 	const u8 rex = encode_rex2(size == 8, r2, r1);
-
-	instr_buf(4);
-	if (size == 2) buf[i++] = 0x66;
-	if (rex) buf[i++] = rex;
-	buf[i++] = size == 1 ? 0x88 : 0x89;
-	buf[i++] = mrr;
-	add_code(tctx, buf, i);
+	encode_base(tctx, 0x88, mrr, rex, size);
 }
 
-static inline void xor64_rr(struct thread_context *tctx, u8 r1, u8 r2) {
-	const u8 buf[] = {encode_rex(r2, r1), 0x31, encode_mod_reg_rm(MOD_REG_ADDR, r2, r1)};
-	add_code(tctx, buf, 3);
+static inline void add_rr(struct thread_context *tctx, u8 r1, u8 r2, usize size) {
+	const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, r2, r1);
+	const u8 rex = encode_rex2(size == 8, r2, r1);
+	encode_base(tctx, 0x0, mrr, rex, size);
 }
 
-static inline void sub64_ri8(struct thread_context *tctx, u8 r, u8 imm) {
-	const u8 buf[] = {encode_rex(0x5, r), 0x83, encode_mod_reg_rm(MOD_REG_ADDR, 0x5, r), imm};
-	add_code(tctx, buf, 4);
+static inline void add_ri(struct thread_context *tctx, u8 r, u64 imm, usize size) {
+	if (size == 8 && imm > 0xFFFFFFFF) {
+		movabs64_ri(tctx, RAX, imm);
+		add_rr(tctx, r, RAX, size);
+		return;
+	}
+	const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, 0x0, r);
+	const u8 rex = encode_rex2(size == 8, 0x0, r);
+	encode_base(tctx, 0x80, mrr, rex, size);
+	add_code(tctx, &imm, (s32)MIN(size, sizeof(u32)));
 }
 
-static inline void sub64_ri32(struct thread_context *tctx, u8 r, u32 imm) {
-	const u8 buf[] = {encode_rex(0x5, r), 0x81, encode_mod_reg_rm(MOD_REG_ADDR, 0x5, r)};
-	add_code(tctx, buf, 3);
-	add_code(tctx, &imm, sizeof(imm));
+static inline void sub_rr(struct thread_context *tctx, u8 r1, u8 r2, usize size) {
+	const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, r2, r1);
+	const u8 rex = encode_rex2(size == 8, r2, r1);
+	encode_base(tctx, 0x28, mrr, rex, size);
 }
 
-static inline void add64_ri32(struct thread_context *tctx, u8 r, u32 imm) {
-	const u8 buf[] = {encode_rex(0, r), 0x81, encode_mod_reg_rm(MOD_REG_ADDR, 0x0, r)};
-	add_code(tctx, buf, 3);
-	add_code(tctx, &imm, sizeof(imm));
-}
-
-// 32 bit
-
-static inline void xor32_rr(struct thread_context *tctx, u8 r1, u8 r2) {
-	const u8 buf[] = {0x31, encode_mod_reg_rm(MOD_REG_ADDR, r2, r1)};
-	add_code(tctx, buf, 2);
-}
-
-static inline void add32_ri32(struct thread_context *tctx, u8 r, u32 imm) {
-	const u8 buf[] = {0x81, encode_mod_reg_rm(MOD_REG_ADDR, 0x0, r)};
-	add_code(tctx, buf, 2);
-	add_code(tctx, &imm, sizeof(imm));
-}
-
-static inline void add32_rr(struct thread_context *tctx, u8 r1, u8 r2) {
-	const u8 buf[] = {0x1, encode_mod_reg_rm(MOD_REG_ADDR, r2, r1)};
-	add_code(tctx, buf, 2);
-}
-
-static inline void sub32_ri32(struct thread_context *tctx, u8 r, u32 imm) {
-	const u8 buf[] = {0x81, encode_mod_reg_rm(MOD_REG_ADDR, 0x5, r)};
-	add_code(tctx, buf, 2);
-	add_code(tctx, &imm, sizeof(imm));
+static inline void sub_ri(struct thread_context *tctx, u8 r, u64 imm, usize size) {
+	if (size == 8 && imm > 0xFFFFFFFF) {
+		mov_ri(tctx, RAX, imm, size);
+		sub_rr(tctx, r, RAX, size);
+		return;
+	}
+	const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, 0x5, r);
+	const u8 rex = encode_rex2(size == 8, 0x0, r);
+	encode_base(tctx, 0x80, mrr, rex, size);
+	add_code(tctx, &imm, (s32)MIN(size, sizeof(u32)));
 }
 
 static inline void cmp_rr(struct thread_context *tctx, u8 r1, u8 r2, usize size) {
 	const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, r2, r1);
 	const u8 rex = encode_rex2(size == 8, r2, r1);
-
-	instr_buf(4);
-
-	if (size == 2) buf[i++] = 0x66;
-	if (rex) buf[i++] = rex;
-	buf[i++] = size == 1 ? 0x38 : 0x39;
-	buf[i++] = mrr;
-	add_code(tctx, buf, i);
+	encode_base(tctx, 0x38, mrr, rex, size);
 }
 
 // Use RAX for 64bit immediate value.
 static inline void cmp_ri(struct thread_context *tctx, u8 r, u64 imm, usize size) {
-	if (size == 8) {
+	if (size == 8 && imm > 0xFFFFFFFF) {
 		mov_ri(tctx, RAX, imm, size);
 		cmp_rr(tctx, r, RAX, size);
 		return;
 	}
 	const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, 0x7, r);
 	const u8 rex = encode_rex2(size == 8, 0x7, r);
-
-	instr_buf(4);
-
-	if (size == 2) buf[i++] = 0x66;
-	if (rex) buf[i++] = rex;
-	buf[i++] = size == 1 ? 0x80 : 0x81;
-	buf[i++] = mrr;
-	add_code(tctx, buf, i);
-	add_code(tctx, &imm, (s32)size);
+	encode_base(tctx, 0x80, mrr, rex, size);
+	add_code(tctx, &imm, (s32)MIN(size, sizeof(u32)));
 }
 
 static inline void ret(struct thread_context *tctx) {
@@ -312,62 +268,4 @@ static inline u32 jle_relative_i32(struct thread_context *tctx, s32 offset) {
 	const u8 buf[] = {0x0F, 0x8E};
 	add_code(tctx, buf, 2);
 	return add_code(tctx, &offset, sizeof(offset));
-}
-
-// Helpers
-static inline void add_r_immediate(struct thread_context *tctx, const u8 reg, const u64 v, const usize vsize) {
-	switch (vsize) {
-	case 1:
-		BL_UNIMPLEMENTED;
-		break;
-	case 2:
-		BL_UNIMPLEMENTED;
-		break;
-	case 4:
-		add32_ri32(tctx, reg, (u32)v);
-		break;
-	case 8:
-		BL_UNIMPLEMENTED;
-		break;
-	default:
-		BL_UNIMPLEMENTED;
-	}
-}
-
-static inline void add_rr(struct thread_context *tctx, const u8 reg1, const u8 reg2, const usize vsize) {
-	switch (vsize) {
-	case 1:
-		BL_UNIMPLEMENTED;
-		break;
-	case 2:
-		BL_UNIMPLEMENTED;
-		break;
-	case 4:
-		add32_rr(tctx, reg1, reg2);
-		break;
-	case 8:
-		BL_UNIMPLEMENTED;
-		break;
-	default:
-		BL_UNIMPLEMENTED;
-	}
-}
-
-static inline void sub_r_immediate(struct thread_context *tctx, const u8 reg, const u64 v, const usize vsize) {
-	switch (vsize) {
-	case 1:
-		BL_UNIMPLEMENTED;
-		break;
-	case 2:
-		BL_UNIMPLEMENTED;
-		break;
-	case 4:
-		sub32_ri32(tctx, reg, (u32)v);
-		break;
-	case 8:
-		BL_UNIMPLEMENTED;
-		break;
-	default:
-		BL_UNIMPLEMENTED;
-	}
 }

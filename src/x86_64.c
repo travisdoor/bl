@@ -214,19 +214,19 @@ static void allocate_stack(struct thread_context *tctx, struct mir_fn *fn) {
 
 	bassert(is_aligned((void *)(usize)top, 16));
 
-	sub64_ri32(tctx, RSP, top);
+	sub_ri(tctx, RSP, top, 8);
 	tctx->stack_allocation_size += top;
 
 	blog("Total allocated: %dB", top);
 }
 
-static void emit_binop_r_immediate_int(struct thread_context *tctx, enum binop_kind op, const u8 reg, const u64 v, const usize vsize) {
+static void emit_binop_ri(struct thread_context *tctx, enum binop_kind op, const u8 reg, const u64 v, const usize vsize) {
 	switch (op) {
 	case BINOP_ADD:
-		add_r_immediate(tctx, reg, v, vsize);
+		add_ri(tctx, reg, v, vsize);
 		break;
 	case BINOP_SUB:
-		sub_r_immediate(tctx, reg, v, vsize);
+		sub_ri(tctx, reg, v, vsize);
 		break;
 	case BINOP_LESS_EQ:
 	case BINOP_GREATER_EQ:
@@ -247,7 +247,7 @@ static void emit_binop_rr(struct thread_context *tctx, enum binop_kind op, const
 		add_rr(tctx, reg1, reg2, vsize);
 		break;
 	case BINOP_SUB:
-		BL_UNIMPLEMENTED;
+		sub_rr(tctx, reg1, reg2, vsize);
 		break;
 	case BINOP_LESS_EQ:
 	case BINOP_GREATER_EQ:
@@ -394,7 +394,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 		struct mir_instr_binop *binop = (struct mir_instr_binop *)instr;
 		struct mir_type        *type  = binop->lhs->value.type;
-		bassert(type->kind == MIR_TYPE_INT && type->store_size_bytes == 4);
+		bassert(type->kind == MIR_TYPE_INT);
 
 		struct x64_value lhs_value = get_value(tctx, binop->lhs);
 		struct x64_value rhs_value = get_value(tctx, binop->rhs);
@@ -409,7 +409,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		bassert(lhs_value.kind == REGISTER);
 
 		if (rhs_value.kind == IMMEDIATE) {
-			emit_binop_r_immediate_int(tctx, binop->op, lhs_value.reg, rhs_value.imm, type->store_size_bytes);
+			emit_binop_ri(tctx, binop->op, lhs_value.reg, rhs_value.imm, type->store_size_bytes);
 		} else {
 			bassert(rhs_value.kind == REGISTER);
 			emit_binop_rr(tctx, binop->op, lhs_value.reg, rhs_value.reg, type->store_size_bytes);
@@ -423,7 +423,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		// Epilogue
 		if (tctx->stack_allocation_size) {
 			// Cleanup stack allocations.
-			add64_ri32(tctx, RSP, tctx->stack_allocation_size);
+			add_ri(tctx, RSP, tctx->stack_allocation_size, 8);
 		}
 		pop64_r(tctx, RBP);
 		ret(tctx);

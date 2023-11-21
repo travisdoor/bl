@@ -22,18 +22,23 @@ Any :: struct #compiler {
 // foo :: fn (a: s32, b: s32, c: s32, d: s32) {}
 
 __os_start :: fn () s32 #entry {
-	v := 20;
-	loop i := 0; i < 10; i += 1 {
-		v += i;
-	}
+	// v := 20;
+	// loop i := 0; i < 10; i += 1 {
+	// 	v += i;
+	// }
 
-	// a := 0;
-	// b := 1;
-	// foo(a, b, a + b, 10);
+	v: u8;
+	a : u8 = 0;
+	b : u8 = 1;
 
-	// v = a + 40;
-	//v += 10;
-	return v;
+	v = a + 40;
+	v = 20 + b;
+	v = a + b;
+
+	v = a - 40;
+	v = 20 - b;
+	v = a - b;
+	return 0;
 }
 
 /*
