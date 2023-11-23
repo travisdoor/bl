@@ -184,13 +184,13 @@ s32 levenshtein_distance(const char *s1, const char *s2) {
 const char *compute_command(const char *command) {
 	const char *commands[4] = {
 	    "-init", "-build", "-run", "--help"};
-	const int num_commands = sizeof(commands) / sizeof(commands[0]);
+	const s32 num_commands = sizeof(commands) / sizeof(commands[0]);
 
-	int         min_distance    = levenshtein_distance(command, commands[0]);
+	s32         min_distance    = levenshtein_distance(command, commands[0]);
 	const char *closest_command = commands[0];
 
-	for (int i = 1; i < num_commands; i++) {
-		int distance = levenshtein_distance(command, commands[i]);
+	for (s32 i = 1; i < num_commands; i++) {
+		s32 distance = levenshtein_distance(command, commands[i]);
 		if (distance < min_distance) {
 			min_distance    = distance;
 			closest_command = commands[i];
