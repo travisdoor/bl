@@ -145,39 +145,6 @@ struct getarg_opt {
 	const s32   id;
 };
 
-s32 min_(s32 a, s32 b, s32 c) {
-	return a < b ? (a < c ? a : c) : (b < c ? b : c);
-}
-
-s32 levenshtein_distance(str_t *s1, str_t *s2) {
-	s32 **dp = (s32 **)malloc((s1->len + 1) * sizeof(s32 *));
-	for (size_t i = 0; i <= s1->len; ++i) {
-		dp[i] = (s32 *)malloc((s2->len + 1) * sizeof(s32));
-	}
-
-	for (s32 i = 0; i <= s1->len; i++) {
-		for (s32 j = 0; j <= s2->len; j++) {
-			if (i == 0)
-				dp[i][j] = j;
-			else if (j == 0)
-				dp[i][j] = i;
-			else if (s1[i - 1].ptr == s2[j - 1].ptr)
-				dp[i][j] = dp[i - 1][j - 1];
-			else
-				dp[i][j] = 1 + min_(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
-		}
-	}
-
-	s32 result = dp[s1->len][s2->len];
-
-	for (size_t i = 0; i <= s1->len; ++i) {
-		free(dp[i]);
-	}
-	free(dp);
-
-	return result;
-}
-
 static const char *find_closest_argument(struct getarg_opt *opts, str_t *command) {
 	bassert(opts);
 	struct getarg_opt *opt;
@@ -185,7 +152,7 @@ static const char *find_closest_argument(struct getarg_opt *opts, str_t *command
 	int                min_distance = INT_MAX;
 
 	while ((opt = opts++)->name) {
-		int distance = levenshtein_distance(command, &make_str_from_c(opt->name));
+		int distance = levenshtein(*command, make_str_from_c(opt->name));
 		if (distance < min_distance) {
 			min_distance = distance;
 			closest_opt  = opt;
