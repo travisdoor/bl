@@ -145,21 +145,21 @@ struct getarg_opt {
 	const s32   id;
 };
 
-static const char *find_closest_argument(struct getarg_opt *opts, str_t *command) {
+static const char *find_closest_argument(struct getarg_opt *opts, str_t opt) {
 	bassert(opts);
-	struct getarg_opt *opt;
+	struct getarg_opt *current_opt;
 	struct getarg_opt *closest_opt  = NULL;
-	int                min_distance = INT_MAX;
+	s32                min_distance = INT_MAX;
 
-	while ((opt = opts++)->name) {
-		int distance = levenshtein(*command, make_str_from_c(opt->name));
+	while ((current_opt = opts++)->name) {
+		int distance = levenshtein(opt, make_str_from_c(current_opt->name));
 		if (distance < min_distance) {
 			min_distance = distance;
-			closest_opt  = opt;
+			closest_opt  = current_opt;
 		}
 	}
 
-	return closest_opt ? closest_opt->name : NULL;
+	return closest_opt->name;
 }
 
 static s32
@@ -184,7 +184,7 @@ getarg(s32 argc, char *argv[], struct getarg_opt *opts, s32 *optindex, const cha
 		}
 
 		struct getarg_opt *opt;
-		struct getarg_opt *cached_opt = opts;
+		struct getarg_opt *cached_opts = opts;
 		while ((opt = opts++)->name) {
 			if (strcmp(arg, opt->name) == 0) {
 				switch (opt->kind) {
@@ -236,7 +236,7 @@ getarg(s32 argc, char *argv[], struct getarg_opt *opts, s32 *optindex, const cha
 				return opt->id;
 			}
 		}
-		const char *closest_command = find_closest_argument(cached_opt, &make_str_from_c(arg));
+		const char *closest_command = find_closest_argument(cached_opts, make_str_from_c(arg));
 		builder_error("Unknown argument '%s', did you mean '%s'?", arg, closest_command);
 		return '?';
 	}
