@@ -145,6 +145,61 @@ struct getarg_opt {
 	const s32   id;
 };
 
+s32 min_(s32 a, s32 b, s32 c) {
+	return a < b ? (a < c ? a : c) : (b < c ? b : c);
+}
+
+s32 levenshtein_distance(const char *s1, const char *s2) {
+	size_t len1 = strlen(s1);
+	size_t len2 = strlen(s2);
+
+	s32 **dp = (s32 **)malloc((len1 + 1) * sizeof(s32 *));
+	for (size_t i = 0; i <= len1; ++i) {
+		dp[i] = (s32 *)malloc((len2 + 1) * sizeof(s32));
+	}
+
+	for (s32 i = 0; i <= len1; i++) {
+		for (s32 j = 0; j <= len2; j++) {
+			if (i == 0)
+				dp[i][j] = j;
+			else if (j == 0)
+				dp[i][j] = i;
+			else if (s1[i - 1] == s2[j - 1])
+				dp[i][j] = dp[i - 1][j - 1];
+			else
+				dp[i][j] = 1 + min_(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+		}
+	}
+
+	s32 result = dp[len1][len2];
+
+	for (size_t i = 0; i <= len1; ++i) {
+		free(dp[i]);
+	}
+	free(dp);
+
+	return result;
+}
+
+const char *compute_command(const char *command) {
+	const char *commands[4] = {
+	    "-init", "-build", "-run", "--help"};
+	const int num_commands = sizeof(commands) / sizeof(commands[0]);
+
+	int         min_distance    = levenshtein_distance(command, commands[0]);
+	const char *closest_command = commands[0];
+
+	for (int i = 1; i < num_commands; i++) {
+		int distance = levenshtein_distance(command, commands[i]);
+		if (distance < min_distance) {
+			min_distance    = distance;
+			closest_command = commands[i];
+		}
+	}
+
+	return closest_command;
+}
+
 static s32
 getarg(s32 argc, char *argv[], struct getarg_opt *opts, s32 *optindex, const char **positional) {
 	bassert(opts && optindex);
@@ -219,6 +274,8 @@ getarg(s32 argc, char *argv[], struct getarg_opt *opts, s32 *optindex, const cha
 			}
 		}
 		builder_error("Unknown argument '%s'", arg);
+		const char *closest_command = compute_command(arg);
+		builder_error("Did you mean '%s'?", closest_command);
 		return '?';
 	}
 	(*positional) = arg;
