@@ -152,7 +152,7 @@ static const char *find_closest_argument(struct getarg_opt *opts, str_t opt) {
 	s32                min_distance = INT_MAX;
 
 	while ((current_opt = opts++)->name) {
-		int distance = levenshtein(opt, make_str_from_c(current_opt->name));
+		s32 distance = levenshtein(opt, make_str_from_c(current_opt->name));
 		if (distance < min_distance) {
 			min_distance = distance;
 			closest_opt  = current_opt;
@@ -236,8 +236,8 @@ getarg(s32 argc, char *argv[], struct getarg_opt *opts, s32 *optindex, const cha
 				return opt->id;
 			}
 		}
-		const char *closest_command = find_closest_argument(cached_opts, make_str_from_c(arg));
-		builder_error("Unknown argument '%s', did you mean '%s'?", arg, closest_command);
+		const char *closest_arg = find_closest_argument(cached_opts, make_str_from_c(arg));
+		builder_error("Unknown argument '%s', did you mean '%s'?", arg, closest_arg);
 		return '?';
 	}
 	(*positional) = arg;
