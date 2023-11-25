@@ -146,13 +146,14 @@ struct getarg_opt {
 };
 
 static const char *find_closest_argument(struct getarg_opt *opts, str_t opt) {
-	bassert(opts);
 	struct getarg_opt *current_opt;
 	struct getarg_opt *closest_opt  = NULL;
-	s32                min_distance = INT_MAX;
+	s64                min_distance = LLONG_MAX;
 
 	while ((current_opt = opts++)->name) {
-		s32 distance = levenshtein(opt, make_str_from_c(current_opt->name));
+		str_t current_opt_str = make_str_from_c(current_opt->name);
+		s64   distance        = fuzzy_cmp(current_opt_str, opt);
+
 		if (distance < min_distance) {
 			min_distance = distance;
 			closest_opt  = current_opt;
