@@ -202,6 +202,10 @@ static inline void sub_ri(struct thread_context *tctx, u8 r, u64 imm, usize size
 	add_code(tctx, &imm, (s32)MIN(size, sizeof(u32)));
 }
 
+static inline void imul_ri(struct thread_context *tctx, u8 r, u64 imm, usize size) {
+	BL_UNIMPLEMENTED;
+}
+
 static inline void cmp_rr(struct thread_context *tctx, u8 r1, u8 r2, usize size) {
 	const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, r2, r1);
 	const u8 rex = encode_rex2(size == 8, r2, r1);

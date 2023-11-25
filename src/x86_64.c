@@ -228,6 +228,9 @@ static void emit_binop_ri(struct thread_context *tctx, enum binop_kind op, const
 	case BINOP_SUB:
 		sub_ri(tctx, reg, v, vsize);
 		break;
+	case BINOP_MUL:
+		imul_ri(tctx, reg, v, vsize);
+		break;
 	case BINOP_LESS_EQ:
 	case BINOP_GREATER_EQ:
 	case BINOP_LESS:
