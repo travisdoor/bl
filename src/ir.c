@@ -2316,21 +2316,21 @@ insert_easgm_tmp(struct context *ctx, struct mir_instr_call *call, struct mir_ty
 }
 
 enum state emit_instr_call(struct context *ctx, struct mir_instr_call *call) {
-	bassert(!mir_is_comptime(&call->base) &&
-	        "Compile time calls should not be generated into the final binary!");
+	bassert(!mir_is_comptime(&call->base) && "Compile time calls should not be generated into the final binary!");
 	struct mir_instr *callee = call->callee;
 	bassert(callee);
 	bassert(callee->value.type);
-	struct mir_type *callee_type = callee->value.type->kind == MIR_TYPE_FN
-	                                   ? callee->value.type
-	                                   : mir_deref_type(callee->value.type);
+	struct mir_type *callee_type = callee->value.type->kind == MIR_TYPE_FN ? callee->value.type : mir_deref_type(callee->value.type);
 	bassert(callee_type);
 	bassert(callee_type->kind == MIR_TYPE_FN);
 
-	struct mir_fn *fn =
-	    mir_is_comptime(callee) ? MIR_CEV_READ_AS(struct mir_fn *, &callee->value) : NULL;
-	LLVMValueRef llvm_called_fn =
-	    callee->llvm_value ? callee->llvm_value : emit_fn_proto(ctx, fn, true);
+	// There are three possible configurations:
+	//
+	// 1) We call regular static function; it's compile-time known and resolved by previous decl-ref instruction.
+	// 2) We call via function pointer.
+	// 3) We call immediate inline defined anonymous function (we have to generate one eventually).
+	struct mir_fn *fn             = mir_is_comptime(callee) ? MIR_CEV_READ_AS(struct mir_fn *, &callee->value) : NULL;
+	LLVMValueRef   llvm_called_fn = callee->llvm_value ? callee->llvm_value : emit_fn_proto(ctx, fn, true);
 
 	bool       has_byval_arg = false;
 	const bool has_args      = sarrlen(call->args) > 0;
@@ -2678,6 +2678,10 @@ enum state emit_instr_const(struct context *ctx, struct mir_instr_const *c) {
 		}
 		break;
 	}
+	case MIR_TYPE_PTR:
+		// Currently used only for default intialization of pointer values, so we expect this to be NULL!
+		bassert(vm_read_ptr(type, c->base.value.data) == NULL);
+		// fall-through
 	case MIR_TYPE_NULL: {
 		llvm_value = LLVMConstNull(llvm_type);
 		break;

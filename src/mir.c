@@ -478,27 +478,17 @@ static struct mir_instr *append_instr_arg(struct context *ctx, struct ast *node,
 static struct mir_instr *append_instr_using(struct context *ctx, struct ast *node, struct scope *owner_scope, struct mir_instr *scope_expr);
 static struct mir_instr *append_instr_unroll(struct context *ctx, struct ast *node, struct mir_instr *src, struct mir_instr *prev_dest, s32 index);
 static struct mir_instr *append_instr_set_initializer(struct context *ctx, struct ast *node, mir_instrs_t *dests, struct mir_instr *src);
-
 static struct mir_instr *append_instr_set_initializer_impl(struct context *ctx, mir_instrs_t *dests, struct mir_instr *src);
 static struct mir_instr *append_instr_compound(struct context *ctx, struct ast *node, struct mir_instr *type, mir_instrs_t *values, bool is_multiple_return_value);
-
 static struct mir_instr *append_instr_compound_impl(struct context *ctx, struct ast *node, struct mir_type *type, mir_instrs_t *values);
-
 static struct mir_instr *append_instr_cast(struct context *ctx, struct ast *node, struct mir_instr *type, struct mir_instr *next);
 static struct mir_instr *append_instr_sizeof(struct context *ctx, struct ast *node, mir_instrs_t *args);
-
 static struct mir_instr *append_instr_alignof(struct context *ctx, struct ast *node, mir_instrs_t *args);
-
 static struct mir_instr *append_instr_typeof(struct context *ctx, struct ast *node, mir_instrs_t *args);
-
 static struct mir_instr *append_instr_type_info(struct context *ctx, struct ast *node, mir_instrs_t *args);
-
 static struct mir_instr *append_instr_msg(struct context *ctx, struct ast *node, mir_instrs_t *args, enum mir_user_msg_kind kind);
-
 static struct mir_instr *append_instr_test_cases(struct context *ctx, struct ast *node);
-
 static struct mir_instr *append_instr_elem_ptr(struct context *ctx, struct ast *node, struct mir_instr *arr_ptr, struct mir_instr *index);
-
 static struct mir_instr *append_instr_member_ptr(struct context      *ctx,
                                                  struct ast          *node,
                                                  struct mir_instr    *target_ptr,
@@ -3425,6 +3415,11 @@ struct mir_instr *create_default_value_for_type(struct context *ctx, struct mir_
 
 	case MIR_TYPE_BOOL: {
 		default_value = create_instr_const_bool(ctx, NULL, false);
+		break;
+	}
+
+	case MIR_TYPE_PTR: {
+		default_value = create_instr_const_ptr(ctx, NULL, type, NULL);
 		break;
 	}
 
