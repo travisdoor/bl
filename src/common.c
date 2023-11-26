@@ -450,8 +450,8 @@ s32 levenshtein(const str_t s1, const str_t s2) {
 	return column[s1len];
 }
 
-str_t trim_leading_dashes(str_t str) {
-	while (str.len > 0 && str.ptr[0] == '-') {
+str_t trim_leading_character(str_t str, u8 c) {
+	while (str.len > 0 && str.ptr[0] == c) {
 		str.ptr++;
 		str.len--;
 	}
@@ -461,8 +461,8 @@ str_t trim_leading_dashes(str_t str) {
 s64 fuzzy_cmp(str_t str, str_t other) {
 	if (other.len == 0) return 0;
 
-	str   = trim_leading_dashes(str);
-	other = trim_leading_dashes(other);
+	str   = trim_leading_character(str, '-');
+	other = trim_leading_character(other, '-');
 
 	s64 score   = 0;
 	s32 min_len = (str.len < other.len) ? str.len : other.len;
@@ -472,7 +472,7 @@ s64 fuzzy_cmp(str_t str, str_t other) {
 		u8 other_char = toupper(other.ptr[i]);
 
 		if (str_char != other_char) {
-			score += 2;
+			score += 1;
 		} else {
 			score -= i;
 		}
