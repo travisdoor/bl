@@ -60,16 +60,12 @@ struct x64_value {
 };
 
 struct jmp_fixup {
-	struct mir_instr_block *target_block;
-	// Directly points to u32 value to be fixed.
-	u32 virtual_address;
-	// Points to the next instruction.
-	u32 jmp_position;
-};
+	union {
+		struct mir_instr_fn_proto *fn_proto;
+		struct mir_instr_block    *target_block;
+	};
 
-struct call_fixup {
-	struct mir_instr *fn_proto;
-	hash_t            hash;
+	hash_t hash;
 	// Directly points to u32 value to be fixed.
 	u64 virtual_address;
 	// Points to the next instruction.
@@ -92,7 +88,7 @@ struct thread_context {
 	array(struct x64_value) values;
 	array(struct mir_instr_block *) emit_block_queue;
 	array(struct jmp_fixup) jmp_fixups;
-	array(struct call_fixup) call_fixups;
+	array(struct jmp_fixup) call_fixups;
 
 	s64 stack_variables_alocation_size;
 };
@@ -112,7 +108,7 @@ struct context {
 	hash_table(struct symbol_table_entry) symbol_table;
 	hash_table(struct scheduled_entry) scheduled_for_generation;
 
-	array(struct call_fixup) call_fixups;
+	array(struct jmp_fixup) call_fixups;
 
 	pthread_spinlock_t uq_name_lock;
 };
@@ -573,8 +569,8 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		// last when the whole binary is complete.
 		const u32 virtual_address = call_relative_i32(tctx, 0);
 
-		struct call_fixup fixup = {
-		    .fn_proto        = callee_fn_proto,
+		struct jmp_fixup fixup = {
+		    .fn_proto        = (struct mir_instr_fn_proto *)callee_fn_proto,
 		    .hash            = callee_hash,
 		    .virtual_address = virtual_address,
 		    .jmp_position    = get_position(tctx),
@@ -706,18 +702,18 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 static void fixup_jump_offsets(struct thread_context *tctx) {
 	for (usize i = 0; i < arrlenu(tctx->jmp_fixups); ++i) {
-		struct jmp_fixup fixup = tctx->jmp_fixups[i];
-		bassert(fixup.target_block);
-		const u64 backend_value = fixup.target_block->base.backend_value;
+		struct jmp_fixup *fixup = &tctx->jmp_fixups[i];
+		bassert(fixup->target_block);
+		const u64 backend_value = fixup->target_block->base.backend_value;
 		if (!backend_value) {
 			babort("Cannot resolve relative jump target block!");
 		}
 
 		bassert(tctx->values[backend_value - 1].kind == ADDRESS);
 		const s32 block_position = (s32)tctx->values[backend_value - 1].address;
-		const s32 jmp_position   = (s32)fixup.jmp_position;
+		const s32 jmp_position   = (s32)fixup->jmp_position;
 		const s32 diff           = block_position - jmp_position;
-		memcpy(&tctx->bytes[fixup.virtual_address], &diff, sizeof(s32));
+		memcpy(&tctx->bytes[fixup->virtual_address], &diff, sizeof(s32));
 	}
 }
 
@@ -767,7 +763,7 @@ static void job(struct job_context *job_ctx) {
 
 		// Call positions
 		for (usize i = 0; i < arrlenu(tctx->call_fixups); ++i) {
-			struct call_fixup *fixup = &tctx->call_fixups[i];
+			struct jmp_fixup *fixup = &tctx->call_fixups[i];
 			bassert(fixup->hash);
 			bassert(fixup->fn_proto);
 
@@ -779,7 +775,7 @@ static void job(struct job_context *job_ctx) {
 			if (hmgeti(ctx->scheduled_for_generation, fixup->hash) == -1) {
 				hmputs(ctx->scheduled_for_generation, (struct scheduled_entry){fixup->hash});
 
-				struct job_context job_ctx = {.x64 = {.ctx = ctx, .top_instr = fixup->fn_proto}};
+				struct job_context job_ctx = {.x64 = {.ctx = ctx, .top_instr = &fixup->fn_proto->base}};
 				submit_job(&job, &job_ctx);
 			}
 		}
@@ -788,7 +784,7 @@ static void job(struct job_context *job_ctx) {
 		const usize gcall_fixups_len = arrlenu(ctx->call_fixups);
 		const usize call_fixups_len  = arrlenu(tctx->call_fixups);
 		arrsetlen(ctx->call_fixups, gcall_fixups_len + call_fixups_len);
-		memcpy(&ctx->call_fixups[gcall_fixups_len], tctx->call_fixups, call_fixups_len * sizeof(struct call_fixup));
+		memcpy(&ctx->call_fixups[gcall_fixups_len], tctx->call_fixups, call_fixups_len * sizeof(struct jmp_fixup));
 
 		// Adjust symbol positions.
 		for (usize i = 0; i < arrlenu(tctx->syms); ++i) {
@@ -917,7 +913,7 @@ void x86_64run(struct assembly *assembly) {
 
 	// Fixup all call offsets.
 	for (usize i = 0; i < arrlenu(ctx.call_fixups); ++i) {
-		struct call_fixup *fixup = &ctx.call_fixups[i];
+		struct jmp_fixup *fixup = &ctx.call_fixups[i];
 		bassert(fixup->hash);
 		bassert(fixup->fn_proto);
 
