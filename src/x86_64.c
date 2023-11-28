@@ -61,8 +61,29 @@ struct x64_value {
 
 struct jmp_fixup {
 	struct mir_instr_block *target_block;
-	u32                     diff_value_position;
-	u32                     jmp_position;
+	// Directly points to u32 value to be fixed.
+	u32 diff_value_position;
+	// Points to the next instruction.
+	u32 jmp_position;
+};
+
+struct call_fixup {
+	struct mir_instr *fn_proto;
+	hash_t            hash;
+	// Directly points to u32 value to be fixed.
+	u64 diff_value_position;
+	// Points to the next instruction.
+	u64 jmp_position;
+};
+
+struct export_symbol_location {
+	hash_t key;
+	u64    address;
+	u32    sym_offset;
+};
+
+struct scheduled_entry {
+	hash_t key;
 };
 
 struct thread_context {
@@ -72,8 +93,11 @@ struct thread_context {
 	array(struct x64_value) values;
 	array(struct mir_instr_block *) emit_block_queue;
 	array(struct jmp_fixup) jmp_fixups;
+	array(struct call_fixup) call_fixups;
 
-	u32 stack_allocation_size;
+	struct export_symbol_location top_export_symbol;
+
+	s64 stack_variables_alocation_size;
 };
 
 struct context {
@@ -86,6 +110,11 @@ struct context {
 		array(IMAGE_SYMBOL) syms;
 		array(char) strs;
 	} code;
+
+	hash_table(struct export_symbol_location) export_symbol_table;
+	hash_table(struct scheduled_entry) scheduled_for_generation;
+
+	array(struct call_fixup) call_fixups;
 
 	pthread_spinlock_t uq_name_lock;
 };
@@ -138,18 +167,19 @@ s32 add_code(struct thread_context *tctx, const void *buf, s32 len) {
 // Add new symbol into thread local storage and set it's offset value relative to already generated
 // code in the thread local bytes array. This value must be later fixed according to position in the
 // final code section.
+//
 // Returns offet of the symbol in the binary.
-static inline u32 add_sym(struct thread_context *tctx, str_t linkage_name) {
+static inline u32 add_sym(struct thread_context *tctx, str_t linkage_name, u8 storage_class, bool force_long_name) {
 	bassert(linkage_name.len && linkage_name.ptr);
 	const u32    offset = get_position(tctx);
 	IMAGE_SYMBOL sym    = {
 	       .SectionNumber = 1,
 	       .Type          = 0x20,
-	       .StorageClass  = IMAGE_SYM_CLASS_EXTERNAL,
+	       .StorageClass  = storage_class,
 	       .Value         = offset,
     };
 
-	if (linkage_name.len > 8) {
+	if (linkage_name.len > 8 || force_long_name) {
 		const u32 str_offset = (u32)arrlenu(tctx->strs);
 		arrsetcap(tctx->strs, 256);
 		arrsetlen(tctx->strs, str_offset + linkage_name.len + 1); // +1 zero terminator
@@ -167,7 +197,7 @@ static inline u32 add_sym(struct thread_context *tctx, str_t linkage_name) {
 }
 
 static inline u64 add_block(struct thread_context *tctx, const str_t name) {
-	const u32        address = add_sym(tctx, name);
+	const u32        address = add_sym(tctx, name, IMAGE_SYM_CLASS_LABEL, false);
 	struct x64_value value   = {.kind = ADDRESS, .address = address};
 	arrput(tctx->values, value);
 	return arrlenu(tctx->values);
@@ -177,8 +207,8 @@ static inline u64 add_block(struct thread_context *tctx, const str_t name) {
 // Translate
 //
 
-static void allocate_stack(struct thread_context *tctx, struct mir_fn *fn) {
-	u32 top = 0;
+static void allocate_stack_variables(struct thread_context *tctx, struct mir_fn *fn) {
+	usize top = 0;
 
 	for (usize i = 0; i < arrlenu(fn->variables); ++i) {
 		struct mir_var *var = fn->variables[i];
@@ -193,31 +223,30 @@ static void allocate_stack(struct thread_context *tctx, struct mir_fn *fn) {
 		const u32 var_alignment = (u32)var->value.type->alignment;
 
 		if (!is_aligned((void *)(usize)top, var_alignment)) {
-			top = (u32)(usize)next_aligned((void *)(usize)top, var_alignment);
+			top = (usize)next_aligned((void *)top, var_alignment);
 		}
 
 		blog("Variable: %dB aligned to: %dB at: 0x%x", var_type->store_size_bytes, var_alignment, top);
-		struct x64_value value = {.kind = OFFSET, .offset = (s32)top};
+		struct x64_value value = {
+		    .kind   = OFFSET,
+		    .offset = (s32)top,
+		};
 		arrput(tctx->values, value);
 		var->backend_value = arrlenu(tctx->values);
 
 		top += var_size;
 	}
 
-	// Adjust stack memory to 16B.
-	top = (u32)(usize)next_aligned((void *)(usize)top, 16);
-
 	// Add shadow space.
 	// @Performance: This is needed only in case this function is not a leaf function
 	// or maybe just in case we call some stuff from C.
 	top += 0x20;
-
-	bassert(is_aligned((void *)(usize)top, 16));
+	top = (usize)next_aligned((void *)top, 16);
 
 	sub_ri(tctx, RSP, top, 8);
-	tctx->stack_allocation_size += top;
+	tctx->stack_variables_alocation_size = top;
 
-	blog("Total allocated: %dB", top);
+	blog("Local variables allocated: %dB", tctx->stack_variables_alocation_size);
 }
 
 static void emit_binop_ri(struct thread_context *tctx, enum binop_kind op, const u8 reg, const u64 v, const usize vsize) {
@@ -229,7 +258,7 @@ static void emit_binop_ri(struct thread_context *tctx, enum binop_kind op, const
 		sub_ri(tctx, reg, v, vsize);
 		break;
 	case BINOP_MUL:
-		imul_ri(tctx, reg, v, vsize);
+		imul_ri(tctx, reg, reg, v, vsize);
 		break;
 	case BINOP_LESS_EQ:
 	case BINOP_GREATER_EQ:
@@ -251,6 +280,9 @@ static void emit_binop_rr(struct thread_context *tctx, enum binop_kind op, const
 		break;
 	case BINOP_SUB:
 		sub_rr(tctx, reg1, reg2, vsize);
+		break;
+	case BINOP_MUL:
+		imul_rr(tctx, reg1, reg2, vsize);
 		break;
 	case BINOP_LESS_EQ:
 	case BINOP_GREATER_EQ:
@@ -285,13 +317,17 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		}
 		bassert(linkage_name.len && "Invalid function name!");
 
+		const u32 sym_offset    = add_sym(tctx, linkage_name, IMAGE_SYM_CLASS_EXTERNAL, true);
+		tctx->top_export_symbol = (struct export_symbol_location){
+		    .key        = strhash(linkage_name),
+		    .sym_offset = sym_offset,
+		};
+
 		// External functions does not have any body block.
-		if (isflag(fn->flags, FLAG_EXTERN) || isflag(fn->flags, FLAG_INTRINSIC)) {
-			BL_UNIMPLEMENTED;
+		if (isflag(fn->flags, FLAG_EXTERN)) {
+
 			return;
 		}
-
-		add_sym(tctx, linkage_name);
 
 		// Prologue
 		push64_r(tctx, RBP);
@@ -330,7 +366,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			put_tmp_str(name);
 
 			if (fn->first_block == block) {
-				allocate_stack(tctx, fn);
+				allocate_stack_variables(tctx, fn);
 			}
 		}
 
@@ -346,7 +382,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 	case MIR_INSTR_LOAD: {
 		struct mir_instr_load *load = (struct mir_instr_load *)instr;
 		struct mir_type       *type = load->base.value.type;
-		bassert(type->kind == MIR_TYPE_INT);
+		bassert(type->kind == MIR_TYPE_INT || type->kind == MIR_TYPE_PTR);
 		bassert(tctx->values[load->src->backend_value - 1].kind == OFFSET);
 		const s32 rbp_offset_bytes = tctx->values[load->src->backend_value - 1].offset;
 
@@ -424,9 +460,10 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 	case MIR_INSTR_RET: {
 		// Epilogue
-		if (tctx->stack_allocation_size) {
+		if (tctx->stack_variables_alocation_size) {
 			// Cleanup stack allocations.
-			add_ri(tctx, RSP, tctx->stack_allocation_size, 8);
+			add_ri(tctx, RSP, tctx->stack_variables_alocation_size, 8);
+			tctx->stack_variables_alocation_size = 0;
 		}
 		pop64_r(tctx, RBP);
 		ret(tctx);
@@ -507,6 +544,57 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		break;
 	}
 
+	case MIR_INSTR_CALL: {
+		struct mir_instr_call *call = (struct mir_instr_call *)instr;
+		bassert(!mir_is_comptime(&call->base) && "Compile time calls should not be generated into the final binary!");
+		struct mir_instr *callee = call->callee;
+		bassert(callee);
+
+		// There are three possible configurations:
+		//
+		// 1) We call regular static function; it's compile-time known and resolved by previous decl-ref instruction.
+		// 2) We call via function pointer.
+		// 3) We call immediate inline defined anonymous function (we have to generate one eventually).
+
+		hash_t            callee_hash     = 0;
+		struct mir_instr *callee_fn_proto = NULL;
+
+		if (mir_is_comptime(callee)) {
+			struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &callee->value);
+			bmagic_assert(fn);
+			blog("Calling: %.*s", fn->linkage_name.len, fn->linkage_name.ptr);
+			callee_hash     = strhash(fn->linkage_name);
+			callee_fn_proto = fn->prototype;
+		} else {
+			// We should use loaded value from previous instruction (probably in register?)...
+			BL_UNIMPLEMENTED;
+		}
+
+		bassert(callee_hash);
+		bassert(callee_fn_proto);
+
+		// Note: we use u32 here, it should be enough in context of a single fuction, but all positions are stored in u64 because they are fixed
+		// last when the whole binary is complete.
+		const u32 diff_value_position = call_relative_i32(tctx, 0);
+
+		struct call_fixup fixup = {
+		    .fn_proto            = callee_fn_proto,
+		    .hash                = callee_hash,
+		    .diff_value_position = diff_value_position,
+		    .jmp_position        = get_position(tctx),
+		};
+		arrput(tctx->call_fixups, fixup);
+
+		// Result stored in RAX!
+		struct x64_value value = {
+		    .kind = REGISTER,
+		    .reg  = RAX,
+		};
+		arrput(tctx->values, value);
+		call->base.backend_value = arrlenu(tctx->values);
+		break;
+	}
+
 	case MIR_INSTR_CONST: {
 		struct mir_instr_const *cnst = (struct mir_instr_const *)instr;
 		struct mir_type        *type = cnst->base.value.type;
@@ -514,6 +602,11 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		struct x64_value value = {.kind = IMMEDIATE};
 
 		switch (type->kind) {
+		case MIR_TYPE_PTR:
+			// Currently used only for default intialization of pointer values, so we expect this to be NULL!
+			bassert(vm_read_ptr(type, cnst->base.value.data) == NULL);
+			bassert(type->store_size_bytes == 8);
+			// fall-through
 		case MIR_TYPE_INT:
 			value.imm = vm_read_int(type, cnst->base.value.data);
 			break;
@@ -553,6 +646,9 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 		if (init_value.kind == IMMEDIATE) {
 			switch (type->kind) {
+			case MIR_TYPE_PTR:
+				bassert(type->store_size_bytes == 8);
+				// fall-through
 			case MIR_TYPE_INT: {
 				mov_mi(tctx, RBP, var_value.offset, init_value.imm, type->store_size_bytes);
 				break;
@@ -581,16 +677,17 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 				bassert(var->backend_value);
 				ref->base.backend_value = var->backend_value;
 			}
+			bassert(ref->base.llvm_value);
+
 			break;
 		}
 		case SCOPE_ENTRY_FN: {
-			BL_UNIMPLEMENTED;
+			// @Incomplete: Push function for generation.
 			break;
 		}
 		default:
 			BL_UNIMPLEMENTED;
 		}
-		bassert(ref->base.llvm_value);
 		break;
 	}
 
@@ -616,7 +713,7 @@ static void fixup_jump_offsets(struct thread_context *tctx) {
 		struct jmp_fixup fixup = tctx->jmp_fixups[i];
 		bassert(fixup.target_block);
 		const u64 backend_value = fixup.target_block->base.backend_value;
-		if (backend_value == 0) {
+		if (!backend_value) {
 			babort("Cannot resolve relative jump target block!");
 		}
 
@@ -629,6 +726,7 @@ static void fixup_jump_offsets(struct thread_context *tctx) {
 }
 
 static void job(struct job_context *job_ctx) {
+	zone();
 	struct context        *ctx          = job_ctx->x64.ctx;
 	const u32              thread_index = job_ctx->thread_index;
 	struct thread_context *tctx         = &ctx->tctx[thread_index];
@@ -640,7 +738,10 @@ static void job(struct job_context *job_ctx) {
 	arrsetlen(tctx->values, 0);
 	arrsetlen(tctx->emit_block_queue, 0);
 	arrsetlen(tctx->jmp_fixups, 0);
-	tctx->stack_allocation_size = 0;
+	arrsetlen(tctx->call_fixups, 0);
+
+	tctx->stack_variables_alocation_size = 0;
+	tctx->top_export_symbol              = (struct export_symbol_location){0};
 
 	arrsetcap(tctx->bytes, BYTE_CODE_BUFFER_SIZE);
 
@@ -657,43 +758,82 @@ static void job(struct job_context *job_ctx) {
 	const usize syms_len  = arrlenu(tctx->syms);
 	const usize strs_len  = arrlenu(tctx->strs);
 
-	if (bytes_len == 0) return;
+	{
+		pthread_mutex_lock(&ctx->code.mutex);
 
-	pthread_mutex_lock(&ctx->code.mutex);
+		const usize section_offset      = arrlenu(ctx->code.bytes);
+		const usize string_table_offset = arrlenu(ctx->code.strs);
+		const usize syms_offset         = arrlenu(ctx->code.syms);
 
-	const usize section_offset      = arrlenu(ctx->code.bytes);
-	const usize string_table_offset = arrlenu(ctx->code.strs);
-	const usize syms_offset         = arrlenu(ctx->code.syms);
+		// Insert code.
+		arrsetcap(ctx->code.bytes, CODE_BLOCK_BUFFER_SIZE);
+		arrsetlen(ctx->code.bytes, section_offset + bytes_len);
+		memcpy(&ctx->code.bytes[section_offset], tctx->bytes, bytes_len);
 
-	arrsetcap(ctx->code.bytes, CODE_BLOCK_BUFFER_SIZE);
-	arrsetlen(ctx->code.bytes, section_offset + bytes_len);
-	memcpy(&ctx->code.bytes[section_offset], tctx->bytes, bytes_len);
+		// Insert top-level exported symbol to lookup table. (Must be the first in generated sub-section.)
+		bassert(tctx->top_export_symbol.key != 0);
+		bassert(tctx->top_export_symbol.address == 0);
+		tctx->top_export_symbol.address = section_offset;
+		tctx->top_export_symbol.sym_offset += syms_offset;
+		hmputs(ctx->export_symbol_table, tctx->top_export_symbol);
 
-	// Fixup symbol positions.
-	for (usize i = 0; i < arrlenu(tctx->syms); ++i) {
-		IMAGE_SYMBOL *sym = &tctx->syms[i];
-		sym->Value += (DWORD)section_offset;
-		if (sym->N.Name.Long) {
-			sym->N.Name.Long += (DWORD)string_table_offset;
+		// Call positions
+		for (usize i = 0; i < arrlenu(tctx->call_fixups); ++i) {
+			struct call_fixup *fixup = &tctx->call_fixups[i];
+			bassert(fixup->hash);
+			bassert(fixup->fn_proto);
+
+			// Fix positions.
+			fixup->diff_value_position += section_offset;
+			fixup->jmp_position += section_offset;
+
+			// Generate function if it's not already generated.
+			if (hmgeti(ctx->scheduled_for_generation, fixup->hash) == -1) {
+				hmputs(ctx->scheduled_for_generation, (struct scheduled_entry){fixup->hash});
+
+				struct job_context job_ctx = {.x64 = {.ctx = ctx, .top_instr = fixup->fn_proto}};
+				submit_job(&job, &job_ctx);
+			}
 		}
+
+		// Duplicate to global context.
+		const usize global_call_fixups_offset = arrlenu(ctx->call_fixups);
+		const usize local_call_fixups_len     = arrlenu(tctx->call_fixups);
+		arrsetlen(ctx->call_fixups, global_call_fixups_offset + local_call_fixups_len);
+		memcpy(&ctx->call_fixups[global_call_fixups_offset], tctx->call_fixups, local_call_fixups_len * sizeof(struct call_fixup));
+
+		// Adjust symbol positions.
+		for (usize i = 0; i < arrlenu(tctx->syms); ++i) {
+			IMAGE_SYMBOL *sym = &tctx->syms[i];
+			sym->Value += (DWORD)section_offset;
+			if (sym->N.Name.Short == 0) {
+				sym->N.Name.Long += (DWORD)string_table_offset;
+			}
+		}
+
+		// Copy symbol table to global one.
+		arrsetcap(ctx->code.syms, SYMBOL_TABLE_SIZE);
+		arrsetlen(ctx->code.syms, syms_offset + syms_len);
+		memcpy(&ctx->code.syms[syms_offset], tctx->syms, syms_len * sizeof(IMAGE_SYMBOL));
+
+		// Copy string table to global one.
+		arrsetcap(ctx->code.strs, STRING_TABLE_SIZE);
+		arrsetlen(ctx->code.strs, string_table_offset + strs_len);
+		memcpy(&ctx->code.strs[string_table_offset], tctx->strs, strs_len);
+
+		pthread_mutex_unlock(&ctx->code.mutex);
 	}
-
-	// Copy symbol table to global one.
-	arrsetcap(ctx->code.syms, SYMBOL_TABLE_SIZE);
-	arrsetlen(ctx->code.syms, syms_offset + syms_len);
-	memcpy(&ctx->code.syms[syms_offset], tctx->syms, syms_len * sizeof(IMAGE_SYMBOL));
-
-	// Copy string table to global one.
-	arrsetcap(ctx->code.strs, STRING_TABLE_SIZE);
-	arrsetlen(ctx->code.strs, string_table_offset + strs_len);
-	memcpy(&ctx->code.strs[string_table_offset], tctx->strs, strs_len);
-
-	pthread_mutex_unlock(&ctx->code.mutex);
+	return_zone();
 }
 
 static void create_object_file(struct context *ctx) {
 	usize section_data_pointer = IMAGE_SIZEOF_FILE_HEADER + IMAGE_SIZEOF_SECTION_HEADER;
-	usize sym_pointer          = section_data_pointer + arrlenu(ctx->code.bytes);
+
+	// Code block is aligned to 16 bytes, do we need this???
+	const usize section_data_padding = ((usize)next_aligned((void *)section_data_pointer, 16)) - section_data_pointer;
+	section_data_pointer += section_data_padding;
+
+	usize sym_pointer = section_data_pointer + arrlenu(ctx->code.bytes);
 
 	IMAGE_FILE_HEADER header = {
 	    .Machine              = IMAGE_FILE_MACHINE_AMD64,
@@ -704,10 +844,12 @@ static void create_object_file(struct context *ctx) {
 	};
 
 	IMAGE_SECTION_HEADER section = {
-	    .Name             = ".text",
-	    .Characteristics  = IMAGE_SCN_CNT_CODE | IMAGE_SCN_MEM_READ | IMAGE_SCN_ALIGN_16BYTES | IMAGE_SCN_MEM_EXECUTE,
-	    .SizeOfRawData    = (DWORD)arrlenu(ctx->code.bytes),
-	    .PointerToRawData = (DWORD)section_data_pointer,
+	    .Name                 = ".text",
+	    .Characteristics      = IMAGE_SCN_CNT_CODE | IMAGE_SCN_MEM_READ | IMAGE_SCN_ALIGN_16BYTES | IMAGE_SCN_MEM_EXECUTE,
+	    .SizeOfRawData        = (DWORD)arrlenu(ctx->code.bytes),
+	    .PointerToRawData     = (DWORD)section_data_pointer,
+	    .PointerToRelocations = 0,
+	    .NumberOfRelocations  = 0,
 	};
 
 	str_buf_t            buf    = get_tmp_str();
@@ -724,6 +866,10 @@ static void create_object_file(struct context *ctx) {
 	fwrite(&header, 1, IMAGE_SIZEOF_FILE_HEADER, file);
 	// Section header
 	fwrite(&section, 1, IMAGE_SIZEOF_SECTION_HEADER, file);
+	// Gap to align the code section.
+	u8 padding[16] = {0};
+	bassert(section_data_padding <= static_arrlenu(padding));
+	fwrite(padding, 1, section_data_padding, file);
 	// Write section code
 	fwrite(ctx->code.bytes, 1, arrlenu(ctx->code.bytes), file);
 	// Symbol table
@@ -756,6 +902,27 @@ void x86_64run(struct assembly *assembly) {
 	}
 	wait_threads();
 
+	// Fixup all call offsets.
+	for (usize i = 0; i < arrlenu(ctx.call_fixups); ++i) {
+		struct call_fixup *fixup = &ctx.call_fixups[i];
+		bassert(fixup->hash);
+		bassert(fixup->fn_proto);
+
+		// Find the fucntion position in the binary.
+		const usize i = hmgeti(ctx.export_symbol_table, fixup->hash);
+		if (i == -1) {
+			// Later goes to the relocation COFF table.
+			continue;
+		}
+
+		const struct export_symbol_location sym = ctx.export_symbol_table[i];
+
+		const s32 sym_position = (s32)sym.address;
+		const s32 jmp_position = (s32)fixup->jmp_position;
+		const s32 diff         = sym_position - jmp_position;
+		memcpy(&ctx.code.bytes[fixup->diff_value_position], &diff, sizeof(s32));
+	}
+
 	// Write the output file.
 	create_object_file(&ctx);
 
@@ -768,10 +935,14 @@ void x86_64run(struct assembly *assembly) {
 		arrfree(tctx->values);
 		arrfree(tctx->emit_block_queue);
 		arrfree(tctx->jmp_fixups);
+		arrfree(tctx->call_fixups);
 	}
 	arrfree(ctx.tctx);
 	arrfree(ctx.code.bytes);
 	arrfree(ctx.code.syms);
 	arrfree(ctx.code.strs);
+	arrfree(ctx.call_fixups);
+	hmfree(ctx.export_symbol_table);
+	hmfree(ctx.scheduled_for_generation);
 	pthread_mutex_destroy(&ctx.code.mutex);
 }

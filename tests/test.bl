@@ -19,7 +19,7 @@ Any :: struct #compiler {
 	data: *u8
 };
 
-// foo :: fn (a: s32, b: s32, c: s32, d: s32) {}
+_CRT_INIT :: fn () #extern;
 
 __os_start :: fn () s32 #entry {
 	// v := 20;
@@ -27,18 +27,25 @@ __os_start :: fn () s32 #entry {
 	// 	v += i;
 	// }
 
-	v: u8;
-	a : u8 = 0;
-	b : u8 = 1;
+	// v: u8;
+	// a : u8 = 0;
+	// b : u8 = 1;
 
-	v = a + 40;
-	v = 20 + b;
-	v = a + b;
+	// v = a + 40;
+	// v = 20 + b;
+	// v = a + b;
 
-	v = a - 40;
-	v = 20 - b;
-	v = a - b;
-	return 0;
+	// v = a - 40;
+	// v = 20 - b;
+	// v = a - b;
+
+	_CRT_INIT();
+	v :: foo();
+	return v;
+}
+
+foo :: fn () s32 {
+	return 10;
 }
 
 /*

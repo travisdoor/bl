@@ -202,8 +202,46 @@ static inline void sub_ri(struct thread_context *tctx, u8 r, u64 imm, usize size
 	add_code(tctx, &imm, (s32)MIN(size, sizeof(u32)));
 }
 
-static inline void imul_ri(struct thread_context *tctx, u8 r, u64 imm, usize size) {
-	BL_UNIMPLEMENTED;
+static inline void imul_rr(struct thread_context *tctx, u8 r1, u8 r2, usize size) {
+	const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, r1, r2);
+	const u8 rex = encode_rex2(size == 8, r2, r1);
+
+	u8  buf[5];
+	s32 i = 0;
+	if (size == 1 || size == 2) buf[i++] = 0x66;
+	if (rex) buf[i++] = rex;
+	buf[i++] = 0x0F;
+	buf[i++] = 0xAF;
+	buf[i++] = mrr;
+	add_code(tctx, buf, i);
+}
+
+static inline void imul_ri(struct thread_context *tctx, u8 r1, u8 r2, u64 imm, usize size) {
+	if (size == 8 && imm > 0xFFFFFFFF) {
+		movabs64_ri(tctx, RAX, imm);
+		imul_rr(tctx, r1, RAX, size);
+		return;
+	}
+	const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, r2, r1);
+	const u8 rex = encode_rex2(size == 8, r2, r1);
+
+	u8  buf[4];
+	s32 i = 0;
+	if (rex) buf[i++] = rex;
+	switch (size) {
+	case 1:
+		buf[i++] = 0x6B;
+		break;
+	case 2:
+	case 4:
+	case 8:
+		buf[i++] = 0x69;
+		break;
+	}
+	buf[i++] = mrr;
+	add_code(tctx, buf, i);
+	// Note we never get over 4 bytes imm value.
+	add_code(tctx, &imm, (s32)(size == 1 ? sizeof(u8) : sizeof(u32)));
 }
 
 static inline void cmp_rr(struct thread_context *tctx, u8 r1, u8 r2, usize size) {
@@ -271,5 +309,11 @@ static inline u32 jge_relative_i32(struct thread_context *tctx, s32 offset) {
 static inline u32 jle_relative_i32(struct thread_context *tctx, s32 offset) {
 	const u8 buf[] = {0x0F, 0x8E};
 	add_code(tctx, buf, 2);
+	return add_code(tctx, &offset, sizeof(offset));
+}
+
+static inline u32 call_relative_i32(struct thread_context *tctx, s32 offset) {
+	const u8 buf[] = {0xE8};
+	add_code(tctx, buf, 1);
 	return add_code(tctx, &offset, sizeof(offset));
 }
