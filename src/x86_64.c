@@ -62,7 +62,7 @@ struct x64_value {
 struct jmp_fixup {
 	struct mir_instr_block *target_block;
 	// Directly points to u32 value to be fixed.
-	u32 diff_value_position;
+	u32 virtual_address;
 	// Points to the next instruction.
 	u32 jmp_position;
 };
@@ -71,15 +71,14 @@ struct call_fixup {
 	struct mir_instr *fn_proto;
 	hash_t            hash;
 	// Directly points to u32 value to be fixed.
-	u64 diff_value_position;
+	u64 virtual_address;
 	// Points to the next instruction.
 	u64 jmp_position;
 };
 
-struct export_symbol_location {
+struct symbol_table_entry {
 	hash_t key;
-	u64    address;
-	u32    sym_offset;
+	s32    symbol_table_index;
 };
 
 struct scheduled_entry {
@@ -95,8 +94,6 @@ struct thread_context {
 	array(struct jmp_fixup) jmp_fixups;
 	array(struct call_fixup) call_fixups;
 
-	struct export_symbol_location top_export_symbol;
-
 	s64 stack_variables_alocation_size;
 };
 
@@ -108,10 +105,11 @@ struct context {
 		pthread_mutex_t mutex;
 		array(u8) bytes;
 		array(IMAGE_SYMBOL) syms;
+		array(IMAGE_RELOCATION) relocs;
 		array(char) strs;
 	} code;
 
-	hash_table(struct export_symbol_location) export_symbol_table;
+	hash_table(struct symbol_table_entry) symbol_table;
 	hash_table(struct scheduled_entry) scheduled_for_generation;
 
 	array(struct call_fixup) call_fixups;
@@ -168,18 +166,21 @@ s32 add_code(struct thread_context *tctx, const void *buf, s32 len) {
 // code in the thread local bytes array. This value must be later fixed according to position in the
 // final code section.
 //
+// External symbol does not record section number (value is 0). This is later used by linker as a hint
+// the symbol is linked from other binary. Also there is no offset (value) pointing to our binary (value is 0).
+//
 // Returns offet of the symbol in the binary.
-static inline u32 add_sym(struct thread_context *tctx, str_t linkage_name, u8 storage_class, bool force_long_name) {
+static inline u32 add_sym(struct thread_context *tctx, str_t linkage_name, u8 storage_class, bool is_external) {
 	bassert(linkage_name.len && linkage_name.ptr);
 	const u32    offset = get_position(tctx);
 	IMAGE_SYMBOL sym    = {
-	       .SectionNumber = 1,
+	       .SectionNumber = is_external ? 0 : 1,
 	       .Type          = 0x20,
 	       .StorageClass  = storage_class,
-	       .Value         = offset,
+	       .Value         = is_external ? 0 : offset,
     };
 
-	if (linkage_name.len > 8 || force_long_name) {
+	if (linkage_name.len > 8) {
 		const u32 str_offset = (u32)arrlenu(tctx->strs);
 		arrsetcap(tctx->strs, 256);
 		arrsetlen(tctx->strs, str_offset + linkage_name.len + 1); // +1 zero terminator
@@ -229,7 +230,7 @@ static void allocate_stack_variables(struct thread_context *tctx, struct mir_fn 
 		blog("Variable: %dB aligned to: %dB at: 0x%x", var_type->store_size_bytes, var_alignment, top);
 		struct x64_value value = {
 		    .kind   = OFFSET,
-		    .offset = (s32)top,
+		    .offset = -(s32)(top + var_size),
 		};
 		arrput(tctx->values, value);
 		var->backend_value = arrlenu(tctx->values);
@@ -317,15 +318,10 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		}
 		bassert(linkage_name.len && "Invalid function name!");
 
-		const u32 sym_offset    = add_sym(tctx, linkage_name, IMAGE_SYM_CLASS_EXTERNAL, true);
-		tctx->top_export_symbol = (struct export_symbol_location){
-		    .key        = strhash(linkage_name),
-		    .sym_offset = sym_offset,
-		};
+		add_sym(tctx, linkage_name, IMAGE_SYM_CLASS_EXTERNAL, isflag(fn->flags, FLAG_EXTERN));
 
 		// External functions does not have any body block.
 		if (isflag(fn->flags, FLAG_EXTERN)) {
-
 			return;
 		}
 
@@ -476,12 +472,12 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		bassert(then_block);
 
 		if (then_block->base.backend_value) {
-			const u32 diff_value_position = jmp_relative_i32(tctx, 0x0);
+			const u32 virtual_address = jmp_relative_i32(tctx, 0x0);
 
 			struct jmp_fixup fixup = {
-			    .target_block        = then_block,
-			    .diff_value_position = diff_value_position,
-			    .jmp_position        = get_position(tctx),
+			    .target_block    = then_block,
+			    .virtual_address = virtual_address,
+			    .jmp_position    = get_position(tctx),
 			};
 			arrput(tctx->jmp_fixups, fixup);
 		} else {
@@ -497,7 +493,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		bassert(br->cond && br->then_block && br->else_block);
 		bassert(br->else_block->base.backend_value == 0);
 
-		u32 diff_value_position = 0;
+		u32 virtual_address = 0;
 
 		// In case the condition is binary operation we swap the logic with attemt to generate the 'then'
 		// branch immediately after conditional jump to safe one jmp instruction.
@@ -505,31 +501,31 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		struct mir_instr_binop *cond_binop = (struct mir_instr_binop *)br->cond;
 		switch (cond_binop->op) {
 		case BINOP_EQ:
-			diff_value_position = jne_relative_i32(tctx, 0x0);
+			virtual_address = jne_relative_i32(tctx, 0x0);
 			break;
 		case BINOP_NEQ:
-			diff_value_position = je_relative_i32(tctx, 0x0);
+			virtual_address = je_relative_i32(tctx, 0x0);
 			break;
 		case BINOP_LESS:
-			diff_value_position = jge_relative_i32(tctx, 0x0);
+			virtual_address = jge_relative_i32(tctx, 0x0);
 			break;
 		case BINOP_GREATER:
-			diff_value_position = jle_relative_i32(tctx, 0x0);
+			virtual_address = jle_relative_i32(tctx, 0x0);
 			break;
 		case BINOP_LESS_EQ:
-			diff_value_position = jg_relative_i32(tctx, 0x0);
+			virtual_address = jg_relative_i32(tctx, 0x0);
 			break;
 		case BINOP_GREATER_EQ:
-			diff_value_position = jl_relative_i32(tctx, 0x0);
+			virtual_address = jl_relative_i32(tctx, 0x0);
 			break;
 		default:
 			BL_UNIMPLEMENTED;
 		}
 
 		struct jmp_fixup fixup = {
-		    .target_block        = br->else_block,
-		    .diff_value_position = diff_value_position,
-		    .jmp_position        = get_position(tctx),
+		    .target_block    = br->else_block,
+		    .virtual_address = virtual_address,
+		    .jmp_position    = get_position(tctx),
 		};
 		arrput(tctx->jmp_fixups, fixup);
 
@@ -575,13 +571,13 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 		// Note: we use u32 here, it should be enough in context of a single fuction, but all positions are stored in u64 because they are fixed
 		// last when the whole binary is complete.
-		const u32 diff_value_position = call_relative_i32(tctx, 0);
+		const u32 virtual_address = call_relative_i32(tctx, 0);
 
 		struct call_fixup fixup = {
-		    .fn_proto            = callee_fn_proto,
-		    .hash                = callee_hash,
-		    .diff_value_position = diff_value_position,
-		    .jmp_position        = get_position(tctx),
+		    .fn_proto        = callee_fn_proto,
+		    .hash            = callee_hash,
+		    .virtual_address = virtual_address,
+		    .jmp_position    = get_position(tctx),
 		};
 		arrput(tctx->call_fixups, fixup);
 
@@ -721,7 +717,7 @@ static void fixup_jump_offsets(struct thread_context *tctx) {
 		const s32 block_position = (s32)tctx->values[backend_value - 1].address;
 		const s32 jmp_position   = (s32)fixup.jmp_position;
 		const s32 diff           = block_position - jmp_position;
-		memcpy(&tctx->bytes[fixup.diff_value_position], &diff, sizeof(s32));
+		memcpy(&tctx->bytes[fixup.virtual_address], &diff, sizeof(s32));
 	}
 }
 
@@ -739,9 +735,7 @@ static void job(struct job_context *job_ctx) {
 	arrsetlen(tctx->emit_block_queue, 0);
 	arrsetlen(tctx->jmp_fixups, 0);
 	arrsetlen(tctx->call_fixups, 0);
-
 	tctx->stack_variables_alocation_size = 0;
-	tctx->top_export_symbol              = (struct export_symbol_location){0};
 
 	arrsetcap(tctx->bytes, BYTE_CODE_BUFFER_SIZE);
 
@@ -752,30 +746,24 @@ static void job(struct job_context *job_ctx) {
 
 	fixup_jump_offsets(tctx);
 
-	// Write top-level function generated code into the code section if there is any generated code
-	// present.
-	const usize bytes_len = arrlenu(tctx->bytes);
-	const usize syms_len  = arrlenu(tctx->syms);
-	const usize strs_len  = arrlenu(tctx->strs);
+	const usize section_len = arrlenu(tctx->bytes);
+	const usize syms_len    = arrlenu(tctx->syms);
+	const usize strs_len    = arrlenu(tctx->strs);
 
 	{
 		pthread_mutex_lock(&ctx->code.mutex);
 
-		const usize section_offset      = arrlenu(ctx->code.bytes);
-		const usize string_table_offset = arrlenu(ctx->code.strs);
-		const usize syms_offset         = arrlenu(ctx->code.syms);
+		// Write top-level function generated code into the code section if there is any generated code
+		// present.
+
+		const usize gsection_len = arrlenu(ctx->code.bytes);
+		const usize gsyms_len    = arrlenu(ctx->code.syms);
+		const usize gstrs_len    = arrlenu(ctx->code.strs);
 
 		// Insert code.
 		arrsetcap(ctx->code.bytes, CODE_BLOCK_BUFFER_SIZE);
-		arrsetlen(ctx->code.bytes, section_offset + bytes_len);
-		memcpy(&ctx->code.bytes[section_offset], tctx->bytes, bytes_len);
-
-		// Insert top-level exported symbol to lookup table. (Must be the first in generated sub-section.)
-		bassert(tctx->top_export_symbol.key != 0);
-		bassert(tctx->top_export_symbol.address == 0);
-		tctx->top_export_symbol.address = section_offset;
-		tctx->top_export_symbol.sym_offset += syms_offset;
-		hmputs(ctx->export_symbol_table, tctx->top_export_symbol);
+		arrsetlen(ctx->code.bytes, gsection_len + section_len);
+		memcpy(&ctx->code.bytes[gsection_len], tctx->bytes, section_len);
 
 		// Call positions
 		for (usize i = 0; i < arrlenu(tctx->call_fixups); ++i) {
@@ -784,8 +772,8 @@ static void job(struct job_context *job_ctx) {
 			bassert(fixup->fn_proto);
 
 			// Fix positions.
-			fixup->diff_value_position += section_offset;
-			fixup->jmp_position += section_offset;
+			fixup->virtual_address += gsection_len;
+			fixup->jmp_position += gsection_len;
 
 			// Generate function if it's not already generated.
 			if (hmgeti(ctx->scheduled_for_generation, fixup->hash) == -1) {
@@ -797,29 +785,46 @@ static void job(struct job_context *job_ctx) {
 		}
 
 		// Duplicate to global context.
-		const usize global_call_fixups_offset = arrlenu(ctx->call_fixups);
-		const usize local_call_fixups_len     = arrlenu(tctx->call_fixups);
-		arrsetlen(ctx->call_fixups, global_call_fixups_offset + local_call_fixups_len);
-		memcpy(&ctx->call_fixups[global_call_fixups_offset], tctx->call_fixups, local_call_fixups_len * sizeof(struct call_fixup));
+		const usize gcall_fixups_len = arrlenu(ctx->call_fixups);
+		const usize call_fixups_len  = arrlenu(tctx->call_fixups);
+		arrsetlen(ctx->call_fixups, gcall_fixups_len + call_fixups_len);
+		memcpy(&ctx->call_fixups[gcall_fixups_len], tctx->call_fixups, call_fixups_len * sizeof(struct call_fixup));
 
 		// Adjust symbol positions.
 		for (usize i = 0; i < arrlenu(tctx->syms); ++i) {
 			IMAGE_SYMBOL *sym = &tctx->syms[i];
-			sym->Value += (DWORD)section_offset;
-			if (sym->N.Name.Short == 0) {
-				sym->N.Name.Long += (DWORD)string_table_offset;
+			// 0 section number means the symbol is externally linked. There is no location in our
+			// binary.
+			if (sym->SectionNumber) {
+				sym->Value += (DWORD)gsection_len;
 			}
+			char *sym_name = NULL;
+			if (sym->N.Name.Short == 0) {
+				sym_name = &tctx->strs[sym->N.Name.Long - sizeof(u32)];
+				sym->N.Name.Long += (DWORD)gstrs_len;
+			} else {
+				sym_name = (char *)&sym->N.ShortName[0];
+			}
+			if (sym->StorageClass != IMAGE_SYM_CLASS_EXTERNAL) continue;
+
+			const hash_t hash = strhash(make_str_from_c(sym_name));
+			bassert(hmgeti(ctx->symbol_table, hash) == -1);
+			struct symbol_table_entry entry = {
+			    .key                = hash,
+			    .symbol_table_index = (s32)(i + gsyms_len),
+			};
+			hmputs(ctx->symbol_table, entry);
 		}
 
 		// Copy symbol table to global one.
 		arrsetcap(ctx->code.syms, SYMBOL_TABLE_SIZE);
-		arrsetlen(ctx->code.syms, syms_offset + syms_len);
-		memcpy(&ctx->code.syms[syms_offset], tctx->syms, syms_len * sizeof(IMAGE_SYMBOL));
+		arrsetlen(ctx->code.syms, gsyms_len + syms_len);
+		memcpy(&ctx->code.syms[gsyms_len], tctx->syms, syms_len * sizeof(IMAGE_SYMBOL));
 
 		// Copy string table to global one.
 		arrsetcap(ctx->code.strs, STRING_TABLE_SIZE);
-		arrsetlen(ctx->code.strs, string_table_offset + strs_len);
-		memcpy(&ctx->code.strs[string_table_offset], tctx->strs, strs_len);
+		arrsetlen(ctx->code.strs, gstrs_len + strs_len);
+		memcpy(&ctx->code.strs[gstrs_len], tctx->strs, strs_len);
 
 		pthread_mutex_unlock(&ctx->code.mutex);
 	}
@@ -833,7 +838,13 @@ static void create_object_file(struct context *ctx) {
 	const usize section_data_padding = ((usize)next_aligned((void *)section_data_pointer, 16)) - section_data_pointer;
 	section_data_pointer += section_data_padding;
 
-	usize sym_pointer = section_data_pointer + arrlenu(ctx->code.bytes);
+	const usize reloc_pointer = section_data_pointer + arrlenu(ctx->code.bytes);
+	const usize sym_pointer   = section_data_pointer + arrlenu(ctx->code.bytes) + arrlenu(ctx->code.relocs) * sizeof(IMAGE_RELOCATION);
+
+	const usize number_of_relocations = arrlenu(ctx->code.relocs);
+	if (number_of_relocations > 0xFFFF) {
+		babort("Relocation table is too large to be stored in COFF file!");
+	}
 
 	IMAGE_FILE_HEADER header = {
 	    .Machine              = IMAGE_FILE_MACHINE_AMD64,
@@ -848,8 +859,8 @@ static void create_object_file(struct context *ctx) {
 	    .Characteristics      = IMAGE_SCN_CNT_CODE | IMAGE_SCN_MEM_READ | IMAGE_SCN_ALIGN_16BYTES | IMAGE_SCN_MEM_EXECUTE,
 	    .SizeOfRawData        = (DWORD)arrlenu(ctx->code.bytes),
 	    .PointerToRawData     = (DWORD)section_data_pointer,
-	    .PointerToRelocations = 0,
-	    .NumberOfRelocations  = 0,
+	    .PointerToRelocations = (DWORD)reloc_pointer,
+	    .NumberOfRelocations  = (u16)number_of_relocations,
 	};
 
 	str_buf_t            buf    = get_tmp_str();
@@ -872,6 +883,8 @@ static void create_object_file(struct context *ctx) {
 	fwrite(padding, 1, section_data_padding, file);
 	// Write section code
 	fwrite(ctx->code.bytes, 1, arrlenu(ctx->code.bytes), file);
+	// Write relocation table
+	fwrite(ctx->code.relocs, arrlenu(ctx->code.relocs), sizeof(IMAGE_RELOCATION), file);
 	// Symbol table
 	fwrite(ctx->code.syms, IMAGE_SIZEOF_SYMBOL, arrlenu(ctx->code.syms), file);
 	// String table
@@ -908,25 +921,36 @@ void x86_64run(struct assembly *assembly) {
 		bassert(fixup->hash);
 		bassert(fixup->fn_proto);
 
-		// Find the fucntion position in the binary.
-		const usize i = hmgeti(ctx.export_symbol_table, fixup->hash);
+		// Find the function position in the binary.
+		const usize i = hmgeti(ctx.symbol_table, fixup->hash);
 		if (i == -1) {
-			// Later goes to the relocation COFF table.
-			continue;
+			babort("Internally linked symbol reference is not found in the binary!");
 		}
 
-		const struct export_symbol_location sym = ctx.export_symbol_table[i];
-
-		const s32 sym_position = (s32)sym.address;
-		const s32 jmp_position = (s32)fixup->jmp_position;
-		const s32 diff         = sym_position - jmp_position;
-		memcpy(&ctx.code.bytes[fixup->diff_value_position], &diff, sizeof(s32));
+		const s32     symbol_table_index = ctx.symbol_table[i].symbol_table_index;
+		IMAGE_SYMBOL *sym                = &ctx.code.syms[symbol_table_index];
+		if (sym->SectionNumber == 0) {
+			// Push into COFF relocation table. The symbol is not in our binary.
+			IMAGE_RELOCATION reloc = {
+			    .Type             = IMAGE_REL_AMD64_REL32,
+			    .SymbolTableIndex = symbol_table_index,
+			    .VirtualAddress   = (DWORD)fixup->virtual_address,
+			};
+			arrput(ctx.code.relocs, reloc);
+		} else {
+			// Fix the location.
+			const s32 sym_position = (s32)sym->Value;
+			const s32 jmp_position = (s32)fixup->jmp_position;
+			const s32 diff         = sym_position - jmp_position;
+			memcpy(&ctx.code.bytes[fixup->virtual_address], &diff, sizeof(s32));
+		}
 	}
 
 	// Write the output file.
 	create_object_file(&ctx);
 
 	// Cleanup
+	// @Incomplete: Only if not in dirty mode?
 	for (usize i = 0; i < arrlenu(ctx.tctx); ++i) {
 		struct thread_context *tctx = &ctx.tctx[i];
 		arrfree(tctx->bytes);
@@ -941,8 +965,9 @@ void x86_64run(struct assembly *assembly) {
 	arrfree(ctx.code.bytes);
 	arrfree(ctx.code.syms);
 	arrfree(ctx.code.strs);
+	arrfree(ctx.code.relocs);
 	arrfree(ctx.call_fixups);
-	hmfree(ctx.export_symbol_table);
+	hmfree(ctx.symbol_table);
 	hmfree(ctx.scheduled_for_generation);
 	pthread_mutex_destroy(&ctx.code.mutex);
 }
