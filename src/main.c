@@ -146,13 +146,19 @@ struct getarg_opt {
 };
 
 static const char *find_closest_argument(struct getarg_opt *opts, str_t opt) {
+	bassert(opts);
 	struct getarg_opt *current_opt;
 	struct getarg_opt *closest_opt  = NULL;
 	s64                min_distance = LLONG_MAX;
 
+	opt = trim_leading_characters(opt, '-');
+
 	while ((current_opt = opts++)->name) {
-		str_t current_opt_str = make_str_from_c(current_opt->name);
-		s64   distance        = fuzzy_cmp(current_opt_str, opt);
+		str_t current_opt_str = trim_leading_characters(make_str_from_c(current_opt->name), '-');
+		s32   distance        = fuzzy_cmp(current_opt_str, opt);
+		if (distance == 0) {
+			return NULL;
+		}
 
 		if (distance < min_distance) {
 			min_distance = distance;
@@ -238,7 +244,13 @@ getarg(s32 argc, char *argv[], struct getarg_opt *opts, s32 *optindex, const cha
 			}
 		}
 		const char *closest_arg = find_closest_argument(cached_opts, make_str_from_c(arg));
-		builder_error("Unknown argument '%s', did you mean '%s'?", arg, closest_arg);
+
+		if (closest_arg == NULL) {
+			builder_error("Unknown argument '%s', try `blc --help` for more information.", arg);
+		} else {
+			builder_error("Unknown argument '%s', did you mean '%s'?", arg, closest_arg);
+		}
+
 		return '?';
 	}
 	(*positional) = arg;

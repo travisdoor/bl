@@ -160,8 +160,8 @@ bool str_match(str_t a, str_t b);
 
 str_t str_toupper(str_t str);
 s32   levenshtein(const str_t s1, const str_t s2);
-str_t trim_leading_character(str_t str, u8 c);
-s64   fuzzy_cmp(str_t str, str_t other);
+str_t trim_leading_characters(str_t str, u8 c);
+s32   fuzzy_cmp(str_t str, str_t other);
 
 // String dynamic array buffer.
 //
