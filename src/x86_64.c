@@ -40,7 +40,7 @@
 #define STRING_TABLE_SIZE (1 * 1024 * 1024)      // 1MB
 #define CODE_BLOCK_BUFFER_SIZE (2 * 1024 * 1024) // 2MB
 
-static const u8 call_reg_order[5] = {RAX, RCX, RDX, R9, R8};
+static const u8 call_reg_order[5] = {RAX, RCX, RDX, R8, R9};
 
 enum x64_value_kind {
 	ADDRESS,
@@ -90,7 +90,14 @@ struct thread_context {
 	array(struct jmp_fixup) jmp_fixups;
 	array(struct jmp_fixup) call_fixups;
 
-	s64 stack_variables_alocation_size;
+	struct {
+		// Contains offset to the byte code pointing to the actual value of sub instruction used
+		// to preallocate stack in prologue, so we can allocate more memory later as needed.
+		u32 alloc_value_offset;
+
+		u32 arg_cache_allocated_size;
+		u32 prologue_allocated_size;
+	} stack;
 };
 
 struct context {
@@ -204,6 +211,20 @@ static inline u64 add_block(struct thread_context *tctx, const str_t name) {
 // Translate
 //
 
+static inline u32 get_stack_allocation_size(struct thread_context *tctx) {
+	bassert(tctx->stack.alloc_value_offset > 0);
+	return *(u32 *)(tctx->bytes + tctx->stack.alloc_value_offset);
+}
+
+static inline void allocate_stack_memory(struct thread_context *tctx, u32 size) {
+	const u32 allocated = get_stack_allocation_size(tctx);
+	size                = (u32)next_aligned2(size, 16);
+	if (((usize)allocated) + size > 0xFFFFFFFF) {
+		babort("Stack allocation is too big!");
+	}
+	(*(u32 *)(tctx->bytes + tctx->stack.alloc_value_offset)) += size;
+}
+
 static void allocate_stack_variables(struct thread_context *tctx, struct mir_fn *fn) {
 	usize top = 0;
 
@@ -219,8 +240,8 @@ static void allocate_stack_variables(struct thread_context *tctx, struct mir_fn 
 		const u32 var_size      = (u32)var_type->store_size_bytes;
 		const u32 var_alignment = (u32)var->value.type->alignment;
 
-		if (!is_aligned((void *)(usize)top, var_alignment)) {
-			top = (usize)next_aligned((void *)top, var_alignment);
+		if (!is_aligned2(top, var_alignment)) {
+			top = next_aligned2(top, var_alignment);
 		}
 
 		blog("Variable: %dB aligned to: %dB at: 0x%x", var_type->store_size_bytes, var_alignment, top);
@@ -238,12 +259,11 @@ static void allocate_stack_variables(struct thread_context *tctx, struct mir_fn 
 	// @Performance: This allocation is not needed for leaf functions or for functions not calling
 	// any C stuff on Windows.
 	top += 0x20;
-	top = (usize)next_aligned((void *)top, 16);
+	top = next_aligned2(top, 16);
 
-	sub_ri(tctx, RSP, top, 8);
-	tctx->stack_variables_alocation_size = top;
-
-	blog("Local variables allocated: %dB", tctx->stack_variables_alocation_size);
+	bassert(top <= 0xFFFFFFFF);
+	allocate_stack_memory(tctx, (u32)top);
+	tctx->stack.prologue_allocated_size = (u32)top;
 }
 
 static void emit_binop_ri(struct thread_context *tctx, enum binop_kind op, const u8 reg, const u64 v, const usize vsize) {
@@ -324,6 +344,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		// Prologue
 		push64_r(tctx, RBP);
 		mov_rr(tctx, RBP, RSP, 8);
+		tctx->stack.alloc_value_offset = sub_ri(tctx, RSP, 0, 8);
 
 		// Generate all blocks in the function body.
 		arrput(tctx->emit_block_queue, fn->first_block);
@@ -452,10 +473,12 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 	case MIR_INSTR_RET: {
 		// Epilogue
-		if (tctx->stack_variables_alocation_size) {
+		const usize total_allocated = get_stack_allocation_size(tctx);
+		if (total_allocated) {
 			// Cleanup stack allocations.
-			add_ri(tctx, RSP, tctx->stack_variables_alocation_size, 8);
-			tctx->stack_variables_alocation_size = 0;
+			bassert(is_aligned2(total_allocated, 16));
+			add_ri(tctx, RSP, total_allocated, 8);
+			tctx->stack.alloc_value_offset = 0;
 		}
 		pop64_r(tctx, RBP);
 		ret(tctx);
@@ -568,33 +591,41 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		bassert(callee_hash);
 		bassert(callee_fn_proto);
 
-		for (usize index = 0; index < sarrlenu(call->args); ++index) {
-			struct mir_instr *arg      = sarrpeek(call->args, index);
-			struct mir_type  *arg_type = arg->value.type;
+		const usize stack_offset = tctx->stack.prologue_allocated_size;
+		bassert(is_aligned2(stack_offset, 16));
+		usize stack_argument_cache_size = stack_offset;
 
-			const s32 reg_index = arg->value.reg_hint;
-			if (reg_index >= static_arrlenu(call_reg_order)) {
-				BL_UNIMPLEMENTED;
+		for (usize index = sarrlenu(call->args); index-- > 0;) {
+			struct mir_instr *arg = sarrpeek(call->args, index);
+
+			const s32  reg_index     = arg->value.reg_hint;
+			const bool push_on_stack = reg_index >= static_arrlenu(call_reg_order);
+			if (push_on_stack) {
+				stack_argument_cache_size += sizeof(u64);
 			}
 
-			const u8         reg   = call_reg_order[reg_index];
+			struct mir_type *arg_type = arg->value.type;
+
+			const u8         reg   = push_on_stack ? 0 : call_reg_order[reg_index];
 			struct x64_value value = get_value(tctx, arg);
 
 			switch (value.kind) {
 			case IMMEDIATE: {
-				mov_ri(tctx, reg, value.imm, arg_type->store_size_bytes);
-				break;
-			}
-			case REGISTER: {
-				// Value might be in the correct register already.
-				if (reg != value.reg) {
-					mov_rr(tctx, reg, value.reg, arg_type->store_size_bytes);
+				if (push_on_stack) {
+					mov_mi(tctx, RBP, -(s32)stack_argument_cache_size, value.imm, arg_type->store_size_bytes);
+				} else {
+					mov_ri(tctx, reg, value.imm, arg_type->store_size_bytes);
 				}
 				break;
 			}
 			default:
-				BL_UNIMPLEMENTED;
+				break;
 			}
+		}
+
+		if (stack_argument_cache_size > tctx->stack.arg_cache_allocated_size) {
+			bassert(stack_argument_cache_size <= 0xFFFFFFFF);
+			allocate_stack_memory(tctx, (u32)stack_argument_cache_size);
 		}
 
 		// Note: we use u32 here, it should be enough in context of a single fuction, but all positions are stored in u64 because they are fixed
@@ -655,7 +686,6 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		    .reg  = arg->llvm_index + 1,
 		};
 		set_value(tctx, instr, value);
-		blog("Argument generation missing!");
 		break;
 	}
 
@@ -776,7 +806,8 @@ static void job(struct job_context *job_ctx) {
 	arrsetlen(tctx->emit_block_queue, 0);
 	arrsetlen(tctx->jmp_fixups, 0);
 	arrsetlen(tctx->call_fixups, 0);
-	tctx->stack_variables_alocation_size = 0;
+	tctx->stack.alloc_value_offset = 0;
+	bl_zeromem(&tctx->stack, sizeof(tctx->stack));
 
 	arrsetcap(tctx->bytes, BYTE_CODE_BUFFER_SIZE);
 
@@ -876,7 +907,7 @@ static void create_object_file(struct context *ctx) {
 	usize section_data_pointer = IMAGE_SIZEOF_FILE_HEADER + IMAGE_SIZEOF_SECTION_HEADER;
 
 	// Code block is aligned to 16 bytes, do we need this???
-	const usize section_data_padding = ((usize)next_aligned((void *)section_data_pointer, 16)) - section_data_pointer;
+	const usize section_data_padding = next_aligned2(section_data_pointer, 16) - section_data_pointer;
 	section_data_pointer += section_data_padding;
 
 	const usize reloc_pointer = section_data_pointer + arrlenu(ctx->code.bytes);

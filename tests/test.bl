@@ -30,15 +30,13 @@ __os_start :: fn () #entry {
 		C.exit(1);
 	}
 
-	n := 10;
-
-	result :: foo(n, 20);
+	result :: foo(10, 20, 30, 40, 50, 60);
 	result;
 
 	C.exit(0);
 }
 
-foo :: fn (a: s32, b: s32) s32 {
+foo :: fn (a: s32, b: s32, c: s32, d: s32, e: s32, f: s32) s32 {
 	return a + b;
 }
 

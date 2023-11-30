@@ -107,10 +107,10 @@ static inline void pop64_r(struct thread_context *tctx, u8 r) {
 }
 
 // 64bit only
-static inline void movabs64_ri(struct thread_context *tctx, u8 r, u64 imm) {
+static inline u32 movabs64_ri(struct thread_context *tctx, u8 r, u64 imm) {
 	const u8 buf[] = {encode_rex2(true, 0x0, r), 0xB8 | (r & 0b111)};
 	add_code(tctx, buf, 2);
-	add_code(tctx, &imm, sizeof(imm));
+	return add_code(tctx, &imm, sizeof(imm));
 }
 
 // Register to stack.
@@ -140,15 +140,14 @@ static inline void mov_mi(struct thread_context *tctx, u8 r, s32 offset, u64 imm
 }
 
 // Immediate value to register.
-static inline void mov_ri(struct thread_context *tctx, u8 r, u64 imm, usize size) {
+static inline u32 mov_ri(struct thread_context *tctx, u8 r, u64 imm, usize size) {
 	if (size == 8 && imm > 0xFFFFFFFF) {
-		movabs64_ri(tctx, r, imm);
-		return;
+		return movabs64_ri(tctx, r, imm);
 	}
 	const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, 0x0, r);
 	const u8 rex = encode_rex2(size == 8, 0x0, r);
 	encode_base(tctx, 0xC6, mrr, rex, size);
-	add_code(tctx, &imm, (s32)MIN(size, sizeof(u32)));
+	return add_code(tctx, &imm, (s32)MIN(size, sizeof(u32)));
 }
 
 // Stack to register
@@ -190,16 +189,16 @@ static inline void sub_rr(struct thread_context *tctx, u8 r1, u8 r2, usize size)
 	encode_base(tctx, 0x28, mrr, rex, size);
 }
 
-static inline void sub_ri(struct thread_context *tctx, u8 r, u64 imm, usize size) {
+static inline u32 sub_ri(struct thread_context *tctx, u8 r, u64 imm, usize size) {
 	if (size == 8 && imm > 0xFFFFFFFF) {
-		mov_ri(tctx, RAX, imm, size);
+		const u32 value_offset = mov_ri(tctx, RAX, imm, size);
 		sub_rr(tctx, r, RAX, size);
-		return;
+		return value_offset;
 	}
 	const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, 0x5, r);
 	const u8 rex = encode_rex2(size == 8, 0x0, r);
 	encode_base(tctx, 0x80, mrr, rex, size);
-	add_code(tctx, &imm, (s32)MIN(size, sizeof(u32)));
+	return add_code(tctx, &imm, (s32)MIN(size, sizeof(u32)));
 }
 
 static inline void imul_rr(struct thread_context *tctx, u8 r1, u8 r2, usize size) {

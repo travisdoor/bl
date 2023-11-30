@@ -393,6 +393,8 @@ static inline bool is_aligned(const void *p, usize alignment) {
 	return (uintptr_t)p % alignment == 0;
 }
 
+#define is_aligned2(ptr, a) is_aligned((void *)(usize)(ptr), (a))
+
 static inline void align_ptr_up(void **p, usize alignment, ptrdiff_t *adjustment) {
 	ptrdiff_t adj;
 	if (is_aligned(*p, alignment)) {
@@ -414,6 +416,8 @@ static inline void *next_aligned(void *p, usize alignment) {
 	align_ptr_up(&p, alignment, NULL);
 	return p;
 }
+
+#define next_aligned2(ptr, a) (usize)next_aligned((void *)(usize)(ptr), (a))
 
 #define file_exists2(S) _file_exists((S).ptr, (S).len)
 #define dir_exists2(S) _dir_exists((S).ptr, (S).len)
