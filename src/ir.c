@@ -186,20 +186,19 @@ static enum state   emit_instr_block(struct context *ctx, struct mir_instr_block
 static enum state   emit_instr_br(struct context *ctx, struct mir_instr_br *br);
 static enum state   emit_instr_switch(struct context *ctx, struct mir_instr_switch *sw);
 static enum state   emit_instr_const(struct context *ctx, struct mir_instr_const *c);
-static enum state
-                  emit_instr_arg(struct context *ctx, struct mir_var *dest, struct mir_instr_arg *arg);
-static enum state emit_instr_cond_br(struct context *ctx, struct mir_instr_cond_br *br);
-static enum state emit_instr_ret(struct context *ctx, struct mir_instr_ret *ret);
-static enum state emit_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl);
-static enum state emit_instr_load(struct context *ctx, struct mir_instr_load *load);
-static enum state emit_instr_call(struct context *ctx, struct mir_instr_call *call);
-static enum state emit_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_ptr *elem_ptr);
-static enum state emit_instr_member_ptr(struct context              *ctx,
-                                        struct mir_instr_member_ptr *member_ptr);
-static enum state emit_instr_unroll(struct context *ctx, struct mir_instr_unroll *unroll);
-static enum state emit_instr_vargs(struct context *ctx, struct mir_instr_vargs *vargs);
-static enum state emit_instr_toany(struct context *ctx, struct mir_instr_to_any *toany);
-static enum state emit_instr_call_loc(struct context *ctx, struct mir_instr_call_loc *loc);
+static enum state   emit_instr_arg(struct context *ctx, struct mir_var *dest, struct mir_instr_arg *arg);
+static enum state   emit_instr_cond_br(struct context *ctx, struct mir_instr_cond_br *br);
+static enum state   emit_instr_ret(struct context *ctx, struct mir_instr_ret *ret);
+static enum state   emit_instr_decl_var(struct context *ctx, struct mir_instr_decl_var *decl);
+static enum state   emit_instr_load(struct context *ctx, struct mir_instr_load *load);
+static enum state   emit_instr_call(struct context *ctx, struct mir_instr_call *call);
+static enum state   emit_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_ptr *elem_ptr);
+static enum state   emit_instr_member_ptr(struct context              *ctx,
+                                          struct mir_instr_member_ptr *member_ptr);
+static enum state   emit_instr_unroll(struct context *ctx, struct mir_instr_unroll *unroll);
+static enum state   emit_instr_vargs(struct context *ctx, struct mir_instr_vargs *vargs);
+static enum state   emit_instr_toany(struct context *ctx, struct mir_instr_to_any *toany);
+static enum state   emit_instr_call_loc(struct context *ctx, struct mir_instr_call_loc *loc);
 
 static LLVMValueRef emit_global_var_proto(struct context *ctx, struct mir_var *var);
 static LLVMValueRef
@@ -1658,8 +1657,7 @@ emit_instr_arg(struct context *ctx, struct mir_var *dest, struct mir_instr_arg *
 	bassert(llvm_fn);
 
 	struct mir_arg *arg = sarrpeek(fn_type->data.fn.args, arg_instr->i);
-	bassert(isnotflag(arg->flags, FLAG_COMPTIME) &&
-	        "Comtime arguments should be evaluated and replaced by constants!");
+	bassert(isnotflag(arg->flags, FLAG_COMPTIME) && "Comptime arguments should be evaluated and replaced by constants!");
 	LLVMValueRef llvm_dest = dest->llvm_value;
 	bassert(llvm_dest);
 

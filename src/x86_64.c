@@ -235,6 +235,8 @@ static void allocate_stack_variables(struct thread_context *tctx, struct mir_fn 
 	}
 
 	// Add shadow (home) space.
+	// @Performance: This allocation is not needed for leaf functions or for functions not calling
+	// any C stuff on Windows.
 	top += 0x20;
 	top = (usize)next_aligned((void *)top, 16);
 
@@ -574,11 +576,20 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			if (reg_index >= static_arrlenu(call_reg_order)) {
 				BL_UNIMPLEMENTED;
 			}
+
 			const u8         reg   = call_reg_order[reg_index];
 			struct x64_value value = get_value(tctx, arg);
+
 			switch (value.kind) {
 			case IMMEDIATE: {
 				mov_ri(tctx, reg, value.imm, arg_type->store_size_bytes);
+				break;
+			}
+			case REGISTER: {
+				// Value might be in the correct register already.
+				if (reg != value.reg) {
+					mov_rr(tctx, reg, value.reg, arg_type->store_size_bytes);
+				}
 				break;
 			}
 			default:
@@ -631,11 +642,18 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 	}
 
 	case MIR_INSTR_ARG: {
-		struct mir_instr_arg *arg   = (struct mir_instr_arg *)instr;
-		struct x64_value      value = {
-		         .kind = REGISTER,
-		         .reg  = arg->i + 1, // @Incomplete!!!
-        };
+		struct mir_instr_arg *arg_instr = (struct mir_instr_arg *)instr;
+
+		struct mir_fn *fn = arg_instr->base.owner_block->owner_fn;
+		bassert(fn);
+		struct mir_type *fn_type = fn->type;
+		struct mir_arg  *arg     = sarrpeek(fn_type->data.fn.args, arg_instr->i);
+		bassert(isnotflag(arg->flags, FLAG_COMPTIME) && "Comptime arguments should be evaluated and replaced by constants!");
+
+		struct x64_value value = {
+		    .kind = REGISTER,
+		    .reg  = arg->llvm_index + 1,
+		};
 		set_value(tctx, instr, value);
 		blog("Argument generation missing!");
 		break;

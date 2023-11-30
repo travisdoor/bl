@@ -26,39 +26,21 @@ Any :: struct #compiler {
 _CRT_INIT :: fn () win32.BOOL #extern;
 
 __os_start :: fn () #entry {
-	// v := 20;
-	// loop i := 0; i < 10; i += 1 {
-	// 	v += i;
-	// }
+	if _CRT_INIT() == 0 {
+		C.exit(1);
+	}
 
-	// v: u8;
-	// a : u8 = 0;
-	// b : u8 = 1;
+	n := 10;
 
-	// v = a + 40;
-	// v = 20 + b;
-	// v = a + b;
-
-	// v = a - 40;
-	// v = 20 - b;
-	// v = a - b;
-
-	// if _CRT_INIT() == 0 {
-	// 	C.exit(1);
-	// }
-	// v :: foo(10, 20);
-
-	foo(10, 20, 30, 40);
-	bar();
+	result :: foo(n, 20);
+	result;
 
 	C.exit(0);
 }
 
-foo :: fn (a: s32, b: s32, c: s32, d: s32) s32 {
+foo :: fn (a: s32, b: s32) s32 {
 	return a + b;
 }
-
-bar :: fn () {}
 
 /*
 
