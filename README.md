@@ -60,6 +60,11 @@ main :: fn () s32 {
 
 See more examples [here](https://biscuitlang.org/how-to/).
 
+# Authors
+
+- **Martin Dorazil** (travis) [![](https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86)](https://github.com/sponsors/travisdoor)
+- **Gmos**
+
 # Discord Server
 
 https://discord.gg/DDTCcYzb9h
