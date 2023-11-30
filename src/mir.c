@@ -7709,6 +7709,11 @@ struct result analyze_call_slot(struct context *ctx, struct mir_instr_call *call
 		report_note(fn_arg->decl_node, "Argument is declared here:");
 		return_zone(FAIL);
 	}
+
+	if (!isflag(fn_arg->flags, FLAG_COMPTIME)) {
+		(*call_arg_instr_ref)->value.reg_hint = fn_arg->llvm_index + 1;
+	}
+
 	return_zone(PASS);
 }
 

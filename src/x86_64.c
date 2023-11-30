@@ -234,9 +234,7 @@ static void allocate_stack_variables(struct thread_context *tctx, struct mir_fn 
 		top += var_size;
 	}
 
-	// Add shadow space.
-	// @Performance: This is needed only in case this function is not a leaf function
-	// or maybe just in case we call some stuff from C.
+	// Add shadow (home) space.
 	top += 0x20;
 	top = (usize)next_aligned((void *)top, 16);
 
@@ -537,6 +535,9 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 	}
 
 	case MIR_INSTR_CALL: {
+		// x64 calling convention:
+		// numbers - RCX, RDX, R8, R9, stack in reverese order
+
 		struct mir_instr_call *call = (struct mir_instr_call *)instr;
 		bassert(!mir_is_comptime(&call->base) && "Compile time calls should not be generated into the final binary!");
 		struct mir_instr *callee = call->callee;
@@ -564,6 +565,26 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 		bassert(callee_hash);
 		bassert(callee_fn_proto);
+
+		for (usize index = 0; index < sarrlenu(call->args); ++index) {
+			struct mir_instr *arg      = sarrpeek(call->args, index);
+			struct mir_type  *arg_type = arg->value.type;
+
+			const s32 reg_index = arg->value.reg_hint;
+			if (reg_index >= static_arrlenu(call_reg_order)) {
+				BL_UNIMPLEMENTED;
+			}
+			const u8         reg   = call_reg_order[reg_index];
+			struct x64_value value = get_value(tctx, arg);
+			switch (value.kind) {
+			case IMMEDIATE: {
+				mov_ri(tctx, reg, value.imm, arg_type->store_size_bytes);
+				break;
+			}
+			default:
+				BL_UNIMPLEMENTED;
+			}
+		}
 
 		// Note: we use u32 here, it should be enough in context of a single fuction, but all positions are stored in u64 because they are fixed
 		// last when the whole binary is complete.
@@ -609,6 +630,17 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		break;
 	}
 
+	case MIR_INSTR_ARG: {
+		struct mir_instr_arg *arg   = (struct mir_instr_arg *)instr;
+		struct x64_value      value = {
+		         .kind = REGISTER,
+		         .reg  = arg->i + 1, // @Incomplete!!!
+        };
+		set_value(tctx, instr, value);
+		blog("Argument generation missing!");
+		break;
+	}
+
 	case MIR_INSTR_DECL_VAR: {
 		struct mir_instr_decl_var *decl = (struct mir_instr_decl_var *)instr;
 		struct mir_var            *var  = decl->var;
@@ -620,11 +652,6 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		if (!decl->init) break;
 
 		if (decl->init->kind == MIR_INSTR_COMPOUND) {
-			BL_UNIMPLEMENTED;
-			break;
-		}
-
-		if (decl->init->kind == MIR_INSTR_ARG) {
 			BL_UNIMPLEMENTED;
 			break;
 		}
