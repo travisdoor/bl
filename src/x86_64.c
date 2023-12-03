@@ -211,18 +211,39 @@ static inline u64 add_block(struct thread_context *tctx, const str_t name) {
 // Translate
 //
 
-static inline u32 get_stack_allocation_size(struct thread_context *tctx) {
+static inline usize get_stack_allocation_size(struct thread_context *tctx) {
 	bassert(tctx->stack.alloc_value_offset > 0);
 	return *(u32 *)(tctx->bytes + tctx->stack.alloc_value_offset);
 }
 
-static inline void allocate_stack_memory(struct thread_context *tctx, u32 size) {
-	const u32 allocated = get_stack_allocation_size(tctx);
-	size                = (u32)next_aligned2(size, 16);
-	if (((usize)allocated) + size > 0xFFFFFFFF) {
+static inline void allocate_stack_memory(struct thread_context *tctx, usize size) {
+	const usize allocated = get_stack_allocation_size(tctx);
+	if (allocated + size > 0xFFFFFFFF) {
 		babort("Stack allocation is too big!");
 	}
-	(*(u32 *)(tctx->bytes + tctx->stack.alloc_value_offset)) += size;
+	(*(u32 *)(tctx->bytes + tctx->stack.alloc_value_offset)) += (u32)size;
+}
+
+static s32 allocated_stack_arg(struct thread_context *tctx, const s32 reg_index) {
+	bassert(reg_index > 0);
+
+	usize required_stack_size = MAX(reg_index, 4) * sizeof(u64);
+	if (required_stack_size > tctx->stack.arg_cache_allocated_size) {
+		const usize stack_allocated = get_stack_allocation_size(tctx);
+		usize       to_allocate     = required_stack_size - tctx->stack.arg_cache_allocated_size;
+		if (!is_aligned2(to_allocate + stack_allocated, 16)) {
+			to_allocate = (next_aligned2(to_allocate + stack_allocated, 16) - stack_allocated);
+		}
+		blog("Allocate %lluB.", to_allocate);
+		allocate_stack_memory(tctx, to_allocate);
+
+		tctx->stack.arg_cache_allocated_size += (u32)to_allocate;
+	}
+
+	s32 stack_offset = -(s32)get_stack_allocation_size(tctx);
+	stack_offset += sizeof(u64) * (reg_index - 1);
+	bassert(stack_offset <= 0);
+	return stack_offset;
 }
 
 static void allocate_stack_variables(struct thread_context *tctx, struct mir_fn *fn) {
@@ -240,11 +261,8 @@ static void allocate_stack_variables(struct thread_context *tctx, struct mir_fn 
 		const u32 var_size      = (u32)var_type->store_size_bytes;
 		const u32 var_alignment = (u32)var->value.type->alignment;
 
-		if (!is_aligned2(top, var_alignment)) {
-			top = next_aligned2(top, var_alignment);
-		}
+		top = next_aligned2(top, var_alignment);
 
-		blog("Variable: %dB aligned to: %dB at: 0x%x", var_type->store_size_bytes, var_alignment, top);
 		struct x64_value value = {
 		    .kind   = OFFSET,
 		    .offset = -(s32)(top + var_size),
@@ -255,15 +273,28 @@ static void allocate_stack_variables(struct thread_context *tctx, struct mir_fn 
 		top += var_size;
 	}
 
-	// Add shadow (home) space.
-	// @Performance: This allocation is not needed for leaf functions or for functions not calling
-	// any C stuff on Windows.
-	top += 0x20;
-	top = next_aligned2(top, 16);
-
-	bassert(top <= 0xFFFFFFFF);
-	allocate_stack_memory(tctx, (u32)top);
 	tctx->stack.prologue_allocated_size = (u32)top;
+	allocate_stack_memory(tctx, top);
+}
+
+static struct x64_value emit_load(struct thread_context *tctx, struct mir_instr *instr) {
+	bassert(instr && instr->kind == MIR_INSTR_LOAD);
+	struct mir_instr_load *load = (struct mir_instr_load *)instr;
+	struct mir_type       *type = load->base.value.type;
+	bassert(type->kind == MIR_TYPE_INT || type->kind == MIR_TYPE_PTR);
+	bassert(tctx->values[load->src->backend_value - 1].kind == OFFSET);
+	const s32 rbp_offset_bytes = tctx->values[load->src->backend_value - 1].offset;
+
+	u8 reg = 0;
+	if (get_register(&load->base, &reg)) {
+		mov_rm(tctx, reg, RBP, rbp_offset_bytes, type->store_size_bytes);
+		set_value(tctx, &load->base, (struct x64_value){.kind = REGISTER, .reg = reg});
+	} else {
+		mov_rm(tctx, RAX, RBP, rbp_offset_bytes, type->store_size_bytes);
+		const s32 stack_offset = allocated_stack_arg(tctx, load->base.value.reg_hint);
+		mov_mr(tctx, RBP, stack_offset, RAX, type->store_size_bytes);
+		set_value(tctx, &load->base, (struct x64_value){.kind = OFFSET, .offset = stack_offset});
+	}
 }
 
 static void emit_binop_ri(struct thread_context *tctx, enum binop_kind op, const u8 reg, const u64 v, const usize vsize) {
@@ -393,21 +424,25 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 	}
 
 	case MIR_INSTR_LOAD: {
-		struct mir_instr_load *load = (struct mir_instr_load *)instr;
-		struct mir_type       *type = load->base.value.type;
-		bassert(type->kind == MIR_TYPE_INT || type->kind == MIR_TYPE_PTR);
-		bassert(tctx->values[load->src->backend_value - 1].kind == OFFSET);
-		const s32 rbp_offset_bytes = tctx->values[load->src->backend_value - 1].offset;
-
-		const s32 reg_index = load->base.value.reg_hint;
-		if (reg_index >= static_arrlenu(call_reg_order)) {
-			BL_UNIMPLEMENTED;
-		}
-		const u8 reg = call_reg_order[reg_index];
-		mov_rm(tctx, reg, RBP, rbp_offset_bytes, type->store_size_bytes);
-
-		set_value(tctx, &load->base, (struct x64_value){.kind = REGISTER, .reg = reg});
 		break;
+		// struct mir_instr_load *load = (struct mir_instr_load *)instr;
+		// struct mir_type       *type = load->base.value.type;
+		// bassert(type->kind == MIR_TYPE_INT || type->kind == MIR_TYPE_PTR);
+		// bassert(tctx->values[load->src->backend_value - 1].kind == OFFSET);
+		// const s32 rbp_offset_bytes = tctx->values[load->src->backend_value - 1].offset;
+
+		// u8 reg = 0;
+		// if (get_register(&load->base, &reg)) {
+		// mov_rm(tctx, reg, RBP, rbp_offset_bytes, type->store_size_bytes);
+		// set_value(tctx, &load->base, (struct x64_value){.kind = REGISTER, .reg = reg});
+		// } else {
+		// mov_rm(tctx, RAX, RBP, rbp_offset_bytes, type->store_size_bytes);
+		// const s32 stack_offset = allocated_stack_arg(tctx, load->base.value.reg_hint);
+		// mov_mr(tctx, RBP, stack_offset, RAX, type->store_size_bytes);
+		// set_value(tctx, &load->base, (struct x64_value){.kind = OFFSET, .offset = stack_offset});
+		// }
+
+		// break;
 	}
 
 	case MIR_INSTR_STORE: {
@@ -438,12 +473,6 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 	}
 
 	case MIR_INSTR_BINOP: {
-		// RCX op RDX
-		// IMM op RDX
-		// RCX op IMM
-		//
-		// And stores result into RCX.
-
 		struct mir_instr_binop *binop = (struct mir_instr_binop *)instr;
 		struct mir_type        *type  = binop->lhs->value.type;
 		bassert(type->kind == MIR_TYPE_INT);
@@ -473,10 +502,18 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 	case MIR_INSTR_RET: {
 		// Epilogue
-		const usize total_allocated = get_stack_allocation_size(tctx);
+		usize total_allocated = get_stack_allocation_size(tctx);
 		if (total_allocated) {
 			// Cleanup stack allocations.
-			bassert(is_aligned2(total_allocated, 16));
+
+			if (!is_aligned2(total_allocated, 16)) {
+				const usize padding = next_aligned2(total_allocated, 16) - total_allocated;
+				if (padding) {
+					allocate_stack_memory(tctx, padding);
+					total_allocated += padding;
+				}
+			}
+
 			add_ri(tctx, RSP, total_allocated, 8);
 			tctx->stack.alloc_value_offset = 0;
 		}
@@ -591,20 +628,13 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		bassert(callee_hash);
 		bassert(callee_fn_proto);
 
-		const usize stack_offset = tctx->stack.prologue_allocated_size;
-		bassert(is_aligned2(stack_offset, 16));
-		usize stack_argument_cache_size = stack_offset;
-
-		for (usize index = sarrlenu(call->args); index-- > 0;) {
+		const usize arg_num = sarrlenu(call->args);
+		for (usize index = arg_num; index-- > 0;) {
 			struct mir_instr *arg = sarrpeek(call->args, index);
 
-			const s32  reg_index     = arg->value.reg_hint;
-			const bool push_on_stack = reg_index >= static_arrlenu(call_reg_order);
-			if (push_on_stack) {
-				stack_argument_cache_size += sizeof(u64);
-			}
-
-			struct mir_type *arg_type = arg->value.type;
+			const s32        reg_index     = arg->value.reg_hint;
+			const bool       push_on_stack = reg_index >= static_arrlenu(call_reg_order);
+			struct mir_type *arg_type      = arg->value.type;
 
 			const u8         reg   = push_on_stack ? 0 : call_reg_order[reg_index];
 			struct x64_value value = get_value(tctx, arg);
@@ -612,7 +642,8 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			switch (value.kind) {
 			case IMMEDIATE: {
 				if (push_on_stack) {
-					mov_mi(tctx, RBP, -(s32)stack_argument_cache_size, value.imm, arg_type->store_size_bytes);
+					const s32 stack_offset = allocated_stack_arg(tctx, reg_index);
+					mov_mi(tctx, RBP, stack_offset, value.imm, arg_type->store_size_bytes);
 				} else {
 					mov_ri(tctx, reg, value.imm, arg_type->store_size_bytes);
 				}
@@ -621,11 +652,6 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			default:
 				break;
 			}
-		}
-
-		if (stack_argument_cache_size > tctx->stack.arg_cache_allocated_size) {
-			bassert(stack_argument_cache_size <= 0xFFFFFFFF);
-			allocate_stack_memory(tctx, (u32)stack_argument_cache_size);
 		}
 
 		// Note: we use u32 here, it should be enough in context of a single fuction, but all positions are stored in u64 because they are fixed

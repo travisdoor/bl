@@ -73,17 +73,13 @@ void print_trace_impl(void);
 
 #if defined(BL_DEBUG) || BL_ASSERT_ENABLE
 // =================================================================================================
-static inline void bl_debug_break(void) {
 #	if BL_PLATFORM_WIN
-	__debugbreak();
+#		define BL_DEBUG_BREAK __debugbreak()
 #	elif BL_PLATFORM_MACOS
-	__builtin_debugtrap();
+#		define BL_DEBUG_BREAK __builtin_debugtrap()
 #	else
-	raise(SIGTRAP);
+#		define BL_DEBUG_BREAK raise(SIGTRAP)
 #	endif
-}
-
-#	define BL_DEBUG_BREAK bl_debug_break()
 
 #	define bassert(e)                                        \
 		if (!(e)) {                                           \

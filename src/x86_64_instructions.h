@@ -141,6 +141,10 @@ static inline void mov_mi(struct thread_context *tctx, u8 r, s32 offset, u64 imm
 
 // Immediate value to register.
 static inline u32 mov_ri(struct thread_context *tctx, u8 r, u64 imm, usize size) {
+	// @Performance: xor for zero values???
+	// @Performance: xor for zero values???
+	// @Performance: xor for zero values???
+
 	if (size == 8 && imm > 0xFFFFFFFF) {
 		return movabs64_ri(tctx, r, imm);
 	}
