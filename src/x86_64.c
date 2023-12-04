@@ -40,7 +40,10 @@
 #define STRING_TABLE_SIZE (1 * 1024 * 1024)      // 1MB
 #define CODE_BLOCK_BUFFER_SIZE (2 * 1024 * 1024) // 2MB
 
-static const u8 call_reg_order[5] = {RAX, RCX, RDX, R8, R9};
+static const u8                call_reg_order[5] = {RAX, RCX, RDX, R8, R9}; // @Cleanup
+static const enum x64_register gpregs[7]         = {RAX, RCX, RDX, R8, R9, R10, R11};
+
+static const usize regnum = static_arrlenu(gpregs);
 
 enum x64_value_kind {
 	ADDRESS,
@@ -89,6 +92,8 @@ struct thread_context {
 	array(struct mir_instr_block *) emit_block_queue;
 	array(struct jmp_fixup) jmp_fixups;
 	array(struct jmp_fixup) call_fixups;
+
+	s32 reg_usage[static_arrlenu(gpregs)];
 
 	struct {
 		// Contains offset to the byte code pointing to the actual value of sub instruction used
@@ -277,24 +282,32 @@ static void allocate_stack_variables(struct thread_context *tctx, struct mir_fn 
 	allocate_stack_memory(tctx, top);
 }
 
-static struct x64_value emit_load(struct thread_context *tctx, struct mir_instr *instr) {
+static void vreg_reserve(struct thread_context *tctx, s32 dest[], s32 num) {
+	s32 setnum = 0;
+	for (s32 i = 0; i < regnum && setnum < num; ++i) {
+		if (tctx->reg_usage[i] == -1) {
+			dest[setnum++]         = i;
+			tctx->reg_usage[i]     = arrlen(tctx->values);
+			struct x64_value value = {.kind = REGISTER, .reg = gpregs[i]};
+			arrput(tctx->values, value);
+		}
+	}
+	bassert(setnum == num);
+}
+
+static void emit_load(struct thread_context *tctx, struct mir_instr *instr, s32 vreg_index) {
 	bassert(instr && instr->kind == MIR_INSTR_LOAD);
 	struct mir_instr_load *load = (struct mir_instr_load *)instr;
 	struct mir_type       *type = load->base.value.type;
+
 	bassert(type->kind == MIR_TYPE_INT || type->kind == MIR_TYPE_PTR);
 	bassert(tctx->values[load->src->backend_value - 1].kind == OFFSET);
 	const s32 rbp_offset_bytes = tctx->values[load->src->backend_value - 1].offset;
 
-	u8 reg = 0;
-	if (get_register(&load->base, &reg)) {
-		mov_rm(tctx, reg, RBP, rbp_offset_bytes, type->store_size_bytes);
-		set_value(tctx, &load->base, (struct x64_value){.kind = REGISTER, .reg = reg});
-	} else {
-		mov_rm(tctx, RAX, RBP, rbp_offset_bytes, type->store_size_bytes);
-		const s32 stack_offset = allocated_stack_arg(tctx, load->base.value.reg_hint);
-		mov_mr(tctx, RBP, stack_offset, RAX, type->store_size_bytes);
-		set_value(tctx, &load->base, (struct x64_value){.kind = OFFSET, .offset = stack_offset});
-	}
+	bassert(tctx->values[tctx->reg_usage[vreg_index]].kind == REGISTER && "Loading directly to the memory is not supported yet!");
+	enum x64_register reg = gpregs[vreg_index];
+	mov_rm(tctx, reg, RBP, rbp_offset_bytes, type->store_size_bytes);
+	load->base.backend_value = tctx->reg_usage[vreg_index];
 }
 
 static void emit_binop_ri(struct thread_context *tctx, enum binop_kind op, const u8 reg, const u64 v, const usize vsize) {
@@ -477,8 +490,14 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		struct mir_type        *type  = binop->lhs->value.type;
 		bassert(type->kind == MIR_TYPE_INT);
 
-		struct x64_value lhs_value = get_value(tctx, binop->lhs);
+		s32 vr[2];
+		vreg_reserve(tctx, vr, 2);
+
+		if (binop->rhs->kind == MIR_INSTR_LOAD) emit_load(tctx, binop->rhs, vr[1]);
+		if (binop->lhs->kind == MIR_INSTR_LOAD) emit_load(tctx, binop->lhs, vr[0]);
+
 		struct x64_value rhs_value = get_value(tctx, binop->rhs);
+		struct x64_value lhs_value = get_value(tctx, binop->lhs);
 
 		if (lhs_value.kind == IMMEDIATE) {
 			const u8 reg = call_reg_order[binop->lhs->value.reg_hint];
@@ -834,6 +853,9 @@ static void job(struct job_context *job_ctx) {
 	arrsetlen(tctx->call_fixups, 0);
 	tctx->stack.alloc_value_offset = 0;
 	bl_zeromem(&tctx->stack, sizeof(tctx->stack));
+
+	for (s32 i = 0; i < regnum; ++i)
+		tctx->reg_usage[i] = -1;
 
 	arrsetcap(tctx->bytes, BYTE_CODE_BUFFER_SIZE);
 
