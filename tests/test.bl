@@ -24,7 +24,7 @@ Any :: struct #compiler {
 };
 
 _CRT_INIT :: fn () win32.BOOL #extern;
-my_function :: fn (a: s32, b: s32, c: s32, d: s32, e: s32, f: s32) s32 #extern;
+my_function :: fn (a: s32, b: s32, c: s32, d: s32) s32 #extern;
 
 __os_start :: fn () #entry {
 	// if _CRT_INIT() == 0 {
@@ -40,11 +40,16 @@ __os_start :: fn () #entry {
 	// e := 50;
 	// f := 60;
 
-	x := a + b;
-	y := c + d;
-	x;y;
-	// my_function(a * a, b, c, d, e, f);
-	// foo(a * a, b);
+	x := a + b + d + c;
+	// y := c + d;
+	x;
+	// x = d + b;
+	// x = 10 + b;
+	// x = b + 10;
+	// a = b;
+
+	// my_function(10, 20, a + b, 40);
+	// foo();
 
 
 	// arr :: [_]s32.{ a, b, c, d, e  };

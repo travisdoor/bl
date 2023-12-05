@@ -7058,9 +7058,6 @@ struct result analyze_instr_binop(struct context *ctx, struct mir_instr_binop *b
 	binop->base.value.addr_mode   = MIR_VAM_RVALUE;
 	binop->volatile_type          = is_instr_type_volatile(lhs) && is_instr_type_volatile(rhs);
 
-	binop->lhs->value.reg_hint = 1;
-	binop->rhs->value.reg_hint = 2;
-
 	return_zone(PASS);
 }
 
@@ -7329,7 +7326,6 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
 
 		// Immutable and comptime initializer value.
 		is_decl_comptime &= decl->init->value.is_comptime;
-		decl->init->value.reg_hint = 1;
 	} else if (isnotflag(var->flags, FLAG_NO_INIT)) {
 		bassert(isnotflag(var->iflags, MIR_VAR_STRUCT_TYPEDEF) && "Expected initializer for structure type definition.");
 		// Create default initializer for locals without explicit initialization.
@@ -7708,10 +7704,6 @@ struct result analyze_call_slot(struct context *ctx, struct mir_instr_call *call
 		report_error(EXPECTED_COMPTIME, (*call_arg_instr_ref)->node, "Function argument is supposed to be compile-time known.");
 		report_note(fn_arg->decl_node, "Argument is declared here:");
 		return_zone(FAIL);
-	}
-
-	if (!isflag(fn_arg->flags, FLAG_COMPTIME)) {
-		(*call_arg_instr_ref)->value.reg_hint = fn_arg->llvm_index + 1;
 	}
 
 	return_zone(PASS);

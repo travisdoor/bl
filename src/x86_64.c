@@ -100,7 +100,6 @@ struct thread_context {
 		u32 alloc_value_offset;
 
 		u32 arg_cache_allocated_size;
-		u32 prologue_allocated_size;
 	} stack;
 };
 
@@ -220,35 +219,38 @@ static inline usize get_stack_allocation_size(struct thread_context *tctx) {
 	return *(u32 *)(tctx->bytes + tctx->stack.alloc_value_offset);
 }
 
-static inline void allocate_stack_memory(struct thread_context *tctx, usize size) {
+static inline s32 allocate_stack_memory(struct thread_context *tctx, usize size) {
 	const usize allocated = get_stack_allocation_size(tctx);
 	if (allocated + size > 0xFFFFFFFF) {
 		babort("Stack allocation is too big!");
 	}
 	(*(u32 *)(tctx->bytes + tctx->stack.alloc_value_offset)) += (u32)size;
+	return (s32)allocated;
 }
 
+/* @Cleanup
 static s32 allocated_stack_arg(struct thread_context *tctx, const s32 reg_index) {
-	bassert(reg_index > 0);
+    bassert(reg_index > 0);
 
-	usize required_stack_size = MAX(reg_index, 4) * sizeof(u64);
-	if (required_stack_size > tctx->stack.arg_cache_allocated_size) {
-		const usize stack_allocated = get_stack_allocation_size(tctx);
-		usize       to_allocate     = required_stack_size - tctx->stack.arg_cache_allocated_size;
-		if (!is_aligned2(to_allocate + stack_allocated, 16)) {
-			to_allocate = (next_aligned2(to_allocate + stack_allocated, 16) - stack_allocated);
-		}
-		blog("Allocate %lluB.", to_allocate);
-		allocate_stack_memory(tctx, to_allocate);
+    usize required_stack_size = MAX(reg_index, 4) * sizeof(u64);
+    if (required_stack_size > tctx->stack.arg_cache_allocated_size) {
+        const usize stack_allocated = get_stack_allocation_size(tctx);
+        usize       to_allocate     = required_stack_size - tctx->stack.arg_cache_allocated_size;
+        if (!is_aligned2(to_allocate + stack_allocated, 16)) {
+            to_allocate = (next_aligned2(to_allocate + stack_allocated, 16) - stack_allocated);
+        }
+        blog("Allocate %lluB.", to_allocate);
+        allocate_stack_memory(tctx, to_allocate);
 
-		tctx->stack.arg_cache_allocated_size += (u32)to_allocate;
-	}
+        tctx->stack.arg_cache_allocated_size += (u32)to_allocate;
+    }
 
-	s32 stack_offset = -(s32)get_stack_allocation_size(tctx);
-	stack_offset += sizeof(u64) * (reg_index - 1);
-	bassert(stack_offset <= 0);
-	return stack_offset;
+    s32 stack_offset = -(s32)get_stack_allocation_size(tctx);
+    stack_offset += sizeof(u64) * (reg_index - 1);
+    bassert(stack_offset <= 0);
+    return stack_offset;
 }
+*/
 
 static void allocate_stack_variables(struct thread_context *tctx, struct mir_fn *fn) {
 	usize top = 0;
@@ -277,7 +279,6 @@ static void allocate_stack_variables(struct thread_context *tctx, struct mir_fn 
 		top += var_size;
 	}
 
-	tctx->stack.prologue_allocated_size = (u32)top;
 	allocate_stack_memory(tctx, top);
 }
 
@@ -293,22 +294,94 @@ static inline struct x64_value vreg_value(struct thread_context *tctx, enum x64_
 	return tctx->values[vi];
 }
 
+// @Explain
 static void vreg_reserve(struct thread_context *tctx, enum x64_register dest[], s32 num) {
-	s32 set_num = 0;
+	bassert(num > 0 && num <= REGISTER_COUNT);
+
+	bool set[REGISTER_COUNT];
+	s32  set_num = 0;
 	for (s32 i = 0; i < REGISTER_COUNT && set_num < num; ++i) {
+		if (dest[set_num] != -1 && dest[set_num] != i) {
+			set[i] = false;
+			continue;
+		}
 		if (tctx->register_table[i] == UNUSED_REGISTER_MAP_VALUE) {
 			dest[set_num++]         = i;
 			tctx->register_table[i] = (s32)arrlen(tctx->values);
 			struct x64_value value  = {.kind = REGISTER, .reg = i};
 			arrput(tctx->values, value);
+			set[i] = true;
+		} else {
+			set[i] = false;
 		}
 	}
+	if (set_num == num) return;
+	for (s32 i = 0; i < REGISTER_COUNT && set_num < num; ++i) {
+		if (set[i]) continue;
+		if (tctx->register_table[i] == RESERVED_REGISTER_MAP_VALUE) continue;
+		if (dest[set_num] != -1 && dest[set_num] != i) continue;
+		// Spill register.
+		const s32 vi = tctx->register_table[i];
+		bassert(vi != UNUSED_REGISTER_MAP_VALUE);
+		struct x64_value *spill_value = &tctx->values[vi];
+		bassert(spill_value->kind == REGISTER);
+
+		const s32 top    = allocate_stack_memory(tctx, 8);
+		const s32 offset = -top;
+		mov_mr(tctx, RBP, offset, spill_value->reg, 8);
+		spill_value->kind   = OFFSET;
+		spill_value->offset = offset;
+
+		dest[set_num++]         = i;
+		tctx->register_table[i] = (s32)arrlen(tctx->values);
+		struct x64_value value  = {.kind = REGISTER, .reg = i};
+		arrput(tctx->values, value);
+	}
+
 	bassert(set_num == num);
 }
 
-static inline void vreg_release(struct thread_context *tctx, enum x64_register reg) {
-	bassert(tctx->register_table[reg] != UNUSED_REGISTER_MAP_VALUE && "Cannot release unused register!");
+// Tries to find some free registers.
+static void vreg_begin(struct thread_context *tctx, enum x64_register dest[], s32 num) {
+	bassert(num > 0 && num <= REGISTER_COUNT);
+	s32 set_num = 0;
+	for (s32 i = 0; i < num; ++i) {
+		dest[i] = -1;
+	}
+	for (s32 i = 0; i < REGISTER_COUNT && set_num < num; ++i) {
+		if (tctx->register_table[i] == UNUSED_REGISTER_MAP_VALUE) {
+			dest[set_num++] = i;
+		}
+	}
+}
+
+static void spill(struct thread_context *tctx, enum x64_register reg) {
+	const s32 vi = tctx->register_table[reg];
+	bassert(vi != UNUSED_REGISTER_MAP_VALUE);
+	struct x64_value *spill_value = &tctx->values[vi];
+	bassert(spill_value->kind == REGISTER);
+
+	const s32 top    = allocate_stack_memory(tctx, 8);
+	const s32 offset = -top;
+	mov_mr(tctx, RBP, offset, spill_value->reg, 8);
+	spill_value->kind         = OFFSET;
+	spill_value->offset       = offset;
 	tctx->register_table[reg] = UNUSED_REGISTER_MAP_VALUE;
+}
+
+static void vreg_end(struct thread_context *tctx, const enum x64_register regs[], s32 num) {
+	for (s32 i = 0; i < num; ++i) {
+		bassert(regs[i] >= 0);
+		tctx->register_table[regs[i]] = (s32)arrlen(tctx->values);
+		struct x64_value value        = {.kind = REGISTER, .reg = regs[i]};
+		arrput(tctx->values, value);
+	}
+}
+
+static inline void vreg_release(struct thread_context *tctx, const enum x64_register regs[], s32 num) {
+	for (s32 i = 0; i < num; ++i) {
+		tctx->register_table[regs[i]] = UNUSED_REGISTER_MAP_VALUE;
+	}
 }
 
 static void emit_load(struct thread_context *tctx, struct mir_instr *instr, enum x64_register reg) {
@@ -321,7 +394,6 @@ static void emit_load(struct thread_context *tctx, struct mir_instr *instr, enum
 	const s32 rbp_offset_bytes = tctx->values[load->src->backend_value - 1].offset;
 
 	mov_rm(tctx, reg, RBP, rbp_offset_bytes, type->store_size_bytes);
-	load->base.backend_value = vreg_value_index(tctx, reg);
 }
 
 static void emit_binop_ri(struct thread_context *tctx, enum binop_kind op, const u8 reg, const u64 v, const usize vsize) {
@@ -372,7 +444,6 @@ static void emit_binop_rr(struct thread_context *tctx, enum binop_kind op, const
 	}
 }
 
-// @Cleanup: do we need ctx?
 static void emit_instr(struct context *ctx, struct thread_context *tctx, struct mir_instr *instr) {
 	bassert(instr->state == MIR_IS_COMPLETE && "Attempt to emit instruction in incomplete state!");
 	// @Incomplete
@@ -450,35 +521,28 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		break;
 	}
 
-	case MIR_INSTR_LOAD: {
+	case MIR_INSTR_LOAD:
+		// Load instruction is generated as needed retrospectively. We have to do it this way due to
+		// calling convention requirements where each argument must go into specific register. The
+		// 'emit_load' should be used.
 		break;
-		// struct mir_instr_load *load = (struct mir_instr_load *)instr;
-		// struct mir_type       *type = load->base.value.type;
-		// bassert(type->kind == MIR_TYPE_INT || type->kind == MIR_TYPE_PTR);
-		// bassert(tctx->values[load->src->backend_value - 1].kind == OFFSET);
-		// const s32 rbp_offset_bytes = tctx->values[load->src->backend_value - 1].offset;
-
-		// u8 reg = 0;
-		// if (get_register(&load->base, &reg)) {
-		// mov_rm(tctx, reg, RBP, rbp_offset_bytes, type->store_size_bytes);
-		// set_value(tctx, &load->base, (struct x64_value){.kind = REGISTER, .reg = reg});
-		// } else {
-		// mov_rm(tctx, RAX, RBP, rbp_offset_bytes, type->store_size_bytes);
-		// const s32 stack_offset = allocated_stack_arg(tctx, load->base.value.reg_hint);
-		// mov_mr(tctx, RBP, stack_offset, RAX, type->store_size_bytes);
-		// set_value(tctx, &load->base, (struct x64_value){.kind = OFFSET, .offset = stack_offset});
-		// }
-
-		// break;
-	}
 
 	case MIR_INSTR_STORE: {
 		struct mir_instr_store *store = (struct mir_instr_store *)instr;
 		struct mir_type        *type  = store->src->value.type;
 		bassert(store->dest->backend_value);
-
 		struct x64_value dest_value = get_value(tctx, store->dest);
-		struct x64_value src_value  = get_value(tctx, store->src);
+		struct x64_value src_value;
+
+		if (store->src->kind == MIR_INSTR_LOAD) {
+			enum x64_register src_reg = -1;
+			vreg_reserve(tctx, &src_reg, 1);
+			emit_load(tctx, store->src, src_reg);
+			src_value = vreg_value(tctx, src_reg);
+		} else {
+			src_value = get_value(tctx, store->src);
+		}
+
 		bassert(dest_value.kind == OFFSET);
 
 		switch (type->kind) {
@@ -497,45 +561,52 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		}
 
 		// Release source value...
-		if (src_value.kind == REGISTER) vreg_release(tctx, src_value.reg);
+		if (src_value.kind == REGISTER) vreg_release(tctx, &src_value.reg, 1);
 		break;
 	}
 
 	case MIR_INSTR_BINOP: {
+		// The result value ends up in LHS register, the RHS register is released at the end
+		// if it was used.
 		struct mir_instr_binop *binop = (struct mir_instr_binop *)instr;
 		struct mir_type        *type  = binop->lhs->value.type;
 		bassert(type->kind == MIR_TYPE_INT);
 
-		const s32 L = 0;
-		const s32 R = 1;
+		const s32 LHS                = 0;
+		const s32 RHS                = 1;
+		s32       required_registers = 1; // LHS goes into register.
 
-		enum x64_register vreg_indices[] = {-1, -1};
+		enum x64_register regs[2];
+		if (binop->rhs->kind == MIR_INSTR_LOAD) ++required_registers;
+
+		vreg_begin(tctx, regs, required_registers);
 
 		struct x64_value rhs_value;
 		struct x64_value lhs_value;
 
 		if (binop->rhs->kind == MIR_INSTR_LOAD) {
-			vreg_reserve(tctx, vreg_indices + R, 1);
-			emit_load(tctx, binop->rhs, vreg_indices[R]);
-			rhs_value = vreg_value(tctx, vreg_indices[R]);
+			bassert(regs[RHS] != -1);
+			emit_load(tctx, binop->rhs, regs[RHS]);
+			rhs_value.kind = REGISTER;
+			rhs_value.reg  = regs[RHS];
 		} else {
 			rhs_value = get_value(tctx, binop->rhs);
 		}
 
-		if (binop->rhs->kind == MIR_INSTR_LOAD) {
-			vreg_reserve(tctx, vreg_indices + L, 1);
-			emit_load(tctx, binop->rhs, vreg_indices[L]);
-			lhs_value = vreg_value(tctx, vreg_indices[L]);
+		if (binop->lhs->kind == MIR_INSTR_LOAD) {
+			bassert(regs[LHS] != -1);
+			emit_load(tctx, binop->lhs, regs[LHS]);
+			lhs_value.kind = REGISTER;
+			lhs_value.reg  = regs[LHS];
 		} else {
 			lhs_value = get_value(tctx, binop->lhs);
 		}
 
 		if (lhs_value.kind == IMMEDIATE) {
-			bassert(vreg_indices[L] == -1);
-			vreg_reserve(tctx, vreg_indices + L, 1);
-
-			mov_ri(tctx, vreg_indices[L], lhs_value.imm, type->store_size_bytes);
-			lhs_value = vreg_value(tctx, vreg_indices[L]);
+			bassert(regs[LHS] != -1);
+			mov_ri(tctx, regs[LHS], lhs_value.imm, type->store_size_bytes);
+			lhs_value.kind = REGISTER;
+			lhs_value.reg  = regs[LHS];
 		}
 
 		bassert(lhs_value.kind == REGISTER);
@@ -545,12 +616,14 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		} else {
 			bassert(rhs_value.kind == REGISTER);
 			emit_binop_rr(tctx, binop->op, lhs_value.reg, rhs_value.reg, type->store_size_bytes);
+			vreg_release(tctx, &rhs_value.reg, 1);
 		}
 
 		bassert(instr->backend_value == 0);
-		bassert(vreg_indices[L] != -1);
-		instr->backend_value = vreg_value_index(tctx, vreg_indices[L]);
-		if (vreg_indices[R] != -1) vreg_release(tctx, vreg_indices[R]);
+		bassert(regs[LHS] != -1);
+
+		vreg_end(tctx, &regs[LHS], 1); // Save LHS
+		instr->backend_value = tctx->register_table[regs[LHS]] + 1;
 		break;
 	}
 
@@ -558,8 +631,6 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		// Epilogue
 		usize total_allocated = get_stack_allocation_size(tctx);
 		if (total_allocated) {
-			// Cleanup stack allocations.
-
 			if (!is_aligned2(total_allocated, 16)) {
 				const usize padding = next_aligned2(total_allocated, 16) - total_allocated;
 				if (padding) {
@@ -681,36 +752,32 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 		bassert(callee_hash);
 		bassert(callee_fn_proto);
+		const s32 arg_num = (s32)sarrlen(call->args);
 
-		const usize arg_num = sarrlenu(call->args);
-		for (usize index = arg_num; index-- > 0;) {
-			// struct mir_instr *arg = sarrpeek(call->args, index);
+		enum x64_register regs[] = {RCX, RDX, R8, R9};
+		vreg_reserve(tctx, regs, MIN(4, arg_num));
 
-			// const s32        reg_index     = arg->value.reg_hint;
-			// const bool       push_on_stack = false; /*reg_index >= static_arrlenu(call_reg_order);*/
-			// struct mir_type *arg_type      = arg->value.type;
+		for (s32 index = 0; index < arg_num; ++index) {
+			struct mir_instr *arg      = sarrpeek(call->args, index);
+			struct mir_type  *arg_type = arg->value.type;
 
-			// const u8         reg   = push_on_stack ? 0 : call_reg_order[reg_index];
-			// struct x64_value value = get_value(tctx, arg);
-
-			// switch (value.kind) {
-			// case IMMEDIATE: {
-			// if (push_on_stack) {
-			// 	const s32 stack_offset = allocated_stack_arg(tctx, reg_index);
-			// 	mov_mi(tctx, RBP, stack_offset, value.imm, arg_type->store_size_bytes);
-			// } else {
-			// 	mov_ri(tctx, reg, value.imm, arg_type->store_size_bytes);
-			// }
-			// break;
-			// }
-			// default:
-			// break;
-			// }
+			if (arg->kind == MIR_INSTR_LOAD) {
+				emit_load(tctx, arg, regs[index]);
+			} else {
+				struct x64_value value = get_value(tctx, arg);
+				bassert(value.kind == IMMEDIATE);
+				mov_ri(tctx, regs[index], value.imm, arg_type->store_size_bytes);
+			}
 		}
+
+		vreg_release(tctx, regs, MIN(4, arg_num));
+		sub_ri(tctx, RSP, 0x20, 8);
 
 		// Note: we use u32 here, it should be enough in context of a single fuction, but all positions are stored in u64 because they are fixed
 		// last when the whole binary is complete.
 		const u32 virtual_address = call_relative_i32(tctx, 0);
+
+		add_ri(tctx, RSP, 0x20, 8);
 
 		struct jmp_fixup fixup = {
 		    .fn_proto        = (struct mir_instr_fn_proto *)callee_fn_proto,
@@ -763,7 +830,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 		struct x64_value value = {
 		    .kind = REGISTER,
-		    .reg  = arg->llvm_index + 1,
+		    .reg  = arg->llvm_index + 1, // @Incomplete?
 		};
 		set_value(tctx, instr, value);
 		break;
@@ -773,7 +840,12 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		struct mir_instr_decl_var *decl = (struct mir_instr_decl_var *)instr;
 		struct mir_var            *var  = decl->var;
 		bassert(var);
-		if (var->ref_count == 0) break;
+		const struct x64_value init_value = get_value(tctx, decl->init);
+
+		if (var->ref_count == 0) {
+			if (init_value.kind == REGISTER) vreg_release(tctx, &init_value.reg, 1);
+			break;
+		}
 		if (!mir_type_has_llvm_representation(var->value.type)) break;
 		bassert(var->backend_value);
 
@@ -784,11 +856,8 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			break;
 		}
 
-		const struct x64_value var_value  = get_value(tctx, var);
-		const struct x64_value init_value = get_value(tctx, decl->init);
-
-		struct mir_type *type = var->value.type;
-
+		const struct x64_value var_value = get_value(tctx, var);
+		struct mir_type       *type      = var->value.type;
 		bassert(var_value.kind == OFFSET);
 
 		if (init_value.kind == IMMEDIATE) {
@@ -805,7 +874,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			}
 		} else if (init_value.kind == REGISTER) {
 			mov_mr(tctx, RBP, var_value.offset, init_value.reg, type->store_size_bytes);
-			vreg_release(tctx, init_value.reg);
+			vreg_release(tctx, &init_value.reg, 1);
 		}
 
 		break;
@@ -901,10 +970,7 @@ static void job(struct job_context *job_ctx) {
 
 	arrsetcap(tctx->bytes, BYTE_CODE_BUFFER_SIZE);
 
-	struct mir_instr *top_instr = job_ctx->x64.top_instr;
-	blog("Kind = %s", mir_instr_name(top_instr));
-
-	emit_instr(ctx, tctx, top_instr);
+	emit_instr(ctx, tctx, job_ctx->x64.top_instr);
 
 	fixup_jump_offsets(tctx);
 
