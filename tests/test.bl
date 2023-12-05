@@ -35,13 +35,14 @@ __os_start :: fn () #entry {
 
 	a := 10;
 	b := 20;
-	// c := 30;
-	// d := 40;
+	c := 30;
+	d := 40;
 	// e := 50;
 	// f := 60;
 
 	x := a + b;
-	x;
+	y := c + d;
+	x;y;
 	// my_function(a * a, b, c, d, e, f);
 	// foo(a * a, b);
 

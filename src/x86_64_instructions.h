@@ -38,22 +38,26 @@ struct thread_context;
 #define MOD_FOUR_BYTE_DISP 0b10
 
 enum x64_register {
-	RAX = 0,
-	RCX = 1,
-	RDX = 2,
+	INVALID_REGISTER = -1,
+
+	RAX = 0, // Volatile
+	RCX = 1, // Volatile
+	RDX = 2, // Volatile
 	RBX = 3,
 	RSP = 4,
 	RBP = 5,
 	RSI = 6,
 	RDI = 7,
-	R8  = 8,
-	R9  = 9,
-	R10 = 10,
-	R11 = 11,
+	R8  = 8,  // Volatile
+	R9  = 9,  // Volatile
+	R10 = 10, // Volatile
+	R11 = 11, // Volatile
 	R12 = 12,
 	R13 = 13,
 	R14 = 14,
 	R15 = 15,
+
+	REGISTER_COUNT,
 };
 
 #define encode_mod_reg_rm(mod, reg, rm) (((mod) << 6) | ((reg & 0b111) << 3) | (rm & 0b111))

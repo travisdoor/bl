@@ -40,10 +40,8 @@
 #define STRING_TABLE_SIZE (1 * 1024 * 1024)      // 1MB
 #define CODE_BLOCK_BUFFER_SIZE (2 * 1024 * 1024) // 2MB
 
-static const u8                call_reg_order[5] = {RAX, RCX, RDX, R8, R9}; // @Cleanup
-static const enum x64_register gpregs[7]         = {RAX, RCX, RDX, R8, R9, R10, R11};
-
-static const usize regnum = static_arrlenu(gpregs);
+#define UNUSED_REGISTER_MAP_VALUE -1
+#define RESERVED_REGISTER_MAP_VALUE -2
 
 enum x64_value_kind {
 	ADDRESS,
@@ -93,7 +91,8 @@ struct thread_context {
 	array(struct jmp_fixup) jmp_fixups;
 	array(struct jmp_fixup) call_fixups;
 
-	s32 reg_usage[static_arrlenu(gpregs)];
+	// Contains mapping of all available register of the target to x64_values.
+	s32 register_table[REGISTER_COUNT];
 
 	struct {
 		// Contains offset to the byte code pointing to the actual value of sub instruction used
@@ -282,20 +281,37 @@ static void allocate_stack_variables(struct thread_context *tctx, struct mir_fn 
 	allocate_stack_memory(tctx, top);
 }
 
-static void vreg_reserve(struct thread_context *tctx, s32 dest[], s32 num) {
-	s32 setnum = 0;
-	for (s32 i = 0; i < regnum && setnum < num; ++i) {
-		if (tctx->reg_usage[i] == -1) {
-			dest[setnum++]         = i;
-			tctx->reg_usage[i]     = arrlen(tctx->values);
-			struct x64_value value = {.kind = REGISTER, .reg = gpregs[i]};
+static inline s32 vreg_value_index(struct thread_context *tctx, enum x64_register reg) {
+	const s32 vi = tctx->register_table[reg];
+	bassert(vi >= 0 && vi < arrlen(tctx->values));
+	return vi + 1;
+}
+
+static inline struct x64_value vreg_value(struct thread_context *tctx, enum x64_register reg) {
+	const s32 vi = tctx->register_table[reg];
+	bassert(vi >= 0 && vi < arrlen(tctx->values));
+	return tctx->values[vi];
+}
+
+static void vreg_reserve(struct thread_context *tctx, enum x64_register dest[], s32 num) {
+	s32 set_num = 0;
+	for (s32 i = 0; i < REGISTER_COUNT && set_num < num; ++i) {
+		if (tctx->register_table[i] == UNUSED_REGISTER_MAP_VALUE) {
+			dest[set_num++]         = i;
+			tctx->register_table[i] = (s32)arrlen(tctx->values);
+			struct x64_value value  = {.kind = REGISTER, .reg = i};
 			arrput(tctx->values, value);
 		}
 	}
-	bassert(setnum == num);
+	bassert(set_num == num);
 }
 
-static void emit_load(struct thread_context *tctx, struct mir_instr *instr, s32 vreg_index) {
+static inline void vreg_release(struct thread_context *tctx, enum x64_register reg) {
+	bassert(tctx->register_table[reg] != UNUSED_REGISTER_MAP_VALUE && "Cannot release unused register!");
+	tctx->register_table[reg] = UNUSED_REGISTER_MAP_VALUE;
+}
+
+static void emit_load(struct thread_context *tctx, struct mir_instr *instr, enum x64_register reg) {
 	bassert(instr && instr->kind == MIR_INSTR_LOAD);
 	struct mir_instr_load *load = (struct mir_instr_load *)instr;
 	struct mir_type       *type = load->base.value.type;
@@ -304,10 +320,8 @@ static void emit_load(struct thread_context *tctx, struct mir_instr *instr, s32 
 	bassert(tctx->values[load->src->backend_value - 1].kind == OFFSET);
 	const s32 rbp_offset_bytes = tctx->values[load->src->backend_value - 1].offset;
 
-	bassert(tctx->values[tctx->reg_usage[vreg_index]].kind == REGISTER && "Loading directly to the memory is not supported yet!");
-	enum x64_register reg = gpregs[vreg_index];
 	mov_rm(tctx, reg, RBP, rbp_offset_bytes, type->store_size_bytes);
-	load->base.backend_value = tctx->reg_usage[vreg_index];
+	load->base.backend_value = vreg_value_index(tctx, reg);
 }
 
 static void emit_binop_ri(struct thread_context *tctx, enum binop_kind op, const u8 reg, const u64 v, const usize vsize) {
@@ -482,6 +496,8 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			BL_UNIMPLEMENTED;
 		}
 
+		// Release source value...
+		if (src_value.kind == REGISTER) vreg_release(tctx, src_value.reg);
 		break;
 	}
 
@@ -490,20 +506,36 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		struct mir_type        *type  = binop->lhs->value.type;
 		bassert(type->kind == MIR_TYPE_INT);
 
-		s32 vr[2];
-		vreg_reserve(tctx, vr, 2);
+		const s32 L = 0;
+		const s32 R = 1;
 
-		if (binop->rhs->kind == MIR_INSTR_LOAD) emit_load(tctx, binop->rhs, vr[1]);
-		if (binop->lhs->kind == MIR_INSTR_LOAD) emit_load(tctx, binop->lhs, vr[0]);
+		enum x64_register vreg_indices[] = {-1, -1};
 
-		struct x64_value rhs_value = get_value(tctx, binop->rhs);
-		struct x64_value lhs_value = get_value(tctx, binop->lhs);
+		struct x64_value rhs_value;
+		struct x64_value lhs_value;
+
+		if (binop->rhs->kind == MIR_INSTR_LOAD) {
+			vreg_reserve(tctx, vreg_indices + R, 1);
+			emit_load(tctx, binop->rhs, vreg_indices[R]);
+			rhs_value = vreg_value(tctx, vreg_indices[R]);
+		} else {
+			rhs_value = get_value(tctx, binop->rhs);
+		}
+
+		if (binop->rhs->kind == MIR_INSTR_LOAD) {
+			vreg_reserve(tctx, vreg_indices + L, 1);
+			emit_load(tctx, binop->rhs, vreg_indices[L]);
+			lhs_value = vreg_value(tctx, vreg_indices[L]);
+		} else {
+			lhs_value = get_value(tctx, binop->lhs);
+		}
 
 		if (lhs_value.kind == IMMEDIATE) {
-			const u8 reg = call_reg_order[binop->lhs->value.reg_hint];
-			mov_ri(tctx, reg, lhs_value.imm, type->store_size_bytes);
-			lhs_value.kind = REGISTER;
-			lhs_value.reg  = reg;
+			bassert(vreg_indices[L] == -1);
+			vreg_reserve(tctx, vreg_indices + L, 1);
+
+			mov_ri(tctx, vreg_indices[L], lhs_value.imm, type->store_size_bytes);
+			lhs_value = vreg_value(tctx, vreg_indices[L]);
 		}
 
 		bassert(lhs_value.kind == REGISTER);
@@ -515,7 +547,10 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			emit_binop_rr(tctx, binop->op, lhs_value.reg, rhs_value.reg, type->store_size_bytes);
 		}
 
-		set_value(tctx, instr, (struct x64_value){.kind = REGISTER, .reg = lhs_value.reg});
+		bassert(instr->backend_value == 0);
+		bassert(vreg_indices[L] != -1);
+		instr->backend_value = vreg_value_index(tctx, vreg_indices[L]);
+		if (vreg_indices[R] != -1) vreg_release(tctx, vreg_indices[R]);
 		break;
 	}
 
@@ -649,28 +684,28 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 		const usize arg_num = sarrlenu(call->args);
 		for (usize index = arg_num; index-- > 0;) {
-			struct mir_instr *arg = sarrpeek(call->args, index);
+			// struct mir_instr *arg = sarrpeek(call->args, index);
 
-			const s32        reg_index     = arg->value.reg_hint;
-			const bool       push_on_stack = reg_index >= static_arrlenu(call_reg_order);
-			struct mir_type *arg_type      = arg->value.type;
+			// const s32        reg_index     = arg->value.reg_hint;
+			// const bool       push_on_stack = false; /*reg_index >= static_arrlenu(call_reg_order);*/
+			// struct mir_type *arg_type      = arg->value.type;
 
-			const u8         reg   = push_on_stack ? 0 : call_reg_order[reg_index];
-			struct x64_value value = get_value(tctx, arg);
+			// const u8         reg   = push_on_stack ? 0 : call_reg_order[reg_index];
+			// struct x64_value value = get_value(tctx, arg);
 
-			switch (value.kind) {
-			case IMMEDIATE: {
-				if (push_on_stack) {
-					const s32 stack_offset = allocated_stack_arg(tctx, reg_index);
-					mov_mi(tctx, RBP, stack_offset, value.imm, arg_type->store_size_bytes);
-				} else {
-					mov_ri(tctx, reg, value.imm, arg_type->store_size_bytes);
-				}
-				break;
-			}
-			default:
-				break;
-			}
+			// switch (value.kind) {
+			// case IMMEDIATE: {
+			// if (push_on_stack) {
+			// 	const s32 stack_offset = allocated_stack_arg(tctx, reg_index);
+			// 	mov_mi(tctx, RBP, stack_offset, value.imm, arg_type->store_size_bytes);
+			// } else {
+			// 	mov_ri(tctx, reg, value.imm, arg_type->store_size_bytes);
+			// }
+			// break;
+			// }
+			// default:
+			// break;
+			// }
 		}
 
 		// Note: we use u32 here, it should be enough in context of a single fuction, but all positions are stored in u64 because they are fixed
@@ -770,6 +805,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			}
 		} else if (init_value.kind == REGISTER) {
 			mov_mr(tctx, RBP, var_value.offset, init_value.reg, type->store_size_bytes);
+			vreg_release(tctx, init_value.reg);
 		}
 
 		break;
@@ -854,8 +890,14 @@ static void job(struct job_context *job_ctx) {
 	tctx->stack.alloc_value_offset = 0;
 	bl_zeromem(&tctx->stack, sizeof(tctx->stack));
 
-	for (s32 i = 0; i < regnum; ++i)
-		tctx->reg_usage[i] = -1;
+	for (s32 i = 0; i < REGISTER_COUNT; ++i) {
+		if ((i >= RAX && i <= RDX) || (i >= R8 && i <= R11)) {
+			// We'll use just volatile registers...
+			tctx->register_table[i] = UNUSED_REGISTER_MAP_VALUE;
+		} else {
+			tctx->register_table[i] = RESERVED_REGISTER_MAP_VALUE;
+		}
+	}
 
 	arrsetcap(tctx->bytes, BYTE_CODE_BUFFER_SIZE);
 
