@@ -355,6 +355,16 @@ static void vreg_begin(struct thread_context *tctx, enum x64_register dest[], s3
 	}
 }
 
+static void vreg_end(struct thread_context *tctx, const enum x64_register regs[], s32 num) {
+	for (s32 i = 0; i < num; ++i) {
+		bassert(regs[i] >= 0);
+		bassert(tctx->register_table[regs[i]] == UNUSED_REGISTER_MAP_VALUE);
+		tctx->register_table[regs[i]] = (s32)arrlen(tctx->values);
+		struct x64_value value        = {.kind = REGISTER, .reg = regs[i]};
+		arrput(tctx->values, value);
+	}
+}
+
 static void spill(struct thread_context *tctx, enum x64_register reg) {
 	const s32 vi = tctx->register_table[reg];
 	bassert(vi != UNUSED_REGISTER_MAP_VALUE);
@@ -367,15 +377,6 @@ static void spill(struct thread_context *tctx, enum x64_register reg) {
 	spill_value->kind         = OFFSET;
 	spill_value->offset       = offset;
 	tctx->register_table[reg] = UNUSED_REGISTER_MAP_VALUE;
-}
-
-static void vreg_end(struct thread_context *tctx, const enum x64_register regs[], s32 num) {
-	for (s32 i = 0; i < num; ++i) {
-		bassert(regs[i] >= 0);
-		tctx->register_table[regs[i]] = (s32)arrlen(tctx->values);
-		struct x64_value value        = {.kind = REGISTER, .reg = regs[i]};
-		arrput(tctx->values, value);
-	}
 }
 
 static inline void vreg_release(struct thread_context *tctx, const enum x64_register regs[], s32 num) {
@@ -578,6 +579,11 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 		enum x64_register regs[2];
 		if (binop->rhs->kind == MIR_INSTR_LOAD) ++required_registers;
+		if (binop->lhs->kind != MIR_INSTR_LOAD) {
+			// This way we can reuse the LHS register if possible.
+			struct x64_value lhs_value = get_value(tctx, binop->lhs);
+			if (lhs_value.kind == REGISTER) vreg_release(tctx, &lhs_value.reg, 1);
+		}
 
 		vreg_begin(tctx, regs, required_registers);
 
@@ -616,7 +622,6 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		} else {
 			bassert(rhs_value.kind == REGISTER);
 			emit_binop_rr(tctx, binop->op, lhs_value.reg, rhs_value.reg, type->store_size_bytes);
-			vreg_release(tctx, &rhs_value.reg, 1);
 		}
 
 		bassert(instr->backend_value == 0);
