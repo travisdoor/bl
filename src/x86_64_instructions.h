@@ -67,12 +67,8 @@ static inline s32 add_code(struct thread_context *tctx, const void *buf, s32 len
 
 static inline u8 encode_rex(u8 reg, u8 rm) {
 	u8 mod = REX_W;
-	if ((reg & 0b1000) > 0) {
-		mod |= 0b100;
-	}
-	if ((rm & 0b1000) > 0) {
-		mod |= 0b1;
-	}
+	if ((reg & 0b1000) > 0) mod |= 0b100;
+	if ((rm & 0b1000) > 0) mod |= 0b1;
 	return mod;
 }
 

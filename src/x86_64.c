@@ -367,7 +367,7 @@ static inline void release_registers(struct thread_context *tctx, const enum x64
 	}
 }
 
-static void emit_load(struct thread_context *tctx, struct mir_instr *instr, enum x64_register reg) {
+static void emit_load_to_register(struct thread_context *tctx, struct mir_instr *instr, enum x64_register reg) {
 	bassert(instr && instr->kind == MIR_INSTR_LOAD);
 	struct mir_instr_load *load = (struct mir_instr_load *)instr;
 	struct mir_type       *type = load->base.value.type;
@@ -521,7 +521,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			enum x64_register reg;
 			find_free_registers(tctx, &reg, 1);
 			if (reg == -1) reg = spill(tctx, RAX, NULL, 0);
-			emit_load(tctx, store->src, reg);
+			emit_load_to_register(tctx, store->src, reg);
 			src_value = (struct x64_value){.kind = REGISTER, .reg = reg};
 		} else {
 			src_value = get_value(tctx, store->src);
@@ -575,7 +575,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 		if (binop->rhs->kind == MIR_INSTR_LOAD) {
 			if (regs[RHS] == -1) regs[RHS] = spill(tctx, RCX, regs, 2);
-			emit_load(tctx, binop->rhs, regs[RHS]);
+			emit_load_to_register(tctx, binop->rhs, regs[RHS]);
 			rhs_value = (struct x64_value){.kind = REGISTER, .reg = regs[RHS]};
 		} else {
 			rhs_value = get_value(tctx, binop->rhs);
@@ -583,7 +583,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 		if (binop->lhs->kind == MIR_INSTR_LOAD) {
 			if (regs[LHS] == -1) regs[LHS] = spill(tctx, RAX, regs, 2);
-			emit_load(tctx, binop->lhs, regs[LHS]);
+			emit_load_to_register(tctx, binop->lhs, regs[LHS]);
 			lhs_value = (struct x64_value){.kind = REGISTER, .reg = regs[LHS]};
 		} else {
 			lhs_value = get_value(tctx, binop->lhs);
@@ -746,45 +746,77 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		bassert(callee_fn_proto);
 		const s32 arg_num = (s32)sarrlen(call->args);
 
-		sub_ri(tctx, RSP, 0x20, 8); // Home space
+		usize stack_space = MAX(4, arg_num) * 8;
+		if (!is_aligned2(stack_space, 16)) {
+			stack_space = next_aligned2(stack_space, 16);
+		}
+
+		sub_ri(tctx, RSP, stack_space, 8);
 
 		const enum x64_register call_abi[]       = {RCX, RDX, R8, R9};
 		const s32               args_in_register = MIN(4, arg_num);
+
+		s32 arg_stack_offset = 0;
 
 		for (s32 index = 0; index < arg_num; ++index) {
 			struct mir_instr *arg      = sarrpeek(call->args, index);
 			struct mir_type  *arg_type = arg->value.type;
 
-			bassert(index < 4);
+			arg_stack_offset += 8;
 
-			if (arg->kind == MIR_INSTR_LOAD) {
-				const enum x64_register reg = spill(tctx, call_abi[index], call_abi, args_in_register);
-				emit_load(tctx, arg, reg);
-			} else {
-				struct x64_value value = get_value(tctx, arg);
-				switch (value.kind) {
-				case IMMEDIATE: {
+			if (index < 4) {
+				if (arg->kind == MIR_INSTR_LOAD) {
 					const enum x64_register reg = spill(tctx, call_abi[index], call_abi, args_in_register);
-					mov_ri(tctx, reg, value.imm, arg_type->store_size_bytes);
-					break;
-				}
-				case REGISTER: {
-					if (value.reg != call_abi[index]) {
+					emit_load_to_register(tctx, arg, reg);
+				} else {
+					struct x64_value value = get_value(tctx, arg);
+					switch (value.kind) {
+					case IMMEDIATE: {
 						const enum x64_register reg = spill(tctx, call_abi[index], call_abi, args_in_register);
-						mov_rr(tctx, reg, value.reg, arg_type->store_size_bytes);
-						release_registers(tctx, &reg, 1);
-					} else {
-						release_registers(tctx, &value.reg, 1);
+						mov_ri(tctx, reg, value.imm, arg_type->store_size_bytes);
+						break;
 					}
-					break;
+					case REGISTER: {
+						if (value.reg != call_abi[index]) {
+							const enum x64_register reg = spill(tctx, call_abi[index], call_abi, args_in_register);
+							mov_rr(tctx, reg, value.reg, arg_type->store_size_bytes);
+							release_registers(tctx, &reg, 1);
+						} else {
+							release_registers(tctx, &value.reg, 1);
+						}
+						break;
+					}
+					case OFFSET: {
+						const enum x64_register reg = spill(tctx, call_abi[index], call_abi, args_in_register);
+						mov_rm(tctx, reg, RBP, value.offset, arg_type->store_size_bytes);
+						break;
+					}
+					default:
+						babort("Invalid value kind!");
+					}
 				}
-				case OFFSET: {
-					const enum x64_register reg = spill(tctx, call_abi[index], call_abi, args_in_register);
-					mov_rm(tctx, reg, RBP, value.offset, arg_type->store_size_bytes);
-					break;
-				}
-				default:
-					babort("Invalid value kind!");
+			} else {
+				// Other args needs go to the stack.
+				if (arg->kind == MIR_INSTR_LOAD) {
+					BL_UNIMPLEMENTED;
+				} else {
+					struct x64_value value = get_value(tctx, arg);
+					switch (value.kind) {
+					case IMMEDIATE: {
+						mov_mi(tctx, RSP, arg_stack_offset, value.imm, arg_type->store_size_bytes);
+						break;
+					}
+					case REGISTER: {
+						BL_UNIMPLEMENTED;
+						break;
+					}
+					case OFFSET: {
+						BL_UNIMPLEMENTED;
+						break;
+					}
+					default:
+						babort("Invalid value kind!");
+					}
 				}
 			}
 		}
@@ -793,7 +825,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		// last when the whole binary is complete.
 		const u32 virtual_address = call_relative_i32(tctx, 0);
 
-		add_ri(tctx, RSP, 0x20, 8);
+		add_ri(tctx, RSP, stack_space, 8);
 
 		struct jmp_fixup fixup = {
 		    .fn_proto        = (struct mir_instr_fn_proto *)callee_fn_proto,

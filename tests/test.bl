@@ -24,7 +24,7 @@ Any :: struct #compiler {
 };
 
 _CRT_INIT :: fn () win32.BOOL #extern;
-my_function :: fn (a: s32, b: s32, c: s32, d: s32) s32 #extern;
+my_function :: fn (a: s32, b: s32, c: s32, d: s32, e: s32, f: s32) s32 #extern;
 
 __os_start :: fn () #entry {
 	if _CRT_INIT() == 0 {
@@ -49,7 +49,7 @@ __os_start :: fn () #entry {
 	z = x + 2;
 	z = 40;
 
-	my_function(10, 20, a + b, z);
+	my_function(10, 20, a + b, z, 50, 60);
 	// foo();
 
 
