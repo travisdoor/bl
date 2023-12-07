@@ -165,7 +165,6 @@ static const char *find_closest_argument(struct getarg_opt *opts, str_t opt) {
 			closest_opt  = current_opt;
 		}
 	}
-
 	return closest_opt->name;
 }
 
