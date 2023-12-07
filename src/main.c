@@ -145,27 +145,54 @@ struct getarg_opt {
 	const s32   id;
 };
 
+struct closest_opt_t {
+	const char *name;
+	s32         distance;
+};
+
 static const char *find_closest_argument(struct getarg_opt *opts, str_t opt) {
 	bassert(opts);
-	struct getarg_opt *current_opt;
-	struct getarg_opt *closest_opt  = NULL;
-	s64                min_distance = LLONG_MAX;
+
+	struct getarg_opt    *current_opt;
+	struct closest_opt_t *closest_opts  = NULL;
+	s32                   closest_count = 0;
+	s32                   min_distance  = INT_MAX;
 
 	opt = trim_leading_characters(opt, '-');
 
 	while ((current_opt = opts++)->name) {
 		str_t current_opt_str = trim_leading_characters(make_str_from_c(current_opt->name), '-');
 		s32   distance        = fuzzy_cmp(current_opt_str, opt);
-		if (distance == 0) {
-			return NULL;
-		}
 
 		if (distance < min_distance) {
-			min_distance = distance;
-			closest_opt  = current_opt;
+			min_distance             = distance;
+			closest_count            = 1;
+			closest_opts             = realloc(closest_opts, closest_count * sizeof(struct closest_opt_t));
+			closest_opts[0].name     = current_opt->name;
+			closest_opts[0].distance = distance;
+		} else if (distance == min_distance) {
+			closest_count++;
+			closest_opts                             = realloc(closest_opts, closest_count * sizeof(struct closest_opt_t));
+			closest_opts[closest_count - 1].name     = current_opt->name;
+			closest_opts[closest_count - 1].distance = distance;
 		}
 	}
-	return closest_opt->name;
+
+	const char *result = NULL;
+	if (min_distance == 0 || closest_count == 0) return NULL;
+
+	for (s32 i = 0; i < closest_count; ++i) {
+		if (fuzzy_cmp(opt, make_str_from_c(closest_opts[i].name)) != 0) {
+			str_t current_opt = trim_leading_characters(make_str_from_c(closest_opts[i].name), '-');
+			if (strncmp(opt.ptr, current_opt.ptr, 1) == 0) {
+				result = closest_opts[i].name;
+				break;
+			}
+		}
+	}
+
+	free(closest_opts);
+	return result;
 }
 
 static s32
