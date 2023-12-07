@@ -184,7 +184,7 @@ static const char *find_closest_argument(struct getarg_opt *opts, str_t opt) {
 	for (s32 i = 0; i < closest_count; ++i) {
 		if (fuzzy_cmp(opt, make_str_from_c(closest_opts[i].name)) != 0) {
 			str_t current_opt = trim_leading_characters(make_str_from_c(closest_opts[i].name), '-');
-			if (strncmp(opt.ptr, current_opt.ptr, 1) == 0) {
+			if (levenshtein(current_opt, opt) <= 4) {
 				result = closest_opts[i].name;
 				break;
 			}
