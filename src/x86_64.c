@@ -318,21 +318,45 @@ static void save_registers(struct thread_context *tctx, const enum x64_register 
 	}
 }
 
-static enum x64_register spill(struct thread_context *tctx, enum x64_register reg) {
+// Spill register into memory or another register (you can set some exclusions, these registers would not be used for spilling).
+static enum x64_register spill(struct thread_context *tctx, enum x64_register reg, const enum x64_register exclude[], s32 exclude_num) {
 	blog("Spill %d", reg);
 	const s32 vi = tctx->register_table[reg];
 	if (vi == UNUSED_REGISTER_MAP_VALUE) {
+		// Register is already free, no need to spill.
 		return reg;
 	}
 	struct x64_value *spill_value = &tctx->values[vi];
 	bassert(spill_value->kind == REGISTER);
 	bassert(spill_value->reg == reg);
 
-	const s32 top    = allocate_stack_memory(tctx, 8);
-	const s32 offset = -top;
-	mov_mr(tctx, RBP, offset, reg, 8);
-	spill_value->kind         = OFFSET;
-	spill_value->offset       = offset;
+	enum x64_register dest_reg = -1;
+	if (exclude_num) {
+		for (s32 i = 0; i < REGISTER_COUNT; ++i) {
+			if (tctx->register_table[i] != UNUSED_REGISTER_MAP_VALUE) continue;
+			if (reg == i) continue;
+			for (s32 j = 0; j < exclude_num; ++j) {
+				if (exclude[j] == -1) continue;
+				if (exclude[j] == i) goto SKIP;
+			}
+			dest_reg = i;
+		SKIP:
+			continue;
+		}
+	}
+	if (dest_reg != -1) {
+		// Spill to register.
+		mov_rr(tctx, dest_reg, reg, 8);
+		spill_value->reg = dest_reg;
+	} else {
+		// Spill to memory.
+		const s32 top    = allocate_stack_memory(tctx, 8);
+		const s32 offset = -top;
+		mov_mr(tctx, RBP, offset, reg, 8);
+		spill_value->kind   = OFFSET;
+		spill_value->offset = offset;
+	}
+
 	tctx->register_table[reg] = UNUSED_REGISTER_MAP_VALUE;
 	return reg;
 }
@@ -496,7 +520,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		if (store->src->kind == MIR_INSTR_LOAD) {
 			enum x64_register reg;
 			find_free_registers(tctx, &reg, 1);
-			if (reg == -1) reg = spill(tctx, RAX);
+			if (reg == -1) reg = spill(tctx, RAX, NULL, 0);
 			emit_load(tctx, store->src, reg);
 			src_value = (struct x64_value){.kind = REGISTER, .reg = reg};
 		} else {
@@ -536,7 +560,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		const s32 RHS                = 1;
 		s32       required_registers = 1; // LHS goes into register.
 
-		enum x64_register regs[2];
+		enum x64_register regs[2] = {-1, -1};
 		if (binop->rhs->kind == MIR_INSTR_LOAD) ++required_registers;
 		if (binop->lhs->kind != MIR_INSTR_LOAD) {
 			// This way we can reuse the LHS register if possible.
@@ -550,7 +574,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		struct x64_value lhs_value = {0};
 
 		if (binop->rhs->kind == MIR_INSTR_LOAD) {
-			if (regs[RHS] == -1) regs[RHS] = spill(tctx, RCX);
+			if (regs[RHS] == -1) regs[RHS] = spill(tctx, RCX, regs, 2);
 			emit_load(tctx, binop->rhs, regs[RHS]);
 			rhs_value = (struct x64_value){.kind = REGISTER, .reg = regs[RHS]};
 		} else {
@@ -558,7 +582,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		}
 
 		if (binop->lhs->kind == MIR_INSTR_LOAD) {
-			if (regs[LHS] == -1) regs[LHS] = spill(tctx, RAX);
+			if (regs[LHS] == -1) regs[LHS] = spill(tctx, RAX, regs, 2);
 			emit_load(tctx, binop->lhs, regs[LHS]);
 			lhs_value = (struct x64_value){.kind = REGISTER, .reg = regs[LHS]};
 		} else {
@@ -566,7 +590,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		}
 
 		if (lhs_value.kind == IMMEDIATE) {
-			if (regs[LHS] == -1) regs[LHS] = spill(tctx, RAX);
+			if (regs[LHS] == -1) regs[LHS] = spill(tctx, RAX, regs, 2);
 			mov_ri(tctx, regs[LHS], lhs_value.imm, type->store_size_bytes);
 			lhs_value.kind = REGISTER;
 			lhs_value.reg  = regs[LHS];
@@ -635,6 +659,12 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		struct mir_instr_cond_br *br = (struct mir_instr_cond_br *)instr;
 		bassert(br->cond && br->then_block && br->else_block);
 		bassert(br->else_block->base.backend_value == 0);
+
+		const struct x64_value cond_value = get_value(tctx, br->cond);
+		if (cond_value.kind == REGISTER) {
+			// Release condition register if any.
+			release_registers(tctx, &cond_value.reg, 1);
+		}
 
 		u32 virtual_address = 0;
 
@@ -718,7 +748,8 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 		sub_ri(tctx, RSP, 0x20, 8); // Home space
 
-		const enum x64_register calling_convetion_registers[] = {RCX, RDX, R8, R9};
+		const enum x64_register call_abi[]       = {RCX, RDX, R8, R9};
+		const s32               args_in_register = MIN(4, arg_num);
 
 		for (s32 index = 0; index < arg_num; ++index) {
 			struct mir_instr *arg      = sarrpeek(call->args, index);
@@ -727,19 +758,19 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			bassert(index < 4);
 
 			if (arg->kind == MIR_INSTR_LOAD) {
-				const enum x64_register reg = spill(tctx, calling_convetion_registers[index]);
+				const enum x64_register reg = spill(tctx, call_abi[index], call_abi, args_in_register);
 				emit_load(tctx, arg, reg);
 			} else {
 				struct x64_value value = get_value(tctx, arg);
 				switch (value.kind) {
 				case IMMEDIATE: {
-					const enum x64_register reg = spill(tctx, calling_convetion_registers[index]);
+					const enum x64_register reg = spill(tctx, call_abi[index], call_abi, args_in_register);
 					mov_ri(tctx, reg, value.imm, arg_type->store_size_bytes);
 					break;
 				}
 				case REGISTER: {
-					if (value.reg != calling_convetion_registers[index]) {
-						const enum x64_register reg = spill(tctx, calling_convetion_registers[index]);
+					if (value.reg != call_abi[index]) {
+						const enum x64_register reg = spill(tctx, call_abi[index], call_abi, args_in_register);
 						mov_rr(tctx, reg, value.reg, arg_type->store_size_bytes);
 						release_registers(tctx, &reg, 1);
 					} else {
@@ -748,7 +779,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 					break;
 				}
 				case OFFSET: {
-					const enum x64_register reg = spill(tctx, calling_convetion_registers[index]);
+					const enum x64_register reg = spill(tctx, call_abi[index], call_abi, args_in_register);
 					mov_rm(tctx, reg, RBP, value.offset, arg_type->store_size_bytes);
 					break;
 				}

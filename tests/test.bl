@@ -44,9 +44,12 @@ __os_start :: fn () #entry {
 	x := a + b + d + c;
 	y := c + d;
 	z = x + y;
-	z;
+	z = 10 + 2;
+	z = 2 + x;
+	z = x + 2;
+	z = 40;
 
-	my_function(10, 20, a + b, 40);
+	my_function(10, 20, a + b, z);
 	// foo();
 
 
