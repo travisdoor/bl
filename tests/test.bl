@@ -24,7 +24,9 @@ Any :: struct #compiler {
 };
 
 _CRT_INIT :: fn () win32.BOOL #extern;
-my_function :: fn (a: s32, b: s32, c: s32, d: s32, e: s32, f: s32) s32 #extern;
+my_function :: fn (a: s32, b: s32, c: s32, d: s32, e: s32, f: s32) #extern;
+add_numbers :: fn (a: s32, b: s32) s32 #extern;
+print_number :: fn (n: s32) #extern;
 
 __os_start :: fn () #entry {
 	if _CRT_INIT() == 0 {
@@ -41,7 +43,7 @@ __os_start :: fn () #entry {
 	f := 60;
 
 	// x := a + b + d + c;
-	// y := c + d;
+	y := c + d;
 	// z = x + y;
 	// z = 10 + 2;
 	// z = 2 + x;
@@ -51,7 +53,10 @@ __os_start :: fn () #entry {
 	my_function(10, 20, 30, 40, 50, 60);
 	my_function(10, 20, a + b, d, 50, d + b);
 	my_function(a, b, c, d, e, f);
-	// foo();
+
+	print_number(add_numbers(10, 20));
+	print_number(add_numbers(10, -20));
+	print_number(mul_numbers(10, 20));
 
 
 	// arr :: [_]s32.{ a, b, c, d, e  };
@@ -60,8 +65,20 @@ __os_start :: fn () #entry {
 	C.exit(0);
 }
 
-foo :: fn () {
+mul_numbers :: fn (a: s32, b: s32) s32 {
+	return a * b;
 }
+
+/*
+x64 todo:
+[ ] struct variables
+[ ] arrays
+[ ] call-side register splits of bigger values
+[ ] .data
+[ ] type info
+[ ] strings
+[ ] thread locals
+[ ] intrinsics
 
 /*
 
