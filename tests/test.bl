@@ -33,23 +33,24 @@ __os_start :: fn () #entry {
 
 	// my_function(10, 20, 30, 40, 50, 60);
 
-	z := 666;
 	a := 10;
 	b := 20;
 	c := 30;
 	d := 40;
-	// e := 50;
-	// f := 60;
+	e := 50;
+	f := 60;
 
-	x := a + b + d + c;
-	y := c + d;
-	z = x + y;
-	z = 10 + 2;
-	z = 2 + x;
-	z = x + 2;
-	z = 40;
+	// x := a + b + d + c;
+	// y := c + d;
+	// z = x + y;
+	// z = 10 + 2;
+	// z = 2 + x;
+	// z = x + 2;
+	// z = 40;
 
-	my_function(10, 20, a + b, z, 50, 60);
+	my_function(10, 20, 30, 40, 50, 60);
+	my_function(10, 20, a + b, d, 50, d + b);
+	my_function(a, b, c, d, e, f);
 	// foo();
 
 

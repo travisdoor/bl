@@ -320,7 +320,6 @@ static void save_registers(struct thread_context *tctx, const enum x64_register 
 
 // Spill register into memory or another register (you can set some exclusions, these registers would not be used for spilling).
 static enum x64_register spill(struct thread_context *tctx, enum x64_register reg, const enum x64_register exclude[], s32 exclude_num) {
-	blog("Spill %d", reg);
 	const s32 vi = tctx->register_table[reg];
 	if (vi == UNUSED_REGISTER_MAP_VALUE) {
 		// Register is already free, no need to spill.
@@ -762,9 +761,8 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			struct mir_instr *arg      = sarrpeek(call->args, index);
 			struct mir_type  *arg_type = arg->value.type;
 
-			arg_stack_offset += 8;
-
 			if (index < 4) {
+				// To register
 				if (arg->kind == MIR_INSTR_LOAD) {
 					const enum x64_register reg = spill(tctx, call_abi[index], call_abi, args_in_register);
 					emit_load_to_register(tctx, arg, reg);
@@ -798,7 +796,9 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			} else {
 				// Other args needs go to the stack.
 				if (arg->kind == MIR_INSTR_LOAD) {
-					BL_UNIMPLEMENTED;
+					const enum x64_register reg = spill(tctx, RAX, NULL, 0);
+					emit_load_to_register(tctx, arg, reg);
+					mov_mr(tctx, RSP, arg_stack_offset, reg, arg_type->store_size_bytes);
 				} else {
 					struct x64_value value = get_value(tctx, arg);
 					switch (value.kind) {
@@ -807,10 +807,12 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 						break;
 					}
 					case REGISTER: {
-						BL_UNIMPLEMENTED;
+						mov_mr(tctx, RSP, arg_stack_offset, value.reg, arg_type->store_size_bytes);
+						release_registers(tctx, &value.reg, 1);
 						break;
 					}
 					case OFFSET: {
+						// @Incomplete: Maybe spilled value???
 						BL_UNIMPLEMENTED;
 						break;
 					}
@@ -819,6 +821,8 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 					}
 				}
 			}
+
+			arg_stack_offset += 8;
 		}
 
 		// Note: we use u32 here, it should be enough in context of a single fuction, but all positions are stored in u64 because they are fixed
