@@ -110,10 +110,15 @@ struct context {
 	struct {
 		pthread_mutex_t mutex;
 		array(u8) bytes;
-		array(IMAGE_SYMBOL) syms;
 		array(IMAGE_RELOCATION) relocs;
 		array(char) strs;
 	} code;
+
+	struct {
+		array(u8) bytes;
+	} data;
+
+	array(IMAGE_SYMBOL) syms;
 
 	hash_table(struct symbol_table_entry) symbol_table;
 	hash_table(struct scheduled_entry) scheduled_for_generation;
@@ -1046,7 +1051,7 @@ static void job(struct job_context *job_ctx) {
 		// present.
 
 		const usize gsection_len = arrlenu(ctx->code.bytes);
-		const usize gsyms_len    = arrlenu(ctx->code.syms);
+		const usize gsyms_len    = arrlenu(ctx->syms);
 		const usize gstrs_len    = arrlenu(ctx->code.strs);
 
 		// Insert code.
@@ -1106,9 +1111,9 @@ static void job(struct job_context *job_ctx) {
 		}
 
 		// Copy symbol table to global one.
-		arrsetcap(ctx->code.syms, SYMBOL_TABLE_SIZE);
-		arrsetlen(ctx->code.syms, gsyms_len + syms_len);
-		memcpy(&ctx->code.syms[gsyms_len], tctx->syms, syms_len * sizeof(IMAGE_SYMBOL));
+		arrsetcap(ctx->syms, SYMBOL_TABLE_SIZE);
+		arrsetlen(ctx->syms, gsyms_len + syms_len);
+		memcpy(&ctx->syms[gsyms_len], tctx->syms, syms_len * sizeof(IMAGE_SYMBOL));
 
 		// Copy string table to global one.
 		arrsetcap(ctx->code.strs, STRING_TABLE_SIZE);
@@ -1121,35 +1126,56 @@ static void job(struct job_context *job_ctx) {
 }
 
 static void create_object_file(struct context *ctx) {
-	usize section_data_pointer = IMAGE_SIZEOF_FILE_HEADER + IMAGE_SIZEOF_SECTION_HEADER;
+	// @Cleanup
+	{
+		u8 *p = arraddnptr(ctx->data.bytes, 5);
+		p[0]  = 'h';
+		p[1]  = 'e';
+		p[2]  = 'l';
+		p[3]  = 'l';
+		p[4]  = 'o';
+	}
+
+	usize text_section_pointer = IMAGE_SIZEOF_FILE_HEADER + IMAGE_SIZEOF_SECTION_HEADER * 2;
 
 	// Code block is aligned to 16 bytes, do we need this???
-	const usize section_data_padding = next_aligned2(section_data_pointer, 16) - section_data_pointer;
-	section_data_pointer += section_data_padding;
+	const usize section_data_padding = next_aligned2(text_section_pointer, 16) - text_section_pointer;
+	text_section_pointer += section_data_padding;
 
-	const usize reloc_pointer = section_data_pointer + arrlenu(ctx->code.bytes);
-	const usize sym_pointer   = section_data_pointer + arrlenu(ctx->code.bytes) + arrlenu(ctx->code.relocs) * sizeof(IMAGE_RELOCATION);
+	const usize reloc_pointer = text_section_pointer + arrlenu(ctx->code.bytes);
 
 	const usize number_of_relocations = arrlenu(ctx->code.relocs);
 	if (number_of_relocations > 0xFFFF) {
 		babort("Relocation table is too large to be stored in COFF file!");
 	}
 
+	const usize data_section_pointer   = reloc_pointer + sizeof(IMAGE_RELOCATION) * number_of_relocations;
+	const usize symbol_section_pointer = data_section_pointer + arrlenu(ctx->data.bytes);
+
 	IMAGE_FILE_HEADER header = {
 	    .Machine              = IMAGE_FILE_MACHINE_AMD64,
-	    .NumberOfSections     = 1,
-	    .PointerToSymbolTable = (DWORD)sym_pointer,
-	    .NumberOfSymbols      = (DWORD)arrlenu(ctx->code.syms),
+	    .NumberOfSections     = 2,
+	    .PointerToSymbolTable = (DWORD)symbol_section_pointer,
+	    .NumberOfSymbols      = (DWORD)arrlenu(ctx->syms),
 	    .TimeDateStamp        = (DWORD)time(0),
 	};
 
-	IMAGE_SECTION_HEADER section = {
+	IMAGE_SECTION_HEADER section_text = {
 	    .Name                 = ".text",
 	    .Characteristics      = IMAGE_SCN_CNT_CODE | IMAGE_SCN_MEM_READ | IMAGE_SCN_ALIGN_16BYTES | IMAGE_SCN_MEM_EXECUTE,
 	    .SizeOfRawData        = (DWORD)arrlenu(ctx->code.bytes),
-	    .PointerToRawData     = (DWORD)section_data_pointer,
+	    .PointerToRawData     = (DWORD)text_section_pointer,
 	    .PointerToRelocations = (DWORD)reloc_pointer,
 	    .NumberOfRelocations  = (u16)number_of_relocations,
+	};
+
+	IMAGE_SECTION_HEADER section_data = {
+	    .Name                 = ".data",
+	    .Characteristics      = IMAGE_SCN_CNT_INITIALIZED_DATA | IMAGE_SCN_MEM_READ | IMAGE_SCN_MEM_WRITE | IMAGE_SCN_ALIGN_16BYTES,
+	    .SizeOfRawData        = (DWORD)arrlenu(ctx->data.bytes),
+	    .PointerToRawData     = (DWORD)data_section_pointer,
+	    .PointerToRelocations = 0,
+	    .NumberOfRelocations  = 0,
 	};
 
 	str_buf_t            buf    = get_tmp_str();
@@ -1162,20 +1188,31 @@ static void create_object_file(struct context *ctx) {
 		babort("Cannot create the output file.");
 	}
 
+	//
+	// Headers
+	//
 	// Write COFF header
 	fwrite(&header, 1, IMAGE_SIZEOF_FILE_HEADER, file);
-	// Section header
-	fwrite(&section, 1, IMAGE_SIZEOF_SECTION_HEADER, file);
+	// Text section header
+	fwrite(&section_text, 1, IMAGE_SIZEOF_SECTION_HEADER, file);
+	fwrite(&section_data, 1, IMAGE_SIZEOF_SECTION_HEADER, file);
+
+	// .text
 	// Gap to align the code section.
 	u8 padding[16] = {0};
 	bassert(section_data_padding <= static_arrlenu(padding));
 	fwrite(padding, 1, section_data_padding, file);
-	// Write section code
+	// Write section text
 	fwrite(ctx->code.bytes, 1, arrlenu(ctx->code.bytes), file);
 	// Write relocation table
 	fwrite(ctx->code.relocs, arrlenu(ctx->code.relocs), sizeof(IMAGE_RELOCATION), file);
+
+	// .data
+	fwrite(ctx->data.bytes, 1, arrlenu(ctx->data.bytes), file);
+
 	// Symbol table
-	fwrite(ctx->code.syms, IMAGE_SIZEOF_SYMBOL, arrlenu(ctx->code.syms), file);
+	fwrite(ctx->syms, IMAGE_SIZEOF_SYMBOL, arrlenu(ctx->syms), file);
+
 	// String table
 	u32 strs_len = (u32)arrlenu(ctx->code.strs) + sizeof(u32); // See the COFF specifiction sec 5.6.
 	fwrite(&strs_len, 1, sizeof(u32), file);
@@ -1217,7 +1254,7 @@ void x86_64run(struct assembly *assembly) {
 		}
 
 		const s32     symbol_table_index = ctx.symbol_table[i].symbol_table_index;
-		IMAGE_SYMBOL *sym                = &ctx.code.syms[symbol_table_index];
+		IMAGE_SYMBOL *sym                = &ctx.syms[symbol_table_index];
 		if (sym->SectionNumber == 0) {
 			// Push into COFF relocation table. The symbol is not in our binary.
 			IMAGE_RELOCATION reloc = {
@@ -1250,11 +1287,15 @@ void x86_64run(struct assembly *assembly) {
 		arrfree(tctx->jmp_fixups);
 		arrfree(tctx->call_fixups);
 	}
+
 	arrfree(ctx.tctx);
 	arrfree(ctx.code.bytes);
-	arrfree(ctx.code.syms);
 	arrfree(ctx.code.strs);
 	arrfree(ctx.code.relocs);
+
+	arrfree(ctx.data.bytes);
+
+	arrfree(ctx.syms);
 	arrfree(ctx.call_fixups);
 	hmfree(ctx.symbol_table);
 	hmfree(ctx.scheduled_for_generation);

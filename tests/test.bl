@@ -28,12 +28,15 @@ my_function :: fn (a: s32, b: s32, c: s32, d: s32, e: s32, f: s32) #extern;
 add_numbers :: fn (a: s32, b: s32) s32 #extern;
 print_number :: fn (n: s32) #extern;
 
+my_number := 10;
+
 __os_start :: fn () #entry {
 	if _CRT_INIT() == 0 {
 		C.exit(1);
 	}
 
 	// my_function(10, 20, 30, 40, 50, 60);
+	// my_number = 20;
 
 	a := 10;
 	b := 20;
@@ -79,6 +82,7 @@ x64 todo:
 [ ] strings
 [ ] thread locals
 [ ] intrinsics
+[ ] global variables
 
 /*
 

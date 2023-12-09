@@ -167,19 +167,16 @@ static enum state   emit_instr(struct context *ctx, struct mir_instr *instr);
 static LLVMValueRef emit_const_string(struct context *ctx, const str_t s);
 static enum state   emit_instr_binop(struct context *ctx, struct mir_instr_binop *binop);
 static enum state   emit_instr_phi(struct context *ctx, struct mir_instr_phi *phi);
-static enum state   emit_instr_set_initializer(struct context                   *ctx,
-                                               struct mir_instr_set_initializer *si);
+static enum state   emit_instr_set_initializer(struct context *ctx, struct mir_instr_set_initializer *si);
 static enum state   emit_instr_type_info(struct context *ctx, struct mir_instr_type_info *type_info);
 static enum state   emit_instr_test_cases(struct context *ctx, struct mir_instr_test_case *tc);
 static enum state   emit_instr_decl_ref(struct context *ctx, struct mir_instr_decl_ref *ref);
-static enum state   emit_instr_decl_direct_ref(struct context                   *ctx,
-                                               struct mir_instr_decl_direct_ref *ref);
+static enum state   emit_instr_decl_direct_ref(struct context *ctx, struct mir_instr_decl_direct_ref *ref);
 static enum state   emit_instr_cast(struct context *ctx, struct mir_instr_cast *cast);
 static enum state   emit_instr_addrof(struct context *ctx, struct mir_instr_addrof *addrof);
 static enum state   emit_instr_unop(struct context *ctx, struct mir_instr_unop *unop);
 static enum state   emit_instr_unreachable(struct context *ctx, struct mir_instr_unreachable *unr);
-static enum state   emit_instr_debugbreak(struct context              *ctx,
-                                          struct mir_instr_debugbreak *debug_break);
+static enum state   emit_instr_debugbreak(struct context *ctx, struct mir_instr_debugbreak *debug_break);
 static enum state   emit_instr_store(struct context *ctx, struct mir_instr_store *store);
 static enum state   emit_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_proto);
 static enum state   emit_instr_block(struct context *ctx, struct mir_instr_block *block);
@@ -193,18 +190,15 @@ static enum state   emit_instr_decl_var(struct context *ctx, struct mir_instr_de
 static enum state   emit_instr_load(struct context *ctx, struct mir_instr_load *load);
 static enum state   emit_instr_call(struct context *ctx, struct mir_instr_call *call);
 static enum state   emit_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_ptr *elem_ptr);
-static enum state   emit_instr_member_ptr(struct context              *ctx,
-                                          struct mir_instr_member_ptr *member_ptr);
+static enum state   emit_instr_member_ptr(struct context *ctx, struct mir_instr_member_ptr *member_ptr);
 static enum state   emit_instr_unroll(struct context *ctx, struct mir_instr_unroll *unroll);
 static enum state   emit_instr_vargs(struct context *ctx, struct mir_instr_vargs *vargs);
 static enum state   emit_instr_toany(struct context *ctx, struct mir_instr_to_any *toany);
 static enum state   emit_instr_call_loc(struct context *ctx, struct mir_instr_call_loc *loc);
-
 static LLVMValueRef emit_global_var_proto(struct context *ctx, struct mir_var *var);
-static LLVMValueRef
-            emit_fn_proto(struct context *ctx, struct mir_fn *fn, bool schedule_full_generation);
-static void emit_allocas(struct context *ctx, struct mir_fn *fn);
-static void emit_incomplete(struct context *ctx);
+static LLVMValueRef emit_fn_proto(struct context *ctx, struct mir_fn *fn, bool schedule_full_generation);
+static void         emit_allocas(struct context *ctx, struct mir_fn *fn);
+static void         emit_incomplete(struct context *ctx);
 
 static void
                     emit_instr_compound(struct context *ctx, LLVMValueRef llvm_dest, struct mir_instr_compound *cmp);
