@@ -46,6 +46,7 @@
 enum x64_value_kind {
 	ADDRESS,
 	OFFSET,
+	RELOCATION,
 	REGISTER,
 	IMMEDIATE,
 };
@@ -57,18 +58,14 @@ struct x64_value {
 		s32               offset;
 		enum x64_register reg;
 		u64               imm;
+		hash_t            reloc;
 	};
 };
 
 struct jmp_fixup {
-	union {
-		struct mir_instr_fn_proto *fn_proto;
-		struct mir_instr_block    *target_block;
-	};
-
-	hash_t hash;
-	// Points to the next instruction.
-	u64 position;
+	struct mir_instr *instr;
+	hash_t            hash;
+	u64               position; // Points to the next instruction.
 };
 
 struct symbol_table_entry {
@@ -86,8 +83,8 @@ struct thread_context {
 	array(char) strs;
 	array(struct x64_value) values;
 	array(struct mir_instr_block *) emit_block_queue;
-	array(struct jmp_fixup) jmp_fixups;
-	array(struct jmp_fixup) call_fixups;
+	array(struct jmp_fixup) jmp_fixups; // local to the function
+	array(struct jmp_fixup) fixups;
 
 	// Contains mapping of all available register of the target to x64_values.
 	s32 register_table[REGISTER_COUNT];
@@ -106,7 +103,6 @@ struct context {
 	array(struct thread_context) tctx;
 
 	struct {
-		pthread_mutex_t mutex;
 		array(u8) bytes;
 		array(IMAGE_RELOCATION) relocs;
 		array(char) strs;
@@ -119,10 +115,13 @@ struct context {
 	array(IMAGE_SYMBOL) syms;
 
 	hash_table(struct symbol_table_entry) symbol_table;
+
 	hash_table(struct scheduled_entry) scheduled_for_generation;
+	pthread_spinlock_t schedule_for_generation_lock;
 
-	array(struct jmp_fixup) call_fixups;
+	array(struct jmp_fixup) fixups;
 
+	pthread_mutex_t    mutex;
 	pthread_spinlock_t uq_name_lock;
 };
 
@@ -130,6 +129,8 @@ struct context {
 // http://www.c-jump.com/CIS77/CPU/x86/lecture.html#X77_0010_real_encoding
 // https://www.felixcloutier.com/x86/
 // https://courses.cs.washington.edu/courses/cse378/03wi/lectures/LinkerFiles/coff.pdf
+
+static void job(struct job_context *job_ctx);
 
 static inline u32 get_position(struct thread_context *tctx) {
 	return (u32)arrlenu(tctx->bytes);
@@ -162,6 +163,18 @@ static inline void unique_name(struct context *ctx, str_buf_t *dest, const char 
 	static u64 n = 0;
 	str_buf_append_fmt(dest, "{s}{str}{u64}", prefix, name, n++);
 	pthread_spin_unlock(&ctx->uq_name_lock);
+}
+
+static inline hash_t submit_function_generation(struct context *ctx, struct mir_fn *fn) {
+	bassert(fn);
+	const hash_t hash = strhash(fn->linkage_name);
+	pthread_spin_lock(&ctx->schedule_for_generation_lock);
+	if (hmgeti(ctx->scheduled_for_generation, hash) == -1) {
+		hmputs(ctx->scheduled_for_generation, (struct scheduled_entry){hash});
+		submit_job(&job, &(struct job_context){.x64 = {.ctx = ctx, .top_instr = fn->prototype}});
+	}
+	pthread_spin_unlock(&ctx->schedule_for_generation_lock);
+	return hash;
 }
 
 void add_code(struct thread_context *tctx, const void *buf, s32 len) {
@@ -260,18 +273,6 @@ static void allocate_stack_variables(struct thread_context *tctx, struct mir_fn 
 	allocate_stack_memory(tctx, top);
 }
 
-static inline s32 vreg_value_index(struct thread_context *tctx, enum x64_register reg) {
-	const s32 vi = tctx->register_table[reg];
-	bassert(vi >= 0 && vi < arrlen(tctx->values));
-	return vi + 1;
-}
-
-static inline struct x64_value vreg_value(struct thread_context *tctx, enum x64_register reg) {
-	const s32 vi = tctx->register_table[reg];
-	bassert(vi >= 0 && vi < arrlen(tctx->values));
-	return tctx->values[vi];
-}
-
 // Tries to find some free registers.
 static void find_free_registers(struct thread_context *tctx, enum x64_register dest[], s32 num) {
 	bassert(num > 0 && num <= REGISTER_COUNT);
@@ -285,16 +286,6 @@ static void find_free_registers(struct thread_context *tctx, enum x64_register d
 		}
 	}
 }
-
-// static void save_registers(struct thread_context *tctx, const enum x64_register regs[], s32 num) {
-// 	for (s32 i = 0; i < num; ++i) {
-// 		bassert(regs[i] >= 0);
-// 		bassert(tctx->register_table[regs[i]] == UNUSED_REGISTER_MAP_VALUE);
-// 		tctx->register_table[regs[i]] = (s32)arrlen(tctx->values);
-// 		struct x64_value value        = {.kind = REGISTER, .reg = regs[i]};
-// 		arrput(tctx->values, value);
-// 	}
-// }
 
 static s32 save_register(struct thread_context *tctx, const enum x64_register reg) {
 	bassert(tctx->register_table[reg] == UNUSED_REGISTER_MAP_VALUE);
@@ -362,6 +353,12 @@ static void emit_load_to_register(struct thread_context *tctx, struct mir_instr 
 	const s32 rbp_offset_bytes = tctx->values[load->src->backend_value - 1].offset;
 
 	mov_rm(tctx, reg, RBP, rbp_offset_bytes, type->store_size_bytes);
+}
+
+static void emit_global_variable(struct context *ctx, struct thread_context *tctx, struct mir_var *var) {
+	// const str_t  linkage_name = var->linkage_name;
+	// const hash_t hash         = strhash(linkage_name);
+	// bassert(hash);
 }
 
 static void emit_binop_ri(struct thread_context *tctx, enum binop_kind op, const u8 reg, const u64 v, const usize vsize) {
@@ -628,8 +625,8 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			const u64 position = get_position(tctx);
 
 			struct jmp_fixup fixup = {
-			    .target_block = then_block,
-			    .position     = position,
+			    .instr    = &then_block->base,
+			    .position = position,
 			};
 			arrput(tctx->jmp_fixups, fixup);
 		} else {
@@ -681,8 +678,8 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		const u64 position = get_position(tctx);
 
 		struct jmp_fixup fixup = {
-		    .target_block = br->else_block,
-		    .position     = position,
+		    .instr    = &br->else_block->base,
+		    .position = position,
 		};
 		arrput(tctx->jmp_fixups, fixup);
 
@@ -712,21 +709,18 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		// 2) We call via function pointer.
 		// 3) We call immediate inline defined anonymous function (we have to generate one eventually).
 
-		hash_t            callee_hash     = 0;
 		struct mir_instr *callee_fn_proto = NULL;
 
 		if (mir_is_comptime(callee)) {
 			struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &callee->value);
 			bmagic_assert(fn);
 			blog("Calling: %.*s", fn->linkage_name.len, fn->linkage_name.ptr);
-			callee_hash     = strhash(fn->linkage_name);
 			callee_fn_proto = fn->prototype;
 		} else {
 			// We should use loaded value from previous instruction (probably in register?)...
 			BL_UNIMPLEMENTED;
 		}
 
-		bassert(callee_hash);
 		bassert(callee_fn_proto);
 		const s32 arg_num = (s32)sarrlen(call->args);
 
@@ -810,19 +804,19 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			arg_stack_offset += 8;
 		}
 
-		// Note: we use u32 here, it should be enough in context of a single fuction, but all positions are stored in u64 because they are fixed
-		// last when the whole binary is complete.
 		call_relative_i32(tctx, 0);
 		const u64 position = get_position(tctx);
+
+		const struct x64_value callee_value = get_value(tctx, call->callee);
+		bassert(callee_value.kind == RELOCATION);
 
 		if (stack_space) add_ri(tctx, RSP, stack_space, 8);
 
 		struct jmp_fixup fixup = {
-		    .fn_proto = (struct mir_instr_fn_proto *)callee_fn_proto,
-		    .hash     = callee_hash,
+		    .hash     = callee_value.reloc,
 		    .position = position,
 		};
-		arrput(tctx->call_fixups, fixup);
+		arrput(tctx->fixups, fixup);
 
 		// Store RAX register in case the function returns and the result is used.
 		if ((callee->value.type->data.fn.ret_type->kind != MIR_TYPE_VOID) && call->base.ref_count > 1) {
@@ -921,13 +915,18 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 	case MIR_INSTR_DECL_REF: {
 		struct mir_instr_decl_ref *ref = (struct mir_instr_decl_ref *)instr;
 
+		// In some cases the symbol location might not be known (e.g.: function was not generated yet).
+		// In this case we set this instruction to RELOCATION value and each use-case must record fixup
+		// for later resolving of the offset.
+
 		struct scope_entry *entry = ref->scope_entry;
 		bassert(entry);
 		switch (entry->kind) {
 		case SCOPE_ENTRY_VAR: {
 			struct mir_var *var = entry->data.var;
 			if (isflag(var->iflags, MIR_VAR_GLOBAL)) {
-				BL_UNIMPLEMENTED;
+				emit_global_variable(ctx, tctx, var);
+				// @Incomplete: Add volatile offset.
 			} else {
 				bassert(var->backend_value);
 				ref->base.backend_value = var->backend_value;
@@ -938,6 +937,10 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		}
 		case SCOPE_ENTRY_FN: {
 			// @Incomplete: Push function for generation.
+			struct mir_fn *fn   = entry->data.fn;
+			const hash_t   hash = submit_function_generation(ctx, fn);
+			set_value(tctx, instr, (struct x64_value){.kind = RELOCATION, .reloc = hash});
+
 			break;
 		}
 		default:
@@ -966,8 +969,9 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 static void fixup_jump_offsets(struct thread_context *tctx) {
 	for (usize i = 0; i < arrlenu(tctx->jmp_fixups); ++i) {
 		struct jmp_fixup *fixup = &tctx->jmp_fixups[i];
-		bassert(fixup->target_block);
-		const u64 backend_value = fixup->target_block->base.backend_value;
+		bassert(fixup->instr);
+		bassert(fixup->instr->kind == MIR_INSTR_BLOCK);
+		const u64 backend_value = fixup->instr->backend_value;
 		if (!backend_value) {
 			babort("Cannot resolve relative jump target block!");
 		}
@@ -980,7 +984,7 @@ static void fixup_jump_offsets(struct thread_context *tctx) {
 	}
 }
 
-static void job(struct job_context *job_ctx) {
+void job(struct job_context *job_ctx) {
 	zone();
 	struct context        *ctx          = job_ctx->x64.ctx;
 	const u32              thread_index = job_ctx->thread_index;
@@ -993,7 +997,7 @@ static void job(struct job_context *job_ctx) {
 	arrsetlen(tctx->values, 0);
 	arrsetlen(tctx->emit_block_queue, 0);
 	arrsetlen(tctx->jmp_fixups, 0);
-	arrsetlen(tctx->call_fixups, 0);
+	arrsetlen(tctx->fixups, 0);
 	tctx->stack.alloc_value_offset = 0;
 	bl_zeromem(&tctx->stack, sizeof(tctx->stack));
 
@@ -1017,7 +1021,7 @@ static void job(struct job_context *job_ctx) {
 	const usize strs_len    = arrlenu(tctx->strs);
 
 	{
-		pthread_mutex_lock(&ctx->code.mutex);
+		pthread_mutex_lock(&ctx->mutex);
 
 		// Write top-level function generated code into the code section if there is any generated code
 		// present.
@@ -1031,29 +1035,18 @@ static void job(struct job_context *job_ctx) {
 		arrsetlen(ctx->code.bytes, gsection_len + section_len);
 		memcpy(&ctx->code.bytes[gsection_len], tctx->bytes, section_len);
 
-		// Call positions
-		for (usize i = 0; i < arrlenu(tctx->call_fixups); ++i) {
-			struct jmp_fixup *fixup = &tctx->call_fixups[i];
+		// Fixup positions.
+		for (usize i = 0; i < arrlenu(tctx->fixups); ++i) {
+			struct jmp_fixup *fixup = &tctx->fixups[i];
 			bassert(fixup->hash);
-			bassert(fixup->fn_proto);
-
-			// Fix positions.
 			fixup->position += gsection_len;
-
-			// Generate function if it's not already generated.
-			if (hmgeti(ctx->scheduled_for_generation, fixup->hash) == -1) {
-				hmputs(ctx->scheduled_for_generation, (struct scheduled_entry){fixup->hash});
-
-				struct job_context job_ctx = {.x64 = {.ctx = ctx, .top_instr = &fixup->fn_proto->base}};
-				submit_job(&job, &job_ctx);
-			}
 		}
 
 		// Duplicate to global context.
-		const usize gcall_fixups_len = arrlenu(ctx->call_fixups);
-		const usize call_fixups_len  = arrlenu(tctx->call_fixups);
-		arrsetlen(ctx->call_fixups, gcall_fixups_len + call_fixups_len);
-		memcpy(&ctx->call_fixups[gcall_fixups_len], tctx->call_fixups, call_fixups_len * sizeof(struct jmp_fixup));
+		const usize gfixups_len = arrlenu(ctx->fixups);
+		const usize fixups_len  = arrlenu(tctx->fixups);
+		arrsetlen(ctx->fixups, gfixups_len + fixups_len);
+		memcpy(&ctx->fixups[gfixups_len], tctx->fixups, fixups_len * sizeof(struct jmp_fixup));
 
 		// Adjust symbol positions.
 		for (usize i = 0; i < arrlenu(tctx->syms); ++i) {
@@ -1091,7 +1084,7 @@ static void job(struct job_context *job_ctx) {
 		arrsetlen(ctx->code.strs, gstrs_len + strs_len);
 		memcpy(&ctx->code.strs[gstrs_len], tctx->strs, strs_len);
 
-		pthread_mutex_unlock(&ctx->code.mutex);
+		pthread_mutex_unlock(&ctx->mutex);
 	}
 	return_zone();
 }
@@ -1200,7 +1193,9 @@ void x86_64run(struct assembly *assembly) {
 	    .assembly = assembly,
 	};
 
-	pthread_mutex_init(&ctx.code.mutex, NULL);
+	pthread_mutex_init(&ctx.mutex, NULL);
+	pthread_spin_init(&ctx.uq_name_lock, 0);
+	pthread_spin_init(&ctx.schedule_for_generation_lock, 0);
 
 	arrsetlen(ctx.tctx, thread_count);
 	bl_zeromem(ctx.tctx, thread_count * sizeof(struct thread_context));
@@ -1212,13 +1207,12 @@ void x86_64run(struct assembly *assembly) {
 	}
 	wait_threads();
 
-	// Fixup all call offsets.
-	for (usize i = 0; i < arrlenu(ctx.call_fixups); ++i) {
-		struct jmp_fixup *fixup = &ctx.call_fixups[i];
+	for (usize i = 0; i < arrlenu(ctx.fixups); ++i) {
+		struct jmp_fixup *fixup = &ctx.fixups[i];
 		bassert(fixup->hash);
-		bassert(fixup->fn_proto);
 
 		// Find the function position in the binary.
+		// @Note: No lock needed here, all threads must be finished.
 		const usize i = hmgeti(ctx.symbol_table, fixup->hash);
 		if (i == -1) {
 			babort("Internally linked symbol reference is not found in the binary!");
@@ -1256,7 +1250,7 @@ void x86_64run(struct assembly *assembly) {
 		arrfree(tctx->values);
 		arrfree(tctx->emit_block_queue);
 		arrfree(tctx->jmp_fixups);
-		arrfree(tctx->call_fixups);
+		arrfree(tctx->fixups);
 	}
 
 	arrfree(ctx.tctx);
@@ -1267,8 +1261,10 @@ void x86_64run(struct assembly *assembly) {
 	arrfree(ctx.data.bytes);
 
 	arrfree(ctx.syms);
-	arrfree(ctx.call_fixups);
+	arrfree(ctx.fixups);
 	hmfree(ctx.symbol_table);
 	hmfree(ctx.scheduled_for_generation);
-	pthread_mutex_destroy(&ctx.code.mutex);
+	pthread_spin_destroy(&ctx.schedule_for_generation_lock);
+	pthread_spin_destroy(&ctx.uq_name_lock);
+	pthread_mutex_destroy(&ctx.mutex);
 }
