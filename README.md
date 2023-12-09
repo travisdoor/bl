@@ -96,3 +96,7 @@ Screenshot of an unnamed 3D experimental game created using BL.
 # Contribution
 
 Please follow the instructions on [wiki](https://github.com/travisdoor/bl/wiki/Contribution).
+
+# Links
+
+- [Tree Sitter](https://github.com/GmosNM/tree-sitter-bl) parser done by Gmos.
