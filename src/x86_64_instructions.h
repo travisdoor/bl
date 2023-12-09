@@ -64,7 +64,7 @@ enum x64_register {
 #define encode_sib(scale, index, base) (((scale) << 6) | ((index & 0b111) << 3) | (base & 0b111))
 #define is_byte_disp(off) ((off) >= -128 && (off) < 128)
 
-static inline s32 add_code(struct thread_context *tctx, const void *buf, s32 len);
+static inline void add_code(struct thread_context *tctx, const void *buf, s32 len);
 
 // Encode the instruction extension byte for 64bit mode.
 static inline u8 encode_rex(bool is64, u8 reg, u8 rm) {
@@ -102,10 +102,10 @@ static inline void pop64_r(struct thread_context *tctx, u8 r) {
 }
 
 // 64bit only
-static inline u32 movabs64_ri(struct thread_context *tctx, u8 r, u64 imm) {
+static inline void movabs64_ri(struct thread_context *tctx, u8 r, u64 imm) {
 	const u8 buf[] = {encode_rex(true, 0x0, r), 0xB8 | (r & 0b111)};
 	add_code(tctx, buf, 2);
-	return add_code(tctx, &imm, sizeof(imm));
+	add_code(tctx, &imm, sizeof(imm));
 }
 
 // Register to stack.
@@ -145,18 +145,18 @@ static inline void mov_mi(struct thread_context *tctx, u8 r, s32 offset, u64 imm
 }
 
 // Immediate value to register.
-static inline u32 mov_ri(struct thread_context *tctx, u8 r, u64 imm, usize size) {
+static inline void mov_ri(struct thread_context *tctx, u8 r, u64 imm, usize size) {
 	// @Performance: xor for zero values???
 	// @Performance: xor for zero values???
 	// @Performance: xor for zero values???
 
 	if (size == 8 && imm > 0xFFFFFFFF) {
-		return movabs64_ri(tctx, r, imm);
+		movabs64_ri(tctx, r, imm);
 	}
 	const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, 0x0, r);
 	const u8 rex = encode_rex(size == 8, 0x0, r);
 	encode_base(tctx, rex, 0xC6, mrr, size);
-	return add_code(tctx, &imm, (s32)MIN(size, sizeof(u32)));
+	add_code(tctx, &imm, (s32)MIN(size, sizeof(u32)));
 }
 
 // Stack to register
@@ -198,16 +198,15 @@ static inline void sub_rr(struct thread_context *tctx, u8 r1, u8 r2, usize size)
 	encode_base(tctx, rex, 0x28, mrr, size);
 }
 
-static inline u32 sub_ri(struct thread_context *tctx, u8 r, u64 imm, usize size) {
+static inline void sub_ri(struct thread_context *tctx, u8 r, u64 imm, usize size) {
 	if (size == 8 && imm > 0xFFFFFFFF) {
-		const u32 value_offset = mov_ri(tctx, RAX, imm, size);
+		mov_ri(tctx, RAX, imm, size);
 		sub_rr(tctx, r, RAX, size);
-		return value_offset;
 	}
 	const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, 0x5, r);
 	const u8 rex = encode_rex(size == 8, 0x0, r);
 	encode_base(tctx, rex, 0x80, mrr, size);
-	return add_code(tctx, &imm, (s32)MIN(size, sizeof(u32)));
+	add_code(tctx, &imm, (s32)MIN(size, sizeof(u32)));
 }
 
 static inline void imul_rr(struct thread_context *tctx, u8 r1, u8 r2, usize size) {
@@ -276,52 +275,52 @@ static inline void ret(struct thread_context *tctx) {
 	add_code(tctx, buf, 1);
 }
 
-static inline u32 jmp_relative_i32(struct thread_context *tctx, s32 offset) {
+static inline void jmp_relative_i32(struct thread_context *tctx, s32 offset) {
 	const u8 buf[] = {0xE9};
 	add_code(tctx, buf, 1);
-	return add_code(tctx, &offset, sizeof(offset));
+	add_code(tctx, &offset, sizeof(offset));
 }
 
 // Returns position of 32bit offset value in the current code section. This might be used
 // for postponed fixup in case target block is not generated yet.
-static inline u32 jne_relative_i32(struct thread_context *tctx, s32 offset) {
+static inline void jne_relative_i32(struct thread_context *tctx, s32 offset) {
 	const u8 buf[] = {0x0F, 0x85};
 	add_code(tctx, buf, 2);
-	return add_code(tctx, &offset, sizeof(offset));
+	add_code(tctx, &offset, sizeof(offset));
 }
 
-static inline u32 je_relative_i32(struct thread_context *tctx, s32 offset) {
+static inline void je_relative_i32(struct thread_context *tctx, s32 offset) {
 	const u8 buf[] = {0x0F, 0x84};
 	add_code(tctx, buf, 2);
-	return add_code(tctx, &offset, sizeof(offset));
+	add_code(tctx, &offset, sizeof(offset));
 }
 
-static inline u32 jg_relative_i32(struct thread_context *tctx, s32 offset) {
+static inline void jg_relative_i32(struct thread_context *tctx, s32 offset) {
 	const u8 buf[] = {0x0F, 0x8F};
 	add_code(tctx, buf, 2);
-	return add_code(tctx, &offset, sizeof(offset));
+	add_code(tctx, &offset, sizeof(offset));
 }
 
-static inline u32 jl_relative_i32(struct thread_context *tctx, s32 offset) {
+static inline void jl_relative_i32(struct thread_context *tctx, s32 offset) {
 	const u8 buf[] = {0x0F, 0x8C};
 	add_code(tctx, buf, 2);
-	return add_code(tctx, &offset, sizeof(offset));
+	add_code(tctx, &offset, sizeof(offset));
 }
 
-static inline u32 jge_relative_i32(struct thread_context *tctx, s32 offset) {
+static inline void jge_relative_i32(struct thread_context *tctx, s32 offset) {
 	const u8 buf[] = {0x0F, 0x8D};
 	add_code(tctx, buf, 2);
-	return add_code(tctx, &offset, sizeof(offset));
+	add_code(tctx, &offset, sizeof(offset));
 }
 
-static inline u32 jle_relative_i32(struct thread_context *tctx, s32 offset) {
+static inline void jle_relative_i32(struct thread_context *tctx, s32 offset) {
 	const u8 buf[] = {0x0F, 0x8E};
 	add_code(tctx, buf, 2);
-	return add_code(tctx, &offset, sizeof(offset));
+	add_code(tctx, &offset, sizeof(offset));
 }
 
-static inline u32 call_relative_i32(struct thread_context *tctx, s32 offset) {
+static inline void call_relative_i32(struct thread_context *tctx, s32 offset) {
 	const u8 buf[] = {0xE8};
 	add_code(tctx, buf, 1);
-	return add_code(tctx, &offset, sizeof(offset));
+	add_code(tctx, &offset, sizeof(offset));
 }

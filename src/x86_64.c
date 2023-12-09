@@ -67,10 +67,8 @@ struct jmp_fixup {
 	};
 
 	hash_t hash;
-	// Directly points to u32 value to be fixed.
-	u64 virtual_address;
 	// Points to the next instruction.
-	u64 jmp_position;
+	u64 position;
 };
 
 struct symbol_table_entry {
@@ -166,11 +164,10 @@ static inline void unique_name(struct context *ctx, str_buf_t *dest, const char 
 	pthread_spin_unlock(&ctx->uq_name_lock);
 }
 
-s32 add_code(struct thread_context *tctx, const void *buf, s32 len) {
+void add_code(struct thread_context *tctx, const void *buf, s32 len) {
 	const u32 i = get_position(tctx);
 	arrsetlen(tctx->bytes, i + len);
 	memcpy(&tctx->bytes[i], buf, len);
-	return i;
 }
 
 // Add new symbol into thread local storage and set it's offset value relative to already generated
@@ -232,30 +229,6 @@ static inline s32 allocate_stack_memory(struct thread_context *tctx, usize size)
 	(*(u32 *)(tctx->bytes + tctx->stack.alloc_value_offset)) += (u32)size;
 	return (s32)allocated;
 }
-
-/* @Cleanup
-static s32 allocated_stack_arg(struct thread_context *tctx, const s32 reg_index) {
-    bassert(reg_index > 0);
-
-    usize required_stack_size = MAX(reg_index, 4) * sizeof(u64);
-    if (required_stack_size > tctx->stack.arg_cache_allocated_size) {
-        const usize stack_allocated = get_stack_allocation_size(tctx);
-        usize       to_allocate     = required_stack_size - tctx->stack.arg_cache_allocated_size;
-        if (!is_aligned2(to_allocate + stack_allocated, 16)) {
-            to_allocate = (next_aligned2(to_allocate + stack_allocated, 16) - stack_allocated);
-        }
-        blog("Allocate %lluB.", to_allocate);
-        allocate_stack_memory(tctx, to_allocate);
-
-        tctx->stack.arg_cache_allocated_size += (u32)to_allocate;
-    }
-
-    s32 stack_offset = -(s32)get_stack_allocation_size(tctx);
-    stack_offset += sizeof(u64) * (reg_index - 1);
-    bassert(stack_offset <= 0);
-    return stack_offset;
-}
-*/
 
 static void allocate_stack_variables(struct thread_context *tctx, struct mir_fn *fn) {
 	usize top = 0;
@@ -468,7 +441,8 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		// Prologue
 		push64_r(tctx, RBP);
 		mov_rr(tctx, RBP, RSP, 8);
-		tctx->stack.alloc_value_offset = sub_ri(tctx, RSP, 0, 8);
+		sub_ri(tctx, RSP, 0, 8);
+		tctx->stack.alloc_value_offset = get_position(tctx) - sizeof(s32);
 
 		// Generate all blocks in the function body.
 		arrput(tctx->emit_block_queue, fn->first_block);
@@ -650,12 +624,12 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		bassert(then_block);
 
 		if (then_block->base.backend_value) {
-			const u32 virtual_address = jmp_relative_i32(tctx, 0x0);
+			jmp_relative_i32(tctx, 0x0);
+			const u64 position = get_position(tctx);
 
 			struct jmp_fixup fixup = {
-			    .target_block    = then_block,
-			    .virtual_address = virtual_address,
-			    .jmp_position    = get_position(tctx),
+			    .target_block = then_block,
+			    .position     = position,
 			};
 			arrput(tctx->jmp_fixups, fixup);
 		} else {
@@ -677,39 +651,38 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			release_registers(tctx, &cond_value.reg, 1);
 		}
 
-		u32 virtual_address = 0;
-
 		// In case the condition is binary operation we swap the logic with attemt to generate the 'then'
 		// branch immediately after conditional jump to safe one jmp instruction.
 		bassert(br->cond->kind == MIR_INSTR_BINOP);
 		struct mir_instr_binop *cond_binop = (struct mir_instr_binop *)br->cond;
 		switch (cond_binop->op) {
 		case BINOP_EQ:
-			virtual_address = jne_relative_i32(tctx, 0x0);
+			jne_relative_i32(tctx, 0x0);
 			break;
 		case BINOP_NEQ:
-			virtual_address = je_relative_i32(tctx, 0x0);
+			je_relative_i32(tctx, 0x0);
 			break;
 		case BINOP_LESS:
-			virtual_address = jge_relative_i32(tctx, 0x0);
+			jge_relative_i32(tctx, 0x0);
 			break;
 		case BINOP_GREATER:
-			virtual_address = jle_relative_i32(tctx, 0x0);
+			jle_relative_i32(tctx, 0x0);
 			break;
 		case BINOP_LESS_EQ:
-			virtual_address = jg_relative_i32(tctx, 0x0);
+			jg_relative_i32(tctx, 0x0);
 			break;
 		case BINOP_GREATER_EQ:
-			virtual_address = jl_relative_i32(tctx, 0x0);
+			jl_relative_i32(tctx, 0x0);
 			break;
 		default:
 			BL_UNIMPLEMENTED;
 		}
 
+		const u64 position = get_position(tctx);
+
 		struct jmp_fixup fixup = {
-		    .target_block    = br->else_block,
-		    .virtual_address = virtual_address,
-		    .jmp_position    = get_position(tctx),
+		    .target_block = br->else_block,
+		    .position     = position,
 		};
 		arrput(tctx->jmp_fixups, fixup);
 
@@ -839,16 +812,15 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 		// Note: we use u32 here, it should be enough in context of a single fuction, but all positions are stored in u64 because they are fixed
 		// last when the whole binary is complete.
-		const u32 virtual_address       = call_relative_i32(tctx, 0);
-		const u64 fixup_virtual_address = get_position(tctx);
+		call_relative_i32(tctx, 0);
+		const u64 position = get_position(tctx);
 
 		if (stack_space) add_ri(tctx, RSP, stack_space, 8);
 
 		struct jmp_fixup fixup = {
-		    .fn_proto        = (struct mir_instr_fn_proto *)callee_fn_proto,
-		    .hash            = callee_hash,
-		    .virtual_address = virtual_address,
-		    .jmp_position    = fixup_virtual_address,
+		    .fn_proto = (struct mir_instr_fn_proto *)callee_fn_proto,
+		    .hash     = callee_hash,
+		    .position = position,
 		};
 		arrput(tctx->call_fixups, fixup);
 
@@ -1002,9 +974,9 @@ static void fixup_jump_offsets(struct thread_context *tctx) {
 
 		bassert(tctx->values[backend_value - 1].kind == ADDRESS);
 		const s32 block_position = (s32)tctx->values[backend_value - 1].address;
-		const s32 jmp_position   = (s32)fixup->jmp_position;
-		const s32 diff           = block_position - jmp_position;
-		memcpy(&tctx->bytes[fixup->virtual_address], &diff, sizeof(s32));
+		const s32 position       = (s32)fixup->position;
+		s32      *fix_ptr        = ((s32 *)&tctx->bytes[position - sizeof(s32)]);
+		*fix_ptr                 = block_position - position;
 	}
 }
 
@@ -1066,8 +1038,7 @@ static void job(struct job_context *job_ctx) {
 			bassert(fixup->fn_proto);
 
 			// Fix positions.
-			fixup->virtual_address += gsection_len;
-			fixup->jmp_position += gsection_len;
+			fixup->position += gsection_len;
 
 			// Generate function if it's not already generated.
 			if (hmgeti(ctx->scheduled_for_generation, fixup->hash) == -1) {
@@ -1260,15 +1231,15 @@ void x86_64run(struct assembly *assembly) {
 			IMAGE_RELOCATION reloc = {
 			    .Type             = IMAGE_REL_AMD64_REL32,
 			    .SymbolTableIndex = symbol_table_index,
-			    .VirtualAddress   = (DWORD)fixup->virtual_address,
+			    .VirtualAddress   = (DWORD)(fixup->position - sizeof(s32)),
 			};
 			arrput(ctx.code.relocs, reloc);
 		} else {
 			// Fix the location.
 			const s32 sym_position = (s32)sym->Value;
-			const s32 jmp_position = (s32)fixup->jmp_position;
-			const s32 diff         = sym_position - jmp_position;
-			memcpy(&ctx.code.bytes[fixup->virtual_address], &diff, sizeof(s32));
+			const s32 position     = (s32)fixup->position;
+			s32      *fix_ptr      = ((s32 *)&ctx.code.bytes[position - sizeof(s32)]);
+			*fix_ptr               = sym_position - position;
 		}
 	}
 
