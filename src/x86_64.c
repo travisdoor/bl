@@ -43,6 +43,12 @@
 #define UNUSED_REGISTER_MAP_VALUE -1
 #define RESERVED_REGISTER_MAP_VALUE -2
 
+#define SECTION_EXTERN 0
+#define SECTION_TEXT 1
+#define SECTION_DATA 2
+
+#define DT_FUNCTION 0x20
+
 enum x64_value_kind {
 	ADDRESS,
 	OFFSET,
@@ -78,7 +84,8 @@ struct scheduled_entry {
 };
 
 struct thread_context {
-	array(u8) bytes;
+	array(u8) text;
+	array(u8) data;
 	array(IMAGE_SYMBOL) syms;
 	array(char) strs;
 	array(struct x64_value) values;
@@ -131,9 +138,19 @@ struct context {
 // https://courses.cs.washington.edu/courses/cse378/03wi/lectures/LinkerFiles/coff.pdf
 
 static void job(struct job_context *job_ctx);
+static u32  add_sym(struct thread_context *tctx, s32 section_number, str_t linkage_name, u8 storage_class, s32 data_type);
 
-static inline u32 get_position(struct thread_context *tctx) {
-	return (u32)arrlenu(tctx->bytes);
+static inline u32 get_position(struct thread_context *tctx, s32 section_number) {
+	switch (section_number) {
+	case SECTION_EXTERN:
+		return 0;
+	case SECTION_TEXT:
+		return (u32)arrlenu(tctx->text);
+	case SECTION_DATA:
+		return (u32)arrlenu(tctx->data);
+	default:
+		babort("Invalid section number!");
+	}
 }
 
 static inline void set_value(struct thread_context *tctx, struct mir_instr *instr, struct x64_value value) {
@@ -142,11 +159,9 @@ static inline void set_value(struct thread_context *tctx, struct mir_instr *inst
 	instr->backend_value = arrlenu(tctx->values);
 }
 
-#define get_value(tctx, V) _Generic((V),                \
-	                                struct mir_instr *  \
-	                                : _get_value_instr, \
-	                                  struct mir_var *  \
-	                                : _get_value_var)((tctx), (V))
+#define get_value(tctx, V) _Generic((V),  \
+	struct mir_instr *: _get_value_instr, \
+	struct mir_var *: _get_value_var)((tctx), (V))
 
 static inline struct x64_value _get_value_instr(struct thread_context *tctx, struct mir_instr *instr) {
 	bassert(instr->backend_value != 0);
@@ -165,6 +180,22 @@ static inline void unique_name(struct context *ctx, str_buf_t *dest, const char 
 	pthread_spin_unlock(&ctx->uq_name_lock);
 }
 
+void add_code(struct thread_context *tctx, const void *buf, s32 len) {
+	const u32 i = get_position(tctx, SECTION_TEXT);
+	arrsetlen(tctx->text, i + len);
+	memcpy(&tctx->text[i], buf, len);
+}
+
+static inline void add_data(struct thread_context *tctx, const void *buf, s32 len) {
+	const u32 i = get_position(tctx, SECTION_DATA);
+	arrsetlen(tctx->data, i + len);
+	if (buf) {
+		memcpy(&tctx->data[i], buf, len);
+	} else {
+		bl_zeromem(&tctx->data[i], len);
+	}
+}
+
 static inline hash_t submit_function_generation(struct context *ctx, struct mir_fn *fn) {
 	bassert(fn);
 	const hash_t hash = strhash(fn->linkage_name);
@@ -177,10 +208,26 @@ static inline hash_t submit_function_generation(struct context *ctx, struct mir_
 	return hash;
 }
 
-void add_code(struct thread_context *tctx, const void *buf, s32 len) {
-	const u32 i = get_position(tctx);
-	arrsetlen(tctx->bytes, i + len);
-	memcpy(&tctx->bytes[i], buf, len);
+static inline hash_t submit_global_variable_generation(struct context *ctx, struct thread_context *tctx, struct mir_var *var) {
+	bassert(var);
+	bassert(isflag(var->iflags, MIR_VAR_GLOBAL));
+
+	const hash_t      hash       = strhash(var->linkage_name);
+	struct mir_instr *instr_init = var->initializer_block;
+	bassert(instr_init && "Missing initializer block reference for IR global variable!");
+
+	pthread_spin_lock(&ctx->schedule_for_generation_lock);
+	if (hmgeti(ctx->scheduled_for_generation, hash) == -1) {
+		hmputs(ctx->scheduled_for_generation, (struct scheduled_entry){hash});
+		blog("Generate variable %.*s.", var->linkage_name.len, var->linkage_name.ptr);
+
+		add_sym(tctx, SECTION_DATA, var->linkage_name, IMAGE_SYM_CLASS_STATIC, 0);
+		add_data(tctx, NULL, (s32)var->value.type->store_size_bytes);
+
+		submit_job(&job, &(struct job_context){.x64 = {.ctx = ctx, .top_instr = instr_init}});
+	}
+	pthread_spin_unlock(&ctx->schedule_for_generation_lock);
+	return hash;
 }
 
 // Add new symbol into thread local storage and set it's offset value relative to already generated
@@ -191,14 +238,14 @@ void add_code(struct thread_context *tctx, const void *buf, s32 len) {
 // the symbol is linked from other binary. Also there is no offset (value) pointing to our binary (value is 0).
 //
 // Returns offet of the symbol in the binary.
-static inline u32 add_sym(struct thread_context *tctx, str_t linkage_name, u8 storage_class, bool is_external) {
+u32 add_sym(struct thread_context *tctx, s32 section_number, str_t linkage_name, u8 storage_class, s32 data_type) {
 	bassert(linkage_name.len && linkage_name.ptr);
-	const u32    offset = get_position(tctx);
+	const u32    offset = get_position(tctx, section_number);
 	IMAGE_SYMBOL sym    = {
-	       .SectionNumber = is_external ? 0 : 1,
-	       .Type          = 0x20,
+	       .SectionNumber = section_number,
+	       .Type          = data_type,
 	       .StorageClass  = storage_class,
-	       .Value         = is_external ? 0 : offset,
+	       .Value         = offset,
     };
 
 	if (linkage_name.len > 8) {
@@ -219,7 +266,7 @@ static inline u32 add_sym(struct thread_context *tctx, str_t linkage_name, u8 st
 }
 
 static inline u64 add_block(struct thread_context *tctx, const str_t name) {
-	const u32        address = add_sym(tctx, name, IMAGE_SYM_CLASS_LABEL, false);
+	const u32        address = add_sym(tctx, SECTION_TEXT, name, IMAGE_SYM_CLASS_LABEL, 0);
 	struct x64_value value   = {.kind = ADDRESS, .address = address};
 	arrput(tctx->values, value);
 	return arrlenu(tctx->values);
@@ -231,7 +278,7 @@ static inline u64 add_block(struct thread_context *tctx, const str_t name) {
 
 static inline usize get_stack_allocation_size(struct thread_context *tctx) {
 	bassert(tctx->stack.alloc_value_offset > 0);
-	return *(u32 *)(tctx->bytes + tctx->stack.alloc_value_offset);
+	return *(u32 *)(tctx->text + tctx->stack.alloc_value_offset);
 }
 
 static inline s32 allocate_stack_memory(struct thread_context *tctx, usize size) {
@@ -239,7 +286,7 @@ static inline s32 allocate_stack_memory(struct thread_context *tctx, usize size)
 	if (allocated + size > 0xFFFFFFFF) {
 		babort("Stack allocation is too big!");
 	}
-	(*(u32 *)(tctx->bytes + tctx->stack.alloc_value_offset)) += (u32)size;
+	(*(u32 *)(tctx->text + tctx->stack.alloc_value_offset)) += (u32)size;
 	return (s32)allocated;
 }
 
@@ -355,12 +402,6 @@ static void emit_load_to_register(struct thread_context *tctx, struct mir_instr 
 	mov_rm(tctx, reg, RBP, rbp_offset_bytes, type->store_size_bytes);
 }
 
-static void emit_global_variable(struct context *ctx, struct thread_context *tctx, struct mir_var *var) {
-	// const str_t  linkage_name = var->linkage_name;
-	// const hash_t hash         = strhash(linkage_name);
-	// bassert(hash);
-}
-
 static void emit_binop_ri(struct thread_context *tctx, enum binop_kind op, const u8 reg, const u64 v, const usize vsize) {
 	switch (op) {
 	case BINOP_ADD:
@@ -428,7 +469,8 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		}
 		bassert(linkage_name.len && "Invalid function name!");
 
-		add_sym(tctx, linkage_name, IMAGE_SYM_CLASS_EXTERNAL, isflag(fn->flags, FLAG_EXTERN));
+		const s32 section_number = isflag(fn->flags, FLAG_EXTERN) ? SECTION_EXTERN : SECTION_TEXT;
+		add_sym(tctx, section_number, linkage_name, IMAGE_SYM_CLASS_EXTERNAL, DT_FUNCTION);
 
 		// External functions does not have any body block.
 		if (isflag(fn->flags, FLAG_EXTERN)) {
@@ -439,7 +481,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		push64_r(tctx, RBP);
 		mov_rr(tctx, RBP, RSP, 8);
 		sub_ri(tctx, RSP, 0, 8);
-		tctx->stack.alloc_value_offset = get_position(tctx) - sizeof(s32);
+		tctx->stack.alloc_value_offset = get_position(tctx, SECTION_TEXT) - sizeof(s32);
 
 		// Generate all blocks in the function body.
 		arrput(tctx->emit_block_queue, fn->first_block);
@@ -461,7 +503,8 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		if (!block->terminal) babort("Block '%s', is not terminated", block->name);
 
 		if (is_global) {
-			BL_UNIMPLEMENTED;
+			bassert(block->base.value.is_comptime);
+			break; // @Cleanup!!!!
 		} else {
 			str_buf_t name = get_tmp_str();
 #if BL_DEBUG
@@ -510,14 +553,16 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			src_value = get_value(tctx, store->src);
 		}
 
-		bassert(dest_value.kind == OFFSET);
+		bassert(dest_value.kind == OFFSET || dest_value.kind == RELOCATION);
+
+		const s32 dest_offset = dest_value.kind == OFFSET ? dest_value.offset : 0;
 
 		switch (type->kind) {
 		case MIR_TYPE_INT: {
 			if (src_value.kind == IMMEDIATE) {
-				mov_mi(tctx, RBP, dest_value.offset, src_value.imm, type->store_size_bytes);
+				mov_mi(tctx, RBP, dest_offset, src_value.imm, type->store_size_bytes);
 			} else if (src_value.kind == REGISTER) {
-				mov_mr(tctx, RBP, dest_value.offset, src_value.reg, type->store_size_bytes);
+				mov_mr(tctx, RBP, dest_offset, src_value.reg, type->store_size_bytes);
 			} else {
 				BL_UNIMPLEMENTED;
 			}
@@ -525,6 +570,14 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		}
 		default:
 			BL_UNIMPLEMENTED;
+		}
+
+		if (dest_value.kind == RELOCATION) {
+			struct jmp_fixup fixup = {
+			    .hash     = dest_value.reloc,
+			    .position = get_position(tctx, SECTION_TEXT),
+			};
+			arrput(tctx->fixups, fixup);
 		}
 
 		// Release source value...
@@ -622,7 +675,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 		if (then_block->base.backend_value) {
 			jmp_relative_i32(tctx, 0x0);
-			const u64 position = get_position(tctx);
+			const u64 position = get_position(tctx, SECTION_TEXT);
 
 			struct jmp_fixup fixup = {
 			    .instr    = &then_block->base,
@@ -675,7 +728,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			BL_UNIMPLEMENTED;
 		}
 
-		const u64 position = get_position(tctx);
+		const u64 position = get_position(tctx, SECTION_TEXT);
 
 		struct jmp_fixup fixup = {
 		    .instr    = &br->else_block->base,
@@ -805,7 +858,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		}
 
 		call_relative_i32(tctx, 0);
-		const u64 position = get_position(tctx);
+		const u64 position = get_position(tctx, SECTION_TEXT);
 
 		const struct x64_value callee_value = get_value(tctx, call->callee);
 		bassert(callee_value.kind == RELOCATION);
@@ -925,14 +978,12 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		case SCOPE_ENTRY_VAR: {
 			struct mir_var *var = entry->data.var;
 			if (isflag(var->iflags, MIR_VAR_GLOBAL)) {
-				emit_global_variable(ctx, tctx, var);
-				// @Incomplete: Add volatile offset.
+				const hash_t hash = submit_global_variable_generation(ctx, tctx, var);
+				set_value(tctx, instr, (struct x64_value){.kind = RELOCATION, .reloc = hash});
 			} else {
 				bassert(var->backend_value);
 				ref->base.backend_value = var->backend_value;
 			}
-			bassert(ref->base.llvm_value);
-
 			break;
 		}
 		case SCOPE_ENTRY_FN: {
@@ -979,7 +1030,7 @@ static void fixup_jump_offsets(struct thread_context *tctx) {
 		bassert(tctx->values[backend_value - 1].kind == ADDRESS);
 		const s32 block_position = (s32)tctx->values[backend_value - 1].address;
 		const s32 position       = (s32)fixup->position;
-		s32      *fix_ptr        = ((s32 *)&tctx->bytes[position - sizeof(s32)]);
+		s32      *fix_ptr        = ((s32 *)&tctx->text[position - sizeof(s32)]);
 		*fix_ptr                 = block_position - position;
 	}
 }
@@ -991,7 +1042,8 @@ void job(struct job_context *job_ctx) {
 	struct thread_context *tctx         = &ctx->tctx[thread_index];
 
 	// Reset buffers
-	arrsetlen(tctx->bytes, 0);
+	arrsetlen(tctx->text, 0);
+	arrsetlen(tctx->data, 0);
 	arrsetlen(tctx->syms, 0);
 	arrsetlen(tctx->strs, 0);
 	arrsetlen(tctx->values, 0);
@@ -1010,15 +1062,16 @@ void job(struct job_context *job_ctx) {
 		}
 	}
 
-	arrsetcap(tctx->bytes, BYTE_CODE_BUFFER_SIZE);
+	arrsetcap(tctx->text, BYTE_CODE_BUFFER_SIZE);
 
 	emit_instr(ctx, tctx, job_ctx->x64.top_instr);
 
 	fixup_jump_offsets(tctx);
 
-	const usize section_len = arrlenu(tctx->bytes);
-	const usize syms_len    = arrlenu(tctx->syms);
-	const usize strs_len    = arrlenu(tctx->strs);
+	const usize text_len = arrlenu(tctx->text);
+	const usize data_len = arrlenu(tctx->data);
+	const usize syms_len = arrlenu(tctx->syms);
+	const usize strs_len = arrlenu(tctx->strs);
 
 	{
 		pthread_mutex_lock(&ctx->mutex);
@@ -1026,20 +1079,25 @@ void job(struct job_context *job_ctx) {
 		// Write top-level function generated code into the code section if there is any generated code
 		// present.
 
-		const usize gsection_len = arrlenu(ctx->code.bytes);
-		const usize gsyms_len    = arrlenu(ctx->syms);
-		const usize gstrs_len    = arrlenu(ctx->code.strs);
+		const usize gtext_len = arrlenu(ctx->code.bytes);
+		const usize gdata_len = arrlenu(ctx->data.bytes);
+		const usize gsyms_len = arrlenu(ctx->syms);
+		const usize gstrs_len = arrlenu(ctx->code.strs);
 
 		// Insert code.
 		arrsetcap(ctx->code.bytes, CODE_BLOCK_BUFFER_SIZE);
-		arrsetlen(ctx->code.bytes, gsection_len + section_len);
-		memcpy(&ctx->code.bytes[gsection_len], tctx->bytes, section_len);
+		arrsetlen(ctx->code.bytes, gtext_len + text_len);
+		memcpy(&ctx->code.bytes[gtext_len], tctx->text, text_len);
+
+		// Insert data.
+		arrsetlen(ctx->data.bytes, gdata_len + data_len);
+		memcpy(&ctx->data.bytes[gdata_len], tctx->data, data_len);
 
 		// Fixup positions.
 		for (usize i = 0; i < arrlenu(tctx->fixups); ++i) {
 			struct jmp_fixup *fixup = &tctx->fixups[i];
 			bassert(fixup->hash);
-			fixup->position += gsection_len;
+			fixup->position += gtext_len;
 		}
 
 		// Duplicate to global context.
@@ -1053,8 +1111,17 @@ void job(struct job_context *job_ctx) {
 			IMAGE_SYMBOL *sym = &tctx->syms[i];
 			// 0 section number means the symbol is externally linked. There is no location in our
 			// binary.
-			if (sym->SectionNumber) {
-				sym->Value += (DWORD)gsection_len;
+			switch (sym->SectionNumber) {
+			case SECTION_EXTERN:
+				break;
+			case SECTION_TEXT:
+				sym->Value += (DWORD)gtext_len;
+				break;
+			case SECTION_DATA:
+				sym->Value += (DWORD)gdata_len;
+				break;
+			default:
+				babort("Invalid section number!");
 			}
 			char *sym_name = NULL;
 			if (sym->N.Name.Short == 0) {
@@ -1063,7 +1130,7 @@ void job(struct job_context *job_ctx) {
 			} else {
 				sym_name = (char *)&sym->N.ShortName[0];
 			}
-			if (sym->StorageClass != IMAGE_SYM_CLASS_EXTERNAL) continue;
+			if (sym->StorageClass == IMAGE_SYM_CLASS_LABEL) continue;
 
 			const hash_t hash = strhash(make_str_from_c(sym_name));
 			bassert(hmgeti(ctx->symbol_table, hash) == -1);
@@ -1090,16 +1157,6 @@ void job(struct job_context *job_ctx) {
 }
 
 static void create_object_file(struct context *ctx) {
-	// @Cleanup
-	{
-		u8 *p = arraddnptr(ctx->data.bytes, 5);
-		p[0]  = 'h';
-		p[1]  = 'e';
-		p[2]  = 'l';
-		p[3]  = 'l';
-		p[4]  = 'o';
-	}
-
 	usize text_section_pointer = IMAGE_SIZEOF_FILE_HEADER + IMAGE_SIZEOF_SECTION_HEADER * 2;
 
 	// Code block is aligned to 16 bytes, do we need this???
@@ -1244,7 +1301,8 @@ void x86_64run(struct assembly *assembly) {
 	// @Incomplete: Only if not in dirty mode?
 	for (usize i = 0; i < arrlenu(ctx.tctx); ++i) {
 		struct thread_context *tctx = &ctx.tctx[i];
-		arrfree(tctx->bytes);
+		arrfree(tctx->text);
+		arrfree(tctx->data);
 		arrfree(tctx->syms);
 		arrfree(tctx->strs);
 		arrfree(tctx->values);
