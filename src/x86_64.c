@@ -72,6 +72,7 @@ struct jmp_fixup {
 	struct mir_instr *instr;
 	hash_t            hash;
 	u64               position; // Points to the next instruction.
+	s32               type;
 };
 
 struct symbol_table_entry {
@@ -159,9 +160,11 @@ static inline void set_value(struct thread_context *tctx, struct mir_instr *inst
 	instr->backend_value = arrlenu(tctx->values);
 }
 
-#define get_value(tctx, V) _Generic((V),  \
-	struct mir_instr *: _get_value_instr, \
-	struct mir_var *: _get_value_var)((tctx), (V))
+#define get_value(tctx, V) _Generic((V),                \
+	                                struct mir_instr *  \
+	                                : _get_value_instr, \
+	                                  struct mir_var *  \
+	                                : _get_value_var)((tctx), (V))
 
 static inline struct x64_value _get_value_instr(struct thread_context *tctx, struct mir_instr *instr) {
 	bassert(instr->backend_value != 0);
@@ -221,7 +224,7 @@ static inline hash_t submit_global_variable_generation(struct context *ctx, stru
 		hmputs(ctx->scheduled_for_generation, (struct scheduled_entry){hash});
 		blog("Generate variable %.*s.", var->linkage_name.len, var->linkage_name.ptr);
 
-		add_sym(tctx, SECTION_DATA, var->linkage_name, IMAGE_SYM_CLASS_STATIC, 0);
+		add_sym(tctx, SECTION_DATA, var->linkage_name, IMAGE_SYM_CLASS_EXTERNAL, 0);
 		add_data(tctx, NULL, (s32)var->value.type->store_size_bytes);
 
 		submit_job(&job, &(struct job_context){.x64 = {.ctx = ctx, .top_instr = instr_init}});
@@ -395,11 +398,27 @@ static void emit_load_to_register(struct thread_context *tctx, struct mir_instr 
 	struct mir_instr_load *load = (struct mir_instr_load *)instr;
 	struct mir_type       *type = load->base.value.type;
 
-	bassert(type->kind == MIR_TYPE_INT || type->kind == MIR_TYPE_PTR);
-	bassert(tctx->values[load->src->backend_value - 1].kind == OFFSET);
-	const s32 rbp_offset_bytes = tctx->values[load->src->backend_value - 1].offset;
+	struct x64_value src_value = get_value(tctx, load->src);
 
-	mov_rm(tctx, reg, RBP, rbp_offset_bytes, type->store_size_bytes);
+	bassert(type->kind == MIR_TYPE_INT || type->kind == MIR_TYPE_PTR);
+	bassert(src_value.kind == OFFSET || src_value.kind == RELOCATION);
+	switch (src_value.kind) {
+	case OFFSET:
+		mov_rm(tctx, reg, RBP, src_value.offset, type->store_size_bytes);
+		break;
+	case RELOCATION: {
+		mov_rm_indirect(tctx, reg, RBP, 0, type->store_size_bytes);
+		struct jmp_fixup fixup = {
+		    .hash     = src_value.reloc,
+		    .position = get_position(tctx, SECTION_TEXT),
+		    .type     = IMAGE_REL_AMD64_REL32,
+		};
+		arrput(tctx->fixups, fixup);
+		break;
+	}
+	default:
+		bassert("Invalid value kind!");
+	}
 }
 
 static void emit_binop_ri(struct thread_context *tctx, enum binop_kind op, const u8 reg, const u64 v, const usize vsize) {
@@ -560,9 +579,17 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		switch (type->kind) {
 		case MIR_TYPE_INT: {
 			if (src_value.kind == IMMEDIATE) {
-				mov_mi(tctx, RBP, dest_offset, src_value.imm, type->store_size_bytes);
+				if (dest_value.kind == OFFSET) {
+					mov_mi(tctx, RBP, dest_offset, src_value.imm, type->store_size_bytes);
+				} else {
+					mov_mi_indirect(tctx, RBP, 0, src_value.imm, type->store_size_bytes);
+				}
 			} else if (src_value.kind == REGISTER) {
-				mov_mr(tctx, RBP, dest_offset, src_value.reg, type->store_size_bytes);
+				if (dest_value.kind == OFFSET) {
+					mov_mr(tctx, RBP, dest_offset, src_value.reg, type->store_size_bytes);
+				} else {
+					BL_UNIMPLEMENTED;
+				}
 			} else {
 				BL_UNIMPLEMENTED;
 			}
@@ -575,7 +602,8 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		if (dest_value.kind == RELOCATION) {
 			struct jmp_fixup fixup = {
 			    .hash     = dest_value.reloc,
-			    .position = get_position(tctx, SECTION_TEXT),
+			    .position = get_position(tctx, SECTION_TEXT) - sizeof(u32), // @Hack @Cleanup works for indirect mov immediate!
+			    .type     = IMAGE_REL_AMD64_REL32_4,
 			};
 			arrput(tctx->fixups, fixup);
 		}
@@ -868,6 +896,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		struct jmp_fixup fixup = {
 		    .hash     = callee_value.reloc,
 		    .position = position,
+		    .type     = IMAGE_REL_AMD64_REL32,
 		};
 		arrput(tctx->fixups, fixup);
 
@@ -1269,7 +1298,6 @@ void x86_64run(struct assembly *assembly) {
 		bassert(fixup->hash);
 
 		// Find the function position in the binary.
-		// @Note: No lock needed here, all threads must be finished.
 		const usize i = hmgeti(ctx.symbol_table, fixup->hash);
 		if (i == -1) {
 			babort("Internally linked symbol reference is not found in the binary!");
@@ -1277,10 +1305,12 @@ void x86_64run(struct assembly *assembly) {
 
 		const s32     symbol_table_index = ctx.symbol_table[i].symbol_table_index;
 		IMAGE_SYMBOL *sym                = &ctx.syms[symbol_table_index];
-		if (sym->SectionNumber == 0) {
-			// Push into COFF relocation table. The symbol is not in our binary.
+		if (sym->SectionNumber != SECTION_TEXT) {
+			// @Performance: In case the symbol is from other section we probably have to rely on linker
+			// doing relocations, in case of external symbol it's correct way to do it.
+
 			IMAGE_RELOCATION reloc = {
-			    .Type             = IMAGE_REL_AMD64_REL32,
+			    .Type             = fixup->type,
 			    .SymbolTableIndex = symbol_table_index,
 			    .VirtualAddress   = (DWORD)(fixup->position - sizeof(s32)),
 			};
@@ -1298,30 +1328,32 @@ void x86_64run(struct assembly *assembly) {
 	create_object_file(&ctx);
 
 	// Cleanup
-	// @Incomplete: Only if not in dirty mode?
-	for (usize i = 0; i < arrlenu(ctx.tctx); ++i) {
-		struct thread_context *tctx = &ctx.tctx[i];
-		arrfree(tctx->text);
-		arrfree(tctx->data);
-		arrfree(tctx->syms);
-		arrfree(tctx->strs);
-		arrfree(tctx->values);
-		arrfree(tctx->emit_block_queue);
-		arrfree(tctx->jmp_fixups);
-		arrfree(tctx->fixups);
+	if (builder.options->do_cleanup_when_done) {
+		for (usize i = 0; i < arrlenu(ctx.tctx); ++i) {
+			struct thread_context *tctx = &ctx.tctx[i];
+			arrfree(tctx->text);
+			arrfree(tctx->data);
+			arrfree(tctx->syms);
+			arrfree(tctx->strs);
+			arrfree(tctx->values);
+			arrfree(tctx->emit_block_queue);
+			arrfree(tctx->jmp_fixups);
+			arrfree(tctx->fixups);
+		}
+
+		arrfree(ctx.tctx);
+		arrfree(ctx.code.bytes);
+		arrfree(ctx.code.strs);
+		arrfree(ctx.code.relocs);
+
+		arrfree(ctx.data.bytes);
+
+		arrfree(ctx.syms);
+		arrfree(ctx.fixups);
+		hmfree(ctx.symbol_table);
+		hmfree(ctx.scheduled_for_generation);
 	}
 
-	arrfree(ctx.tctx);
-	arrfree(ctx.code.bytes);
-	arrfree(ctx.code.strs);
-	arrfree(ctx.code.relocs);
-
-	arrfree(ctx.data.bytes);
-
-	arrfree(ctx.syms);
-	arrfree(ctx.fixups);
-	hmfree(ctx.symbol_table);
-	hmfree(ctx.scheduled_for_generation);
 	pthread_spin_destroy(&ctx.schedule_for_generation_lock);
 	pthread_spin_destroy(&ctx.uq_name_lock);
 	pthread_mutex_destroy(&ctx.mutex);

@@ -36,6 +36,7 @@ __os_start :: fn () #entry {
 	// }
 
 	my_number = 10;
+	print_number(my_number);
 
 	// a := 10;
 	// b := 20;

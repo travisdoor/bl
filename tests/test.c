@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <assert.h>
 
+int my_number = 10;
+
 void my_function(int a, int b, int c, int d, int e, int f) {
 	printf("a = %d\nb = %d\nc = %d\nd = %d\ne = %d\nf = %d\n", a, b, c, d, e, f);
 	assert(a == 10);
@@ -9,6 +11,7 @@ void my_function(int a, int b, int c, int d, int e, int f) {
 	assert(d == 40);
 	assert(e == 50);
 	assert(f == 60);
+	my_number = 20;
 }
 
 int add_numbers(int a, int b) {

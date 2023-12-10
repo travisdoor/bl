@@ -33,9 +33,10 @@ struct thread_context;
 #define REX 0b01000000
 #define REX_W 0b01001000
 
-#define MOD_REG_ADDR 0b11
-#define MOD_BYTE_DISP 0b01
-#define MOD_FOUR_BYTE_DISP 0b10
+#define MOD_INDIRECT 0
+#define MOD_BYTE_DISP 1
+#define MOD_FOUR_BYTE_DISP 2
+#define MOD_REG_ADDR 3
 
 enum x64_register {
 	INVALID_REGISTER = -1,
@@ -108,7 +109,6 @@ static inline void movabs64_ri(struct thread_context *tctx, u8 r, u64 imm) {
 	add_code(tctx, &imm, sizeof(imm));
 }
 
-// Register to stack.
 static inline void mov_mr(struct thread_context *tctx, u8 r1, s32 offset, u8 r2, usize size) {
 	const u8 disp = is_byte_disp(offset) ? MOD_BYTE_DISP : MOD_FOUR_BYTE_DISP;
 	const u8 mrr  = encode_mod_reg_rm(disp, r2, r1);
@@ -144,6 +144,21 @@ static inline void mov_mi(struct thread_context *tctx, u8 r, s32 offset, u64 imm
 	add_code(tctx, &imm, (s32)MIN(size, sizeof(u32)));
 }
 
+static inline void mov_mi_indirect(struct thread_context *tctx, u8 r, s32 offset, u64 imm, usize size) {
+	if (size == 8 && imm > 0xFFFFFFFF) {
+		// Special case... because why not...
+		movabs64_ri(tctx, RAX, imm);
+		mov_mr(tctx, r, offset, RAX, size);
+		return;
+	}
+
+	const u8 mrr = encode_mod_reg_rm(MOD_INDIRECT, 0x0, r);
+	const u8 rex = encode_rex(size == 8, 0x0, r);
+	encode_base(tctx, rex, 0xC6, mrr, size);
+	add_code(tctx, &offset, 4);
+	add_code(tctx, &imm, (s32)MIN(size, sizeof(u32)));
+}
+
 // Immediate value to register.
 static inline void mov_ri(struct thread_context *tctx, u8 r, u64 imm, usize size) {
 	// @Performance: xor for zero values???
@@ -162,10 +177,17 @@ static inline void mov_ri(struct thread_context *tctx, u8 r, u64 imm, usize size
 // Stack to register
 static inline void mov_rm(struct thread_context *tctx, u8 r1, u8 r2, s32 offset, usize size) {
 	const u8 disp = is_byte_disp(offset) ? MOD_BYTE_DISP : MOD_FOUR_BYTE_DISP;
-	const u8 mrr  = encode_mod_reg_rm(disp, r1, r2);
 	const u8 rex  = encode_rex(size == 8, r1, r2);
+	const u8 mrr  = encode_mod_reg_rm(disp, r1, r2);
 	encode_base(tctx, rex, 0x8A, mrr, size);
 	add_code(tctx, &offset, disp == MOD_BYTE_DISP ? 1 : 4);
+}
+
+static inline void mov_rm_indirect(struct thread_context *tctx, u8 r1, u8 r2, s32 offset, usize size) {
+	const u8 rex = encode_rex(size == 8, r1, r2);
+	const u8 mrr = encode_mod_reg_rm(MOD_INDIRECT, r1, r2);
+	encode_base(tctx, rex, 0x8A, mrr, size);
+	add_code(tctx, &offset, 4);
 }
 
 static inline void mov_rr(struct thread_context *tctx, u8 r1, u8 r2, usize size) {
