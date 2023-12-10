@@ -145,7 +145,7 @@ struct getarg_opt {
 	const s32   id;
 };
 
-struct closest_opt_t {
+struct closest_opt {
 	const char *name;
 	s32         distance;
 };
@@ -153,10 +153,10 @@ struct closest_opt_t {
 static const char *find_closest_argument(struct getarg_opt *opts, str_t opt) {
 	bassert(opts);
 
-	struct getarg_opt    *current_opt;
-	struct closest_opt_t *closest_opts  = NULL;
-	s32                   closest_count = 0;
-	s32                   min_distance  = INT_MAX;
+	struct getarg_opt *current_opt;
+	array(struct closest_opt) closest_opts = NULL;
+	s32 closest_count                      = 0;
+	s32 min_distance                       = INT_MAX;
 
 	opt = trim_leading_characters(opt, '-');
 
@@ -165,21 +165,20 @@ static const char *find_closest_argument(struct getarg_opt *opts, str_t opt) {
 		s32   distance        = fuzzy_cmp(current_opt_str, opt);
 
 		if (distance < min_distance) {
-			min_distance             = distance;
-			closest_count            = 1;
-			closest_opts             = realloc(closest_opts, closest_count * sizeof(struct closest_opt_t));
-			closest_opts[0].name     = current_opt->name;
-			closest_opts[0].distance = distance;
+			min_distance  = distance;
+			closest_count = 1;
+			arrsetlen(closest_opts, closest_count);
+			closest_opts[0] = ((struct closest_opt){.name = current_opt->name, .distance = distance});
 		} else if (distance == min_distance) {
 			closest_count++;
-			closest_opts                             = realloc(closest_opts, closest_count * sizeof(struct closest_opt_t));
-			closest_opts[closest_count - 1].name     = current_opt->name;
-			closest_opts[closest_count - 1].distance = distance;
+			arrsetlen(closest_opts, closest_count);
+			closest_opts[closest_count - 1] = ((struct closest_opt){.name = current_opt->name, .distance = distance});
 		}
 	}
 
 	const char *result = NULL;
-	if (min_distance == 0 || closest_count == 0) return NULL;
+	if (min_distance == 0 || closest_count == 0)
+		return NULL;
 
 	for (s32 i = 0; i < closest_count; ++i) {
 		if (fuzzy_cmp(opt, make_str_from_c(closest_opts[i].name)) != 0) {
@@ -191,7 +190,7 @@ static const char *find_closest_argument(struct getarg_opt *opts, str_t opt) {
 		}
 	}
 
-	free(closest_opts);
+	arrfree(closest_opts);
 	return result;
 }
 
