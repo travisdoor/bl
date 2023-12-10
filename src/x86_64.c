@@ -65,7 +65,7 @@ enum x64_value_kind {
 	// Relative offset in the .text section.
 	OFFSET,
 	// Relative relocated offset; this is mainly used for references between sections (e.g. global varaibles).
-	// We have to record fixup location each time the value is used, since we don't know the offset.
+	// We have to record patch location each time the value is used, since we don't know the offset.
 	RELOCATION,
 	// Register index.
 	REGISTER,
@@ -84,10 +84,11 @@ struct x64_value {
 	};
 };
 
-struct jmp_fixup {
+struct sym_patch {
+	s32               target_section;
 	struct mir_instr *instr;
 	hash_t            hash;
-	u64               position; // Points to the next instruction.
+	u64               position; // Points to the relocation value.
 	s32               type;
 };
 
@@ -107,8 +108,8 @@ struct thread_context {
 	array(char) strs;
 	array(struct x64_value) values;
 	array(struct mir_instr_block *) emit_block_queue;
-	array(struct jmp_fixup) jmp_fixups; // local to the function
-	array(struct jmp_fixup) fixups;
+	array(struct sym_patch) local_patches; // local to the function
+	array(struct sym_patch) patches;
 
 	// Contains mapping of all available register of the target to x64_values.
 	s32 register_table[REGISTER_COUNT];
@@ -129,21 +130,22 @@ struct context {
 	struct {
 		array(u8) bytes;
 		array(IMAGE_RELOCATION) relocs;
-		array(char) strs;
 	} code;
 
 	struct {
 		array(u8) bytes;
+		array(IMAGE_RELOCATION) relocs;
 	} data;
 
 	array(IMAGE_SYMBOL) syms;
+	array(char) strs;
 
 	hash_table(struct symbol_table_entry) symbol_table;
 
 	hash_table(struct scheduled_entry) scheduled_for_generation;
 	pthread_spinlock_t schedule_for_generation_lock;
 
-	array(struct jmp_fixup) fixups;
+	array(struct sym_patch) patches;
 
 	pthread_mutex_t    mutex;
 	pthread_spinlock_t uq_name_lock;
@@ -195,6 +197,7 @@ static inline struct x64_value _get_value_var(struct thread_context *tctx, struc
 static inline void unique_name(struct context *ctx, str_buf_t *dest, const char *prefix, const str_t name) {
 	pthread_spin_lock(&ctx->uq_name_lock);
 	static u64 n = 0;
+	str_buf_clr(dest);
 	str_buf_append_fmt(dest, "{s}{str}{u64}", prefix, name, n++);
 	pthread_spin_unlock(&ctx->uq_name_lock);
 }
@@ -215,15 +218,19 @@ static inline void add_data(struct thread_context *tctx, const void *buf, s32 le
 	}
 }
 
-static inline hash_t submit_function_generation(struct context *ctx, struct mir_fn *fn) {
-	bassert(fn);
-	const hash_t hash = strhash(fn->linkage_name);
+static inline void submit_instr(struct context *ctx, hash_t hash, struct mir_instr *instr) {
 	pthread_spin_lock(&ctx->schedule_for_generation_lock);
 	if (hmgeti(ctx->scheduled_for_generation, hash) == -1) {
 		hmputs(ctx->scheduled_for_generation, (struct scheduled_entry){hash});
-		submit_job(&job, &(struct job_context){.x64 = {.ctx = ctx, .top_instr = fn->prototype}});
+		submit_job(&job, &(struct job_context){.x64 = {.ctx = ctx, .top_instr = instr}});
 	}
 	pthread_spin_unlock(&ctx->schedule_for_generation_lock);
+}
+
+static inline hash_t submit_function_generation(struct context *ctx, struct mir_fn *fn) {
+	bassert(fn);
+	const hash_t hash = strhash(fn->linkage_name);
+	submit_instr(ctx, hash, fn->prototype);
 	return hash;
 }
 
@@ -234,21 +241,7 @@ static inline hash_t submit_global_variable_generation(struct context *ctx, stru
 	const hash_t      hash       = strhash(var->linkage_name);
 	struct mir_instr *instr_init = var->initializer_block;
 	bassert(instr_init && "Missing initializer block reference for IR global variable!");
-
-	pthread_spin_lock(&ctx->schedule_for_generation_lock);
-	if (hmgeti(ctx->scheduled_for_generation, hash) == -1) {
-		hmputs(ctx->scheduled_for_generation, (struct scheduled_entry){hash});
-		// @Cleanup: submit_instr???
-
-		// Allocate new space in the .data section for this variable.
-		// @Performance: Proper alignment?
-		// @Incomplete: Thread local storage?
-		// add_sym(tctx, SECTION_DATA, var->linkage_name, IMAGE_SYM_CLASS_EXTERNAL, 0);
-		// add_data(tctx, NULL, (s32)var->value.type->store_size_bytes);
-
-		submit_job(&job, &(struct job_context){.x64 = {.ctx = ctx, .top_instr = instr_init}});
-	}
-	pthread_spin_unlock(&ctx->schedule_for_generation_lock);
+	submit_instr(ctx, hash, instr_init);
 	return hash;
 }
 
@@ -424,12 +417,13 @@ static void emit_load_to_register(struct thread_context *tctx, struct mir_instr 
 		break;
 	case RELOCATION: {
 		mov_rm_indirect(tctx, reg, RBP, 0, type->store_size_bytes);
-		struct jmp_fixup fixup = {
-		    .hash     = src_value.reloc,
-		    .position = get_position(tctx, SECTION_TEXT),
-		    .type     = IMAGE_REL_AMD64_REL32,
+		struct sym_patch patch = {
+		    .hash           = src_value.reloc,
+		    .position       = get_position(tctx, SECTION_TEXT) - sizeof(s32),
+		    .type           = IMAGE_REL_AMD64_REL32,
+		    .target_section = SECTION_TEXT,
 		};
-		arrput(tctx->fixups, fixup);
+		arrput(tctx->patches, patch);
 		break;
 	}
 	default:
@@ -616,12 +610,13 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		}
 
 		if (dest_value.kind == RELOCATION) {
-			struct jmp_fixup fixup = {
-			    .hash     = dest_value.reloc,
-			    .position = get_position(tctx, SECTION_TEXT) - sizeof(u32), // @Hack @Cleanup works for indirect mov immediate!
-			    .type     = IMAGE_REL_AMD64_REL32_4,
+			struct sym_patch patch = {
+			    .hash           = dest_value.reloc,
+			    .position       = get_position(tctx, SECTION_TEXT) - sizeof(u64), // @Hack @Cleanup works for indirect mov immediate!
+			    .type           = IMAGE_REL_AMD64_REL32_4,
+			    .target_section = SECTION_TEXT,
 			};
-			arrput(tctx->fixups, fixup);
+			arrput(tctx->patches, patch);
 		}
 
 		// Release source value...
@@ -719,13 +714,13 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 		if (then_block->base.backend_value) {
 			jmp_relative_i32(tctx, 0x0);
-			const u64 position = get_position(tctx, SECTION_TEXT);
+			const u64 position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
 
-			struct jmp_fixup fixup = {
+			struct sym_patch patch = {
 			    .instr    = &then_block->base,
 			    .position = position,
 			};
-			arrput(tctx->jmp_fixups, fixup);
+			arrput(tctx->local_patches, patch);
 		} else {
 			// Generate block immediately after...
 			arrput(tctx->emit_block_queue, then_block);
@@ -774,11 +769,11 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 		const u64 position = get_position(tctx, SECTION_TEXT);
 
-		struct jmp_fixup fixup = {
+		struct sym_patch patch = {
 		    .instr    = &br->else_block->base,
-		    .position = position,
+		    .position = position - sizeof(s32),
 		};
-		arrput(tctx->jmp_fixups, fixup);
+		arrput(tctx->local_patches, patch);
 
 		if (br->else_block->base.backend_value == 0) {
 			arrput(tctx->emit_block_queue, br->else_block);
@@ -909,12 +904,13 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 		if (stack_space) add_ri(tctx, RSP, stack_space, 8);
 
-		struct jmp_fixup fixup = {
-		    .hash     = callee_value.reloc,
-		    .position = position,
-		    .type     = IMAGE_REL_AMD64_REL32,
+		struct sym_patch patch = {
+		    .hash           = callee_value.reloc,
+		    .position       = position - sizeof(s32),
+		    .type           = IMAGE_REL_AMD64_REL32,
+		    .target_section = SECTION_TEXT,
 		};
-		arrput(tctx->fixups, fixup);
+		arrput(tctx->patches, patch);
 
 		// Store RAX register in case the function returns and the result is used.
 		if ((callee->value.type->data.fn.ret_type->kind != MIR_TYPE_VOID) && call->base.ref_count > 1) {
@@ -932,6 +928,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		struct x64_value value = {.kind = IMMEDIATE};
 
 		switch (type->kind) {
+
 		case MIR_TYPE_PTR:
 			// Currently used only for default intialization of pointer values, so we expect this to be NULL!
 			bassert(vm_read_ptr(type, cnst->base.value.data) == NULL);
@@ -940,6 +937,48 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		case MIR_TYPE_INT:
 			value.imm = vm_read_int(type, cnst->base.value.data);
 			break;
+
+		case MIR_TYPE_SLICE: {
+			if (type->data.strct.is_string_literal) {
+				vm_stack_ptr_t len_ptr = vm_get_struct_elem_ptr(ctx->assembly, type, cnst->base.value.data, 0);
+				vm_stack_ptr_t str_ptr = vm_get_struct_elem_ptr(ctx->assembly, type, cnst->base.value.data, 1);
+				const s64      len     = vm_read_as(s64, len_ptr);
+				char          *str     = vm_read_as(char *, str_ptr);
+
+				str_buf_t        name      = get_tmp_str();
+				struct sym_patch ptr_patch = {.type = IMAGE_REL_AMD64_ADDR64, .target_section = SECTION_DATA};
+				{
+					unique_name(ctx, &name, ".str", (const str_t){0});
+					const u32 len_offset = get_position(tctx, SECTION_DATA);
+
+					add_sym(tctx, SECTION_DATA, str_buf_view(name), IMAGE_SYM_CLASS_EXTERNAL, 0);
+					add_data(tctx, NULL, (s32)type->store_size_bytes);
+					memcpy(&tctx->data[len_offset], &len, mir_get_struct_elem_type(type, 0)->store_size_bytes);
+					ptr_patch.position = get_position(tctx, SECTION_DATA) - mir_get_struct_elem_type(type, 1)->store_size_bytes;
+
+					value.kind  = RELOCATION;
+					value.reloc = strhash(name);
+				}
+
+				{
+					unique_name(ctx, &name, ".dstr", (const str_t){0});
+
+					add_sym(tctx, SECTION_DATA, str_buf_view(name), IMAGE_SYM_CLASS_EXTERNAL, 0);
+					add_data(tctx, str, (s32)len);
+
+					ptr_patch.hash = strhash(name);
+				}
+
+				arrput(tctx->patches, ptr_patch);
+				put_tmp_str(name);
+			} else {
+				// Only string literals can be represented as constant for now! Other slices are not
+				// handled.
+				BL_UNIMPLEMENTED;
+			}
+			break;
+		}
+
 		default:
 			BL_UNIMPLEMENTED;
 		}
@@ -1014,7 +1053,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		struct mir_instr_decl_ref *ref = (struct mir_instr_decl_ref *)instr;
 
 		// In some cases the symbol location might not be known (e.g.: function was not generated yet).
-		// In this case we set this instruction to RELOCATION value and each use-case must record fixup
+		// In this case we set this instruction to RELOCATION value and each use-case must record patch
 		// for later resolving of the offset.
 
 		struct scope_entry *entry = ref->scope_entry;
@@ -1087,21 +1126,21 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 	}
 }
 
-static void fixup_jump_offsets(struct thread_context *tctx) {
-	for (usize i = 0; i < arrlenu(tctx->jmp_fixups); ++i) {
-		struct jmp_fixup *fixup = &tctx->jmp_fixups[i];
-		bassert(fixup->instr);
-		bassert(fixup->instr->kind == MIR_INSTR_BLOCK);
-		const u64 backend_value = fixup->instr->backend_value;
+static void patch_jump_offsets(struct thread_context *tctx) {
+	for (usize i = 0; i < arrlenu(tctx->local_patches); ++i) {
+		struct sym_patch *patch = &tctx->local_patches[i];
+		bassert(patch->instr);
+		bassert(patch->instr->kind == MIR_INSTR_BLOCK);
+		const u64 backend_value = patch->instr->backend_value;
 		if (!backend_value) {
 			babort("Cannot resolve relative jump target block!");
 		}
 
 		bassert(tctx->values[backend_value - 1].kind == ADDRESS);
 		const s32 block_position = (s32)tctx->values[backend_value - 1].address;
-		const s32 position       = (s32)fixup->position;
-		s32      *fix_ptr        = ((s32 *)&tctx->text[position - sizeof(s32)]);
-		*fix_ptr                 = block_position - position;
+		const s32 position       = (s32)patch->position;
+		s32      *fix_ptr        = ((s32 *)&tctx->text[position]);
+		*fix_ptr                 = block_position - (position + sizeof(s32));
 	}
 }
 
@@ -1118,8 +1157,8 @@ void job(struct job_context *job_ctx) {
 	arrsetlen(tctx->strs, 0);
 	arrsetlen(tctx->values, 0);
 	arrsetlen(tctx->emit_block_queue, 0);
-	arrsetlen(tctx->jmp_fixups, 0);
-	arrsetlen(tctx->fixups, 0);
+	arrsetlen(tctx->local_patches, 0);
+	arrsetlen(tctx->patches, 0);
 	tctx->stack.alloc_value_offset = 0;
 	bl_zeromem(&tctx->stack, sizeof(tctx->stack));
 
@@ -1136,7 +1175,7 @@ void job(struct job_context *job_ctx) {
 
 	emit_instr(ctx, tctx, job_ctx->x64.top_instr);
 
-	fixup_jump_offsets(tctx);
+	patch_jump_offsets(tctx);
 
 	const usize text_len = arrlenu(tctx->text);
 	const usize data_len = arrlenu(tctx->data);
@@ -1152,7 +1191,7 @@ void job(struct job_context *job_ctx) {
 		const usize gtext_len = arrlenu(ctx->code.bytes);
 		const usize gdata_len = arrlenu(ctx->data.bytes);
 		const usize gsyms_len = arrlenu(ctx->syms);
-		const usize gstrs_len = arrlenu(ctx->code.strs);
+		const usize gstrs_len = arrlenu(ctx->strs);
 
 		// Insert code.
 		arrsetcap(ctx->code.bytes, CODE_BLOCK_BUFFER_SIZE);
@@ -1163,18 +1202,22 @@ void job(struct job_context *job_ctx) {
 		arrsetlen(ctx->data.bytes, gdata_len + data_len);
 		memcpy(&ctx->data.bytes[gdata_len], tctx->data, data_len);
 
-		// Fixup positions.
-		for (usize i = 0; i < arrlenu(tctx->fixups); ++i) {
-			struct jmp_fixup *fixup = &tctx->fixups[i];
-			bassert(fixup->hash);
-			fixup->position += gtext_len;
+		// patch positions.
+		for (usize i = 0; i < arrlenu(tctx->patches); ++i) {
+			struct sym_patch *patch = &tctx->patches[i];
+			bassert(patch->hash);
+			if (patch->target_section == SECTION_TEXT) {
+				patch->position += gtext_len;
+			} else if (patch->target_section == SECTION_DATA) {
+				patch->position += gdata_len;
+			}
 		}
 
 		// Duplicate to global context.
-		const usize gfixups_len = arrlenu(ctx->fixups);
-		const usize fixups_len  = arrlenu(tctx->fixups);
-		arrsetlen(ctx->fixups, gfixups_len + fixups_len);
-		memcpy(&ctx->fixups[gfixups_len], tctx->fixups, fixups_len * sizeof(struct jmp_fixup));
+		const usize gpatches_len = arrlenu(ctx->patches);
+		const usize patches_len  = arrlenu(tctx->patches);
+		arrsetlen(ctx->patches, gpatches_len + patches_len);
+		memcpy(&ctx->patches[gpatches_len], tctx->patches, patches_len * sizeof(struct sym_patch));
 
 		// Adjust symbol positions.
 		for (usize i = 0; i < arrlenu(tctx->syms); ++i) {
@@ -1217,9 +1260,9 @@ void job(struct job_context *job_ctx) {
 		memcpy(&ctx->syms[gsyms_len], tctx->syms, syms_len * sizeof(IMAGE_SYMBOL));
 
 		// Copy string table to global one.
-		arrsetcap(ctx->code.strs, STRING_TABLE_SIZE);
-		arrsetlen(ctx->code.strs, gstrs_len + strs_len);
-		memcpy(&ctx->code.strs[gstrs_len], tctx->strs, strs_len);
+		arrsetcap(ctx->strs, STRING_TABLE_SIZE);
+		arrsetlen(ctx->strs, gstrs_len + strs_len);
+		memcpy(&ctx->strs[gstrs_len], tctx->strs, strs_len);
 
 		pthread_mutex_unlock(&ctx->mutex);
 	}
@@ -1233,15 +1276,21 @@ static void create_object_file(struct context *ctx) {
 	const usize section_data_padding = next_aligned2(text_section_pointer, 16) - text_section_pointer;
 	text_section_pointer += section_data_padding;
 
-	const usize reloc_pointer = text_section_pointer + arrlenu(ctx->code.bytes);
+	const usize text_reloc_pointer = text_section_pointer + arrlenu(ctx->code.bytes);
 
-	const usize number_of_relocations = arrlenu(ctx->code.relocs);
-	if (number_of_relocations > 0xFFFF) {
-		babort("Relocation table is too large to be stored for a single section in the COFF file!");
+	const usize text_reloc_num = arrlenu(ctx->code.relocs);
+	if (text_reloc_num > 0xFFFF) {
+		babort("Text relocation table is too large to be stored for a single section in the COFF file!");
 	}
 
-	const usize data_section_pointer   = reloc_pointer + sizeof(IMAGE_RELOCATION) * number_of_relocations;
-	const usize symbol_section_pointer = data_section_pointer + arrlenu(ctx->data.bytes);
+	const usize data_reloc_num = arrlenu(ctx->data.relocs);
+	if (data_reloc_num > 0xFFFF) {
+		babort("Data relocation table is too large to be stored for a single section in the COFF file!");
+	}
+
+	const usize data_section_pointer   = text_reloc_pointer + sizeof(IMAGE_RELOCATION) * text_reloc_num;
+	const usize data_reloc_pointer     = data_section_pointer + arrlenu(ctx->data.bytes);
+	const usize symbol_section_pointer = data_reloc_pointer + sizeof(IMAGE_RELOCATION) * data_reloc_num;
 
 	IMAGE_FILE_HEADER header = {
 	    .Machine              = IMAGE_FILE_MACHINE_AMD64,
@@ -1256,8 +1305,8 @@ static void create_object_file(struct context *ctx) {
 	    .Characteristics      = IMAGE_SCN_CNT_CODE | IMAGE_SCN_MEM_READ | IMAGE_SCN_ALIGN_16BYTES | IMAGE_SCN_MEM_EXECUTE,
 	    .SizeOfRawData        = (DWORD)arrlenu(ctx->code.bytes),
 	    .PointerToRawData     = (DWORD)text_section_pointer,
-	    .PointerToRelocations = (DWORD)reloc_pointer,
-	    .NumberOfRelocations  = (u16)number_of_relocations,
+	    .PointerToRelocations = (DWORD)text_reloc_pointer,
+	    .NumberOfRelocations  = (u16)text_reloc_num,
 	};
 
 	IMAGE_SECTION_HEADER section_data = {
@@ -1265,8 +1314,8 @@ static void create_object_file(struct context *ctx) {
 	    .Characteristics      = IMAGE_SCN_CNT_INITIALIZED_DATA | IMAGE_SCN_MEM_READ | IMAGE_SCN_MEM_WRITE | IMAGE_SCN_ALIGN_16BYTES,
 	    .SizeOfRawData        = (DWORD)arrlenu(ctx->data.bytes),
 	    .PointerToRawData     = (DWORD)data_section_pointer,
-	    .PointerToRelocations = 0,
-	    .NumberOfRelocations  = 0,
+	    .PointerToRelocations = (DWORD)data_reloc_pointer,
+	    .NumberOfRelocations  = (u16)data_reloc_num,
 	};
 
 	str_buf_t            buf    = get_tmp_str();
@@ -1293,21 +1342,20 @@ static void create_object_file(struct context *ctx) {
 	u8 padding[16] = {0};
 	bassert(section_data_padding <= static_arrlenu(padding));
 	fwrite(padding, 1, section_data_padding, file);
-	// Write section text
 	fwrite(ctx->code.bytes, 1, arrlenu(ctx->code.bytes), file);
-	// Write relocation table
-	fwrite(ctx->code.relocs, arrlenu(ctx->code.relocs), sizeof(IMAGE_RELOCATION), file);
+	fwrite(ctx->code.relocs, text_reloc_num, sizeof(IMAGE_RELOCATION), file);
 
 	// .data
 	fwrite(ctx->data.bytes, 1, arrlenu(ctx->data.bytes), file);
+	fwrite(ctx->data.relocs, data_reloc_num, sizeof(IMAGE_RELOCATION), file);
 
 	// Symbol table
 	fwrite(ctx->syms, IMAGE_SIZEOF_SYMBOL, arrlenu(ctx->syms), file);
 
 	// String table
-	u32 strs_len = (u32)arrlenu(ctx->code.strs) + sizeof(u32); // See the COFF specifiction sec 5.6.
+	u32 strs_len = (u32)arrlenu(ctx->strs) + sizeof(u32); // See the COFF specifiction sec 5.6.
 	fwrite(&strs_len, 1, sizeof(u32), file);
-	fwrite(ctx->code.strs, 1, strs_len, file);
+	fwrite(ctx->strs, 1, strs_len, file);
 
 	fclose(file);
 }
@@ -1334,12 +1382,13 @@ void x86_64run(struct assembly *assembly) {
 	}
 	wait_threads();
 
-	for (usize i = 0; i < arrlenu(ctx.fixups); ++i) {
-		struct jmp_fixup *fixup = &ctx.fixups[i];
-		bassert(fixup->hash);
+	for (usize i = 0; i < arrlenu(ctx.patches); ++i) {
+		struct sym_patch *patch = &ctx.patches[i];
+		bassert(patch->hash);
+		bassert(patch->target_section);
 
 		// Find the function position in the binary.
-		const usize i = hmgeti(ctx.symbol_table, fixup->hash);
+		const usize i = hmgeti(ctx.symbol_table, patch->hash);
 		if (i == -1) {
 			babort("Internally linked symbol reference is not found in the binary!");
 		}
@@ -1351,17 +1400,22 @@ void x86_64run(struct assembly *assembly) {
 			// doing relocations, in case of external symbol it's correct way to do it.
 
 			IMAGE_RELOCATION reloc = {
-			    .Type             = fixup->type,
+			    .Type             = patch->type,
 			    .SymbolTableIndex = symbol_table_index,
-			    .VirtualAddress   = (DWORD)(fixup->position - sizeof(s32)),
+			    .VirtualAddress   = (DWORD)patch->position,
 			};
-			arrput(ctx.code.relocs, reloc);
+
+			if (patch->target_section == SECTION_TEXT) {
+				arrput(ctx.code.relocs, reloc);
+			} else if (patch->target_section == SECTION_DATA) {
+				arrput(ctx.data.relocs, reloc);
+			}
 		} else {
 			// Fix the location.
 			const s32 sym_position = (s32)sym->Value;
-			const s32 position     = (s32)fixup->position;
-			s32      *fix_ptr      = ((s32 *)&ctx.code.bytes[position - sizeof(s32)]);
-			*fix_ptr               = sym_position - position;
+			const s32 position     = (s32)patch->position;
+			s32      *fix_ptr      = ((s32 *)&ctx.code.bytes[position]);
+			*fix_ptr               = sym_position - (position + sizeof(s32));
 		}
 	}
 
@@ -1378,19 +1432,20 @@ void x86_64run(struct assembly *assembly) {
 			arrfree(tctx->strs);
 			arrfree(tctx->values);
 			arrfree(tctx->emit_block_queue);
-			arrfree(tctx->jmp_fixups);
-			arrfree(tctx->fixups);
+			arrfree(tctx->local_patches);
+			arrfree(tctx->patches);
 		}
 
 		arrfree(ctx.tctx);
+		arrfree(ctx.strs);
 		arrfree(ctx.code.bytes);
-		arrfree(ctx.code.strs);
 		arrfree(ctx.code.relocs);
 
 		arrfree(ctx.data.bytes);
+		arrfree(ctx.data.relocs);
 
 		arrfree(ctx.syms);
-		arrfree(ctx.fixups);
+		arrfree(ctx.patches);
 		hmfree(ctx.symbol_table);
 		hmfree(ctx.scheduled_for_generation);
 	}

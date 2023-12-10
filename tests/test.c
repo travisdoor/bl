@@ -1,7 +1,8 @@
-#include <stdio.h>
 #include <assert.h>
+#include <stdio.h>
 
-int my_number = 10;
+int  my_number = 10;
+int *my_ptr    = &my_number;
 
 void my_function(int a, int b, int c, int d, int e, int f) {
 	printf("a = %d\nb = %d\nc = %d\nd = %d\ne = %d\nf = %d\n", a, b, c, d, e, f);
@@ -11,7 +12,8 @@ void my_function(int a, int b, int c, int d, int e, int f) {
 	assert(d == 40);
 	assert(e == 50);
 	assert(f == 60);
-	my_number = 20;
+
+	assert(my_ptr);
 }
 
 int add_numbers(int a, int b) {

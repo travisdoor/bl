@@ -132,8 +132,7 @@ static LLVMValueRef rtti_emit_base(struct context    *ctx,
 static LLVMValueRef rtti_emit_integer(struct context *ctx, struct mir_type *type);
 static LLVMValueRef rtti_emit_real(struct context *ctx, struct mir_type *type);
 static LLVMValueRef rtti_emit_array(struct context *ctx, struct mir_type *type);
-static LLVMValueRef
-                    rtti_emit_empty(struct context *ctx, struct mir_type *type, struct mir_type *rtti_type);
+static LLVMValueRef rtti_emit_empty(struct context *ctx, struct mir_type *type, struct mir_type *rtti_type);
 static LLVMValueRef rtti_emit_enum(struct context *ctx, struct mir_type *type);
 static LLVMValueRef rtti_emit_enum_variant(struct context *ctx, struct mir_variant *variant);
 static LLVMValueRef rtti_emit_enum_variants_array(struct context *ctx, mir_variants_t *variants);
@@ -199,17 +198,13 @@ static LLVMValueRef emit_global_var_proto(struct context *ctx, struct mir_var *v
 static LLVMValueRef emit_fn_proto(struct context *ctx, struct mir_fn *fn, bool schedule_full_generation);
 static void         emit_allocas(struct context *ctx, struct mir_fn *fn);
 static void         emit_incomplete(struct context *ctx);
-
-static void
-                    emit_instr_compound(struct context *ctx, LLVMValueRef llvm_dest, struct mir_instr_compound *cmp);
+static void         emit_instr_compound(struct context *ctx, LLVMValueRef llvm_dest, struct mir_instr_compound *cmp);
 static LLVMValueRef _emit_instr_compound_zero_initialized(struct context            *ctx,
                                                           LLVMValueRef               llvm_dest, // optional
                                                           struct mir_instr_compound *cmp);
-static LLVMValueRef _emit_instr_compound_comptime(struct context            *ctx,
-                                                  struct mir_instr_compound *cmp);
+static LLVMValueRef _emit_instr_compound_comptime(struct context *ctx, struct mir_instr_compound *cmp);
 
-static inline LLVMValueRef emit_instr_compound_global(struct context            *ctx,
-                                                      struct mir_instr_compound *cmp) {
+static inline LLVMValueRef emit_instr_compound_global(struct context *ctx, struct mir_instr_compound *cmp) {
 	bassert(mir_is_global(&cmp->base) && "Expected global compound expression!");
 	bassert(mir_is_comptime(&cmp->base) && "Expected compile time known compound expression!");
 	bassert(!cmp->is_naked && "Global compound expression cannot be naked!");
@@ -2680,13 +2675,11 @@ enum state emit_instr_const(struct context *ctx, struct mir_instr_const *c) {
 	}
 	case MIR_TYPE_SLICE: {
 		if (type->data.strct.is_string_literal) {
-			vm_stack_ptr_t len_ptr =
-			    vm_get_struct_elem_ptr(ctx->assembly, type, c->base.value.data, 0);
-			vm_stack_ptr_t str_ptr =
-			    vm_get_struct_elem_ptr(ctx->assembly, type, c->base.value.data, 1);
-			const s64 len = vm_read_as(s64, len_ptr);
-			char     *str = vm_read_as(char *, str_ptr);
-			llvm_value    = emit_const_string(ctx, make_str(str, len));
+			vm_stack_ptr_t len_ptr = vm_get_struct_elem_ptr(ctx->assembly, type, c->base.value.data, 0);
+			vm_stack_ptr_t str_ptr = vm_get_struct_elem_ptr(ctx->assembly, type, c->base.value.data, 1);
+			const s64      len     = vm_read_as(s64, len_ptr);
+			char          *str     = vm_read_as(char *, str_ptr);
+			llvm_value             = emit_const_string(ctx, make_str(str, len));
 		} else {
 			// Only string literals can be represented as constant for now! Other slices are not
 			// handled.

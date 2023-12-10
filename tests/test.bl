@@ -35,8 +35,10 @@ __os_start :: fn () #entry {
 		C.exit(1);
 	}
 
-	// my_number = 10;
 	print_number(my_number);
+
+	str :: "Hello from the BL compiled using custom backend!";
+	str;
 
 	a := 10;
 	b := 20;
