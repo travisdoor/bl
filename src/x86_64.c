@@ -624,6 +624,31 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		break;
 	}
 
+	case MIR_INSTR_MEMBER_PTR: {
+		struct mir_instr_member_ptr *mem    = (struct mir_instr_member_ptr *)instr;
+		const struct x64_value       target = get_value(tctx, mem->target_ptr);
+		bassert(target.kind == OFFSET);
+
+		if (mem->builtin_id == BUILTIN_ID_NONE) {
+			struct mir_member *member = mem->scope_entry->data.member;
+			bassert(member);
+
+			if (member->is_parent_union) {
+				BL_UNIMPLEMENTED;
+			} else {
+				const s32        index       = (u32)member->index;
+				struct mir_type *target_type = mir_deref_type(mem->target_ptr->value.type);
+				const s32        offset      = (s32)vm_get_struct_elem_offset(ctx->assembly, target_type, index);
+
+				struct x64_value value = {.kind = OFFSET, .offset = target.offset - offset};
+				set_value(tctx, instr, value);
+			}
+		} else {
+			BL_UNIMPLEMENTED;
+		}
+		break;
+	}
+
 	case MIR_INSTR_BINOP: {
 		// The result value ends up in LHS register, the RHS register is released at the end
 		// if it was used.
@@ -1009,15 +1034,25 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		bassert(var);
 
 		if (decl->init) {
-			const struct x64_value init_value = get_value(tctx, decl->init);
+			struct x64_value init_value = {0};
+			if (decl->init->kind == MIR_INSTR_LOAD) {
+				enum x64_register reg;
+				find_free_registers(tctx, &reg, 1);
+				if (reg == -1) reg = spill(tctx, RAX, NULL, 0);
+				emit_load_to_register(tctx, decl->init, reg);
+				init_value = (struct x64_value){.kind = REGISTER, .reg = reg};
+			} else {
+				init_value = get_value(tctx, decl->init);
+			}
+
+			// @Cleanup do it before load?
 			if (var->ref_count == 0) {
 				if (init_value.kind == REGISTER) release_registers(tctx, &init_value.reg, 1);
 				break;
 			}
+
 			if (!mir_type_has_llvm_representation(var->value.type)) break;
 			bassert(var->backend_value);
-
-			if (!decl->init) break;
 
 			if (decl->init->kind == MIR_INSTR_COMPOUND) {
 				BL_UNIMPLEMENTED;

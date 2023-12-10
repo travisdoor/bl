@@ -23,3 +23,7 @@ int add_numbers(int a, int b) {
 void print_number(int n) {
 	printf("Number is: %d\n", n);
 }
+
+void print_number2(long long n) {
+	printf("Long number is: %lld\n", n);
+}

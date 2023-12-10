@@ -27,6 +27,7 @@ _CRT_INIT :: fn () win32.BOOL #extern;
 my_function :: fn (a: s32, b: s32, c: s32, d: s32, e: s32, f: s32) #extern;
 add_numbers :: fn (a: s32, b: s32) s32 #extern;
 print_number :: fn (n: s32) #extern;
+print_number2 :: fn (n: s64) #extern;
 
 my_number := 666;
 
@@ -38,7 +39,9 @@ __os_start :: fn () #entry {
 	print_number(my_number);
 
 	str :: "Hello from the BL compiled using custom backend!";
-	str;
+	print_number2(str.len);
+
+	p :: str.ptr;
 
 	a := 10;
 	b := 20;
