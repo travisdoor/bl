@@ -28,37 +28,45 @@ my_function :: fn (a: s32, b: s32, c: s32, d: s32, e: s32, f: s32) #extern;
 add_numbers :: fn (a: s32, b: s32) s32 #extern;
 print_number :: fn (n: s32) #extern;
 
-my_number := 10;
+my_number := 666;
 
 __os_start :: fn () #entry {
-	// if _CRT_INIT() == 0 {
-	// 	C.exit(1);
-	// }
+	if _CRT_INIT() == 0 {
+		C.exit(1);
+	}
 
-	my_number = 10;
+	// my_number = 10;
 	print_number(my_number);
 
-	// a := 10;
-	// b := 20;
-	// c := 30;
-	// d := 40;
-	// e := 50;
-	// f := 60;
+	a := 10;
+	b := 20;
+	c := 30;
+	d := 40;
+	e := 50;
+	f := 60;
 
-	// y := c + d;
-	// my_function(10, 20, 30, 40, 50, 60);
-	// my_function(10, 20, a + b, d, 50, d + b);
-	// my_function(a, b, c, d, e, f);
+	y := c + d;
+	my_function(10, 20, 30, 40, 50, 60);
+	my_function(10, 20, a + b, d, 50, d + b);
+	my_function(a, b, c, d, e, f);
 
-	// print_number(add_numbers(10, 20));
-	// print_number(add_numbers(10, -20));
-	// print_number(mul_numbers(10, 20));
+	print_number(add_numbers(10, 20));
+	print_number(add_numbers(10, -20));
+	print_number(mul_numbers(10, 20));
 
-	// C.exit(0);
+	use_global_number();
+
+	C.exit(0);
 }
 
 mul_numbers :: fn (a: s32, b: s32) s32 {
 	return a * b;
+}
+
+use_global_number :: fn () {
+	print_number(my_number);
+	my_number = 20;
+	print_number(my_number);
 }
 
 /*

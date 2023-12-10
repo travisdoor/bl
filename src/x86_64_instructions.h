@@ -146,6 +146,8 @@ static inline void mov_mi(struct thread_context *tctx, u8 r, s32 offset, u64 imm
 
 static inline void mov_mi_indirect(struct thread_context *tctx, u8 r, s32 offset, u64 imm, usize size) {
 	if (size == 8 && imm > 0xFFFFFFFF) {
+		// @Incomplete: Might not work for indirect addressing?
+		bassert(false);
 		// Special case... because why not...
 		movabs64_ri(tctx, RAX, imm);
 		mov_mr(tctx, r, offset, RAX, size);

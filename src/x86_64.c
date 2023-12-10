@@ -28,6 +28,16 @@
 
 // Experimental x64 backend.
 
+//
+// Known limitation:
+//
+//   - No optimiations at all, this backend is supposed to be fast as possible in compilation. For
+//     high performance release builds use LLVM.
+//   - We use only 32bit relative addressing which limits binary size to ~2GB, do we need more?
+//   - Only single .text section is generated (maximum size is 4GB).
+//   - Relocation table is can have 65535 entries only.
+//
+
 #include "assembly.h"
 #include "builder.h"
 #include "common.h"
@@ -50,10 +60,16 @@
 #define DT_FUNCTION 0x20
 
 enum x64_value_kind {
+	// Absolute value address.
 	ADDRESS,
+	// Relative offset in the .text section.
 	OFFSET,
+	// Relative relocated offset; this is mainly used for references between sections (e.g. global varaibles).
+	// We have to record fixup location each time the value is used, since we don't know the offset.
 	RELOCATION,
+	// Register index.
 	REGISTER,
+	// Immediate 64bit value.
 	IMMEDIATE,
 };
 
@@ -222,10 +238,13 @@ static inline hash_t submit_global_variable_generation(struct context *ctx, stru
 	pthread_spin_lock(&ctx->schedule_for_generation_lock);
 	if (hmgeti(ctx->scheduled_for_generation, hash) == -1) {
 		hmputs(ctx->scheduled_for_generation, (struct scheduled_entry){hash});
-		blog("Generate variable %.*s.", var->linkage_name.len, var->linkage_name.ptr);
+		// @Cleanup: submit_instr???
 
-		add_sym(tctx, SECTION_DATA, var->linkage_name, IMAGE_SYM_CLASS_EXTERNAL, 0);
-		add_data(tctx, NULL, (s32)var->value.type->store_size_bytes);
+		// Allocate new space in the .data section for this variable.
+		// @Performance: Proper alignment?
+		// @Incomplete: Thread local storage?
+		// add_sym(tctx, SECTION_DATA, var->linkage_name, IMAGE_SYM_CLASS_EXTERNAL, 0);
+		// add_data(tctx, NULL, (s32)var->value.type->store_size_bytes);
 
 		submit_job(&job, &(struct job_context){.x64 = {.ctx = ctx, .top_instr = instr_init}});
 	}
@@ -237,10 +256,7 @@ static inline hash_t submit_global_variable_generation(struct context *ctx, stru
 // code in the thread local bytes array. This value must be later fixed according to position in the
 // final code section.
 //
-// External symbol does not record section number (value is 0). This is later used by linker as a hint
-// the symbol is linked from other binary. Also there is no offset (value) pointing to our binary (value is 0).
-//
-// Returns offet of the symbol in the binary.
+// Returns offset of the symbol in the binary.
 u32 add_sym(struct thread_context *tctx, s32 section_number, str_t linkage_name, u8 storage_class, s32 data_type) {
 	bassert(linkage_name.len && linkage_name.ptr);
 	const u32    offset = get_position(tctx, section_number);
@@ -258,7 +274,7 @@ u32 add_sym(struct thread_context *tctx, s32 section_number, str_t linkage_name,
 		memcpy(&tctx->strs[str_offset], linkage_name.ptr, linkage_name.len);
 		tctx->strs[str_offset + linkage_name.len] = '\0';
 
-		sym.N.Name.Long = str_offset + sizeof(u32); // 4 bytes for the table size
+		sym.N.Name.Long = str_offset + sizeof(u32); // 4 bytes for the leading table size
 	} else {
 		memcpy(sym.N.ShortName, linkage_name.ptr, linkage_name.len);
 	}
@@ -522,8 +538,8 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		if (!block->terminal) babort("Block '%s', is not terminated", block->name);
 
 		if (is_global) {
+			// Global initializer block.
 			bassert(block->base.value.is_comptime);
-			break; // @Cleanup!!!!
 		} else {
 			str_buf_t name = get_tmp_str();
 #if BL_DEBUG
@@ -1196,7 +1212,7 @@ static void create_object_file(struct context *ctx) {
 
 	const usize number_of_relocations = arrlenu(ctx->code.relocs);
 	if (number_of_relocations > 0xFFFF) {
-		babort("Relocation table is too large to be stored in COFF file!");
+		babort("Relocation table is too large to be stored for a single section in the COFF file!");
 	}
 
 	const usize data_section_pointer   = reloc_pointer + sizeof(IMAGE_RELOCATION) * number_of_relocations;
