@@ -639,7 +639,6 @@ struct mir_instr_ret {
 
 struct mir_instr_set_initializer {
 	struct mir_instr  base;
-	struct mir_instr *dest;
 	mir_instrs_t     *dests;
 	struct mir_instr *src;
 };

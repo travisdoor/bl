@@ -1057,8 +1057,33 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		}
 		break;
 	}
+
+	case MIR_INSTR_SET_INITIALIZER: {
+		struct mir_instr_set_initializer *si = (struct mir_instr_set_initializer *)instr;
+		for (usize i = 0; i < sarrlenu(si->dests); ++i) {
+			struct mir_instr *dest = sarrpeek(si->dests, i);
+			struct mir_var   *var  = ((struct mir_instr_decl_var *)dest)->var;
+			if (!var->ref_count) continue;
+
+			const struct x64_value init_value = get_value(tctx, si->src);
+			const void            *data       = NULL;
+
+			switch (init_value.kind) {
+			case IMMEDIATE:
+				data = &init_value.imm;
+				break;
+			default:
+				BL_UNIMPLEMENTED;
+			}
+
+			add_sym(tctx, SECTION_DATA, var->linkage_name, IMAGE_SYM_CLASS_EXTERNAL, 0);
+			add_data(tctx, data, (s32)var->value.type->store_size_bytes);
+		}
+		break;
+	}
+
 	default:
-		blog("Missing implementation for emmiting '%s' instruction.", mir_instr_name(instr));
+		bwarn("Missing implementation for emmiting '%s' instruction.", mir_instr_name(instr));
 	}
 }
 

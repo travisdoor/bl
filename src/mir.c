@@ -452,9 +452,7 @@ static struct mir_instr *create_instr_vargs_impl(struct context *ctx, struct ast
 static struct mir_instr *create_instr_decl_direct_ref(struct context *ctx, struct ast *node, struct mir_instr *ref);
 static struct mir_instr *create_instr_call_loc(struct context *ctx, struct ast *node, struct location *call_location);
 static struct mir_instr *create_instr_compound(struct context *ctx, struct ast *node, struct mir_instr *type, mir_instrs_t *values, bool is_multiple_return_value);
-
 static struct mir_instr *create_instr_compound_impl(struct context *ctx, struct ast *node, struct mir_type *type, mir_instrs_t *values);
-
 static struct mir_instr *create_default_value_for_type(struct context *ctx, struct mir_type *type);
 static struct mir_instr *create_instr_elem_ptr(struct context *ctx, struct ast *node, struct mir_instr *arr_ptr, struct mir_instr *index);
 static struct mir_instr *create_instr_member_ptr(struct context      *ctx,
@@ -464,9 +462,7 @@ static struct mir_instr *create_instr_member_ptr(struct context      *ctx,
                                                  struct scope_entry  *scope_entry,
                                                  enum builtin_id_kind builtin_id);
 static struct mir_instr *create_instr_phi(struct context *ctx, struct ast *node);
-static struct mir_instr *
-create_instr_call(struct context *ctx, struct ast *node, struct mir_instr *callee, mir_instrs_t *args, const bool is_comptime, const bool is_inside_recipe);
-
+static struct mir_instr *create_instr_call(struct context *ctx, struct ast *node, struct mir_instr *callee, mir_instrs_t *args, const bool is_comptime, const bool is_inside_recipe);
 static struct mir_instr *insert_instr_load(struct context *ctx, struct mir_instr *src);
 static struct mir_instr *insert_instr_cast(struct context *ctx, struct mir_instr *src, struct mir_type *to_type);
 static struct mir_instr *insert_instr_addrof(struct context *ctx, struct mir_instr *src);
@@ -496,20 +492,12 @@ static struct mir_instr *append_instr_member_ptr(struct context      *ctx,
                                                  struct scope_entry  *scope_entry,
                                                  enum builtin_id_kind builtin_id);
 
-static struct mir_instr *
-append_instr_cond_br(struct context *ctx, struct ast *node, struct mir_instr *cond, struct mir_instr_block *then_block, struct mir_instr_block *else_block, const bool is_static);
-
+static struct mir_instr *append_instr_cond_br(struct context *ctx, struct ast *node, struct mir_instr *cond, struct mir_instr_block *then_block, struct mir_instr_block *else_block, const bool is_static);
 static struct mir_instr *append_instr_br(struct context *ctx, struct ast *node, struct mir_instr_block *then_block);
-static struct mir_instr *
-append_instr_switch(struct context *ctx, struct ast *node, struct mir_instr *value, struct mir_instr_block *default_block, bool user_defined_default, mir_switch_cases_t *cases);
-
+static struct mir_instr *append_instr_switch(struct context *ctx, struct ast *node, struct mir_instr *value, struct mir_instr_block *default_block, bool user_defined_default, mir_switch_cases_t *cases);
 static struct mir_instr *append_instr_load(struct context *ctx, struct ast *node, struct mir_instr *src, const bool is_deref);
-
-static struct mir_instr *
-append_instr_type_fn(struct context *ctx, struct ast *node, struct mir_instr *ret_type, mir_instrs_t *args, const bool is_polymorph, const bool is_inside_declaration);
-
+static struct mir_instr *append_instr_type_fn(struct context *ctx, struct ast *node, struct mir_instr *ret_type, mir_instrs_t *args, const bool is_polymorph, const bool is_inside_declaration);
 static struct mir_instr *append_instr_type_fn_group(struct context *ctx, struct ast *node, struct id *id, mir_instrs_t *variants);
-
 static struct mir_instr *append_instr_type_struct(struct context   *ctx,
                                                   struct ast       *node,
                                                   struct id        *user_id,
@@ -521,25 +509,19 @@ static struct mir_instr *append_instr_type_struct(struct context   *ctx,
                                                   bool              is_union,
                                                   bool              is_multiple_return_type);
 
-static struct mir_instr *
-append_instr_type_enum(struct context *ctx, struct ast *node, struct id *id, struct scope *scope, mir_instrs_t *variants, struct mir_instr *base_type, bool is_flags);
-
+static struct mir_instr *append_instr_type_enum(struct context *ctx, struct ast *node, struct id *id, struct scope *scope, mir_instrs_t *variants, struct mir_instr *base_type, bool is_flags);
 static struct mir_instr *append_instr_type_ptr(struct context *ctx, struct ast *node, struct mir_instr *type);
 static struct mir_instr *append_instr_type_poly(struct context *ctx, struct ast *node, struct id *T_id);
 static struct mir_instr *append_instr_type_array(struct context *ctx, struct ast *node, struct id *id, struct mir_instr *elem_type, struct mir_instr *len);
-
 static struct mir_instr *append_instr_type_slice(struct context *ctx, struct ast *node, struct mir_instr *elem_type);
 static struct mir_instr *append_instr_type_dynarr(struct context *ctx, struct ast *node, struct mir_instr *elem_type);
 static struct mir_instr *append_instr_type_vargs(struct context *ctx, struct ast *node, struct mir_instr *elem_type);
 static struct mir_instr *append_instr_fn_proto(struct context *ctx, struct ast *node, struct mir_instr *type, struct mir_instr *user_type, bool schedule_analyze);
 static struct mir_instr *append_instr_fn_group(struct context *ctx, struct ast *node, mir_instrs_t *variants);
-static struct mir_instr *
-append_instr_decl_ref(struct context *ctx, struct ast *node, struct unit *parent_unit, struct id *rid, struct scope *scope, hash_t scope_layer, struct scope_entry *scope_entry);
-
+static struct mir_instr *append_instr_decl_ref(struct context *ctx, struct ast *node, struct unit *parent_unit, struct id *rid, struct scope *scope, hash_t scope_layer, struct scope_entry *scope_entry);
 static struct mir_instr *append_instr_decl_direct_ref(struct context *ctx, struct ast *node, struct mir_instr *ref);
+static struct mir_instr *append_instr_call(struct context *ctx, struct ast *node, struct mir_instr *callee, mir_instrs_t *args, const bool is_comptime, const bool is_inside_recipe);
 
-static struct mir_instr *
-append_instr_call(struct context *ctx, struct ast *node, struct mir_instr *callee, mir_instrs_t *args, const bool is_comptime, const bool is_inside_recipe);
 typedef struct
 {
 	struct ast          *node; // Optional
@@ -582,8 +564,8 @@ typedef struct
 } append_instr_decl_member_args_t;
 
 static struct mir_instr *append_instr_decl_member(struct context *ctx, append_instr_decl_member_args_t *args);
-
 static struct mir_instr *append_instr_decl_member_impl(struct context *ctx, append_instr_decl_member_args_t *args);
+
 typedef struct
 {
 	struct ast            *node;
@@ -600,8 +582,7 @@ typedef struct
 
 static struct mir_instr *append_instr_decl_arg(struct context *ctx, append_instr_decl_arg_args_t *args);
 
-static struct mir_instr                          *
-append_instr_decl_variant(struct context *ctx, struct ast *node, struct mir_instr *value, struct mir_instr *base_type, struct mir_variant *prev_variant, const bool is_flags);
+static struct mir_instr *append_instr_decl_variant(struct context *ctx, struct ast *node, struct mir_instr *value, struct mir_instr *base_type, struct mir_variant *prev_variant, const bool is_flags);
 static struct mir_instr *append_instr_const_type(struct context *ctx, struct ast *node, struct mir_type *type);
 static struct mir_instr *append_instr_const_int(struct context *ctx, struct ast *node, struct mir_type *type, u64 val);
 static struct mir_instr *append_instr_const_float(struct context *ctx, struct ast *node, float val);
@@ -614,7 +595,6 @@ static struct mir_instr *append_instr_const_void(struct context *ctx, struct ast
 static struct mir_instr *append_instr_ret(struct context *ctx, struct ast *node, struct mir_instr *value, bool expected_comptime);
 static struct mir_instr *append_instr_store(struct context *ctx, struct ast *node, struct mir_instr *src, struct mir_instr *dest);
 static struct mir_instr *append_instr_binop(struct context *ctx, struct ast *node, struct mir_instr *lhs, struct mir_instr *rhs, enum binop_kind op);
-
 static struct mir_instr *append_instr_unop(struct context *ctx, struct ast *node, struct mir_instr *instr, enum unop_kind op);
 static struct mir_instr *append_instr_unreachable(struct context *ctx, struct ast *node);
 static struct mir_instr *append_instr_debugbreak(struct context *ctx, struct ast *node);
