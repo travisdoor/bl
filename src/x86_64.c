@@ -61,16 +61,16 @@
 
 enum x64_value_kind {
 	// Absolute value address.
-	ADDRESS,
+	ADDRESS = 0,
 	// Relative offset in the .text section.
-	OFFSET,
+	OFFSET = 1,
 	// Relative relocated offset; this is mainly used for references between sections (e.g. global varaibles).
 	// We have to record patch location each time the value is used, since we don't know the offset.
-	RELOCATION,
+	RELOCATION = 2,
 	// Register index.
-	REGISTER,
+	REGISTER = 3,
 	// Immediate 64bit value.
-	IMMEDIATE,
+	IMMEDIATE = 4,
 };
 
 struct x64_value {
@@ -158,6 +158,18 @@ struct context {
 
 static void job(struct job_context *job_ctx);
 static u32  add_sym(struct thread_context *tctx, s32 section_number, str_t linkage_name, u8 storage_class, s32 data_type);
+
+#define op(value_kind, type_kind) ((value_kind << 2) | (type_kind))
+#define op_combined(a, b) ((a << 4) | (b))
+
+enum op_kind {
+	// FF value_kind | FF mir_type.kind
+	OP_IMMEDIATE_INT  = op(IMMEDIATE, MIR_TYPE_INT),
+	OP_IMMEDIATE_PTR  = op(IMMEDIATE, MIR_TYPE_PTR),
+	OP_RELOCATION_INT = op(RELOCATION, MIR_TYPE_INT),
+	OP_REGISTER_INT   = op(REGISTER, MIR_TYPE_INT),
+	OP_OFFSET_INT     = op(OFFSET, MIR_TYPE_INT),
+};
 
 static inline u32 get_position(struct thread_context *tctx, s32 section_number) {
 	switch (section_number) {
@@ -586,27 +598,25 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 		const s32 dest_offset = dest_value.kind == OFFSET ? dest_value.offset : 0;
 
-		switch (type->kind) {
-		case MIR_TYPE_INT: {
-			if (src_value.kind == IMMEDIATE) {
-				if (dest_value.kind == OFFSET) {
-					mov_mi(tctx, RBP, dest_offset, src_value.imm, type->store_size_bytes);
-				} else {
-					mov_mi_indirect(tctx, RBP, 0, src_value.imm, type->store_size_bytes);
-				}
-			} else if (src_value.kind == REGISTER) {
-				if (dest_value.kind == OFFSET) {
-					mov_mr(tctx, RBP, dest_offset, src_value.reg, type->store_size_bytes);
-				} else {
-					BL_UNIMPLEMENTED;
-				}
-			} else {
-				BL_UNIMPLEMENTED;
-			}
+		const enum op_kind src_kind  = op(src_value.kind, type->kind);
+		const enum op_kind dest_kind = op(dest_value.kind, type->kind);
+
+		switch (op_combined(src_kind, dest_kind)) {
+		case op_combined(OP_IMMEDIATE_INT, OP_OFFSET_INT):
+			mov_mi(tctx, RBP, dest_offset, src_value.imm, type->store_size_bytes);
 			break;
-		}
-		default:
+		case op_combined(OP_IMMEDIATE_INT, OP_RELOCATION_INT):
+			mov_mi_indirect(tctx, RBP, 0, src_value.imm, type->store_size_bytes);
+			break;
+		case op_combined(OP_REGISTER_INT, OP_OFFSET_INT):
+			mov_mr(tctx, RBP, dest_offset, src_value.reg, type->store_size_bytes);
+			break;
+		case op_combined(OP_REGISTER_INT, OP_RELOCATION_INT):
 			BL_UNIMPLEMENTED;
+			break;
+
+		default:
+			babort("Unhandled operation kind.");
 		}
 
 		if (dest_value.kind == RELOCATION) {
@@ -696,13 +706,20 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			lhs_value.reg  = regs[LHS];
 		}
 
+		// Left hand side value must be in the register, the same register later contains the result of the operation.
 		bassert(lhs_value.kind == REGISTER);
 
-		if (rhs_value.kind == IMMEDIATE) {
+		const enum op_kind op_kind = op(rhs_value.kind, type->kind);
+		switch (op_kind) {
+		case OP_IMMEDIATE_INT:
 			emit_binop_ri(tctx, binop->op, lhs_value.reg, rhs_value.imm, type->store_size_bytes);
-		} else {
-			bassert(rhs_value.kind == REGISTER);
+			break;
+		case OP_REGISTER_INT:
 			emit_binop_rr(tctx, binop->op, lhs_value.reg, rhs_value.reg, type->store_size_bytes);
+			break;
+
+		default:
+			babort("Unhandled operation kind.");
 		}
 
 		bassert(instr->backend_value == 0);
@@ -1036,6 +1053,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		if (decl->init) {
 			struct x64_value init_value = {0};
 			if (decl->init->kind == MIR_INSTR_LOAD) {
+				if (var->ref_count == 0) break;
 				enum x64_register reg;
 				find_free_registers(tctx, &reg, 1);
 				if (reg == -1) reg = spill(tctx, RAX, NULL, 0);
@@ -1043,15 +1061,16 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 				init_value = (struct x64_value){.kind = REGISTER, .reg = reg};
 			} else {
 				init_value = get_value(tctx, decl->init);
+				if (var->ref_count == 0) {
+					if (init_value.kind == REGISTER) release_registers(tctx, &init_value.reg, 1);
+					break;
+				}
 			}
 
-			// @Cleanup do it before load?
-			if (var->ref_count == 0) {
-				if (init_value.kind == REGISTER) release_registers(tctx, &init_value.reg, 1);
+			if (!mir_type_has_llvm_representation(var->value.type)) {
+				blog("Skip variable: %.*s", var->linkage_name.len, var->linkage_name.ptr);
 				break;
 			}
-
-			if (!mir_type_has_llvm_representation(var->value.type)) break;
 			bassert(var->backend_value);
 
 			if (decl->init->kind == MIR_INSTR_COMPOUND) {
@@ -1063,21 +1082,19 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			struct mir_type       *type      = var->value.type;
 			bassert(var_value.kind == OFFSET);
 
-			if (init_value.kind == IMMEDIATE) {
-				switch (type->kind) {
-				case MIR_TYPE_PTR:
-					bassert(type->store_size_bytes == 8);
-					// fall-through
-				case MIR_TYPE_INT: {
-					mov_mi(tctx, RBP, var_value.offset, init_value.imm, type->store_size_bytes);
-					break;
-				}
-				default:
-					BL_UNIMPLEMENTED;
-				}
-			} else if (init_value.kind == REGISTER) {
+			const enum op_kind op_kind = op(init_value.kind, type->kind);
+			switch (op_kind) {
+			case OP_IMMEDIATE_PTR:
+			case OP_IMMEDIATE_INT:
+				mov_mi(tctx, RBP, var_value.offset, init_value.imm, type->store_size_bytes);
+				break;
+			case OP_REGISTER_INT:
 				mov_mr(tctx, RBP, var_value.offset, init_value.reg, type->store_size_bytes);
 				release_registers(tctx, &init_value.reg, 1);
+				break;
+
+			default:
+				babort("Unhandled operation kind.");
 			}
 		}
 
