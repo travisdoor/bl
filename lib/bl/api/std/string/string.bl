@@ -697,9 +697,9 @@ ctostr :: fn (cstr: *C.char, len : s64 = -1) string_view #inline {
 
 /// Check whether the input ascii character is an alphabet.
 is_alpha :: fn (c: u8) bool #inline {
-    if c >= 'a' && c <= 'z' { return true; }
-    if c >= 'A' && c <= 'Z' { return true; }
-    return false;
+	if c >= 'a' && c <= 'z' { return true; }
+	if c >= 'A' && c <= 'Z' { return true; }
+	return false;
 }
 
 /// Check wheter the input character represents a digit of number of `base`.

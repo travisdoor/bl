@@ -1,55 +1,55 @@
 #private
 default_args_some_default :: fn () #test {
-    foo :: fn (i: s32, j: s32 = 20) {
-        test_eq(i, 10);
-        test_eq(j, 20);
-    };
+	foo :: fn (i: s32, j: s32 = 20) {
+		test_eq(i, 10);
+		test_eq(j, 20);
+	};
 
-    foo(10);
-    foo(10, 20);
+	foo(10);
+	foo(10, 20);
 }
 
 default_args_some_default2 :: fn () #test {
-    foo :: fn (i: s32, j: s32, k: s32 = 30, l: s32 = 40) {
-        test_eq(i, 10);
-        test_eq(j, 20);
-        test_eq(k, 30);
-        test_eq(l, 40);
-    };
+	foo :: fn (i: s32, j: s32, k: s32 = 30, l: s32 = 40) {
+		test_eq(i, 10);
+		test_eq(j, 20);
+		test_eq(k, 30);
+		test_eq(l, 40);
+	};
 
-    foo(10, 20);
-    foo(10, 20, 30);
-    foo(10, 20, 30, 40);
+	foo(10, 20);
+	foo(10, 20, 30);
+	foo(10, 20, 30, 40);
 }
 
 default_args_all_default :: fn () #test {
-    foo :: fn (i: s32 = 10, j: s32 = 20, k: s32 = 30, l: s32 = 40) {
-        test_eq(i, 10);
-        test_eq(j, 20);
-        test_eq(k, 30);
-        test_eq(l, 40);
-    };
+	foo :: fn (i: s32 = 10, j: s32 = 20, k: s32 = 30, l: s32 = 40) {
+		test_eq(i, 10);
+		test_eq(j, 20);
+		test_eq(k, 30);
+		test_eq(l, 40);
+	};
 
-    foo();
-    foo(10);
-    foo(10, 20);
-    foo(10, 20, 30);
-    foo(10, 20, 30, 40);
+	foo();
+	foo(10);
+	foo(10, 20);
+	foo(10, 20, 30);
+	foo(10, 20, 30, 40);
 }
 
 default_args_complex :: fn () #test {
-    Foo :: struct {
-        i: s32;
-        j: s32;
-    };
-    foo :: fn (i: s32, j: Foo = Foo.{20, 30}) {
-        test_eq(i, 10);
-        test_eq(j.i, 20);
-        test_eq(j.j, 30);
-    };
+	Foo :: struct {
+		i: s32;
+		j: s32;
+	};
+	foo :: fn (i: s32, j: Foo = Foo.{20, 30}) {
+		test_eq(i, 10);
+		test_eq(j.i, 20);
+		test_eq(j.j, 30);
+	};
 
-    foo(10);
-    foo(10, Foo.{20, 30});
+	foo(10);
+	foo(10, Foo.{20, 30});
 }
 
 GLOBAL_10 :: 10;
@@ -58,151 +58,151 @@ GLOBAL_30 :: 30;
 GLOBAL_40 :: 40;
 
 default_args_global :: fn () #test {
-    foo :: fn (i: s32 = GLOBAL_10, j: s32 = GLOBAL_20, k: s32 = GLOBAL_30, l: s32 = GLOBAL_40) {
-        test_eq(i, GLOBAL_10);
-        test_eq(j, GLOBAL_20);
-        test_eq(k, GLOBAL_30);
-        test_eq(l, GLOBAL_40);
-    };
+	foo :: fn (i: s32 = GLOBAL_10, j: s32 = GLOBAL_20, k: s32 = GLOBAL_30, l: s32 = GLOBAL_40) {
+		test_eq(i, GLOBAL_10);
+		test_eq(j, GLOBAL_20);
+		test_eq(k, GLOBAL_30);
+		test_eq(l, GLOBAL_40);
+	};
 
-    foo();
-    foo(10);
-    foo(10, 20);
-    foo(10, 20, 30);
-    foo(10, 20, 30, 40);
+	foo();
+	foo(10);
+	foo(10, 20);
+	foo(10, 20, 30);
+	foo(10, 20, 30, 40);
 }
 
 default_args_ptr_call :: fn () #test {
-    foo :: fn (i: s32 = 10, j: s32 = 20, k: s32 = 30, l: s32 = 40) {
-        test_eq(i, 10);
-        test_eq(j, 20);
-        test_eq(k, 30);
-        test_eq(l, 40);
-    };
+	foo :: fn (i: s32 = 10, j: s32 = 20, k: s32 = 30, l: s32 = 40) {
+		test_eq(i, 10);
+		test_eq(j, 20);
+		test_eq(k, 30);
+		test_eq(l, 40);
+	};
 
-    p :: &foo;
-    p();
-    p(10);
-    p(10, 20);
-    p(10, 20, 30);
-    p(10, 20, 30, 40);
+	p :: &foo;
+	p();
+	p(10);
+	p(10, 20);
+	p(10, 20, 30);
+	p(10, 20, 30, 40);
 }
 
 default_args_fn_explicit_type :: fn () #test {
-    foo : fn (s32, s32, s32, s32) : fn (i: s32 = 10, j: s32 = 20, k: s32 = 30, l: s32 = 40) {
-        test_eq(i, 10);
-        test_eq(j, 20);
-        test_eq(k, 30);
-        test_eq(l, 40);
-    };
+	foo : fn (s32, s32, s32, s32) : fn (i: s32 = 10, j: s32 = 20, k: s32 = 30, l: s32 = 40) {
+		test_eq(i, 10);
+		test_eq(j, 20);
+		test_eq(k, 30);
+		test_eq(l, 40);
+	};
 
-    foo();
-    foo(10);
-    foo(10, 20);
-    foo(10, 20, 30);
-    foo(10, 20, 30, 40);
+	foo();
+	foo(10);
+	foo(10, 20);
+	foo(10, 20, 30);
+	foo(10, 20, 30, 40);
 }
 
 default_args_null_ptr :: fn () #test {
-    my_function :: fn (ptr: *s32 = null) *s32 { 
-        return ptr;
-    };
-    test_null(my_function());
+	my_function :: fn (ptr: *s32 = null) *s32 { 
+		return ptr;
+	};
+	test_null(my_function());
 }
 
 default_args_call_side_location :: fn () #test {
-    foo :: fn (expected_file: string_view, expected_line: s32, loc: *CodeLocation = #call_location) {
-        test_eq(loc.file, expected_file);
-        test_eq(loc.line, expected_line);
-    };
+	foo :: fn (expected_file: string_view, expected_line: s32, loc: *CodeLocation = #call_location) {
+		test_eq(loc.file, expected_file);
+		test_eq(loc.line, expected_line);
+	};
 
-    foo(#file, #line);
+	foo(#file, #line);
 }
 
 default_args_array :: fn () #test {
-    foo :: fn (arr: [2]s32 = [2]s32.{1, 2}) {
-        test_eq(arr[0], 1);
-        test_eq(arr[1], 2);
-    };
-    foo();
+	foo :: fn (arr: [2]s32 = [2]s32.{1, 2}) {
+		test_eq(arr[0], 1);
+		test_eq(arr[1], 2);
+	};
+	foo();
 }
 
 default_args_slice :: fn () #test {
-    foo :: fn (slice: []s32 = []s32.{}) {
-        test_eq(slice.len, 0);
-    };
-    foo();
+	foo :: fn (slice: []s32 = []s32.{}) {
+		test_eq(slice.len, 0);
+	};
+	foo();
 }
 
 default_args_callback1 :: fn () #test {
-    foo :: fn (i: s32) {
-        test_eq(i, 10);
-    };
-    // @NOTE: I'm not 100% sure if this should be possible...
-    bar :: fn (callback: *fn(s32 = 10)) {
-        callback();
-    };
-    bar(&foo);
+	foo :: fn (i: s32) {
+		test_eq(i, 10);
+	};
+	// @NOTE: I'm not 100% sure if this should be possible...
+	bar :: fn (callback: *fn(s32 = 10)) {
+		callback();
+	};
+	bar(&foo);
 }
 
 default_args_callback2 :: fn () #test {
-    foo :: fn (i: s32 = 20) {
-        test_eq(i, 666);
-    };
-    bar :: fn (callback: *fn(s32 = 10)) {
-        callback(666);
-    };
-    bar(&foo);
+	foo :: fn (i: s32 = 20) {
+		test_eq(i, 666);
+	};
+	bar :: fn (callback: *fn(s32 = 10)) {
+		callback(666);
+	};
+	bar(&foo);
 }
 
 default_args_callback3 :: fn () #test {
-    foo :: fn (i: s32 = 20) {
-        test_eq(i, 10);
-    };
-    bar :: fn (callback: *fn(s32 = 10)) {
-        callback();
-    };
-    bar(&foo);
+	foo :: fn (i: s32 = 20) {
+		test_eq(i, 10);
+	};
+	bar :: fn (callback: *fn(s32 = 10)) {
+		callback();
+	};
+	bar(&foo);
 }
 
 default_args_ptr :: fn () #test {
-    foo :: fn (ptr: *s32 = null) {
-        test_null(auto ptr);
-    };
-    foo();
+	foo :: fn (ptr: *s32 = null) {
+		test_null(auto ptr);
+	};
+	foo();
 }
 
 default_args_infer_type1 :: fn () #test {
-    foo :: fn (i := 10) {
-        test_eq(i, 10);
-    };
-    foo();
+	foo :: fn (i := 10) {
+		test_eq(i, 10);
+	};
+	foo();
 }
 
 default_args_infer_type2 :: fn () #test {
-    Foo :: struct {
-        i: s32;
-        j: s32;
-    };
-    foo :: fn (foo := Foo.{10, 20}) {
-        test_eq(foo.i, 10);
-        test_eq(foo.j, 20);
-    };
-    foo();
+	Foo :: struct {
+		i: s32;
+		j: s32;
+	};
+	foo :: fn (foo := Foo.{10, 20}) {
+		test_eq(foo.i, 10);
+		test_eq(foo.j, 20);
+	};
+	foo();
 }
 
 default_args_infer_type3 :: fn () #test {
-    foo :: fn (line: s32, str := "hello", loc := #call_location) {
-        test_eq(str, "hello");
-        test_eq(line, loc.line);
-    };
-    foo(#line);
+	foo :: fn (line: s32, str := "hello", loc := #call_location) {
+		test_eq(str, "hello");
+		test_eq(line, loc.line);
+	};
+	foo(#line);
 }
 
 default_args_callback_inline :: fn () #test {
-    my_function :: fn (callback: *fn() s32 = &fn () s32 { return 10; }) s32 { 
-        return callback();
-    };
-    test_eq(my_function(), 10);
+	my_function :: fn (callback: *fn() s32 = &fn () s32 { return 10; }) s32 { 
+		return callback();
+	};
+	test_eq(my_function(), 10);
 }
 

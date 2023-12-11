@@ -1,74 +1,74 @@
 #private
 
 complete_type :: fn () #test {
-    test_eq(sizeof(Foo), sizeof(ReferenceFoo));
-    my_function(Bar);
+	test_eq(sizeof(Foo), sizeof(ReferenceFoo));
+	my_function(Bar);
 }
 
 complete_for_any :: fn () #test {
-    other_function(BarBar);
+	other_function(BarBar);
 }
 
 complete_for_any2 :: fn () #test {
-    group_with_any(FooFoo);
+	group_with_any(FooFoo);
 }
 
 my_function :: fn (T: type #comptime) #comptime {
-    static_assert(sizeof(T) == sizeof(Reference));
-    info1 :: typeinfo(T);
-    info2 :: typeinfo(Bar);
+	static_assert(sizeof(T) == sizeof(Reference));
+	info1 :: typeinfo(T);
+	info2 :: typeinfo(Bar);
 
-    static_assert(sizeof(T) == sizeof(Bar));
-    static_assert(info1 == info2);
+	static_assert(sizeof(T) == sizeof(Bar));
+	static_assert(info1 == info2);
 }
 
 other_function :: fn (v: Any) {
-    test_not_null(v.type_info);
-    test_not_null(v.data);
-    test_eq(v.type_info.kind, TypeKind.TYPE);
+	test_not_null(v.type_info);
+	test_not_null(v.data);
+	test_eq(v.type_info.kind, TypeKind.TYPE);
 }
 
 group_with_any :: fn {
-    fn (v: Any) {
-        test_not_null(v.type_info);
-        test_not_null(v.data);
-        test_eq(v.type_info.kind, TypeKind.TYPE);
-    };
+	fn (v: Any) {
+		test_not_null(v.type_info);
+		test_not_null(v.data);
+		test_eq(v.type_info.kind, TypeKind.TYPE);
+	};
 }
 
 MyType :: fn (TElem: type #comptime) type #comptime {
-    static_assert(sizeof(TElem) == sizeof(Reference));
-    return struct {
-        v: TElem;
-    };
+	static_assert(sizeof(TElem) == sizeof(Reference));
+	return struct {
+		v: TElem;
+	};
 }
 
 Foo :: struct {
-    data: MyType(Bar);
-    i: s32;
+	data: MyType(Bar);
+	i: s32;
 }
 
 ReferenceFoo :: struct {
-    data: Bar;
-    i: s32;
+	data: Bar;
+	i: s32;
 }
 
 Bar :: struct {
-    foo: *Foo;
-    a: s32;
-    b: s32;
+	foo: *Foo;
+	a: s32;
+	b: s32;
 }
 
 BarBar :: struct {
-    bar: Bar;
+	bar: Bar;
 }
 
 Reference :: struct {
-    foo: *u8;
-    a: s32;
-    b: s32;
+	foo: *u8;
+	a: s32;
+	b: s32;
 }
 
 FooFoo :: struct {
-    bar: BarBar;
+	bar: BarBar;
 }

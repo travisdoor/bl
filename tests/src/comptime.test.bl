@@ -1,86 +1,86 @@
 #private
 
 simple_fn :: fn () #test {
-    get :: fn () s32 #comptime {
-        return 10;
-    };
+	get :: fn () s32 #comptime {
+		return 10;
+	};
 
-    i :: get();
-    test_eq(i, 10);
+	i :: get();
+	test_eq(i, 10);
 }
 
 simple_fn_args :: fn () #test {
-    get :: fn (a: s32, b: s32) s32 #comptime {
-        return a + b;
-    };
+	get :: fn (a: s32, b: s32) s32 #comptime {
+		return a + b;
+	};
 
-    i :: get(1, 2);
-    test_eq(i, 3);
+	i :: get(1, 2);
+	test_eq(i, 3);
 }
 
 simple_type :: fn () #test {
-    get :: fn () type #comptime {
-        return s32;
-    };
+	get :: fn () type #comptime {
+		return s32;
+	};
 
-    i: get();
-    test_eq(typeinfo(s32), typeinfo(i));
+	i: get();
+	test_eq(typeinfo(s32), typeinfo(i));
 }
 
 struct_type :: fn () #test {
-    get :: fn () type #comptime {
-        return struct { i: s32; j: bool; };
-    };
+	get :: fn () type #comptime {
+		return struct { i: s32; j: bool; };
+	};
 
-    i: get();
-    test_eq(typeinfo(i).kind, TypeKind.STRUCT);
+	i: get();
+	test_eq(typeinfo(i).kind, TypeKind.STRUCT);
 }
 
 multireturn :: fn () #test {
-    get :: fn () (s32, s32) #comptime {
-        return 10, 20;
-    };
+	get :: fn () (s32, s32) #comptime {
+		return 10, 20;
+	};
 
-    i := get();
-    test_eq(i, 10);
+	i := get();
+	test_eq(i, 10);
 }
 
 multireturn2 :: fn () #test {
-    get :: fn () (s32, s32) #comptime {
-        return 10, 20;
-    };
+	get :: fn () (s32, s32) #comptime {
+		return 10, 20;
+	};
 
-    i, j := get();
-    test_eq(i, 10);
-    test_eq(j, 20);
+	i, j := get();
+	test_eq(i, 10);
+	test_eq(j, 20);
 }
 
 Data :: struct {
-    a: s32;
-    b: s32;
-    c: bool;
-    d: u64;
-    e: u64;
+	a: s32;
+	b: s32;
+	c: bool;
+	d: u64;
+	e: u64;
 }
 
 struct_value :: fn () #test {
-    get :: fn () Data #comptime {
-        return Data.{10, 20, true, 30, 40};
-    };
+	get :: fn () Data #comptime {
+		return Data.{10, 20, true, 30, 40};
+	};
 
-    data := get();
-    test_eq(data.a, 10);
-    test_eq(data.b, 20);
-    test_eq(data.c, true);
-    test_eq(data.d, 30);
-    test_eq(data.e, 40);
+	data := get();
+	test_eq(data.a, 10);
+	test_eq(data.b, 20);
+	test_eq(data.c, true);
+	test_eq(data.d, 30);
+	test_eq(data.e, 40);
 }
 
 string_literal :: fn () #test{
-    get :: fn () string_view #comptime {
-        return "This is testing string.";
-    };
+	get :: fn () string_view #comptime {
+		return "This is testing string.";
+	};
 
-    lit :: get();
-    test_eq(lit, "This is testing string.");
+	lit :: get();
+	test_eq(lit, "This is testing string.");
 }

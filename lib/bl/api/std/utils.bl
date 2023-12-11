@@ -285,7 +285,7 @@ is_valid_bitflags :: fn (T: type #comptime) bool #comptime {
 			info_enum :: cast(*TypeInfoEnum) info;
 			return info_enum.is_flags;
 		}
-	    default;
+		default;
 	}
 	return false;
 }

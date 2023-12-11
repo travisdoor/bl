@@ -1,5 +1,5 @@
 // @ERR_COMPILE_TIME_ABORT@
 main :: fn () s32 { 
-    static_assert(false);
-    return 0; 
+	static_assert(false);
+	return 0; 
 }

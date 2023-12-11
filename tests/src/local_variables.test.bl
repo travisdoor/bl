@@ -1,124 +1,124 @@
 #private
 fundamental_type_default_init :: fn () #test {
-    _1: s8;
-    _2: s16;
-    _3: s32;
-    _4: s64;
-    _5: u8;
-    _6: u16;
-    _7: u32;
-    _8: u64;
-    _9: bool;
-    _10: usize;
-    _11: f32;
-    _12: f64;
-    _13: string;
+	_1: s8;
+	_2: s16;
+	_3: s32;
+	_4: s64;
+	_5: u8;
+	_6: u16;
+	_7: u32;
+	_8: u64;
+	_9: bool;
+	_10: usize;
+	_11: f32;
+	_12: f64;
+	_13: string;
 
-    assert(_1 == 0);
-    assert(_2 == 0);
-    assert(_3 == 0);
-    assert(_4 == 0);
-    assert(_5 == 0);
-    assert(_6 == 0);
-    assert(_7 == 0);
-    assert(_8 == 0);
-    assert(_9 == false);
-    assert(_10 == 0);
-    assert(_11 == 0.f);
-    assert(_12 == 0.);
-    assert(_13.len == 0);
-    assert(_13.ptr == null);
+	assert(_1 == 0);
+	assert(_2 == 0);
+	assert(_3 == 0);
+	assert(_4 == 0);
+	assert(_5 == 0);
+	assert(_6 == 0);
+	assert(_7 == 0);
+	assert(_8 == 0);
+	assert(_9 == false);
+	assert(_10 == 0);
+	assert(_11 == 0.f);
+	assert(_12 == 0.);
+	assert(_13.len == 0);
+	assert(_13.ptr == null);
 }
 
 struct_type_default_init :: fn () #test {
-    Foo :: struct {
-        i: s32;
-        j: s32;
-    };
+	Foo :: struct {
+		i: s32;
+		j: s32;
+	};
 
-    foo: Foo;
-    assert(foo.i == 0);
-    assert(foo.j == 0);
+	foo: Foo;
+	assert(foo.i == 0);
+	assert(foo.j == 0);
 }
 
 array_type_default_init :: fn () #test {
-    arr: [100]s32;
+	arr: [100]s32;
 
-    loop i := 0; i < arr.len; i += 1 {
-        assert(arr[i] == 0);
-    }
+	loop i := 0; i < arr.len; i += 1 {
+		assert(arr[i] == 0);
+	}
 }
 
 slice_type_default_init :: fn () #test {
-    arr: []s32;
-    assert(arr.len == 0);
-    assert(arr.ptr == null);
+	arr: []s32;
+	assert(arr.len == 0);
+	assert(arr.ptr == null);
 }
 
 union_type_default_init :: fn () #test {
-    Foo :: union {
-        i: s32;
-        j: s32;
-    };
+	Foo :: union {
+		i: s32;
+		j: s32;
+	};
 
-    foo: Foo;
-    assert(foo.i == 0);
-    assert(foo.j == 0);
+	foo: Foo;
+	assert(foo.i == 0);
+	assert(foo.j == 0);
 }
 
 enum_type_default_init :: fn () #test {
-    Bar :: enum {
-        A = 1;
-        B;
-        C;
-    };
+	Bar :: enum {
+		A = 1;
+		B;
+		C;
+	};
 
-    bar: Bar;
-    assert(bar == Bar.A);
+	bar: Bar;
+	assert(bar == Bar.A);
 }
 
 multi_declaration1 :: fn () #test {
-    a, b, c, d := 999;
-    test_eq(a, 999);
-    test_eq(b, 999);
-    test_eq(c, 999);
-    test_eq(d, 999);    
+	a, b, c, d := 999;
+	test_eq(a, 999);
+	test_eq(b, 999);
+	test_eq(c, 999);
+	test_eq(d, 999);    
 }
 
 multi_declaration2 :: fn () #test {
-    a, b, c, d :: 999;
-    test_eq(a, 999);
-    test_eq(b, 999);
-    test_eq(c, 999);
-    test_eq(d, 999);    
+	a, b, c, d :: 999;
+	test_eq(a, 999);
+	test_eq(b, 999);
+	test_eq(c, 999);
+	test_eq(d, 999);    
 }
 
 cc := 0;
 get_value :: fn (v: s32) s32 { cc += 1; return v; }
 multi_declaration3 :: fn () #test {
-    cc = 0;
-    a, b, c, d :: get_value(999);
-    test_eq(cc, 1);
-    test_eq(a, 999);
-    test_eq(b, 999);
-    test_eq(c, 999);
-    test_eq(d, 999);    
+	cc = 0;
+	a, b, c, d :: get_value(999);
+	test_eq(cc, 1);
+	test_eq(a, 999);
+	test_eq(b, 999);
+	test_eq(c, 999);
+	test_eq(d, 999);    
 }
 
 multi_declaration4 :: fn () #test {
-    a, b, c, d : s32 : 999;
-    test_eq(a, 999);
-    test_eq(b, 999);
-    test_eq(c, 999);
-    test_eq(d, 999);
+	a, b, c, d : s32 : 999;
+	test_eq(a, 999);
+	test_eq(b, 999);
+	test_eq(c, 999);
+	test_eq(d, 999);
 }
 
 multi_declaration5 :: fn () #test {
-    cc = 0;
-    a, b, c, d : s32 = get_value(10) * get_value(2);
-    test_eq(cc, 2);
-    test_eq(a, 20);
-    test_eq(b, 20);
-    test_eq(c, 20);
-    test_eq(d, 20);
+	cc = 0;
+	a, b, c, d : s32 = get_value(10) * get_value(2);
+	test_eq(cc, 2);
+	test_eq(a, 20);
+	test_eq(b, 20);
+	test_eq(c, 20);
+	test_eq(d, 20);
 }

@@ -1,48 +1,48 @@
 #private
 simple_loops :: fn () #test {
-    count :: 10;
-    i := 0;
-    loop i < count {
-        i += 1;
-    }
-    test_eq(i, count);
-    i = 0;
-    loop j := 0; j < count; j += 1 {
-        i += 1;
-    }
-    test_eq(i, count);
+	count :: 10;
+	i := 0;
+	loop i < count {
+		i += 1;
+	}
+	test_eq(i, count);
+	i = 0;
+	loop j := 0; j < count; j += 1 {
+		i += 1;
+	}
+	test_eq(i, count);
 };
 
 nested_loops :: fn () #test {
-    count :: 10;
-    i := 0;
+	count :: 10;
+	i := 0;
 
-    loop x := 0; x < count; x += 1 {
-        loop y := 0; y < count; y += 1 {
-            i += 1;
-        }
-    }
-    test_eq(i, count * count);
+	loop x := 0; x < count; x += 1 {
+		loop y := 0; y < count; y += 1 {
+			i += 1;
+		}
+	}
+	test_eq(i, count * count);
 };
 
 break_continue_loop :: fn () #test {
-    i := 0;
-    loop {
-        if i == 10 {
-            break;
-        } else {
-            i += 1;
-            continue;
-        }
-    }
-    test_eq(i, 10);
+	i := 0;
+	loop {
+		if i == 10 {
+			break;
+		} else {
+			i += 1;
+			continue;
+		}
+	}
+	test_eq(i, 10);
 };
 
 fn_call_initializer :: fn () #test {
-    foo :: fn () s32 { return 0; };
-    c := 0;
-    loop i := foo(); i < 100; i += 1 {
-        c += 1;
-    }
-    test_eq(c, 100);
+	foo :: fn () s32 { return 0; };
+	c := 0;
+	loop i := foo(); i < 100; i += 1 {
+		c += 1;
+	}
+	test_eq(c, 100);
 }

@@ -1,5 +1,5 @@
 // @ERR_USER@
 main :: fn () s32 {
-    compiler_error("This should fail.");
-    return 0;
+	compiler_error("This should fail.");
+	return 0;
 }

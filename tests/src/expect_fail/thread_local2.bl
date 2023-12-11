@@ -3,5 +3,5 @@
 i :: s32 #thread_local;
 
 main :: fn () s32 { 
-    return 10; 
+	return 10; 
 }

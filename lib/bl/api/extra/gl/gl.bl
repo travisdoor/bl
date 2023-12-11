@@ -553,7 +553,7 @@ _Gl :: struct {
 	GetError: *fn () GLenum;
 	BlendFunc: *fn (sfactor: GLenum, dfactor: GLenum);
 	TexParameteri: *fn (target: GLenum, pname: GLenum, param: GLint);
-    TexParameterf: *fn (target: GLenum, pname: GLenum, param: GLfloat);
+	TexParameterf: *fn (target: GLenum, pname: GLenum, param: GLfloat);
 	TexSubImage2D: *fn (target: GLenum, level: GLint, xoffset: GLint, yoffset: GLint, width: GLsizei, height: GLsizei, format: GLenum, t: GLenum, data: *u8);
 	Hint: *fn (target: GLenum, mode: GLenum);
 	PolygonMode: *fn (face: GLenum, mode: GLenum);

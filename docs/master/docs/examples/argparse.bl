@@ -1,60 +1,60 @@
 #import "extra/argparse"
 
 MyOptLevel :: enum {
-    DEBUG;
-    RELEASE_SMALL;
-    RELEASE_FAST;
+	DEBUG;
+	RELEASE_SMALL;
+	RELEASE_FAST;
 }
 
 // Some options we need.
 MyArgs :: struct {
-    is_debug: bool;
-    worker_count: s32;
-    directory: string_view;
-    inputs: []string_view;
-    outputs: []string_view;
-    optimization: MyOptLevel;
+	is_debug: bool;
+	worker_count: s32;
+	directory: string_view;
+	inputs: []string_view;
+	outputs: []string_view;
+	optimization: MyOptLevel;
 }
 
 main :: fn () s32 {
-    using argparse;
+	using argparse;
 
-    // Create and initialize new instance of argument parser.
-    parser: Parser;
-    init(&parser, "This is cool testing application parsing command-line arguments, enjoy!");
-    // Don't forget to terminate it!
-    defer terminate(&parser);
+	// Create and initialize new instance of argument parser.
+	parser: Parser;
+	init(&parser, "This is cool testing application parsing command-line arguments, enjoy!");
+	// Don't forget to terminate it!
+	defer terminate(&parser);
 
-    args: MyArgs;
+	args: MyArgs;
 
-    // Set the executable name (used in help).
-    set_executable_name(&parser, command_line_arguments[0]);
+	// Set the executable name (used in help).
+	set_executable_name(&parser, command_line_arguments[0]);
 
-    // Add very basic usage information.
-    add_usage(&parser, "[options]");
+	// Add very basic usage information.
+	add_usage(&parser, "[options]");
 
-    // Register positional argument prefixes for input and output files.
-    add_positional(&parser, &args.inputs, "--input", "-i", "List of input files.");
-    add_positional(&parser, &args.outputs, "--output", "-o", "List of output files.");
+	// Register positional argument prefixes for input and output files.
+	add_positional(&parser, &args.inputs, "--input", "-i", "List of input files.");
+	add_positional(&parser, &args.outputs, "--output", "-o", "List of output files.");
 
-    // Register all other arguments.
-    add(&parser, &args.is_debug, "--debug", "-d", "Enable debug mode"); // Boolean flag.
-    add(&parser, &args.worker_count, "--worker-count", "", "Count of worker threads."); // Integer value.
-    add(&parser, &args.directory, "--dir", "", "Root directory path."); // String view (no need to be preallocated).
-    add(&parser, &args.optimization, "--opt", "", "Optimization level."); // Enumerator value.
+	// Register all other arguments.
+	add(&parser, &args.is_debug, "--debug", "-d", "Enable debug mode"); // Boolean flag.
+	add(&parser, &args.worker_count, "--worker-count", "", "Count of worker threads."); // Integer value.
+	add(&parser, &args.directory, "--dir", "", "Root directory path."); // String view (no need to be preallocated).
+	add(&parser, &args.optimization, "--opt", "", "Optimization level."); // Enumerator value.
 
-    // Parse all command line arguments here.
-    parsed_argument_count, parse_error :: parse(&parser, command_line_arguments);
-    if parse_error {
-        // Print error and show the help.
-        print_err(parse_error);
-        print_help(&parser);
-        return 1;
-    }
+	// Parse all command line arguments here.
+	parsed_argument_count, parse_error :: parse(&parser, command_line_arguments);
+	if parse_error {
+		// Print error and show the help.
+		print_err(parse_error);
+		print_help(&parser);
+		return 1;
+	}
 
-    // Use the parsed options.
-    print("\nParsed arguments: %\n", parsed_argument_count);
-    print("%\n", args);
-    return 0;
+	// Use the parsed options.
+	print("\nParsed arguments: %\n", parsed_argument_count);
+	print("%\n", args);
+	return 0;
 }
 

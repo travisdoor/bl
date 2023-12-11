@@ -10,47 +10,47 @@ CannotChangeThis : f32 : 10.f;
 DefaultValueGlobal: s32; 
 
 main :: fn () s32 {
-    // Local variables are declared in local scope of main function or
-    // any other function.
-    number : s32 = 10; // This is number of s32 type set to 10.
+	// Local variables are declared in local scope of main function or
+	// any other function.
+	number : s32 = 10; // This is number of s32 type set to 10.
 
-    number = 20; // Number is mutable, and since now it's value is 20.
+	number = 20; // Number is mutable, and since now it's value is 20.
 
-    // Use of the print function to print out variable value.
-    // '%' is used as placeholder in the string saying where the print 
-    // function should place our value.
-    print("number is %\n", number);
-
-
-    // Variable without initialization will be automatically set to default
-    // value. In this case 'other_number' will be zero. This initialization
-    // can be disabled by #noinit flag 'other_number: u8 #noinit;'.
-    other_number: u8;
-    other_number = 16;
-
-    print("other_number is %\n", other_number);
+	// Use of the print function to print out variable value.
+	// '%' is used as placeholder in the string saying where the print 
+	// function should place our value.
+	print("number is %\n", number);
 
 
-    // Type of the variable can be inferred from type of initialization 
-    // value.
-    boolean := true; // Inferred bool type.
+	// Variable without initialization will be automatically set to default
+	// value. In this case 'other_number' will be zero. This initialization
+	// can be disabled by #noinit flag 'other_number: u8 #noinit;'.
+	other_number: u8;
+	other_number = 16;
 
-    // We can print bools in the same way as numbers.
-    print("boolean is %\n", boolean);
+	print("other_number is %\n", other_number);
+
+
+	// Type of the variable can be inferred from type of initialization 
+	// value.
+	boolean := true; // Inferred bool type.
+
+	// We can print bools in the same way as numbers.
+	print("boolean is %\n", boolean);
 
 
 
-    // Declare local immutable number
-    immut_number : s32 : 10;
+	// Declare local immutable number
+	immut_number : s32 : 10;
 
-    // This is illegal, variable is immutable.
-    // immut_number = 10;
-    print("immut_number is %\n", immut_number);
+	// This is illegal, variable is immutable.
+	// immut_number = 10;
+	print("immut_number is %\n", immut_number);
 
-    // Or just do this...
-    immut_other_number :: 20;
+	// Or just do this...
+	immut_other_number :: 20;
 
-    print("immut_other_number is %\n", immut_other_number);
+	print("immut_other_number is %\n", immut_other_number);
 
-    return 0;
+	return 0;
 }

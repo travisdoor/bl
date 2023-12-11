@@ -4,41 +4,41 @@
 mutex: std.Mutex;
 
 main :: fn () s32 {
-    print("Start thread!!!\n");
-    defer print("Threads joined!!!\n");
+	print("Start thread!!!\n");
+	defer print("Threads joined!!!\n");
 
-    std.mutex_init(&mutex);
-    defer std.mutex_terminate(&mutex);
+	std.mutex_init(&mutex);
+	defer std.mutex_terminate(&mutex);
 
-    t1 :: std.thread_create(&first);
-    t2 :: std.thread_create(&second);
+	t1 :: std.thread_create(&first);
+	t2 :: std.thread_create(&second);
 
-    std.thread_join(t1);
-    std.thread_join(t2);
+	std.thread_join(t1);
+	std.thread_join(t2);
 
-    return 0;
+	return 0;
 }
 
 first :: fn (args: *u8) s32 {
-    loop i := 0; i < 10; i += 1 {
-        std.mutex_lock(&mutex);
-        
-        print("Hello from first thread!\n");
+	loop i := 0; i < 10; i += 1 {
+		std.mutex_lock(&mutex);
+		
+		print("Hello from first thread!\n");
 
-        std.mutex_unlock(&mutex);
-        os_sleep_ms(50);
-    }
-    return 0;
+		std.mutex_unlock(&mutex);
+		os_sleep_ms(50);
+	}
+	return 0;
 }
 
 second :: fn (args: *u8) s32 {
-    loop i := 0; i < 10; i += 1 {
-        std.mutex_lock(&mutex);
-        
-        print("Hello from second thread!\n");
+	loop i := 0; i < 10; i += 1 {
+		std.mutex_lock(&mutex);
+		
+		print("Hello from second thread!\n");
 
-        std.mutex_unlock(&mutex);
-        os_sleep_ms(100);
-    }
-    return 0;
+		std.mutex_unlock(&mutex);
+		os_sleep_ms(100);
+	}
+	return 0;
 }

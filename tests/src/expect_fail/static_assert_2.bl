@@ -1,10 +1,10 @@
 // @ERR_COMPILE_TIME_ABORT@
 foo :: fn (v: ?T) {
-    static_assert(typeinfo(v).kind == TypeKind.INT);
+	static_assert(typeinfo(v).kind == TypeKind.INT);
 }
 
 main :: fn () s32 { 
-    foo(10);
-    foo("hello");
-    return 0; 
+	foo(10);
+	foo("hello");
+	return 0; 
 }

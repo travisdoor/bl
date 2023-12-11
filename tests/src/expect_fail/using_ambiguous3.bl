@@ -3,10 +3,10 @@
 #import "std/string"
 
 main :: fn () s32 {
-    using std;
-    using S;
-    f := &str_match;
-    return 0;
+	using std;
+	using S;
+	f := &str_match;
+	return 0;
 }
 
 str_match :: fn () {}

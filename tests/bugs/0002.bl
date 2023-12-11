@@ -1,12 +1,12 @@
 BufferAllocator :: fn (size: s64) type #comptime {
-    static_assert(size > 0);
-    return struct #base Allocator {
-        data: [size]u8;
-    };
+	static_assert(size > 0);
+	return struct #base Allocator {
+		data: [size]u8;
+	};
 }
 
 main :: fn () s32 {
-    buf_alloc: BufferAllocator(1024);
-    print("%, %, %B\n", 0, buf_alloc.data.len, sizeof(buf_alloc));
-    return 0;
+	buf_alloc: BufferAllocator(1024);
+	print("%, %, %B\n", 0, buf_alloc.data.len, sizeof(buf_alloc));
+	return 0;
 }

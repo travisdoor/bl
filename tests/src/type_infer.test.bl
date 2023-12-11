@@ -1,10 +1,10 @@
 #private
 
 type_infer :: fn () #test {
-    number := 0;
-    boolean := true;
-    float := 0.1f;
-    double := 0.1;
+	number := 0;
+	boolean := true;
+	float := 0.1f;
+	double := 0.1;
 }
 
 array_len_infer :: fn () #test {

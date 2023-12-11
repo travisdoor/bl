@@ -1,28 +1,28 @@
 OpenMode :: enum #flags {
-    READ;   // 1
-    WRITE;  // 2
-    APPEND; // 4
-    CREATE; // 8
-    WRITE_APPEND = WRITE | APPEND; // Combination of multiple variants.
-    WRITE_CREATE = WRITE | CREATE;
+	READ;   // 1
+	WRITE;  // 2
+	APPEND; // 4
+	CREATE; // 8
+	WRITE_APPEND = WRITE | APPEND; // Combination of multiple variants.
+	WRITE_CREATE = WRITE | CREATE;
 }
 
 main :: fn () s32 {
-    mode: OpenMode; // Set to OpenMode.Read by default
+	mode: OpenMode; // Set to OpenMode.Read by default
 	print("mode = %\n", mode);
 
 	//
-    // Set the flag
+	// Set the flag
 	//
 
 	// Set mode to combination of WRITE nad CREATE flags.
-    mode = OpenMode.WRITE_CREATE;
-    print("mode = %\n", mode);
+	mode = OpenMode.WRITE_CREATE;
+	print("mode = %\n", mode);
 	
 	// Note that we can use the | (or) operator on the flags enumerators. To toggle one additional
 	// flag like this:
 	mode |= OpenMode.APPEND;
-    print("mode = %\n", mode);
+	print("mode = %\n", mode);
 
 	// Reset the mode back to READ only.
 	mode = OpenMode.READ;
@@ -34,7 +34,7 @@ main :: fn () s32 {
 
 
 	//
-    // Check flags
+	// Check flags
 	//
 
 	if (mode & OpenMode.WRITE) == OpenMode.WRITE {
@@ -72,5 +72,5 @@ main :: fn () s32 {
 		print("Not set!\n");
 	}
 
-    return 0;
+	return 0;
 }

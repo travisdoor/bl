@@ -6,5 +6,5 @@ function :: fn () {
 }
 
 MyType :: struct {
-    i: s32;
+	i: s32;
 }

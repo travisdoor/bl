@@ -1,8 +1,8 @@
 // @ERR_INVALID_INITIALIZER@
 foo :: fn () (s32, s32) {
-    return 10, 20;
+	return 10, 20;
 }
 
 bar :: fn () (s32, s32, s32) {
-    return foo(), 10;
+	return foo(), 10;
 }

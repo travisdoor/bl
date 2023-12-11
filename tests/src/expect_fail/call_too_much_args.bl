@@ -2,5 +2,5 @@
 foo :: fn () {}
 main :: fn () s32 {
 	foo(10);
-    return 0;
+	return 0;
 }

@@ -14,14 +14,14 @@ GrowingBufferStream :: struct #base Stream {
 	allocator: *Allocator;
 	
 	data: []u8;
-    position: s64;
+	position: s64;
 	end: s64;
 }
 
 growing_buffer_stream_init :: fn (stream: *GrowingBufferStream, size : usize = 0, allocator: *Allocator = null) {
 	zeroinit(stream);
-    stream.vtable = &STREAM_VTABLE;
-    stream.allocator = allocator;
+	stream.vtable = &STREAM_VTABLE;
+	stream.allocator = allocator;
 
 	if size > 0 {
 		mem, err :: alloc(size, DEFAULT_ALIGNMENT, allocator);
@@ -39,9 +39,9 @@ growing_buffer_stream_terminate :: fn (stream: *GrowingBufferStream) {
 #private
 
 STREAM_VTABLE :: StreamVTable.{
-    read  = auto &read,
-    write = auto &write,
-    seek = auto &seek,
+	read  = auto &read,
+	write = auto &write,
+	seek = auto &seek,
 };
 
 read :: fn (stream: *GrowingBufferStream, dest: *u8, bytes_to_read: s64) (s64, Error) {
@@ -50,7 +50,7 @@ read :: fn (stream: *GrowingBufferStream, dest: *u8, bytes_to_read: s64) (s64, E
 	memcpy(dest, &stream.data[stream.position], auto size);
 	stream.position += size;
 	assert(stream.position <= stream.end);
-    return size, OK;
+	return size, OK;
 }
 
 write :: fn (stream: *GrowingBufferStream, src: *u8, bytes_to_write: s64) (s64, Error) {
@@ -66,7 +66,7 @@ write :: fn (stream: *GrowingBufferStream, src: *u8, bytes_to_write: s64) (s64, 
 	memcpy(&stream.data[stream.position], src, auto bytes_to_write);
 	stream.position = next_position;
 	stream.end = max(stream.position, stream.end);
-    return bytes_to_write, OK;
+	return bytes_to_write, OK;
 }
 
 seek :: fn (stream: *GrowingBufferStream, locator: StreamLocator, offset: s64) (position: s64, err: Error) {
