@@ -191,9 +191,11 @@ static inline void set_value(struct thread_context *tctx, struct mir_instr *inst
 	instr->backend_value = arrlenu(tctx->values);
 }
 
-#define get_value(tctx, V) _Generic((V),  \
-	struct mir_instr *: _get_value_instr, \
-	struct mir_var *: _get_value_var)((tctx), (V))
+#define get_value(tctx, V) _Generic((V),                \
+	                                struct mir_instr *  \
+	                                : _get_value_instr, \
+	                                  struct mir_var *  \
+	                                : _get_value_var)((tctx), (V))
 
 static inline struct x64_value _get_value_instr(struct thread_context *tctx, struct mir_instr *instr) {
 	bassert(instr->backend_value != 0);
@@ -1100,15 +1102,17 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 				zero_reg(tctx, reg);
 
 				u32 remining_size = value_size;
-				u32 offset        = var_value.offset;
+				s32 dest_offset   = var_value.offset;
+				s32 src_offset    = 0;
 				while (remining_size) {
 					const u32 size = MIN(8, remining_size);
-					mov_rm_indirect(tctx, RAX, 0, size);
+					mov_rm_indirect(tctx, RAX, src_offset, size);
 					const u32 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
 
-					mov_mr(tctx, RBP, offset, RAX, size);
+					mov_mr(tctx, RBP, dest_offset, RAX, size);
 					remining_size -= size;
-					offset -= size;
+					src_offset += size;
+					dest_offset -= size;
 
 					struct sym_patch patch = {
 					    .hash           = init_value.reloc,
