@@ -450,6 +450,31 @@ s32 levenshtein(const str_t s1, const str_t s2) {
 	return column[s1len];
 }
 
+str_t trim_leading_characters(str_t str, u8 c) {
+	while (str.len > 0 && str.ptr[0] == c) {
+		str.ptr++;
+		str.len--;
+	}
+	return str;
+}
+
+s32 fuzzy_cmp(str_t str, str_t other) {
+	if (other.len == 0 || str.len == 0) return str.len == other.len ? 0 : 1;
+
+	s32       score   = 0;
+	const s32 min_len = MIN(str.len, other.len);
+
+	for (s32 i = 0; i < min_len; ++i) {
+		u8 str_char   = toupper(str.ptr[i]);
+		u8 other_char = toupper(other.ptr[i]);
+
+		score += str_char != other_char ? 1 : 0;
+		score -= str_char == other_char ? 1 : 0;
+	}
+
+	return score;
+}
+
 bool search_source_file(const char *filepath,
                         const u32   flags,
                         const char *wdir,

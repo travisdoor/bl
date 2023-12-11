@@ -145,6 +145,55 @@ struct getarg_opt {
 	const s32   id;
 };
 
+struct closest_opt {
+	const char *name;
+	s32         distance;
+};
+
+static const char *find_closest_argument(struct getarg_opt *opts, str_t opt) {
+	bassert(opts);
+
+	struct getarg_opt *current_opt;
+	array(struct closest_opt) closest_opts = NULL;
+	s32 closest_count                      = 0;
+	s32 min_distance                       = INT_MAX;
+
+	opt = trim_leading_characters(opt, '-');
+
+	while ((current_opt = opts++)->name) {
+		str_t current_opt_str = trim_leading_characters(make_str_from_c(current_opt->name), '-');
+		s32   distance        = fuzzy_cmp(current_opt_str, opt);
+
+		if (distance < min_distance) {
+			min_distance  = distance;
+			closest_count = 1;
+			arrsetlen(closest_opts, closest_count);
+			closest_opts[0] = ((struct closest_opt){.name = current_opt->name, .distance = distance});
+		} else if (distance == min_distance) {
+			closest_count++;
+			arrsetlen(closest_opts, closest_count);
+			closest_opts[closest_count - 1] = ((struct closest_opt){.name = current_opt->name, .distance = distance});
+		}
+	}
+
+	const char *result = NULL;
+	if (min_distance == 0 || closest_count == 0)
+		return NULL;
+
+	for (s32 i = 0; i < closest_count; ++i) {
+		if (fuzzy_cmp(opt, make_str_from_c(closest_opts[i].name)) != 0) {
+			str_t current_opt = trim_leading_characters(make_str_from_c(closest_opts[i].name), '-');
+			if (levenshtein(current_opt, opt) <= 4) {
+				result = closest_opts[i].name;
+				break;
+			}
+		}
+	}
+
+	arrfree(closest_opts);
+	return result;
+}
+
 static s32
 getarg(s32 argc, char *argv[], struct getarg_opt *opts, s32 *optindex, const char **positional) {
 	bassert(opts && optindex);
@@ -167,6 +216,7 @@ getarg(s32 argc, char *argv[], struct getarg_opt *opts, s32 *optindex, const cha
 		}
 
 		struct getarg_opt *opt;
+		struct getarg_opt *cached_opts = opts;
 		while ((opt = opts++)->name) {
 			if (strcmp(arg, opt->name) == 0) {
 				switch (opt->kind) {
@@ -218,7 +268,14 @@ getarg(s32 argc, char *argv[], struct getarg_opt *opts, s32 *optindex, const cha
 				return opt->id;
 			}
 		}
-		builder_error("Unknown argument '%s'", arg);
+		const char *closest_arg = find_closest_argument(cached_opts, make_str_from_c(arg));
+
+		if (closest_arg == NULL) {
+			builder_error("Unknown argument '%s', try `blc --help` for more information.", arg);
+		} else {
+			builder_error("Unknown argument '%s', did you mean '%s'?", arg, closest_arg);
+		}
+
 		return '?';
 	}
 	(*positional) = arg;

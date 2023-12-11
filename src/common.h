@@ -160,6 +160,8 @@ bool str_match(str_t a, str_t b);
 
 str_t str_toupper(str_t str);
 s32   levenshtein(const str_t s1, const str_t s2);
+str_t trim_leading_characters(str_t str, u8 c);
+s32   fuzzy_cmp(str_t str, str_t other);
 
 // String dynamic array buffer.
 //
@@ -446,8 +448,8 @@ const char *read_config(struct config       *config,
                         const char          *default_value);
 
 typedef void (*process_tokens_fn_t)(void *ctx, const char *token);
-s32   process_tokens(void *ctx, const char *input, const char *delimiter, process_tokens_fn_t fn);
-char *strtrim(char *str);
+s32          process_tokens(void *ctx, const char *input, const char *delimiter, process_tokens_fn_t fn);
+char        *strtrim(char *str);
 
 bool _dir_exists(const char *ptr, s32 len);
 bool _file_exists(const char *ptr, s32 len);
