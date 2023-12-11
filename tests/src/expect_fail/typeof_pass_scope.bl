@@ -1,7 +1,7 @@
 // @ERR_INVALID_TYPE@
 main :: fn () s32 {
-    typeof(MyScope);
-    return 0;
+	typeof(MyScope);
+	return 0;
 }
 
 #scope MyScope

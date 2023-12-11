@@ -1,32 +1,32 @@
 #private
 ColliderKind :: enum {
-    Rect;
-    Circle;
+	Rect;
+	Circle;
 }
 
 Collider :: struct {
-    kind: ColliderKind;
-    data: union {
-        rect: ColliderRect;
-        circle: ColliderCircle;
-    };
+	kind: ColliderKind;
+	data: union {
+		rect: ColliderRect;
+		circle: ColliderCircle;
+	};
 }
 
 ColliderRect :: struct {
-    min: s32;
-    size: s32;
+	min: s32;
+	size: s32;
 }
 
 ColliderCircle :: struct {
-    c: f32;
-    r: f32;
+	c: f32;
+	r: f32;
 }
 
 union_collider :: fn () #test {
-    c: Collider;
-    c.kind = ColliderKind.Circle;
-    c.data.circle = ColliderCircle.{12.f, 15.f};
+	c: Collider;
+	c.kind = ColliderKind.Circle;
+	c.data.circle = ColliderCircle.{12.f, 15.f};
 
-    assert(sizeof(c.data) == sizeof(ColliderRect));
+	assert(sizeof(c.data) == sizeof(ColliderRect));
 }
 

@@ -1,25 +1,25 @@
 Fruit :: struct {
-    kind: enum {
-        APPLE;
-        ORANGE;
-        BANANA;
-    };
+	kind: enum {
+		APPLE;
+		ORANGE;
+		BANANA;
+	};
 }
 
 main :: fn () s32 {
-    // Access the nested anonymous enum type in the structure.
-    kind: Fruit.kind;
+	// Access the nested anonymous enum type in the structure.
+	kind: Fruit.kind;
 
-    kind = Fruit.kind.APPLE;
+	kind = Fruit.kind.APPLE;
 
-    // We can use 'using'.
-    using Fruit.kind;
+	// We can use 'using'.
+	using Fruit.kind;
 
-    switch kind {
-        APPLE  { print("Apple!\n");  }
-        ORANGE { print("Orange!\n"); }
-        BANANA { print("Banana!\n"); }
-    }
+	switch kind {
+		APPLE  { print("Apple!\n");  }
+		ORANGE { print("Orange!\n"); }
+		BANANA { print("Banana!\n"); }
+	}
 
-    return 0;
+	return 0;
 }

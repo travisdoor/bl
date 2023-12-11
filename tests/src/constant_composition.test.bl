@@ -1,7 +1,7 @@
 #private
 Data :: struct {
-    i: s32;
-    j: string_view;
+	i: s32;
+	j: string_view;
 }
 
 G1 :: [2]s32.{999, G2};
@@ -12,17 +12,17 @@ G5 :: "foo";
 G6 :: Data.{G1[0], G5};
 
 globals :: fn () #test {
-    assert(G2 == 10);
-    assert(G1[0] == 999);
-    assert(G1[1] == G2);
-    assert(G3.i == 10);
-    assert(G4.i == 10);
-    assert(G6.i == 999);
+	assert(G2 == 10);
+	assert(G1[0] == 999);
+	assert(G1[1] == G2);
+	assert(G3.i == 10);
+	assert(G4.i == 10);
+	assert(G6.i == 999);
 }
 
 locals :: fn () #test {
-    L1 :: [2]s32.{999, G2};
-    assert(L1[0] == 999);
-    assert(L1[1] == G2);
+	L1 :: [2]s32.{999, G2};
+	assert(L1[0] == 999);
+	assert(L1[1] == G2);
 }
 

@@ -1,82 +1,82 @@
 #private
 
 Data :: struct {
-    a: s32;
-    b: s32;
-    c: bool;
-    d: u64;
-    e: u64;
+	a: s32;
+	b: s32;
+	c: bool;
+	d: u64;
+	e: u64;
 }
 
 mixed_args_1 :: fn () #test {
-    foo :: fn (NUMBER: s32 #comptime) s32 {
-        return NUMBER;
-    };
+	foo :: fn (NUMBER: s32 #comptime) s32 {
+		return NUMBER;
+	};
 
-    test_eq(foo(10), 10);
+	test_eq(foo(10), 10);
 }
 
 mixed_args_2 :: fn () #test {
-    foo :: fn (a: s32, NUMBER: s32 #comptime) s32 {
-        return NUMBER + a;
-    };
+	foo :: fn (a: s32, NUMBER: s32 #comptime) s32 {
+		return NUMBER + a;
+	};
 
-    test_eq(foo(10, 20), 30);
+	test_eq(foo(10, 20), 30);
 }
 
 mixed_args_3 :: fn () #test {
-    foo :: fn (a: s32, NUMBER: s32 #comptime, b: s32) s32 {
-        return NUMBER + a + b;
-    };
+	foo :: fn (a: s32, NUMBER: s32 #comptime, b: s32) s32 {
+		return NUMBER + a + b;
+	};
 
-    test_eq(foo(10, 20, 30), 60);
+	test_eq(foo(10, 20, 30), 60);
 }
 
 mixed_args_4 :: fn () #test {
-    foo :: fn (STR: string_view #comptime) {
-        test_eq(STR, "HELLO");
-    };
-    foo("HELLO");
+	foo :: fn (STR: string_view #comptime) {
+		test_eq(STR, "HELLO");
+	};
+	foo("HELLO");
 }
 
 mixed_args_5 :: fn () #test {
-    foo :: fn (DATA: Data #comptime) {
-        test_eq(DATA.a, 10);
-    };
-    data :: Data.{10, 20, true, 30, 40};
-    foo(data);
+	foo :: fn (DATA: Data #comptime) {
+		test_eq(DATA.a, 10);
+	};
+	data :: Data.{10, 20, true, 30, 40};
+	foo(data);
 }
 
 mixed_args_6 :: fn () #test {
-    foo :: fn (T: type #comptime, v: T) T {
-    	return v;
-    };
-    
-    test_eq(foo(s32, 10), 10);
-    test_eq(foo(string_view, "hello"), "hello");
-    test_true(foo(bool, true));
+	foo :: fn (T: type #comptime, v: T) T {
+		return v;
+	};
+	
+	test_eq(foo(s32, 10), 10);
+	test_eq(foo(string_view, "hello"), "hello");
+	test_true(foo(bool, true));
 }
 
 ArrayData :: struct {
-    i: s32;
-    a: [10]s32;
-    j: s32;
+	i: s32;
+	a: [10]s32;
+	j: s32;
 }
 
 mixed_args_array_data :: fn () #test {
-    foo :: fn (DATA: ArrayData #comptime) {
-        test_eq(DATA.i, 10);
-        test_eq(DATA.j, 20);
-        loop i := 0; i < DATA.a.len; i += 1 {
-            test_eq(DATA.a[i], i);
-        }
-    };
-    data :: ArrayData.{
-        i = 10,
-        j = 20,
-        a = [10]s32.{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 }
-    };
-    foo(data);
+	foo :: fn (DATA: ArrayData #comptime) {
+		test_eq(DATA.i, 10);
+		test_eq(DATA.j, 20);
+		loop i := 0; i < DATA.a.len; i += 1 {
+			test_eq(DATA.a[i], i);
+		}
+	};
+	data :: ArrayData.{
+		i = 10,
+		j = 20,
+		a = [10]s32.{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 }
+	};
+	foo(data);
 }
 
 mixed_with_default_value_1 :: fn () #test {
@@ -130,87 +130,87 @@ mixed_with_default_value_type_2 :: fn () #test {
 }
 
 mixed_type_slice :: fn () #test {
-    foo :: fn (T: type #comptime) []T {
-        v: []T;
-        return v;
-    };
+	foo :: fn (T: type #comptime) []T {
+		v: []T;
+		return v;
+	};
 
-    int_slice: []s32 = foo(s32);
-    bool_slice: []bool = foo(bool);
+	int_slice: []s32 = foo(s32);
+	bool_slice: []bool = foo(bool);
 }
 
 mixed_type_dynamic_array :: fn () #test {
-    foo :: fn (T: type #comptime) [..]T {
-        v: [..]T;
-        return v;
-    };
+	foo :: fn (T: type #comptime) [..]T {
+		v: [..]T;
+		return v;
+	};
 
-    int_slice: [..]s32 = foo(s32);
-    bool_slice: [..]bool = foo(bool);
+	int_slice: [..]s32 = foo(s32);
+	bool_slice: [..]bool = foo(bool);
 }
 
 mixed_type_multi_return_value :: fn () #test {
-    foo :: fn (T: type #comptime) (a: T, b: T) {
-        a: T;
-        b: T;
-        return a, b;
-    };
+	foo :: fn (T: type #comptime) (a: T, b: T) {
+		a: T;
+		b: T;
+		return a, b;
+	};
 
-    i1, i2 := foo(s32);
-    b1, b2 := foo(bool);
+	i1, i2 := foo(s32);
+	b1, b2 := foo(bool);
 }
 
 mixed_type_ptr :: fn () #test {
-    foo :: fn (T: type #comptime) *T {
-        return null;
-    };
+	foo :: fn (T: type #comptime) *T {
+		return null;
+	};
 
-    ptr_int: *s32 = foo(s32);
-    ptr_bool: *bool = foo(bool);
+	ptr_int: *s32 = foo(s32);
+	ptr_bool: *bool = foo(bool);
 }
 
 mixed_type_array :: fn () #test {
-    foo :: fn (T: type #comptime) *[4]T {
-        return null;
-    };
+	foo :: fn (T: type #comptime) *[4]T {
+		return null;
+	};
 
-    ptr_int: *[4]s32 = foo(s32);
-    ptr_bool: *[4]bool = foo(bool);
+	ptr_int: *[4]s32 = foo(s32);
+	ptr_bool: *[4]bool = foo(bool);
 }
 
 get_number_back :: fn (v: s32 #comptime) s32 #comptime {
-    return v;
+	return v;
 }
 
 placeholder_in_nested_call :: fn () #test {
-    foo :: fn (n: s32 #comptime) [get_number_back(n)]s32 {
-        tmp: [n]s32;
-        return tmp;
-    };
+	foo :: fn (n: s32 #comptime) [get_number_back(n)]s32 {
+		tmp: [n]s32;
+		return tmp;
+	};
 
-    v :: foo(10);
-    test_eq(v.len, 10);
+	v :: foo(10);
+	test_eq(v.len, 10);
 }
 
 MyEnum :: enum {
-    A;
-    B;
-    C;
+	A;
+	B;
+	C;
 }
 
 get_enum_variant_value_array :: fn (T: type #comptime) [enum_count(T)]s32 #comptime {
-    tmp: [enum_count(T)]s32;
-    info :: cast(*TypeInfoEnum) typeinfo(T);
-    loop i := 0; i < info.variants.len; i += 1 {
-        tmp[i] = auto info.variants[i].value;
-    }
-    return tmp;
+	tmp: [enum_count(T)]s32;
+	info :: cast(*TypeInfoEnum) typeinfo(T);
+	loop i := 0; i < info.variants.len; i += 1 {
+		tmp[i] = auto info.variants[i].value;
+	}
+	return tmp;
 }
 
 generate_enum_names :: fn () #test {
-    vals :: get_enum_variant_value_array(MyEnum);
-    test_eq(vals.len, 3);
-    test_eq(vals[0], 0);
-    test_eq(vals[1], 1);
-    test_eq(vals[2], 2);
+	vals :: get_enum_variant_value_array(MyEnum);
+	test_eq(vals.len, 3);
+	test_eq(vals[0], 0);
+	test_eq(vals[1], 1);
+	test_eq(vals[2], 2);
 }

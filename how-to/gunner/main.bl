@@ -3,41 +3,41 @@
 #import "extra/mabl"
 
 Mode :: enum {
-    UNKNOWN;
-    GAME;
-    AFTER_SCREEN;
+	UNKNOWN;
+	GAME;
+	AFTER_SCREEN;
 }
 
 Ship :: struct {
-    position: glm.v2;
-    move_left: bool;
-    move_right: bool;
-    move_up: bool;
-    move_down: bool;
-    fire: bool;
-    fire_timeout: f32;
-    power: f32;
+	position: glm.v2;
+	move_left: bool;
+	move_right: bool;
+	move_up: bool;
+	move_down: bool;
+	fire: bool;
+	fire_timeout: f32;
+	power: f32;
 }
 
 Star :: struct {
-    position: glm.v2;
-    size: f32;
-    speed: f32;
+	position: glm.v2;
+	size: f32;
+	speed: f32;
 }
 
 Bullet :: struct {
-    position: glm.v2;
+	position: glm.v2;
 }
 
 Stone :: struct {
-    position: glm.v2;
-    rotation: f32;
-    speed: f32;
+	position: glm.v2;
+	rotation: f32;
+	speed: f32;
 }
 
 PowerUp :: struct {
-    position: glm.v2;
-    rotation: f32;
+	position: glm.v2;
+	rotation: f32;
 }
 
 WINDOW_WIDTH  :: 800;
@@ -82,384 +82,384 @@ score: s32;
 restart_game := false;
 
 main :: fn () s32 {
-    // Initialize GLFW.
-    if glfw.Init() == 0 {
-        print_glfw_error();
-        panic("Cannot initialize Glfw.\n");
-    }
+	// Initialize GLFW.
+	if glfw.Init() == 0 {
+		print_glfw_error();
+		panic("Cannot initialize Glfw.\n");
+	}
+	defer glfw.Terminate();
 
-    // Create GLFW window.
-    glfw.WindowHint(glfw.CONTEXT_VERSION_MAJOR, 3);
-    glfw.WindowHint(glfw.CONTEXT_VERSION_MINOR, 3);
-    glfw.WindowHint(glfw.OPENGL_FORWARD_COMPAT, 1);
-    glfw.WindowHint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE);
-    glfw.WindowHint(glfw.DOUBLEBUFFER, glfw.TRUE);
-    glfw.WindowHint(glfw.RESIZABLE, glfw.FALSE);
+	// Create GLFW window.
+	glfw.WindowHint(glfw.CONTEXT_VERSION_MAJOR, 3);
+	glfw.WindowHint(glfw.CONTEXT_VERSION_MINOR, 3);
+	glfw.WindowHint(glfw.OPENGL_FORWARD_COMPAT, 1);
+	glfw.WindowHint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE);
+	glfw.WindowHint(glfw.DOUBLEBUFFER, glfw.TRUE);
+	glfw.WindowHint(glfw.RESIZABLE, glfw.FALSE);
 
-    window = glfw.CreateWindow(
-        WINDOW_WIDTH,
-        WINDOW_HEIGHT,
-        std.strtoc(WINDOW_TITLE), // Convert bl string_view to C string.
-        null,
-        null
-    );
+	window = glfw.CreateWindow(
+		WINDOW_WIDTH,
+		WINDOW_HEIGHT,
+		std.strtoc(WINDOW_TITLE), // Convert bl string_view to C string.
+		null,
+		null
+	);
+	defer glfw.DestroyWindow(window);
 
-    if !window {
-        print_glfw_error();
-        panic("Cannot create GLFW window.\n");
-    }
+	if !window {
+		print_glfw_error();
+		panic("Cannot create GLFW window.\n");
+	}
 
-    glfw.MakeContextCurrent(window);
-    glfw.SwapInterval(1);
+	glfw.MakeContextCurrent(window);
+	glfw.SwapInterval(1);
 
-    glfw.SetKeyCallback(window, &key_callback);
+	glfw.SetKeyCallback(window, &key_callback);
 
-    draw.init(WINDOW_WIDTH, WINDOW_HEIGHT);
+	draw.init(WINDOW_WIDTH, WINDOW_HEIGHT);
+	defer draw.terminate();
+	
+	err: Error;
+	err = draw.texture_init(&ship_texture, ".", "ship.png");
+	if err { panic(err); }
+	defer draw.texture_terminate(&ship_texture);
 
-    err: Error;
-    err = draw.texture_init(&ship_texture, ".", "ship.png");
-    if err { panic(err); }
-    defer draw.texture_terminate(&ship_texture);
+	err = draw.texture_init(&star_texture, ".", "star.png");
+	if err { panic(err); }
+	defer draw.texture_terminate(&star_texture);
 
-    err = draw.texture_init(&star_texture, ".", "star.png");
-    if err { panic(err); }
-    defer draw.texture_terminate(&star_texture);
+	err = draw.texture_init(&bg_texture, ".", "background.png");
+	if err { panic(err); }
+	defer draw.texture_terminate(&bg_texture);
 
-    err = draw.texture_init(&bg_texture, ".", "background.png");
-    if err { panic(err); }
-    defer draw.texture_terminate(&bg_texture);
+	err = draw.texture_init(&bullet_texture, ".", "bullet.png");
+	if err { panic(err); }
+	defer draw.texture_terminate(&bullet_texture);
 
-    err = draw.texture_init(&bullet_texture, ".", "bullet.png");
-    if err { panic(err); }
-    defer draw.texture_terminate(&bullet_texture);
+	err = draw.texture_init(&stone_texture, ".", "stone.png");
+	if err { panic(err); }
+	defer draw.texture_terminate(&stone_texture);
 
-    err = draw.texture_init(&stone_texture, ".", "stone.png");
-    if err { panic(err); }
-    defer draw.texture_terminate(&stone_texture);
+	err = draw.texture_init(&power_texture, ".", "power.png");
+	if err { panic(err); }
+	defer draw.texture_terminate(&power_texture);
 
-    err = draw.texture_init(&power_texture, ".", "power.png");
-    if err { panic(err); }
-    defer draw.texture_terminate(&power_texture);
+	err = draw.font_init_at_size(&font, ".", "font.ttf", 32);
+	if err { panic(err); }
+	defer draw.font_terminate(&font);
 
-    err = draw.font_init_at_size(&font, ".", "font.ttf", 32);
-    if err { panic(err); }
-    defer draw.font_terminate(&font);
+	result :: miniaudio.ma_engine_init(null, &audio_engine);
+	if result != miniaudio.ma_result.SUCCESS {
+		panic("Failed to initialize audio engine with error: %", result);
+	}
+	defer miniaudio.ma_engine_uninit(&audio_engine);
 
-    result :: miniaudio.ma_engine_init(null, &audio_engine);
-    if result != miniaudio.ma_result.SUCCESS {
-        panic("Failed to initialize audio engine with error: %", result);
-    }
-    defer miniaudio.ma_engine_uninit(&audio_engine);
+	set_game_mode(Mode.GAME);
+	change_game_mode();
 
-    set_game_mode(Mode.GAME);
-    change_game_mode();
+	// Game loop comes here!
+	time_current := glfw.GetTime();
+	loop glfw.WindowShouldClose(window) == 0 {
+		glfw.PollEvents();
+		using draw;
+		using glm;
 
-    // Game loop comes here!
-    time_current := glfw.GetTime();
-    loop glfw.WindowShouldClose(window) == 0 {
-        glfw.PollEvents();
-        using draw;
-        using glm;
+		time_previous :: time_current;
+		time_current = glfw.GetTime();
+		dt := cast(f32) (time_current - time_previous);
 
-        time_previous :: time_current;
-        time_current = glfw.GetTime();
-        dt := cast(f32) (time_current - time_previous);
+		// Clear the frame.
+		clear_color();
 
-        // Clear the frame.
-        clear_color();
+		switch mode {
+			Mode.GAME {
+				handle_game_input(dt);
+				simulate_game(dt);
+				draw_game();
+			}
+			Mode.AFTER_SCREEN {
+				if restart_game {
+					set_game_mode(Mode.GAME);
+				}
+				draw_after_screen(dt);
+			}
+			default { panic("Invalid game mode!"); }
+		}
 
-        switch mode {
-            Mode.GAME {
-                handle_game_input(dt);
-                simulate_game(dt);
-                draw_game();
-            }
-            Mode.AFTER_SCREEN {
-                if restart_game {
-                    set_game_mode(Mode.GAME);
-                }
-                draw_after_screen(dt);
-            }
-            default { panic("Invalid game mode!"); }
-        }
+		flush();
 
-        flush();
+		// Swap buffers to see rendered stuff.
+		glfw.SwapBuffers(window);
 
-        // Swap buffers to see rendered stuff.
-        glfw.SwapBuffers(window);
+		change_game_mode();
 
-        change_game_mode();
+		// Since we use temporary allocator, we should reset it's internal storage
+		// each frame.
+		temporary_reset();
+	}
 
-        // Since we use temporary allocator, we should reset it's internal storage
-        // each frame.
-        temporary_reset();
-    }
-
-    // Termination
-    array_terminate(&bullets);
-    array_terminate(&stones);
-    draw.terminate();
-    glfw.DestroyWindow(window);
-    glfw.Terminate();
-    return 0;
+	// Termination
+	array_terminate(&bullets);
+	array_terminate(&stones);
+	return 0;
 }
 
 #private
 // Following code is private to this file.
 
 print_glfw_error :: fn () {
-    cstr: *u8;
-    glfw.GetError(&cstr);
+	cstr: *u8;
+	glfw.GetError(&cstr);
 
-    if cstr == null { return; }
-    tmp := string_view.{ auto C.strlen(auto cstr), auto cstr };
-    print_err("GLFW Error: %", tmp);
+	if cstr == null { return; }
+	tmp := string_view.{ auto C.strlen(auto cstr), auto cstr };
+	print_err("GLFW Error: %", tmp);
 }
 
 key_callback :: fn (_: *glfw.Window, key: s32, _: s32, action: s32, _: s32) {
-    using glfw;
-    action_down :: action == PRESS || action == REPEAT;
-    switch key {
-        KEY_UP    { ship.move_up    = action_down;  }
-        KEY_DOWN  { ship.move_down  = action_down;  }
-        KEY_LEFT  { ship.move_left  = action_down;  }
-        KEY_RIGHT { ship.move_right = action_down;  }
-        KEY_SPACE { ship.fire    = action_down;     }
-        KEY_R     { restart_game = action == PRESS; }
-        default;
-    }
+	using glfw;
+	action_down :: action == PRESS || action == REPEAT;
+	switch key {
+		KEY_UP    { ship.move_up    = action_down;  }
+		KEY_DOWN  { ship.move_down  = action_down;  }
+		KEY_LEFT  { ship.move_left  = action_down;  }
+		KEY_RIGHT { ship.move_right = action_down;  }
+		KEY_SPACE { ship.fire    = action_down;     }
+		KEY_R     { restart_game = action == PRESS; }
+		default;
+	}
 }
 
 set_game_mode :: fn (new_mode: Mode) {
-    assert(new_mode != Mode.UNKNOWN);
-    next_mode = new_mode;
+	assert(new_mode != Mode.UNKNOWN);
+	next_mode = new_mode;
 }
 
 change_game_mode :: fn () {
-    using Mode;
-    if mode == next_mode { return; }
-    mode = next_mode;
-    switch mode {
-        GAME { start_game(); }
-        AFTER_SCREEN;
-        default { panic("Invalid game mode!"); }
-    }
+	using Mode;
+	if mode == next_mode { return; }
+	mode = next_mode;
+	switch mode {
+		GAME { start_game(); }
+		AFTER_SCREEN;
+		default { panic("Invalid game mode!"); }
+	}
 }
 
 play_sound :: fn (directory: string_view, filename: string_view) #inline {
-    miniaudio.ma_engine_play_sound(&audio_engine, std.strtoc(tprint("%/%", directory, filename)), null);
+	miniaudio.ma_engine_play_sound(&audio_engine, std.strtoc(tprint("%/%", directory, filename)), null);
 }
 
 start_game :: fn () {
-    using glm;
+	using glm;
 
-    score = 0;
-    random_seed_time();
-    array_clear(&bullets);
-    array_clear(&stones);
-    ship.position = v2.{ auto (WINDOW_WIDTH / 2), auto (WINDOW_HEIGHT - 100) };
-    ship.power    = 1.f;
+	score = 0;
+	random_seed_time();
+	array_clear(&bullets);
+	array_clear(&stones);
+	ship.position = v2.{ auto (WINDOW_WIDTH / 2), auto (WINDOW_HEIGHT - 100) };
+	ship.power    = 1.f;
 
-    loop i := 0; i < stars.len; i += 1 {
-        star := &stars[i];
-        star.position.x = auto random_number(0, WINDOW_WIDTH);
-        star.position.y = auto random_number(0, WINDOW_HEIGHT);
-        star.size       = auto random_number(8, auto star_texture.width);
-        star.speed      = STAR_SPEED - ((cast(f32) star_texture.width) - star.size) * 10.f;
-    }
+	loop i := 0; i < stars.len; i += 1 {
+		star := &stars[i];
+		star.position.x = auto random_number(0, WINDOW_WIDTH);
+		star.position.y = auto random_number(0, WINDOW_HEIGHT);
+		star.size       = auto random_number(8, auto star_texture.width);
+		star.speed      = STAR_SPEED - ((cast(f32) star_texture.width) - star.size) * 10.f;
+	}
 }
 
 handle_game_input :: fn (dt: f32) {
-    using glm;
-    if ship.move_left  { ship.position.x -= dt * SHIP_MOVE_SPEED; }
-    if ship.move_right { ship.position.x += dt * SHIP_MOVE_SPEED; }
-    if ship.move_up    { ship.position.y -= dt * SHIP_MOVE_SPEED; }
-    if ship.move_down  { ship.position.y += dt * SHIP_MOVE_SPEED; }
-    if ship.fire && ship.fire_timeout < 0.f && ship.power > 0.1f {
-        bullet_l := array_push(&bullets);
-        bullet_r := array_push(&bullets);
-        bullet_l.position = v2.{ ship.position.x - 16.f, ship.position.y - 40.f };
-        bullet_r.position = v2.{ ship.position.x + 16.f, ship.position.y - 40.f };
-        ship.power -= POWER_DOWN_PER_SHOOT;
-        play_sound(".", "fire.ogg");
-        ship.fire_timeout = SHIP_FIRE_SPEED;
-    }
-    ship.fire_timeout -= dt;
+	using glm;
+	if ship.move_left  { ship.position.x -= dt * SHIP_MOVE_SPEED; }
+	if ship.move_right { ship.position.x += dt * SHIP_MOVE_SPEED; }
+	if ship.move_up    { ship.position.y -= dt * SHIP_MOVE_SPEED; }
+	if ship.move_down  { ship.position.y += dt * SHIP_MOVE_SPEED; }
+	if ship.fire && ship.fire_timeout < 0.f && ship.power > 0.1f {
+		bullet_l := array_push(&bullets);
+		bullet_r := array_push(&bullets);
+		bullet_l.position = v2.{ ship.position.x - 16.f, ship.position.y - 40.f };
+		bullet_r.position = v2.{ ship.position.x + 16.f, ship.position.y - 40.f };
+		ship.power -= POWER_DOWN_PER_SHOOT;
+		play_sound(".", "fire.ogg");
+		ship.fire_timeout = SHIP_FIRE_SPEED;
+	}
+	ship.fire_timeout -= dt;
 }
 
 is_point_in_rect :: fn (p: glm.v2, rect_center: glm.v2, w: f32, h: f32) bool #inline {
-    using glm;
-    rect_min :: v2.{ rect_center.x - w * 0.5f, rect_center.y - h * 0.5f };
-    if p.x < rect_min.x { return false; }
-    if p.y < rect_min.y { return false; }
-    rect_max :: v2.{ rect_center.x + w * 0.5f, rect_center.y + h * 0.5f };
-    if p.x > rect_max.x { return false; }
-    if p.y > rect_max.y { return false; }
-    return true;
+	using glm;
+	rect_min :: v2.{ rect_center.x - w * 0.5f, rect_center.y - h * 0.5f };
+	if p.x < rect_min.x { return false; }
+	if p.y < rect_min.y { return false; }
+	rect_max :: v2.{ rect_center.x + w * 0.5f, rect_center.y + h * 0.5f };
+	if p.x > rect_max.x { return false; }
+	if p.y > rect_max.y { return false; }
+	return true;
 }
 
 is_rect_in_rect :: fn (c1: glm.v2, w1: f32, h1: f32, c2: glm.v2, w2: f32, h2: f32) bool #inline {
-    using glm;
-    min1 :: v2.{ c1.x - w1 * 0.5f, c1.y - h1 * 0.5f };
-    min2 :: v2.{ c2.x - w2 * 0.5f, c2.y - h2 * 0.5f };
-    max1 :: v2.{ c1.x + w1 * 0.5f, c1.y + h1 * 0.5f };
-    max2 :: v2.{ c2.x + w2 * 0.5f, c2.y + h2 * 0.5f };
+	using glm;
+	min1 :: v2.{ c1.x - w1 * 0.5f, c1.y - h1 * 0.5f };
+	min2 :: v2.{ c2.x - w2 * 0.5f, c2.y - h2 * 0.5f };
+	max1 :: v2.{ c1.x + w1 * 0.5f, c1.y + h1 * 0.5f };
+	max2 :: v2.{ c2.x + w2 * 0.5f, c2.y + h2 * 0.5f };
 
-    return min1.x < max2.x && min1.y < max2.y && min2.x < max1.x && min2.y < max1.y;
+	return min1.x < max2.x && min1.y < max2.y && min2.x < max1.x && min2.y < max1.y;
 }
 
 simulate_game :: fn (dt: f32) {
-    if cast(s32) ship.position.x > WINDOW_WIDTH  { ship.position.x = auto WINDOW_WIDTH;  }
-    if cast(s32) ship.position.y > WINDOW_HEIGHT { ship.position.y = auto WINDOW_HEIGHT; }
-    if cast(s32) ship.position.x < 0             { ship.position.x = 0.f;                }
-    if cast(s32) ship.position.y < 0             { ship.position.y = 0.f;                }
+	if cast(s32) ship.position.x > WINDOW_WIDTH  { ship.position.x = auto WINDOW_WIDTH;  }
+	if cast(s32) ship.position.y > WINDOW_HEIGHT { ship.position.y = auto WINDOW_HEIGHT; }
+	if cast(s32) ship.position.x < 0             { ship.position.x = 0.f;                }
+	if cast(s32) ship.position.y < 0             { ship.position.y = 0.f;                }
 
-    if ship.power < 1.f {
-        ship.power += dt * POWER_REGENERATION_SPEED;
-    } else {
-        ship.power = 1.f;
-    }
+	if ship.power < 1.f {
+		ship.power += dt * POWER_REGENERATION_SPEED;
+	} else {
+		ship.power = 1.f;
+	}
 
-    loop i := 0; i < stars.len; i += 1 {
-        star := &stars[i];
-        star.position.y += dt * star.speed;
-        if cast(s32) star.position.y > WINDOW_HEIGHT {
-            star.position.y = 0.f;
-            star.position.x = auto random_number(0, WINDOW_WIDTH);
-        }
-    }
+	loop i := 0; i < stars.len; i += 1 {
+		star := &stars[i];
+		star.position.y += dt * star.speed;
+		if cast(s32) star.position.y > WINDOW_HEIGHT {
+			star.position.y = 0.f;
+			star.position.x = auto random_number(0, WINDOW_WIDTH);
+		}
+	}
 
-    loop i := 0; i < stones.len; {
-        stone := &stones[i];
-        stone.position.y += dt * stone.speed;
-        stone.rotation += dt * STONE_ROTATION_SPEED;
-        is_stone_dead := false;
+	loop i := 0; i < stones.len; {
+		stone := &stones[i];
+		stone.position.y += dt * stone.speed;
+		stone.rotation += dt * STONE_ROTATION_SPEED;
+		is_stone_dead := false;
 
-        if stone.position.y > auto WINDOW_HEIGHT {
-            is_stone_dead = true;
-        } else {
-            loop j := 0; j < bullets.len; {
-                bullet :: &bullets[j];
-                if is_point_in_rect(bullet.position, stone.position, auto stone_texture.width, auto stone_texture.height) {
-                    is_stone_dead = true;
-                    array_erase(&bullets, j);
-                    score += 1;
-                    break;
-                }
-                j += 1;
-            }
+		if stone.position.y > auto WINDOW_HEIGHT {
+			is_stone_dead = true;
+		} else {
+			loop j := 0; j < bullets.len; {
+				bullet :: &bullets[j];
+				if is_point_in_rect(bullet.position, stone.position, auto stone_texture.width, auto stone_texture.height) {
+					is_stone_dead = true;
+					array_erase(&bullets, j);
+					score += 1;
+					break;
+				}
+				j += 1;
+			}
 
-            if is_rect_in_rect(ship.position, auto ship_texture.width, auto ship_texture.height, stone.position, auto stone_texture.width, auto stone_texture.height) {
-                is_stone_dead = true;
-                set_game_mode(Mode.AFTER_SCREEN);
-            }
-        }
+			if is_rect_in_rect(ship.position, auto ship_texture.width, auto ship_texture.height, stone.position, auto stone_texture.width, auto stone_texture.height) {
+				is_stone_dead = true;
+				set_game_mode(Mode.AFTER_SCREEN);
+			}
+		}
 
-        if is_stone_dead {
-            array_erase(&stones, i);
-        } else {
-            i += 1;
-        }
-    }
+		if is_stone_dead {
+			array_erase(&stones, i);
+		} else {
+			i += 1;
+		}
+	}
 
-    loop i := 0; i < bullets.len; {
-        bullet := &bullets[i];
-        bullet.position.y -= dt * BULLET_SPEED;
-        if bullet.position.y < 0.f {
-            array_erase(&bullets, i);
-        } else {
-            i += 1;
-        }
-    }
+	loop i := 0; i < bullets.len; {
+		bullet := &bullets[i];
+		bullet.position.y -= dt * BULLET_SPEED;
+		if bullet.position.y < 0.f {
+			array_erase(&bullets, i);
+		} else {
+			i += 1;
+		}
+	}
 
-    loop i := 0; i < powerups.len; {
-        power_up := &powerups[i];
-        power_up.position.y += dt * POWER_UP_SPEED;
-        power_up.rotation += dt * POWER_UP_ROTATION_SPEED;
-        is_power_up_dead := power_up.position.y > auto WINDOW_HEIGHT;
-        if is_rect_in_rect(ship.position, auto ship_texture.width, auto ship_texture.height, power_up.position, auto power_texture.width, auto power_texture.height) {
-            is_power_up_dead = true;
-            ship.power += POWER_UP_ADD_POWER;
-            ship.power = std.min(ship.power, 1.f);
-            play_sound(".", "powerup.ogg");
-        }
+	loop i := 0; i < powerups.len; {
+		power_up := &powerups[i];
+		power_up.position.y += dt * POWER_UP_SPEED;
+		power_up.rotation += dt * POWER_UP_ROTATION_SPEED;
+		is_power_up_dead := power_up.position.y > auto WINDOW_HEIGHT;
+		if is_rect_in_rect(ship.position, auto ship_texture.width, auto ship_texture.height, power_up.position, auto power_texture.width, auto power_texture.height) {
+			is_power_up_dead = true;
+			ship.power += POWER_UP_ADD_POWER;
+			ship.power = std.min(ship.power, 1.f);
+			play_sound(".", "powerup.ogg");
+		}
 
-        if is_power_up_dead {
-            array_erase(&powerups, i);
-        } else {
-            i += 1;
-        }
-    }
+		if is_power_up_dead {
+			array_erase(&powerups, i);
+		} else {
+			i += 1;
+		}
+	}
 
-    if stones.len < STONE_COUNT {
-        stone := array_push(&stones);
-        stone.position.x = auto random_number(0, WINDOW_WIDTH);
-        stone.position.y = auto random_number(-100, -40);
-        stone.rotation   = cast(f32) random_number(0, 1) * cast(f32) std.TWO_PI;
-        stone.speed      = auto random_number(STONE_SPEED / 2, STONE_SPEED);
-    }
+	if stones.len < STONE_COUNT {
+		stone := array_push(&stones);
+		stone.position.x = auto random_number(0, WINDOW_WIDTH);
+		stone.position.y = auto random_number(-100, -40);
+		stone.rotation   = cast(f32) random_number(0, 1) * cast(f32) std.TWO_PI;
+		stone.speed      = auto random_number(STONE_SPEED / 2, STONE_SPEED);
+	}
 
-    if power_up_timeout < 0.f {
-        power_up := array_push(&powerups);
-        power_up.position.x = auto random_number(0, WINDOW_WIDTH);
-        power_up.position.y = auto random_number(-100, -40);
-        power_up.rotation   = cast(f32) random_number(0, 1) * cast(f32) std.TWO_PI;
-        power_up_timeout = POWER_UP_TIMEOUT;
-    } else {
-        power_up_timeout -= dt;
-    }
+	if power_up_timeout < 0.f {
+		power_up := array_push(&powerups);
+		power_up.position.x = auto random_number(0, WINDOW_WIDTH);
+		power_up.position.y = auto random_number(-100, -40);
+		power_up.rotation   = cast(f32) random_number(0, 1) * cast(f32) std.TWO_PI;
+		power_up_timeout = POWER_UP_TIMEOUT;
+	} else {
+		power_up_timeout -= dt;
+	}
 
 }
 
 draw_game :: fn () {
-    using draw;
-    using glm;
+	using draw;
+	using glm;
 
-    set_shader_texture(&bg_texture);
-    rect(0.f, 0.f, auto WINDOW_WIDTH, auto WINDOW_HEIGHT);
+	set_shader_texture(&bg_texture);
+	rect(0.f, 0.f, auto WINDOW_WIDTH, auto WINDOW_HEIGHT);
 
-    set_shader_texture(&star_texture);
-    loop i := 0; i < stars.len; i += 1 {
-        star := &stars[i];
-        rect_centered(star.position.x, star.position.y, star.size, star.size);
-    }
+	set_shader_texture(&star_texture);
+	loop i := 0; i < stars.len; i += 1 {
+		star := &stars[i];
+		rect_centered(star.position.x, star.position.y, star.size, star.size);
+	}
 
-    set_shader_texture(&power_texture);
-    loop i := 0; i < powerups.len; i += 1 {
-        powerup := &powerups[i];
-        rect_centered_rotated(powerup.position.x, powerup.position.y, auto power_texture.width, auto power_texture.height, powerup.rotation);
-    }
+	set_shader_texture(&power_texture);
+	loop i := 0; i < powerups.len; i += 1 {
+		powerup := &powerups[i];
+		rect_centered_rotated(powerup.position.x, powerup.position.y, auto power_texture.width, auto power_texture.height, powerup.rotation);
+	}
 
-    set_shader_texture(&stone_texture);
-    loop i := 0; i < stones.len; i += 1 {
-        stone := &stones[i];
-        rect_centered_rotated(stone.position.x, stone.position.y, auto stone_texture.width, auto stone_texture.height, stone.rotation);
-    }
+	set_shader_texture(&stone_texture);
+	loop i := 0; i < stones.len; i += 1 {
+		stone := &stones[i];
+		rect_centered_rotated(stone.position.x, stone.position.y, auto stone_texture.width, auto stone_texture.height, stone.rotation);
+	}
 
-    set_shader_texture(&bullet_texture);
-    loop i := 0; i < bullets.len; i += 1 {
-        bullet := &bullets[i];
-        rect_centered(bullet.position.x, bullet.position.y, auto bullet_texture.width, auto bullet_texture.height);
-    }
+	set_shader_texture(&bullet_texture);
+	loop i := 0; i < bullets.len; i += 1 {
+		bullet := &bullets[i];
+		rect_centered(bullet.position.x, bullet.position.y, auto bullet_texture.width, auto bullet_texture.height);
+	}
 
-    set_shader_texture(&ship_texture);
-    rect_centered(ship.position.x, ship.position.y, auto ship_texture.width, auto ship_texture.height);
+	set_shader_texture(&ship_texture);
+	rect_centered(ship.position.x, ship.position.y, auto ship_texture.width, auto ship_texture.height);
 
-    set_shader_font(&font);
-    text(10.f, 10.f, tprint("Score: %", score));
+	set_shader_font(&font);
+	text(10.f, 10.f, tprint("Score: %", score));
 
-    set_shader_color();
-    rect(0.f, cast(f32) (WINDOW_HEIGHT - 4), (cast(f32) WINDOW_WIDTH) * ship.power, 4.f, v4.{ 1.f, 0.f, 0.f, 1.f });
+	set_shader_color();
+	rect(0.f, cast(f32) (WINDOW_HEIGHT - 4), (cast(f32) WINDOW_WIDTH) * ship.power, 4.f, v4.{ 1.f, 0.f, 0.f, 1.f });
 }
 
 draw_after_screen :: fn (_: f32) {
-    using draw;
+	using draw;
 
-    set_shader_texture(&bg_texture);
-    rect(0.f, 0.f, auto WINDOW_WIDTH, auto WINDOW_HEIGHT);
+	set_shader_texture(&bg_texture);
+	rect(0.f, 0.f, auto WINDOW_WIDTH, auto WINDOW_HEIGHT);
 
-    set_shader_font(&font);
-    text(30.f, 30.f, "Game over.");
-    text(30.f, 80.f, tprint("Score: %", score));
-    text(30.f, 120.f, "Press R to restart.");
+	set_shader_font(&font);
+	text(30.f, 30.f, "Game over.");
+	text(30.f, 80.f, tprint("Score: %", score));
+	text(30.f, 120.f, "Press R to restart.");
 }

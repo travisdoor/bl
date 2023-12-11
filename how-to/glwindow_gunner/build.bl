@@ -1,6 +1,6 @@
 build :: fn () #build_entry {
-    exe := add_executable("gunner");
-    add_unit(exe, "main.bl");
+	exe := add_executable("gunner");
+	add_unit(exe, "main.bl");
 
-    compile(exe);
+	compile(exe);
 }

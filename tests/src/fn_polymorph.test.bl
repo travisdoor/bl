@@ -1,146 +1,146 @@
 #private
 Foo :: struct {
-    a: s32;
-    b: s32;
+	a: s32;
+	b: s32;
 }
 
 poly_1 :: fn (a: ?T) {}
 
 test_poly_1 :: fn () #test {
-    poly_1(10);
-    poly_1(true);
-    poly_1(Foo.{});
+	poly_1(10);
+	poly_1(true);
+	poly_1(Foo.{});
 }
 
 poly_2 :: fn (a: ?T, b: T) {}
 
 test_poly_2 :: fn () #test {
-    poly_2(10, 10);
-    poly_2(true, false);
-    poly_2(Foo.{}, Foo.{});
+	poly_2(10, 10);
+	poly_2(true, false);
+	poly_2(Foo.{}, Foo.{});
 }
 
 poly_3 :: fn (a: T, b: ?T) {}
 
 test_poly_3 :: fn () #test {
-    poly_3(10, 10);
-    poly_3(true, false);
-    poly_3(Foo.{}, Foo.{});
+	poly_3(10, 10);
+	poly_3(true, false);
+	poly_3(Foo.{}, Foo.{});
 }
 
 swap :: fn (a: *?T, b: *T) {
-    tmp :: @a;
-    @a = @b;
-    @b = tmp;
+	tmp :: @a;
+	@a = @b;
+	@b = tmp;
 }
 
 test_poly_swap_1 :: fn () #test {
-    a := 10;
-    b := 20;    
-    swap(&a, &b);
-    test_eq(a, 20);
-    test_eq(b, 10);
+	a := 10;
+	b := 20;    
+	swap(&a, &b);
+	test_eq(a, 20);
+	test_eq(b, 10);
 }
 
 test_poly_swap_2 :: fn () #test {
-    a := Foo.{10, 10};
-    b := Foo.{20, 20};
-    swap(&a, &b);
-    test_eq(a.a, 20);
-    test_eq(a.b, 20);
-    test_eq(b.a, 10);
-    test_eq(b.b, 10);
+	a := Foo.{10, 10};
+	b := Foo.{20, 20};
+	swap(&a, &b);
+	test_eq(a.a, 20);
+	test_eq(a.b, 20);
+	test_eq(b.a, 10);
+	test_eq(b.b, 10);
 }
 
 sum :: fn (values: []?T) T {
-    result: T;
-    loop i := 0; i < values.len; i += 1 {
-        result += values[i];
-    }
-    return result;
+	result: T;
+	loop i := 0; i < values.len; i += 1 {
+		result += values[i];
+	}
+	return result;
 }
 
 test_poly_sum_1 :: fn () #test {
-    arr :: [10]s32.{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-    test_eq(sum(arr), 45);
+	arr :: [10]s32.{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+	test_eq(sum(arr), 45);
 }
 
 test_poly_sum_2 :: fn () #test {
-    dyn: [..]s32;
-    defer array_terminate(&dyn);
-    loop i := 0; i < 10; i += 1 {
-        array_push(&dyn, i);
-    }
+	dyn: [..]s32;
+	defer array_terminate(&dyn);
+	loop i := 0; i < 10; i += 1 {
+		array_push(&dyn, i);
+	}
 
-    test_eq(sum(dyn), 45);
+	test_eq(sum(dyn), 45);
 }
 
 test_poly_sum_3 :: fn () #test {
-    slice: []s32;
-    alloc_slice(&slice, 10);
-    defer free_slice(&slice);
-    loop i := 0; i < slice.len; i += 1 {
-        slice[i] = i;
-    }    
-    test_eq(sum(slice), 45);
+	slice: []s32;
+	alloc_slice(&slice, 10);
+	defer free_slice(&slice);
+	loop i := 0; i < slice.len; i += 1 {
+		slice[i] = i;
+	}    
+	test_eq(sum(slice), 45);
 }
 
 callback_1 :: fn (call_me: *fn (arg: ?T)) {
-    call_me(10);
+	call_me(10);
 }
 
 test_poly_callback_1 :: fn () #test {
-    callback_1(&fn (arg: s32){});
-    callback_1(&fn (arg: u8){});
-    callback_1(&fn (arg: s64){});
+	callback_1(&fn (arg: s32){});
+	callback_1(&fn (arg: u8){});
+	callback_1(&fn (arg: s64){});
 }
 
 test_poly_local_1 :: fn () #test {
-    local_poly :: fn (a: ?T) T {
-        return a;
-    };
-    test_eq(local_poly(10), 10);
+	local_poly :: fn (a: ?T) T {
+		return a;
+	};
+	test_eq(local_poly(10), 10);
 }
 
 recursive :: fn (v: ?T) T {
-    result := v;
-    if result < 10 { 
-        result = recursive(result+1);
-    }
-    return result;
+	result := v;
+	if result < 10 { 
+		result = recursive(result+1);
+	}
+	return result;
 }
 
 test_recursive_poly :: fn () #test {
-    test_eq(recursive(0), 10);    
+	test_eq(recursive(0), 10);    
 }
 
 test_poly_default_arg :: fn () #test {
-    foo :: fn (a: ?T, b: T = 10) s32 {
-        return a + b;
-    };
+	foo :: fn (a: ?T, b: T = 10) s32 {
+		return a + b;
+	};
 
-    test_eq(foo(10), 20);    
-    test_eq(foo(10, 20), 30);    
+	test_eq(foo(10), 20);    
+	test_eq(foo(10, 20), 30);    
 }
 
 test_poly_vargs :: fn () #test {
-    foo :: fn (a: ...?T) T {
-        result: T;
-        loop i := 0; i < a.len; i += 1 {
-            result += a[i];
-        }
-        return result;
-    };
+	foo :: fn (a: ...?T) T {
+		result: T;
+		loop i := 0; i < a.len; i += 1 {
+			result += a[i];
+		}
+		return result;
+	};
 
-    test_eq(foo(10), 10);    
-    test_eq(foo(10, 20), 30);    
+	test_eq(foo(10), 10);    
+	test_eq(foo(10, 20), 30);    
 }
 
 get_type :: fn (T: type #comptime) T #comptime {
-    test_true(false);
-    return T;
+	test_true(false);
+	return T;
 }
 
 foo :: fn (v: ?T) get_type(T) {
-    return v;
+	return v;
 }

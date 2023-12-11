@@ -1,11 +1,11 @@
 // @ERR_UNKNOWN_SYMBOL@
 Foo :: struct {
-    i: MyType;
-    using A;
+	i: MyType;
+	using A;
 }
 
 main :: fn () s32 {
-    return 0;
+	return 0;
 }
 
 #scope A

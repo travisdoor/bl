@@ -1,8 +1,8 @@
 // Main function as the program entry point.
 main :: fn () s32 {
-    // Call the print function.
-    print("Hello world!\n");
+	// Call the print function.
+	print("Hello world!\n");
 
-    // Return OK state number.
-    return 0;
+	// Return OK state number.
+	return 0;
 }

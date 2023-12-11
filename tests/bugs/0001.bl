@@ -1,17 +1,17 @@
 Foo :: fn (T: type #comptime) type #comptime {
-    TBar :: struct {
-        self: *TBar;
-        arr: [10]u32;
-    };
+	TBar :: struct {
+		self: *TBar;
+		arr: [10]u32;
+	};
 
-    return struct {
-        member: TBar;
-        i: T;
-    };
+	return struct {
+		member: TBar;
+		i: T;
+	};
 }
 
 main :: fn () s32 {
-    // Invalid size of incomplete type???
-    print("sizeof(Foo) = %\n", sizeof(Foo(s32)));
-    return 0;
+	// Invalid size of incomplete type???
+	print("sizeof(Foo) = %\n", sizeof(Foo(s32)));
+	return 0;
 }

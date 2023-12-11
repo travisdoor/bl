@@ -1,5 +1,5 @@
 // @ERR_EXPECTED_EXPR@
 
 foo :: fn () (s32, s32) {
-    return;
+	return;
 }

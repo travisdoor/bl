@@ -183,8 +183,8 @@ array_clear :: fn (_arr: *[..]?T) #inline {
 }
 
 array_allocated_bytes :: fn (_arr: *[..]?T) usize #inline {
-    arr :: cast(*_Array) _arr;
-    return arr.allocated_elems;
+	arr :: cast(*_Array) _arr;
+	return arr.allocated_elems;
 }
 
 #private

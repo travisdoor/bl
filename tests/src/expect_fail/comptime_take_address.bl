@@ -1,6 +1,6 @@
 // @ERR_EXPECTED_DECL@
 foo :: fn () #comptime {}
 main :: fn () s32 {
-    addr :: &foo;
-    return 0;
+	addr :: &foo;
+	return 0;
 }

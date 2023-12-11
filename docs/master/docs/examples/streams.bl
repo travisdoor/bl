@@ -2,65 +2,65 @@
 
 // Custom stream implementation based on std.Stream.
 MyStream :: struct #base std.Stream {
-    // Preallocated static buffer.
-    buffer: [64]u8;
-    // Current position in the buffer array.
-    position: s64;
+	// Preallocated static buffer.
+	buffer: [64]u8;
+	// Current position in the buffer array.
+	position: s64;
 }
 
 // Virtual table of the stream setting up stream API functions. Our implementation
 // does not support seeking, so the seek function is null.
 MY_STRAM_VTABLE :: std.StreamVTable.{
-    read  = auto &my_read,
-    write = auto &my_write
+	read  = auto &my_read,
+	write = auto &my_write
 };
 
 // Actual read function implementation.
 my_read :: fn (stream: *MyStream, dest: *u8, bytes_to_read: s64) (s64, Error) {
-    using std;
-    size := min(stream.position, bytes_to_read);
-    stream.position -= size;
-    if stream.position < 0 {
-        size -= stream.position;
-        stream.position = 0;
-    }
-    if size > 0 {
-        memcpy(dest, &stream.buffer[stream.position], auto size);
-    }
-    return size, OK;
+	using std;
+	size := min(stream.position, bytes_to_read);
+	stream.position -= size;
+	if stream.position < 0 {
+		size -= stream.position;
+		stream.position = 0;
+	}
+	if size > 0 {
+		memcpy(dest, &stream.buffer[stream.position], auto size);
+	}
+	return size, OK;
 }
 
 // Actual write function implementation.
 my_write :: fn (stream: *MyStream, src: *u8, bytes_to_write: s64) (s64, Error) {
-    size :: std.min(stream.buffer.len - stream.position, bytes_to_write);
-    if size > 0 {
-        // size may be zero even in case the buffer is full.
-        memcpy(&stream.buffer[stream.position], src, auto size);
-        stream.position += size;
-    }
-    return size, OK;
+	size :: std.min(stream.buffer.len - stream.position, bytes_to_write);
+	if size > 0 {
+		// size may be zero even in case the buffer is full.
+		memcpy(&stream.buffer[stream.position], src, auto size);
+		stream.position += size;
+	}
+	return size, OK;
 }
 
 init_stream :: fn (stream: *MyStream) {
-    stream.vtable = &MY_STRAM_VTABLE;
-    stream.position = 0;
+	stream.vtable = &MY_STRAM_VTABLE;
+	stream.position = 0;
 }
 
 main :: fn () s32 {
-    using std;
+	using std;
 
-    stream: MyStream #noinit;
-    init_stream(&stream);
+	stream: MyStream #noinit;
+	init_stream(&stream);
 
-    // Use of the IO API.
-    write_string(&stream, "Hello");
-    write_string(&stream, "World");
+	// Use of the IO API.
+	write_string(&stream, "Hello");
+	write_string(&stream, "World");
 
-    str := str_new();
-    defer str_delete(&str);
+	str := str_new();
+	defer str_delete(&str);
 
-    read_string(&stream, &str);
+	read_string(&stream, &str);
 
-    print("%\n", str);
-    return 0;
+	print("%\n", str);
+	return 0;
 }

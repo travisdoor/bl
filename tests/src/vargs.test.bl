@@ -1,69 +1,69 @@
 #private
 vargs_functions :: fn () #test {
-    _0 :: fn (args: ...s32) {
-        test_eq(args.len, 0);
-    };
+	_0 :: fn (args: ...s32) {
+		test_eq(args.len, 0);
+	};
 
-    _2 :: fn (args: ...s32) {
-        test_eq(args.len, 2);
-        test_eq(args[0], 10);
-        test_eq(args[1], 20);
-    };
+	_2 :: fn (args: ...s32) {
+		test_eq(args.len, 2);
+		test_eq(args[0], 10);
+		test_eq(args[1], 20);
+	};
 
-    _10 :: fn (i: s32, args: ...s32) {
-        test_eq(args.len, 0);
-        test_eq(i, 10);
-    };
+	_10 :: fn (i: s32, args: ...s32) {
+		test_eq(args.len, 0);
+		test_eq(i, 10);
+	};
 
-    _12 :: fn (i: s32, args: ...s32) {
-        test_eq(args.len, 2);
-        test_eq(args[0], 10);
-        test_eq(args[1], 20);
-        test_eq(i, 10);
-    };
+	_12 :: fn (i: s32, args: ...s32) {
+		test_eq(args.len, 2);
+		test_eq(args[0], 10);
+		test_eq(args[1], 20);
+		test_eq(i, 10);
+	};
 
-    _0();
-    _2(10, 20);
-    _10(10);
-    _12(10, 10, 20);
+	_0();
+	_2(10, 20);
+	_10(10);
+	_12(10, 10, 20);
 }
 
 vargs_forward :: fn () #test {
-    bar :: fn (args: ...s32) {
-        test_eq(args.len, 3);
-    };
+	bar :: fn (args: ...s32) {
+		test_eq(args.len, 3);
+	};
 
-    foo :: fn (args: ...s32) {
-        test_eq(args.len, 3);
-        bar(args);
-    };
+	foo :: fn (args: ...s32) {
+		test_eq(args.len, 3);
+		bar(args);
+	};
 
-    foo(10, 20, 30);
+	foo(10, 20, 30);
 }
 
 vargs_cast_to_slice :: fn () #test {
-    foo :: fn (args: ...s32) {
-        slice: []s32 = args;
-        test_eq(args.len, 3);
-        test_eq(args.len, slice.len);
-        test_eq(args.ptr, slice.ptr);
-    };
+	foo :: fn (args: ...s32) {
+		slice: []s32 = args;
+		test_eq(args.len, 3);
+		test_eq(args.len, slice.len);
+		test_eq(args.ptr, slice.ptr);
+	};
 
-    foo(10, 20, 30);
+	foo(10, 20, 30);
 }
 
 vargs_multipe_args_before :: fn () #test {
-    foo :: fn (i: s32, s: string_view, args: ...s32) {
-        test_eq(i, auto args.len);
-        test_eq(s, "hello");
-        loop j := 0; j < args.len; j += 1 {
-            test_eq(args[j], j);
-        }
-    };
+	foo :: fn (i: s32, s: string_view, args: ...s32) {
+		test_eq(i, auto args.len);
+		test_eq(s, "hello");
+		loop j := 0; j < args.len; j += 1 {
+			test_eq(args[j], j);
+		}
+	};
 
-    foo(0, "hello");
-    foo(1, "hello", 0);
-    foo(2, "hello", 0, 1);
-    foo(3, "hello", 0, 1, 2);
-    foo(4, "hello", 0, 1, 2, 3);
+	foo(0, "hello");
+	foo(1, "hello", 0);
+	foo(2, "hello", 0, 1);
+	foo(3, "hello", 0, 1, 2);
+	foo(4, "hello", 0, 1, 2, 3);
 }

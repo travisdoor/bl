@@ -1,13 +1,13 @@
 #private
 
 test_os_tick_ms :: fn () #test {
-    test_gt(os_tick_ms(), 0);
+	test_gt(os_tick_ms(), 0);
 }
 
 test_os_sleep_ms :: fn () #test {
-    t :: os_tick_ms();
-    os_sleep_ms(100);
-    elapsed :: os_tick_ms() - t;
-    test_gt(elapsed, 99);
+	t :: os_tick_ms();
+	os_sleep_ms(100);
+	elapsed :: os_tick_ms() - t;
+	test_gt(elapsed, 99);
 }
 

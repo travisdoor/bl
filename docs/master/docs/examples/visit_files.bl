@@ -1,29 +1,29 @@
 #import "std/fs"
 
 main :: fn () s32 {
-    using std;
+	using std;
 
-    visitor :: fn (info: *FileVisitInfo, list: *[..]string) Error {
-        using std;
-        if info.is_directory { return OK; }
-        _, ext :: path_splitext(info.filename);
-        if str_match(ext, ".bl") {
-            array_push(list, str_new(info.filepath));
-        }
-        return OK;
-    };
+	visitor :: fn (info: *FileVisitInfo, list: *[..]string) Error {
+		using std;
+		if info.is_directory { return OK; }
+		_, ext :: path_splitext(info.filename);
+		if str_match(ext, ".bl") {
+			array_push(list, str_new(info.filepath));
+		}
+		return OK;
+	};
 
-    list: [..]string;
-    defer array_terminate(&list);
-    cwd :: get_cwd();
-    defer str_delete(&cwd);
-    err :: visit_files(cwd, VisitOpt.{ recursive = true }, &list, &visitor);
-    if err { panic(err); }
+	list: [..]string;
+	defer array_terminate(&list);
+	cwd :: get_cwd();
+	defer str_delete(&cwd);
+	err :: visit_files(cwd, VisitOpt.{ recursive = true }, &list, &visitor);
+	if err { panic(err); }
 
-    loop i := 0; i < list.len; i += 1 {
-        print_log("FILE: %\n", list[i]);
-        str_delete(&list[i]);
-    }
+	loop i := 0; i < list.len; i += 1 {
+		print_log("FILE: %\n", list[i]);
+		str_delete(&list[i]);
+	}
 
-    return 0;
+	return 0;
 }

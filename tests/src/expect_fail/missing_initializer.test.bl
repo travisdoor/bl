@@ -1,8 +1,8 @@
 // @ERR_INVALID_INITIALIZER@
 
 Foo :: struct {
-    a: s32;
-    b: s32;
+	a: s32;
+	b: s32;
 }
 
 foo := Foo.{ 10, 20, 30 };

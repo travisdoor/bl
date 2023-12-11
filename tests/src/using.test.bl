@@ -1,69 +1,69 @@
 #private
 
 using_enum :: fn () #test {
-    Enum :: enum {
-        A; B;
-    };
+	Enum :: enum {
+		A; B;
+	};
 
-    using Enum;
-    a :: A;
-    b :: Enum.A;
+	using Enum;
+	a :: A;
+	b :: Enum.A;
 
-    test_eq(typeinfo(a), typeinfo(Enum.A));
-    test_eq(typeinfo(b), typeinfo(Enum.A));
-    test_eq(a, Enum.A);
-    test_eq(b, Enum.A);
+	test_eq(typeinfo(a), typeinfo(Enum.A));
+	test_eq(typeinfo(b), typeinfo(Enum.A));
+	test_eq(a, Enum.A);
+	test_eq(b, Enum.A);
 }
 
 using_scope :: fn () #test {
-    using S;
-    i = 10;
+	using S;
+	i = 10;
 
-    test_eq(typeinfo(i), typeinfo(S.i));
-    test_eq(i, S.i);
+	test_eq(typeinfo(i), typeinfo(S.i));
+	test_eq(i, S.i);
 }
 
 using_combination_1 :: fn () #test {
-    using S;
-    a :: Enum2.A;
-    test_eq(typeinfo(a), typeinfo(Enum2.A));
-    test_eq(a, Enum2.A);
+	using S;
+	a :: Enum2.A;
+	test_eq(typeinfo(a), typeinfo(Enum2.A));
+	test_eq(a, Enum2.A);
 
-    using Enum2;
-    b :: A;
-    test_eq(typeinfo(b), typeinfo(Enum2.A));
-    test_eq(b, Enum2.A);
+	using Enum2;
+	b :: A;
+	test_eq(typeinfo(b), typeinfo(Enum2.A));
+	test_eq(b, Enum2.A);
 }
 
 using_symbol_hiding_1 :: fn () #test {
-    i := 20;
-    using S;
-    test_eq(i, 20);
+	i := 20;
+	using S;
+	test_eq(i, 20);
 }
 
 using_symbol_hiding_2 :: fn () #test {
-    using S;
-    i := 20;
-    test_eq(i, 20);
+	using S;
+	i := 20;
+	test_eq(i, 20);
 }
 
 using_in_struct :: fn () #test {
-    Type :: struct {
-        a: S.Foo;
-        using S;
-        b: S.Foo;
-        c: Foo;
-    };
+	Type :: struct {
+		a: S.Foo;
+		using S;
+		b: S.Foo;
+		c: Foo;
+	};
 
-    test_eq(typeinfo(Type.a), typeinfo(S.Foo));
-    test_eq(typeinfo(Type.b), typeinfo(S.Foo));
-    test_eq(typeinfo(Type.c), typeinfo(S.Foo));
+	test_eq(typeinfo(Type.a), typeinfo(S.Foo));
+	test_eq(typeinfo(Type.b), typeinfo(S.Foo));
+	test_eq(typeinfo(Type.c), typeinfo(S.Foo));
 }
 
 #scope S
 
 Enum2 :: enum {
-    A; B;
+	A; B;
 };
 
 Foo :: s32;

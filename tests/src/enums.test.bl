@@ -1,115 +1,115 @@
 #private
 
 simple_enum :: fn () #test {
-    E :: enum {
-        A; B; C
-    };
+	E :: enum {
+		A; B; C
+	};
 
-    test_eq(E.A, cast(E) 0);
-    test_eq(E.B, cast(E) 1);
-    test_eq(E.C, cast(E) 2);
+	test_eq(E.A, cast(E) 0);
+	test_eq(E.B, cast(E) 1);
+	test_eq(E.C, cast(E) 2);
 };
 
 custom_enum_type :: fn () #test {
-    E :: enum u8 {
-        A; B; C
-    };
+	E :: enum u8 {
+		A; B; C
+	};
 
-    test_eq(E.A, cast(E) 0);
-    test_eq(E.B, cast(E) 1);
-    test_eq(E.C, cast(E) 2);
+	test_eq(E.A, cast(E) 0);
+	test_eq(E.B, cast(E) 1);
+	test_eq(E.C, cast(E) 2);
 };
 
 custom_enum_values :: fn () #test {
-    E :: enum {
-        A = 10;
-        B = 20;
-        C
-    };
-    test_eq(E.A, cast(E) 10);
-    test_eq(E.B, cast(E) 20);    
-    test_eq(E.C, cast(E) 21);
+	E :: enum {
+		A = 10;
+		B = 20;
+		C
+	};
+	test_eq(E.A, cast(E) 10);
+	test_eq(E.B, cast(E) 20);    
+	test_eq(E.C, cast(E) 21);
 };
 
 enums_with_variant_references :: fn () #test {
-    E :: enum {
-        A = 10;
-        B = A + 1;
-        C = A + B
-    };
-    test_eq(E.A, cast(E) 10);
-    test_eq(E.B, cast(E) 11);
-    test_eq(E.C, cast(E) 21);
+	E :: enum {
+		A = 10;
+		B = A + 1;
+		C = A + B
+	};
+	test_eq(E.A, cast(E) 10);
+	test_eq(E.B, cast(E) 11);
+	test_eq(E.C, cast(E) 21);
 };
 
 enum_negative :: fn () #test {
-    E :: enum {
-        A = -1;
-        B = -2;
-        C = -3;
-    };        
-    test_eq(E.A, cast(E) -1);
-    test_eq(E.B, cast(E) -2);
-    test_eq(E.C, cast(E) -3);
+	E :: enum {
+		A = -1;
+		B = -2;
+		C = -3;
+	};        
+	test_eq(E.A, cast(E) -1);
+	test_eq(E.B, cast(E) -2);
+	test_eq(E.C, cast(E) -3);
 }
 
 enum_negative_2 :: fn () #test {
-    E :: enum {
-        A = -1;
-        B;
-        C;
-    };        
-    test_eq(E.A, cast(E) -1);
-    test_eq(E.B, cast(E) 0);
-    test_eq(E.C, cast(E) 1);
+	E :: enum {
+		A = -1;
+		B;
+		C;
+	};        
+	test_eq(E.A, cast(E) -1);
+	test_eq(E.B, cast(E) 0);
+	test_eq(E.C, cast(E) 1);
 }
 
 enum_flags_1 :: fn () #test {
-    F :: enum u8 #flags {
-        A; B; C; D;
-    };
-    f: F;
-    test_eq(f, F.A);
-    test_eq(cast(s32)f, 1);
-    test_eq(cast(s32)F.A, 0b1);
-    test_eq(cast(s32)F.B, 0b10);
-    test_eq(cast(s32)F.C, 0b100);
-    test_eq(cast(s32)F.D, 0b1000);
+	F :: enum u8 #flags {
+		A; B; C; D;
+	};
+	f: F;
+	test_eq(f, F.A);
+	test_eq(cast(s32)f, 1);
+	test_eq(cast(s32)F.A, 0b1);
+	test_eq(cast(s32)F.B, 0b10);
+	test_eq(cast(s32)F.C, 0b100);
+	test_eq(cast(s32)F.D, 0b1000);
 }
 
 enum_flags_2 :: fn () #test {
-    F :: enum u8 #flags {
-        A = 0; B; C; D;
-    };
-    f: F;
-    test_eq(f, F.A);
-    test_eq(cast(s32)f, 0);
-    test_eq(cast(s32)F.A, 0);
-    test_eq(cast(s32)F.B, 0b1);
-    test_eq(cast(s32)F.C, 0b10);
-    test_eq(cast(s32)F.D, 0b100);
+	F :: enum u8 #flags {
+		A = 0; B; C; D;
+	};
+	f: F;
+	test_eq(f, F.A);
+	test_eq(cast(s32)f, 0);
+	test_eq(cast(s32)F.A, 0);
+	test_eq(cast(s32)F.B, 0b1);
+	test_eq(cast(s32)F.C, 0b10);
+	test_eq(cast(s32)F.D, 0b100);
 }
 
 enum_flags_3 :: fn () #test {
-    F :: enum #flags {
-        A; B; C; D = B | C; E;
-    };
-    f: F;
-    test_eq(f, F.A);
-    test_eq(cast(s32)f, 1);
-    test_eq(cast(s32)F.A, 0b0001);
-    test_eq(cast(s32)F.B, 0b0010);
-    test_eq(cast(s32)F.C, 0b0100);
-    test_eq(cast(s32)F.D, 0b0110);
-    test_eq(cast(s32)F.E, 0b1000);
+	F :: enum #flags {
+		A; B; C; D = B | C; E;
+	};
+	f: F;
+	test_eq(f, F.A);
+	test_eq(cast(s32)f, 1);
+	test_eq(cast(s32)F.A, 0b0001);
+	test_eq(cast(s32)F.B, 0b0010);
+	test_eq(cast(s32)F.C, 0b0100);
+	test_eq(cast(s32)F.D, 0b0110);
+	test_eq(cast(s32)F.E, 0b1000);
 }
 
 enum_flags_4 :: fn () #test {
-    F :: enum #flags {
-        A; B; C; D = B | C; E;
-    };
-    info :: cast(*TypeInfoEnum) typeinfo(F);
-    test_true(info.is_flags);
+	F :: enum #flags {
+		A; B; C; D = B | C; E;
+	};
+	info :: cast(*TypeInfoEnum) typeinfo(F);
+	test_true(info.is_flags);
 }
 
 enum_flags_manipulation :: fn () #test {
@@ -152,34 +152,34 @@ enum_flags_manipulation :: fn () #test {
 }
 
 enum_nested :: fn () #test {
-    Struct :: struct {
-        a: s32;
-        my_enum: enum {
-            A = 10;
-            B = 20;
-            C = 30;
-        };
-        b: s32;
-    };
+	Struct :: struct {
+		a: s32;
+		my_enum: enum {
+			A = 10;
+			B = 20;
+			C = 30;
+		};
+		b: s32;
+	};
 
-    v: Struct;
+	v: Struct;
 
-    e: Struct.my_enum;
-    test_eq(typeinfo(e).kind, TypeKind.ENUM);
+	e: Struct.my_enum;
+	test_eq(typeinfo(e).kind, TypeKind.ENUM);
 
-    e = Struct.my_enum.A;
-    test_eq(cast(s32)e, 10);
+	e = Struct.my_enum.A;
+	test_eq(cast(s32)e, 10);
 
-    switch e {
-        Struct.my_enum.A {}
-        Struct.my_enum.B {}
-        Struct.my_enum.C {}
-    }
+	switch e {
+		Struct.my_enum.A {}
+		Struct.my_enum.B {}
+		Struct.my_enum.C {}
+	}
 
-    using Struct.my_enum;
-    switch e {
-        A {}
-        B {}
-        C {}
-    }
+	using Struct.my_enum;
+	switch e {
+		A {}
+		B {}
+		C {}
+	}
 }

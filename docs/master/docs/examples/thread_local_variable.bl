@@ -4,31 +4,31 @@ COUNT :: 50;
 counter: s32 #thread_local;
 
 main :: fn () s32 {
-    print("Start thread!!!\n");
-    defer print("Threads joined!!!\n");
-    t1 :: std.thread_create(&first);
-    t2 :: std.thread_create(&second);
-    std.thread_join(t1);
-    std.thread_join(t2);
-    
-    assert(counter == 0);
-    return 0;
+	print("Start thread!!!\n");
+	defer print("Threads joined!!!\n");
+	t1 :: std.thread_create(&first);
+	t2 :: std.thread_create(&second);
+	std.thread_join(t1);
+	std.thread_join(t2);
+	
+	assert(counter == 0);
+	return 0;
 }
 
 first :: fn (args: *u8) s32 {
-    loop i := 0; i < COUNT; i += 1 {
-        counter += 1;
-        os_sleep_ms(5);
-    }
-    assert(counter == COUNT);
-    return 0;
+	loop i := 0; i < COUNT; i += 1 {
+		counter += 1;
+		os_sleep_ms(5);
+	}
+	assert(counter == COUNT);
+	return 0;
 }
 
 second :: fn (args: *u8) s32 {
-    loop i := 0; i < COUNT; i += 1 {
-        counter += 1;
-        os_sleep_ms(10);
-    }
-    assert(counter == COUNT);
-    return 0;
+	loop i := 0; i < COUNT; i += 1 {
+		counter += 1;
+		os_sleep_ms(10);
+	}
+	assert(counter == COUNT);
+	return 0;
 }

@@ -1,22 +1,22 @@
 #private
 simple_assignement :: fn () #test {
-    {
-        number := 0;
-        assert(number == 0);
-        number = 666;
-        assert(number == 666);
-        number = (1 + 2 * 3 - 1) / 2;
-        assert(number == 3);
-    }
+	{
+		number := 0;
+		assert(number == 0);
+		number = 666;
+		assert(number == 666);
+		number = (1 + 2 * 3 - 1) / 2;
+		assert(number == 3);
+	}
 
-    {
-        real_number := 0.f;
-        real_number = 10.1f;
-        assert(real_number - 10.1f < 0.0001f);
+	{
+		real_number := 0.f;
+		real_number = 10.1f;
+		assert(real_number - 10.1f < 0.0001f);
 
-        real_number = (0.1f + 10.f - 10.f) * 0.1f;
-        assert(real_number - 0.01f < 0.0001f);
-    }
+		real_number = (0.1f + 10.f - 10.f) * 0.1f;
+		assert(real_number - 0.01f < 0.0001f);
+	}
 };
 
 A :: 20;
@@ -37,16 +37,16 @@ Arr2     :: [8]s32.{};
 ArrPtrs  :: [2]*[8]s32.{&Arr1, &Arr2};
 
 Data1 :: struct {
-    a: s32;
-    b: s32;
-    c: bool;
+	a: s32;
+	b: s32;
+	c: bool;
 }
 
 GData :: Data1.{ 10, 20, false };
 
 Arr3 :: [2]Data1.{
-         Data1.{ 10, 20, false },
-         Data1.{ 30, 40, true },
+		 Data1.{ 10, 20, false },
+		 Data1.{ 30, 40, true },
 };
 
 Str :: "Hello";
@@ -54,5 +54,5 @@ Str2 := "Hello";
 Str3 := &Str;
 
 global_constants :: fn () #test {
-    assert(A == 20);
+	assert(A == 20);
 }

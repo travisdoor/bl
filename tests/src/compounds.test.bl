@@ -8,25 +8,25 @@ g3 :: T2.{T1.{10, 20}, T1.{}};
 g4 :: T2.{T1.{},       T1.{}};
 
 compound_comptime_composition :: fn () #test {
-    test_eq(g1.a.i, 10);
-    test_eq(g1.a.j, 20);    
-    test_eq(g1.b.i, 30);    
-    test_eq(g1.b.j, 40);
-    
-    test_eq(g2.a.i, 0);
-    test_eq(g2.a.j, 0);
-    test_eq(g2.b.i, 30);
-    test_eq(g2.b.j, 40);
+	test_eq(g1.a.i, 10);
+	test_eq(g1.a.j, 20);    
+	test_eq(g1.b.i, 30);    
+	test_eq(g1.b.j, 40);
+	
+	test_eq(g2.a.i, 0);
+	test_eq(g2.a.j, 0);
+	test_eq(g2.b.i, 30);
+	test_eq(g2.b.j, 40);
 
-    test_eq(g3.a.i, 10);
-    test_eq(g3.a.j, 20);
-    test_eq(g3.b.i, 0);
-    test_eq(g3.b.j, 0);
-    
-    test_eq(g4.a.i, 0);
-    test_eq(g4.a.j, 0);
-    test_eq(g4.b.i, 0);
-    test_eq(g4.b.j, 0);
+	test_eq(g3.a.i, 10);
+	test_eq(g3.a.j, 20);
+	test_eq(g3.b.i, 0);
+	test_eq(g3.b.j, 0);
+	
+	test_eq(g4.a.i, 0);
+	test_eq(g4.a.j, 0);
+	test_eq(g4.b.i, 0);
+	test_eq(g4.b.j, 0);
 }
 
 g5 := T2.{T1.{10, 20}, T1.{30, 40}};
@@ -35,266 +35,266 @@ g7 := T2.{T1.{10, 20}, T1.{}};
 g8 := T2.{T1.{},       T1.{}};
 
 compound_comptime_composition2 :: fn () #test {
-    test_eq(g5.a.i, 10);
-    test_eq(g5.a.j, 20);    
-    test_eq(g5.b.i, 30);    
-    test_eq(g5.b.j, 40);
-    
-    test_eq(g6.a.i, 0);
-    test_eq(g6.a.j, 0);
-    test_eq(g6.b.i, 30);
-    test_eq(g6.b.j, 40);
+	test_eq(g5.a.i, 10);
+	test_eq(g5.a.j, 20);    
+	test_eq(g5.b.i, 30);    
+	test_eq(g5.b.j, 40);
+	
+	test_eq(g6.a.i, 0);
+	test_eq(g6.a.j, 0);
+	test_eq(g6.b.i, 30);
+	test_eq(g6.b.j, 40);
 
-    test_eq(g7.a.i, 10);
-    test_eq(g7.a.j, 20);
-    test_eq(g7.b.i, 0);
-    test_eq(g7.b.j, 0);
-    
-    test_eq(g8.a.i, 0);
-    test_eq(g8.a.j, 0);
-    test_eq(g8.b.i, 0);
-    test_eq(g8.b.j, 0);
+	test_eq(g7.a.i, 10);
+	test_eq(g7.a.j, 20);
+	test_eq(g7.b.i, 0);
+	test_eq(g7.b.j, 0);
+	
+	test_eq(g8.a.i, 0);
+	test_eq(g8.a.j, 0);
+	test_eq(g8.b.i, 0);
+	test_eq(g8.b.j, 0);
 }
 
 compound_comptime_composition3 :: fn () #test {
-    l5 :: T2.{T1.{10, 20}, T1.{30, 40}};
-    l6 :: T2.{T1.{},       T1.{30, 40}};
-    l7 :: T2.{T1.{10, 20}, T1.{}};
-    l8 :: T2.{T1.{},       T1.{}};
+	l5 :: T2.{T1.{10, 20}, T1.{30, 40}};
+	l6 :: T2.{T1.{},       T1.{30, 40}};
+	l7 :: T2.{T1.{10, 20}, T1.{}};
+	l8 :: T2.{T1.{},       T1.{}};
 
-    test_eq(l5.a.i, 10);
-    test_eq(l5.a.j, 20);    
-    test_eq(l5.b.i, 30);    
-    test_eq(l5.b.j, 40);
-    
-    test_eq(l6.a.i, 0);
-    test_eq(l6.a.j, 0);
-    test_eq(l6.b.i, 30);
-    test_eq(l6.b.j, 40);
+	test_eq(l5.a.i, 10);
+	test_eq(l5.a.j, 20);    
+	test_eq(l5.b.i, 30);    
+	test_eq(l5.b.j, 40);
+	
+	test_eq(l6.a.i, 0);
+	test_eq(l6.a.j, 0);
+	test_eq(l6.b.i, 30);
+	test_eq(l6.b.j, 40);
 
-    test_eq(l7.a.i, 10);
-    test_eq(l7.a.j, 20);
-    test_eq(l7.b.i, 0);
-    test_eq(l7.b.j, 0);
-    
-    test_eq(l8.a.i, 0);
-    test_eq(l8.a.j, 0);
-    test_eq(l8.b.i, 0);
-    test_eq(l8.b.j, 0);
+	test_eq(l7.a.i, 10);
+	test_eq(l7.a.j, 20);
+	test_eq(l7.b.i, 0);
+	test_eq(l7.b.j, 0);
+	
+	test_eq(l8.a.i, 0);
+	test_eq(l8.a.j, 0);
+	test_eq(l8.b.i, 0);
+	test_eq(l8.b.j, 0);
 }
 
 compound_comptime_composition4 :: fn () #test {
-    l5 := T2.{T1.{10, 20}, T1.{30, 40}};
-    l6 := T2.{T1.{},       T1.{30, 40}};
-    l7 := T2.{T1.{10, 20}, T1.{}};
-    l8 := T2.{T1.{},       T1.{}};
+	l5 := T2.{T1.{10, 20}, T1.{30, 40}};
+	l6 := T2.{T1.{},       T1.{30, 40}};
+	l7 := T2.{T1.{10, 20}, T1.{}};
+	l8 := T2.{T1.{},       T1.{}};
 
-    test_eq(l5.a.i, 10);
-    test_eq(l5.a.j, 20);    
-    test_eq(l5.b.i, 30);    
-    test_eq(l5.b.j, 40);
-    
-    test_eq(l6.a.i, 0);
-    test_eq(l6.a.j, 0);
-    test_eq(l6.b.i, 30);
-    test_eq(l6.b.j, 40);
+	test_eq(l5.a.i, 10);
+	test_eq(l5.a.j, 20);    
+	test_eq(l5.b.i, 30);    
+	test_eq(l5.b.j, 40);
+	
+	test_eq(l6.a.i, 0);
+	test_eq(l6.a.j, 0);
+	test_eq(l6.b.i, 30);
+	test_eq(l6.b.j, 40);
 
-    test_eq(l7.a.i, 10);
-    test_eq(l7.a.j, 20);
-    test_eq(l7.b.i, 0);
-    test_eq(l7.b.j, 0);
-    
-    test_eq(l8.a.i, 0);
-    test_eq(l8.a.j, 0);
-    test_eq(l8.b.i, 0);
-    test_eq(l8.b.j, 0);
+	test_eq(l7.a.i, 10);
+	test_eq(l7.a.j, 20);
+	test_eq(l7.b.i, 0);
+	test_eq(l7.b.j, 0);
+	
+	test_eq(l8.a.i, 0);
+	test_eq(l8.a.j, 0);
+	test_eq(l8.b.i, 0);
+	test_eq(l8.b.j, 0);
 }
 
 g9 :: [2]T1.{T1.{10, 20}, T1.{10, 20}};
 
 compound_comptime_composition5 :: fn () #test {
-    loop i := 0; i < g9.len; i += 1 {
-        test_eq(g9[i].i, 10);
-        test_eq(g9[i].j, 20);
-    }
+	loop i := 0; i < g9.len; i += 1 {
+		test_eq(g9[i].i, 10);
+		test_eq(g9[i].j, 20);
+	}
 }
 
 g10 := [2]T1.{T1.{10, 20}, T1.{10, 20}};
 
 compound_comptime_composition6 :: fn () #test {
-    loop i := 0; i < g10.len; i += 1 {
-        test_eq(g10[i].i, 10);
-        test_eq(g10[i].j, 20);
-    }
+	loop i := 0; i < g10.len; i += 1 {
+		test_eq(g10[i].i, 10);
+		test_eq(g10[i].j, 20);
+	}
 }
 
 compound_zero_initialization :: fn () #test {
-    {
-        a := s32.{};
-        test_true(typeof(a) == s32);
-        test_eq(a, 0);
-    }
+	{
+		a := s32.{};
+		test_true(typeof(a) == s32);
+		test_eq(a, 0);
+	}
 
-    {
-        a := u8.{};
-        test_true(typeof(a) == u8);
-        test_eq(a, 0);
-    }
+	{
+		a := u8.{};
+		test_true(typeof(a) == u8);
+		test_eq(a, 0);
+	}
 
-    {
-        Type :: struct { a: s32; b: bool; c: string_view };
+	{
+		Type :: struct { a: s32; b: bool; c: string_view };
 
-        a := Type.{};
-        test_true(typeof(a) == Type);
-        test_eq(a.a, 0);
-        test_eq(a.b, false);
-        test_eq(a.c, "");
-    }
+		a := Type.{};
+		test_true(typeof(a) == Type);
+		test_eq(a.a, 0);
+		test_eq(a.b, false);
+		test_eq(a.c, "");
+	}
 
-    {
-        a := [10]s32.{};
-        loop i := 0; i < a.len; i += 1 {
-            test_eq(a[i], 0);
-        }
-    }
+	{
+		a := [10]s32.{};
+		loop i := 0; i < a.len; i += 1 {
+			test_eq(a[i], 0);
+		}
+	}
 }
 
 compound_simple :: fn () #test {
-    {
-        a := s32.{0};
-        test_true(typeof(a) == s32);
-        test_eq(a, 0);
-    }
+	{
+		a := s32.{0};
+		test_true(typeof(a) == s32);
+		test_eq(a, 0);
+	}
 
-    {
-        a := u8.{0};
-        test_true(typeof(a) == u8);
-        test_eq(a, 0);
-    }
+	{
+		a := u8.{0};
+		test_true(typeof(a) == u8);
+		test_eq(a, 0);
+	}
 
-    {
-        a := s32.{ 10 };
-        test_true(typeof(a) == s32);
-        test_eq(a, 10);
-    }
+	{
+		a := s32.{ 10 };
+		test_true(typeof(a) == s32);
+		test_eq(a, 10);
+	}
 
-    {
-        a := [4]s32.{ 0, 1, 2, 3 };
-        loop i := 0; i < a.len; i += 1 {
-            test_eq(a[i], i);
-        }
-    }
+	{
+		a := [4]s32.{ 0, 1, 2, 3 };
+		loop i := 0; i < a.len; i += 1 {
+			test_eq(a[i], i);
+		}
+	}
 }
 
 compound_simple_composition :: fn () #test {
-    A :: struct { i: s32; b: bool; };
-    B :: struct { data: A; };
+	A :: struct { i: s32; b: bool; };
+	B :: struct { data: A; };
 
-    {
-        a := B.{};
-        test_eq(a.data.i, 0);
-        test_eq(a.data.b, false);
-    }
+	{
+		a := B.{};
+		test_eq(a.data.i, 0);
+		test_eq(a.data.b, false);
+	}
 
-    {
-        a := B.{ A.{ 10, true } };
-        test_eq(a.data.i, 10);
-        test_eq(a.data.b, true);
-    }
+	{
+		a := B.{ A.{ 10, true } };
+		test_eq(a.data.i, 10);
+		test_eq(a.data.b, true);
+	}
 }
 
 compound_arrays :: fn () #test {
-    validate :: fn (v: [2]s32, i: s32, j: s32) {
-        test_eq(v[0], i);
-        test_eq(v[1], j);
-    };
+	validate :: fn (v: [2]s32, i: s32, j: s32) {
+		test_eq(v[0], i);
+		test_eq(v[1], j);
+	};
 
-    // Var initializers
-    { // zero initialized
-        arr := [2]s32.{};
-        validate(arr, 0, 0);
-    }
+	// Var initializers
+	{ // zero initialized
+		arr := [2]s32.{};
+		validate(arr, 0, 0);
+	}
 
-    { // constant values
-        arr := [2]s32.{10, 20};
-        validate(arr, 10, 20);
-    }
+	{ // constant values
+		arr := [2]s32.{10, 20};
+		validate(arr, 10, 20);
+	}
 
-    { // variable values
-        i := 10;
-        j := 20;
+	{ // variable values
+		i := 10;
+		j := 20;
 
-        arr := [2]s32.{i, j};
-        validate(arr, i, j);
-    }
+		arr := [2]s32.{i, j};
+		validate(arr, i, j);
+	}
 
-    // Naked
-    {
-        i := 10;
-        j := 20;
+	// Naked
+	{
+		i := 10;
+		j := 20;
 
-        validate([2]s32.{}, 0, 0);
-        validate([2]s32.{10, 20}, 10, 20);
-        validate([2]s32.{i, j}, i, j);
-    }
+		validate([2]s32.{}, 0, 0);
+		validate([2]s32.{10, 20}, 10, 20);
+		validate([2]s32.{i, j}, i, j);
+	}
 }
 
 compound_structs :: fn () #test {
-    Foo :: struct {
-        i: s32;
-        j: s32
-    };
+	Foo :: struct {
+		i: s32;
+		j: s32
+	};
 
-    validate :: fn (v: Foo, i: s32, j: s32) {
-        test_eq(v.i, i);
-        test_eq(v.j, j);
-    };
+	validate :: fn (v: Foo, i: s32, j: s32) {
+		test_eq(v.i, i);
+		test_eq(v.j, j);
+	};
 
-    { // zero initialized
-        foo := Foo.{};
-        validate(foo, 0, 0);
-    }
+	{ // zero initialized
+		foo := Foo.{};
+		validate(foo, 0, 0);
+	}
 
-    { // constant values
-        foo := Foo.{ 10, 20 };
-        validate(foo, 10, 20);
-    }
+	{ // constant values
+		foo := Foo.{ 10, 20 };
+		validate(foo, 10, 20);
+	}
 
-    { // variable values
-        i := 10;
-        j := 20;
+	{ // variable values
+		i := 10;
+		j := 20;
 
-        foo := Foo.{ i, j };
-        validate(foo, i, j);
-    }
+		foo := Foo.{ i, j };
+		validate(foo, i, j);
+	}
 
-    // Naked
-    {
-        i := 10;
-        j := 20;
+	// Naked
+	{
+		i := 10;
+		j := 20;
 
-        validate(Foo.{}, 0, 0);
-        validate(Foo.{ 10, 20 }, 10, 20);
-        validate(Foo.{ i, j }, i, j);
-    }
+		validate(Foo.{}, 0, 0);
+		validate(Foo.{ 10, 20 }, 10, 20);
+		validate(Foo.{ i, j }, i, j);
+	}
 }
 
 compound_naked_structs_big :: fn () #test {
-    Foo :: struct {
-        i: s32;
-        j: s32;
+	Foo :: struct {
+		i: s32;
+		j: s32;
 		k: [8]s32;
-    };
+	};
 
-    validate :: fn (v: Foo) {
+	validate :: fn (v: Foo) {
 		test_eq(v.i, 10);
 		test_eq(v.j, 20);
 		loop i := 0; i < v.k.len; i += 1 {
 			test_eq(v.k[i], i);
 		}
-    };
+	};
 
-    validate(Foo.{
+	validate(Foo.{
 		i = 10,
 		j = 20,
 		k = [8]s32.{ 0, 1, 2, 3, 4, 5, 6, 7 }
@@ -302,107 +302,107 @@ compound_naked_structs_big :: fn () #test {
 }
 
 compound_fundamentals :: fn () #test {
-    Days :: enum { MON; };
+	Days :: enum { MON; };
 
-    i := 10;
-    test_eq(s32.{10},  10);
-    test_eq(s32.{i}, i);
-    test_eq(s32.{}, 0);
+	i := 10;
+	test_eq(s32.{10},  10);
+	test_eq(s32.{i}, i);
+	test_eq(s32.{}, 0);
 
-    b := true;
-    test_true(bool.{true});
-    test_true(bool.{b});
+	b := true;
+	test_true(bool.{true});
+	test_true(bool.{b});
 
-    num     :: s32.{10};
-    real    :: f32.{0.5f};
-    boolean :: bool.{true};
-    ptr     :: *s32.{&num};
-    day     :: Days.{Days.MON};
+	num     :: s32.{10};
+	real    :: f32.{0.5f};
+	boolean :: bool.{true};
+	ptr     :: *s32.{&num};
+	day     :: Days.{Days.MON};
 
-    test_eq(num, 10);
-    test_eq(real, 0.5f);
-    test_true(boolean);
-    test_true(ptr == &num);
-    test_true(day == Days.MON);
+	test_eq(num, 10);
+	test_eq(real, 0.5f);
+	test_true(boolean);
+	test_true(ptr == &num);
+	test_true(day == Days.MON);
 }
 
 compound_composition :: fn () #test {
-    get :: fn () s32 {
-        return 30;
-    };
+	get :: fn () s32 {
+		return 30;
+	};
 
-    T :: struct { slice: []u8; int: s32 };
+	T :: struct { slice: []u8; int: s32 };
 
-    v :: T.{[]u8.{}, get()};
-    test_eq(v.int, 30);
-    test_eq(v.slice.len, 0);
+	v :: T.{[]u8.{}, get()};
+	test_eq(v.int, 30);
+	test_eq(v.slice.len, 0);
 }
 
 compound_designators1 :: fn () #test {
-    T :: struct { number: s32; boolean: bool; float: f32; };
-    {
-        a := T.{ number = 10 };
-        test_eq(a.number, 10);
-        test_eq(a.boolean, false);
-        test_eq(a.float, 0.f);
-    }
-    {
-        a := T.{ boolean = true };
-        test_eq(a.number, 0);
-        test_eq(a.boolean, true);
-        test_eq(a.float, 0.f);
-    }
-    {
-        a := T.{ float = 1.f };
-        test_eq(a.number, 0);
-        test_eq(a.boolean, false);
-        test_eq(a.float, 1.f);
-    }
-    {
-        a := T.{ number = 10, true, 1.f };
-        test_eq(a.number, 10);
-        test_eq(a.boolean, true);
-        test_eq(a.float, 1.f);
-    }
-    {
-        a := T.{ boolean = true, 1.f };
-        test_eq(a.number, 0);
-        test_eq(a.boolean, true);
-        test_eq(a.float, 1.f);
-    }
-    {
-        a := T.{ boolean = true, float = 1.f, number = 10 };
-        test_eq(a.number, 10);
-        test_eq(a.boolean, true);
-        test_eq(a.float, 1.f);
-    }
+	T :: struct { number: s32; boolean: bool; float: f32; };
+	{
+		a := T.{ number = 10 };
+		test_eq(a.number, 10);
+		test_eq(a.boolean, false);
+		test_eq(a.float, 0.f);
+	}
+	{
+		a := T.{ boolean = true };
+		test_eq(a.number, 0);
+		test_eq(a.boolean, true);
+		test_eq(a.float, 0.f);
+	}
+	{
+		a := T.{ float = 1.f };
+		test_eq(a.number, 0);
+		test_eq(a.boolean, false);
+		test_eq(a.float, 1.f);
+	}
+	{
+		a := T.{ number = 10, true, 1.f };
+		test_eq(a.number, 10);
+		test_eq(a.boolean, true);
+		test_eq(a.float, 1.f);
+	}
+	{
+		a := T.{ boolean = true, 1.f };
+		test_eq(a.number, 0);
+		test_eq(a.boolean, true);
+		test_eq(a.float, 1.f);
+	}
+	{
+		a := T.{ boolean = true, float = 1.f, number = 10 };
+		test_eq(a.number, 10);
+		test_eq(a.boolean, true);
+		test_eq(a.float, 1.f);
+	}
 }
 
 compound_designators2 :: fn () #test {
-    T :: struct { number: s32; boolean: bool; float: f32; };
+	T :: struct { number: s32; boolean: bool; float: f32; };
 
-    {
-        a := T.{};
-        test_eq(a.number, 0);
-        test_eq(a.boolean, false);
-        test_eq(a.float, 0.f);
-    }
-    {
-        a := T.{ 10 };
-        test_eq(a.number, 10);
-        test_eq(a.boolean, false);
-        test_eq(a.float, 0.f);
-    }
-    {
-        a := T.{ 10, true };
-        test_eq(a.number, 10);
-        test_eq(a.boolean, true);
-        test_eq(a.float, 0.f);
-    }
-    {
-        a := T.{ number = 10, float = 1.f };
-        test_eq(a.number, 10);
-        test_eq(a.boolean, false);
-        test_eq(a.float, 1.f);
-    }
+	{
+		a := T.{};
+		test_eq(a.number, 0);
+		test_eq(a.boolean, false);
+		test_eq(a.float, 0.f);
+	}
+	{
+		a := T.{ 10 };
+		test_eq(a.number, 10);
+		test_eq(a.boolean, false);
+		test_eq(a.float, 0.f);
+	}
+	{
+		a := T.{ 10, true };
+		test_eq(a.number, 10);
+		test_eq(a.boolean, true);
+		test_eq(a.float, 0.f);
+	}
+	{
+		a := T.{ number = 10, float = 1.f };
+		test_eq(a.number, 10);
+		test_eq(a.boolean, false);
+		test_eq(a.float, 1.f);
+	}
 }

@@ -15,7 +15,7 @@ simple_enabled :: fn () #test {
 
 	called_num = 0;
 	foo();
-    test_eq(called_num, 1);
+	test_eq(called_num, 1);
 }
 
 simple_disabled :: fn () #test {
@@ -25,7 +25,7 @@ simple_disabled :: fn () #test {
 
 	called_num = 0;
 	foo();
-    test_eq(called_num, 0);
+	test_eq(called_num, 0);
 }
 
 simple_disabled_expr :: fn () #test {
@@ -35,7 +35,7 @@ simple_disabled_expr :: fn () #test {
 
 	called_num = 0;
 	foo();
-    test_eq(called_num, 1);
+	test_eq(called_num, 1);
 }
 
 simple_enabled_ret_val :: fn () #test {
@@ -46,8 +46,8 @@ simple_enabled_ret_val :: fn () #test {
 
 	called_num = 0;
 	i :: foo();
-    test_eq(called_num, 1);
-    test_eq(i, 10);
+	test_eq(called_num, 1);
+	test_eq(i, 10);
 }
 
 disabled_with_args :: fn () #test {
@@ -57,7 +57,7 @@ disabled_with_args :: fn () #test {
 
 	called_num = 0;
 	foo(10, "Hello");
-    test_eq(called_num, 0);
+	test_eq(called_num, 0);
 }
 
 disabled_with_args_fn_call :: fn () #test {
@@ -67,7 +67,7 @@ disabled_with_args_fn_call :: fn () #test {
 
 	called_num = 0;
 	foo(get_number(), "Hello");
-    test_eq(called_num, 0);
+	test_eq(called_num, 0);
 }
 
 enabled_with_args_fn_call :: fn () #test {
@@ -77,7 +77,7 @@ enabled_with_args_fn_call :: fn () #test {
 
 	called_num = 0;
 	foo(get_number(), "Hello");
-    test_eq(called_num, 2);
+	test_eq(called_num, 2);
 }
 
 disabled_poly :: fn () {
@@ -89,5 +89,5 @@ disabled_poly :: fn () {
 	foo(10);
 	foo(20); // Intentionally call the same function again.
 	foo("hello");
-    test_eq(called_num, 0);
+	test_eq(called_num, 0);
 }

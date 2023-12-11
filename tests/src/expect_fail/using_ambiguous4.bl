@@ -2,9 +2,9 @@
 #load "../other_scope.bl"
 
 main :: fn () s32 {
-    using S;
-    using Other;
-    return number;
+	using S;
+	using Other;
+	return number;
 }
 
 #scope S

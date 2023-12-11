@@ -1,6 +1,6 @@
 // @ERR_MISSING_RETURN@
 main :: fn () s32 {
-    i := true;
-    if i { return 0; }
+	i := true;
+	if i { return 0; }
 } 
 

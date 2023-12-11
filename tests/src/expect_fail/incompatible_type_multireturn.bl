@@ -3,6 +3,6 @@
 foo :: fn () (bool, s32) { return true, 10; }
 
 main :: fn () s32 {
-    a : s32 : foo();
-    return 0;
+	a : s32 : foo();
+	return 0;
 }

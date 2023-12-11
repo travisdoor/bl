@@ -1,91 +1,91 @@
 MyAllocator :: struct #base Allocator {
-    buffer: []u8;
-    used_bytes: usize;
+	buffer: []u8;
+	used_bytes: usize;
 }
 
 allocator_make :: fn (buffer: []u8) MyAllocator {
-    return MyAllocator.{
-        base = Allocator.{ auto &my_allocator_handler },
-        buffer = buffer,
-        used_bytes = 0,
-    };
+	return MyAllocator.{
+		base = Allocator.{ auto &my_allocator_handler },
+		buffer = buffer,
+		used_bytes = 0,
+	};
 }
 
 my_allocator_handler :: fn (
-    allocator: *MyAllocator,
-    // Operation specify whether we do allocation or free.
-    operation: AllocOp,
-    // Pointer to the previously allocated memory. 
-    _: *u8,
-    // Count of bytes to be allocated.
-    size: usize,
-    // Allocation allignment.
-    alignment: usize,
-    // Source file where allocator was called.
-    file: string_view,
-    // Line in source file where allocator was called.
-    line: s32) (mem: *u8, err: Error)
+	allocator: *MyAllocator,
+	// Operation specify whether we do allocation or free.
+	operation: AllocOp,
+	// Pointer to the previously allocated memory. 
+	_: *u8,
+	// Count of bytes to be allocated.
+	size: usize,
+	// Allocation allignment.
+	alignment: usize,
+	// Source file where allocator was called.
+	file: string_view,
+	// Line in source file where allocator was called.
+	line: s32) (mem: *u8, err: Error)
 {
-    using AllocOp;
-    switch operation {
-        ALLOCATE   {
-            print("Allocate %B called from %:%.", size, file, line);
-            return allocate(allocator, size, alignment);
-        }
-        REALLOCATE {
-            // To properly support reallocation, we have to store additional metadata
-            // containing the size of the previous allocated memory associated with input
-            // ptr pointer.
-            // This is not implemented in this example to keep things simple.
-            panic("Rellocation is not supported.");
-        }
-        FREE {
-            print("Free called from %:%.", file, line);
-        }
-        RESET, RELEASE {
-            panic("Unsupported operation: %.", operation);
-        }
+	using AllocOp;
+	switch operation {
+		ALLOCATE   {
+			print("Allocate %B called from %:%.", size, file, line);
+			return allocate(allocator, size, alignment);
+		}
+		REALLOCATE {
+			// To properly support reallocation, we have to store additional metadata
+			// containing the size of the previous allocated memory associated with input
+			// ptr pointer.
+			// This is not implemented in this example to keep things simple.
+			panic("Rellocation is not supported.");
+		}
+		FREE {
+			print("Free called from %:%.", file, line);
+		}
+		RESET, RELEASE {
+			panic("Unsupported operation: %.", operation);
+		}
 
-        default { panic("Unknown operation."); }
-    }
-    return null, OK;
+		default { panic("Unknown operation."); }
+	}
+	return null, OK;
 }
 
 allocate :: fn (allocator: *MyAllocator, size: usize, alignment: usize) (mem: *u8, err: Error) {
-    // Alignment mask.
-    mask :: ~(alignment - 1);
-    // We need some additional space to properly align the allocation.
-    adjusted_size :: size + alignment - 1;
-    // Calculate total size needed.
-    needed_size :: allocator.used_bytes + adjusted_size;
-    // Check if there is space enough in out buffer.
-    if needed_size > auto allocator.buffer.len {
-        return null, error("The buffer is full! The buffer size is %B and required size is %B.", allocator.buffer.len, needed_size);
-    }
-    // Get free memory pointer.
-    mem := &allocator.buffer[auto allocator.used_bytes];
-    // Adjust used size.
-    allocator.used_bytes += adjusted_size;
-    // Align memory pointer.
-    mem = auto ((cast(usize) mem) + alignment - 1 & mask);
-    return mem, OK;
+	// Alignment mask.
+	mask :: ~(alignment - 1);
+	// We need some additional space to properly align the allocation.
+	adjusted_size :: size + alignment - 1;
+	// Calculate total size needed.
+	needed_size :: allocator.used_bytes + adjusted_size;
+	// Check if there is space enough in out buffer.
+	if needed_size > auto allocator.buffer.len {
+		return null, error("The buffer is full! The buffer size is %B and required size is %B.", allocator.buffer.len, needed_size);
+	}
+	// Get free memory pointer.
+	mem := &allocator.buffer[auto allocator.used_bytes];
+	// Adjust used size.
+	allocator.used_bytes += adjusted_size;
+	// Align memory pointer.
+	mem = auto ((cast(usize) mem) + alignment - 1 & mask);
+	return mem, OK;
 }
 
 User :: struct {
-    name: string_view;
-    age: s32;
+	name: string_view;
+	age: s32;
 }
 
 main :: fn () s32 {
-    buffer: [2048]u8;
-    allocator :: allocator_make(buffer);
+	buffer: [2048]u8;
+	allocator :: allocator_make(buffer);
 
-    user :: new(User, true, &allocator);
-    user.name = "Martin.";
-    user.age = 32;
+	user :: new(User, true, &allocator);
+	user.name = "Martin.";
+	user.age = 32;
 
-    print("User = %\n", @user);
+	print("User = %\n", @user);
 
-    free(auto user, &allocator);
-    return 0;
+	free(auto user, &allocator);
+	return 0;
 }

@@ -1,6 +1,6 @@
 // @ERR_EMPTY_STRUCT@
 Foo :: struct {
-    using A;
+	using A;
 }
 
 #scope A

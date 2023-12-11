@@ -10,93 +10,93 @@ This example is showing how the native platform window with OpenGL context can b
 font: draw.Font;
 
 main :: fn () s32 {
-    // Initialize the glwindow module first.
-    glwindow.init();
-    // And don't forget to terminate it at the end.
-    defer glwindow.terminate();
+	// Initialize the glwindow module first.
+	glwindow.init();
+	// And don't forget to terminate it at the end.
+	defer glwindow.terminate();
 
-    // Create default instance of window options and override some values.
-    opt := glwindow.make_default_create_window_options();
+	// Create default instance of window options and override some values.
+	opt := glwindow.make_default_create_window_options();
 
-    // Text shown in the window title.
-    opt.title  = "My Window";
+	// Text shown in the window title.
+	opt.title  = "My Window";
 
-    // Window resolution
-    opt.width  = 1024;
-    opt.height = 768;
+	// Window resolution
+	opt.width  = 1024;
+	opt.height = 768;
 
-    // Uncommnet this to enable fullscreen mode.
-    //opt.fullscreen = true;
+	// Uncommnet this to enable fullscreen mode.
+	//opt.fullscreen = true;
 
-    // Create new window using our options and handle all possible errors.
-    window, window_err :: glwindow.create_window(&opt);
-    if window_err {
-        // Kill the app on error.
-        panic(window_err);
-    }
-    // Destroy the window at the end of the scope.
-    defer glwindow.destroy_window(window);
+	// Create new window using our options and handle all possible errors.
+	window, window_err :: glwindow.create_window(&opt);
+	if window_err {
+		// Kill the app on error.
+		panic(window_err);
+	}
+	// Destroy the window at the end of the scope.
+	defer glwindow.destroy_window(window);
 
-    // Make the window's GL context the current one.
-    glwindow.set_window_context_current(window);
+	// Make the window's GL context the current one.
+	glwindow.set_window_context_current(window);
 
-    // Initialize draw module.
-    draw.init(opt.width, opt.height);
-    defer draw.terminate();
+	// Initialize draw module.
+	draw.init(opt.width, opt.height);
+	defer draw.terminate();
 
-    // Load font from the file using draw module helper functin.
-    err := draw.font_init_at_size(&font, ".", "LiberationMono-Regular.ttf", 14);
-    if err { panic(err); }
-    defer draw.font_terminate(&font);
+	// Load font from the file using draw module helper functin.
+	err := draw.font_init_at_size(&font, ".", "LiberationMono-Regular.ttf", 14);
+	if err { panic(err); }
+	defer draw.font_terminate(&font);
 
-    position: glm.v2;
-    time_current := os_tick_ms();
+	position: glm.v2;
+	time_current := os_tick_ms();
 
-    // The "game loop" is looping until the should_quit is false.
-    should_quit := false;
-    loop !should_quit {
-        // Poll all pending window events.
-        glwindow.poll_window_events();
+	// The "game loop" is looping until the should_quit is false.
+	should_quit := false;
+	loop !should_quit {
+		// Poll all pending window events.
+		glwindow.poll_window_events();
 
-        // Calculate time spent in one frame.
-        time_previous :: time_current;
-        time_current = os_tick_ms();
-        dt := cast(f32) (time_current - time_previous);
+		// Calculate time spent in one frame.
+		time_previous :: time_current;
+		time_current = os_tick_ms();
+		dt := cast(f32) (time_current - time_previous);
 
-        // Process user input events here.
-        loop i := 0; i < glwindow.frame_events.len; i += 1 {
-            event :: &glwindow.frame_events[i];
-            using glwindow.EventKind;
-            switch event.kind {
-                QUIT { should_quit = true; }
-                MOUSE_MOVE {
-                    position = glm.v2.{ auto event.data.mouse_move.x, auto event.data.mouse_move.y };
-                }
-                default;
-            }
-        }
+		// Process user input events here.
+		loop i := 0; i < glwindow.frame_events.len; i += 1 {
+			event :: &glwindow.frame_events[i];
+			using glwindow.EventKind;
+			switch event.kind {
+				QUIT { should_quit = true; }
+				MOUSE_MOVE {
+					position = glm.v2.{ auto event.data.mouse_move.x, auto event.data.mouse_move.y };
+				}
+				default;
+			}
+		}
 
-        // Draw one frame.
-        draw.clear_color(glm.v4.{ 0.01f, 0.02f, 0.01f, 1.f });
+		// Draw one frame.
+		draw.clear_color(glm.v4.{ 0.01f, 0.02f, 0.01f, 1.f });
 
-        draw.set_shader_color();
-        draw.rect_centered(position.x, position.y, 100.f, 100.f, glm.v4.{ 1.f, 0.f, 0.f, 1.f });
+		draw.set_shader_color();
+		draw.rect_centered(position.x, position.y, 100.f, 100.f, glm.v4.{ 1.f, 0.f, 0.f, 1.f });
 
-        draw.set_shader_font(&font);
-        draw.text(10.f, 10.f, tprint("Vendor:         %", gl_get_vendor()));
-        draw.text(10.f, 25.f, tprint("Renderer:       %", gl_get_renderer()));
-        draw.text(10.f, 40.f, tprint("Version:        %", gl_get_version()));
-        draw.text(10.f, 55.f, tprint("Time:           % ms", os_tick_ms()));
-        draw.text(10.f, 70.f, tprint("Frame:          % ms", dt));
-        draw.text(10.f, 85.f, tprint("FPS:            %", 1000.f / std.max(0.001f, dt)));
-        draw.text(10.f, 100.f, tprint("Mouse Position: %", position));
+		draw.set_shader_font(&font);
+		draw.text(10.f, 10.f, tprint("Vendor:         %", gl_get_vendor()));
+		draw.text(10.f, 25.f, tprint("Renderer:       %", gl_get_renderer()));
+		draw.text(10.f, 40.f, tprint("Version:        %", gl_get_version()));
+		draw.text(10.f, 55.f, tprint("Time:           % ms", os_tick_ms()));
+		draw.text(10.f, 70.f, tprint("Frame:          % ms", dt));
+		draw.text(10.f, 85.f, tprint("FPS:            %", 1000.f / std.max(0.001f, dt)));
+		draw.text(10.f, 100.f, tprint("Mouse Position: %", position));
 
-        draw.flush();
+		draw.flush();
 
-        // Don't forget to swap gl buffers at the end of the frame.
-        glwindow.swap_buffers(window);
-    }
+		// Don't forget to swap gl buffers at the end of the frame.
+		glwindow.swap_buffers(window);
+	}
 
-    print("DONE\n");
-    return 0;
+	print("DONE\n");
+	return 0;
 }

@@ -92,7 +92,7 @@ x64 todo:
 BUG: Invalid ! precedence
 
 if !settings.modal_ctrl && (mods & MOD_CONTROL) == MOD_CONTROL {
-    control_pressed = true;
+	control_pressed = true;
 }
 
 // To examples!!!
@@ -103,17 +103,17 @@ if !settings.modal_ctrl && (mods & MOD_CONTROL) == MOD_CONTROL {
 
 text_file_to_stack :: fn (filename: string_view) string_view #comptime {
 	using std;
-    stream, open_err :: open_file(filename);
-    defer close_file(&stream);
-    if open_err {
-        panic(open_err);
-    }
-    str := str_new();
-    read_err :: read_string(&stream, &str);
-    if read_err {
-        panic(read_err);
-    }
-    return str;
+	stream, open_err :: open_file(filename);
+	defer close_file(&stream);
+	if open_err {
+		panic(open_err);
+	}
+	str := str_new();
+	read_err :: read_string(&stream, &str);
+	if read_err {
+		panic(read_err);
+	}
+	return str;
 }
 
 DATA :: text_file_to_heap("data.txt");
@@ -140,17 +140,17 @@ local but application_context is not).
 - Consider #import and #load to be limited only to the file scope.
 - Allow creation of scoped constants in structure bodies:
 
-    foo :: struct {
-        THIS_IS_CONSTANT :: 10;
+	foo :: struct {
+		THIS_IS_CONSTANT :: 10;
 
-        number: s32;
-    }
+		number: s32;
+	}
 
 - Macros
 
-    bar :: macro (v: s32) s32 {
-        return v + 1;
-    }
+	bar :: macro (v: s32) s32 {
+		return v + 1;
+	}
 
 - Introduce calling conventions.
 - Change syntax of default argument value assignment to ':'.
@@ -158,9 +158,9 @@ local but application_context is not).
 
 - loop - else ?
 
-    loop i := 0; i < arr.len; i += 1 {
-        ...
-    } else {}
+	loop i := 0; i < arr.len; i += 1 {
+		...
+	} else {}
 
 ENUM FLAGS:
 - Allow direct | (or) composition of flags.
@@ -197,30 +197,30 @@ NEW FEATURES
 - Anonymous structs/unions?
 - Disable function calls based on condition:
 
-    trace_runtime :: fn () #enable_if IS_DEBUG == true {
-        ...
-    }
+	trace_runtime :: fn () #enable_if IS_DEBUG == true {
+		...
+	}
 
 - Module versions:
 
-    dir: module@2.9.16
-    dir: module@3.2.0
+	dir: module@2.9.16
+	dir: module@3.2.0
 
-    #import "module"       // the latest one
-    #import "module@2      // newest version 2.x.x
-    #import "module@2.9    // newest version 2.9.x
-    #import "module@3.2.0  // exact version
-    #import "module@2+     // any >= 2.0.0
-    #import "module@2.1+   // any 2.1.0, 2.1.1, 2.2.0 ...
-    #import "module@2.9.0+ // any 2.9.0, 2.9.1, 2.9.2 ...
+	#import "module"       // the latest one
+	#import "module@2      // newest version 2.x.x
+	#import "module@2.9    // newest version 2.9.x
+	#import "module@3.2.0  // exact version
+	#import "module@2+     // any >= 2.0.0
+	#import "module@2.1+   // any 2.1.0, 2.1.1, 2.2.0 ...
+	#import "module@2.9.0+ // any 2.9.0, 2.9.1, 2.9.2 ...
 
 
 // To memory.bl???
 bytes_to_value :: fn (TValue: type #comptime, bytes: []u8) TValue {
-    tmp: TValue;
-    assert(bytes.ptr);
-    memcpy(auto &tmp, bytes.ptr, std.min(sizeof(TValue), auto bytes.len));
-    return tmp;
+	tmp: TValue;
+	assert(bytes.ptr);
+	memcpy(auto &tmp, bytes.ptr, std.min(sizeof(TValue), auto bytes.len));
+	return tmp;
 }
 
 BIG STUFF:

@@ -178,14 +178,14 @@ measure_elapsed_ms_end :: fn (_name : string_view = "", loc := #call_location) f
 
 	name := _name;
 	if name.len == 0 {
-        name = loc.function;
-    } else if name.len == 1 && name[0] == '-' {
-        name = "";
-    }
+		name = loc.function;
+	} else if name.len == 1 && name[0] == '-' {
+		name = "";
+	}
 
-    if name.len > 0 {
-	    print_log("% took % ms.", name, elapsed_ms);
-    }
+	if name.len > 0 {
+		print_log("% took % ms.", name, elapsed_ms);
+	}
 	if index == 0 { array_terminate(&_elapsed_ms_stack); }
 	return elapsed_ms;
 }

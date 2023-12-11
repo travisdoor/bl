@@ -1,98 +1,98 @@
 #private
 debug_print_log :: fn () #test {
-    application_context.print_log_fn = &test_logger;
-    {
-        _expected_kind = PrintLogKind.MESSAGE;
-        _expected_file = "";
-        _expected_line = 0;
-        _expected_format = "";
-        _expected_argc = 0; 
-        print_log("");
-    }
+	application_context.print_log_fn = &test_logger;
+	{
+		_expected_kind = PrintLogKind.MESSAGE;
+		_expected_file = "";
+		_expected_line = 0;
+		_expected_format = "";
+		_expected_argc = 0; 
+		print_log("");
+	}
 
-    {
-        _expected_kind = PrintLogKind.MESSAGE;
-        _expected_file = "";
-        _expected_line = 0;
-        _expected_format = "hello";
-        _expected_argc = 0; 
-        print_log("hello");
-    }
+	{
+		_expected_kind = PrintLogKind.MESSAGE;
+		_expected_file = "";
+		_expected_line = 0;
+		_expected_format = "hello";
+		_expected_argc = 0; 
+		print_log("hello");
+	}
 
-    {
-        _expected_kind = PrintLogKind.MESSAGE;
-        _expected_file = "";
-        _expected_line = 0;
-        _expected_format = "hello";
-        _expected_argc = 2; 
-        print_log("hello", 10, true);
-    }
+	{
+		_expected_kind = PrintLogKind.MESSAGE;
+		_expected_file = "";
+		_expected_line = 0;
+		_expected_format = "hello";
+		_expected_argc = 2; 
+		print_log("hello", 10, true);
+	}
 
-    application_context.print_log_fn = &__print_log_default;
+	application_context.print_log_fn = &__print_log_default;
 }
 
 debug_print_warn :: fn () #test {
-    application_context.print_log_fn = &test_logger;
-    {
-        _expected_kind = PrintLogKind.WARNING;
-        _expected_file = "";
-        _expected_line = 0;
-        _expected_format = "";
-        _expected_argc = 0; 
-        print_warn("");
-    }
+	application_context.print_log_fn = &test_logger;
+	{
+		_expected_kind = PrintLogKind.WARNING;
+		_expected_file = "";
+		_expected_line = 0;
+		_expected_format = "";
+		_expected_argc = 0; 
+		print_warn("");
+	}
 
-    {
-        _expected_kind = PrintLogKind.WARNING;
-        _expected_file = "";
-        _expected_line = 0;
-        _expected_format = "hello";
-        _expected_argc = 0; 
-        print_warn("hello");
-    }
+	{
+		_expected_kind = PrintLogKind.WARNING;
+		_expected_file = "";
+		_expected_line = 0;
+		_expected_format = "hello";
+		_expected_argc = 0; 
+		print_warn("hello");
+	}
 
-    {
-        _expected_kind = PrintLogKind.WARNING;
-        _expected_file = "";
-        _expected_line = 0;
-        _expected_format = "hello";
-        _expected_argc = 2; 
-        print_warn("hello", 10, true);
-    }
+	{
+		_expected_kind = PrintLogKind.WARNING;
+		_expected_file = "";
+		_expected_line = 0;
+		_expected_format = "hello";
+		_expected_argc = 2; 
+		print_warn("hello", 10, true);
+	}
 
-    application_context.print_log_fn = &__print_log_default;
+	application_context.print_log_fn = &__print_log_default;
 }
 
 debug_print_err :: fn () #test {
-    application_context.print_log_fn = &test_logger;
-    {
-        _expected_kind = PrintLogKind.ERROR;
-        _expected_file = "";
-        _expected_line = 0;
-        _expected_format = "";
-        _expected_argc = 0; 
-        print_err("");
-    }
+	application_context.print_log_fn = &test_logger;
+	{
+		_expected_kind = PrintLogKind.ERROR;
+		_expected_file = "";
+		_expected_line = 0;
+		_expected_format = "";
+		_expected_argc = 0; 
+		print_err("");
+	}
 
-    {
-        _expected_kind = PrintLogKind.ERROR;
-        _expected_file = "";
-        _expected_line = 0;
-        _expected_format = "hello";
-        _expected_argc = 0; 
-        print_err("hello");
-    }
+	{
+		_expected_kind = PrintLogKind.ERROR;
+		_expected_file = "";
+		_expected_line = 0;
+		_expected_format = "hello";
+		_expected_argc = 0; 
+		print_err("hello");
+	}
 
-    {
-        _expected_kind = PrintLogKind.ERROR;
-        _expected_file = "";
-        _expected_line = 0;
-        _expected_format = "hello";
-        _expected_argc = 2; 
-        print_err("hello", 10, true);
-    }
+	{
+		_expected_kind = PrintLogKind.ERROR;
+		_expected_file = "";
+		_expected_line = 0;
+		_expected_format = "hello";
+		_expected_argc = 2; 
+		print_err("hello", 10, true);
+	}
 
-    application_context.print_log_fn = &__print_log_default;
+	application_context.print_log_fn = &__print_log_default;
 }
 
 _expected_kind: PrintLogKind;
@@ -102,26 +102,26 @@ _expected_format: string_view;
 _expected_argc: s32; 
 
 test_logger :: fn (kind: PrintLogKind, file: string_view, line: s32, format: string_view, args: ...) {
-    assert(kind == _expected_kind);
-    test_eq(file, _expected_file);
-    test_eq(line, _expected_line);
-    test_eq(format, _expected_format);
-    test_eq(args.len, _expected_argc);
+	assert(kind == _expected_kind);
+	test_eq(file, _expected_file);
+	test_eq(line, _expected_line);
+	test_eq(format, _expected_format);
+	test_eq(args.len, _expected_argc);
 
-    loop i := 0; i < args.len; i += 1 {
-        test_not_null(auto args[i].type_info);
-        test_not_null(auto args[i].data);
-    }
+	loop i := 0; i < args.len; i += 1 {
+		test_not_null(auto args[i].type_info);
+		test_not_null(auto args[i].data);
+	}
 }
 
 static_assertion :: fn () #test {
-    static_assert(sizeof(s32) == sizeof(s32));
-    static_assert(sizeof(s32) == 4);
-    static_assert(true);
-    
-    i :: 10;
-    static_assert(i == 10);
+	static_assert(sizeof(s32) == sizeof(s32));
+	static_assert(sizeof(s32) == 4);
+	static_assert(true);
+	
+	i :: 10;
+	static_assert(i == 10);
 
-    arr: [10]s32;
-    static_assert(arr.len == 10);
+	arr: [10]s32;
+	static_assert(arr.len == 10);
 }

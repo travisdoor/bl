@@ -1,8 +1,8 @@
 // @ERR_AMBIGUOUS@
 main :: fn () s32 {
-    using S;
-    i = 0;
-    return 0;
+	using S;
+	i = 0;
+	return 0;
 }
 
 i := 0;

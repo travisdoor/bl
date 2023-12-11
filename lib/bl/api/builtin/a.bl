@@ -452,7 +452,7 @@ has_member2 :: fn (TStruct: type #comptime, member_name: string_view) bool #comp
 struct_count :: fn (TStruct: type #comptime) s32 #comptime {
 	info :: cast(*TypeInfoStruct) typeinfo(TStruct);
 	static_assert(info.kind == TypeKind.STRUCT);
-    return auto info.members.len;
+	return auto info.members.len;
 }    
 
 // Resolve structure member `member_name` offset in bytes inside the `TStruct` memory layout.
