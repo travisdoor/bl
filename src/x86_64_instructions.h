@@ -87,6 +87,12 @@ static inline void encode_base(struct thread_context *tctx, u8 rex, u8 op_base, 
 	add_code(tctx, buf, i);
 }
 
+static inline void xor_rr(struct thread_context *tctx, u8 r1, u8 r2, usize size);
+
+static inline void zero_reg(struct thread_context *tctx, u8 r) {
+	xor_rr(tctx, r, r, 8);
+}
+
 static inline void nop(struct thread_context *tctx) {
 	const u8 buf[] = {0x90};
 	add_code(tctx, buf, 1);
@@ -144,7 +150,8 @@ static inline void mov_mi(struct thread_context *tctx, u8 r, s32 offset, u64 imm
 	add_code(tctx, &imm, (s32)MIN(size, sizeof(u32)));
 }
 
-static inline void mov_mi_indirect(struct thread_context *tctx, u8 r, s32 offset, u64 imm, usize size) {
+static inline void mov_mi_indirect(struct thread_context *tctx, s32 offset, u64 imm, usize size) {
+	const u8 r = RBP;
 	if (size == 8 && imm > 0xFFFFFFFF) {
 		// @Incomplete: Might not work for indirect addressing?
 		bassert(false);
@@ -185,7 +192,8 @@ static inline void mov_rm(struct thread_context *tctx, u8 r1, u8 r2, s32 offset,
 	add_code(tctx, &offset, disp == MOD_BYTE_DISP ? 1 : 4);
 }
 
-static inline void mov_rm_indirect(struct thread_context *tctx, u8 r1, u8 r2, s32 offset, usize size) {
+static inline void mov_rm_indirect(struct thread_context *tctx, u8 r1, s32 offset, usize size) {
+	const u8 r2  = RBP;
 	const u8 rex = encode_rex(size == 8, r1, r2);
 	const u8 mrr = encode_mod_reg_rm(MOD_INDIRECT, r1, r2);
 	encode_base(tctx, rex, 0x8A, mrr, size);
@@ -196,6 +204,12 @@ static inline void mov_rr(struct thread_context *tctx, u8 r1, u8 r2, usize size)
 	const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, r2, r1);
 	const u8 rex = encode_rex(size == 8, r2, r1);
 	encode_base(tctx, rex, 0x88, mrr, size);
+}
+
+inline void xor_rr(struct thread_context *tctx, u8 r1, u8 r2, usize size) {
+	const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, r2, r1);
+	const u8 rex = encode_rex(size == 8, r2, r1);
+	encode_base(tctx, rex, 0x30, mrr, size);
 }
 
 static inline void add_rr(struct thread_context *tctx, u8 r1, u8 r2, usize size) {

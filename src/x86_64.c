@@ -164,11 +164,12 @@ static u32  add_sym(struct thread_context *tctx, s32 section_number, str_t linka
 
 enum op_kind {
 	// FF value_kind | FF mir_type.kind
-	OP_IMMEDIATE_INT  = op(IMMEDIATE, MIR_TYPE_INT),
-	OP_IMMEDIATE_PTR  = op(IMMEDIATE, MIR_TYPE_PTR),
-	OP_RELOCATION_INT = op(RELOCATION, MIR_TYPE_INT),
-	OP_REGISTER_INT   = op(REGISTER, MIR_TYPE_INT),
-	OP_OFFSET_INT     = op(OFFSET, MIR_TYPE_INT),
+	OP_IMMEDIATE_INT    = op(IMMEDIATE, MIR_TYPE_INT),
+	OP_IMMEDIATE_PTR    = op(IMMEDIATE, MIR_TYPE_PTR),
+	OP_RELOCATION_INT   = op(RELOCATION, MIR_TYPE_INT),
+	OP_REGISTER_INT     = op(REGISTER, MIR_TYPE_INT),
+	OP_OFFSET_INT       = op(OFFSET, MIR_TYPE_INT),
+	OP_RELOCATION_SLICE = op(RELOCATION, MIR_TYPE_SLICE),
 };
 
 static inline u32 get_position(struct thread_context *tctx, s32 section_number) {
@@ -190,11 +191,9 @@ static inline void set_value(struct thread_context *tctx, struct mir_instr *inst
 	instr->backend_value = arrlenu(tctx->values);
 }
 
-#define get_value(tctx, V) _Generic((V),                \
-	                                struct mir_instr *  \
-	                                : _get_value_instr, \
-	                                  struct mir_var *  \
-	                                : _get_value_var)((tctx), (V))
+#define get_value(tctx, V) _Generic((V),  \
+	struct mir_instr *: _get_value_instr, \
+	struct mir_var *: _get_value_var)((tctx), (V))
 
 static inline struct x64_value _get_value_instr(struct thread_context *tctx, struct mir_instr *instr) {
 	bassert(instr->backend_value != 0);
@@ -428,7 +427,7 @@ static void emit_load_to_register(struct thread_context *tctx, struct mir_instr 
 		mov_rm(tctx, reg, RBP, src_value.offset, type->store_size_bytes);
 		break;
 	case RELOCATION: {
-		mov_rm_indirect(tctx, reg, RBP, 0, type->store_size_bytes);
+		mov_rm_indirect(tctx, reg, 0, type->store_size_bytes);
 		struct sym_patch patch = {
 		    .hash           = src_value.reloc,
 		    .position       = get_position(tctx, SECTION_TEXT) - sizeof(s32),
@@ -606,7 +605,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			mov_mi(tctx, RBP, dest_offset, src_value.imm, type->store_size_bytes);
 			break;
 		case op_combined(OP_IMMEDIATE_INT, OP_RELOCATION_INT):
-			mov_mi_indirect(tctx, RBP, 0, src_value.imm, type->store_size_bytes);
+			mov_mi_indirect(tctx, 0, src_value.imm, type->store_size_bytes);
 			break;
 		case op_combined(OP_REGISTER_INT, OP_OFFSET_INT):
 			mov_mr(tctx, RBP, dest_offset, src_value.reg, type->store_size_bytes);
@@ -1082,17 +1081,45 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			struct mir_type       *type      = var->value.type;
 			bassert(var_value.kind == OFFSET);
 
+			const u32 value_size = (u32)type->store_size_bytes;
+
 			const enum op_kind op_kind = op(init_value.kind, type->kind);
 			switch (op_kind) {
 			case OP_IMMEDIATE_PTR:
 			case OP_IMMEDIATE_INT:
-				mov_mi(tctx, RBP, var_value.offset, init_value.imm, type->store_size_bytes);
+				mov_mi(tctx, RBP, var_value.offset, init_value.imm, value_size);
 				break;
 			case OP_REGISTER_INT:
-				mov_mr(tctx, RBP, var_value.offset, init_value.reg, type->store_size_bytes);
+				mov_mr(tctx, RBP, var_value.offset, init_value.reg, value_size);
 				release_registers(tctx, &init_value.reg, 1);
 				break;
+			case OP_RELOCATION_SLICE: {
+				enum x64_register reg;
+				find_free_registers(tctx, &reg, 1);
+				if (reg == -1) reg = spill(tctx, RAX, NULL, 0);
+				zero_reg(tctx, reg);
 
+				u32 remining_size = value_size;
+				u32 offset        = var_value.offset;
+				while (remining_size) {
+					const u32 size = MIN(8, remining_size);
+					mov_rm_indirect(tctx, RAX, 0, size);
+					const u32 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
+
+					mov_mr(tctx, RBP, offset, RAX, size);
+					remining_size -= size;
+					offset -= size;
+
+					struct sym_patch patch = {
+					    .hash           = init_value.reloc,
+					    .position       = reloc_position,
+					    .type           = IMAGE_REL_AMD64_REL32,
+					    .target_section = SECTION_TEXT,
+					};
+					arrput(tctx->patches, patch);
+				}
+				break;
+			}
 			default:
 				babort("Unhandled operation kind.");
 			}
