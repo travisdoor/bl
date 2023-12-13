@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <memory.h>
 #include <stdio.h>
 
 void my_function(int a, int b, int c, int d, int e, int f) {
@@ -26,4 +27,8 @@ void print_number2(long long n) {
 void print_string(long long len, char *ptr) {
 	assert(ptr);
 	printf("%.*s", (int)len, ptr);
+}
+
+void __bl_memcpy(void *dest, const void *src, unsigned long long size) {
+	memcpy(dest, src, size);
 }

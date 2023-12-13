@@ -108,6 +108,41 @@ static inline void pop64_r(struct thread_context *tctx, u8 r) {
 	add_code(tctx, buf, 3);
 }
 
+static inline void lea_rm(struct thread_context *tctx, u8 r1, u8 r2, s32 offset, usize size) {
+	bassert(size > 1 && "Invalid size for lea instruction.");
+	const u8 disp = is_byte_disp(offset) ? MOD_BYTE_DISP : MOD_FOUR_BYTE_DISP;
+	const u8 rex  = encode_rex(size == 8, r1, r2);
+	const u8 mrr  = encode_mod_reg_rm(disp, r1, r2);
+
+	u8  buf[4];
+	s32 i = 0;
+	if (size == 2) buf[i++] = 0x66;
+	if (rex) buf[i++] = rex;
+	buf[i++] = 0x8D;
+	buf[i++] = mrr;
+	add_code(tctx, buf, i);
+
+	add_code(tctx, &offset, disp == MOD_BYTE_DISP ? 1 : 4);
+}
+
+static inline void lea_rm_indirect(struct thread_context *tctx, u8 r1, s32 offset, usize size) {
+	bassert(size > 1 && "Invalid size for lea instruction.");
+	const u8 r2 = RBP;
+
+	const u8 rex  = encode_rex(size == 8, r1, r2);
+	const u8 mrr  = encode_mod_reg_rm(MOD_INDIRECT, r1, r2);
+
+	u8  buf[4];
+	s32 i = 0;
+	if (size == 2) buf[i++] = 0x66;
+	if (rex) buf[i++] = rex;
+	buf[i++] = 0x8D;
+	buf[i++] = mrr;
+	add_code(tctx, buf, i);
+
+	add_code(tctx, &offset, 4);
+}
+
 // 64bit only
 static inline void movabs64_ri(struct thread_context *tctx, u8 r, u64 imm) {
 	const u8 buf[] = {encode_rex(true, 0x0, r), 0xB8 | (r & 0b111)};

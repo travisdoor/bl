@@ -59,6 +59,9 @@
 
 #define DT_FUNCTION 0x20
 
+#define MEMCPY_BUILTIN cstr("__bl_memcpy")
+hash_t MEMCPY_BUILTIN_HASH = 0;
+
 enum x64_value_kind {
 	// Absolute value address.
 	ADDRESS = 0,
@@ -290,6 +293,39 @@ u32 add_sym(struct thread_context *tctx, s32 section_number, str_t linkage_name,
 	return offset;
 }
 
+// Should be called from main thread only. One symbol cannot be added twice.
+hash_t add_global_external_sym(struct context *ctx, str_t linkage_name, s32 data_type) {
+	bassert(linkage_name.len && linkage_name.ptr);
+	IMAGE_SYMBOL sym = {
+	    .Type         = data_type,
+	    .StorageClass = IMAGE_SYM_CLASS_EXTERNAL,
+	};
+
+	if (linkage_name.len > 8) {
+		const u32 str_offset = (u32)arrlenu(ctx->strs);
+		arrsetcap(ctx->strs, 256);
+		arrsetlen(ctx->strs, str_offset + linkage_name.len + 1); // +1 zero terminator
+		memcpy(&ctx->strs[str_offset], linkage_name.ptr, linkage_name.len);
+		ctx->strs[str_offset + linkage_name.len] = '\0';
+
+		sym.N.Name.Long = str_offset + sizeof(u32); // 4 bytes for the leading table size
+	} else {
+		memcpy(sym.N.ShortName, linkage_name.ptr, linkage_name.len);
+	}
+
+	const hash_t hash = strhash(linkage_name);
+	bassert(hmgeti(ctx->symbol_table, hash) == -1);
+	struct symbol_table_entry entry = {
+	    .key                = hash,
+	    .symbol_table_index = (s32)(arrlen(ctx->syms)),
+	};
+
+	arrput(ctx->syms, sym);
+	hmputs(ctx->symbol_table, entry);
+
+	return hash;
+}
+
 static inline u64 add_block(struct thread_context *tctx, const str_t name) {
 	const u32        address = add_sym(tctx, SECTION_TEXT, name, IMAGE_SYM_CLASS_LABEL, 0);
 	struct x64_value value   = {.kind = ADDRESS, .address = address};
@@ -415,6 +451,36 @@ static inline void release_registers(struct thread_context *tctx, const enum x64
 	}
 }
 
+static inline void add_patch(struct thread_context *tctx, hash_t hash, u64 position, s32 type, s32 target_section) {
+	const struct sym_patch patch = {
+	    .hash           = hash,
+	    .position       = position,
+	    .type           = type,
+	    .target_section = target_section,
+	};
+	arrput(tctx->patches, patch);
+}
+
+static void emit_call_memcpy(struct thread_context *tctx, struct x64_value dest, struct x64_value src, s64 size) {
+	const enum x64_register excluded[] = {RCX, RDX, R8};
+
+	bassert(dest.kind == OFFSET);
+	lea_rm(tctx, spill(tctx, RCX, excluded, 3), RBP, dest.offset, 8);
+
+	bassert(src.kind == RELOCATION); // Extend this?
+	lea_rm_indirect(tctx, spill(tctx, RDX, excluded, 3), 0, 8);
+	const u32 reloc_src_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
+	add_patch(tctx, src.reloc, reloc_src_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
+
+	mov_ri(tctx, spill(tctx, R8, excluded, 3), size, 8);
+
+	sub_ri(tctx, RSP, 0x20, 8);
+	call_relative_i32(tctx, 0);
+	const u32 reloc_call_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
+	add_patch(tctx, MEMCPY_BUILTIN_HASH, reloc_call_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
+	add_ri(tctx, RSP, 0x20, 8);
+}
+
 static void emit_load_to_register(struct thread_context *tctx, struct mir_instr *instr, enum x64_register reg) {
 	bassert(instr && instr->kind == MIR_INSTR_LOAD);
 	struct mir_instr_load *load = (struct mir_instr_load *)instr;
@@ -430,13 +496,8 @@ static void emit_load_to_register(struct thread_context *tctx, struct mir_instr 
 		break;
 	case RELOCATION: {
 		mov_rm_indirect(tctx, reg, 0, type->store_size_bytes);
-		struct sym_patch patch = {
-		    .hash           = src_value.reloc,
-		    .position       = get_position(tctx, SECTION_TEXT) - sizeof(s32),
-		    .type           = IMAGE_REL_AMD64_REL32,
-		    .target_section = SECTION_TEXT,
-		};
-		arrput(tctx->patches, patch);
+		const u32 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
+		add_patch(tctx, src_value.reloc, reloc_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
 		break;
 	}
 	default:
@@ -621,13 +682,8 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		}
 
 		if (dest_value.kind == RELOCATION) {
-			struct sym_patch patch = {
-			    .hash           = dest_value.reloc,
-			    .position       = get_position(tctx, SECTION_TEXT) - sizeof(u64), // @Hack @Cleanup works for indirect mov immediate!
-			    .type           = IMAGE_REL_AMD64_REL32_4,
-			    .target_section = SECTION_TEXT,
-			};
-			arrput(tctx->patches, patch);
+			const u32 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(u64); // @Hack @Cleanup works for indirect mov immediate!
+			add_patch(tctx, dest_value.reloc, reloc_position, IMAGE_REL_AMD64_REL32_4, SECTION_TEXT);
 		}
 
 		// Release source value...
@@ -940,20 +996,13 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		}
 
 		call_relative_i32(tctx, 0);
-		const u64 position = get_position(tctx, SECTION_TEXT);
+		const u64 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
 
 		const struct x64_value callee_value = get_value(tctx, call->callee);
 		bassert(callee_value.kind == RELOCATION);
 
 		if (stack_space) add_ri(tctx, RSP, stack_space, 8);
-
-		struct sym_patch patch = {
-		    .hash           = callee_value.reloc,
-		    .position       = position - sizeof(s32),
-		    .type           = IMAGE_REL_AMD64_REL32,
-		    .target_section = SECTION_TEXT,
-		};
-		arrput(tctx->patches, patch);
+		add_patch(tctx, callee_value.reloc, reloc_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
 
 		// Store RAX register in case the function returns and the result is used.
 		if ((callee->value.type->data.fn.ret_type->kind != MIR_TYPE_VOID) && call->base.ref_count > 1) {
@@ -1096,31 +1145,20 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 				release_registers(tctx, &init_value.reg, 1);
 				break;
 			case OP_RELOCATION_SLICE: {
-				enum x64_register reg;
-				find_free_registers(tctx, &reg, 1);
-				if (reg == -1) reg = spill(tctx, RAX, NULL, 0);
-				zero_reg(tctx, reg);
-
-				u32 remining_size = value_size;
-				s32 dest_offset   = var_value.offset;
-				s32 src_offset    = 0;
-				while (remining_size) {
-					const u32 size = MIN(8, remining_size);
-					mov_rm_indirect(tctx, RAX, src_offset, size);
+				if (value_size <= 8) {
+					// Fits into register (note this does not apply for any splines but we might reuse the same
+					// code for structs too).
+					enum x64_register reg;
+					find_free_registers(tctx, &reg, 1);
+					if (reg == -1) reg = spill(tctx, RAX, NULL, 0);
+					zero_reg(tctx, reg);
+					mov_rm_indirect(tctx, reg, 0, value_size);
 					const u32 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
-
-					mov_mr(tctx, RBP, dest_offset, RAX, size);
-					remining_size -= size;
-					src_offset += size;
-					dest_offset -= size;
-
-					struct sym_patch patch = {
-					    .hash           = init_value.reloc,
-					    .position       = reloc_position,
-					    .type           = IMAGE_REL_AMD64_REL32,
-					    .target_section = SECTION_TEXT,
-					};
-					arrput(tctx->patches, patch);
+					add_patch(tctx, init_value.reloc, reloc_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
+					mov_mr(tctx, RBP, var_value.offset, reg, value_size);
+				} else {
+					// Use builtin memcpy
+					emit_call_memcpy(tctx, var_value, init_value, value_size);
 				}
 				break;
 			}
@@ -1457,6 +1495,8 @@ void x86_64run(struct assembly *assembly) {
 
 	arrsetlen(ctx.tctx, thread_count);
 	bl_zeromem(ctx.tctx, thread_count * sizeof(struct thread_context));
+
+	MEMCPY_BUILTIN_HASH = add_global_external_sym(&ctx, MEMCPY_BUILTIN, DT_FUNCTION);
 
 	// Submit top level instructions...
 	for (usize i = 0; i < arrlenu(assembly->MIR.exported_instrs); ++i) {
