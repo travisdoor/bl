@@ -3,7 +3,7 @@
 #include <stdio.h>
 
 void my_function(int a, int b, int c, int d, int e, int f) {
-	printf("a = %d\nb = %d\nc = %d\nd = %d\ne = %d\nf = %d\n", a, b, c, d, e, f);
+	printf("---\na = %d\nb = %d\nc = %d\nd = %d\ne = %d\nf = %d\n---\n", a, b, c, d, e, f);
 	assert(a == 10);
 	assert(b == 20);
 	assert(c == 30);

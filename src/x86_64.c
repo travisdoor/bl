@@ -597,7 +597,7 @@ static void emit_binop_rr(struct thread_context *tctx, enum binop_kind op, const
 	case BINOP_GREATER:
 	case BINOP_NEQ:
 	case BINOP_EQ:
-		BL_UNIMPLEMENTED;
+		cmp_rr(tctx, reg1, reg2, vsize);
 		break;
 	default:
 		BL_UNIMPLEMENTED;

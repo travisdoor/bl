@@ -44,46 +44,58 @@ Bar :: struct {
 }
 
 __os_start :: fn () #entry {
-	// if _CRT_INIT() == 0 {
-	// 	C.exit(1);
-	// }
+	if _CRT_INIT() == 0 {
+		C.exit(1);
+	}
 
-	// str :: "Hello!!!\n";
-	// print_string(str.len, str.ptr);
+	str :: "Hello!!!\n";
+	print_string(str.len, str.ptr);
 
-	// str2: string_view;
-	// str2 = str;
-	// print_string(str2.len, str2.ptr);
+	str2: string_view;
+	str2 = str;
+	print_string(str2.len, str2.ptr);
 
 	foo: Foo;
-	foo;
+	foo.i = 10;
+	foo.j = 20;
 
-	bar: Bar;
-	bar;
+	print_number(foo.i + 30);
+	print_number(foo.j);
 
-	// print_number(my_number);
+	// bar: Bar;
+	// bar;
 
-	// print_number2(str.len);
+	print_number(my_number);
 
-	// a := 10;
-	// b := 20;
-	// c := 30;
-	// d := 40;
-	// e := 50;
-	// f := 60;
+	print_number2(str.len);
 
-	// y := c + d;
-	// my_function(10, 20, 30, 40, 50, 60);
-	// my_function(10, 20, a + b, d, 50, d + b);
-	// my_function(a, b, c, d, e, f);
+	a := 10;
+	b := 20;
+	c := 30;
+	d := 40;
+	e := 50;
+	f := 60;
 
-	// print_number(add_numbers(10, 20));
-	// print_number(add_numbers(10, -20));
-	// print_number(mul_numbers(10, 20));
+	y := c + d;
+	my_function(10, 20, 30, 40, 50, 60);
+	my_function(10, 20, a + b, d, 50, d + b);
+	my_function(a, b, c, d, e, f);
 
-	// use_global_number();
+	print_number(add_numbers(10, 20));
+	print_number(add_numbers(10, -20));
+	print_number(mul_numbers(10, 20));
+
+	use_global_number();
+
+	// test_looping(10);
 
 	C.exit(0);
+}
+
+test_looping :: fn (n: s32) {
+	loop i := 0; i < n; i += 1 {
+		print_number(i);
+	}
 }
 
 mul_numbers :: fn (a: s32, b: s32) s32 {
