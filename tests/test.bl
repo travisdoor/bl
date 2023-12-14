@@ -22,6 +22,7 @@ Any :: struct #compiler {
 	type_info: *u8;
 	data: *u8
 };
+string_view :: []u8;
 
 _CRT_INIT :: fn () win32.BOOL #extern;
 my_function :: fn (a: s32, b: s32, c: s32, d: s32, e: s32, f: s32) #extern;
@@ -32,15 +33,24 @@ print_string :: fn (len: s64, ptr: *u8) #extern;
 
 my_number := 666;
 
+Foo :: struct {
+	i: s32;
+	j: s32;
+}
+
 __os_start :: fn () #entry {
 	if _CRT_INIT() == 0 {
 		C.exit(1);
 	}
 
-	print_number(my_number);
-
-	str :: "Hello from the BL compiled using custom backend!\n";
+	str :: "Hello!!!\n";
 	print_string(str.len, str.ptr);
+
+	str2: string_view;
+	str2 = str;
+	print_string(str2.len, str2.ptr);
+
+	print_number(my_number);
 
 	print_number2(str.len);
 

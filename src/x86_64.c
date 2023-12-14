@@ -162,17 +162,18 @@ struct context {
 static void job(struct job_context *job_ctx);
 static u32  add_sym(struct thread_context *tctx, s32 section_number, str_t linkage_name, u8 storage_class, s32 data_type);
 
-#define op(value_kind, type_kind) ((value_kind << 2) | (type_kind))
-#define op_combined(a, b) ((a << 4) | (b))
+#define op(value_kind, type_kind) ((value_kind << 4) | (type_kind))
+#define op_combined(a, b) ((((u64)a) << 8) | ((u64)b))
 
 enum op_kind {
-	// FF value_kind | FF mir_type.kind
+	// FFFF value_kind | FFFF mir_type.kind
 	OP_IMMEDIATE_INT    = op(IMMEDIATE, MIR_TYPE_INT),
 	OP_IMMEDIATE_PTR    = op(IMMEDIATE, MIR_TYPE_PTR),
 	OP_RELOCATION_INT   = op(RELOCATION, MIR_TYPE_INT),
 	OP_REGISTER_INT     = op(REGISTER, MIR_TYPE_INT),
 	OP_OFFSET_INT       = op(OFFSET, MIR_TYPE_INT),
 	OP_RELOCATION_SLICE = op(RELOCATION, MIR_TYPE_SLICE),
+	OP_OFFSET_SLICE     = op(OFFSET, MIR_TYPE_SLICE),
 };
 
 static inline u32 get_position(struct thread_context *tctx, s32 section_number) {
@@ -676,6 +677,8 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		case op_combined(OP_REGISTER_INT, OP_RELOCATION_INT):
 			BL_UNIMPLEMENTED;
 			break;
+		case op_combined(OP_RELOCATION_SLICE, OP_OFFSET_SLICE):
+			break;
 
 		default:
 			babort("Unhandled operation kind.");
@@ -707,7 +710,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 				struct mir_type *target_type = mir_deref_type(mem->target_ptr->value.type);
 				const s32        offset      = (s32)vm_get_struct_elem_offset(ctx->assembly, target_type, index);
 
-				struct x64_value value = {.kind = OFFSET, .offset = target.offset - offset};
+				struct x64_value value = {.kind = OFFSET, .offset = target.offset + offset};
 				set_value(tctx, instr, value);
 			}
 		} else {
@@ -1032,8 +1035,8 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 		case MIR_TYPE_SLICE: {
 			if (type->data.strct.is_string_literal) {
-				vm_stack_ptr_t len_ptr = vm_get_struct_elem_ptr(ctx->assembly, type, cnst->base.value.data, 0);
-				vm_stack_ptr_t str_ptr = vm_get_struct_elem_ptr(ctx->assembly, type, cnst->base.value.data, 1);
+				vm_stack_ptr_t len_ptr = vm_get_struct_elem_ptr(ctx->assembly, type, cnst->base.value.data, MIR_SLICE_LEN_INDEX);
+				vm_stack_ptr_t str_ptr = vm_get_struct_elem_ptr(ctx->assembly, type, cnst->base.value.data, MIR_SLICE_PTR_INDEX);
 				const s64      len     = vm_read_as(s64, len_ptr);
 				char          *str     = vm_read_as(char *, str_ptr);
 
@@ -1045,8 +1048,8 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 					add_sym(tctx, SECTION_DATA, str_buf_view(name), IMAGE_SYM_CLASS_EXTERNAL, 0);
 					add_data(tctx, NULL, (s32)type->store_size_bytes);
-					memcpy(&tctx->data[len_offset], &len, mir_get_struct_elem_type(type, 0)->store_size_bytes);
-					ptr_patch.position = get_position(tctx, SECTION_DATA) - mir_get_struct_elem_type(type, 1)->store_size_bytes;
+					memcpy(&tctx->data[len_offset], &len, mir_get_struct_elem_type(type, MIR_SLICE_LEN_INDEX)->store_size_bytes);
+					ptr_patch.position = len_offset + mir_get_struct_elem_type(type, MIR_SLICE_PTR_INDEX)->store_size_bytes;
 
 					value.kind  = RELOCATION;
 					value.reloc = strhash(name);
