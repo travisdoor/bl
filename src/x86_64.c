@@ -61,6 +61,8 @@
 
 #define MEMCPY_BUILTIN cstr("__bl_memcpy")
 hash_t MEMCPY_BUILTIN_HASH = 0;
+#define MEMSET_BUILTIN cstr("__bl_memset")
+hash_t MEMSET_BUILTIN_HASH = 0;
 
 enum x64_value_kind {
 	// Absolute value address.
@@ -482,6 +484,40 @@ static void emit_call_memcpy(struct thread_context *tctx, struct x64_value dest,
 	add_ri(tctx, RSP, 0x20, 8);
 }
 
+static void emit_call_memset(struct thread_context *tctx, struct x64_value dest, s32 v, s64 size) {
+	const enum x64_register excluded[] = {RCX, RDX, R8};
+
+	bassert(dest.kind == OFFSET);
+	lea_rm(tctx, spill(tctx, RCX, excluded, 3), RBP, dest.offset, 8);
+	mov_ri(tctx, spill(tctx, RDX, excluded, 3), v, 4);
+	mov_ri(tctx, spill(tctx, R8, excluded, 3), size, 8);
+
+	sub_ri(tctx, RSP, 0x20, 8);
+	call_relative_i32(tctx, 0);
+	const u32 reloc_call_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
+	add_patch(tctx, MEMSET_BUILTIN_HASH, reloc_call_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
+	add_ri(tctx, RSP, 0x20, 8);
+}
+
+// Build code to copy relocation value to memory offset, use mov for small values and memcpy for others.
+static void emit_copy_relocation_to_offset(struct thread_context *tctx, struct x64_value dest, struct x64_value src, u32 size) {
+	if (size <= 8) {
+		// Fits into register (note this does not apply for any splines but we might reuse the same
+		// code for structs too).
+		enum x64_register reg;
+		find_free_registers(tctx, &reg, 1);
+		if (reg == -1) reg = spill(tctx, RAX, NULL, 0);
+		zero_reg(tctx, reg);
+		mov_rm_indirect(tctx, reg, 0, size);
+		const u32 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
+		add_patch(tctx, src.reloc, reloc_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
+		mov_mr(tctx, RBP, dest.offset, reg, size);
+	} else {
+		// Use builtin memcpy
+		emit_call_memcpy(tctx, dest, src, size);
+	}
+}
+
 static void emit_load_to_register(struct thread_context *tctx, struct mir_instr *instr, enum x64_register reg) {
 	bassert(instr && instr->kind == MIR_INSTR_LOAD);
 	struct mir_instr_load *load = (struct mir_instr_load *)instr;
@@ -503,6 +539,20 @@ static void emit_load_to_register(struct thread_context *tctx, struct mir_instr 
 	}
 	default:
 		bassert("Invalid value kind!");
+	}
+}
+
+static void emit_compound(struct thread_context *tctx, struct mir_instr *instr, struct x64_value dest, u32 value_size) {
+	bassert(instr && instr->kind == MIR_INSTR_COMPOUND);
+	bassert(dest.kind == OFFSET);
+	struct mir_instr_compound *cmp = (struct mir_instr_compound *)instr;
+	if (mir_is_zero_initialized(cmp)) {
+		if (value_size <= 8) {
+			mov_mi(tctx, RBP, dest.offset, 0, value_size);
+		} else {
+			emit_call_memset(tctx, dest, 0, value_size);
+		}
+		return;
 	}
 }
 
@@ -640,6 +690,11 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		// 'emit_load' should be used.
 		break;
 
+	case MIR_INSTR_COMPOUND:
+		// Compound instruction is usually used to initialize bigger block of memory, and here we don't have the
+		// destination memory yet.
+		break;
+
 	case MIR_INSTR_STORE: {
 		struct mir_instr_store *store = (struct mir_instr_store *)instr;
 		struct mir_type        *type  = store->src->value.type;
@@ -660,24 +715,26 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		bassert(dest_value.kind == OFFSET || dest_value.kind == RELOCATION);
 
 		const s32 dest_offset = dest_value.kind == OFFSET ? dest_value.offset : 0;
+		const u32 value_size  = (u32)type->store_size_bytes;
 
 		const enum op_kind src_kind  = op(src_value.kind, type->kind);
 		const enum op_kind dest_kind = op(dest_value.kind, type->kind);
 
 		switch (op_combined(src_kind, dest_kind)) {
 		case op_combined(OP_IMMEDIATE_INT, OP_OFFSET_INT):
-			mov_mi(tctx, RBP, dest_offset, src_value.imm, type->store_size_bytes);
+			mov_mi(tctx, RBP, dest_offset, src_value.imm, value_size);
 			break;
 		case op_combined(OP_IMMEDIATE_INT, OP_RELOCATION_INT):
-			mov_mi_indirect(tctx, 0, src_value.imm, type->store_size_bytes);
+			mov_mi_indirect(tctx, 0, src_value.imm, value_size);
 			break;
 		case op_combined(OP_REGISTER_INT, OP_OFFSET_INT):
-			mov_mr(tctx, RBP, dest_offset, src_value.reg, type->store_size_bytes);
+			mov_mr(tctx, RBP, dest_offset, src_value.reg, value_size);
 			break;
 		case op_combined(OP_REGISTER_INT, OP_RELOCATION_INT):
 			BL_UNIMPLEMENTED;
 			break;
 		case op_combined(OP_RELOCATION_SLICE, OP_OFFSET_SLICE):
+			emit_copy_relocation_to_offset(tctx, dest_value, src_value, value_size);
 			break;
 
 		default:
@@ -1101,7 +1158,14 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 	case MIR_INSTR_DECL_VAR: {
 		struct mir_instr_decl_var *decl = (struct mir_instr_decl_var *)instr;
 		struct mir_var            *var  = decl->var;
-		bassert(var);
+		struct mir_type           *type = var->value.type;
+
+		if (!mir_type_has_llvm_representation(var->value.type)) {
+			blog("Skip variable: %.*s", var->linkage_name.len, var->linkage_name.ptr);
+			break;
+		}
+
+		const u32 value_size = (u32)type->store_size_bytes;
 
 		if (decl->init) {
 			struct x64_value init_value = {0};
@@ -1112,6 +1176,10 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 				if (reg == -1) reg = spill(tctx, RAX, NULL, 0);
 				emit_load_to_register(tctx, decl->init, reg);
 				init_value = (struct x64_value){.kind = REGISTER, .reg = reg};
+			} else if (decl->init->kind == MIR_INSTR_COMPOUND) {
+				if (var->ref_count == 0) break;
+				emit_compound(tctx, decl->init, get_value(tctx, var), value_size);
+				break;
 			} else {
 				init_value = get_value(tctx, decl->init);
 				if (var->ref_count == 0) {
@@ -1120,22 +1188,8 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 				}
 			}
 
-			if (!mir_type_has_llvm_representation(var->value.type)) {
-				blog("Skip variable: %.*s", var->linkage_name.len, var->linkage_name.ptr);
-				break;
-			}
-			bassert(var->backend_value);
-
-			if (decl->init->kind == MIR_INSTR_COMPOUND) {
-				BL_UNIMPLEMENTED;
-				break;
-			}
-
 			const struct x64_value var_value = get_value(tctx, var);
-			struct mir_type       *type      = var->value.type;
 			bassert(var_value.kind == OFFSET);
-
-			const u32 value_size = (u32)type->store_size_bytes;
 
 			const enum op_kind op_kind = op(init_value.kind, type->kind);
 			switch (op_kind) {
@@ -1148,21 +1202,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 				release_registers(tctx, &init_value.reg, 1);
 				break;
 			case OP_RELOCATION_SLICE: {
-				if (value_size <= 8) {
-					// Fits into register (note this does not apply for any splines but we might reuse the same
-					// code for structs too).
-					enum x64_register reg;
-					find_free_registers(tctx, &reg, 1);
-					if (reg == -1) reg = spill(tctx, RAX, NULL, 0);
-					zero_reg(tctx, reg);
-					mov_rm_indirect(tctx, reg, 0, value_size);
-					const u32 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
-					add_patch(tctx, init_value.reloc, reloc_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
-					mov_mr(tctx, RBP, var_value.offset, reg, value_size);
-				} else {
-					// Use builtin memcpy
-					emit_call_memcpy(tctx, var_value, init_value, value_size);
-				}
+				emit_copy_relocation_to_offset(tctx, var_value, init_value, value_size);
 				break;
 			}
 			default:
@@ -1500,6 +1540,7 @@ void x86_64run(struct assembly *assembly) {
 	bl_zeromem(ctx.tctx, thread_count * sizeof(struct thread_context));
 
 	MEMCPY_BUILTIN_HASH = add_global_external_sym(&ctx, MEMCPY_BUILTIN, DT_FUNCTION);
+	MEMSET_BUILTIN_HASH = add_global_external_sym(&ctx, MEMSET_BUILTIN, DT_FUNCTION);
 
 	// Submit top level instructions...
 	for (usize i = 0; i < arrlenu(assembly->MIR.exported_instrs); ++i) {

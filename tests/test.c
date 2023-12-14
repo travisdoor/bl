@@ -29,6 +29,11 @@ void print_string(long long len, char *ptr) {
 	printf("%.*s", (int)len, ptr);
 }
 
+// Intrinsics
 void __bl_memcpy(void *dest, const void *src, unsigned long long size) {
 	memcpy(dest, src, size);
+}
+
+void __bl_memset(void *dest, int v, unsigned long long size) {
+	memset(dest, v, size);
 }
