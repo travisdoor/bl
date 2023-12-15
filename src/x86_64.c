@@ -418,23 +418,23 @@ static enum x64_register spill(struct thread_context *tctx, enum x64_register re
 	bassert(spill_value->reg == reg);
 
 	enum x64_register dest_reg = -1;
-	if (exclude_num) {
-		for (s32 i = 0; i < REGISTER_COUNT; ++i) {
-			if (tctx->register_table[i] != UNUSED_REGISTER_MAP_VALUE) continue;
-			if (reg == i) continue;
-			for (s32 j = 0; j < exclude_num; ++j) {
-				if (exclude[j] == -1) continue;
-				if (exclude[j] == i) goto SKIP;
-			}
-			dest_reg = i;
-		SKIP:
-			continue;
+	for (s32 i = 0; i < REGISTER_COUNT; ++i) {
+		if (tctx->register_table[i] != UNUSED_REGISTER_MAP_VALUE) continue;
+		if (reg == i) continue;
+		for (s32 j = 0; j < exclude_num; ++j) {
+			if (exclude[j] == -1) continue;
+			if (exclude[j] == i) goto SKIP;
 		}
+		dest_reg = i;
+	SKIP:
+		continue;
 	}
 	if (dest_reg != -1) {
+		bassert(dest_reg != reg);
 		// Spill to register.
 		mov_rr(tctx, dest_reg, reg, 8);
 		spill_value->reg = dest_reg;
+		save_register(tctx, dest_reg);
 	} else {
 		// Spill to memory.
 		const s32 top    = allocate_stack_memory(tctx, 8);
