@@ -39,8 +39,8 @@ Foo :: struct {
 }
 
 Bar :: struct {
-	i: *s32;
-	j: *s32;
+	i: s32;
+	j: s32;
 }
 
 __os_start :: fn () #entry {
@@ -62,8 +62,9 @@ __os_start :: fn () #entry {
 	print_number(foo.i + 30);
 	print_number(foo.j);
 
-	// bar: Bar;
-	// bar;
+	bar := Bar.{ 10, 20 };
+	print_number(bar.i);
+	print_number(bar.j);
 
 	print_number(my_number);
 
@@ -87,7 +88,7 @@ __os_start :: fn () #entry {
 
 	use_global_number();
 
-	// test_looping(10);
+	test_looping(10);
 
 	C.exit(0);
 }

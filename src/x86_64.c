@@ -554,6 +554,7 @@ static void emit_compound(struct thread_context *tctx, struct mir_instr *instr, 
 		}
 		return;
 	}
+	BL_UNIMPLEMENTED;
 }
 
 static void emit_binop_ri(struct thread_context *tctx, enum binop_kind op, const u8 reg, const u64 v, const usize vsize) {
@@ -606,8 +607,8 @@ static void emit_binop_rr(struct thread_context *tctx, enum binop_kind op, const
 
 static void emit_instr(struct context *ctx, struct thread_context *tctx, struct mir_instr *instr) {
 	bassert(instr->state == MIR_IS_COMPLETE && "Attempt to emit instruction in incomplete state!");
-	// @Incomplete
-	// if (!mir_type_has_llvm_representation((instr->value.type))) return state;
+	if (!mir_type_has_llvm_representation((instr->value.type))) return;
+
 	switch (instr->kind) {
 
 	case MIR_INSTR_FN_PROTO: {
@@ -965,7 +966,6 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		if (mir_is_comptime(callee)) {
 			struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &callee->value);
 			bmagic_assert(fn);
-			blog("Calling: %.*s", fn->linkage_name.len, fn->linkage_name.ptr);
 			callee_fn_proto = fn->prototype;
 		} else {
 			// We should use loaded value from previous instruction (probably in register?)...
