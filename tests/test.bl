@@ -62,7 +62,7 @@ __os_start :: fn () #entry {
 	print_number(foo.i + 30);
 	print_number(foo.j);
 
-	bar := Bar.{ 10, 20 };
+	bar := Bar.{ j = 888, i = 999 };
 	print_number(bar.i);
 	print_number(bar.j);
 
@@ -76,6 +76,8 @@ __os_start :: fn () #entry {
 	d := 40;
 	e := 50;
 	f := 60;
+
+	bar = Bar.{};
 
 	y := c + d;
 	my_function(10, 20, 30, 40, 50, 60);

@@ -454,6 +454,14 @@ static inline void release_registers(struct thread_context *tctx, const enum x64
 	}
 }
 
+enum x64_register get_temporary_register(struct thread_context *tctx, const enum x64_register exclude[], s32 exclude_num) {
+	enum x64_register reg;
+	find_free_registers(tctx, &reg, 1);
+	if (reg == -1) reg = spill(tctx, RAX, exclude, exclude_num);
+	bassert(reg != -1);
+	return reg;
+}
+
 static inline void add_patch(struct thread_context *tctx, hash_t hash, u64 position, s32 type, s32 target_section) {
 	const struct sym_patch patch = {
 	    .hash           = hash,
@@ -501,12 +509,11 @@ static void emit_call_memset(struct thread_context *tctx, struct x64_value dest,
 
 // Build code to copy relocation value to memory offset, use mov for small values and memcpy for others.
 static void emit_copy_relocation_to_offset(struct thread_context *tctx, struct x64_value dest, struct x64_value src, u32 size) {
-	if (size <= 8) {
+	if (size <= REGISTER_SIZE) {
 		// Fits into register (note this does not apply for any splines but we might reuse the same
 		// code for structs too).
-		enum x64_register reg;
-		find_free_registers(tctx, &reg, 1);
-		if (reg == -1) reg = spill(tctx, RAX, NULL, 0);
+		enum x64_register reg = get_temporary_register(tctx, NULL, 0);
+
 		zero_reg(tctx, reg);
 		mov_rm_indirect(tctx, reg, 0, size);
 		const u32 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
@@ -542,19 +549,62 @@ static void emit_load_to_register(struct thread_context *tctx, struct mir_instr 
 	}
 }
 
-static void emit_compound(struct thread_context *tctx, struct mir_instr *instr, struct x64_value dest, u32 value_size) {
+static void emit_compound(struct context *ctx, struct thread_context *tctx, struct mir_instr *instr, struct x64_value dest, u32 value_size) {
 	bassert(instr && instr->kind == MIR_INSTR_COMPOUND);
-	bassert(dest.kind == OFFSET);
+	bassert(dest.kind == OFFSET && "Only stack memory destination is supported for compound initializer.");
 	struct mir_instr_compound *cmp = (struct mir_instr_compound *)instr;
 	if (mir_is_zero_initialized(cmp)) {
-		if (value_size <= 8) {
+		if (value_size <= REGISTER_SIZE) {
 			mov_mi(tctx, RBP, dest.offset, 0, value_size);
 		} else {
 			emit_call_memset(tctx, dest, 0, value_size);
 		}
 		return;
 	}
-	BL_UNIMPLEMENTED;
+
+	if (mir_is_comptime(&cmp->base) && mir_is_global(&cmp->base)) {
+		BL_UNIMPLEMENTED;
+		return;
+	}
+
+	// The rest is local, non-comptime and not zero initialized.
+	struct mir_type *type = cmp->base.value.type;
+	bassert(type);
+
+	mir_instrs_t *values  = cmp->values;
+	ints_t       *mapping = cmp->value_member_mapping;
+
+	if (mir_is_composite_type(type) && sarrlenu(values) < sarrlenu(type->data.strct.members)) {
+		// Zero initialization only for composit types when not all values are initialized.
+		if (value_size <= REGISTER_SIZE) {
+			mov_mi(tctx, RBP, dest.offset, 0, value_size);
+		} else {
+			emit_call_memset(tctx, dest, 0, value_size);
+		}
+	}
+
+	for (usize i = 0; i < sarrlenu(values); ++i) {
+		struct mir_instr *value_instr = sarrpeek(values, i);
+		struct x64_value  value       = get_value(tctx, value_instr);
+		const u32         value_size  = (u32)value_instr->value.type->store_size_bytes;
+
+		s32 dest_value_offset = 0;
+		if (mir_is_composite_type(type)) {
+			const usize index = mapping ? sarrpeek(mapping, i) : i;
+			dest_value_offset = dest.offset + (s32)vm_get_struct_elem_offset(ctx->assembly, type, (u32)index);
+		} else {
+			BL_UNIMPLEMENTED;
+		}
+
+		enum op_kind op_kind = op(value.kind, value_instr->value.type->kind);
+		switch (op_kind) {
+		case OP_IMMEDIATE_INT:
+			mov_mi(tctx, RBP, dest_value_offset, value.imm, value_size);
+			break;
+		default:
+			BL_UNIMPLEMENTED;
+		}
+	}
 }
 
 static void emit_binop_ri(struct thread_context *tctx, enum binop_kind op, const u8 reg, const u64 v, const usize vsize) {
@@ -702,13 +752,16 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		bassert(store->dest->backend_value);
 		struct x64_value dest_value = get_value(tctx, store->dest);
 		struct x64_value src_value  = {0};
+		const u32        value_size = (u32)type->store_size_bytes;
 
 		if (store->src->kind == MIR_INSTR_LOAD) {
-			enum x64_register reg;
-			find_free_registers(tctx, &reg, 1);
-			if (reg == -1) reg = spill(tctx, RAX, NULL, 0);
+			enum x64_register reg = get_temporary_register(tctx, NULL, 0);
+
 			emit_load_to_register(tctx, store->src, reg);
 			src_value = (struct x64_value){.kind = REGISTER, .reg = reg};
+		} else if (store->src->kind == MIR_INSTR_COMPOUND) {
+			emit_compound(ctx, tctx, store->src, dest_value, value_size);
+			break;
 		} else {
 			src_value = get_value(tctx, store->src);
 		}
@@ -716,7 +769,6 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		bassert(dest_value.kind == OFFSET || dest_value.kind == RELOCATION);
 
 		const s32 dest_offset = dest_value.kind == OFFSET ? dest_value.offset : 0;
-		const u32 value_size  = (u32)type->store_size_bytes;
 
 		const enum op_kind src_kind  = op(src_value.kind, type->kind);
 		const enum op_kind dest_kind = op(dest_value.kind, type->kind);
@@ -1171,14 +1223,13 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			struct x64_value init_value = {0};
 			if (decl->init->kind == MIR_INSTR_LOAD) {
 				if (var->ref_count == 0) break;
-				enum x64_register reg;
-				find_free_registers(tctx, &reg, 1);
-				if (reg == -1) reg = spill(tctx, RAX, NULL, 0);
+				enum x64_register reg = get_temporary_register(tctx, NULL, 0);
+
 				emit_load_to_register(tctx, decl->init, reg);
 				init_value = (struct x64_value){.kind = REGISTER, .reg = reg};
 			} else if (decl->init->kind == MIR_INSTR_COMPOUND) {
 				if (var->ref_count == 0) break;
-				emit_compound(tctx, decl->init, get_value(tctx, var), value_size);
+				emit_compound(ctx, tctx, decl->init, get_value(tctx, var), value_size);
 				break;
 			} else {
 				init_value = get_value(tctx, decl->init);
