@@ -95,7 +95,7 @@ __os_start :: fn () #entry {
 	// test_looping(10);
 
 	arr: [4]s32;
-	print_number(arr[0]);
+	arr[2] = 10;
 
 	C.exit(0);
 }

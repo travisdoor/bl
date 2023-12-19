@@ -711,6 +711,15 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		sub_ri(tctx, RSP, 0, 8);
 		tctx->stack.alloc_value_offset = get_position(tctx, SECTION_TEXT) - sizeof(s32);
 
+		// @Cleanup
+		// @Cleanup
+		// @Cleanup
+		mov_mi_sib(tctx, RBP, 0, 0x666, 8);
+		mov_mi_sib(tctx, RSP, 0, 0x666, 8);
+		// mov_mi_sib(tctx, RBP, RDX, 0, 0x666, 8);
+		// mov_mi_sib(tctx, RBP, R8, 0, 0x666, 8);
+		// mov_mi_sib(tctx, RBP, R12, 0, 0x666, 8);
+
 		// Generate all blocks in the function body.
 		arrput(tctx->emit_block_queue, fn->first_block);
 		while (arrlenu(tctx->emit_block_queue)) {
@@ -853,6 +862,8 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		const struct x64_value     index  = get_value(tctx, elem->index);
 		bassert(target.kind == OFFSET);
 		bassert(index.kind == IMMEDIATE);
+
+		mov_ri(tctx, RAX, index.imm, 8);
 
 		struct mir_type *target_type = mir_deref_type(elem->arr_ptr->value.type);
 		const s32        offset      = (s32)vm_get_array_elem_offset(target_type, (u32)index.imm);
@@ -1103,6 +1114,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 					BL_UNIMPLEMENTED;
 				}
 
+				// @Note here we're relative to RSP!
 				struct x64_value value = get_value(tctx, arg);
 				switch (value.kind) {
 				case IMMEDIATE: {

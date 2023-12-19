@@ -207,6 +207,27 @@ static inline void mov_mi(struct thread_context *tctx, u8 r, s32 offset, u64 imm
 	add_code(tctx, &imm, (s32)MIN(size, sizeof(u32)));
 }
 
+// Offset in RAX + offset.
+static inline void mov_mi_sib(struct thread_context *tctx, u8 r1, s32 offset, u64 imm, usize size) {
+	const u8 r2 = RAX;
+	if (size == 8 && imm > 0xFFFFFFFF) {
+		BL_UNIMPLEMENTED;
+		// const enum x64_register reg = get_temporary_register(tctx, NULL, 0);
+		// movabs64_ri(tctx, reg, imm);
+		// mov_mr(tctx, r, offset, reg, size);
+		// return;
+	}
+
+	const u8 rex = encode_rex(size == 8, r2, r1);
+	const u8 mrr = encode_mod_reg_rm(MOD_BYTE_DISP, r2, RSP); // @Hack: RSP wtf?
+	const u8 sib = encode_sib(0x0, r2, r1);
+
+	encode_base(tctx, rex, 0xC6, mrr, size);
+	add_code(tctx, &sib, 1);
+	add_code(tctx, &offset, 1);
+	add_code(tctx, &imm, (s32)MIN(size, sizeof(u32)));
+}
+
 static inline void mov_mi_indirect(struct thread_context *tctx, s32 offset, u64 imm, usize size) {
 	const u8 r = RBP;
 	if (size == 8 && imm > 0xFFFFFFFF) {
@@ -218,8 +239,8 @@ static inline void mov_mi_indirect(struct thread_context *tctx, s32 offset, u64 
 		return;
 	}
 
-	const u8 mrr = encode_mod_reg_rm(MOD_INDIRECT, 0x0, r);
 	const u8 rex = encode_rex(size == 8, 0x0, r);
+	const u8 mrr = encode_mod_reg_rm(MOD_INDIRECT, 0x0, r);
 	encode_base(tctx, rex, 0xC6, mrr, size);
 	add_code(tctx, &offset, 4);
 	add_code(tctx, &imm, (s32)MIN(size, sizeof(u32)));
