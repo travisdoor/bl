@@ -63,6 +63,25 @@ enum x64_register {
 	REGISTER_COUNT,
 };
 
+static const char *register_name[] = {
+    "RAX",
+    "RCX",
+    "RDX",
+    "RBX",
+    "RSP",
+    "RBP",
+    "RSI",
+    "RDI",
+    "R8",
+    "R9",
+    "R10",
+    "R11",
+    "R12",
+    "R13",
+    "R14",
+    "R15",
+};
+
 #define encode_mod_reg_rm(mod, reg, rm) (((mod) << 6) | ((reg & 0b111) << 3) | (rm & 0b111))
 #define encode_sib(scale, index, base) (((scale) << 6) | ((index & 0b111) << 3) | (base & 0b111))
 #define is_byte_disp(off) ((off) >= -128 && (off) < 128)

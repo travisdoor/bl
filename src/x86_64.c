@@ -191,28 +191,6 @@ static inline u32 get_position(struct thread_context *tctx, s32 section_number) 
 	}
 }
 
-static inline void set_value(struct thread_context *tctx, struct mir_instr *instr, struct x64_value value) {
-	arrput(tctx->values, value);
-	bassert(instr->backend_value == 0 && "Instruction x64 value already set!");
-	instr->backend_value = arrlenu(tctx->values);
-}
-
-#define get_value(tctx, V) _Generic((V),                \
-	                                struct mir_instr *  \
-	                                : _get_value_instr, \
-	                                  struct mir_var *  \
-	                                : _get_value_var)((tctx), (V))
-
-static inline struct x64_value _get_value_instr(struct thread_context *tctx, struct mir_instr *instr) {
-	bassert(instr->backend_value != 0);
-	return tctx->values[instr->backend_value - 1];
-}
-
-static inline struct x64_value _get_value_var(struct thread_context *tctx, struct mir_var *var) {
-	bassert(var->backend_value != 0);
-	return tctx->values[var->backend_value - 1];
-}
-
 static inline void unique_name(struct context *ctx, str_buf_t *dest, const char *prefix, const str_t name) {
 	pthread_spin_lock(&ctx->uq_name_lock);
 	static u64 n = 0;
@@ -225,6 +203,11 @@ void add_code(struct thread_context *tctx, const void *buf, s32 len) {
 	const u32 i = get_position(tctx, SECTION_TEXT);
 	arrsetlen(tctx->text, i + len);
 	memcpy(&tctx->text[i], buf, len);
+}
+
+static inline u64 add_value(struct thread_context *tctx, struct x64_value value) {
+	arrput(tctx->values, value);
+	return arrlenu(tctx->values); // +1
 }
 
 static inline void add_data(struct thread_context *tctx, const void *buf, s32 len) {
@@ -332,8 +315,7 @@ hash_t add_global_external_sym(struct context *ctx, str_t linkage_name, s32 data
 static inline u64 add_block(struct thread_context *tctx, const str_t name) {
 	const u32        address = add_sym(tctx, SECTION_TEXT, name, IMAGE_SYM_CLASS_LABEL, 0);
 	struct x64_value value   = {.kind = ADDRESS, .address = address};
-	arrput(tctx->values, value);
-	return arrlenu(tctx->values);
+	return add_value(tctx, value);
 }
 
 //
@@ -375,9 +357,7 @@ static void allocate_stack_variables(struct thread_context *tctx, struct mir_fn 
 		    .kind   = OFFSET,
 		    .offset = -(s32)(top + var_size),
 		};
-		arrput(tctx->values, value);
-		var->backend_value = arrlenu(tctx->values);
-
+		var->backend_value = add_value(tctx, value);
 		top += var_size;
 	}
 
@@ -401,14 +381,13 @@ static void find_free_registers(struct thread_context *tctx, enum x64_register d
 static s32 save_register(struct thread_context *tctx, const enum x64_register reg) {
 	bassert(tctx->register_table[reg] == UNUSED_REGISTER_MAP_VALUE);
 	tctx->register_table[reg] = (s32)arrlen(tctx->values);
-	struct x64_value value    = {.kind = REGISTER, .reg = reg};
-	arrput(tctx->values, value);
-	return (s32)arrlen(tctx->values);
+	return (s32)add_value(tctx, (struct x64_value){.kind = REGISTER, .reg = reg});
 }
 
 // Spill register into memory or another register (you can set some exclusions, these registers would not be used for spilling).
 static enum x64_register spill(struct thread_context *tctx, enum x64_register reg, const enum x64_register exclude[], s32 exclude_num) {
 	const s32 vi = tctx->register_table[reg];
+	bassert(vi != RESERVED_REGISTER_MAP_VALUE);
 	if (vi == UNUSED_REGISTER_MAP_VALUE) {
 		// Register is already free, no need to spill.
 		return reg;
@@ -460,6 +439,31 @@ enum x64_register get_temporary_register(struct thread_context *tctx, const enum
 	if (reg == -1) reg = spill(tctx, RAX, exclude, exclude_num);
 	bassert(reg != -1);
 	return reg;
+}
+
+static inline void set_value(struct thread_context *tctx, struct mir_instr *instr, struct x64_value value) {
+	bassert(instr->backend_value == 0 && "Instruction x64 value already set!");
+	instr->backend_value = add_value(tctx, value);
+}
+
+#define get_value(tctx, V) _Generic((V),                \
+	                                struct mir_instr *  \
+	                                : _get_value_instr, \
+	                                  struct mir_var *  \
+	                                : _get_value_var)((tctx), (V))
+
+static inline struct x64_value _get_value_instr(struct thread_context *tctx, struct mir_instr *instr) {
+	bassert(instr->backend_value != 0);
+	return tctx->values[instr->backend_value - 1];
+}
+
+static inline struct x64_value _get_value_var(struct thread_context *tctx, struct mir_var *var) {
+	bassert(var->backend_value != 0);
+	return tctx->values[var->backend_value - 1];
+}
+
+static inline void release_value(struct thread_context *tctx, struct x64_value value) {
+	if (value.kind == REGISTER) release_registers(tctx, &value.reg, 1);
 }
 
 static inline void add_patch(struct thread_context *tctx, hash_t hash, u64 position, s32 type, s32 target_section) {
@@ -547,6 +551,8 @@ static void emit_load_to_register(struct thread_context *tctx, struct mir_instr 
 	default:
 		bassert("Invalid value kind!");
 	}
+
+	set_value(tctx, instr, (struct x64_value){.kind = REGISTER, .reg = reg});
 }
 
 static void emit_compound(struct context *ctx, struct thread_context *tctx, struct mir_instr *instr, struct x64_value dest, u32 value_size) {
@@ -585,8 +591,18 @@ static void emit_compound(struct context *ctx, struct thread_context *tctx, stru
 
 	for (usize i = 0; i < sarrlenu(values); ++i) {
 		struct mir_instr *value_instr = sarrpeek(values, i);
-		struct x64_value  value       = get_value(tctx, value_instr);
 		const u32         value_size  = (u32)value_instr->value.type->store_size_bytes;
+
+		if (value_instr->kind == MIR_INSTR_LOAD) {
+			enum x64_register reg = get_temporary_register(tctx, NULL, 0);
+
+			emit_load_to_register(tctx, value_instr, reg);
+		} else if (value_instr->kind == MIR_INSTR_COMPOUND) {
+			BL_UNIMPLEMENTED;
+			break;
+		}
+
+		struct x64_value value = get_value(tctx, value_instr);
 
 		s32 dest_value_offset = 0;
 		if (mir_is_composite_type(type)) {
@@ -601,10 +617,17 @@ static void emit_compound(struct context *ctx, struct thread_context *tctx, stru
 		case OP_IMMEDIATE_INT:
 			mov_mi(tctx, RBP, dest_value_offset, value.imm, value_size);
 			break;
+		case OP_REGISTER_INT:
+			mov_mr(tctx, RBP, dest_value_offset, value.reg, value_size);
+			break;
 		default:
 			BL_UNIMPLEMENTED;
 		}
+
+		release_value(tctx, value);
 	}
+
+	// @Incomplete: set_value?
 }
 
 static void emit_binop_ri(struct thread_context *tctx, enum binop_kind op, const u8 reg, const u64 v, const usize vsize) {
@@ -750,25 +773,20 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		struct mir_instr_store *store = (struct mir_instr_store *)instr;
 		struct mir_type        *type  = store->src->value.type;
 		bassert(store->dest->backend_value);
-		struct x64_value dest_value = get_value(tctx, store->dest);
-		struct x64_value src_value  = {0};
 		const u32        value_size = (u32)type->store_size_bytes;
+		struct x64_value dest_value = get_value(tctx, store->dest);
+		bassert(dest_value.kind == OFFSET || dest_value.kind == RELOCATION);
 
 		if (store->src->kind == MIR_INSTR_LOAD) {
 			enum x64_register reg = get_temporary_register(tctx, NULL, 0);
-
 			emit_load_to_register(tctx, store->src, reg);
-			src_value = (struct x64_value){.kind = REGISTER, .reg = reg};
 		} else if (store->src->kind == MIR_INSTR_COMPOUND) {
 			emit_compound(ctx, tctx, store->src, dest_value, value_size);
 			break;
-		} else {
-			src_value = get_value(tctx, store->src);
 		}
 
-		bassert(dest_value.kind == OFFSET || dest_value.kind == RELOCATION);
-
-		const s32 dest_offset = dest_value.kind == OFFSET ? dest_value.offset : 0;
+		struct x64_value src_value   = get_value(tctx, store->src);
+		const s32        dest_offset = dest_value.kind == OFFSET ? dest_value.offset : 0;
 
 		const enum op_kind src_kind  = op(src_value.kind, type->kind);
 		const enum op_kind dest_kind = op(dest_value.kind, type->kind);
@@ -800,7 +818,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		}
 
 		// Release source value...
-		if (src_value.kind == REGISTER) release_registers(tctx, &src_value.reg, 1);
+		release_value(tctx, src_value);
 		break;
 	}
 
@@ -829,6 +847,20 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		break;
 	}
 
+	case MIR_INSTR_ELEM_PTR: {
+		struct mir_instr_elem_ptr *elem   = (struct mir_instr_elem_ptr *)instr;
+		const struct x64_value     target = get_value(tctx, elem->arr_ptr);
+		const struct x64_value     index  = get_value(tctx, elem->index);
+		bassert(target.kind == OFFSET);
+		bassert(index.kind == IMMEDIATE);
+
+		struct mir_type *target_type = mir_deref_type(elem->arr_ptr->value.type);
+		const s32        offset      = (s32)vm_get_array_elem_offset(target_type, (u32)index.imm);
+		struct x64_value value       = {.kind = OFFSET, .offset = target.offset + offset};
+		set_value(tctx, instr, value);
+		break;
+	}
+
 	case MIR_INSTR_BINOP: {
 		// The result value ends up in LHS register, the RHS register is released at the end
 		// if it was used.
@@ -844,30 +876,22 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		if (binop->rhs->kind == MIR_INSTR_LOAD) ++required_registers;
 		if (binop->lhs->kind != MIR_INSTR_LOAD) {
 			// This way we can reuse the LHS register if possible.
-			struct x64_value lhs_value = get_value(tctx, binop->lhs);
-			if (lhs_value.kind == REGISTER) release_registers(tctx, &lhs_value.reg, 1);
+			release_value(tctx, get_value(tctx, binop->lhs));
 		}
 
 		find_free_registers(tctx, regs, required_registers);
 
-		struct x64_value rhs_value = {0};
-		struct x64_value lhs_value = {0};
-
 		if (binop->rhs->kind == MIR_INSTR_LOAD) {
 			if (regs[RHS] == -1) regs[RHS] = spill(tctx, RCX, regs, 2);
 			emit_load_to_register(tctx, binop->rhs, regs[RHS]);
-			rhs_value = (struct x64_value){.kind = REGISTER, .reg = regs[RHS]};
-		} else {
-			rhs_value = get_value(tctx, binop->rhs);
 		}
+		struct x64_value rhs_value = get_value(tctx, binop->rhs);
 
 		if (binop->lhs->kind == MIR_INSTR_LOAD) {
 			if (regs[LHS] == -1) regs[LHS] = spill(tctx, RAX, regs, 2);
 			emit_load_to_register(tctx, binop->lhs, regs[LHS]);
-			lhs_value = (struct x64_value){.kind = REGISTER, .reg = regs[LHS]};
-		} else {
-			lhs_value = get_value(tctx, binop->lhs);
 		}
+		struct x64_value lhs_value = get_value(tctx, binop->lhs);
 
 		if (lhs_value.kind == IMMEDIATE) {
 			if (regs[LHS] == -1) regs[LHS] = spill(tctx, RAX, regs, 2);
@@ -896,6 +920,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		bassert(regs[LHS] != -1);
 
 		instr->backend_value = save_register(tctx, regs[LHS]); // Save LHS
+		release_value(tctx, rhs_value);
 		break;
 	}
 
@@ -947,10 +972,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		bassert(br->else_block->base.backend_value == 0);
 
 		const struct x64_value cond_value = get_value(tctx, br->cond);
-		if (cond_value.kind == REGISTER) {
-			// Release condition register if any.
-			release_registers(tctx, &cond_value.reg, 1);
-		}
+		release_value(tctx, cond_value);
 
 		// In case the condition is binary operation we swap the logic with attemt to generate the 'then'
 		// branch immediately after conditional jump to safe one jmp instruction.
@@ -1060,9 +1082,6 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 						if (value.reg != call_abi[index]) {
 							const enum x64_register reg = spill(tctx, call_abi[index], call_abi, args_in_register);
 							mov_rr(tctx, reg, value.reg, arg_type->store_size_bytes);
-							release_registers(tctx, &reg, 1);
-						} else {
-							release_registers(tctx, &value.reg, 1);
 						}
 						break;
 					}
@@ -1080,30 +1099,31 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 				if (arg->kind == MIR_INSTR_LOAD) {
 					const enum x64_register reg = spill(tctx, RAX, NULL, 0);
 					emit_load_to_register(tctx, arg, reg);
-					mov_mr(tctx, RSP, arg_stack_offset, reg, arg_type->store_size_bytes);
-				} else {
-					struct x64_value value = get_value(tctx, arg);
-					switch (value.kind) {
-					case IMMEDIATE: {
-						mov_mi(tctx, RSP, arg_stack_offset, value.imm, arg_type->store_size_bytes);
-						break;
-					}
-					case REGISTER: {
-						mov_mr(tctx, RSP, arg_stack_offset, value.reg, arg_type->store_size_bytes);
-						release_registers(tctx, &value.reg, 1);
-						break;
-					}
-					case OFFSET: {
-						// @Incomplete: Maybe spilled value???
-						BL_UNIMPLEMENTED;
-						break;
-					}
-					default:
-						babort("Invalid value kind!");
-					}
+				} else if (arg->kind == MIR_INSTR_COMPOUND) {
+					BL_UNIMPLEMENTED;
+				}
+
+				struct x64_value value = get_value(tctx, arg);
+				switch (value.kind) {
+				case IMMEDIATE: {
+					mov_mi(tctx, RSP, arg_stack_offset, value.imm, arg_type->store_size_bytes);
+					break;
+				}
+				case REGISTER: {
+					mov_mr(tctx, RSP, arg_stack_offset, value.reg, arg_type->store_size_bytes);
+					break;
+				}
+				case OFFSET: {
+					// @Incomplete: Maybe spilled value???
+					BL_UNIMPLEMENTED;
+					break;
+				}
+				default:
+					babort("Invalid value kind!");
 				}
 			}
 
+			release_value(tctx, get_value(tctx, arg));
 			arg_stack_offset += 8;
 		}
 
@@ -1220,23 +1240,20 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		const u32 value_size = (u32)type->store_size_bytes;
 
 		if (decl->init) {
-			struct x64_value init_value = {0};
 			if (decl->init->kind == MIR_INSTR_LOAD) {
 				if (var->ref_count == 0) break;
 				enum x64_register reg = get_temporary_register(tctx, NULL, 0);
-
 				emit_load_to_register(tctx, decl->init, reg);
-				init_value = (struct x64_value){.kind = REGISTER, .reg = reg};
 			} else if (decl->init->kind == MIR_INSTR_COMPOUND) {
 				if (var->ref_count == 0) break;
 				emit_compound(ctx, tctx, decl->init, get_value(tctx, var), value_size);
 				break;
-			} else {
-				init_value = get_value(tctx, decl->init);
-				if (var->ref_count == 0) {
-					if (init_value.kind == REGISTER) release_registers(tctx, &init_value.reg, 1);
-					break;
-				}
+			}
+
+			struct x64_value init_value = get_value(tctx, decl->init);
+			if (var->ref_count == 0) {
+				release_value(tctx, init_value);
+				break;
 			}
 
 			const struct x64_value var_value = get_value(tctx, var);
@@ -1250,7 +1267,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 				break;
 			case OP_REGISTER_INT:
 				mov_mr(tctx, RBP, var_value.offset, init_value.reg, value_size);
-				release_registers(tctx, &init_value.reg, 1);
+				release_value(tctx, init_value);
 				break;
 			case OP_RELOCATION_SLICE: {
 				emit_copy_relocation_to_offset(tctx, var_value, init_value, value_size);
@@ -1389,6 +1406,16 @@ void job(struct job_context *job_ctx) {
 	arrsetcap(tctx->text, BYTE_CODE_BUFFER_SIZE);
 
 	emit_instr(ctx, tctx, job_ctx->x64.top_instr);
+
+#if BL_DEBUG
+	// Check for dangling registers
+	for (s32 i = 0; i < REGISTER_COUNT; ++i) {
+		const s32 index = tctx->register_table[i];
+		if (index >= 0) {
+			babort("Dangling register %s (value: %d).", register_name[i], index);
+		}
+	}
+#endif
 
 	patch_jump_offsets(tctx);
 

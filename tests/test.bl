@@ -44,53 +44,58 @@ Bar :: struct {
 }
 
 __os_start :: fn () #entry {
-	if _CRT_INIT() == 0 {
-		C.exit(1);
-	}
+	// if _CRT_INIT() == 0 {
+	// 	C.exit(1);
+	// }
 
-	str :: "Hello!!!\n";
-	print_string(str.len, str.ptr);
+	// str :: "Hello!!!\n";
+	// print_string(str.len, str.ptr);
 
-	str2: string_view;
-	str2 = str;
-	print_string(str2.len, str2.ptr);
+	// str2: string_view;
+	// str2 = str;
+	// print_string(str2.len, str2.ptr);
 
-	foo: Foo;
-	foo.i = 10;
-	foo.j = 20;
+	// foo: Foo;
+	// foo.i = 10;
+	// foo.j = 20;
 
-	print_number(foo.i + 30);
-	print_number(foo.j);
+	// print_number(foo.i + 30);
+	// print_number(foo.j);
 
-	bar := Bar.{ j = 888, i = 999 };
-	print_number(bar.i);
-	print_number(bar.j);
+	// bar := Bar.{ j = 888, i = 999 };
+	// print_number(bar.i);
+	// print_number(bar.j);
 
-	print_number(my_number);
+	// print_number(my_number);
 
-	print_number2(str.len);
+	// print_number2(str.len);
 
-	a := 10;
-	b := 20;
-	c := 30;
-	d := 40;
-	e := 50;
-	f := 60;
+	// a := 10;
+	// b := 20;
+	// c := 30;
+	// d := 40;
+	// e := 50;
+	// f := 60;
 
-	bar = Bar.{};
+	// bar = Bar.{ i = a, j = b + f };
+	// print_number(bar.i);
+	// print_number(bar.j);
 
-	y := c + d;
-	my_function(10, 20, 30, 40, 50, 60);
-	my_function(10, 20, a + b, d, 50, d + b);
-	my_function(a, b, c, d, e, f);
+	// y := c + d;
+	// my_function(10, 20, 30, 40, 50, 60);
+	// my_function(10, 20, a + b, d, 50, d + b);
+	// my_function(a, b, c, d, e, f);
 
-	print_number(add_numbers(10, 20));
-	print_number(add_numbers(10, -20));
-	print_number(mul_numbers(10, 20));
+	// print_number(add_numbers(10, 20));
+	// print_number(add_numbers(10, -20));
+	// print_number(mul_numbers(10, 20));
 
-	use_global_number();
+	// use_global_number();
 
-	test_looping(10);
+	// test_looping(10);
+
+	arr: [4]s32;
+	print_number(arr[0]);
 
 	C.exit(0);
 }

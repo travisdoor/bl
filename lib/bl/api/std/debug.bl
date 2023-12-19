@@ -29,9 +29,9 @@
 #import "std/array"
 
 //! # Debug
-//! 
+//!
 //! `#load "std/debug.bl"`
-//! 
+//!
 //! Set of common debugging tools.
 
 /// Print debug log using current application_context `print_log_fn` function.
@@ -73,16 +73,17 @@ static_assert :: fn (expr: bool) #comptime {
 }
 
 __assert_default :: fn (message: string_view, loc: *CodeLocation) {
+	// @Incomplete: Use _wassert dialog on windows???
 	application_context.print_log_fn(PrintLogKind.ASSERT, loc.file, loc.line, message);
 	unreachable;
 }
 
-/// Abort execution and eventually print panic message if there is one specified. First passed 
-/// argument in 'args' will act like format string and can be eventually followed by any additional 
+/// Abort execution and eventually print panic message if there is one specified. First passed
+/// argument in 'args' will act like format string and can be eventually followed by any additional
 /// values required.
-/// 
+///
 /// ### Example
-/// 
+///
 /// ```
 /// panic(); // abort without any messages
 /// panic(error); // abort with [Error](#error).
@@ -164,7 +165,7 @@ measure_elapsed_ms_begin :: fn () #inline {
 	array_push(&_elapsed_ms_stack, os_ftick_ms());
 }
 
-/// Pop the last start time from the runtime measurement queue and log the result time difference when 
+/// Pop the last start time from the runtime measurement queue and log the result time difference when
 /// the name is not '-'. The name may be empty, in such case parent function name is used implicitly for
 /// debug log.
 ///
