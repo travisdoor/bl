@@ -38,7 +38,7 @@ ast_create_node(struct arena *arena, enum ast_kind c, struct token *tok, struct 
 	node->kind        = c;
 	node->owner_scope = parent_scope;
 	node->location    = tok ? &tok->location : NULL;
-#if BL_DEBUG
+#ifdef BL_DEBUG
 	static u64 serial = 0;
 	node->_serial     = serial++;
 #endif

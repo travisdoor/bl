@@ -711,15 +711,6 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		sub_ri(tctx, RSP, 0, 8);
 		tctx->stack.alloc_value_offset = get_position(tctx, SECTION_TEXT) - sizeof(s32);
 
-		// @Cleanup
-		// @Cleanup
-		// @Cleanup
-		mov_mi_sib(tctx, RBP, 0, 0x666, 8);
-		mov_mi_sib(tctx, RSP, 0, 0x666, 8);
-		// mov_mi_sib(tctx, RBP, RDX, 0, 0x666, 8);
-		// mov_mi_sib(tctx, RBP, R8, 0, 0x666, 8);
-		// mov_mi_sib(tctx, RBP, R12, 0, 0x666, 8);
-
 		// Generate all blocks in the function body.
 		arrput(tctx->emit_block_queue, fn->first_block);
 		while (arrlenu(tctx->emit_block_queue)) {
@@ -744,7 +735,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			bassert(block->base.value.is_comptime);
 		} else {
 			str_buf_t name = get_tmp_str();
-#if BL_DEBUG
+#ifdef BL_DEBUG
 			unique_name(ctx, &name, ".", block->name);
 #else
 			unique_name(ctx, &name, ".", cstr("B"));
@@ -1419,7 +1410,7 @@ void job(struct job_context *job_ctx) {
 
 	emit_instr(ctx, tctx, job_ctx->x64.top_instr);
 
-#if BL_DEBUG
+#ifdef BL_DEBUG
 	// Check for dangling registers
 	for (s32 i = 0; i < REGISTER_COUNT; ++i) {
 		const s32 index = tctx->register_table[i];

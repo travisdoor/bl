@@ -32,7 +32,7 @@
 #include <stdio.h>
 
 static inline void print_address(struct ast *node, FILE *stream) {
-#if BL_DEBUG
+#ifdef BL_DEBUG
 	if (node)
 		fprintf(stream, " %llu ", node->_serial);
 	else

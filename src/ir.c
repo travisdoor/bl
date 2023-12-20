@@ -33,7 +33,7 @@
 #include "stb_ds.h"
 #include "llvm-c/Types.h"
 
-#if BL_DEBUG
+#ifdef BL_DEBUG
 #	define NAMED_VARS true
 #else
 #	define NAMED_VARS false

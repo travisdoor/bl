@@ -1144,7 +1144,7 @@ static inline bool is_current_block_terminated(struct context *ctx) {
 
 static inline void *mutate_instr(struct mir_instr *instr, enum mir_instr_kind kind) {
 	bassert(instr);
-#if BL_DEBUG
+#ifdef BL_DEBUG
 	instr->_orig_kind = instr->kind;
 #endif
 	instr->kind = kind;
@@ -5746,7 +5746,7 @@ struct result analyze_instr_arg(struct context UNUSED(*ctx), struct mir_instr_ar
 	assert(arg_data);
 	const bool is_comptime = isflag(arg_data->flags, FLAG_COMPTIME);
 
-#if BL_DEBUG
+#ifdef BL_DEBUG
 	if (is_comptime) bassert(arg_data->generation_call && "Compile time known arguments not provided for mixed function!");
 #endif
 
@@ -7873,7 +7873,7 @@ struct result analyze_call_stage_generate(struct context *ctx, struct mir_instr_
 
 			if (!recipe_fn_arg) break;
 
-#if BL_DEBUG
+#ifdef BL_DEBUG
 			// @Note: Default values was resolved in previous stage. However the argument on
 			// call-side still can be missing in case recipe_fn_arg is vargs, we should properly
 			// report such a situation.
@@ -8774,7 +8774,7 @@ struct result analyze_instr(struct context *ctx, struct mir_instr *instr) {
 			(*analyze_state) = MIR_IS_ANALYZED;
 		} else if (state.state == ANALYZE_FAILED) {
 			(*analyze_state) = MIR_IS_FAILED;
-#if BL_DEBUG
+#ifdef BL_DEBUG
 			fprintf(stdout, "Last instruction being analyzed:\n");
 			mir_print_instr(stdout, ctx->assembly, instr);
 			fprintf(stdout, "\n\n");
@@ -11485,7 +11485,7 @@ static void _type2str(str_buf_t *buf, const struct mir_type *type, bool prefer_n
 	}
 }
 
-#if BL_DEBUG
+#ifdef BL_DEBUG
 vm_stack_ptr_t _mir_cev_read(struct mir_const_expr_value *value) {
 	bassert(value && "Attempt to read null value!");
 	bassert(value->is_comptime && "Attempt to read non-comptime value!");

@@ -1859,7 +1859,7 @@ void interp_instr_ret(struct virtual_machine *vm, struct mir_instr_ret *ret) {
 		bassert(ret_type->kind != MIR_TYPE_VOID && "Void return cannot have specified value.");
 		ret_data_ptr = fetch_value(vm, &ret->value->value);
 		bassert(ret_data_ptr);
-#if BL_DEBUG
+#ifdef BL_DEBUG
 	} else {
 		bassert(ret_type->kind == MIR_TYPE_VOID);
 #endif

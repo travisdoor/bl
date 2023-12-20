@@ -42,6 +42,8 @@ endif()
 option(TRACY_ENABLE "Turn on Tracy profiler." OFF)
 set(TRACY_VER "0.9.1" CACHE STRING "Set Tracy profiler version.")
 
+option(BL_X64_TESTS_ENABLE "Build testing program for x64 backend." OFF)
+
 #setup output directories
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 set(PDB_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
@@ -156,10 +158,75 @@ endif()
 
 find_package(LLVM ${BL_LLVM_VER} REQUIRED)
 
-file(GLOB HEADER_FILES src/*.h)
-file(GLOB SOURCE_FILES src/*.c)
+set(HEADER_FILES
+	src/arena.h
+	src/assembly.h
+	src/ast.h
+	src/basic_types.h
+	src/bldebug.h
+	src/blmemory.h
+	src/builder.h
+	src/common.h
+	src/conf.h
+	src/config.h
+	src/error.h
+	src/llvm_api.h
+	src/mir.h
+	src/mir_printer.h
+	src/scope.h
+	src/stb_ds.h
+	src/threading.h
+	src/tokens.h
+	src/tokens_inline_utils.h
+	src/unit.h
+	src/vm.h
+	src/vmdbg.h
+	src/wbs.h
+	src/winpthreads.h
+	src/x86_64_instructions.h
+)
 
-set(SOURCE_FILES ${SOURCE_FILES} src/llvm_api.cpp)
+set(SOURCE_FILES
+	src/arena.c
+	src/asm_writer.c
+	src/assembly.c
+	src/ast.c
+	src/ast_printer.c
+	src/bc_writer.c
+	src/bldebug.c
+	src/blmemory.c
+	src/build_api.c
+	src/builder.c
+	src/common.c
+	src/conf.c
+	src/docs.c
+	src/file_loader.c
+	src/intrinsic.c
+	src/ir.c
+	src/ir_opt.c
+	src/lexer.c
+	src/linker.c
+	src/lld_ld.c
+	src/lld_link.c
+	src/main.c
+	src/mir.c
+	src/mir_printer.c
+	src/mir_writer.c
+	src/native_bin.c
+	src/obj_writer.c
+	src/parser.c
+	src/scope.c
+	src/setup.c
+	src/threading.c
+	src/token_printer.c
+	src/tokens.c
+	src/unit.c
+	src/vm.c
+	src/vm_runner.c
+	src/vmdbg.c
+	src/x86_64.c
+	src/llvm_api.cpp
+)
 
 # rpmalloc
 option(BL_RPMALLOC_ENABLE "Enable or disable rpmalloc https://github.com/mjansson/rpmalloc." ON)
@@ -266,12 +333,20 @@ elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     set(BL_DLIB_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib/bl/api/std/dlib/linux)
 endif()
 
-
 set_target_properties(dlib
     PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY ${BL_DLIB_OUTPUT_DIRECTORY}
 	ARCHIVE_OUTPUT_DIRECTORY ${BL_DLIB_OUTPUT_DIRECTORY} # Works on windows for .lib
 )
+
+# MISC
+if (BL_X64_TESTS_ENABLE)
+	add_executable(blc-x64-test src/x86_64_instructions.test.c)
+	target_include_directories(
+		blc-x64-test PRIVATE
+		${BL_DEPS_DIR}/tracy-${TRACY_VER}/public/tracy
+		src)
+endif()
 
 # Installation
 

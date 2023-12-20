@@ -96,7 +96,7 @@
 #define PATH_SEPARATOR "/"
 #define PATH_SEPARATORC '/'
 
-#if BL_DEBUG
+#ifdef BL_DEBUG
 #	define ASSERT_ON_CMP_ERROR 0
 #	define BL_MAGIC_ENABLE 1
 #else

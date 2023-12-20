@@ -42,7 +42,7 @@
 #define MIR_SLICE_LEN_INDEX 0
 #define MIR_SLICE_PTR_INDEX 1
 
-#if BL_DEBUG
+#ifdef BL_DEBUG
 vm_stack_ptr_t _mir_cev_read(struct mir_const_expr_value *value);
 #else
 #	define _mir_cev_read(expr) (expr)->data
@@ -495,7 +495,7 @@ struct mir_instr {
 	struct mir_instr *prev;
 	struct mir_instr *next;
 
-#if BL_DEBUG
+#ifdef BL_DEBUG
 	enum mir_instr_kind _orig_kind;
 #endif
 	s32 ref_count;

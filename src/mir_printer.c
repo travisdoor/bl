@@ -33,7 +33,7 @@
 #include "mir.h"
 #include "stb_ds.h"
 
-#if BL_DEBUG
+#ifdef BL_DEBUG
 #	define PRINT_ANALYZED_COMPTIMES true
 #else
 #	define PRINT_ANALYZED_COMPTIMES false
@@ -60,7 +60,7 @@ print_type(struct context *ctx, struct mir_type *type, bool aligned, bool prefer
 static inline void print_instr_head(struct context *ctx, struct mir_instr *instr, const char *name) {
 	if (!instr) return;
 
-#if BL_DEBUG
+#ifdef BL_DEBUG
 	if (instr->ref_count == -1) {
 		fprintf(ctx->stream, "    %%%-8llu (-)", (unsigned long long)instr->id);
 	} else {
@@ -915,7 +915,7 @@ void print_instr_fn_group(struct context *ctx, struct mir_instr_fn_group *group)
 void print_instr_block(struct context *ctx, struct mir_instr_block *block) {
 	const bool is_global = !block->owner_fn;
 	// if (block->base.prev || is_global) fprintf(ctx->stream, "\n");
-#if BL_DEBUG
+#ifdef BL_DEBUG
 	if (block->base.ref_count < 0) {
 		fprintf(ctx->stream,
 		        "%%%.*s_%llu (-):",
