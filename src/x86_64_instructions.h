@@ -437,19 +437,18 @@ static inline void cmp_rr(struct thread_context *tctx, u8 r1, u8 r2, usize size)
 	encode_base(tctx, rex, 0x38, mrr, size);
 }
 
-// @Cleanup: not used...
-// static inline void cmp_ri(struct thread_context *tctx, u8 r, u64 imm, usize size) {
-// 	if (size == 8 && imm > 0x7FFFFFFF) {
-// 		const enum x64_register reg = get_temporary_register(tctx, NULL, 0);
-// 		mov_ri(tctx, reg, imm, size);
-// 		cmp_rr(tctx, r, reg, size);
-// 		return;
-// 	}
-// 	const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, 0x7, r);
-// 	const u8 rex = encode_rex(size == 8, 0x7, 0, r);
-// 	encode_base(tctx, rex, 0x80, mrr, size);
-// 	add_code(tctx, &imm, (s32)MIN(size, sizeof(u32)));
-// }
+static inline void cmp_ri(struct thread_context *tctx, u8 r, u64 imm, usize size) {
+	if (size == 8 && imm > 0x7FFFFFFF) {
+		const enum x64_register reg = get_temporary_register(tctx, NULL, 0);
+		mov_ri(tctx, reg, imm, size);
+		cmp_rr(tctx, r, reg, size);
+		return;
+	}
+	const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, 0x7, r);
+	const u8 rex = encode_rex(size == 8, 0x7, 0, r);
+	encode_base(tctx, rex, 0x80, mrr, size);
+	add_code(tctx, &imm, (s32)MIN(size, sizeof(u32)));
+}
 
 static inline void ret(struct thread_context *tctx) {
 	const u8 buf[] = {0xC3};

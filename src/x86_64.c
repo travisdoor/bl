@@ -76,6 +76,8 @@ enum x64_value_kind {
 	REGISTER = 3,
 	// Immediate 64bit value.
 	IMMEDIATE = 4,
+	// Offset in register
+	REGOFF = 5,
 };
 
 struct x64_value {
@@ -174,6 +176,7 @@ enum op_kind {
 	OP_RELOCATION_INT   = op(RELOCATION, MIR_TYPE_INT),
 	OP_REGISTER_INT     = op(REGISTER, MIR_TYPE_INT),
 	OP_OFFSET_INT       = op(OFFSET, MIR_TYPE_INT),
+	OP_REGOFF_INT       = op(REGOFF, MIR_TYPE_INT),
 	OP_RELOCATION_SLICE = op(RELOCATION, MIR_TYPE_SLICE),
 	OP_OFFSET_SLICE     = op(OFFSET, MIR_TYPE_SLICE),
 };
@@ -595,7 +598,6 @@ static void emit_compound(struct context *ctx, struct thread_context *tctx, stru
 
 		if (value_instr->kind == MIR_INSTR_LOAD) {
 			enum x64_register reg = get_temporary_register(tctx, NULL, 0);
-
 			emit_load_to_register(tctx, value_instr, reg);
 		} else if (value_instr->kind == MIR_INSTR_COMPOUND) {
 			BL_UNIMPLEMENTED;
@@ -848,17 +850,33 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 	}
 
 	case MIR_INSTR_ELEM_PTR: {
-		struct mir_instr_elem_ptr *elem   = (struct mir_instr_elem_ptr *)instr;
-		const struct x64_value     target = get_value(tctx, elem->arr_ptr);
-		const struct x64_value     index  = get_value(tctx, elem->index);
+		struct mir_instr_elem_ptr *elem = (struct mir_instr_elem_ptr *)instr;
+
+		if (elem->index->kind == MIR_INSTR_LOAD) {
+			enum x64_register reg = get_temporary_register(tctx, NULL, 0);
+			emit_load_to_register(tctx, elem->index, reg);
+		}
+
+		const struct x64_value target      = get_value(tctx, elem->arr_ptr);
+		const struct x64_value index       = get_value(tctx, elem->index);
+		struct mir_type       *target_type = mir_deref_type(elem->arr_ptr->value.type);
+
 		bassert(target.kind == OFFSET);
-		bassert(index.kind == IMMEDIATE);
+		if (index.kind == IMMEDIATE) {
+			const s32        offset = (s32)vm_get_array_elem_offset(target_type, (u32)index.imm);
+			struct x64_value value  = {.kind = OFFSET, .offset = target.offset + offset};
+			set_value(tctx, instr, value);
+		} else {
+			enum x64_register reg = -1;
+			find_free_registers(tctx, &reg, 1);
+			if (reg == -1) reg = spill(tctx, RAX, NULL, 0);
+			mov_ri(tctx, reg, target.offset, 8);
+			// imul_ri(tctx, reg, reg, , usize size)
+		}
 
-		mov_ri(tctx, RAX, index.imm, 8);
-
-		struct mir_type *target_type = mir_deref_type(elem->arr_ptr->value.type);
-		const s32        offset      = (s32)vm_get_array_elem_offset(target_type, (u32)index.imm);
-		struct x64_value value       = {.kind = OFFSET, .offset = target.offset + offset};
+		// @Cleanup
+		const s32        offset = (s32)vm_get_array_elem_offset(target_type, (u32)index.imm);
+		struct x64_value value  = {.kind = OFFSET, .offset = target.offset + offset};
 		set_value(tctx, instr, value);
 		break;
 	}
