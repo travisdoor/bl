@@ -219,11 +219,23 @@ static inline void mov_mi(struct thread_context *tctx, u8 r, s32 offset, u64 imm
 // mov qword ptr [r1+r2+offset], r3
 static inline void mov_mr_sib(struct thread_context *tctx, u8 r1, u8 r2, s32 offset, u8 r3, usize size) {
 	const u8 disp = is_byte_disp(offset) ? MOD_BYTE_DISP : MOD_FOUR_BYTE_DISP;
-	const u8 rex  = encode_rex(size == 8, 0, r2, r1);
+	const u8 rex  = encode_rex(size == 8, r3, r2, r1);
 	const u8 mrr  = encode_mod_reg_rm(disp, r3, RSP); // @Hack: RSP wtf?
 	const u8 sib  = encode_sib(0x0, r2, r1);
 
 	encode_base(tctx, rex, 0x88, mrr, size);
+	add_code(tctx, &sib, 1);
+	add_code(tctx, &offset, disp == MOD_BYTE_DISP ? 1 : 4);
+}
+
+// mov r1, qword ptr [r2+r3+offset]
+static inline void mov_rm_sib(struct thread_context *tctx, u8 r1, u8 r2, u8 r3, s32 offset, usize size) {
+	const u8 disp = is_byte_disp(offset) ? MOD_BYTE_DISP : MOD_FOUR_BYTE_DISP;
+	const u8 rex  = encode_rex(size == 8, r1, r3, r2);
+	const u8 mrr  = encode_mod_reg_rm(disp, r1, RSP); // @Hack: RSP wtf?
+	const u8 sib  = encode_sib(0x0, r3, r2);
+
+	encode_base(tctx, rex, 0x8A, mrr, size);
 	add_code(tctx, &sib, 1);
 	add_code(tctx, &offset, disp == MOD_BYTE_DISP ? 1 : 4);
 }
@@ -444,9 +456,14 @@ static inline void cmp_ri(struct thread_context *tctx, u8 r, u64 imm, usize size
 		cmp_rr(tctx, r, reg, size);
 		return;
 	}
-	const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, 0x7, r);
-	const u8 rex = encode_rex(size == 8, 0x7, 0, r);
-	encode_base(tctx, rex, 0x80, mrr, size);
+	if (r == RAX) {
+		const u8 rex = encode_rex(size == 8, 0, 0, r);
+		encode_base(tctx, rex, 0x3C, 0, size);
+	} else {
+		const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, 0x7, r);
+		const u8 rex = encode_rex(size == 8, 0x7, 0, r);
+		encode_base(tctx, rex, 0x80, mrr, size);
+	}
 	add_code(tctx, &imm, (s32)MIN(size, sizeof(u32)));
 }
 

@@ -76,7 +76,7 @@ enum x64_value_kind {
 	REGISTER = 3,
 	// Immediate 64bit value.
 	IMMEDIATE = 4,
-	// Offset in register
+	// Offset in register + static offset.
 	REGOFF = 5,
 };
 
@@ -88,6 +88,10 @@ struct x64_value {
 		enum x64_register reg;
 		u64               imm;
 		hash_t            reloc;
+		struct {
+			s32               offset;
+			enum x64_register reg;
+		} regoff;
 	};
 };
 
@@ -466,7 +470,11 @@ static inline struct x64_value _get_value_var(struct thread_context *tctx, struc
 }
 
 static inline void release_value(struct thread_context *tctx, struct x64_value value) {
-	if (value.kind == REGISTER) release_registers(tctx, &value.reg, 1);
+	if (value.kind == REGISTER) {
+		release_registers(tctx, &value.reg, 1);
+	} else if (value.kind == REGOFF) {
+		release_registers(tctx, &value.regoff.reg, 1);
+	}
 }
 
 static inline void add_patch(struct thread_context *tctx, hash_t hash, u64 position, s32 type, s32 target_section) {
@@ -537,22 +545,29 @@ static void emit_load_to_register(struct thread_context *tctx, struct mir_instr 
 	struct mir_instr_load *load = (struct mir_instr_load *)instr;
 	struct mir_type       *type = load->base.value.type;
 
-	struct x64_value src_value = get_value(tctx, load->src);
+	struct x64_value src_value  = get_value(tctx, load->src);
+	const usize      value_size = type->store_size_bytes;
 
-	bassert(type->kind == MIR_TYPE_INT || type->kind == MIR_TYPE_PTR);
-	bassert(src_value.kind == OFFSET || src_value.kind == RELOCATION);
-	switch (src_value.kind) {
-	case OFFSET:
-		mov_rm(tctx, reg, RBP, src_value.offset, type->store_size_bytes);
+	enum op_kind op_kind = op(src_value.kind, type->kind);
+
+	switch (op_kind) {
+	case OP_OFFSET_INT:
+		mov_rm(tctx, reg, RBP, src_value.offset, value_size);
 		break;
-	case RELOCATION: {
-		mov_rm_indirect(tctx, reg, 0, type->store_size_bytes);
+	case OP_REGOFF_INT: {
+		mov_rm_sib(tctx, reg, RBP, src_value.regoff.reg, src_value.regoff.offset, value_size);
+		release_value(tctx, src_value);
+		break;
+	}
+	case OP_RELOCATION_INT: {
+		mov_rm_indirect(tctx, reg, 0, value_size);
 		const u32 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
 		add_patch(tctx, src_value.reloc, reloc_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
 		break;
 	}
+
 	default:
-		bassert("Invalid value kind!");
+		BL_UNIMPLEMENTED;
 	}
 
 	set_value(tctx, instr, (struct x64_value){.kind = REGISTER, .reg = reg});
@@ -777,7 +792,6 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		bassert(store->dest->backend_value);
 		const u32        value_size = (u32)type->store_size_bytes;
 		struct x64_value dest_value = get_value(tctx, store->dest);
-		bassert(dest_value.kind == OFFSET || dest_value.kind == RELOCATION);
 
 		if (store->src->kind == MIR_INSTR_LOAD) {
 			enum x64_register reg = get_temporary_register(tctx, NULL, 0);
@@ -808,6 +822,10 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			break;
 		case op_combined(OP_RELOCATION_SLICE, OP_OFFSET_SLICE):
 			emit_copy_relocation_to_offset(tctx, dest_value, src_value, value_size);
+			break;
+		case op_combined(OP_IMMEDIATE_INT, OP_REGOFF_INT):
+			mov_mi_sib(tctx, RBP, dest_value.regoff.reg, dest_value.regoff.offset, src_value.imm, value_size);
+			release_value(tctx, dest_value);
 			break;
 
 		default:
@@ -862,22 +880,45 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		struct mir_type       *target_type = mir_deref_type(elem->arr_ptr->value.type);
 
 		bassert(target.kind == OFFSET);
-		if (index.kind == IMMEDIATE) {
-			const s32        offset = (s32)vm_get_array_elem_offset(target_type, (u32)index.imm);
-			struct x64_value value  = {.kind = OFFSET, .offset = target.offset + offset};
-			set_value(tctx, instr, value);
-		} else {
-			enum x64_register reg = -1;
-			find_free_registers(tctx, &reg, 1);
-			if (reg == -1) reg = spill(tctx, RAX, NULL, 0);
-			mov_ri(tctx, reg, target.offset, 8);
-			// imul_ri(tctx, reg, reg, , usize size)
+
+		switch (target_type->kind) {
+		case MIR_TYPE_ARRAY:
+			struct mir_type *elem_type = target_type->data.array.elem_type;
+			enum op_kind     op_kind   = op(index.kind, elem_type->kind);
+			switch (op_kind) {
+			case OP_IMMEDIATE_INT: {
+				const s32        offset = (s32)vm_get_array_elem_offset(target_type, (u32)index.imm);
+				struct x64_value value  = {.kind = OFFSET, .offset = target.offset + offset};
+				set_value(tctx, instr, value);
+				break;
+			}
+			case OP_REGISTER_INT: {
+				const s32 elem_size = (s32)elem_type->store_size_bytes;
+				imul_ri(tctx, index.reg, index.reg, elem_size, 8);
+				struct x64_value value = {
+				    .kind          = REGOFF,
+				    .regoff.reg    = index.reg,
+				    .regoff.offset = target.offset,
+				};
+				set_value(tctx, instr, value);
+				break;
+			}
+			default:
+				BL_UNIMPLEMENTED;
+			}
+			break;
+
+		case MIR_TYPE_DYNARR:
+		case MIR_TYPE_SLICE:
+		case MIR_TYPE_STRING:
+		case MIR_TYPE_VARGS: {
+			BL_UNIMPLEMENTED;
+			break;
+		}
+		default:
+			babort("Invalid elem ptr target type!");
 		}
 
-		// @Cleanup
-		const s32        offset = (s32)vm_get_array_elem_offset(target_type, (u32)index.imm);
-		struct x64_value value  = {.kind = OFFSET, .offset = target.offset + offset};
-		set_value(tctx, instr, value);
 		break;
 	}
 
