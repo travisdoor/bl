@@ -15,11 +15,10 @@ enum_variants_to_string_list :: fn (TEnum: type #comptime) [enum_count(TEnum)]st
 }
 */
 
-main :: fn () s32 {
-	return 0;
-}
+// main :: fn () s32 {
+// 	return 0;
+// }
 
-/*
 #import "libc"
 #import "os/windows"
 
@@ -130,13 +129,13 @@ __os_start :: fn () #entry {
 
 	// print_number(arr[n] + 666);
 
-	// num := 10;
+	num := 10;
 	// arr[n] = num;
 	// print_number(arr[3]);
 	// print_number2(arr.len);
 
-	// char: s8;
-	// char = cast(s8) num;
+	char: s8;
+	char = cast(s8) num;
 
 	C.exit(0);
 }
@@ -156,7 +155,6 @@ use_global_number :: fn () {
 	my_number = 20;
 	print_number(my_number);
 }
-*/
 
 /*
 x64 todo:
