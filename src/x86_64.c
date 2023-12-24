@@ -180,6 +180,7 @@ enum op_kind {
 	OP_RELOCATION_INT   = op(RELOCATION, MIR_TYPE_INT),
 	OP_REGISTER_INT     = op(REGISTER, MIR_TYPE_INT),
 	OP_OFFSET_INT       = op(OFFSET, MIR_TYPE_INT),
+	OP_OFFSET_PTR       = op(OFFSET, MIR_TYPE_PTR),
 	OP_REGOFF_INT       = op(REGOFF, MIR_TYPE_INT),
 	OP_RELOCATION_SLICE = op(RELOCATION, MIR_TYPE_SLICE),
 	OP_OFFSET_SLICE     = op(OFFSET, MIR_TYPE_SLICE),
@@ -197,6 +198,20 @@ static inline u32 get_position(struct thread_context *tctx, s32 section_number) 
 		babort("Invalid section number!");
 	}
 }
+
+#ifdef BL_DEBUG
+static void check_dangling_registers(struct thread_context *tctx) {
+	// Check for dangling registers
+	for (s32 i = 0; i < REGISTER_COUNT; ++i) {
+		const s32 index = tctx->register_table[i];
+		if (index >= 0) {
+			babort("Dangling register %s (value: %d).", register_name[i], index);
+		}
+	}
+}
+#else
+#	define check_dangling_registers(tctx) (void)0
+#endif
 
 static inline void unique_name(struct context *ctx, str_buf_t *dest, const char *prefix, const str_t name) {
 	pthread_spin_lock(&ctx->uq_name_lock);
@@ -540,7 +555,9 @@ static void emit_copy_relocation_to_offset(struct thread_context *tctx, struct x
 	}
 }
 
-static void emit_load_to_register(struct thread_context *tctx, struct mir_instr *instr, enum x64_register reg) {
+#define emit_load_to_register(tctx, instr, reg) emit_load_to_register_ext(tctx, instr, reg, 0, MIR_CAST_NONE);
+
+static void emit_load_to_register_ext(struct thread_context *tctx, struct mir_instr *instr, enum x64_register reg, usize dest_size, enum mir_cast_op cast_op) {
 	bassert(instr && instr->kind == MIR_INSTR_LOAD);
 	struct mir_instr_load *load = (struct mir_instr_load *)instr;
 	struct mir_type       *type = load->base.value.type;
@@ -550,23 +567,37 @@ static void emit_load_to_register(struct thread_context *tctx, struct mir_instr 
 
 	enum op_kind op_kind = op(src_value.kind, type->kind);
 
-	switch (op_kind) {
-	case OP_OFFSET_INT:
-		mov_rm(tctx, reg, RBP, src_value.offset, value_size);
-		break;
-	case OP_REGOFF_INT: {
-		mov_rm_sib(tctx, reg, RBP, src_value.regoff.reg, src_value.regoff.offset, value_size);
-		release_value(tctx, src_value);
-		break;
-	}
-	case OP_RELOCATION_INT: {
-		mov_rm_indirect(tctx, reg, 0, value_size);
-		const u32 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
-		add_patch(tctx, src_value.reloc, reloc_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
-		break;
-	}
+	if (cast_op == MIR_CAST_NONE || cast_op == MIR_CAST_BITCAST || cast_op == MIR_CAST_TRUNC) {
+		switch (op_kind) {
+		case OP_OFFSET_PTR:
+		case OP_OFFSET_INT:
+			mov_rm(tctx, reg, RBP, src_value.offset, value_size);
+			break;
+		case OP_REGOFF_INT: {
+			mov_rm_sib(tctx, reg, RBP, src_value.regoff.reg, src_value.regoff.offset, value_size);
+			release_value(tctx, src_value);
+			break;
+		}
+		case OP_RELOCATION_INT: {
+			mov_rm_indirect(tctx, reg, 0, value_size);
+			const u32 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
+			add_patch(tctx, src_value.reloc, reloc_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
+			break;
+		}
 
-	default:
+		default:
+			BL_UNIMPLEMENTED;
+		}
+	} else if (cast_op == MIR_CAST_SEXT) {
+		bassert(dest_size > value_size);
+		switch (op_kind) {
+		case OP_OFFSET_INT:
+			movsx_rm(tctx, reg, RBP, src_value.offset, value_size, dest_size);
+			break;
+		default:
+			BL_UNIMPLEMENTED;
+		}
+	} else {
 		BL_UNIMPLEMENTED;
 	}
 
@@ -827,6 +858,9 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			mov_mi_sib(tctx, RBP, dest_value.regoff.reg, dest_value.regoff.offset, src_value.imm, value_size);
 			release_value(tctx, dest_value);
 			break;
+		case op_combined(OP_REGISTER_INT, OP_REGOFF_INT):
+			mov_mr_sib(tctx, RBP, dest_value.regoff.reg, dest_value.regoff.offset, src_value.reg, value_size);
+			break;
 
 		default:
 			babort("Unhandled operation kind.");
@@ -919,6 +953,45 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			babort("Invalid elem ptr target type!");
 		}
 
+		break;
+	}
+
+	case MIR_INSTR_CAST: {
+		struct mir_instr_cast *cast      = (struct mir_instr_cast *)instr;
+		struct mir_type       *dest_type = cast->base.value.type;
+
+		if (cast->expr->kind == MIR_INSTR_LOAD) {
+			enum x64_register reg = get_temporary_register(tctx, NULL, 0);
+			emit_load_to_register_ext(tctx, cast->expr, reg, dest_type->store_size_bytes, cast->op);
+			instr->backend_value = cast->expr->backend_value;
+			break;
+		}
+
+		const struct x64_value expr_value = get_value(tctx, cast->expr);
+
+		switch (cast->op) {
+		case MIR_CAST_NONE:
+		case MIR_CAST_BITCAST:
+		case MIR_CAST_SEXT:
+		case MIR_CAST_TRUNC:
+		case MIR_CAST_ZEXT:
+		case MIR_CAST_FPTOSI:
+		case MIR_CAST_FPTOUI:
+		case MIR_CAST_FPTRUNC:
+		case MIR_CAST_FPEXT:
+		case MIR_CAST_SITOFP:
+		case MIR_CAST_UITOFP:
+		case MIR_CAST_PTRTOINT:
+		case MIR_CAST_INTTOPTR:
+		case MIR_CAST_PTRTOBOOL:
+			BL_UNIMPLEMENTED;
+
+		default:
+			babort("invalid cast type");
+		}
+
+		bassert(expr_value.reg != -1);
+		set_value(tctx, instr, (struct x64_value){.kind = REGISTER, .reg = expr_value.reg});
 		break;
 	}
 
@@ -1468,16 +1541,7 @@ void job(struct job_context *job_ctx) {
 	arrsetcap(tctx->text, BYTE_CODE_BUFFER_SIZE);
 
 	emit_instr(ctx, tctx, job_ctx->x64.top_instr);
-
-#ifdef BL_DEBUG
-	// Check for dangling registers
-	for (s32 i = 0; i < REGISTER_COUNT; ++i) {
-		const s32 index = tctx->register_table[i];
-		if (index >= 0) {
-			babort("Dangling register %s (value: %d).", register_name[i], index);
-		}
-	}
-#endif
+	check_dangling_registers(tctx);
 
 	patch_jump_offsets(tctx);
 

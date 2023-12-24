@@ -15,6 +15,11 @@ enum_variants_to_string_list :: fn (TEnum: type #comptime) [enum_count(TEnum)]st
 }
 */
 
+main :: fn () s32 {
+	return 0;
+}
+
+/*
 #import "libc"
 #import "os/windows"
 
@@ -44,9 +49,9 @@ Bar :: struct {
 }
 
 __os_start :: fn () #entry {
-	// if _CRT_INIT() == 0 {
-	// 	C.exit(1);
-	// }
+	if _CRT_INIT() == 0 {
+		C.exit(1);
+	}
 
 	// str :: "Hello!!!\n";
 	// print_string(str.len, str.ptr);
@@ -94,33 +99,44 @@ __os_start :: fn () #entry {
 
 	// test_looping(10);
 
-	arr: [4]s32;
-	arr[0] = 10;
-	arr[1] = 20;
-	arr[2] = 30;
-	arr[3] = 40;
-	print_number(arr[0]);
-	print_number(arr[1]);
-	print_number(arr[2]);
-	print_number(arr[3]);
+	// arr: [4]s32;
+	// h : s64 = -100;
+	// print_number(auto h);
 
-	n : s64 = 0;
+	// arr[0] = 10;
+	// arr[1] = 20;
+	// arr[2] = 30;
+	// arr[3] = 40;
+	// print_number(arr[0]);
+	// print_number(arr[1]);
+	// print_number(arr[2]);
+	// print_number(arr[3]);
 
-	arr[n] = 100;
-	n += 1;
-	arr[n] = 200;
-	n += 1;
-	arr[n] = 300;
-	n += 1;
-	arr[n] = 400;
+	// n : s64 = 0;
 
-	print_number(arr[0]);
-	print_number(arr[1]);
-	print_number(arr[2]);
-	print_number(arr[3]);
+	// arr[n] = 100;
+	// n += 1;
+	// arr[n] = 200;
+	// n += 1;
+	// arr[n] = 300;
+	// n += 1;
+	// arr[n] = 400;
 
-	print_number(arr[n]);
+	// loop i := 0; i < arr.len; i += 1 {
+	// 	print_number(arr[i]);
+	// }
 
+	// print_number(arr[n]);
+
+	// print_number(arr[n] + 666);
+
+	// num := 10;
+	// arr[n] = num;
+	// print_number(arr[3]);
+	// print_number2(arr.len);
+
+	// char: s8;
+	// char = cast(s8) num;
 
 	C.exit(0);
 }
@@ -140,6 +156,7 @@ use_global_number :: fn () {
 	my_number = 20;
 	print_number(my_number);
 }
+*/
 
 /*
 x64 todo:
