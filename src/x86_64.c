@@ -468,11 +468,9 @@ static inline void set_value(struct thread_context *tctx, struct mir_instr *inst
 	instr->backend_value = add_value(tctx, value);
 }
 
-#define get_value(tctx, V) _Generic((V),                \
-	                                struct mir_instr *  \
-	                                : _get_value_instr, \
-	                                  struct mir_var *  \
-	                                : _get_value_var)((tctx), (V))
+#define get_value(tctx, V) _Generic((V),  \
+	struct mir_instr *: _get_value_instr, \
+	struct mir_var *: _get_value_var)((tctx), (V))
 
 static inline struct x64_value _get_value_instr(struct thread_context *tctx, struct mir_instr *instr) {
 	bassert(instr->backend_value != 0);
@@ -898,6 +896,31 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		} else {
 			BL_UNIMPLEMENTED;
 		}
+		break;
+	}
+
+	case MIR_INSTR_ADDROF: {
+		struct mir_instr_addrof *addr = (struct mir_instr_addrof *)instr;
+		if (addr->src->kind == MIR_INSTR_LOAD) {
+			enum x64_register reg = get_temporary_register(tctx, NULL, 0);
+			emit_load_to_register(tctx, addr->src, reg);
+		}
+
+		const struct x64_value src_value = get_value(tctx, addr->src);
+		const enum op_kind     op_kind   = op(src_value.kind, addr->src->value.type->kind);
+
+		(void)op_kind;
+		switch (op_kind) {
+		case OP_OFFSET_PTR: {
+			enum x64_register reg = get_temporary_register(tctx, NULL, 0);
+			lea_rm(tctx, reg, RBP, src_value.offset, 8);
+					set_value(tctx, instr, (struct x64_value){.kind = ADDRESS, );
+			break;
+		}
+		default:
+			BL_UNIMPLEMENTED;
+		}
+
 		break;
 	}
 
