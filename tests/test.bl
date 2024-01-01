@@ -137,8 +137,10 @@ __os_start :: fn () #entry {
 	char: s8;
 	char = cast(s8) num;
 
-	char_ptr :: &char;
-	char_ptr;
+	char_ptr: *s8;
+	char_ptr = &char;
+
+	print_number(auto (@char_ptr));
 
 	C.exit(0);
 }

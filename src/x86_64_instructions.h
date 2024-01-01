@@ -348,6 +348,10 @@ static inline void movsx_rr(struct thread_context *tctx, u8 r1, u8 r2, usize siz
 	s32 i = 0;
 	if (rex) buf[i++] = rex;
 	switch (size1) {
+	case 4:
+		buf[i++] = 0x0F;
+		buf[i++] = 0xBE;
+		break;
 	case 8:
 		buf[i++] = 0x63;
 		break;
@@ -364,10 +368,10 @@ static inline void movsx_rm(struct thread_context *tctx, u8 r1, u8 r2, s32 offse
 	const u8 rex = encode_rex(size1 == 8, r1, 0, r2);
 	const u8 mrr = encode_mod_reg_rm(MOD_FOUR_BYTE_DISP, r1, r2);
 
-	u8       buf[4];
-	s32      i = 0;
+	u8  buf[4];
+	s32 i = 0;
 	if (rex) buf[i++] = rex;
-	switch (size2 << 4 | size1) {
+	switch (size1 << 4 | size2) {
 	case (8 << 4 | 4):
 		buf[i++] = 0x63;
 		break;

@@ -179,6 +179,7 @@ enum op_kind {
 	OP_IMMEDIATE_PTR    = op(IMMEDIATE, MIR_TYPE_PTR),
 	OP_RELOCATION_INT   = op(RELOCATION, MIR_TYPE_INT),
 	OP_REGISTER_INT     = op(REGISTER, MIR_TYPE_INT),
+	OP_REGISTER_PTR     = op(REGISTER, MIR_TYPE_PTR),
 	OP_OFFSET_INT       = op(OFFSET, MIR_TYPE_INT),
 	OP_OFFSET_PTR       = op(OFFSET, MIR_TYPE_PTR),
 	OP_REGOFF_INT       = op(REGOFF, MIR_TYPE_INT),
@@ -468,9 +469,11 @@ static inline void set_value(struct thread_context *tctx, struct mir_instr *inst
 	instr->backend_value = add_value(tctx, value);
 }
 
-#define get_value(tctx, V) _Generic((V),  \
-	struct mir_instr *: _get_value_instr, \
-	struct mir_var *: _get_value_var)((tctx), (V))
+#define get_value(tctx, V) _Generic((V),                \
+	                                struct mir_instr *  \
+	                                : _get_value_instr, \
+	                                  struct mir_var *  \
+	                                : _get_value_var)((tctx), (V))
 
 static inline struct x64_value _get_value_instr(struct thread_context *tctx, struct mir_instr *instr) {
 	bassert(instr->backend_value != 0);
@@ -560,12 +563,16 @@ static void emit_load_to_register_ext(struct thread_context *tctx, struct mir_in
 	struct mir_instr_load *load = (struct mir_instr_load *)instr;
 	struct mir_type       *type = load->base.value.type;
 
+	if (load->src->kind == MIR_INSTR_LOAD) {
+		emit_load_to_register(tctx, load->src, reg);
+	}
+
 	struct x64_value src_value  = get_value(tctx, load->src);
 	const usize      value_size = type->store_size_bytes;
 
 	enum op_kind op_kind = op(src_value.kind, type->kind);
 
-	if (cast_op == MIR_CAST_NONE || cast_op == MIR_CAST_BITCAST || cast_op == MIR_CAST_TRUNC) {
+	if (cast_op == MIR_CAST_NONE || cast_op == MIR_CAST_BITCAST || cast_op == MIR_CAST_TRUNC || cast_op == MIR_CAST_PTRTOINT) {
 		switch (op_kind) {
 		case OP_OFFSET_PTR:
 		case OP_OFFSET_INT:
@@ -591,6 +598,9 @@ static void emit_load_to_register_ext(struct thread_context *tctx, struct mir_in
 		switch (op_kind) {
 		case OP_OFFSET_INT:
 			movsx_rm(tctx, reg, RBP, src_value.offset, value_size, dest_size);
+			break;
+		case OP_REGISTER_INT:
+			movsx_rr(tctx, reg, reg, dest_size, value_size);
 			break;
 		default:
 			BL_UNIMPLEMENTED;
@@ -843,6 +853,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		case op_combined(OP_IMMEDIATE_INT, OP_RELOCATION_INT):
 			mov_mi_indirect(tctx, 0, src_value.imm, value_size);
 			break;
+		case op_combined(OP_REGISTER_PTR, OP_OFFSET_PTR):
 		case op_combined(OP_REGISTER_INT, OP_OFFSET_INT):
 			mov_mr(tctx, RBP, dest_offset, src_value.reg, value_size);
 			break;
@@ -914,7 +925,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		case OP_OFFSET_PTR: {
 			enum x64_register reg = get_temporary_register(tctx, NULL, 0);
 			lea_rm(tctx, reg, RBP, src_value.offset, 8);
-					set_value(tctx, instr, (struct x64_value){.kind = ADDRESS, );
+			set_value(tctx, instr, (struct x64_value){.kind = REGISTER, .reg = reg});
 			break;
 		}
 		default:
@@ -1423,6 +1434,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			case OP_IMMEDIATE_INT:
 				mov_mi(tctx, RBP, var_value.offset, init_value.imm, value_size);
 				break;
+			case OP_REGISTER_PTR:
 			case OP_REGISTER_INT:
 				mov_mr(tctx, RBP, var_value.offset, init_value.reg, value_size);
 				release_value(tctx, init_value);
