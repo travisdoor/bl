@@ -33,9 +33,12 @@ my_function :: fn (a: s32, b: s32, c: s32, d: s32, e: s32, f: s32) #extern;
 add_numbers :: fn (a: s32, b: s32) s32 #extern;
 print_number :: fn (n: s32) #extern;
 print_number2 :: fn (n: s64) #extern;
+print_address :: fn (v: u64) #extern;
 print_string :: fn (len: s64, ptr: *u8) #extern;
 
 my_number := 666;
+
+command_line_arguments: []string_view;
 
 Foo :: struct {
 	i: s32;
@@ -48,9 +51,12 @@ Bar :: struct {
 }
 
 __os_start :: fn () #entry {
-	if _CRT_INIT() == 0 {
-		C.exit(1);
-	}
+	// if _CRT_INIT() == 0 {
+	// 	C.exit(1);
+	// }
+
+	command_line_arguments.len = 0;
+	command_line_arguments.ptr = null;
 
 	// str :: "Hello!!!\n";
 	// print_string(str.len, str.ptr);
@@ -129,18 +135,31 @@ __os_start :: fn () #entry {
 
 	// print_number(arr[n] + 666);
 
-	num := 10;
+	// num := -10;
 	// arr[n] = num;
 	// print_number(arr[3]);
 	// print_number2(arr.len);
 
-	char: s8;
-	char = cast(s8) num;
+	// char: s8;
+	// char = cast(s8) num;
+	// print_number(auto char);
 
-	char_ptr: *s8;
-	char_ptr = &char;
+	// word: s16;
+	// word = cast(s16) num;
+	// print_number(auto word);
 
-	print_number(auto (@char_ptr));
+	// w2: s32;
+	// w2 = cast(s32) num;
+	// print_number(auto w2);
+
+	// ui := -10;
+	// ui_ptr := &ui;
+	// print_address(cast(u64) ui_ptr);
+	// print_number(@ui_ptr);
+	// char_ptr: *s8;
+	// char_ptr = &char;
+
+	// print_number(auto (@char_ptr));
 
 	C.exit(0);
 }

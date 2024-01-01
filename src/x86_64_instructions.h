@@ -365,6 +365,7 @@ static inline void movsx_rr(struct thread_context *tctx, u8 r1, u8 r2, usize siz
 
 static inline void movsx_rm(struct thread_context *tctx, u8 r1, u8 r2, s32 offset, usize size1, usize size2) {
 	bassert(offset <= 0x7FFFFFFF);
+	bassert(size1 > size2);
 	const u8 rex = encode_rex(size1 == 8, r1, 0, r2);
 	const u8 mrr = encode_mod_reg_rm(MOD_FOUR_BYTE_DISP, r1, r2);
 
@@ -375,6 +376,15 @@ static inline void movsx_rm(struct thread_context *tctx, u8 r1, u8 r2, s32 offse
 	case (8 << 4 | 4):
 		buf[i++] = 0x63;
 		break;
+	case (4 << 4 | 1):
+		buf[i++] = 0x0F;
+		buf[i++] = 0xBE;
+		break;
+	case (4 << 4 | 2):
+		buf[i++] = 0x0F;
+		buf[i++] = 0xBF;
+		break;
+
 	default:
 		bassert(false);
 	}

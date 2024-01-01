@@ -76,8 +76,10 @@ enum x64_value_kind {
 	REGISTER = 3,
 	// Immediate 64bit value.
 	IMMEDIATE = 4,
-	// Offset in register + static offset.
-	REGOFF = 5,
+	// RBP + Offset in register + static offset.
+	REGISTER_OFFSET = 5,
+	// Absolute address in register.
+	REGISTER_ADDRESS = 6,
 };
 
 struct x64_value {
@@ -91,7 +93,7 @@ struct x64_value {
 		struct {
 			s32               offset;
 			enum x64_register reg;
-		} regoff;
+		} reg_off_addr;
 	};
 };
 
@@ -175,16 +177,17 @@ static u32  add_sym(struct thread_context *tctx, s32 section_number, str_t linka
 
 enum op_kind {
 	// FFFF value_kind | FFFF mir_type.kind
-	OP_IMMEDIATE_INT    = op(IMMEDIATE, MIR_TYPE_INT),
-	OP_IMMEDIATE_PTR    = op(IMMEDIATE, MIR_TYPE_PTR),
-	OP_RELOCATION_INT   = op(RELOCATION, MIR_TYPE_INT),
-	OP_REGISTER_INT     = op(REGISTER, MIR_TYPE_INT),
-	OP_REGISTER_PTR     = op(REGISTER, MIR_TYPE_PTR),
-	OP_OFFSET_INT       = op(OFFSET, MIR_TYPE_INT),
-	OP_OFFSET_PTR       = op(OFFSET, MIR_TYPE_PTR),
-	OP_REGOFF_INT       = op(REGOFF, MIR_TYPE_INT),
-	OP_RELOCATION_SLICE = op(RELOCATION, MIR_TYPE_SLICE),
-	OP_OFFSET_SLICE     = op(OFFSET, MIR_TYPE_SLICE),
+	OP_IMMEDIATE_INT        = op(IMMEDIATE, MIR_TYPE_INT),
+	OP_IMMEDIATE_PTR        = op(IMMEDIATE, MIR_TYPE_PTR),
+	OP_RELOCATION_INT       = op(RELOCATION, MIR_TYPE_INT),
+	OP_REGISTER_INT         = op(REGISTER, MIR_TYPE_INT),
+	OP_REGISTER_PTR         = op(REGISTER, MIR_TYPE_PTR),
+	OP_OFFSET_INT           = op(OFFSET, MIR_TYPE_INT),
+	OP_OFFSET_PTR           = op(OFFSET, MIR_TYPE_PTR),
+	OP_REGISTER_OFFSET_INT  = op(REGISTER_OFFSET, MIR_TYPE_INT),
+	OP_REGISTER_ADDRESS_INT = op(REGISTER_ADDRESS, MIR_TYPE_INT),
+	OP_RELOCATION_SLICE     = op(RELOCATION, MIR_TYPE_SLICE),
+	OP_OFFSET_SLICE         = op(OFFSET, MIR_TYPE_SLICE),
 };
 
 static inline u32 get_position(struct thread_context *tctx, s32 section_number) {
@@ -488,8 +491,8 @@ static inline struct x64_value _get_value_var(struct thread_context *tctx, struc
 static inline void release_value(struct thread_context *tctx, struct x64_value value) {
 	if (value.kind == REGISTER) {
 		release_registers(tctx, &value.reg, 1);
-	} else if (value.kind == REGOFF) {
-		release_registers(tctx, &value.regoff.reg, 1);
+	} else if (value.kind == REGISTER_OFFSET) {
+		release_registers(tctx, &value.reg_off_addr.reg, 1);
 	}
 }
 
@@ -578,8 +581,13 @@ static void emit_load_to_register_ext(struct thread_context *tctx, struct mir_in
 		case OP_OFFSET_INT:
 			mov_rm(tctx, reg, RBP, src_value.offset, value_size);
 			break;
-		case OP_REGOFF_INT: {
-			mov_rm_sib(tctx, reg, RBP, src_value.regoff.reg, src_value.regoff.offset, value_size);
+		case OP_REGISTER_OFFSET_INT: {
+			mov_rm_sib(tctx, reg, RBP, src_value.reg_off_addr.reg, src_value.reg_off_addr.offset, value_size);
+			release_value(tctx, src_value);
+			break;
+		}
+		case OP_REGISTER_ADDRESS_INT: {
+			mov_rm(tctx, reg, reg, 0, value_size);
 			release_value(tctx, src_value);
 			break;
 		}
@@ -594,10 +602,11 @@ static void emit_load_to_register_ext(struct thread_context *tctx, struct mir_in
 			BL_UNIMPLEMENTED;
 		}
 	} else if (cast_op == MIR_CAST_SEXT) {
+		// Signed extension from smaller value to bigger one.
 		bassert(dest_size > value_size);
 		switch (op_kind) {
 		case OP_OFFSET_INT:
-			movsx_rm(tctx, reg, RBP, src_value.offset, value_size, dest_size);
+			movsx_rm(tctx, reg, RBP, src_value.offset, dest_size, value_size);
 			break;
 		case OP_REGISTER_INT:
 			movsx_rr(tctx, reg, reg, dest_size, value_size);
@@ -609,7 +618,11 @@ static void emit_load_to_register_ext(struct thread_context *tctx, struct mir_in
 		BL_UNIMPLEMENTED;
 	}
 
-	set_value(tctx, instr, (struct x64_value){.kind = REGISTER, .reg = reg});
+	if (load->is_deref) {
+		set_value(tctx, instr, (struct x64_value){.kind = REGISTER_ADDRESS, .reg = reg});
+	} else {
+		set_value(tctx, instr, (struct x64_value){.kind = REGISTER, .reg = reg});
+	}
 }
 
 static void emit_compound(struct context *ctx, struct thread_context *tctx, struct mir_instr *instr, struct x64_value dest, u32 value_size) {
@@ -863,12 +876,12 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		case op_combined(OP_RELOCATION_SLICE, OP_OFFSET_SLICE):
 			emit_copy_relocation_to_offset(tctx, dest_value, src_value, value_size);
 			break;
-		case op_combined(OP_IMMEDIATE_INT, OP_REGOFF_INT):
-			mov_mi_sib(tctx, RBP, dest_value.regoff.reg, dest_value.regoff.offset, src_value.imm, value_size);
+		case op_combined(OP_IMMEDIATE_INT, OP_REGISTER_OFFSET_INT):
+			mov_mi_sib(tctx, RBP, dest_value.reg_off_addr.reg, dest_value.reg_off_addr.offset, src_value.imm, value_size);
 			release_value(tctx, dest_value);
 			break;
-		case op_combined(OP_REGISTER_INT, OP_REGOFF_INT):
-			mov_mr_sib(tctx, RBP, dest_value.regoff.reg, dest_value.regoff.offset, src_value.reg, value_size);
+		case op_combined(OP_REGISTER_INT, OP_REGISTER_OFFSET_INT):
+			mov_mr_sib(tctx, RBP, dest_value.reg_off_addr.reg, dest_value.reg_off_addr.offset, src_value.reg, value_size);
 			break;
 
 		default:
@@ -964,9 +977,9 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 				const s32 elem_size = (s32)elem_type->store_size_bytes;
 				imul_ri(tctx, index.reg, index.reg, elem_size, 8);
 				struct x64_value value = {
-				    .kind          = REGOFF,
-				    .regoff.reg    = index.reg,
-				    .regoff.offset = target.offset,
+				    .kind                = REGISTER_OFFSET,
+				    .reg_off_addr.reg    = index.reg,
+				    .reg_off_addr.offset = target.offset,
 				};
 				set_value(tctx, instr, value);
 				break;
@@ -1006,6 +1019,8 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		switch (cast->op) {
 		case MIR_CAST_NONE:
 		case MIR_CAST_BITCAST:
+			break;
+
 		case MIR_CAST_SEXT:
 		case MIR_CAST_TRUNC:
 		case MIR_CAST_ZEXT:
@@ -1326,6 +1341,8 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			// Currently used only for default intialization of pointer values, so we expect this to be NULL!
 			bassert(vm_read_ptr(type, cnst->base.value.data) == NULL);
 			bassert(type->store_size_bytes == 8);
+			// fall-through
+		case MIR_TYPE_NULL:
 			// fall-through
 		case MIR_TYPE_INT:
 			value.imm = vm_read_int(type, cnst->base.value.data);

@@ -24,6 +24,10 @@ void print_number2(long long n) {
 	printf("Long number is: %lld\n", n);
 }
 
+void print_address(unsigned long long v) {
+	printf("Address is: 0x%llX\n", v);
+}
+
 void print_string(long long len, char *ptr) {
 	assert(ptr);
 	printf("%.*s", (int)len, ptr);
