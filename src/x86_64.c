@@ -236,14 +236,16 @@ static inline u64 add_value(struct thread_context *tctx, struct x64_value value)
 	return arrlenu(tctx->values); // +1
 }
 
-static inline void add_data(struct thread_context *tctx, const void *buf, s32 len) {
+static inline void *add_data(struct thread_context *tctx, const void *buf, s32 len) {
 	const u32 i = get_position(tctx, SECTION_DATA);
 	arrsetlen(tctx->data, i + len);
+	void *dest = &tctx->data[i];
 	if (buf) {
-		memcpy(&tctx->data[i], buf, len);
+		memcpy(dest, buf, len);
 	} else {
-		bl_zeromem(&tctx->data[i], len);
+		bl_zeromem(dest, len);
 	}
+	return dest;
 }
 
 static inline void submit_instr(struct context *ctx, hash_t hash, struct mir_instr *instr) {
@@ -625,21 +627,21 @@ static void emit_load_to_register_ext(struct thread_context *tctx, struct mir_in
 	}
 }
 
-static void emit_compound(struct context *ctx, struct thread_context *tctx, struct mir_instr *instr, struct x64_value dest, u32 value_size) {
+static void emit_global_compound(struct context *ctx, struct thread_context *tctx, struct mir_instr *instr, void *dest, u32 value_size) {
+	BL_UNIMPLEMENTED;
+}
+
+static void emit_local_compound(struct context *ctx, struct thread_context *tctx, struct mir_instr *instr, struct x64_value dest, u32 value_size) {
 	bassert(instr && instr->kind == MIR_INSTR_COMPOUND);
-	bassert(dest.kind == OFFSET && "Only stack memory destination is supported for compound initializer.");
 	struct mir_instr_compound *cmp = (struct mir_instr_compound *)instr;
+	bassert(!mir_is_global(&cmp->base));
+	bassert(dest.kind == OFFSET && "Only stack memory destination is supported for compound initializer.");
 	if (mir_is_zero_initialized(cmp)) {
 		if (value_size <= REGISTER_SIZE) {
 			mov_mi(tctx, RBP, dest.offset, 0, value_size);
 		} else {
 			emit_call_memset(tctx, dest, 0, value_size);
 		}
-		return;
-	}
-
-	if (mir_is_comptime(&cmp->base) && mir_is_global(&cmp->base)) {
-		BL_UNIMPLEMENTED;
 		return;
 	}
 
@@ -849,7 +851,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			enum x64_register reg = get_temporary_register(tctx, NULL, 0);
 			emit_load_to_register(tctx, store->src, reg);
 		} else if (store->src->kind == MIR_INSTR_COMPOUND) {
-			emit_compound(ctx, tctx, store->src, dest_value, value_size);
+			emit_local_compound(ctx, tctx, store->src, dest_value, value_size);
 			break;
 		}
 
@@ -1432,7 +1434,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 				emit_load_to_register(tctx, decl->init, reg);
 			} else if (decl->init->kind == MIR_INSTR_COMPOUND) {
 				if (var->ref_count == 0) break;
-				emit_compound(ctx, tctx, decl->init, get_value(tctx, var), value_size);
+				emit_local_compound(ctx, tctx, decl->init, get_value(tctx, var), value_size);
 				break;
 			}
 
@@ -1523,19 +1525,32 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			struct mir_var   *var  = ((struct mir_instr_decl_var *)dest)->var;
 			if (!var->ref_count) continue;
 
-			const struct x64_value init_value = get_value(tctx, si->src);
-			const void            *data       = NULL;
-
-			switch (init_value.kind) {
-			case IMMEDIATE:
-				data = &init_value.imm;
-				break;
-			default:
-				BL_UNIMPLEMENTED;
-			}
-
+			const usize value_size = var->value.type->store_size_bytes;
 			add_sym(tctx, SECTION_DATA, var->linkage_name, IMAGE_SYM_CLASS_EXTERNAL, 0);
-			add_data(tctx, data, (s32)var->value.type->store_size_bytes);
+			void *data_dest = add_data(tctx, NULL, (s32)value_size);
+
+			if (si->src->backend_value == 0) {
+				struct mir_instr *cmp = si->src;
+				bassert(cmp->kind == MIR_INSTR_COMPOUND);
+				bassert(mir_is_global(cmp) && "Expected global compound expression!");
+				bassert(mir_is_comptime(cmp) && "Expected compile time known compound expression!");
+				bassert(((struct mir_instr_compound *)cmp)->is_naked == false && "Global compound expression cannot be naked!");
+
+				emit_global_compound(ctx, tctx, cmp, data_dest, value_size);
+				break;
+			} else {
+				const struct x64_value init_value = get_value(tctx, si->src);
+				const void            *data_src   = NULL;
+
+				switch (init_value.kind) {
+				case IMMEDIATE:
+					data_src = &init_value.imm;
+					break;
+				default:
+					BL_UNIMPLEMENTED;
+				}
+				memcpy(data_dest, data_src, value_size);
+			}
 		}
 		break;
 	}
