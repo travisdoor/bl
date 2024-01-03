@@ -324,11 +324,21 @@ static inline void mov_rm(struct thread_context *tctx, u8 r1, u8 r2, s32 offset,
 	add_code(tctx, &offset, disp == MOD_BYTE_DISP ? 1 : 4);
 }
 
-static inline void mov_rm_indirect(struct thread_context *tctx, u8 r1, s32 offset, usize size) {
+// mov reg, dword ptr [rip+offset]
+static inline void mov_rm_indirect(struct thread_context *tctx, u8 reg, s32 offset, usize size) {
 	const u8 r2  = RBP;
-	const u8 rex = encode_rex(size == 8, r1, 0, r2);
-	const u8 mrr = encode_mod_reg_rm(MOD_INDIRECT, r1, r2);
+	const u8 rex = encode_rex(size == 8, reg, 0, r2);
+	const u8 mrr = encode_mod_reg_rm(MOD_INDIRECT, reg, r2);
 	encode_base(tctx, rex, 0x8A, mrr, size);
+	add_code(tctx, &offset, 4);
+}
+
+// mov dword ptr [rip+offset], reg
+static inline void mov_mr_indirect(struct thread_context *tctx, s32 offset, u8 reg, usize size) {
+	const u8 r2  = RBP;
+	const u8 rex = encode_rex(size == 8, reg, 0, r2);
+	const u8 mrr = encode_mod_reg_rm(MOD_INDIRECT, reg, r2);
+	encode_base(tctx, rex, 0x88, mrr, size);
 	add_code(tctx, &offset, 4);
 }
 

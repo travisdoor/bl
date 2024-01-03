@@ -51,12 +51,29 @@ Bar :: struct {
 }
 
 __os_start :: fn () #entry {
-	// if _CRT_INIT() == 0 {
-	// 	C.exit(1);
+	if _CRT_INIT() == 0 {
+		C.exit(1);
+	}
+
+	// my_len := 10;
+
+	// command_line_arguments.len = my_len;
+	// command_line_arguments.ptr = null;
+
+	// print_number2(command_line_arguments.len);
+
+	martin := [_]s32.{ 10, 20, 30 };
+	// loop i := 0; i < martin.len; i += 1 {
+	// 	print_number(martin[i]);
 	// }
 
-	command_line_arguments.len = 0;
-	command_line_arguments.ptr = null;
+	martin_slice : []s32 = martin;
+	// print_number(martin_slice[0]);
+	// print_number(martin_slice[1]);
+	// print_number(martin_slice[2]);
+
+	n := 2;
+	print_number(martin_slice[n]);
 
 	// str :: "Hello!!!\n";
 	// print_string(str.len, str.ptr);
