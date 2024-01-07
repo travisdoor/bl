@@ -3516,6 +3516,11 @@ append_instr_cond_br(struct context *ctx, struct ast *node, struct mir_instr *co
 	append_current_block(ctx, &tmp->base);
 	struct mir_instr_block *block = ast_current_block(ctx);
 	if (!is_block_terminated(block)) terminate_block(block, &tmp->base);
+	if (cond->kind == MIR_INSTR_BINOP) {
+		((struct mir_instr_binop *)cond)->is_condition = true;
+	} else if (cond->kind == MIR_INSTR_UNOP) {
+		((struct mir_instr_unop *)cond)->is_condition = true;
+	}
 	return &tmp->base;
 }
 

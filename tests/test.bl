@@ -26,6 +26,18 @@ Any :: struct #compiler {
 	type_info: *u8;
 	data: *u8
 };
+
+CodeLocation :: struct #compiler {
+	/// Full source file path.
+	file: string_view;
+	/// Line in the source file.
+	line: s32;
+	/// Name of the function.
+	function: string_view;
+	/// File and line combination hash.
+	hash: u32;
+}
+
 string_view :: []u8;
 
 _CRT_INIT :: fn () win32.BOOL #extern;
@@ -35,10 +47,7 @@ print_number :: fn (n: s32) #extern;
 print_number2 :: fn (n: s64) #extern;
 print_address :: fn (v: u64) #extern;
 print_string :: fn (len: s64, ptr: *u8) #extern;
-
-my_number := 666;
-
-command_line_arguments: []string_view;
+assertion_message :: fn (len: s64, file: *u8, line: s32) #extern;
 
 Foo :: struct {
 	i: s32;
@@ -55,130 +64,283 @@ __os_start :: fn () #entry {
 		C.exit(1);
 	}
 
-	// my_len := 10;
-
-	// command_line_arguments.len = my_len;
-	// command_line_arguments.ptr = null;
-
-	// print_number2(command_line_arguments.len);
-
-	martin := [_]s32.{ 10, 20, 30 };
-	// loop i := 0; i < martin.len; i += 1 {
-	// 	print_number(martin[i]);
-	// }
-
-	martin_slice : []s32 = martin;
-	// print_number(martin_slice[0]);
-	// print_number(martin_slice[1]);
-	// print_number(martin_slice[2]);
-
-	n := 2;
-	print_number(martin_slice[n]);
-
-	// str :: "Hello!!!\n";
-	// print_string(str.len, str.ptr);
-
-	// str2: string_view;
-	// str2 = str;
-	// print_string(str2.len, str2.ptr);
-
-	// foo: Foo;
-	// foo.i = 10;
-	// foo.j = 20;
-
-	// print_number(foo.i + 30);
-	// print_number(foo.j);
-
-	// bar := Bar.{ j = 888, i = 999 };
-	// print_number(bar.i);
-	// print_number(bar.j);
-
-	// print_number(my_number);
-
-	// print_number2(str.len);
-
-	// a := 10;
-	// b := 20;
-	// c := 30;
-	// d := 40;
-	// e := 50;
-	// f := 60;
-
-	// bar = Bar.{ i = a, j = b + f };
-	// print_number(bar.i);
-	// print_number(bar.j);
-
-	// y := c + d;
-	// my_function(10, 20, 30, 40, 50, 60);
-	// my_function(10, 20, a + b, d, 50, d + b);
-	// my_function(a, b, c, d, e, f);
-
-	// print_number(add_numbers(10, 20));
-	// print_number(add_numbers(10, -20));
-	// print_number(mul_numbers(10, 20));
-
+	// test_global_slice();
+	// test_string();
+	// test_struct_members();
+	// test_compounds();
+	// test_function_calls();
 	// use_global_number();
-
 	// test_looping(10);
+	// test_array_int();
+	// test_array_ptr();
+	// test_casting();
+	// test_unop();
+	// test_conditions();
+	// test_condition_assign();
 
-	// arr: [4]s32;
-	// h : s64 = -100;
-	// print_number(auto h);
+	assert(false);
 
-	// arr[0] = 10;
-	// arr[1] = 20;
-	// arr[2] = 30;
-	// arr[3] = 40;
-	// print_number(arr[0]);
-	// print_number(arr[1]);
-	// print_number(arr[2]);
-	// print_number(arr[3]);
-
-	// n : s64 = 0;
-
-	// arr[n] = 100;
-	// n += 1;
-	// arr[n] = 200;
-	// n += 1;
-	// arr[n] = 300;
-	// n += 1;
-	// arr[n] = 400;
-
-	// loop i := 0; i < arr.len; i += 1 {
-	// 	print_number(arr[i]);
-	// }
-
-	// print_number(arr[n]);
-
-	// print_number(arr[n] + 666);
-
-	// num := -10;
-	// arr[n] = num;
-	// print_number(arr[3]);
-	// print_number2(arr.len);
-
-	// char: s8;
-	// char = cast(s8) num;
-	// print_number(auto char);
-
-	// word: s16;
-	// word = cast(s16) num;
-	// print_number(auto word);
-
-	// w2: s32;
-	// w2 = cast(s32) num;
-	// print_number(auto w2);
-
-	// ui := -10;
-	// ui_ptr := &ui;
-	// print_address(cast(u64) ui_ptr);
-	// print_number(@ui_ptr);
-	// char_ptr: *s8;
-	// char_ptr = &char;
-
-	// print_number(auto (@char_ptr));
-
+	done :: "------------\n!!! DONE !!!\n------------";
+	print_string(done.len, done.ptr);
 	C.exit(0);
+}
+
+assert :: fn (expr: bool, loc := #call_location) {
+	if expr == false {
+		assertion_message(loc.file.len, loc.file.ptr, loc.line);
+	}
+}
+
+test_condition_assign :: fn () {
+	good :: "OK!\n";
+	bad :: "INVALID!\n";
+
+	v := 10;
+	j := 20;
+	n := v == j;
+	if n {
+		print_string(bad.len, bad.ptr);
+	} else {
+		print_string(good.len, good.ptr);
+	}
+
+	n = v != j;
+	if n {
+		print_string(good.len, good.ptr);
+	} else {
+		print_string(bad.len, bad.ptr);
+	}
+
+	n = v < j;
+	if n {
+		print_string(good.len, good.ptr);
+	} else {
+		print_string(bad.len, bad.ptr);
+	}
+
+	n = v > j;
+	if n {
+		print_string(bad.len, bad.ptr);
+	} else {
+		print_string(good.len, good.ptr);
+	}
+}
+
+test_conditions :: fn () {
+	good :: "OK!\n";
+	bad :: "INVALID!\n";
+
+	v := 10;
+	j := 20;
+	if v == j {
+		print_string(bad.len, bad.ptr);
+	} else {
+		print_string(good.len, good.ptr);
+	}
+
+	if v != j {
+		print_string(good.len, good.ptr);
+	} else {
+		print_string(bad.len, bad.ptr);
+	}
+
+	if v < j {
+		print_string(good.len, good.ptr);
+	} else {
+		print_string(bad.len, bad.ptr);
+	}
+
+	if v > j {
+		print_string(bad.len, bad.ptr);
+	} else {
+		print_string(good.len, good.ptr);
+	}
+}
+
+test_unop :: fn () {
+	good :: "OK!\n";
+	bad :: "INVALID!\n";
+
+	{
+		n := 10;
+		m := -n;
+		print_number(m);
+	}
+
+	b := false;
+	if !b {
+		print_string(good.len, good.ptr);
+	} else {
+		print_string(bad.len, bad.ptr);
+	}
+
+	b = !b;
+	if b {
+		print_string(good.len, good.ptr);
+	} else {
+		print_string(bad.len, bad.ptr);
+	}
+}
+
+test_array_int :: fn () {
+	arr: [4]s32;
+	h : s64 = -100;
+	print_number(auto h);
+
+	arr[0] = 10;
+	arr[1] = 20;
+	arr[2] = 30;
+	arr[3] = 40;
+	print_number(arr[0]);
+	print_number(arr[1]);
+	print_number(arr[2]);
+	print_number(arr[3]);
+
+	n : s64 = 0;
+
+	arr[n] = 100;
+	n += 1;
+	arr[n] = 200;
+	n += 1;
+	arr[n] = 300;
+	n += 1;
+	arr[n] = 400;
+
+	loop i := 0; i < arr.len; i += 1 {
+		print_number(arr[i]);
+	}
+
+	print_number(arr[n]);
+	print_number(arr[n] + 666);
+}
+
+test_array_ptr :: fn () {
+	arr: []*s32;
+
+	a, b, c, d, e, f: s32;
+	// @Incomplete: Ocupy too much registers!
+	arr_data :: [_]*s32.{ &a, &b, &c, &d, &e, &f };
+
+	print_address(auto arr_data[0]);
+	print_address(auto arr_data[1]);
+	print_address(auto arr_data[2]);
+	print_address(auto arr_data[3]);
+
+	arr = arr_data;
+	print_address(auto arr[0]);
+	print_address(auto arr[1]);
+	print_address(auto arr[2]);
+	print_address(auto arr[3]);
+}
+
+command_line_arguments: []string_view;
+
+test_global_slice :: fn () {
+	command_line_arguments.len = 10;
+	print_number2(command_line_arguments.len);
+
+	my_len := 10;
+	command_line_arguments.len = my_len;
+	command_line_arguments.ptr = null;
+	print_number2(command_line_arguments.len);
+}
+
+test_string :: fn () {
+	str :: "Hello!!!\n";
+	print_string(str.len, str.ptr);
+
+	str2: string_view;
+	str2 = str;
+	print_string(str2.len, str2.ptr);
+}
+
+test_struct_members :: fn () {
+	foo: Foo;
+	foo.i = 10;
+	foo.j = 20;
+	print_number(foo.i + 30);
+	print_number(foo.j);
+}
+
+test_compounds :: fn () {
+	bar := Bar.{ j = 888, i = 999 };
+	print_number(bar.i);
+	print_number(bar.j);
+
+	a := 10;
+	b := 20;
+	c := 30;
+
+	bar = Bar.{ i = a, j = b + c };
+	print_number(bar.i);
+	print_number(bar.j);
+}
+
+test_slice :: fn () {
+	martin := [_]s32.{ 10, 20, 30 };
+	loop i := 0; i < martin.len; i += 1 {
+		print_number(martin[i]);
+	}
+	martin_slice : []s32 = martin;
+	print_number(martin_slice[0]);
+	print_number(martin_slice[1]);
+	print_number(martin_slice[2]);
+	loop i := 0; i < martin.len; i += 1 {
+		print_number(martin_slice[i]);
+	}
+}
+
+test_casting :: fn () {
+	{
+		num :: -10;
+
+		c: s8;
+		c = cast(s8) num;
+		print_number(auto c);
+
+		w: s16;
+		w = cast(s16) num;
+		print_number(auto w);
+
+		dw: s32;
+		dw = cast(s32) num;
+		print_number(auto dw);
+	}
+	{
+		num : u32 = 10;
+
+		c: u8;
+		c = cast(u8) num;
+		print_number(auto c);
+
+		w: u16;
+		w = cast(u16) num;
+		print_number(auto w);
+
+		dw: u32;
+		dw = cast(u32) num;
+		print_number(auto dw);
+
+		qw: u64;
+		qw = cast(u64) num;
+	}
+}
+
+test_function_calls :: fn () {
+	a := 10;
+	b := 20;
+	c := 30;
+	d := 40;
+	e := 50;
+	f := 60;
+
+	my_function(10, 20, 30, 40, 50, 60);
+	my_function(10, 20, a + b, d, 50, d + b);
+	my_function(a, b, c, d, e, f);
+
+	print_number(add_numbers(10, 20));
+	print_number(add_numbers(10, -20));
+	print_number(mul_numbers(10, 20));
 }
 
 test_looping :: fn (n: s32) {
@@ -190,6 +352,8 @@ test_looping :: fn (n: s32) {
 mul_numbers :: fn (a: s32, b: s32) s32 {
 	return a * b;
 }
+
+my_number := 666;
 
 use_global_number :: fn () {
 	print_number(my_number);

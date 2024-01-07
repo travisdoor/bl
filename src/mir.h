@@ -649,6 +649,7 @@ struct mir_instr_binop {
 	struct mir_instr *lhs;
 	struct mir_instr *rhs;
 	bool              volatile_type;
+	bool              is_condition;
 };
 
 struct mir_instr_unop {
@@ -656,6 +657,7 @@ struct mir_instr_unop {
 	enum unop_kind    op;
 	struct mir_instr *expr;
 	bool              volatile_type;
+	bool              is_condition;
 };
 
 struct mir_instr_fn_proto {

@@ -33,6 +33,10 @@ void print_string(long long len, char *ptr) {
 	printf("%.*s", (int)len, ptr);
 }
 
+void assertion_message(long long len, char *file, int line) {
+	printf("Assertion failed: %.*s:%d !!!\n", (int)len, file, line);
+}
+
 // Intrinsics
 void __bl_memcpy(void *dest, const void *src, unsigned long long size) {
 	memcpy(dest, src, size);

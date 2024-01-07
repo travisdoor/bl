@@ -112,8 +112,8 @@ static inline void encode_base(struct thread_context *tctx, u8 rex, u8 op_base, 
 
 static inline void xor_rr(struct thread_context *tctx, u8 r1, u8 r2, usize size);
 
-static inline void zero_reg(struct thread_context *tctx, u8 r) {
-	xor_rr(tctx, r, r, 8);
+static inline void zero_reg(struct thread_context *tctx, u8 r, usize size) {
+	xor_rr(tctx, r, r, size);
 }
 
 static inline void nop(struct thread_context *tctx) {
@@ -402,7 +402,34 @@ static inline void movsx_rm(struct thread_context *tctx, u8 r1, u8 r2, s32 offse
 	add_code(tctx, buf, i);
 	add_code(tctx, &offset, 4);
 }
+/*
+static inline void movzx_rr(struct thread_context *tctx, u8 r1, u8 r2, usize size1, usize size2) {
+	bassert(size1 > size2);
 
+	// Valid for 8 and 16 bit values, for 32 and 64 we can use regular mov.
+
+	const u8 rex = encode_rex(size1 == 8, r1, 0, r2);
+	const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, r1, r2);
+
+	u8  buf[4];
+	s32 i = 0;
+	if (rex) buf[i++] = rex;
+	switch (size1) {
+	case 4:
+		buf[i++] = 0x0F;
+		buf[i++] = 0xB6;
+		break;
+	case 8:
+		buf[i++] = 0x63;
+		break;
+	default:
+		bassert(false);
+	}
+
+	if (mrr) buf[i++] = mrr;
+	add_code(tctx, buf, i);
+}
+*/
 inline void xor_rr(struct thread_context *tctx, u8 r1, u8 r2, usize size) {
 	const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, r2, r1);
 	const u8 rex = encode_rex(size == 8, r2, 0, r1);
