@@ -64,21 +64,21 @@ __os_start :: fn () #entry {
 		C.exit(1);
 	}
 
-	// test_global_slice();
-	// test_string();
-	// test_struct_members();
-	// test_compounds();
-	// test_function_calls();
-	// use_global_number();
-	// test_looping(10);
-	// test_array_int();
-	// test_array_ptr();
-	// test_casting();
-	// test_unop();
-	// test_conditions();
-	// test_condition_assign();
-
-	assert(false);
+	test_global_slice();
+	test_string();
+	test_struct_members();
+	test_compounds();
+	test_function_calls();
+	use_global_number();
+	test_looping(10);
+	test_array_int();
+	test_array_ptr();
+	test_casting();
+	test_unop();
+	test_conditions();
+	test_condition_assign();
+	test_glob_addrof();
+	test_out_arg();
 
 	done :: "------------\n!!! DONE !!!\n------------";
 	print_string(done.len, done.ptr);
@@ -91,39 +91,44 @@ assert :: fn (expr: bool, loc := #call_location) {
 	}
 }
 
-test_condition_assign :: fn () {
-	good :: "OK!\n";
-	bad :: "INVALID!\n";
+test_out_arg :: fn () {
+	update_arg :: fn (n: *s32) {
+		@n = 10;
+	};
 
+	n := 0;
+	update_arg(&n);
+	assert(n == 10);
+
+	update_arg2 :: fn (buf: *[]string_view) {
+		buf.len = 20;
+		buf.ptr = null;
+	};
+
+	buf: []string_view;
+	update_arg2(&buf);
+	assert(buf.len == 20);
+	assert(!buf.ptr);
+}
+
+GLOBAL := 10;
+test_glob_addrof :: fn () {
+	addr :: &GLOBAL;
+	assert(addr);
+	assert(@addr == 10);
+}
+
+test_condition_assign :: fn () {
 	v := 10;
 	j := 20;
 	n := v == j;
-	if n {
-		print_string(bad.len, bad.ptr);
-	} else {
-		print_string(good.len, good.ptr);
-	}
-
+	assert(!n);
 	n = v != j;
-	if n {
-		print_string(good.len, good.ptr);
-	} else {
-		print_string(bad.len, bad.ptr);
-	}
-
+	assert(n);
 	n = v < j;
-	if n {
-		print_string(good.len, good.ptr);
-	} else {
-		print_string(bad.len, bad.ptr);
-	}
-
+	assert(n);
 	n = v > j;
-	if n {
-		print_string(bad.len, bad.ptr);
-	} else {
-		print_string(good.len, good.ptr);
-	}
+	assert(!n);
 }
 
 test_conditions :: fn () {
@@ -159,11 +164,11 @@ test_conditions :: fn () {
 
 test_unop :: fn () {
 	good :: "OK!\n";
-	bad :: "INVALID!\n";
 
 	{
 		n := 10;
 		m := -n;
+		assert(m == -10);
 		print_number(m);
 	}
 
@@ -171,14 +176,14 @@ test_unop :: fn () {
 	if !b {
 		print_string(good.len, good.ptr);
 	} else {
-		print_string(bad.len, bad.ptr);
+		assert(false);
 	}
 
 	b = !b;
 	if b {
 		print_string(good.len, good.ptr);
 	} else {
-		print_string(bad.len, bad.ptr);
+		assert(false);
 	}
 }
 
@@ -191,10 +196,10 @@ test_array_int :: fn () {
 	arr[1] = 20;
 	arr[2] = 30;
 	arr[3] = 40;
-	print_number(arr[0]);
-	print_number(arr[1]);
-	print_number(arr[2]);
-	print_number(arr[3]);
+	assert(arr[0] == 10);
+	assert(arr[1] == 20);
+	assert(arr[2] == 30);
+	assert(arr[3] == 40);
 
 	n : s64 = 0;
 
@@ -206,9 +211,10 @@ test_array_int :: fn () {
 	n += 1;
 	arr[n] = 400;
 
-	loop i := 0; i < arr.len; i += 1 {
-		print_number(arr[i]);
-	}
+	assert(arr[0] == 100);
+	assert(arr[1] == 200);
+	assert(arr[2] == 300);
+	assert(arr[3] == 400);
 
 	print_number(arr[n]);
 	print_number(arr[n] + 666);

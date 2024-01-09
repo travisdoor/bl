@@ -177,31 +177,44 @@ struct context {
 // https://courses.cs.washington.edu/courses/cse378/03wi/lectures/LinkerFiles/coff.pdf
 
 static void job(struct job_context *job_ctx);
-static u32  add_sym(struct thread_context *tctx, s32 section_number, str_t linkage_name, u8 storage_class, s32 data_type);
 
-#define op(value_kind, type_kind) ((value_kind << 4) | (type_kind))
+enum x64_type_kind {
+	X64_UNKNOWN,
+	X64_NUMBER = 1,
+	X64_SLICE  = 2, // Generalize?
+};
+
+static inline enum x64_type_kind get_type_kind(struct mir_type *type) {
+	switch (type->kind) {
+	case MIR_TYPE_INT:
+	case MIR_TYPE_PTR:
+	case MIR_TYPE_BOOL:
+	case MIR_TYPE_ENUM:
+	case MIR_TYPE_NULL:
+		return X64_NUMBER;
+
+	case MIR_TYPE_SLICE:
+		return X64_SLICE;
+
+	default:
+		str_buf_t type_name = mir_type2str(type, false);
+		babort("Unsupported type in x64 backend: %.*s.", type_name.len, type_name.ptr);
+	}
+}
+
+#define op(value_kind, type_kind) ((value_kind << 4) | get_type_kind(type_kind))
 #define op_combined(a, b) ((((u64)a) << 8) | ((u64)b))
 
 enum op_kind {
-	// FFFF value_kind | FFFF mir_type.kind
-	OP_IMMEDIATE_INT        = op(IMMEDIATE, MIR_TYPE_INT),
-	OP_IMMEDIATE_PTR        = op(IMMEDIATE, MIR_TYPE_PTR),
-	OP_IMMEDIATE_NULL       = op(IMMEDIATE, MIR_TYPE_NULL),
-	OP_IMMEDIATE_BOOL       = op(IMMEDIATE, MIR_TYPE_BOOL),
-	OP_RELOCATION_PTR       = op(RELOCATION, MIR_TYPE_PTR),
-	OP_RELOCATION_INT       = op(RELOCATION, MIR_TYPE_INT),
-	OP_RELOCATION_NULL      = op(RELOCATION, MIR_TYPE_NULL),
-	OP_REGISTER_INT         = op(REGISTER, MIR_TYPE_INT),
-	OP_REGISTER_PTR         = op(REGISTER, MIR_TYPE_PTR),
-	OP_REGISTER_BOOL        = op(REGISTER, MIR_TYPE_BOOL),
-	OP_OFFSET_INT           = op(OFFSET, MIR_TYPE_INT),
-	OP_OFFSET_PTR           = op(OFFSET, MIR_TYPE_PTR),
-	OP_OFFSET_BOOL          = op(OFFSET, MIR_TYPE_BOOL),
-	OP_REGISTER_OFFSET_INT  = op(REGISTER_OFFSET, MIR_TYPE_INT),
-	OP_REGISTER_ADDRESS_INT = op(REGISTER_ADDRESS, MIR_TYPE_INT),
-	OP_REGISTER_ADDRESS_PTR = op(REGISTER_ADDRESS, MIR_TYPE_PTR),
-	OP_RELOCATION_SLICE     = op(RELOCATION, MIR_TYPE_SLICE),
-	OP_OFFSET_SLICE         = op(OFFSET, MIR_TYPE_SLICE),
+	// FFFF value_kind | FFFF type_kind
+	OP_IMMEDIATE_NUMBER        = (IMMEDIATE << 4) | X64_NUMBER,
+	OP_RELOCATION_NUMBER       = (RELOCATION << 4) | X64_NUMBER,
+	OP_REGISTER_NUMBER         = (REGISTER << 4) | X64_NUMBER,
+	OP_OFFSET_NUMBER           = (OFFSET << 4) | X64_NUMBER,
+	OP_REGISTER_OFFSET_NUMBER  = (REGISTER_OFFSET << 4) | X64_NUMBER,
+	OP_REGISTER_ADDRESS_NUMBER = (REGISTER_ADDRESS << 4) | X64_NUMBER,
+	OP_RELOCATION_SLICE        = (RELOCATION << 4) | X64_SLICE,
+	OP_OFFSET_SLICE            = (OFFSET << 4) | X64_SLICE,
 };
 
 static inline u32 get_position(struct thread_context *tctx, s32 section_number) {
@@ -254,17 +267,18 @@ static inline u64 add_value(struct thread_context *tctx, struct x64_value value)
 	return arrlenu(tctx->values); // +1
 }
 
-static inline void *add_data(struct thread_context *tctx, const void *buf, s32 len) {
-	const u32 i = get_position(tctx, SECTION_DATA);
-	arrsetlen(tctx->data, i + len);
-	void *dest = &tctx->data[i];
+// Returns offset in data section.
+static inline u32 add_data(struct thread_context *tctx, const void *buf, s32 len) {
+	const u32 position = get_position(tctx, SECTION_DATA);
+	arrsetlen(tctx->data, position + len);
+	void *dest = &tctx->data[position];
 	if (buf) {
 		memcpy(dest, buf, len);
 	} else {
 		// This is required.
 		bl_zeromem(dest, len);
 	}
-	return dest;
+	return position;
 }
 
 static inline void submit_instr(struct context *ctx, hash_t hash, struct mir_instr *instr) {
@@ -299,17 +313,16 @@ static inline hash_t submit_global_variable_generation(struct context *ctx, stru
 // final code section.
 //
 // Returns offset of the symbol in the binary.
-u32 add_sym(struct thread_context *tctx, s32 section_number, str_t linkage_name, u8 storage_class, s32 data_type) {
+u32 add_sym(struct thread_context *tctx, s32 section_number, u32 offset, str_t linkage_name, u8 storage_class, s32 data_type) {
 	bassert(linkage_name.len && linkage_name.ptr);
-	const u32    offset = get_position(tctx, section_number);
-	IMAGE_SYMBOL sym    = {
-	       .SectionNumber = section_number,
-	       .Type          = data_type,
-	       .StorageClass  = storage_class,
-	       .Value         = offset,
-    };
+	IMAGE_SYMBOL sym = {
+	    .SectionNumber = section_number,
+	    .Type          = data_type,
+	    .StorageClass  = storage_class,
+	    .Value         = offset,
+	};
 
-	if (linkage_name.len > 8) {
+	if (linkage_name.len > 7) {
 		const u32 str_offset = (u32)arrlenu(tctx->strs);
 		arrsetcap(tctx->strs, 256);
 		arrsetlen(tctx->strs, str_offset + linkage_name.len + 1); // +1 zero terminator
@@ -360,7 +373,7 @@ hash_t add_global_external_sym(struct context *ctx, str_t linkage_name, s32 data
 }
 
 static inline u64 add_block(struct thread_context *tctx, const str_t name) {
-	const u32        address = add_sym(tctx, SECTION_TEXT, name, IMAGE_SYM_CLASS_LABEL, 0);
+	const u32        address = add_sym(tctx, SECTION_TEXT, get_position(tctx, SECTION_TEXT), name, IMAGE_SYM_CLASS_LABEL, 0);
 	struct x64_value value   = {.kind = ADDRESS, .address = address};
 	return add_value(tctx, value);
 }
@@ -563,6 +576,37 @@ static inline void add_patch(struct thread_context *tctx, hash_t hash, u64 posit
 	arrput(tctx->patches, patch);
 }
 
+static void emit_string_literal(struct context *ctx, struct thread_context *tctx, u32 dest_offset, str_t str) {
+	struct assembly *assembly = ctx->assembly;
+	struct mir_type *type     = assembly->builtin_types.t_string_literal;
+	str_buf_t        name     = get_tmp_str();
+
+	hash_t reloc_hash = 0;
+
+	{ // String data in DATA segment.
+		unique_name(ctx, &name, ".dstr", (const str_t){0});
+		const u32 data_offset = add_data(tctx, str.ptr, str.len);
+		add_sym(tctx, SECTION_DATA, data_offset, str_buf_view(name), IMAGE_SYM_CLASS_EXTERNAL, 0);
+
+		reloc_hash = strhash(name);
+	}
+
+	{ // Write len
+		const u32 len_offset = (u32)vm_get_struct_elem_offset(assembly, type, MIR_SLICE_LEN_INDEX);
+		memcpy(tctx->data + dest_offset + len_offset, &str.len, mir_get_struct_elem_type(type, MIR_SLICE_LEN_INDEX)->store_size_bytes);
+	}
+
+	{ // Write ptr
+		unique_name(ctx, &name, ".str", (const str_t){0});
+		const u32 ptr_offset = (u32)vm_get_struct_elem_offset(assembly, type, MIR_SLICE_PTR_INDEX);
+		add_sym(tctx, SECTION_DATA, dest_offset + ptr_offset, str_buf_view(name), IMAGE_SYM_CLASS_EXTERNAL, 0);
+
+		add_patch(tctx, reloc_hash, dest_offset + ptr_offset, IMAGE_REL_AMD64_ADDR64, SECTION_DATA);
+	}
+
+	put_tmp_str(name);
+}
+
 static void emit_call_memcpy(struct thread_context *tctx, struct x64_value dest, struct x64_value src, s64 size) {
 	const enum x64_register excluded[] = {RCX, RDX, R8};
 
@@ -628,25 +672,22 @@ static void emit_load_to_register(struct thread_context *tctx, struct mir_instr 
 	struct x64_value src_value  = get_value(tctx, load->src);
 	const usize      value_size = type->store_size_bytes;
 
-	enum op_kind op_kind = op(src_value.kind, type->kind);
+	enum op_kind op_kind = op(src_value.kind, type);
 
 	switch (op_kind) {
-	case OP_OFFSET_PTR:
-	case OP_OFFSET_INT:
-	case OP_OFFSET_BOOL:
+	case OP_OFFSET_NUMBER:
 		mov_rm(tctx, reg, RBP, src_value.offset, value_size);
 		break;
-	case OP_REGISTER_OFFSET_INT: {
+	case OP_REGISTER_OFFSET_NUMBER: {
 		mov_rm_sib(tctx, reg, RBP, src_value.reg_off_addr.reg, src_value.reg_off_addr.offset, value_size);
 		break;
 	}
-	case OP_REGISTER_ADDRESS_PTR:
-	case OP_REGISTER_ADDRESS_INT: {
+	case OP_REGISTER_ADDRESS_NUMBER: {
 		// bassert(reg == src_value.reg_off_addr.reg); // @Explain???
 		mov_rm(tctx, reg, src_value.reg_off_addr.reg, src_value.reg_off_addr.offset, value_size);
 		break;
 	}
-	case OP_RELOCATION_INT: {
+	case OP_RELOCATION_NUMBER: {
 		mov_rm_indirect(tctx, reg, src_value.reloc.offset, value_size);
 		const u32 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
 		add_patch(tctx, src_value.reloc.hash, reloc_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
@@ -664,7 +705,7 @@ static void emit_load_to_register(struct thread_context *tctx, struct mir_instr 
 	}
 }
 
-static void emit_global_compound(struct context *ctx, struct thread_context *tctx, struct mir_instr *instr, void *dest, u32 value_size) {
+static void emit_global_compound(struct context *ctx, struct thread_context *tctx, struct mir_instr *instr, u32 dest_offset, u32 value_size) {
 	bassert(instr->kind == MIR_INSTR_COMPOUND);
 	bassert(mir_is_global(instr) && "Expected global compound expression!");
 	bassert(mir_is_comptime(instr) && "Expected compile time known compound expression!");
@@ -734,13 +775,12 @@ static void emit_local_compound(struct context *ctx, struct thread_context *tctx
 			dest_value_offset = dest.offset + (s32)vm_get_array_elem_offset(type, (u32)i);
 		}
 
-		enum op_kind op_kind = op(value.kind, value_instr->value.type->kind);
+		enum op_kind op_kind = op(value.kind, value_instr->value.type);
 		switch (op_kind) {
-		case OP_IMMEDIATE_INT:
+		case OP_IMMEDIATE_NUMBER:
 			mov_mi(tctx, RBP, dest_value_offset, value.imm, value_size);
 			break;
-		case OP_REGISTER_PTR:
-		case OP_REGISTER_INT:
+		case OP_REGISTER_NUMBER:
 			mov_mr(tctx, RBP, dest_value_offset, value.reg, value_size);
 			break;
 		default:
@@ -859,7 +899,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		bassert(linkage_name.len && "Invalid function name!");
 
 		const s32 section_number = isflag(fn->flags, FLAG_EXTERN) ? SECTION_EXTERN : SECTION_TEXT;
-		add_sym(tctx, section_number, linkage_name, IMAGE_SYM_CLASS_EXTERNAL, DT_FUNCTION);
+		add_sym(tctx, section_number, get_position(tctx, section_number), linkage_name, IMAGE_SYM_CLASS_EXTERNAL, DT_FUNCTION);
 
 		// External functions does not have any body block.
 		if (isflag(fn->flags, FLAG_EXTERN)) {
@@ -931,10 +971,14 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		break;
 
 	case MIR_INSTR_STORE: {
-		struct mir_instr_store *store = (struct mir_instr_store *)instr;
-		struct mir_type        *type  = store->src->value.type;
-		bassert(store->dest->backend_value);
-		const u32        value_size = (u32)type->store_size_bytes;
+		struct mir_instr_store *store      = (struct mir_instr_store *)instr;
+		struct mir_type        *type       = store->src->value.type;
+		const u32               value_size = (u32)type->store_size_bytes;
+
+		if (store->dest->kind == MIR_INSTR_LOAD) {
+			enum x64_register reg = get_temporary_register(tctx, NULL, 0);
+			emit_load_to_register(tctx, store->dest, reg);
+		}
 		struct x64_value dest_value = get_value(tctx, store->dest);
 
 		if (store->src->kind == MIR_INSTR_LOAD) {
@@ -950,26 +994,22 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 		u32 reloc_position = 0;
 
-		const enum op_kind dest_kind = op(dest_value.kind, type->kind);
-		const enum op_kind src_kind  = op(src_value.kind, type->kind);
+		const enum op_kind dest_kind = op(dest_value.kind, type);
+		const enum op_kind src_kind  = op(src_value.kind, type);
 
 		switch (op_combined(dest_kind, src_kind)) {
-		case op_combined(OP_OFFSET_INT, OP_IMMEDIATE_INT):
+		case op_combined(OP_OFFSET_NUMBER, OP_IMMEDIATE_NUMBER):
 			mov_mi(tctx, RBP, dest_offset, src_value.imm, value_size);
 			break;
-		case op_combined(OP_RELOCATION_NULL, OP_IMMEDIATE_NULL):
-		case op_combined(OP_RELOCATION_INT, OP_IMMEDIATE_INT):
+		case op_combined(OP_RELOCATION_NUMBER, OP_IMMEDIATE_NUMBER):
 			mov_mi_indirect(tctx, dest_value.reloc.offset, src_value.imm, value_size);
 			reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(u64);
 			add_patch(tctx, dest_value.reloc.hash, reloc_position, IMAGE_REL_AMD64_REL32_4, SECTION_TEXT);
 			break;
-		case op_combined(OP_OFFSET_PTR, OP_REGISTER_PTR):
-		case op_combined(OP_OFFSET_INT, OP_REGISTER_INT):
-		case op_combined(OP_OFFSET_BOOL, OP_REGISTER_BOOL):
+		case op_combined(OP_OFFSET_NUMBER, OP_REGISTER_NUMBER):
 			mov_mr(tctx, RBP, dest_offset, src_value.reg, value_size);
 			break;
-		case op_combined(OP_RELOCATION_INT, OP_REGISTER_INT):
-		case op_combined(OP_RELOCATION_PTR, OP_REGISTER_PTR):
+		case op_combined(OP_RELOCATION_NUMBER, OP_REGISTER_NUMBER):
 			// register -> relocated memory.
 			mov_mr_indirect(tctx, dest_value.reloc.offset, src_value.reg, value_size);
 			reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
@@ -978,11 +1018,17 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		case op_combined(OP_OFFSET_SLICE, OP_RELOCATION_SLICE):
 			emit_copy_relocation_to_offset(tctx, dest_value, src_value, value_size);
 			break;
-		case op_combined(OP_REGISTER_OFFSET_INT, OP_IMMEDIATE_INT):
+		case op_combined(OP_REGISTER_OFFSET_NUMBER, OP_IMMEDIATE_NUMBER):
 			mov_mi_sib(tctx, RBP, dest_value.reg_off_addr.reg, dest_value.reg_off_addr.offset, src_value.imm, value_size);
 			break;
-		case op_combined(OP_REGISTER_OFFSET_INT, OP_REGISTER_INT):
+		case op_combined(OP_REGISTER_OFFSET_NUMBER, OP_REGISTER_NUMBER):
 			mov_mr_sib(tctx, RBP, dest_value.reg_off_addr.reg, dest_value.reg_off_addr.offset, src_value.reg, value_size);
+			break;
+		case op_combined(OP_REGISTER_ADDRESS_NUMBER, OP_REGISTER_NUMBER):
+			mov_mr(tctx, dest_value.reg_off_addr.reg, dest_value.reg_off_addr.offset, src_value.reg, value_size);
+			break;
+		case op_combined(OP_REGISTER_ADDRESS_NUMBER, OP_IMMEDIATE_NUMBER):
+			mov_mi(tctx, dest_value.reg_off_addr.reg, dest_value.reg_off_addr.offset, src_value.imm, value_size);
 			break;
 
 		default:
@@ -1043,11 +1089,20 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			emit_load_to_register(tctx, addr->src, reg);
 		}
 
-		const struct x64_value src_value = get_value(tctx, addr->src);
-		const enum op_kind     op_kind   = op(src_value.kind, addr->src->value.type->kind);
+		const struct x64_value src_value  = get_value(tctx, addr->src);
+		const usize            value_size = addr->src->value.type->store_size_bytes;
+		const enum op_kind     op_kind    = op(src_value.kind, addr->src->value.type);
 
 		switch (op_kind) {
-		case OP_OFFSET_PTR: {
+		case OP_RELOCATION_NUMBER: {
+			enum x64_register reg = get_temporary_register(tctx, NULL, 0);
+			lea_rm_indirect(tctx, reg, src_value.reloc.offset, value_size);
+			const u32 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
+			add_patch(tctx, src_value.reloc.hash, reloc_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
+			set_value(tctx, instr, (struct x64_value){.kind = REGISTER, .reg = reg});
+			break;
+		}
+		case OP_OFFSET_NUMBER: {
 			enum x64_register reg = get_temporary_register(tctx, NULL, 0);
 			lea_rm(tctx, reg, RBP, src_value.offset, 8);
 			set_value(tctx, instr, (struct x64_value){.kind = REGISTER, .reg = reg});
@@ -1172,6 +1227,12 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			movsx_rr(tctx, value.reg, value.reg, dest_size, src_size);
 			break;
 
+		case MIR_CAST_PTRTOBOOL:
+			cmp_ri(tctx, value.reg, 0, src_size);
+			setne(tctx, value.reg);
+			and_ri(tctx, value.reg, 1, ctx->assembly->builtin_types.t_bool->store_size_bytes);
+			break;
+
 		case MIR_CAST_FPTOSI:
 		case MIR_CAST_FPTOUI:
 		case MIR_CAST_FPTRUNC:
@@ -1179,7 +1240,6 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		case MIR_CAST_SITOFP:
 		case MIR_CAST_UITOFP:
 		case MIR_CAST_INTTOPTR:
-		case MIR_CAST_PTRTOBOOL:
 			BL_UNIMPLEMENTED;
 
 		default:
@@ -1217,24 +1277,9 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		case UNOP_NOT: {
 			cmp_ri(tctx, value.reg, 0, value_size);
 			if (!unop->is_condition) {
-				jne_relative_i32(tctx, 0x0);
-				const u64 p0 = get_position(tctx, SECTION_TEXT);
-				mov_ri(tctx, value.reg, 1, value_size);
-				jmp_relative_i32(tctx, 0);
-				const u64 p1 = get_position(tctx, SECTION_TEXT);
-
-				str_buf_t name = get_tmp_str();
-				unique_name(ctx, &name, ".", cstr("B"));
-				add_block(tctx, str_buf_view(name));
-				*data_ptr_s32(tctx->text, p0 - sizeof(s32)) = (s32)(get_position(tctx, SECTION_TEXT) - p0);
-
-				mov_ri(tctx, value.reg, 0, value_size);
-
-				unique_name(ctx, &name, ".", cstr("B"));
-				add_block(tctx, str_buf_view(name));
-				*data_ptr_s32(tctx->text, p1 - sizeof(s32)) = (s32)(get_position(tctx, SECTION_TEXT) - p1);
-
-				put_tmp_str(name);
+				bassert(value_size == 1);
+				sete(tctx, value.reg);
+				and_ri(tctx, value.reg, 1, ctx->assembly->builtin_types.t_bool->store_size_bytes);
 			}
 			break;
 		}
@@ -1284,14 +1329,12 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		// Left hand side value must be in the register, the same register later contains the result of the operation.
 		bassert(lhs_value.kind == REGISTER);
 
-		const enum op_kind op_kind = op(rhs_value.kind, type->kind);
+		const enum op_kind op_kind = op(rhs_value.kind, type);
 		switch (op_kind) {
-		case OP_IMMEDIATE_PTR:
-		case OP_IMMEDIATE_INT:
-		case OP_IMMEDIATE_BOOL:
+		case OP_IMMEDIATE_NUMBER:
 			emit_binop_ri(tctx, binop->op, lhs_value.reg, rhs_value.imm, type->store_size_bytes);
 			break;
-		case OP_REGISTER_INT:
+		case OP_REGISTER_NUMBER:
 			emit_binop_rr(tctx, binop->op, lhs_value.reg, rhs_value.reg, type->store_size_bytes);
 			break;
 
@@ -1306,12 +1349,11 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			// In this case the operation result is not used in conditional jump; the result is used as a bool value
 			// instead, so we have to emit code setting LHS register to true or false based on the condition.
 			bassert(binop->base.value.type->kind == MIR_TYPE_BOOL);
-			const usize value_size = ctx->assembly->builtin_types.t_bool->store_size_bytes;
-			str_buf_t   name       = get_tmp_str();
+			str_buf_t name = get_tmp_str();
 
 			const u64 p0 = emit_relational_binop_jmp(tctx, binop->op);
 
-			mov_ri(tctx, regs[LHS], 1, value_size);
+			mov_ri(tctx, regs[LHS], 1, 8); // Lets set whole register.
 			jmp_relative_i32(tctx, 0);
 			const u64 p1 = get_position(tctx, SECTION_TEXT);
 
@@ -1319,7 +1361,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			add_block(tctx, str_buf_view(name));
 			*data_ptr_s32(tctx->text, p0 - sizeof(s32)) = (s32)(get_position(tctx, SECTION_TEXT) - p0);
 
-			mov_ri(tctx, regs[LHS], 0, value_size);
+			zero_reg(tctx, regs[LHS], 8);
 
 			unique_name(ctx, &name, ".", cstr("B"));
 			add_block(tctx, str_buf_view(name));
@@ -1598,8 +1640,8 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 					unique_name(ctx, &name, ".str", (const str_t){0});
 					const u32 len_offset = get_position(tctx, SECTION_DATA);
 
-					add_sym(tctx, SECTION_DATA, str_buf_view(name), IMAGE_SYM_CLASS_EXTERNAL, 0);
-					add_data(tctx, NULL, (s32)type->store_size_bytes);
+					const u32 data_offset = add_data(tctx, NULL, (s32)type->store_size_bytes);
+					add_sym(tctx, SECTION_DATA, data_offset, str_buf_view(name), IMAGE_SYM_CLASS_EXTERNAL, 0);
 					memcpy(&tctx->data[len_offset], &len, mir_get_struct_elem_type(type, MIR_SLICE_LEN_INDEX)->store_size_bytes);
 					ptr_patch.position = len_offset + mir_get_struct_elem_type(type, MIR_SLICE_PTR_INDEX)->store_size_bytes;
 
@@ -1610,8 +1652,8 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 				{
 					unique_name(ctx, &name, ".dstr", (const str_t){0});
 
-					add_sym(tctx, SECTION_DATA, str_buf_view(name), IMAGE_SYM_CLASS_EXTERNAL, 0);
-					add_data(tctx, str, (s32)len);
+					const u32 data_offset = add_data(tctx, str, (s32)len);
+					add_sym(tctx, SECTION_DATA, data_offset, str_buf_view(name), IMAGE_SYM_CLASS_EXTERNAL, 0);
 
 					ptr_patch.hash = strhash(name);
 				}
@@ -1661,14 +1703,21 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		unique_name(ctx, &name, ".loc", (const str_t){0});
 		const hash_t hash = strhash(name);
 
-		const struct mir_type *type         = ctx->assembly->builtin_types.t_CodeLocation;
-		const u32              reloc_offset = get_position(tctx, SECTION_DATA);
-		add_sym(tctx, SECTION_DATA, str_buf_view(name), IMAGE_SYM_CLASS_EXTERNAL, 0);
-		u8  *dest      = add_data(tctx, NULL, (s32)type->store_size_bytes);
-		s32 *dest_line = (s32 *)(dest + vm_get_struct_elem_offset(ctx->assembly, type, 1)); // line
-		*dest_line     = loc->call_location->line;
+		const struct mir_type *type = ctx->assembly->builtin_types.t_CodeLocation;
 
-		add_patch(tctx, hash, reloc_offset, IMAGE_REL_AMD64_REL32, SECTION_DATA);
+		// Alocate in DATA segment.
+		const u32 data_offset = add_data(tctx, NULL, (s32)type->store_size_bytes);
+		add_sym(tctx, SECTION_DATA, data_offset, str_buf_view(name), IMAGE_SYM_CLASS_EXTERNAL, 0);
+
+		// Write file
+		char *filepath = loc->call_location->unit->filepath;
+		emit_string_literal(ctx, tctx, data_offset, make_str_from_c(filepath));
+
+		// Write line
+		const u32 line_member_offset                  = data_offset + (u32)vm_get_struct_elem_offset(ctx->assembly, type, 1);
+		*data_ptr_s32(tctx->data, line_member_offset) = loc->call_location->line;
+
+		// Call Location yields pointer to static data...
 		const enum x64_register reg = get_temporary_register(tctx, NULL, 0);
 		lea_rm_indirect(tctx, reg, 0, 8);
 		const u32 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
@@ -1689,8 +1738,6 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			break;
 		}
 
-		if (var->ref_count == 0) break;
-
 		const u32 value_size = (u32)type->store_size_bytes;
 
 		if (decl->init) {
@@ -1705,20 +1752,17 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			}
 
 			struct x64_value init_value = get_value(tctx, decl->init);
+			if (var->ref_count == 0) break; // Must be here to release register eventually.
 
 			const struct x64_value var_value = get_value(tctx, var);
 			bassert(var_value.kind == OFFSET);
 
-			const enum op_kind op_kind = op(init_value.kind, type->kind);
+			const enum op_kind op_kind = op(init_value.kind, type);
 			switch (op_kind) {
-			case OP_IMMEDIATE_PTR:
-			case OP_IMMEDIATE_BOOL:
-			case OP_IMMEDIATE_INT:
+			case OP_IMMEDIATE_NUMBER:
 				mov_mi(tctx, RBP, var_value.offset, init_value.imm, value_size);
 				break;
-			case OP_REGISTER_PTR:
-			case OP_REGISTER_INT:
-			case OP_REGISTER_BOOL:
+			case OP_REGISTER_NUMBER:
 				mov_mr(tctx, RBP, var_value.offset, init_value.reg, value_size);
 				break;
 			case OP_RELOCATION_SLICE: {
@@ -1788,14 +1832,14 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			struct mir_var   *var  = ((struct mir_instr_decl_var *)dest)->var;
 			if (!var->ref_count) continue;
 
-			const usize value_size = var->value.type->store_size_bytes;
-			add_sym(tctx, SECTION_DATA, var->linkage_name, IMAGE_SYM_CLASS_EXTERNAL, 0);
-			void *data_dest = add_data(tctx, NULL, (s32)value_size);
+			const usize value_size  = var->value.type->store_size_bytes;
+			const u32   data_offset = add_data(tctx, NULL, (s32)value_size);
+			add_sym(tctx, SECTION_DATA, data_offset, var->linkage_name, IMAGE_SYM_CLASS_EXTERNAL, 0);
 
 			if (si->src->backend_value == 0) {
 				struct mir_instr *cmp = si->src;
 				bassert(cmp->kind == MIR_INSTR_COMPOUND);
-				emit_global_compound(ctx, tctx, cmp, data_dest, (u32)value_size);
+				emit_global_compound(ctx, tctx, cmp, data_offset, (u32)value_size);
 				break;
 			} else {
 				const struct x64_value init_value = get_value(tctx, si->src);
@@ -1808,7 +1852,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 				default:
 					BL_UNIMPLEMENTED;
 				}
-				memcpy(data_dest, data_src, value_size);
+				memcpy(tctx->data + data_offset, data_src, value_size);
 			}
 		}
 		break;

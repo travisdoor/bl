@@ -305,7 +305,7 @@ static inline void mov_ri(struct thread_context *tctx, u8 r, u64 imm, usize size
 		buf[i++] = (0xB8 | (r & 0b111));
 		break;
 	case 1:
-		buf[i++] = (0xB0 | (r * 0b111));
+		buf[i++] = (0xB0 | (r & 0b111));
 		break;
 	default:
 		break;
@@ -404,32 +404,59 @@ static inline void movsx_rm(struct thread_context *tctx, u8 r1, u8 r2, s32 offse
 }
 /*
 static inline void movzx_rr(struct thread_context *tctx, u8 r1, u8 r2, usize size1, usize size2) {
-	bassert(size1 > size2);
+    bassert(size1 > size2);
 
-	// Valid for 8 and 16 bit values, for 32 and 64 we can use regular mov.
+    // Valid for 8 and 16 bit values, for 32 and 64 we can use regular mov.
 
-	const u8 rex = encode_rex(size1 == 8, r1, 0, r2);
-	const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, r1, r2);
+    const u8 rex = encode_rex(size1 == 8, r1, 0, r2);
+    const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, r1, r2);
+
+    u8  buf[4];
+    s32 i = 0;
+    if (rex) buf[i++] = rex;
+    switch (size1) {
+    case 4:
+        buf[i++] = 0x0F;
+        buf[i++] = 0xB6;
+        break;
+    case 8:
+        buf[i++] = 0x63;
+        break;
+    default:
+        bassert(false);
+    }
+
+    if (mrr) buf[i++] = mrr;
+    add_code(tctx, buf, i);
+}
+*/
+
+static inline void sete(struct thread_context *tctx, u8 r1) {
+	const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, 0, r1);
+	const u8 rex = encode_rex(false, 0, 0, r1);
 
 	u8  buf[4];
 	s32 i = 0;
 	if (rex) buf[i++] = rex;
-	switch (size1) {
-	case 4:
-		buf[i++] = 0x0F;
-		buf[i++] = 0xB6;
-		break;
-	case 8:
-		buf[i++] = 0x63;
-		break;
-	default:
-		bassert(false);
-	}
-
-	if (mrr) buf[i++] = mrr;
+	buf[i++] = 0x0F;
+	buf[i++] = 0x94;
+	buf[i++] = mrr;
 	add_code(tctx, buf, i);
 }
-*/
+
+static inline void setne(struct thread_context *tctx, u8 r1) {
+	const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, 0, r1);
+	const u8 rex = encode_rex(false, 0, 0, r1);
+
+	u8  buf[4];
+	s32 i = 0;
+	if (rex) buf[i++] = rex;
+	buf[i++] = 0x0F;
+	buf[i++] = 0x95;
+	buf[i++] = mrr;
+	add_code(tctx, buf, i);
+}
+
 inline void xor_rr(struct thread_context *tctx, u8 r1, u8 r2, usize size) {
 	const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, r2, r1);
 	const u8 rex = encode_rex(size == 8, r2, 0, r1);
@@ -535,6 +562,25 @@ static inline void imul_ri(struct thread_context *tctx, u8 r1, u8 r2, u64 imm, u
 	add_code(tctx, &imm, value_size);
 }
 
+static inline void and_ri(struct thread_context *tctx, u8 r, u64 imm, usize size) {
+	if (r == RAX) {
+		const u8 rex = encode_rex(size == 8, 0, 0, r);
+		encode_base(tctx, rex, 0x24, 0, size);
+		// const u8 buf[2] = {0x24, (u8)imm};
+		// add_code(tctx, &buf, 2);
+	} else {
+		if (size == 8 && imm > 0x7FFFFFFF) {
+			bassert(false);
+			return;
+		}
+
+		const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, 0x4, r);
+		const u8 rex = encode_rex(size == 8, 0, 0, r);
+		encode_base(tctx, rex, 0x80, mrr, size);
+	}
+	add_code(tctx, &imm, (s32)MIN(size, sizeof(u32)));
+}
+
 static inline void cmp_rr(struct thread_context *tctx, u8 r1, u8 r2, usize size) {
 	const u8 rex = encode_rex(size == 8, r2, 0, r1);
 	const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, r2, r1);
@@ -543,9 +589,7 @@ static inline void cmp_rr(struct thread_context *tctx, u8 r1, u8 r2, usize size)
 
 static inline void cmp_ri(struct thread_context *tctx, u8 r, u64 imm, usize size) {
 	if (size == 8 && imm > 0x7FFFFFFF) {
-		const enum x64_register reg = get_temporary_register(tctx, NULL, 0);
-		mov_ri(tctx, reg, imm, size);
-		cmp_rr(tctx, r, reg, size);
+		bassert(false);
 		return;
 	}
 	if (r == RAX) {
