@@ -79,6 +79,10 @@ __os_start :: fn () #entry {
 	test_condition_assign();
 	test_glob_addrof();
 	test_out_arg();
+	test_global_ptr_to_global();
+	test_global_compound();
+	test_fn_ptr();
+	// test_glob_fn_ptr_in_compound();
 
 	done :: "------------\n!!! DONE !!!\n------------";
 	print_string(done.len, done.ptr);
@@ -89,6 +93,50 @@ assert :: fn (expr: bool, loc := #call_location) {
 	if expr == false {
 		assertion_message(loc.file.len, loc.file.ptr, loc.line);
 	}
+}
+
+FOO_DATA :: 10;
+FOO_DATA_PTR :: &FOO_DATA;
+
+test_global_ptr_to_global :: fn () {
+	assert(FOO_DATA_PTR);
+	assert(@FOO_DATA_PTR == 10);
+}
+
+Doo :: struct {
+	a: *s32;
+}
+
+DOO_DATA :: 10;
+DOO :: Doo.{ a = &DOO_DATA };
+
+test_global_compound :: fn () {
+	assert(DOO.a);
+	assert(@DOO.a == 10);
+}
+
+test_fn_ptr :: fn () {
+	my_func :: fn () {
+		good :: "NICE!\n";
+		print_string(good.len, good.ptr);
+	};
+
+	ptr :: &my_func;
+	ptr();
+}
+
+Goo :: struct {
+	func: *fn();
+}
+
+goo_func :: fn () {}
+
+GOO :: Goo.{
+	func = &goo_func
+};
+
+test_glob_fn_ptr_in_compound :: fn () {
+	GOO.func();
 }
 
 test_out_arg :: fn () {

@@ -191,6 +191,7 @@ static inline enum x64_type_kind get_type_kind(struct mir_type *type) {
 	case MIR_TYPE_BOOL:
 	case MIR_TYPE_ENUM:
 	case MIR_TYPE_NULL:
+	case MIR_TYPE_FN:
 		return X64_NUMBER;
 
 	case MIR_TYPE_SLICE:
@@ -662,6 +663,7 @@ static void emit_copy_relocation_to_offset(struct thread_context *tctx, struct x
 
 static void emit_load_to_register(struct thread_context *tctx, struct mir_instr *instr, enum x64_register reg) {
 	bassert(instr && instr->kind == MIR_INSTR_LOAD);
+	bassert(!mir_is_global(instr));
 	struct mir_instr_load *load = (struct mir_instr_load *)instr;
 	struct mir_type       *type = load->base.value.type;
 
@@ -1084,6 +1086,10 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 	case MIR_INSTR_ADDROF: {
 		struct mir_instr_addrof *addr = (struct mir_instr_addrof *)instr;
+		// if (mir_is_comptime(instr) && mir_is_global(instr)) {
+		// BL_DEBUG_BREAK;
+		// }
+
 		if (addr->src->kind == MIR_INSTR_LOAD) {
 			enum x64_register reg = get_temporary_register(tctx, NULL, 0);
 			emit_load_to_register(tctx, addr->src, reg);
@@ -1489,18 +1495,12 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		// 2) We call via function pointer.
 		// 3) We call immediate inline defined anonymous function (we have to generate one eventually).
 
-		struct mir_instr *callee_fn_proto = NULL;
-
-		if (mir_is_comptime(callee)) {
-			struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &callee->value);
-			bmagic_assert(fn);
-			callee_fn_proto = fn->prototype;
-		} else {
-			// We should use loaded value from previous instruction (probably in register?)...
-			BL_UNIMPLEMENTED;
+		if (callee->kind == MIR_INSTR_LOAD) {
+			enum x64_register reg = get_temporary_register(tctx, CALL_ABI, static_arrlenu(CALL_ABI));
+			emit_load_to_register(tctx, callee, reg);
 		}
+		const struct x64_value callee_value = get_value(tctx, call->callee);
 
-		bassert(callee_fn_proto);
 		const s32 arg_num = (s32)sarrlen(call->args);
 
 		usize stack_space = MAX(4, arg_num) * 8;
@@ -1589,14 +1589,17 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			release_value(tctx, arg);
 		}
 
-		call_relative_i32(tctx, 0);
-		const u64 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
-
-		const struct x64_value callee_value = get_value(tctx, call->callee);
-		bassert(callee_value.kind == RELOCATION);
+		if (callee_value.kind == RELOCATION) {
+			call_relative_i32(tctx, 0);
+			const u64 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
+			add_patch(tctx, callee_value.reloc.hash, reloc_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
+		} else if (callee_value.kind == REGISTER) {
+			call_r(tctx, callee_value.reg);
+		} else {
+			BL_UNIMPLEMENTED;
+		}
 
 		if (stack_space) add_ri(tctx, RSP, stack_space, 8);
-		add_patch(tctx, callee_value.reloc.hash, reloc_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
 
 		// Store RAX register in case the function returns and the result is used.
 		if ((callee->value.type->data.fn.ret_type->kind != MIR_TYPE_VOID) && call->base.ref_count > 1) {
@@ -1765,10 +1768,18 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			case OP_REGISTER_NUMBER:
 				mov_mr(tctx, RBP, var_value.offset, init_value.reg, value_size);
 				break;
+			case OP_RELOCATION_NUMBER: {
+				enum x64_register reg = get_temporary_register(tctx, NULL, 0);
+				mov_rm_indirect(tctx, reg, init_value.reloc.offset, value_size);
+				const u32 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
+				add_patch(tctx, init_value.reloc.hash, reloc_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
+				mov_mr(tctx, RBP, var_value.offset, reg, value_size);
+			}
 			case OP_RELOCATION_SLICE: {
 				emit_copy_relocation_to_offset(tctx, var_value, init_value, value_size);
 				break;
 			}
+
 			default:
 				babort("Unhandled operation kind.");
 			}

@@ -657,3 +657,15 @@ static inline void call_relative_i32(struct thread_context *tctx, s32 offset) {
 	add_code(tctx, buf, 1);
 	add_code(tctx, &offset, sizeof(offset));
 }
+
+static inline void call_r(struct thread_context *tctx, enum x64_register r) {
+	const u8 rex = encode_rex(false, 0, 0, r);
+	const u8 mrr = encode_mod_reg_rm(MOD_REG_ADDR, 0x2, r);
+
+	u8  buf[3];
+	s32 i = 0;
+	if (rex) buf[i++] = rex;
+	buf[i++] = 0xFF;
+	buf[i++] = mrr;
+	add_code(tctx, buf, i);
+}
