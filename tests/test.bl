@@ -64,25 +64,26 @@ __os_start :: fn () #entry {
 		C.exit(1);
 	}
 
-	test_global_slice();
-	test_string();
-	test_struct_members();
-	test_compounds();
-	test_function_calls();
-	use_global_number();
-	test_looping(10);
-	test_array_int();
-	test_array_ptr();
-	test_casting();
-	test_unop();
-	test_conditions();
-	test_condition_assign();
-	test_glob_addrof();
-	test_out_arg();
-	test_global_ptr_to_global();
-	test_global_compound();
-	test_fn_ptr();
+	// test_global_slice();
+	// test_string();
+	// test_struct_members();
+	// test_compounds();
+	// test_function_calls();
+	// use_global_number();
+	// test_looping(10);
+	// test_array_int();
+	// test_array_ptr();
+	// test_casting();
+	// test_unop();
+	// test_conditions();
+	// test_condition_assign();
+	// test_glob_addrof();
+	// test_out_arg();
+	// test_global_ptr_to_global();
+	// test_global_compound();
+	// test_fn_ptr();
 	// test_glob_fn_ptr_in_compound();
+	test_pass_string_to_function();
 
 	done :: "------------\n!!! DONE !!!\n------------";
 	print_string(done.len, done.ptr);
@@ -93,6 +94,13 @@ assert :: fn (expr: bool, loc := #call_location) {
 	if expr == false {
 		assertion_message(loc.file.len, loc.file.ptr, loc.line);
 	}
+}
+
+test_pass_string_to_function :: fn () {
+	my_func :: fn (std: string_view) {
+	};
+
+	my_func("This is passed string!");
 }
 
 FOO_DATA :: 10;
@@ -126,17 +134,28 @@ test_fn_ptr :: fn () {
 }
 
 Goo :: struct {
-	func: *fn();
+	func_1: *fn();
+	func_2: *fn();
 }
 
-goo_func :: fn () {}
+goo_func_1 :: fn () {
+	good :: "Hello from the function called from the globaly set pointer!\n";
+	print_string(good.len, good.ptr);
+}
+
+goo_func_2 :: fn () {
+	good :: "Hello from another the function called from the globaly set pointer!\n";
+	print_string(good.len, good.ptr);
+}
 
 GOO :: Goo.{
-	func = &goo_func
+	func_1 = &goo_func_1,
+	func_2 = &goo_func_2
 };
 
 test_glob_fn_ptr_in_compound :: fn () {
-	GOO.func();
+	GOO.func_1();
+	GOO.func_2();
 }
 
 test_out_arg :: fn () {

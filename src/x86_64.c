@@ -315,6 +315,7 @@ static inline hash_t submit_global_variable_generation(struct context *ctx, stru
 //
 // Returns offset of the symbol in the binary.
 u32 add_sym(struct thread_context *tctx, s32 section_number, u32 offset, str_t linkage_name, u8 storage_class, s32 data_type) {
+	hash_t hash = strhash(linkage_name);
 	bassert(linkage_name.len && linkage_name.ptr);
 	IMAGE_SYMBOL sym = {
 	    .SectionNumber = section_number,
@@ -348,7 +349,7 @@ hash_t add_global_external_sym(struct context *ctx, str_t linkage_name, s32 data
 	    .StorageClass = IMAGE_SYM_CLASS_EXTERNAL,
 	};
 
-	if (linkage_name.len > 8) {
+	if (linkage_name.len > 7) {
 		const u32 str_offset = (u32)arrlenu(ctx->strs);
 		arrsetcap(ctx->strs, 256);
 		arrsetlen(ctx->strs, str_offset + linkage_name.len + 1); // +1 zero terminator
@@ -716,11 +717,46 @@ static void emit_global_compound(struct context *ctx, struct thread_context *tct
 	bassert(cmp->is_naked == false && "Global compound expression cannot be naked!");
 
 	if (mir_is_zero_initialized(cmp)) {
-		// The memory allocation in data segment is required to be zero allocated.
+		// The memory allocation in data segment is required to be already zero initialized.
 		return;
 	}
 
-	BL_UNIMPLEMENTED;
+	struct mir_type *type    = cmp->base.value.type;
+	ints_t          *mapping = cmp->value_member_mapping;
+	mir_instrs_t    *values  = cmp->values;
+
+	for (usize i = 0; i < sarrlenu(values); ++i) {
+		struct mir_instr *value_instr = sarrpeek(values, i);
+		const u32         value_size  = (u32)value_instr->value.type->store_size_bytes;
+
+		if (value_instr->kind == MIR_INSTR_COMPOUND) {
+			BL_UNIMPLEMENTED;
+			break;
+		}
+
+		struct x64_value value = get_value(tctx, value_instr);
+
+		s32 dest_value_offset = 0;
+		if (mir_is_composite_type(type)) {
+			const usize index = mapping ? sarrpeek(mapping, i) : i;
+			dest_value_offset = dest_offset + (s32)vm_get_struct_elem_offset(ctx->assembly, type, (u32)index);
+		} else {
+			bassert(type->kind == MIR_TYPE_ARRAY);
+			bassert(mapping == NULL && "Mapping is currently not supported for arrays.");
+			dest_value_offset = dest_offset + (s32)vm_get_array_elem_offset(type, (u32)i);
+		}
+
+		enum op_kind op_kind = op(value.kind, value_instr->value.type);
+		switch (op_kind) {
+		case OP_RELOCATION_NUMBER:
+			bassert(value_size == 8);
+			memcpy(&tctx->data[dest_value_offset], &value.reloc.offset, sizeof(s32));
+			add_patch(tctx, value.reloc.hash, dest_value_offset, IMAGE_REL_AMD64_ADDR64, SECTION_DATA);
+			break;
+		default:
+			BL_UNIMPLEMENTED;
+		}
+	}
 }
 
 static void emit_local_compound(struct context *ctx, struct thread_context *tctx, struct mir_instr *instr, struct x64_value dest, u32 value_size) {
@@ -1086,9 +1122,6 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 	case MIR_INSTR_ADDROF: {
 		struct mir_instr_addrof *addr = (struct mir_instr_addrof *)instr;
-		// if (mir_is_comptime(instr) && mir_is_global(instr)) {
-		// BL_DEBUG_BREAK;
-		// }
 
 		if (addr->src->kind == MIR_INSTR_LOAD) {
 			enum x64_register reg = get_temporary_register(tctx, NULL, 0);
@@ -1099,23 +1132,34 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		const usize            value_size = addr->src->value.type->store_size_bytes;
 		const enum op_kind     op_kind    = op(src_value.kind, addr->src->value.type);
 
-		switch (op_kind) {
-		case OP_RELOCATION_NUMBER: {
-			enum x64_register reg = get_temporary_register(tctx, NULL, 0);
-			lea_rm_indirect(tctx, reg, src_value.reloc.offset, value_size);
-			const u32 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
-			add_patch(tctx, src_value.reloc.hash, reloc_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
-			set_value(tctx, instr, (struct x64_value){.kind = REGISTER, .reg = reg});
-			break;
-		}
-		case OP_OFFSET_NUMBER: {
-			enum x64_register reg = get_temporary_register(tctx, NULL, 0);
-			lea_rm(tctx, reg, RBP, src_value.offset, 8);
-			set_value(tctx, instr, (struct x64_value){.kind = REGISTER, .reg = reg});
-			break;
-		}
-		default:
-			BL_UNIMPLEMENTED;
+		if (mir_is_global(instr)) {
+			switch (op_kind) {
+			case OP_RELOCATION_NUMBER: {
+				set_value(tctx, instr, src_value);
+				break;
+			}
+			default:
+				BL_UNIMPLEMENTED;
+			}
+		} else {
+			switch (op_kind) {
+			case OP_RELOCATION_NUMBER: {
+				enum x64_register reg = get_temporary_register(tctx, NULL, 0);
+				lea_rm_indirect(tctx, reg, src_value.reloc.offset, value_size);
+				const u32 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
+				add_patch(tctx, src_value.reloc.hash, reloc_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
+				set_value(tctx, instr, (struct x64_value){.kind = REGISTER, .reg = reg});
+				break;
+			}
+			case OP_OFFSET_NUMBER: {
+				enum x64_register reg = get_temporary_register(tctx, NULL, 0);
+				lea_rm(tctx, reg, RBP, src_value.offset, 8);
+				set_value(tctx, instr, (struct x64_value){.kind = REGISTER, .reg = reg});
+				break;
+			}
+			default:
+				BL_UNIMPLEMENTED;
+			}
 		}
 
 		break;
@@ -1489,6 +1533,10 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		struct mir_instr *callee = call->callee;
 		bassert(callee);
 
+		struct mir_type *callee_type = callee->value.type->kind == MIR_TYPE_FN ? callee->value.type : mir_deref_type(callee->value.type);
+		bassert(callee_type);
+		bassert(callee_type->kind == MIR_TYPE_FN);
+
 		// There are three possible configurations:
 		//
 		// 1) We call regular static function; it's compile-time known and resolved by previous decl-ref instruction.
@@ -1514,18 +1562,30 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		s32 arg_stack_offset = 0;
 
 		for (s32 index = 0; index < arg_num; ++index) {
-			struct mir_instr *arg      = sarrpeek(call->args, index);
-			struct mir_type  *arg_type = arg->value.type;
+			struct mir_instr *arg_instr = sarrpeek(call->args, index);
+			struct mir_arg   *arg       = sarrpeek(callee_type->data.fn.args, index);
+			struct mir_type  *arg_type  = arg_instr->value.type;
+
+			bassert(!isflag(arg->flags, FLAG_COMPTIME));
+			// if (isflag(arg->flags, FLAG_COMPTIME)) continue;
 
 			const usize arg_size = arg_type->store_size_bytes;
 
+			switch (arg->llvm_easgm) {
+			case LLVM_EASGM_NONE: { // Default behavior.
+				break;
+			}
+			default:
+				BL_UNIMPLEMENTED;
+			}
+
 			if (index < 4) {
 				// To register
-				if (arg->kind == MIR_INSTR_LOAD) {
+				if (arg_instr->kind == MIR_INSTR_LOAD) {
 					const enum x64_register reg = spill(tctx, CALL_ABI[index], CALL_ABI, args_in_register);
-					emit_load_to_register(tctx, arg, reg);
+					emit_load_to_register(tctx, arg_instr, reg);
 				} else {
-					struct x64_value value = get_value(tctx, arg);
+					struct x64_value value = get_value(tctx, arg_instr);
 					switch (value.kind) {
 					case IMMEDIATE: {
 						const enum x64_register reg = spill(tctx, CALL_ABI[index], CALL_ABI, args_in_register);
@@ -1557,15 +1617,15 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 				}
 			} else {
 				// Other args needs go to the stack.
-				if (arg->kind == MIR_INSTR_LOAD) {
+				if (arg_instr->kind == MIR_INSTR_LOAD) {
 					const enum x64_register reg = spill(tctx, RAX, NULL, 0);
-					emit_load_to_register(tctx, arg, reg);
-				} else if (arg->kind == MIR_INSTR_COMPOUND) {
+					emit_load_to_register(tctx, arg_instr, reg);
+				} else if (arg_instr->kind == MIR_INSTR_COMPOUND) {
 					BL_UNIMPLEMENTED;
 				}
 
 				// @Note here we're relative to RSP!
-				struct x64_value value = get_value(tctx, arg);
+				struct x64_value value = get_value(tctx, arg_instr);
 				switch (value.kind) {
 				case IMMEDIATE: {
 					mov_mi(tctx, RSP, arg_stack_offset, value.imm, arg_size);
@@ -1586,7 +1646,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			}
 
 			arg_stack_offset += 8;
-			release_value(tctx, arg);
+			release_value(tctx, arg_instr);
 		}
 
 		if (callee_value.kind == RELOCATION) {
@@ -1686,6 +1746,14 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		struct mir_type *fn_type = fn->type;
 		struct mir_arg  *arg     = sarrpeek(fn_type->data.fn.args, arg_instr->i);
 		bassert(isnotflag(arg->flags, FLAG_COMPTIME) && "Comptime arguments should be evaluated and replaced by constants!");
+
+		switch (arg->llvm_easgm) {
+		case LLVM_EASGM_NONE: { // Default. Arg value unchanged.
+			break;
+		}
+		default:
+			BL_UNIMPLEMENTED;
+		}
 
 		const s32 index = arg->llvm_index;
 		if (index < static_arrlenu(CALL_ABI)) {
@@ -1870,7 +1938,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 	}
 
 	default:
-		bwarn("Missing implementation for emmiting '%s' instruction.", mir_instr_name(instr));
+		bwarn("Missing implementation for emitting '%s' instruction.", mir_instr_name(instr));
 	}
 }
 
@@ -2146,7 +2214,7 @@ void x86_64run(struct assembly *assembly) {
 
 		const s32     symbol_table_index = ctx.symbol_table[i].symbol_table_index;
 		IMAGE_SYMBOL *sym                = &ctx.syms[symbol_table_index];
-		if (sym->SectionNumber != SECTION_TEXT) {
+		if (sym->SectionNumber != SECTION_TEXT || patch->target_section != sym->SectionNumber) {
 			// @Performance: In case the symbol is from other section we probably have to rely on linker
 			// doing relocations, in case of external symbol it's correct way to do it.
 
