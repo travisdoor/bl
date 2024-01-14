@@ -84,7 +84,8 @@ __os_start :: fn () #entry {
 	// test_global_compound();
 	// test_fn_ptr();
 	// test_glob_fn_ptr_in_compound();
-	test_pass_string_to_function();
+	// test_pass_string_to_function();
+	test_function_calls2();
 
 	print_string2("Hello!\n");
 
@@ -104,7 +105,7 @@ test_pass_string_to_function :: fn () {
 		print_string2(str);
 	};
 
-	my_func("This is passed string!");
+	my_func("This is passed string!\n");
 }
 
 FOO_DATA :: 10;
@@ -418,6 +419,23 @@ test_function_calls :: fn () {
 	print_number(add_numbers(10, 20));
 	print_number(add_numbers(10, -20));
 	print_number(mul_numbers(10, 20));
+}
+
+test_function_calls2 :: fn () {
+	my_fn :: fn (a: s32, b: s32, c: s32, d: s32, e: s32) {
+		assert(a == 10);
+		assert(b == 20);
+		assert(c == 30);
+		assert(d == 40);
+		assert(e == 50);
+	};
+	// a := 10;
+	// b := 20;
+	// c := 30;
+	// d := 40;
+	// e := 50;
+
+	my_fn(10, 20, 30, 40, 50);
 }
 
 test_looping :: fn (n: s32) {
