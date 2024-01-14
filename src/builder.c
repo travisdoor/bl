@@ -296,8 +296,7 @@ static int compile(struct assembly *assembly) {
 	setup_assembly_pipeline(assembly);
 
 	set_single_thread_mode(builder.options->no_jobs);
-	if (builder.options->no_jobs)
-		blog("Running in single thread mode!");
+	if (builder.options->no_jobs) blog("Running in single thread mode!");
 
 	{
 		runtime_measure_begin(process_unit);

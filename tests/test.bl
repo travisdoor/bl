@@ -48,6 +48,7 @@ print_number2 :: fn (n: s64) #extern;
 print_address :: fn (v: u64) #extern;
 print_string :: fn (len: s64, ptr: *u8) #extern;
 assertion_message :: fn (len: s64, file: *u8, line: s32) #extern;
+print_string2 :: fn (s: string_view) #extern;
 
 Foo :: struct {
 	i: s32;
@@ -85,6 +86,8 @@ __os_start :: fn () #entry {
 	// test_glob_fn_ptr_in_compound();
 	test_pass_string_to_function();
 
+	print_string2("Hello!\n");
+
 	done :: "------------\n!!! DONE !!!\n------------";
 	print_string(done.len, done.ptr);
 	C.exit(0);
@@ -97,7 +100,8 @@ assert :: fn (expr: bool, loc := #call_location) {
 }
 
 test_pass_string_to_function :: fn () {
-	my_func :: fn (std: string_view) {
+	my_func :: fn (str: string_view) {
+		print_string2(str);
 	};
 
 	my_func("This is passed string!");

@@ -565,7 +565,7 @@ int main(s32 argc, char *argv[]) {
 	        .property.n = (s32 *)&opt.target->reg_split,
 	        .variants   = "off|on",
 	        .help       = "Enable/disable splitting of structures passed into the function by value into "
-	                      "registers.",
+	                      "registers. This feature is supposed to be enabled on System V ABI compatible systems.",
 	    },
 	    {
 	        .name       = "--verify-llvm",
@@ -814,6 +814,8 @@ SKIP:
 	if (!target_init_default_triple(&opt.target->triple)) {
 		exit(ERR_UNSUPPORTED_TARGET);
 	}
+	// [travis] Is this correct?
+	opt.target->reg_split = opt.target->triple.env != ENV_msvc;
 
 	if (user_working_directory) {
 		if (!set_current_working_dir(user_working_directory)) {

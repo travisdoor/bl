@@ -37,6 +37,15 @@ void assertion_message(long long len, char *file, int line) {
 	printf("Assertion failed: %.*s:%d !!!\n", (int)len, file, line);
 }
 
+struct string {
+	long long len;
+	char *ptr;
+};
+
+void print_string2(struct string s) {
+	printf("%.*s", (int)s.len, s.ptr);
+}
+
 // Intrinsics
 void __bl_memcpy(void *dest, const void *src, unsigned long long size) {
 	memcpy(dest, src, size);
