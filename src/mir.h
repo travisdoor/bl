@@ -286,20 +286,16 @@ struct mir_arg {
 	bool                is_inside_recipe; // True in case the argument is part of function recipe.
 	bool                is_inside_declaration;
 	s32                 ref_count;
-
-	enum ast_flags flags;
-
+	enum ast_flags      flags;
 	// This is index of this argument in LLVM IR not in MIR, it can be different based on
 	// compiler configuration.
 	u32 llvm_index;
-
 	// Optional default value.
 	struct mir_instr *default_value;
-
 	// Optional, set only for generated functions.
-	struct mir_instr_call *generation_call;
-
+	struct mir_instr_call                      *generation_call;
 	enum llvm_extern_arg_struct_generation_mode llvm_easgm;
+	u64                                         backend_value;
 	bmagic_member
 };
 

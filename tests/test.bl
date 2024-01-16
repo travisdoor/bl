@@ -85,7 +85,8 @@ __os_start :: fn () #entry {
 	// test_fn_ptr();
 	// test_glob_fn_ptr_in_compound();
 	// test_pass_string_to_function();
-	test_function_calls2();
+	// test_function_calls2();
+	test_passing_source_location();
 
 	print_string2("Hello!\n");
 
@@ -98,6 +99,14 @@ assert :: fn (expr: bool, loc := #call_location) {
 	if expr == false {
 		assertion_message(loc.file.len, loc.file.ptr, loc.line);
 	}
+}
+
+test_passing_source_location :: fn (loc := #call_location) {
+	my_func :: fn (file: string_view, line: s32) {
+		print_string2(file);
+		print_number(line);
+	};
+	my_func(loc.file, loc.line);
 }
 
 test_pass_string_to_function :: fn () {
@@ -422,20 +431,33 @@ test_function_calls :: fn () {
 }
 
 test_function_calls2 :: fn () {
-	my_fn :: fn (a: s32, b: s32, c: s32, d: s32, e: s32) {
+	my_fn :: fn (a: s32, b: s32, c: s32, d: s32, e: s32, f: s32) {
 		assert(a == 10);
 		assert(b == 20);
 		assert(c == 30);
 		assert(d == 40);
 		assert(e == 50);
+		assert(f == 60);
 	};
-	// a := 10;
-	// b := 20;
-	// c := 30;
-	// d := 40;
-	// e := 50;
+	my_fn(10, 20, 30, 40, 50, 60);
 
-	my_fn(10, 20, 30, 40, 50);
+	a := 10;
+	b := 20;
+	c := 30;
+	d := 40;
+	e := 50;
+	f := 60;
+	my_fn(a, b, c, d, e, f);
+
+	my_fn2 :: fn (a: s32, b: s32, c: s32, d: s32, e: s32, str: string_view) {
+		assert(a == 10);
+		assert(b == 20);
+		assert(c == 30);
+		assert(d == 40);
+		assert(e == 50);
+		print_string2(str);
+	};
+	my_fn2(10, 20, 30, 40, 50, "This is string passed via stack!\n");
 }
 
 test_looping :: fn (n: s32) {
@@ -455,18 +477,6 @@ use_global_number :: fn () {
 	my_number = 20;
 	print_number(my_number);
 }
-
-/*
-x64 todo:
-[ ] struct variables
-[ ] arrays
-[ ] call-side register splits of bigger values
-[ ] .data
-[ ] type info
-[ ] strings
-[ ] thread locals
-[ ] intrinsics
-[ ] global variables
 
 /*
 

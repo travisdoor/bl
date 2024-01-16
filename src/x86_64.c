@@ -467,6 +467,7 @@ static enum x64_register spill(struct thread_context *tctx, enum x64_register re
 	}
 	struct x64_value *spill_value = &tctx->values[vi];
 
+	// Try to find register where to move current value of reg.
 	enum x64_register dest_reg = -1;
 	for (s32 i = 0; i < REGISTER_COUNT; ++i) {
 		if (tctx->register_table[i] != UNUSED_REGISTER_MAP_VALUE) continue;
@@ -482,6 +483,7 @@ static enum x64_register spill(struct thread_context *tctx, enum x64_register re
 	if (dest_reg != -1) {
 		// Spill to register.
 		bassert(dest_reg != reg);
+		bassert(tctx->register_table[dest_reg] == UNUSED_REGISTER_MAP_VALUE);
 		switch (spill_value->kind) {
 		case REGISTER:
 			bassert(spill_value->reg == reg);
@@ -496,6 +498,8 @@ static enum x64_register spill(struct thread_context *tctx, enum x64_register re
 		default:
 			BL_UNIMPLEMENTED;
 		}
+		// Set new register holding old value as used.
+		tctx->register_table[dest_reg] = vi;
 	} else {
 		// Spill to memory.
 		const s32 top    = allocate_stack_memory(tctx, 8);
@@ -545,6 +549,8 @@ static inline void set_value(struct thread_context *tctx, struct mir_instr *inst
 #define get_value(tctx, V) _Generic((V),                \
 	                                struct mir_instr *  \
 	                                : _get_value_instr, \
+	                                  struct mir_arg *  \
+	                                : _get_value_arg,   \
 	                                  struct mir_var *  \
 	                                : _get_value_var)((tctx), (V))
 
@@ -556,6 +562,11 @@ static inline u64 _get_value_instr(struct thread_context *tctx, struct mir_instr
 static inline u64 _get_value_var(struct thread_context *tctx, struct mir_var *var) {
 	bassert(var->backend_value != 0);
 	return var->backend_value - 1;
+}
+
+static inline u64 _get_value_arg(struct thread_context *tctx, struct mir_arg *arg) {
+	bassert(arg->backend_value != 0);
+	return arg->backend_value - 1;
 }
 
 #define release_value(tctx, V) _Generic((V),                    \
@@ -742,6 +753,16 @@ static void emit_load_to_register(struct thread_context *tctx, struct mir_instr 
 	}
 	case OP_OFFSET_COMPOSIT: {
 		lea_rm(tctx, reg, RBP, peek_offset(vi_src), 8);
+		result_is_register_address = true;
+		break;
+	}
+	case OP_REGISTER_ADDRESS_COMPOSIT: {
+		// @Performace [travis]: This is not so optimal, we might keep the address in the same register as it is, but
+		// what in case the register we load into is required?
+		const enum x64_register src_reg = peek_register_address(vi_src).reg;
+		if (reg != src_reg) {
+			mov_rr(tctx, reg, src_reg, 8);
+		}
 		result_is_register_address = true;
 		break;
 	}
@@ -1006,6 +1027,22 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		sub_ri(tctx, RSP, 0, 8);
 		tctx->stack.alloc_value_offset = get_position(tctx, SECTION_TEXT) - sizeof(s32);
 
+		// @Explain!!!
+		s32 reg_index = 0;
+		for (usize i = 0; i < sarrlenu(fn->type->data.fn.args) && reg_index < static_arrlenu(CALL_ABI); ++i) {
+			struct mir_arg *arg = sarrpeek(fn->type->data.fn.args, i);
+			if (isflag(arg->flags, FLAG_COMPTIME)) continue;
+
+			const enum x64_register reg = CALL_ABI[reg_index];
+			bassert(tctx->register_table[reg] == UNUSED_REGISTER_MAP_VALUE && "Register already used?");
+			struct x64_value value    = {.kind = REGISTER, .reg = reg};
+			tctx->register_table[reg] = (s32)arrlen(tctx->values);
+			arrput(tctx->values, value);
+
+			arg->backend_value = arrlenu(tctx->values);
+			++reg_index;
+		}
+
 		// Generate all blocks in the function body.
 		arrput(tctx->emit_block_queue, fn->first_block);
 		while (arrlenu(tctx->emit_block_queue)) {
@@ -1072,8 +1109,20 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		const s32                index     = arg->llvm_index;
 
 		if (index < static_arrlenu(CALL_ABI)) {
-			const enum x64_register reg = CALL_ABI[index];
-			spill(tctx, reg, &reg, 1);
+			enum x64_register reg = -1;
+
+			// @Explain!!!
+			const u64 vi = get_value(tctx, arg);
+			if (peek(vi).kind != REGISTER) {
+				bassert(peek(vi).kind == OFFSET);
+				reg = spill(tctx, CALL_ABI[index], NULL, 0);
+				mov_rm(tctx, reg, RBP, peek_offset(vi), 8);
+			} else {
+				reg = peek_register(vi);
+			}
+
+			release_value(tctx, vi);
+
 			if (type_kind == X64_COMPOSIT) {
 				set_value(tctx, instr, (struct x64_value){.kind = REGISTER_ADDRESS, .reg_off_addr.reg = reg});
 			} else {
@@ -1081,8 +1130,14 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 				set_value(tctx, instr, (struct x64_value){.kind = REGISTER, .reg = reg});
 			}
 		} else {
-			const s32 arg_stack_offset = index * 8;
-			BL_UNIMPLEMENTED;
+			const s32 arg_stack_offset = (index + 2) * 8; // +1 return address pushed by call
+			if (type_kind == X64_COMPOSIT) {
+				const enum x64_register reg = get_temporary_register(tctx, CALL_ABI, static_arrlenu(CALL_ABI));
+				mov_rm(tctx, reg, RBP, arg_stack_offset, 8);
+				set_value(tctx, instr, (struct x64_value){.kind = REGISTER_ADDRESS, .reg_off_addr.reg = reg});
+			} else {
+				set_value(tctx, instr, (struct x64_value){.kind = OFFSET, .offset = arg_stack_offset});
+			}
 		}
 		break;
 
@@ -1372,15 +1427,22 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		}
 
 		const u64 vi = get_value(tctx, cast->expr);
-		bassert(peek(vi).kind == REGISTER);
-		const enum x64_register reg = peek_register(vi);
-
 		switch (cast->op) {
 		case MIR_CAST_NONE:
 		case MIR_CAST_BITCAST:
 		case MIR_CAST_TRUNC:
 		case MIR_CAST_PTRTOINT:
+			release_value(tctx, vi);
+			set_value(tctx, instr, peek(vi));
+			goto SKIP;
+		default:
 			break;
+		}
+
+		bassert(peek(vi).kind == REGISTER);
+		const enum x64_register reg = peek_register(vi);
+
+		switch (cast->op) {
 		case MIR_CAST_ZEXT:
 			bassert(dest_size > src_size);
 			if (src_size < 4) {
@@ -1415,6 +1477,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		release_value(tctx, vi);
 		bassert(reg != -1);
 		set_value(tctx, instr, (struct x64_value){.kind = REGISTER, .reg = reg});
+	SKIP:
 		break;
 	}
 
@@ -1695,7 +1758,8 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			// if (isflag(arg->flags, FLAG_COMPTIME)) continue;
 			bassert(arg->llvm_easgm == LLVM_EASGM_NONE);
 
-			const usize arg_size = arg_type->store_size_bytes;
+			const usize              arg_size  = arg_type->store_size_bytes;
+			const enum x64_type_kind type_kind = get_type_kind(arg_type);
 
 			if (index < 4) {
 				// To register
@@ -1706,13 +1770,13 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 					const u64 vi = get_value(tctx, arg_instr);
 					switch (peek(vi).kind) {
 					case IMMEDIATE: {
-						bassert(arg_size < 9);
+						bassert(type_kind != X64_COMPOSIT);
 						const enum x64_register reg = spill(tctx, CALL_ABI[index], CALL_ABI, args_in_register);
 						mov_ri(tctx, reg, peek_immediate(vi), arg_size);
 						break;
 					}
 					case REGISTER: {
-						bassert(arg_size < 9);
+						bassert(type_kind != X64_COMPOSIT);
 						if (peek_register(vi) != CALL_ABI[index]) {
 							const enum x64_register reg = spill(tctx, CALL_ABI[index], CALL_ABI, args_in_register);
 							mov_rr(tctx, reg, peek_register(vi), arg_size);
@@ -1720,7 +1784,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 						break;
 					}
 					case OFFSET: {
-						bassert(arg_size < 9);
+						bassert(type_kind != X64_COMPOSIT);
 						const enum x64_register reg = spill(tctx, CALL_ABI[index], CALL_ABI, args_in_register);
 						mov_rm(tctx, reg, RBP, peek_offset(vi), arg_size);
 						break;
@@ -1728,7 +1792,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 					case RELOCATION: {
 						const enum x64_register reg    = spill(tctx, CALL_ABI[index], CALL_ABI, args_in_register);
 						const s32               offset = peek_relocation(vi).offset;
-						if (arg_size > 8) {
+						if (type_kind == X64_COMPOSIT) {
 							lea_rm_indirect(tctx, reg, offset, 8);
 						} else {
 							mov_rm_indirect(tctx, reg, offset, arg_size);
@@ -1754,16 +1818,31 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 				const u64 vi = get_value(tctx, arg_instr);
 				switch (peek(vi).kind) {
 				case IMMEDIATE: {
+					bassert(type_kind != X64_COMPOSIT);
 					mov_mi(tctx, RSP, arg_stack_offset, peek_immediate(vi), arg_size);
 					break;
 				}
 				case REGISTER: {
+					bassert(type_kind != X64_COMPOSIT);
 					mov_mr(tctx, RSP, arg_stack_offset, peek_register(vi), arg_size);
 					break;
 				}
 				case OFFSET: {
+					bassert(type_kind != X64_COMPOSIT);
 					// @Incomplete: Maybe spilled value???
 					BL_UNIMPLEMENTED;
+					break;
+				}
+				case RELOCATION: {
+					if (type_kind == X64_COMPOSIT) {
+						enum x64_register reg = get_temporary_register(tctx, CALL_ABI, static_arrlenu(CALL_ABI));
+						lea_rm_indirect(tctx, reg, peek_relocation(vi).offset, 8);
+						const u32 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
+						add_patch(tctx, peek_relocation(vi).hash, reloc_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
+						mov_mr(tctx, RSP, arg_stack_offset, reg, 8);
+					} else {
+						BL_UNIMPLEMENTED;
+					}
 					break;
 				}
 				default:
@@ -1926,6 +2005,12 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 			const enum op_kind op_kind = op(peek(vi_init).kind, type);
 			switch (op_kind) {
+			case OP_OFFSET_NUMBER: {
+				enum x64_register reg = get_temporary_register(tctx, NULL, 0);
+				mov_rm(tctx, reg, RBP, peek_offset(vi_init), value_size);
+				mov_mr(tctx, RBP, var_offset, reg, value_size);
+				break;
+			}
 			case OP_IMMEDIATE_NUMBER:
 				mov_mi(tctx, RBP, var_offset, peek_immediate(vi_init), value_size);
 				break;
