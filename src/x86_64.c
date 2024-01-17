@@ -469,16 +469,19 @@ static enum x64_register spill(struct thread_context *tctx, enum x64_register re
 
 	// Try to find register where to move current value of reg.
 	enum x64_register dest_reg = -1;
-	for (s32 i = 0; i < REGISTER_COUNT; ++i) {
+	for (s32 i = 0; i < REGISTER_COUNT && dest_reg == -1; ++i) {
 		if (tctx->register_table[i] != UNUSED_REGISTER_MAP_VALUE) continue;
 		if (reg == i) continue;
+		bool skip = false;
 		for (s32 j = 0; j < exclude_num; ++j) {
-			if (exclude[j] == -1) continue;
-			if (exclude[j] == i) goto SKIP;
+			if (exclude[j] == -1) continue; // @Cleanup: Do we need this?
+			if (exclude[j] == i) {
+				skip = true;
+				break;
+			}
 		}
+		if (skip) continue;
 		dest_reg = i;
-	SKIP:
-		continue;
 	}
 	if (dest_reg != -1) {
 		// Spill to register.
@@ -643,12 +646,12 @@ static void emit_string_literal(struct context *ctx, struct thread_context *tctx
 }
 
 static void emit_call_memcpy(struct thread_context *tctx, const u64 vi_dest, const u64 vi_src, s64 size) {
-	const enum x64_register excluded[] = {RCX, RDX, R8};
+	const enum x64_register excluded[6] = {RAX, RCX, RDX, R8, R9, R10};
 
 	// dest
 	switch (peek(vi_dest).kind) {
 	case OFFSET:
-		lea_rm(tctx, spill(tctx, RCX, excluded, 3), RBP, peek_offset(vi_dest), 8);
+		lea_rm(tctx, spill(tctx, RCX, excluded, static_arrlenu(excluded)), RBP, peek_offset(vi_dest), 8);
 		break;
 	default:
 		BL_UNIMPLEMENTED;
@@ -657,14 +660,14 @@ static void emit_call_memcpy(struct thread_context *tctx, const u64 vi_dest, con
 	// src
 	switch (peek(vi_src).kind) {
 	case RELOCATION:
-		lea_rm_indirect(tctx, spill(tctx, RDX, excluded, 3), 0, 8);
+		lea_rm_indirect(tctx, spill(tctx, RDX, excluded, static_arrlenu(excluded)), 0, 8);
 		const u32 reloc_src_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
 		add_patch(tctx, peek_relocation(vi_src).hash, reloc_src_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
 		break;
 	case REGISTER_ADDRESS: {
 		const enum x64_register reg = peek_register(vi_src);
 		if (reg != RDX) {
-			mov_rr(tctx, spill(tctx, RDX, excluded, 3), reg, 8);
+			mov_rr(tctx, spill(tctx, RDX, excluded, static_arrlenu(excluded)), reg, 8);
 		}
 		break;
 	}
@@ -673,7 +676,7 @@ static void emit_call_memcpy(struct thread_context *tctx, const u64 vi_dest, con
 	}
 
 	// size
-	mov_ri(tctx, spill(tctx, R8, excluded, 3), size, 8);
+	mov_ri(tctx, spill(tctx, R8, excluded, static_arrlenu(excluded)), size, 8);
 
 	sub_ri(tctx, RSP, 0x20, 8);
 	call_relative_i32(tctx, 0);
@@ -683,13 +686,13 @@ static void emit_call_memcpy(struct thread_context *tctx, const u64 vi_dest, con
 }
 
 static void emit_call_memset(struct thread_context *tctx, const u64 vi_dest, s32 v, s64 size) {
-	const enum x64_register excluded[] = {RCX, RDX, R8};
+	const enum x64_register excluded[6] = {RAX, RCX, RDX, R8, R9, R10};
 
 	bassert(peek(vi_dest).kind == OFFSET);
 	const u32 dest_offset = peek_offset(vi_dest);
-	lea_rm(tctx, spill(tctx, RCX, excluded, 3), RBP, dest_offset, 8);
-	mov_ri(tctx, spill(tctx, RDX, excluded, 3), v, 4);
-	mov_ri(tctx, spill(tctx, R8, excluded, 3), size, 8);
+	lea_rm(tctx, spill(tctx, RCX, excluded, static_arrlenu(excluded)), RBP, dest_offset, 8);
+	mov_ri(tctx, spill(tctx, RDX, excluded, static_arrlenu(excluded)), v, 4);
+	mov_ri(tctx, spill(tctx, R8, excluded, static_arrlenu(excluded)), size, 8);
 
 	sub_ri(tctx, RSP, 0x20, 8);
 	call_relative_i32(tctx, 0);
@@ -801,13 +804,6 @@ static void emit_global_compound(struct context *ctx, struct thread_context *tct
 		struct mir_instr *value_instr = sarrpeek(values, i);
 		const u32         value_size  = (u32)value_instr->value.type->store_size_bytes;
 
-		if (value_instr->kind == MIR_INSTR_COMPOUND) {
-			BL_UNIMPLEMENTED;
-			break;
-		}
-
-		const u64 vi = get_value(tctx, value_instr);
-
 		s32 dest_value_offset = 0;
 		if (mir_is_composite_type(type)) {
 			const usize index = mapping ? sarrpeek(mapping, i) : i;
@@ -818,12 +814,22 @@ static void emit_global_compound(struct context *ctx, struct thread_context *tct
 			dest_value_offset = dest_offset + (s32)vm_get_array_elem_offset(type, (u32)i);
 		}
 
+		if (value_instr->kind == MIR_INSTR_COMPOUND) {
+			emit_global_compound(ctx, tctx, value_instr, dest_value_offset, value_size);
+			continue;
+		}
+
+		const u64 vi = get_value(tctx, value_instr);
+
 		enum op_kind op_kind = op(peek(vi).kind, value_instr->value.type);
 		switch (op_kind) {
 		case OP_RELOCATION_NUMBER:
 			bassert(value_size == 8);
 			memcpy(&tctx->data[dest_value_offset], &peek_relocation(vi).offset, sizeof(s32));
 			add_patch(tctx, peek_relocation(vi).hash, dest_value_offset, IMAGE_REL_AMD64_ADDR64, SECTION_DATA);
+			break;
+		case OP_IMMEDIATE_NUMBER:
+			memcpy(&tctx->data[dest_value_offset], &peek_immediate(vi), value_size);
 			break;
 		default:
 			BL_UNIMPLEMENTED;
@@ -1027,7 +1033,8 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		sub_ri(tctx, RSP, 0, 8);
 		tctx->stack.alloc_value_offset = get_position(tctx, SECTION_TEXT) - sizeof(s32);
 
-		// @Explain!!!
+		// Here we reserve registers for all arguments passed into the function. The argument value duplication into the
+		// stack memory might introduce call to memcpy intrinsic; in such a case we need to spill original arguments.
 		s32 reg_index = 0;
 		for (usize i = 0; i < sarrlenu(fn->type->data.fn.args) && reg_index < static_arrlenu(CALL_ABI); ++i) {
 			struct mir_arg *arg = sarrpeek(fn->type->data.fn.args, i);
@@ -1111,7 +1118,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		if (index < static_arrlenu(CALL_ABI)) {
 			enum x64_register reg = -1;
 
-			// @Explain!!!
+			// The argument value might be previously spilled (caused by call to memcpy intrinsic).
 			const u64 vi = get_value(tctx, arg);
 			if (peek(vi).kind != REGISTER) {
 				bassert(peek(vi).kind == OFFSET);
@@ -1845,6 +1852,14 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 					}
 					break;
 				}
+				case REGISTER_ADDRESS: {
+					if (type_kind == X64_COMPOSIT) {
+						mov_mr(tctx, RSP, arg_stack_offset, peek_register_address(vi).reg, 8);
+					} else {
+						BL_UNIMPLEMENTED;
+					}
+					break;
+				}
 				default:
 					babort("Invalid value kind!");
 				}
@@ -2125,6 +2140,58 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		break;
 	}
 
+	case MIR_INSTR_SWITCH: {
+		struct mir_instr_switch *sw   = (struct mir_instr_switch *)instr;
+		struct mir_type         *type = sw->value->value.type;
+		if (sw->value->kind == MIR_INSTR_LOAD) {
+			enum x64_register reg = get_temporary_register(tctx, NULL, 0);
+			emit_load_to_register(tctx, sw->value, reg);
+		}
+
+		const u64   vi         = get_value(tctx, sw->value);
+		const usize value_size = type->store_size_bytes;
+		for (usize i = 0; i < sarrlenu(sw->cases); ++i) {
+			struct mir_switch_case *kase = &sarrpeek(sw->cases, i);
+			bassert(mir_is_comptime(kase->on_value));
+			const u64 v = vm_read_int(type, kase->on_value->value.data);
+
+			switch (peek(vi).kind) {
+			case REGISTER:
+				cmp_ri(tctx, peek_register(vi), v, value_size);
+				break;
+			default:
+				BL_UNIMPLEMENTED;
+			}
+			je_relative_i32(tctx, 0x0);
+			const u64 patch_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
+
+			struct sym_patch patch = {
+			    .instr    = &kase->block->base,
+			    .position = patch_position,
+			};
+			arrput(tctx->local_patches, patch);
+
+			if (kase->block->base.backend_value == 0) {
+				arrput(tctx->emit_block_queue, kase->block);
+			}
+		}
+
+		bassert(sw->default_block);
+		jmp_relative_i32(tctx, 0);
+		const u64 patch_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
+
+		struct sym_patch patch = {
+		    .instr    = &sw->default_block->base,
+		    .position = patch_position,
+		};
+		arrput(tctx->local_patches, patch);
+		if (sw->default_block->base.backend_value == 0) {
+			arrput(tctx->emit_block_queue, sw->default_block);
+		}
+		release_value(tctx, vi);
+		break;
+	}
+
 	default:
 		bwarn("Missing implementation for emitting '%s' instruction.", mir_instr_name(instr));
 	}
@@ -2166,7 +2233,7 @@ void job(struct job_context *job_ctx) {
 	bl_zeromem(&tctx->stack, sizeof(tctx->stack));
 
 	for (s32 i = 0; i < REGISTER_COUNT; ++i) {
-		if ((i >= RAX && i <= RDX) || (i >= R8 && i <= R11)) {
+		if ((i >= RAX && i <= RDX) || (i >= R8 && i <= R15)) {
 			// We'll use just volatile registers...
 			tctx->register_table[i] = UNUSED_REGISTER_MAP_VALUE;
 		} else {

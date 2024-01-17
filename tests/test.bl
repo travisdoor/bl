@@ -86,7 +86,9 @@ __os_start :: fn () #entry {
 	// test_glob_fn_ptr_in_compound();
 	// test_pass_string_to_function();
 	// test_function_calls2();
-	test_passing_source_location();
+	// test_passing_source_location();
+	// test_nested_global_compound();
+	test_switch();
 
 	print_string2("Hello!\n");
 
@@ -99,6 +101,55 @@ assert :: fn (expr: bool, loc := #call_location) {
 	if expr == false {
 		assertion_message(loc.file.len, loc.file.ptr, loc.line);
 	}
+}
+
+test_switch :: fn () {
+	n := 5;
+	switch n {
+		1 { print_number(n); }
+		2 { print_number(n); }
+		3 { print_number(n); }
+		default {
+			print_string2("Default!\n");
+		};
+	}
+
+	switch n {
+		1 { print_number(n); }
+		2 { print_number(n); }
+		3 { print_number(n); }
+	}
+
+	switch n {
+		10 { print_number(n); }
+		20 { print_number(n); }
+		5 { print_number(n); }
+		3 { print_number(n); }
+		default;
+	}
+
+	switch n {
+		10 { print_number(n); }
+		20 { print_number(n); }
+		5 { print_number(n); }
+		3 { print_number(n); }
+	}
+}
+
+Hoo :: struct {
+	a: s32;
+	b: s32;
+}
+
+Woo :: struct {
+	hoo: Hoo;
+}
+
+WOO := Woo.{ hoo = Hoo.{ 10, 20 } };
+
+test_nested_global_compound :: fn () {
+	assert(WOO.hoo.a == 10);
+	assert(WOO.hoo.b == 20);
 }
 
 test_passing_source_location :: fn (loc := #call_location) {
