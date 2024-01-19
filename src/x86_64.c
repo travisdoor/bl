@@ -45,11 +45,6 @@
 #include "threading.h"
 #include "x86_64_instructions.h"
 
-#define BYTE_CODE_BUFFER_SIZE 1024
-#define SYMBOL_TABLE_SIZE 1024
-#define STRING_TABLE_SIZE (1 * 1024 * 1024)      // 1MB
-#define CODE_BLOCK_BUFFER_SIZE (2 * 1024 * 1024) // 2MB
-
 #define UNUSED_REGISTER_MAP_VALUE -1
 #define RESERVED_REGISTER_MAP_VALUE -2
 
@@ -638,7 +633,6 @@ static void emit_string_literal(struct context *ctx, struct thread_context *tctx
 		unique_name(ctx, &name, ".str", (const str_t){0});
 		const u32 ptr_offset = (u32)vm_get_struct_elem_offset(assembly, type, MIR_SLICE_PTR_INDEX);
 		add_sym(tctx, SECTION_DATA, dest_offset + ptr_offset, str_buf_view(name), IMAGE_SYM_CLASS_EXTERNAL, 0);
-
 		add_patch(tctx, reloc_hash, dest_offset + ptr_offset, IMAGE_REL_AMD64_ADDR64, SECTION_DATA);
 	}
 
@@ -1684,7 +1678,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			// Last generated instruction must be cmp.
 			struct mir_instr_binop *cond_binop = (struct mir_instr_binop *)br->cond;
 			bassert(cond_binop->is_condition);
-			patch_position = emit_relational_binop_jmp(tctx, cond_binop->op);
+			patch_position = emit_relational_binop_jmp(tctx, cond_binop->op) - sizeof(s32);
 		} else if (br->cond->kind == MIR_INSTR_UNOP) {
 			// Last generated instruction must be cmp.
 			struct mir_instr_unop *cond_unop = (struct mir_instr_unop *)br->cond;
@@ -1699,12 +1693,12 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			// Compare register value with 0 and jump.
 			cmp_ri(tctx, reg, 0, value_size);
 			je_relative_i32(tctx, 0x0);
-			patch_position = get_position(tctx, SECTION_TEXT);
+			patch_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
 		}
 
 		struct sym_patch patch = {
 		    .instr    = &br->else_block->base,
-		    .position = patch_position - sizeof(s32),
+		    .position = patch_position,
 		};
 		arrput(tctx->local_patches, patch);
 
@@ -2192,6 +2186,17 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		break;
 	}
 
+	case MIR_INSTR_TYPE_INFO: {
+		struct mir_instr_type_info *ti   = (struct mir_instr_type_info *)instr;
+		const hash_t                hash = ti->rtti_type->id.hash;
+		enum x64_register           reg  = get_temporary_register(tctx, NULL, 0);
+		lea_rm_indirect(tctx, reg, 0, 8);
+		const u64 patch_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
+		add_patch(tctx, hash, patch_position, IMAGE_REL_AMD64_ADDR64, SECTION_TEXT);
+		set_value(tctx, instr, (struct x64_value){.kind = REGISTER, .reg = reg});
+		break;
+	}
+
 	default:
 		bwarn("Missing implementation for emitting '%s' instruction.", mir_instr_name(instr));
 	}
@@ -2220,6 +2225,16 @@ void job(struct job_context *job_ctx) {
 	const u32              thread_index = job_ctx->thread_index;
 	struct thread_context *tctx         = &ctx->tctx[thread_index];
 
+	// Preallocate buffers
+	arrsetcap(tctx->text, 2048);
+	arrsetcap(tctx->data, 2048);
+	arrsetcap(tctx->syms, 1024);
+	arrsetcap(tctx->strs, 4096);
+	arrsetcap(tctx->values, 1024);
+	arrsetcap(tctx->emit_block_queue, 128);
+	arrsetcap(tctx->local_patches, 128);
+	arrsetcap(tctx->patches, 128);
+
 	// Reset buffers
 	arrsetlen(tctx->text, 0);
 	arrsetlen(tctx->data, 0);
@@ -2240,8 +2255,6 @@ void job(struct job_context *job_ctx) {
 			tctx->register_table[i] = RESERVED_REGISTER_MAP_VALUE;
 		}
 	}
-
-	arrsetcap(tctx->text, BYTE_CODE_BUFFER_SIZE);
 
 	emit_instr(ctx, tctx, job_ctx->x64.top_instr);
 	check_dangling_registers(tctx);
@@ -2265,7 +2278,6 @@ void job(struct job_context *job_ctx) {
 		const usize gstrs_len = arrlenu(ctx->strs);
 
 		// Insert code.
-		arrsetcap(ctx->code.bytes, CODE_BLOCK_BUFFER_SIZE);
 		arrsetlen(ctx->code.bytes, gtext_len + text_len);
 		memcpy(&ctx->code.bytes[gtext_len], tctx->text, text_len);
 
@@ -2326,18 +2338,19 @@ void job(struct job_context *job_ctx) {
 		}
 
 		// Copy symbol table to global one.
-		arrsetcap(ctx->syms, SYMBOL_TABLE_SIZE);
 		arrsetlen(ctx->syms, gsyms_len + syms_len);
 		memcpy(&ctx->syms[gsyms_len], tctx->syms, syms_len * sizeof(IMAGE_SYMBOL));
 
 		// Copy string table to global one.
-		arrsetcap(ctx->strs, STRING_TABLE_SIZE);
 		arrsetlen(ctx->strs, gstrs_len + strs_len);
 		memcpy(&ctx->strs[gstrs_len], tctx->strs, strs_len);
 
 		pthread_mutex_unlock(&ctx->mutex);
 	}
 	return_zone();
+}
+
+static void emit_type_info(struct context *ctx) {
 }
 
 static void create_object_file(struct context *ctx) {
@@ -2451,6 +2464,14 @@ void x86_64run(struct assembly *assembly) {
 	arrsetlen(ctx.tctx, thread_count);
 	bl_zeromem(ctx.tctx, thread_count * sizeof(struct thread_context));
 
+	arrsetcap(ctx.strs, 64 * 1024);
+	arrsetcap(ctx.code.bytes, 1024 * 1024);
+	arrsetcap(ctx.data.bytes, 1024 * 1024);
+	arrsetcap(ctx.code.relocs, 4096);
+	arrsetcap(ctx.data.relocs, 4096);
+	arrsetcap(ctx.syms, 64 * 1024);
+	arrsetcap(ctx.patches, 64 * 1024);
+
 	MEMCPY_BUILTIN_HASH = add_global_external_sym(&ctx, MEMCPY_BUILTIN, DT_FUNCTION);
 	MEMSET_BUILTIN_HASH = add_global_external_sym(&ctx, MEMSET_BUILTIN, DT_FUNCTION);
 
@@ -2460,6 +2481,8 @@ void x86_64run(struct assembly *assembly) {
 		submit_job(&job, &job_ctx);
 	}
 	wait_threads();
+
+	emit_type_info(&ctx);
 
 	for (usize i = 0; i < arrlenu(ctx.patches); ++i) {
 		struct sym_patch *patch = &ctx.patches[i];
@@ -2518,12 +2541,11 @@ void x86_64run(struct assembly *assembly) {
 		arrfree(ctx.strs);
 		arrfree(ctx.code.bytes);
 		arrfree(ctx.code.relocs);
-
 		arrfree(ctx.data.bytes);
 		arrfree(ctx.data.relocs);
-
 		arrfree(ctx.syms);
 		arrfree(ctx.patches);
+
 		hmfree(ctx.symbol_table);
 		hmfree(ctx.scheduled_for_generation);
 	}

@@ -22,23 +22,120 @@ enum_variants_to_string_list :: fn (TEnum: type #comptime) [enum_count(TEnum)]st
 #import "libc"
 #import "os/windows"
 
+/// Builtin string slice.
+string_view :: []u8;
+
+TypeKind :: enum #compiler {
+	TYPE    = 1;
+	VOID    = 2;
+	INT     = 3;
+	REAL    = 4;
+	FN      = 5;
+	PTR     = 6;
+	BOOL    = 7;
+	ARRAY   = 8;
+	STRUCT  = 9;
+	ENUM    = 10;
+	NULL    = 11;
+	STRING  = 12;
+	FN_GROUP = 16;
+};
+
+TypeInfo :: struct #compiler {
+	kind: TypeKind;
+	size_bytes: usize;
+	alignment: usize;
+};
+
+TypeInfoInt :: struct #base TypeInfo #compiler {
+	bit_count: s32;
+	is_signed: bool;
+};
+
+TypeInfoReal :: struct #base TypeInfo  #compiler {
+	bit_count: s32;
+}
+
+TypeInfoFn :: struct #base TypeInfo #compiler {
+	args: []TypeInfoFnArg;
+	ret_type: *TypeInfo;
+	is_vargs: bool;
+};
+
+TypeInfoFnGroup :: struct #base TypeInfo #compiler {
+	variants: []*TypeInfoFn;
+}
+
+TypeInfoPtr :: struct #base TypeInfo #compiler {
+	pointee_type: *TypeInfo
+};
+
+TypeInfoArray :: struct #base TypeInfo #compiler {
+	name: string_view;
+	elem_type: *TypeInfo;
+	len: s64
+};
+
+TypeInfoStruct :: struct #base TypeInfo #compiler {
+	name: string_view;
+	members: []TypeInfoStructMember;
+	is_slice: bool;
+	is_union: bool;
+	is_dynamic_array: bool;
+};
+
+TypeInfoEnum :: struct #base TypeInfo #compiler {
+	name: string_view;
+	base_type: *TypeInfo;
+	variants: []TypeInfoEnumVariant;
+	is_flags: bool;
+};
+
+TypeInfoVoid :: struct #base TypeInfo #compiler {
+};
+
+TypeInfoNull :: struct #base TypeInfo #compiler {
+};
+
+TypeInfoString :: struct #base TypeInfo #compiler {
+};
+
+TypeInfoType :: struct #base TypeInfo  #compiler {
+};
+
+TypeInfoBool :: struct #base TypeInfo #compiler {
+};
+
+TypeInfoStructMember :: struct #compiler {
+	name: string_view;
+	base_type: *TypeInfo;
+	offset_bytes: s32;
+	index: s32;
+	tag: u64;
+	is_base: bool;
+};
+
+TypeInfoEnumVariant :: struct #compiler {
+	name: string_view;
+	value: s64
+};
+
+TypeInfoFnArg :: struct #compiler {
+	name: string_view;
+	base_type: *TypeInfo
+};
+
 Any :: struct #compiler {
 	type_info: *u8;
 	data: *u8
 };
 
 CodeLocation :: struct #compiler {
-	/// Full source file path.
 	file: string_view;
-	/// Line in the source file.
 	line: s32;
-	/// Name of the function.
 	function: string_view;
-	/// File and line combination hash.
 	hash: u32;
 }
-
-string_view :: []u8;
 
 _CRT_INIT :: fn () win32.BOOL #extern;
 my_function :: fn (a: s32, b: s32, c: s32, d: s32, e: s32, f: s32) #extern;
@@ -65,30 +162,31 @@ __os_start :: fn () #entry {
 		C.exit(1);
 	}
 
-	// test_global_slice();
-	// test_string();
-	// test_struct_members();
-	// test_compounds();
-	// test_function_calls();
-	// use_global_number();
-	// test_looping(10);
-	// test_array_int();
-	// test_array_ptr();
-	// test_casting();
-	// test_unop();
-	// test_conditions();
-	// test_condition_assign();
-	// test_glob_addrof();
-	// test_out_arg();
-	// test_global_ptr_to_global();
-	// test_global_compound();
-	// test_fn_ptr();
-	// test_glob_fn_ptr_in_compound();
-	// test_pass_string_to_function();
-	// test_function_calls2();
-	// test_passing_source_location();
-	// test_nested_global_compound();
+	test_global_slice();
+	test_string();
+	test_struct_members();
+	test_compounds();
+	test_function_calls();
+	use_global_number();
+	test_looping(10);
+	test_array_int();
+	test_array_ptr();
+	test_casting();
+	test_unop();
+	test_conditions();
+	test_condition_assign();
+	test_glob_addrof();
+	test_out_arg();
+	test_global_ptr_to_global();
+	test_global_compound();
+	test_fn_ptr();
+	test_glob_fn_ptr_in_compound();
+	test_pass_string_to_function();
+	test_function_calls2();
+	test_passing_source_location();
+	test_nested_global_compound();
 	test_switch();
+	// test_type_info();
 
 	print_string2("Hello!\n");
 
@@ -101,6 +199,11 @@ assert :: fn (expr: bool, loc := #call_location) {
 	if expr == false {
 		assertion_message(loc.file.len, loc.file.ptr, loc.line);
 	}
+}
+
+test_type_info :: fn () {
+	i :: typeinfo(s32);
+	print_number(cast(s32)i.kind);
 }
 
 test_switch :: fn () {
