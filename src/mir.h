@@ -901,9 +901,15 @@ struct mir_instr_to_any {
 	struct mir_instr  base;
 	struct mir_instr *expr;
 	struct mir_type  *rtti_type;
-	struct mir_type  *rtti_data; // optional
-	struct mir_var   *tmp;
-	struct mir_var   *expr_tmp; // optional
+	// Temporary variable on the call-side used to store Any structure data.
+	struct mir_var *tmp;
+
+	// In case we convert Types to any value, this field contains pointer to the passed type,
+	// we need to generated RTTI for this type and use it as .data.
+	struct mir_type *rtti_data; // optional
+	// Expression might be naked so it's duplicated into temporary variable in some cases.
+	// (literals).
+	struct mir_var *expr_tmp; // optional
 };
 
 struct mir_instr_switch {

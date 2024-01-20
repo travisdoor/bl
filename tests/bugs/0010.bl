@@ -1,0 +1,7 @@
+test_fn_ptr :: fn () {
+	my_func :: fn () {
+	};
+
+	ptr :: &my_func;
+	(@ptr)();
+}

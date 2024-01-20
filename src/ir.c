@@ -2833,32 +2833,27 @@ enum state emit_instr_toany(struct context *ctx, struct mir_instr_to_any *toany)
 
 	bassert(llvm_dest && llvm_type_info);
 	// Setup tmp variable pointer to type info
-	struct mir_type *tmp_type = toany->tmp->value.type;
-	LLVMValueRef     llvm_dest_type_info =
-	    LLVMBuildStructGEP2(ctx->llvm_builder, get_type(ctx, tmp_type), llvm_dest, 0, "");
+	struct mir_type *tmp_type            = toany->tmp->value.type;
+	LLVMValueRef     llvm_dest_type_info = LLVMBuildStructGEP2(ctx->llvm_builder, get_type(ctx, tmp_type), llvm_dest, 0, "");
 	LLVMBuildStore(ctx->llvm_builder, llvm_type_info, llvm_dest_type_info);
 
 	// data
 	struct mir_type *data_type           = mir_get_struct_elem_type(toany->tmp->value.type, 1);
 	LLVMTypeRef      llvm_dest_data_type = get_type(ctx, data_type);
-	LLVMValueRef     llvm_dest_data =
-	    LLVMBuildStructGEP2(ctx->llvm_builder, get_type(ctx, tmp_type), llvm_dest, 1, "");
+	LLVMValueRef     llvm_dest_data      = LLVMBuildStructGEP2(ctx->llvm_builder, get_type(ctx, tmp_type), llvm_dest, 1, "");
 
 	if (toany->expr_tmp) {
 		LLVMValueRef llvm_dest_tmp = toany->expr_tmp->llvm_value;
 		bassert(llvm_dest_tmp && "Missing tmp variable!");
 		LLVMBuildStore(ctx->llvm_builder, toany->expr->llvm_value, llvm_dest_tmp);
-		LLVMValueRef llvm_data =
-		    LLVMBuildPointerCast(ctx->llvm_builder, llvm_dest_tmp, llvm_dest_data_type, "");
+		LLVMValueRef llvm_data = LLVMBuildPointerCast(ctx->llvm_builder, llvm_dest_tmp, llvm_dest_data_type, "");
 		LLVMBuildStore(ctx->llvm_builder, llvm_data, llvm_dest_data);
 	} else if (toany->rtti_data) {
 		LLVMValueRef llvm_data_type_info = rtti_emit(ctx, toany->rtti_data);
-		LLVMValueRef llvm_data =
-		    LLVMBuildPointerCast(ctx->llvm_builder, llvm_data_type_info, llvm_dest_data_type, "");
+		LLVMValueRef llvm_data           = LLVMBuildPointerCast(ctx->llvm_builder, llvm_data_type_info, llvm_dest_data_type, "");
 		LLVMBuildStore(ctx->llvm_builder, llvm_data, llvm_dest_data);
 	} else {
-		LLVMValueRef llvm_data = LLVMBuildPointerCast(
-		    ctx->llvm_builder, toany->expr->llvm_value, llvm_dest_data_type, "");
+		LLVMValueRef llvm_data = LLVMBuildPointerCast(ctx->llvm_builder, toany->expr->llvm_value, llvm_dest_data_type, ""); // @Cleanup: We might don't need this cast.
 		LLVMBuildStore(ctx->llvm_builder, llvm_data, llvm_dest_data);
 	}
 

@@ -14,7 +14,7 @@ compile_commands.json
 /.idea
 /bin
 /out/
-/.vs/
+.vs/
 /msvc/
 /etc
 /clang/

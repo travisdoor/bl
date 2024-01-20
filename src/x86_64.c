@@ -125,6 +125,10 @@ struct scheduled_entry {
 	hash_t key;
 };
 
+struct rtti_entry {
+	hash_t key;
+};
+
 struct thread_context {
 	array(u8) text;
 	array(u8) data;
@@ -148,7 +152,8 @@ struct thread_context {
 };
 
 struct context {
-	struct assembly *assembly;
+	struct assembly     *assembly;
+	struct BuiltinTypes *builtin_types;
 	array(struct thread_context) tctx;
 
 	struct {
@@ -163,6 +168,9 @@ struct context {
 
 	array(IMAGE_SYMBOL) syms;
 	array(char) strs;
+
+	hash_table(struct rtti_entry) rtti;
+	pthread_spinlock_t rtti_lock;
 
 	hash_table(struct symbol_table_entry) symbol_table;
 
@@ -255,11 +263,15 @@ static void check_dangling_registers(struct thread_context *tctx) {
 #endif
 
 static inline void unique_name(struct context *ctx, str_buf_t *dest, const char *prefix, const str_t name) {
-	pthread_spin_lock(&ctx->uq_name_lock);
 	static u64 n = 0;
-	str_buf_clr(dest);
-	str_buf_append_fmt(dest, "{s}{str}{u64}", prefix, name, n++);
+
+	u64 serial;
+	pthread_spin_lock(&ctx->uq_name_lock);
+	serial = n++;
 	pthread_spin_unlock(&ctx->uq_name_lock);
+
+	str_buf_clr(dest);
+	str_buf_append_fmt(dest, "{s}{str}{u64}", prefix, name, serial);
 }
 
 void add_code(struct thread_context *tctx, const void *buf, s32 len) {
@@ -269,10 +281,6 @@ void add_code(struct thread_context *tctx, const void *buf, s32 len) {
 }
 
 static inline u64 add_value(struct thread_context *tctx, struct x64_value value) {
-#if defined(BL_DEBUG) && 0
-	if (arrlenu(tctx->values) == 24)
-		BL_DEBUG_BREAK;
-#endif
 	arrput(tctx->values, value);
 	return arrlenu(tctx->values); // +1
 }
@@ -318,11 +326,6 @@ static inline hash_t submit_global_variable_generation(struct context *ctx, stru
 	return hash;
 }
 
-// Add new symbol into thread local storage and set it's offset value relative to already generated
-// code in the thread local bytes array. This value must be later fixed according to position in the
-// final code section.
-//
-// Returns offset of the symbol in the binary.
 u32 add_sym(struct thread_context *tctx, s32 section_number, u32 offset, str_t linkage_name, u8 storage_class, s32 data_type) {
 	bassert(linkage_name.len && linkage_name.ptr);
 	IMAGE_SYMBOL sym = {
@@ -331,20 +334,15 @@ u32 add_sym(struct thread_context *tctx, s32 section_number, u32 offset, str_t l
 	    .StorageClass  = storage_class,
 	    .Value         = offset,
 	};
-
 	if (linkage_name.len > 7) {
 		const u32 str_offset = (u32)arrlenu(tctx->strs);
-		arrsetcap(tctx->strs, 256);
 		arrsetlen(tctx->strs, str_offset + linkage_name.len + 1); // +1 zero terminator
 		memcpy(&tctx->strs[str_offset], linkage_name.ptr, linkage_name.len);
 		tctx->strs[str_offset + linkage_name.len] = '\0';
-
-		sym.N.Name.Long = str_offset + sizeof(u32); // 4 bytes for the leading table size
+		sym.N.Name.Long                           = str_offset + sizeof(u32); // 4 bytes for the leading table size
 	} else {
 		memcpy(sym.N.ShortName, linkage_name.ptr, linkage_name.len);
 	}
-
-	arrsetcap(tctx->syms, 64);
 	arrput(tctx->syms, sym);
 	return offset;
 }
@@ -413,7 +411,6 @@ static void allocate_stack_variables(struct thread_context *tctx, struct mir_fn 
 		struct mir_var *var = fn->variables[i];
 		bassert(var);
 		if (isnotflag(var->iflags, MIR_VAR_EMIT_LLVM)) continue;
-		if (var->ref_count == 0) continue;
 
 		struct mir_type *var_type = var->value.type;
 		bassert(var_type);
@@ -906,6 +903,63 @@ static void emit_local_compound(struct context *ctx, struct thread_context *tctx
 	// @Incomplete: set_value?
 }
 
+static hash_t emit_type_info(struct context *ctx, struct thread_context *tctx, struct mir_type *target_type) {
+	struct assembly *assembly = ctx->assembly;
+	// We need to generate symbol name so the type hash cannot be used directly :(
+	str_buf_t sym_name = get_tmp_str();
+	str_buf_append_fmt(&sym_name, ".I{u32}", target_type->id.hash);
+	const hash_t hash = strhash(sym_name);
+
+	bool should_generate = false;
+	pthread_spin_lock(&ctx->rtti_lock);
+	if (hmgeti(ctx->rtti, hash) == -1) {
+		// Note that the type info for this hash was generated.
+		struct rtti_entry entry = {hash};
+		hmputs(ctx->rtti, entry);
+		should_generate = true;
+	}
+	pthread_spin_unlock(&ctx->rtti_lock);
+	if (!should_generate) {
+		put_tmp_str(sym_name);
+		return hash;
+	}
+
+	struct mir_var *var = assembly_get_rtti(ctx->assembly, target_type->id.hash);
+	bassert(var);
+	const u32 dest_offset = add_data(tctx, NULL, (u32)var->value.type->store_size_bytes);
+	add_sym(tctx, SECTION_DATA, dest_offset, str_buf_view(sym_name), IMAGE_SYM_CLASS_EXTERNAL, 0);
+
+#define write_member(offset, type, index, value) \
+	memcpy(vm_get_struct_elem_ptr(ctx->assembly, type, &tctx->data[offset], index), value, mir_get_struct_elem_type(type, index)->store_size_bytes);
+
+	struct mir_type *type = var->value.type;
+	{ // base
+		struct mir_type *base_type = mir_get_struct_elem_type(type, 0);
+		write_member(dest_offset, base_type, 0, &target_type->kind);
+		write_member(dest_offset, base_type, 1, &target_type->store_size_bytes);
+		write_member(dest_offset, base_type, 2, &target_type->alignment);
+	}
+
+	switch (target_type->kind) {
+	case MIR_TYPE_INT:
+		write_member(dest_offset, type, 1, &target_type->data.integer.bitcount);
+		write_member(dest_offset, type, 2, &target_type->data.integer.is_signed);
+		break;
+	case MIR_TYPE_PTR: {
+		const hash_t pointee_hash = emit_type_info(ctx, tctx, mir_deref_type(target_type));
+		add_patch(tctx, pointee_hash, dest_offset + vm_get_struct_elem_offset(assembly, type, 1), IMAGE_REL_AMD64_ADDR64, SECTION_DATA);
+		break;
+	}
+	default:
+		BL_UNIMPLEMENTED;
+	}
+
+	put_tmp_str(sym_name);
+	return hash;
+
+#undef write_member
+}
+
 static inline bool is_relational_binop(enum binop_kind op) {
 	switch (op) {
 	case BINOP_EQ:
@@ -997,6 +1051,7 @@ static void emit_binop_rr(struct thread_context *tctx, enum binop_kind op, const
 static void emit_instr(struct context *ctx, struct thread_context *tctx, struct mir_instr *instr) {
 	bassert(instr->state == MIR_IS_COMPLETE && "Attempt to emit instruction in incomplete state!");
 	if (!mir_type_has_llvm_representation((instr->value.type))) return;
+	struct assembly *assembly = ctx->assembly;
 
 	switch (instr->kind) {
 
@@ -1234,7 +1289,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		} else {
 			const s32        index       = (u32)member->index;
 			struct mir_type *target_type = mir_deref_type(mem->target_ptr->value.type);
-			const s32        offset      = (s32)vm_get_struct_elem_offset(ctx->assembly, target_type, index);
+			const s32        offset      = (s32)vm_get_struct_elem_offset(assembly, target_type, index);
 			struct x64_value value;
 			switch (peek(vi_target).kind) {
 			case OFFSET:
@@ -1371,7 +1426,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		case MIR_TYPE_SLICE:
 		case MIR_TYPE_STRING:
 		case MIR_TYPE_VARGS: {
-			const s32        elem_ptr_offset = (s32)vm_get_struct_elem_offset(ctx->assembly, target_type, MIR_SLICE_PTR_INDEX);
+			const s32        elem_ptr_offset = (s32)vm_get_struct_elem_offset(assembly, target_type, MIR_SLICE_PTR_INDEX);
 			struct mir_type *elem_type       = mir_get_struct_elem_type(target_type, MIR_SLICE_PTR_INDEX);
 			bassert(mir_is_pointer_type(elem_type));
 			const usize       elem_ptr_size = elem_type->store_size_bytes;
@@ -1459,7 +1514,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		case MIR_CAST_PTRTOBOOL:
 			cmp_ri(tctx, reg, 0, src_size);
 			setne(tctx, reg);
-			and_ri(tctx, reg, 1, ctx->assembly->builtin_types.t_bool->store_size_bytes);
+			and_ri(tctx, reg, 1, ctx->builtin_types->t_bool->store_size_bytes);
 			break;
 
 		case MIR_CAST_FPTOSI:
@@ -1511,7 +1566,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			if (!unop->is_condition) {
 				bassert(value_size == 1);
 				sete(tctx, reg);
-				and_ri(tctx, reg, 1, ctx->assembly->builtin_types.t_bool->store_size_bytes);
+				and_ri(tctx, reg, 1, ctx->builtin_types->t_bool->store_size_bytes);
 			}
 			break;
 		}
@@ -1685,6 +1740,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			switch (cond_unop->op) {
 			case UNOP_NOT:
 				jne_relative_i32(tctx, 0x0);
+				patch_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
 				break;
 			default:
 				BL_UNIMPLEMENTED;
@@ -1696,6 +1752,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			patch_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
 		}
 
+		bassert(patch_position);
 		struct sym_patch patch = {
 		    .instr    = &br->else_block->base,
 		    .position = patch_position,
@@ -1901,8 +1958,8 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 		case X64_COMPOSIT: {
 			if (type->data.strct.is_string_literal) {
-				vm_stack_ptr_t len_ptr = vm_get_struct_elem_ptr(ctx->assembly, type, cnst->base.value.data, MIR_SLICE_LEN_INDEX);
-				vm_stack_ptr_t str_ptr = vm_get_struct_elem_ptr(ctx->assembly, type, cnst->base.value.data, MIR_SLICE_PTR_INDEX);
+				vm_stack_ptr_t len_ptr = vm_get_struct_elem_ptr(assembly, type, cnst->base.value.data, MIR_SLICE_LEN_INDEX);
+				vm_stack_ptr_t str_ptr = vm_get_struct_elem_ptr(assembly, type, cnst->base.value.data, MIR_SLICE_PTR_INDEX);
 				const s64      len     = vm_read_as(s64, len_ptr);
 				char          *str     = vm_read_as(char *, str_ptr);
 
@@ -1954,7 +2011,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		unique_name(ctx, &name, ".loc", (const str_t){0});
 		const hash_t hash = strhash(name);
 
-		const struct mir_type *type = ctx->assembly->builtin_types.t_CodeLocation;
+		const struct mir_type *type = ctx->builtin_types->t_CodeLocation;
 
 		// Alocate in DATA segment.
 		const u32 data_offset = add_data(tctx, NULL, (s32)type->store_size_bytes);
@@ -1965,7 +2022,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		emit_string_literal(ctx, tctx, data_offset, make_str_from_c(filepath));
 
 		// Write line
-		const u32 line_member_offset                  = data_offset + (u32)vm_get_struct_elem_offset(ctx->assembly, type, 1);
+		const u32 line_member_offset                  = data_offset + (u32)vm_get_struct_elem_offset(assembly, type, 1);
 		*data_ptr_s32(tctx->data, line_member_offset) = loc->call_location->line;
 
 		// Call Location yields pointer to static data...
@@ -1993,22 +2050,15 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 		if (decl->init) {
 			if (decl->init->kind == MIR_INSTR_LOAD) {
-				if (var->ref_count == 0) break;
 				enum x64_register reg = get_temporary_register(tctx, NULL, 0);
 				emit_load_to_register(tctx, decl->init, reg);
 			} else if (decl->init->kind == MIR_INSTR_COMPOUND) {
-				if (var->ref_count == 0) break;
 				emit_local_compound(ctx, tctx, decl->init, get_value(tctx, var), value_size);
 				break; // we're done here
 			}
 
 			const u64 vi_init = get_value(tctx, decl->init);
-			if (var->ref_count == 0) {
-				release_value(tctx, vi_init);
-				break;
-			}
-
-			const u64 vi_var = get_value(tctx, var);
+			const u64 vi_var  = get_value(tctx, var);
 			bassert(peek(vi_var).kind == OFFSET);
 			const s32 var_offset = peek_offset(vi_var);
 
@@ -2187,16 +2237,72 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 	}
 
 	case MIR_INSTR_TYPE_INFO: {
-		struct mir_instr_type_info *ti   = (struct mir_instr_type_info *)instr;
-		const hash_t                hash = ti->rtti_type->id.hash;
-		enum x64_register           reg  = get_temporary_register(tctx, NULL, 0);
+		struct mir_instr_type_info *ti          = (struct mir_instr_type_info *)instr;
+		struct mir_type            *target_type = ti->rtti_type;
+
+		const hash_t sym_hash = emit_type_info(ctx, tctx, target_type);
+
+		enum x64_register reg = get_temporary_register(tctx, NULL, 0);
 		lea_rm_indirect(tctx, reg, 0, 8);
 		const u64 patch_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
-		add_patch(tctx, hash, patch_position, IMAGE_REL_AMD64_ADDR64, SECTION_TEXT);
+		add_patch(tctx, sym_hash, patch_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
 		set_value(tctx, instr, (struct x64_value){.kind = REGISTER, .reg = reg});
 		break;
 	}
 
+	case MIR_INSTR_TOANY: {
+		struct mir_instr_to_any *toany    = (struct mir_instr_to_any *)instr;
+		struct mir_type         *any_type = ctx->builtin_types->t_Any;
+
+		const hash_t      info_hash = emit_type_info(ctx, tctx, toany->rtti_type);
+		enum x64_register info_reg  = get_temporary_register(tctx, NULL, 0);
+		lea_rm_indirect(tctx, info_reg, 0, 8);
+		const u64 patch_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
+		add_patch(tctx, info_hash, patch_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
+
+		// Initialize the resulting temporary variable containing Any.
+		const u64 vi_any  = get_value(tctx, toany->tmp);
+		const u64 vi_expr = get_value(tctx, toany->expr);
+		bassert(peek(vi_any).kind == OFFSET);
+
+		// Initialize pointer to type info.
+		mov_mr(tctx, RBP, peek_offset(vi_any) + (s32)vm_get_struct_elem_offset(assembly, any_type, 0), info_reg, 8);
+
+		enum x64_register data_reg = info_reg; // can be reused
+		if (toany->expr_tmp) {
+			const u64 vi_tmp = get_value(tctx, toany->expr_tmp);
+			bassert(peek(vi_tmp).kind == OFFSET);
+
+			// We need to fill up the temporary variable for the expression.
+			const enum op_kind expr_kind  = op(peek(vi_expr).kind, toany->expr->value.type);
+			const usize        value_size = toany->expr->value.type->store_size_bytes;
+			switch (expr_kind) {
+			case OP_IMMEDIATE_NUMBER:
+				mov_mi(tctx, RBP, peek_offset(vi_tmp), peek_immediate(vi_expr), value_size);
+				break;
+			default:
+				BL_UNIMPLEMENTED;
+			}
+			lea_rm(tctx, data_reg, RBP, peek_offset(vi_tmp), 8);
+			release_value(tctx, vi_tmp);
+		} else if (toany->rtti_data) {
+			// We've passed a type, so we need to generate the type info.
+			BL_UNIMPLEMENTED;
+			// set data_reg!
+		} else {
+			// Just pick expression pointer.
+			BL_UNIMPLEMENTED;
+			// set data_reg!
+		}
+
+		// Setup pointer to data.
+		mov_mr(tctx, RBP, peek_offset(vi_any) + (s32)vm_get_struct_elem_offset(assembly, any_type, 1), data_reg, 8);
+
+		release_value(tctx, vi_any);
+		release_value(tctx, vi_expr);
+		set_value(tctx, instr, (struct x64_value){.kind = OFFSET, .offset = peek_offset(vi_any)});
+		break;
+	}
 	default:
 		bwarn("Missing implementation for emitting '%s' instruction.", mir_instr_name(instr));
 	}
@@ -2350,9 +2456,6 @@ void job(struct job_context *job_ctx) {
 	return_zone();
 }
 
-static void emit_type_info(struct context *ctx) {
-}
-
 static void create_object_file(struct context *ctx) {
 	usize text_section_pointer = IMAGE_SIZEOF_FILE_HEADER + IMAGE_SIZEOF_SECTION_HEADER * 2;
 
@@ -2454,12 +2557,14 @@ void x86_64run(struct assembly *assembly) {
 	const u32 thread_count = get_thread_count();
 
 	struct context ctx = {
-	    .assembly = assembly,
+	    .assembly      = assembly,
+	    .builtin_types = &assembly->builtin_types,
 	};
 
 	pthread_mutex_init(&ctx.mutex, NULL);
 	pthread_spin_init(&ctx.uq_name_lock, 0);
 	pthread_spin_init(&ctx.schedule_for_generation_lock, 0);
+	pthread_spin_init(&ctx.rtti_lock, 0);
 
 	arrsetlen(ctx.tctx, thread_count);
 	bl_zeromem(ctx.tctx, thread_count * sizeof(struct thread_context));
@@ -2481,8 +2586,6 @@ void x86_64run(struct assembly *assembly) {
 		submit_job(&job, &job_ctx);
 	}
 	wait_threads();
-
-	emit_type_info(&ctx);
 
 	for (usize i = 0; i < arrlenu(ctx.patches); ++i) {
 		struct sym_patch *patch = &ctx.patches[i];
@@ -2548,9 +2651,11 @@ void x86_64run(struct assembly *assembly) {
 
 		hmfree(ctx.symbol_table);
 		hmfree(ctx.scheduled_for_generation);
+		hmfree(ctx.rtti);
 	}
 
 	pthread_spin_destroy(&ctx.schedule_for_generation_lock);
+	pthread_spin_destroy(&ctx.rtti_lock);
 	pthread_spin_destroy(&ctx.uq_name_lock);
 	pthread_mutex_destroy(&ctx.mutex);
 }
