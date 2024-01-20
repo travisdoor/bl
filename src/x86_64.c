@@ -710,6 +710,60 @@ static void emit_copy_relocation_to_offset(struct thread_context *tctx, const u6
 	}
 }
 
+// General move of any values.
+static void emit_mov_values(struct thread_context *tctx, struct mir_type *type, u64 vi_dest, u64 vi_src) {
+	const u32          value_size = (u32)type->store_size_bytes;
+	const enum op_kind dest_kind  = op(peek(vi_dest).kind, type);
+	const enum op_kind src_kind   = op(peek(vi_src).kind, type);
+
+	switch (op_combined(dest_kind, src_kind)) {
+	case op_combined(OP_OFFSET_NUMBER, OP_IMMEDIATE_NUMBER):
+		mov_mi(tctx, RBP, peek_offset(vi_dest), peek_immediate(vi_src), value_size);
+		break;
+	case op_combined(OP_RELOCATION_NUMBER, OP_IMMEDIATE_NUMBER):
+		mov_mi_indirect(tctx, peek_relocation(vi_dest).offset, peek_immediate(vi_src), value_size);
+		const u32 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(u64);
+		add_patch(tctx, peek_relocation(vi_dest).hash, reloc_position, IMAGE_REL_AMD64_REL32_4, SECTION_TEXT);
+		break;
+	case op_combined(OP_OFFSET_NUMBER, OP_OFFSET_NUMBER):
+		enum x64_register reg = get_temporary_register(tctx, NULL, 0);
+		mov_rm(tctx, reg, RBP, peek_offset(vi_src), value_size);
+		mov_mr(tctx, RBP, peek_offset(vi_dest), reg, value_size);
+		break;
+	case op_combined(OP_OFFSET_NUMBER, OP_REGISTER_NUMBER):
+		mov_mr(tctx, RBP, peek_offset(vi_dest), peek_register(vi_src), value_size);
+		break;
+	case op_combined(OP_RELOCATION_NUMBER, OP_REGISTER_NUMBER): {
+		// register -> relocated memory.
+		mov_mr_indirect(tctx, peek_relocation(vi_dest).offset, peek_register(vi_src), value_size);
+		const u32 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
+		add_patch(tctx, peek_relocation(vi_dest).hash, reloc_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
+		break;
+	}
+	case op_combined(OP_OFFSET_COMPOSIT, OP_REGISTER_ADDRESS_COMPOSIT):
+		emit_call_memcpy(tctx, vi_dest, vi_src, value_size);
+		break;
+	case op_combined(OP_OFFSET_COMPOSIT, OP_RELOCATION_COMPOSIT):
+		emit_copy_relocation_to_offset(tctx, vi_dest, vi_src, value_size);
+		break;
+	case op_combined(OP_REGISTER_OFFSET_NUMBER, OP_IMMEDIATE_NUMBER):
+		mov_mi_sib(tctx, RBP, peek_register_offset(vi_dest).reg, peek_register_offset(vi_dest).offset, peek_immediate(vi_src), value_size);
+		break;
+	case op_combined(OP_REGISTER_OFFSET_NUMBER, OP_REGISTER_NUMBER):
+		mov_mr_sib(tctx, RBP, peek_register_offset(vi_dest).reg, peek_register_offset(vi_dest).offset, peek_register(vi_src), value_size);
+		break;
+	case op_combined(OP_REGISTER_ADDRESS_NUMBER, OP_REGISTER_NUMBER):
+		mov_mr(tctx, peek_register_address(vi_dest).reg, peek_register_address(vi_dest).offset, peek_register(vi_src), value_size);
+		break;
+	case op_combined(OP_REGISTER_ADDRESS_NUMBER, OP_IMMEDIATE_NUMBER):
+		mov_mi(tctx, peek_register_address(vi_dest).reg, peek_register_address(vi_dest).offset, peek_immediate(vi_src), value_size);
+		break;
+
+	default:
+		babort("Unhandled operation kind.");
+	}
+}
+
 static void emit_load_to_register(struct thread_context *tctx, struct mir_instr *instr, enum x64_register reg) {
 	bassert(instr && instr->kind == MIR_INSTR_LOAD);
 	bassert(!mir_is_global(instr));
@@ -950,6 +1004,22 @@ static hash_t emit_type_info(struct context *ctx, struct thread_context *tctx, s
 		add_patch(tctx, pointee_hash, dest_offset + vm_get_struct_elem_offset(assembly, type, 1), IMAGE_REL_AMD64_ADDR64, SECTION_DATA);
 		break;
 	}
+
+	case MIR_TYPE_DYNARR:
+	case MIR_TYPE_SLICE:
+	case MIR_TYPE_VARGS:
+	case MIR_TYPE_STRUCT: {
+		bwarn("Struct type info not implemented yet!");
+		break;
+	}
+
+	case MIR_TYPE_BOOL:
+	case MIR_TYPE_TYPE:
+	case MIR_TYPE_VOID:
+	case MIR_TYPE_NULL:
+	case MIR_TYPE_STRING:
+		// These have no other info then the base one.
+		break;
 	default:
 		BL_UNIMPLEMENTED;
 	}
@@ -1217,52 +1287,9 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			break;
 		}
 
-		const u64 vi_src      = get_value(tctx, store->src);
-		const s32 dest_offset = peek(vi_dest).kind == OFFSET ? peek_offset(vi_dest) : 0;
+		const u64 vi_src = get_value(tctx, store->src);
+		emit_mov_values(tctx, type, vi_dest, vi_src);
 
-		u32 reloc_position = 0;
-
-		const enum op_kind dest_kind = op(peek(vi_dest).kind, type);
-		const enum op_kind src_kind  = op(peek(vi_src).kind, type);
-
-		switch (op_combined(dest_kind, src_kind)) {
-		case op_combined(OP_OFFSET_NUMBER, OP_IMMEDIATE_NUMBER):
-			mov_mi(tctx, RBP, dest_offset, peek_immediate(vi_src), value_size);
-			break;
-		case op_combined(OP_RELOCATION_NUMBER, OP_IMMEDIATE_NUMBER):
-			mov_mi_indirect(tctx, peek_relocation(vi_dest).offset, peek_immediate(vi_src), value_size);
-			reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(u64);
-			add_patch(tctx, peek_relocation(vi_dest).hash, reloc_position, IMAGE_REL_AMD64_REL32_4, SECTION_TEXT);
-			break;
-		case op_combined(OP_OFFSET_NUMBER, OP_REGISTER_NUMBER):
-			mov_mr(tctx, RBP, dest_offset, peek_register(vi_src), value_size);
-			break;
-		case op_combined(OP_RELOCATION_NUMBER, OP_REGISTER_NUMBER): {
-			// register -> relocated memory.
-			mov_mr_indirect(tctx, peek_relocation(vi_dest).offset, peek_register(vi_src), value_size);
-			reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
-			add_patch(tctx, peek_relocation(vi_dest).hash, reloc_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
-			break;
-		}
-		case op_combined(OP_OFFSET_COMPOSIT, OP_RELOCATION_COMPOSIT):
-			emit_copy_relocation_to_offset(tctx, vi_dest, vi_src, value_size);
-			break;
-		case op_combined(OP_REGISTER_OFFSET_NUMBER, OP_IMMEDIATE_NUMBER):
-			mov_mi_sib(tctx, RBP, peek_register_offset(vi_dest).reg, peek_register_offset(vi_dest).offset, peek_immediate(vi_src), value_size);
-			break;
-		case op_combined(OP_REGISTER_OFFSET_NUMBER, OP_REGISTER_NUMBER):
-			mov_mr_sib(tctx, RBP, peek_register_offset(vi_dest).reg, peek_register_offset(vi_dest).offset, peek_register(vi_src), value_size);
-			break;
-		case op_combined(OP_REGISTER_ADDRESS_NUMBER, OP_REGISTER_NUMBER):
-			mov_mr(tctx, peek_register_address(vi_dest).reg, peek_register_address(vi_dest).offset, peek_register(vi_src), value_size);
-			break;
-		case op_combined(OP_REGISTER_ADDRESS_NUMBER, OP_IMMEDIATE_NUMBER):
-			mov_mi(tctx, peek_register_address(vi_dest).reg, peek_register_address(vi_dest).offset, peek_immediate(vi_src), value_size);
-			break;
-
-		default:
-			babort("Unhandled operation kind.");
-		}
 		release_value(tctx, vi_dest);
 		release_value(tctx, vi_src);
 		break;
@@ -2060,42 +2087,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			const u64 vi_init = get_value(tctx, decl->init);
 			const u64 vi_var  = get_value(tctx, var);
 			bassert(peek(vi_var).kind == OFFSET);
-			const s32 var_offset = peek_offset(vi_var);
-
-			const enum op_kind op_kind = op(peek(vi_init).kind, type);
-			switch (op_kind) {
-			case OP_OFFSET_NUMBER: {
-				enum x64_register reg = get_temporary_register(tctx, NULL, 0);
-				mov_rm(tctx, reg, RBP, peek_offset(vi_init), value_size);
-				mov_mr(tctx, RBP, var_offset, reg, value_size);
-				break;
-			}
-			case OP_IMMEDIATE_NUMBER:
-				mov_mi(tctx, RBP, var_offset, peek_immediate(vi_init), value_size);
-				break;
-			case OP_REGISTER_NUMBER:
-				mov_mr(tctx, RBP, var_offset, peek_register(vi_init), value_size);
-				break;
-			case OP_RELOCATION_NUMBER: {
-				enum x64_register reg = get_temporary_register(tctx, NULL, 0);
-				mov_rm_indirect(tctx, reg, peek_relocation(vi_init).offset, value_size);
-				const u32 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
-				add_patch(tctx, peek_relocation(vi_init).hash, reloc_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
-				mov_mr(tctx, RBP, var_offset, reg, value_size);
-			}
-			case OP_RELOCATION_COMPOSIT: {
-				emit_copy_relocation_to_offset(tctx, vi_var, vi_init, value_size);
-				break;
-			}
-
-			case OP_REGISTER_ADDRESS_COMPOSIT: {
-				emit_call_memcpy(tctx, vi_var, vi_init, value_size);
-				break;
-			}
-
-			default:
-				babort("Unhandled operation kind.");
-			}
+			emit_mov_values(tctx, type, vi_var, vi_init);
 			release_value(tctx, vi_init);
 		}
 
@@ -2254,6 +2246,11 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		struct mir_instr_to_any *toany    = (struct mir_instr_to_any *)instr;
 		struct mir_type         *any_type = ctx->builtin_types->t_Any;
 
+		if (toany->expr->kind == MIR_INSTR_LOAD) {
+			enum x64_register reg = get_temporary_register(tctx, NULL, 0);
+			emit_load_to_register(tctx, toany->expr, reg);
+		}
+
 		const hash_t      info_hash = emit_type_info(ctx, tctx, toany->rtti_type);
 		enum x64_register info_reg  = get_temporary_register(tctx, NULL, 0);
 		lea_rm_indirect(tctx, info_reg, 0, 8);
@@ -2274,25 +2271,23 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			bassert(peek(vi_tmp).kind == OFFSET);
 
 			// We need to fill up the temporary variable for the expression.
-			const enum op_kind expr_kind  = op(peek(vi_expr).kind, toany->expr->value.type);
-			const usize        value_size = toany->expr->value.type->store_size_bytes;
-			switch (expr_kind) {
-			case OP_IMMEDIATE_NUMBER:
-				mov_mi(tctx, RBP, peek_offset(vi_tmp), peek_immediate(vi_expr), value_size);
-				break;
-			default:
-				BL_UNIMPLEMENTED;
-			}
+			emit_mov_values(tctx, toany->expr->value.type, vi_tmp, vi_expr);
 			lea_rm(tctx, data_reg, RBP, peek_offset(vi_tmp), 8);
 			release_value(tctx, vi_tmp);
 		} else if (toany->rtti_data) {
 			// We've passed a type, so we need to generate the type info.
-			BL_UNIMPLEMENTED;
 			// set data_reg!
+			BL_UNIMPLEMENTED;
 		} else {
 			// Just pick expression pointer.
-			BL_UNIMPLEMENTED;
-			// set data_reg!
+			const enum op_kind expr_kind = op(peek(vi_expr).kind, toany->expr->value.type);
+			switch (expr_kind) {
+			case OP_OFFSET_NUMBER:
+				lea_rm(tctx, data_reg, RBP, peek_offset(vi_expr), 8);
+				break;
+			default:
+				BL_UNIMPLEMENTED;
+			}
 		}
 
 		// Setup pointer to data.
@@ -2303,6 +2298,14 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		set_value(tctx, instr, (struct x64_value){.kind = OFFSET, .offset = peek_offset(vi_any)});
 		break;
 	}
+
+	case MIR_INSTR_VARGS: {
+		struct mir_instr_vargs *vargs = (struct mir_instr_vargs *)instr;
+		(void)vargs;
+		BL_UNIMPLEMENTED;
+		break;
+	}
+
 	default:
 		bwarn("Missing implementation for emitting '%s' instruction.", mir_instr_name(instr));
 	}
