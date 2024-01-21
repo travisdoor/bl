@@ -954,7 +954,21 @@ static void emit_local_compound(struct context *ctx, struct thread_context *tctx
 		release_value(tctx, vi);
 	}
 
-	// @Incomplete: set_value?
+	// We don't use the output of this anywhere so far + it causes assertion in case this function is used inside
+	// `emit_naked_local_compound`, but in case we need it, it should be fixable...
+	// set_value(tctx, instr, (struct x64_value){.kind = OFFSET, .offset = peek_offset(vi_dest)});
+}
+
+static inline void emit_naked_local_compound(struct context *ctx, struct thread_context *tctx, struct mir_instr *instr) {
+	struct mir_instr_compound *cmp = (struct mir_instr_compound *)instr;
+	bassert(instr->kind == MIR_INSTR_COMPOUND);
+	bassert(cmp->is_naked);
+	bassert(cmp->tmp_var);
+	const u64 vi_tmp = get_value(tctx, cmp->tmp_var);
+	bassert(peek(vi_tmp).kind == OFFSET);
+	const u32 value_size = (u32)cmp->tmp_var->value.type->store_size_bytes;
+	emit_local_compound(ctx, tctx, instr, vi_tmp, value_size);
+	set_value(tctx, instr, (struct x64_value){.kind = OFFSET, .offset = peek_offset(vi_tmp)});
 }
 
 static hash_t emit_type_info(struct context *ctx, struct thread_context *tctx, struct mir_type *target_type) {
@@ -1852,6 +1866,10 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 					const enum x64_register reg = spill(tctx, CALL_ABI[index], CALL_ABI, args_in_register);
 					emit_load_to_register(tctx, arg_instr, reg);
 				} else {
+					if (arg_instr->kind == MIR_INSTR_COMPOUND) {
+						emit_naked_local_compound(ctx, tctx, arg_instr);
+					}
+
 					const u64          vi   = get_value(tctx, arg_instr);
 					const enum op_kind kind = op(peek(vi).kind, arg_type);
 
