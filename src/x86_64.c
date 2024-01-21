@@ -1844,44 +1844,57 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			bassert(arg->llvm_easgm == LLVM_EASGM_NONE);
 
 			const usize              arg_size  = arg_type->store_size_bytes;
-			const enum x64_type_kind type_kind = get_type_kind(arg_type);
+			const enum x64_type_kind type_kind = get_type_kind(arg_type); // @Cleanup
 
 			if (index < 4) {
 				// To register
+
+				// We need to exclude current destination register + 1 from the register spill to avoid possible collistions.
+				const enum x64_register *exclude     = CALL_ABI + index + 1;
+				const s32                exclude_num = args_in_register - index - 1;
+				bassert(exclude_num >= 0);
 				if (arg_instr->kind == MIR_INSTR_LOAD) {
-					const enum x64_register reg = spill(tctx, CALL_ABI[index], CALL_ABI, args_in_register);
+					const enum x64_register reg = spill(tctx, CALL_ABI[index], exclude, exclude_num);
 					emit_load_to_register(tctx, arg_instr, reg);
 				} else {
-					const u64 vi = get_value(tctx, arg_instr);
-					switch (peek(vi).kind) {
-					case IMMEDIATE: {
-						bassert(type_kind != X64_COMPOSIT);
-						const enum x64_register reg = spill(tctx, CALL_ABI[index], CALL_ABI, args_in_register);
+					const u64          vi   = get_value(tctx, arg_instr);
+					const enum op_kind kind = op(peek(vi).kind, arg_type);
+
+					switch (kind) {
+					case OP_IMMEDIATE_NUMBER: {
+						const enum x64_register reg = spill(tctx, CALL_ABI[index], exclude, exclude_num);
 						mov_ri(tctx, reg, peek_immediate(vi), arg_size);
 						break;
 					}
-					case REGISTER: {
-						bassert(type_kind != X64_COMPOSIT);
+					case OP_REGISTER_NUMBER: {
 						if (peek_register(vi) != CALL_ABI[index]) {
-							const enum x64_register reg = spill(tctx, CALL_ABI[index], CALL_ABI, args_in_register);
+							const enum x64_register reg = spill(tctx, CALL_ABI[index], exclude, exclude_num);
 							mov_rr(tctx, reg, peek_register(vi), arg_size);
 						}
 						break;
 					}
-					case OFFSET: {
-						bassert(type_kind != X64_COMPOSIT);
-						const enum x64_register reg = spill(tctx, CALL_ABI[index], CALL_ABI, args_in_register);
+					case OP_OFFSET_NUMBER: {
+						const enum x64_register reg = spill(tctx, CALL_ABI[index], exclude, exclude_num);
 						mov_rm(tctx, reg, RBP, peek_offset(vi), arg_size);
 						break;
 					}
-					case RELOCATION: {
-						const enum x64_register reg    = spill(tctx, CALL_ABI[index], CALL_ABI, args_in_register);
+					case OP_OFFSET_COMPOSIT: {
+						const enum x64_register reg = spill(tctx, CALL_ABI[index], exclude, exclude_num);
+						lea_rm(tctx, reg, RBP, peek_offset(vi), 8);
+						break;
+					}
+					case OP_RELOCATION_NUMBER: {
+						const enum x64_register reg    = spill(tctx, CALL_ABI[index], exclude, exclude_num);
 						const s32               offset = peek_relocation(vi).offset;
-						if (type_kind == X64_COMPOSIT) {
-							lea_rm_indirect(tctx, reg, offset, 8);
-						} else {
-							mov_rm_indirect(tctx, reg, offset, arg_size);
-						}
+						mov_rm_indirect(tctx, reg, offset, arg_size);
+						const u32 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
+						add_patch(tctx, peek_relocation(vi).hash, reloc_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
+						break;
+					}
+					case OP_RELOCATION_COMPOSIT: {
+						const enum x64_register reg    = spill(tctx, CALL_ABI[index], exclude, exclude_num);
+						const s32               offset = peek_relocation(vi).offset;
+						lea_rm_indirect(tctx, reg, offset, 8);
 						const u32 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
 						add_patch(tctx, peek_relocation(vi).hash, reloc_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
 						break;
@@ -2300,9 +2313,52 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 	}
 
 	case MIR_INSTR_VARGS: {
-		struct mir_instr_vargs *vargs = (struct mir_instr_vargs *)instr;
-		(void)vargs;
-		BL_UNIMPLEMENTED;
+		struct mir_instr_vargs *vargs      = (struct mir_instr_vargs *)instr;
+		const u64               vi_vargs   = get_value(tctx, vargs->vargs_tmp);
+		const u64               vi_arr     = get_value(tctx, vargs->arr_tmp);
+		const struct mir_type  *vargs_type = vargs->vargs_tmp->value.type;
+		bassert(peek(vi_vargs).kind == OFFSET);
+
+		// Build up array of values.
+		bassert(peek(vi_arr).kind == OFFSET);
+		const s32 original_arr_offset = peek_offset(vi_arr);
+		for (usize i = 0; i < sarrlenu(vargs->values); ++i) {
+			struct mir_instr *value = sarrpeek(vargs->values, i);
+			if (value->kind == MIR_INSTR_LOAD) {
+				enum x64_register reg = get_temporary_register(tctx, NULL, 0);
+				emit_load_to_register(tctx, value, reg);
+			} else if (value->kind == MIR_INSTR_COMPOUND) {
+				BL_UNIMPLEMENTED;
+				break;
+			}
+
+			const u64        vi_value   = get_value(tctx, value);
+			struct mir_type *value_type = value->value.type;
+			emit_mov_values(tctx, value_type, vi_arr, vi_value);
+
+			// @Hack [travis]: We reuse the same value here. The original offset is cached.
+			peek(vi_arr).offset += (s32)value_type->store_size_bytes;
+			release_value(tctx, vi_value);
+		}
+
+		peek(vi_arr).offset = original_arr_offset;
+
+		// Setup vargs.len
+		const struct mir_type *len_type   = mir_get_struct_elem_type(vargs_type, MIR_SLICE_LEN_INDEX);
+		const s32              len_offset = (s32)vm_get_struct_elem_offset(assembly, vargs_type, MIR_SLICE_LEN_INDEX);
+		mov_mi(tctx, RBP, peek_offset(vi_vargs) + len_offset, sarrlen(vargs->values), len_type->store_size_bytes);
+
+		// Setup vargs.ptr
+		const struct mir_type *ptr_type   = mir_get_struct_elem_type(vargs_type, MIR_SLICE_PTR_INDEX);
+		const s32              ptr_offset = (s32)vm_get_struct_elem_offset(assembly, vargs_type, MIR_SLICE_PTR_INDEX);
+		enum x64_register      reg        = get_temporary_register(tctx, NULL, 0);
+		lea_rm(tctx, reg, RBP, peek_offset(vi_arr), 8);
+		mov_mr(tctx, RBP, peek_offset(vi_vargs) + ptr_offset, reg, ptr_type->store_size_bytes);
+
+		release_value(tctx, vi_arr);
+		release_value(tctx, vi_vargs);
+		set_value(tctx, instr, (struct x64_value){.kind = OFFSET, .offset = peek_offset(vi_vargs)});
+
 		break;
 	}
 

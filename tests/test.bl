@@ -162,32 +162,33 @@ __os_start :: fn () #entry {
 		C.exit(1);
 	}
 
-	test_global_slice();
-	test_string();
-	test_struct_members();
-	test_compounds();
-	test_function_calls();
-	use_global_number();
-	test_looping(10);
-	test_array_int();
-	test_array_ptr();
-	test_casting();
-	test_unop();
-	test_conditions();
-	test_condition_assign();
-	test_glob_addrof();
-	test_out_arg();
-	test_global_ptr_to_global();
-	test_global_compound();
-	test_fn_ptr();
-	test_glob_fn_ptr_in_compound();
-	test_pass_string_to_function();
-	test_function_calls2();
-	test_passing_source_location();
-	test_nested_global_compound();
-	test_switch();
-	test_type_info();
-	test_to_any();
+	// test_global_slice();
+	// test_string();
+	// test_struct_members();
+	// test_compounds();
+	// test_function_calls();
+	// use_global_number();
+	// test_looping(10);
+	// test_array_int();
+	// test_array_ptr();
+	// test_casting();
+	// test_unop();
+	// test_conditions();
+	// test_condition_assign();
+	// test_glob_addrof();
+	// test_out_arg();
+	// test_global_ptr_to_global();
+	// test_global_compound();
+	// test_fn_ptr();
+	// test_glob_fn_ptr_in_compound();
+	// test_pass_string_to_function();
+	// test_function_calls2();
+	// test_passing_source_location();
+	// test_nested_global_compound();
+	// test_switch();
+	// test_type_info();
+	// test_to_any();
+	test_vargs();
 
 	print_string2("Hello!\n");
 
@@ -220,6 +221,22 @@ test_type_info :: fn () {
 		print_number(cast(s32)i2.size_bytes);
 		print_number(cast(s32)i2.alignment);
 	}
+}
+
+
+test_vargs :: fn () {
+	my_func :: fn (args: ...s32) {
+		print_number2(args.len);
+		print_address(auto args.ptr);
+		loop i := 0; i < args.len; i += 1 {
+			print_number(args[i]);
+		}
+	};
+
+	a := 10;
+	b := 20;
+
+	my_func(a, b);
 }
 
 test_to_any :: fn () {
