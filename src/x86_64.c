@@ -1848,13 +1848,8 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 			if (index < 4) {
 				// To register
-
-				// We need to exclude current destination register + 1 from the register spill to avoid possible collistions.
-				const enum x64_register *exclude     = CALL_ABI + index + 1;
-				const s32                exclude_num = args_in_register - index - 1;
-				bassert(exclude_num >= 0);
 				if (arg_instr->kind == MIR_INSTR_LOAD) {
-					const enum x64_register reg = spill(tctx, CALL_ABI[index], exclude, exclude_num);
+					const enum x64_register reg = spill(tctx, CALL_ABI[index], CALL_ABI, args_in_register);
 					emit_load_to_register(tctx, arg_instr, reg);
 				} else {
 					const u64          vi   = get_value(tctx, arg_instr);
@@ -1862,29 +1857,29 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 					switch (kind) {
 					case OP_IMMEDIATE_NUMBER: {
-						const enum x64_register reg = spill(tctx, CALL_ABI[index], exclude, exclude_num);
+						const enum x64_register reg = spill(tctx, CALL_ABI[index], CALL_ABI, args_in_register);
 						mov_ri(tctx, reg, peek_immediate(vi), arg_size);
 						break;
 					}
 					case OP_REGISTER_NUMBER: {
 						if (peek_register(vi) != CALL_ABI[index]) {
-							const enum x64_register reg = spill(tctx, CALL_ABI[index], exclude, exclude_num);
+							const enum x64_register reg = spill(tctx, CALL_ABI[index], CALL_ABI, args_in_register);
 							mov_rr(tctx, reg, peek_register(vi), arg_size);
 						}
 						break;
 					}
 					case OP_OFFSET_NUMBER: {
-						const enum x64_register reg = spill(tctx, CALL_ABI[index], exclude, exclude_num);
+						const enum x64_register reg = spill(tctx, CALL_ABI[index], CALL_ABI, args_in_register);
 						mov_rm(tctx, reg, RBP, peek_offset(vi), arg_size);
 						break;
 					}
 					case OP_OFFSET_COMPOSIT: {
-						const enum x64_register reg = spill(tctx, CALL_ABI[index], exclude, exclude_num);
+						const enum x64_register reg = spill(tctx, CALL_ABI[index], CALL_ABI, args_in_register);
 						lea_rm(tctx, reg, RBP, peek_offset(vi), 8);
 						break;
 					}
 					case OP_RELOCATION_NUMBER: {
-						const enum x64_register reg    = spill(tctx, CALL_ABI[index], exclude, exclude_num);
+						const enum x64_register reg    = spill(tctx, CALL_ABI[index], CALL_ABI, args_in_register);
 						const s32               offset = peek_relocation(vi).offset;
 						mov_rm_indirect(tctx, reg, offset, arg_size);
 						const u32 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
@@ -1892,7 +1887,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 						break;
 					}
 					case OP_RELOCATION_COMPOSIT: {
-						const enum x64_register reg    = spill(tctx, CALL_ABI[index], exclude, exclude_num);
+						const enum x64_register reg    = spill(tctx, CALL_ABI[index], CALL_ABI, args_in_register);
 						const s32               offset = peek_relocation(vi).offset;
 						lea_rm_indirect(tctx, reg, offset, 8);
 						const u32 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
