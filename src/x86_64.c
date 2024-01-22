@@ -149,6 +149,8 @@ struct thread_context {
 
 		u32 arg_cache_allocated_size;
 	} stack;
+
+	u64 current_fn_composit_return_dest; // Indexed from 1!
 };
 
 struct context {
@@ -227,6 +229,7 @@ enum op_kind {
 	OP_IMMEDIATE_NUMBER          = (IMMEDIATE << 4) | X64_NUMBER,
 	OP_RELOCATION_NUMBER         = (RELOCATION << 4) | X64_NUMBER,
 	OP_REGISTER_NUMBER           = (REGISTER << 4) | X64_NUMBER,
+	OP_REGISTER_COMPOSIT         = (REGISTER << 4) | X64_COMPOSIT,
 	OP_OFFSET_NUMBER             = (OFFSET << 4) | X64_NUMBER,
 	OP_REGISTER_OFFSET_NUMBER    = (REGISTER_OFFSET << 4) | X64_NUMBER,
 	OP_REGISTER_ADDRESS_NUMBER   = (REGISTER_ADDRESS << 4) | X64_NUMBER,
@@ -272,6 +275,12 @@ static inline void unique_name(struct context *ctx, str_buf_t *dest, const char 
 
 	str_buf_clr(dest);
 	str_buf_append_fmt(dest, "{s}{str}{u64}", prefix, name, serial);
+}
+
+static inline bool does_function_return_composit(struct mir_type *fn_type) {
+	bassert(fn_type->kind == MIR_TYPE_FN);
+	struct mir_type *ret_type = fn_type->data.fn.ret_type;
+	return ret_type->kind != MIR_TYPE_VOID && get_type_kind(ret_type) == X64_COMPOSIT;
 }
 
 void add_code(struct thread_context *tctx, const void *buf, s32 len) {
@@ -644,6 +653,13 @@ static void emit_call_memcpy(struct thread_context *tctx, const u64 vi_dest, con
 	case OFFSET:
 		lea_rm(tctx, spill(tctx, RCX, excluded, static_arrlenu(excluded)), RBP, peek_offset(vi_dest), 8);
 		break;
+	case REGISTER_ADDRESS: {
+		const enum x64_register reg = peek_register(vi_dest);
+		if (reg != RCX) {
+			mov_rr(tctx, spill(tctx, RCX, excluded, static_arrlenu(excluded)), reg, 8);
+		}
+		break;
+	}
 	default:
 		BL_UNIMPLEMENTED;
 	}
@@ -655,6 +671,13 @@ static void emit_call_memcpy(struct thread_context *tctx, const u64 vi_dest, con
 		const u32 reloc_src_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
 		add_patch(tctx, peek_relocation(vi_src).hash, reloc_src_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
 		break;
+	case OFFSET:
+		lea_rm(tctx, spill(tctx, RDX, excluded, static_arrlenu(excluded)), RBP, peek_offset(vi_src), 8);
+		break;
+	case REGISTER:
+		// We don't expect memcpy to be used to copy value from gerister, however it might be used for composit
+		// types, in such a case the value in the register behaves the same as REGISTER_ADDRESS. Composit types are
+		// manipulated using pointers, not actual values.
 	case REGISTER_ADDRESS: {
 		const enum x64_register reg = peek_register(vi_src);
 		if (reg != RDX) {
@@ -692,24 +715,6 @@ static void emit_call_memset(struct thread_context *tctx, const u64 vi_dest, s32
 	add_ri(tctx, RSP, 0x20, 8);
 }
 
-// Build code to copy relocation value to memory offset, use mov for small values and memcpy for others.
-static void emit_copy_relocation_to_offset(struct thread_context *tctx, const u64 vi_dest, const u64 vi_src, u32 size) {
-	if (size <= REGISTER_SIZE) {
-		// Fits into register (note this does not apply for any splines but we might reuse the same
-		// code for structs too).
-		enum x64_register reg = get_temporary_register(tctx, NULL, 0);
-
-		zero_reg(tctx, reg, 8);
-		mov_rm_indirect(tctx, reg, 0, size);
-		const u32 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
-		add_patch(tctx, peek_relocation(vi_src).hash, reloc_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
-		mov_mr(tctx, RBP, peek_offset(vi_dest), reg, size);
-	} else {
-		// Use builtin memcpy
-		emit_call_memcpy(tctx, vi_dest, vi_src, size);
-	}
-}
-
 // General move of any values.
 static void emit_mov_values(struct thread_context *tctx, struct mir_type *type, u64 vi_dest, u64 vi_src) {
 	const u32          value_size = (u32)type->store_size_bytes;
@@ -730,6 +735,13 @@ static void emit_mov_values(struct thread_context *tctx, struct mir_type *type, 
 		mov_rm(tctx, reg, RBP, peek_offset(vi_src), value_size);
 		mov_mr(tctx, RBP, peek_offset(vi_dest), reg, value_size);
 		break;
+	case op_combined(OP_OFFSET_COMPOSIT, OP_REGISTER_ADDRESS_COMPOSIT):
+	case op_combined(OP_OFFSET_COMPOSIT, OP_OFFSET_COMPOSIT):
+	case op_combined(OP_OFFSET_COMPOSIT, OP_REGISTER_COMPOSIT):
+	case op_combined(OP_OFFSET_COMPOSIT, OP_RELOCATION_COMPOSIT):
+	case op_combined(OP_REGISTER_ADDRESS_COMPOSIT, OP_OFFSET_COMPOSIT):
+		emit_call_memcpy(tctx, vi_dest, vi_src, value_size);
+		break;
 	case op_combined(OP_OFFSET_NUMBER, OP_REGISTER_NUMBER):
 		mov_mr(tctx, RBP, peek_offset(vi_dest), peek_register(vi_src), value_size);
 		break;
@@ -740,12 +752,6 @@ static void emit_mov_values(struct thread_context *tctx, struct mir_type *type, 
 		add_patch(tctx, peek_relocation(vi_dest).hash, reloc_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
 		break;
 	}
-	case op_combined(OP_OFFSET_COMPOSIT, OP_REGISTER_ADDRESS_COMPOSIT):
-		emit_call_memcpy(tctx, vi_dest, vi_src, value_size);
-		break;
-	case op_combined(OP_OFFSET_COMPOSIT, OP_RELOCATION_COMPOSIT):
-		emit_copy_relocation_to_offset(tctx, vi_dest, vi_src, value_size);
-		break;
 	case op_combined(OP_REGISTER_OFFSET_NUMBER, OP_IMMEDIATE_NUMBER):
 		mov_mi_sib(tctx, RBP, peek_register_offset(vi_dest).reg, peek_register_offset(vi_dest).offset, peek_immediate(vi_src), value_size);
 		break;
@@ -1169,6 +1175,16 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		// Here we reserve registers for all arguments passed into the function. The argument value duplication into the
 		// stack memory might introduce call to memcpy intrinsic; in such a case we need to spill original arguments.
 		s32 reg_index = 0;
+		if (does_function_return_composit(fn->type)) {
+			const enum x64_register reg = CALL_ABI[0];
+			bassert(tctx->register_table[reg] == UNUSED_REGISTER_MAP_VALUE && "Register already used?");
+			struct x64_value value    = {.kind = REGISTER_ADDRESS, .reg_off_addr.reg = reg};
+			tctx->register_table[reg] = (s32)arrlen(tctx->values);
+			arrput(tctx->values, value);
+
+			tctx->current_fn_composit_return_dest = arrlenu(tctx->values);
+		}
+
 		for (usize i = 0; i < sarrlenu(fn->type->data.fn.args) && reg_index < static_arrlenu(CALL_ABI); ++i) {
 			struct mir_arg *arg = sarrpeek(fn->type->data.fn.args, i);
 			if (isflag(arg->flags, FLAG_COMPTIME)) continue;
@@ -1247,6 +1263,10 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 		const enum x64_type_kind type_kind = get_type_kind(arg->type);
 		const s32                index     = arg->llvm_index;
+
+		if (does_function_return_composit(fn_type)) {
+			BL_UNIMPLEMENTED;
+		}
 
 		if (index < static_arrlenu(CALL_ABI)) {
 			enum x64_register reg = -1;
@@ -1709,6 +1729,35 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 	}
 
 	case MIR_INSTR_RET: {
+		struct mir_fn   *fn       = mir_instr_owner_fn(instr);
+		struct mir_type *ret_type = fn->type->data.fn.ret_type;
+		if (ret_type->kind != MIR_TYPE_VOID) {
+			bassert(fn->ret_tmp && "Missing temporary for return value!");
+			bassert(fn->ret_tmp->kind == MIR_INSTR_DECL_VAR);
+			struct mir_instr_decl_var *tmp_var_decl = (struct mir_instr_decl_var *)fn->ret_tmp;
+			struct mir_var            *tmp_var      = tmp_var_decl->var;
+
+			const enum x64_type_kind ret_type_kind = get_type_kind(ret_type);
+			const usize              value_size    = ret_type->store_size_bytes;
+			const u64                vi_tmp        = get_value(tctx, tmp_var);
+			bassert(peek(vi_tmp).kind == OFFSET);
+			switch (ret_type_kind) {
+			case X64_NUMBER: {
+				// No need to spill here...
+				mov_rm(tctx, RAX, RBP, peek_offset(vi_tmp), value_size);
+				break;
+			}
+			case X64_COMPOSIT:
+				bassert(tctx->current_fn_composit_return_dest);
+				const u64 vi_dest = tctx->current_fn_composit_return_dest - 1;
+				emit_mov_values(tctx, ret_type, vi_dest, vi_tmp);
+				release_value(tctx, vi_dest);
+				break;
+			default:
+				BL_UNIMPLEMENTED;
+			}
+		}
+
 		// Epilogue
 		usize total_allocated = get_stack_allocation_size(tctx);
 		if (total_allocated) {
@@ -1825,16 +1874,17 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		bassert(callee_type);
 		bassert(callee_type->kind == MIR_TYPE_FN);
 
-		// There are three possible configurations:
-		//
-		// 1) We call regular static function; it's compile-time known and resolved by previous decl-ref instruction.
-		// 2) We call via function pointer.
-		// 3) We call immediate inline defined anonymous function (we have to generate one eventually).
-
 		if (callee->kind == MIR_INSTR_LOAD) {
 			enum x64_register reg = get_temporary_register(tctx, CALL_ABI, static_arrlenu(CALL_ABI));
 			emit_load_to_register(tctx, callee, reg);
+		} else if (callee->kind == MIR_INSTR_FN_PROTO && callee->backend_value == 0) {
+			bassert(mir_is_comptime(callee));
+			struct mir_fn *fn = MIR_CEV_READ_AS(struct mir_fn *, &callee->value);
+			bmagic_assert(fn);
+			const hash_t hash = submit_function_generation(ctx, fn);
+			set_value(tctx, callee, (struct x64_value){.kind = RELOCATION, .reloc.hash = hash});
 		}
+
 		const u64 vi_callee = get_value(tctx, callee);
 		const s32 arg_num   = (s32)sarrlen(call->args);
 
@@ -1845,8 +1895,21 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 		if (stack_space) sub_ri(tctx, RSP, stack_space, 8);
 		const s32 args_in_register = MIN(static_arrlenu(CALL_ABI), arg_num);
+		s32       arg_stack_offset = 0;
 
-		s32 arg_stack_offset = 0;
+		struct mir_type *ret_type             = callee_type->data.fn.ret_type;
+		const bool       does_return          = ret_type->kind != MIR_TYPE_VOID;
+		s32              ret_value_tmp_offset = -1;
+		if (does_return && does_function_return_composit(callee_type)) { // @Performance [travis]: Generate only if result is used?
+			// We have to allocate stack memory for the return value not fitting into RAX.
+			const usize value_size = ret_type->store_size_bytes;
+			const usize padding    = next_aligned2(value_size, 16) - value_size; // @Performance [travis]: Do we need this?
+			ret_value_tmp_offset   = allocate_stack_memory(tctx, value_size + padding);
+
+			const enum x64_register reg = spill(tctx, CALL_ABI[0], CALL_ABI, args_in_register);
+			bassert(reg == RCX);
+			lea_rm(tctx, reg, RBP, ret_value_tmp_offset, 8);
+		}
 
 		for (s32 index = 0; index < arg_num; ++index) {
 			struct mir_instr *arg_instr = sarrpeek(call->args, index);
@@ -1879,6 +1942,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 						mov_ri(tctx, reg, peek_immediate(vi), arg_size);
 						break;
 					}
+					case OP_REGISTER_COMPOSIT:
 					case OP_REGISTER_NUMBER: {
 						if (peek_register(vi) != CALL_ABI[index]) {
 							const enum x64_register reg = spill(tctx, CALL_ABI[index], CALL_ABI, args_in_register);
@@ -1988,9 +2052,14 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		release_value(tctx, vi_callee);
 
 		// Store RAX register in case the function returns and the result is used.
-		if ((callee->value.type->data.fn.ret_type->kind != MIR_TYPE_VOID) && call->base.ref_count > 1) {
-			enum x64_register reg = spill(tctx, RAX, NULL, 0);
-			set_value(tctx, instr, (struct x64_value){.kind = REGISTER, .reg = reg});
+		if (does_return && call->base.ref_count > 1) {
+			if (does_function_return_composit(callee_type)) {
+				bassert(ret_value_tmp_offset != -1);
+				set_value(tctx, instr, (struct x64_value){.kind = OFFSET, .offset = ret_value_tmp_offset});
+			} else {
+				enum x64_register reg = spill(tctx, RAX, NULL, 0);
+				set_value(tctx, instr, (struct x64_value){.kind = REGISTER, .reg = reg});
+			}
 		}
 
 		break;
@@ -2099,6 +2168,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			break;
 		}
 
+		const u64 vi_var     = get_value(tctx, var);
 		const u32 value_size = (u32)type->store_size_bytes;
 
 		if (decl->init) {
@@ -2111,7 +2181,6 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			}
 
 			const u64 vi_init = get_value(tctx, decl->init);
-			const u64 vi_var  = get_value(tctx, var);
 			bassert(peek(vi_var).kind == OFFSET);
 			emit_mov_values(tctx, type, vi_var, vi_init);
 			release_value(tctx, vi_init);
@@ -2142,7 +2211,6 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			break;
 		}
 		case SCOPE_ENTRY_FN: {
-			// @Incomplete: Push function for generation.
 			struct mir_fn *fn   = entry->data.fn;
 			const hash_t   hash = submit_function_generation(ctx, fn);
 			set_value(tctx, instr, (struct x64_value){.kind = RELOCATION, .reloc.hash = hash});
@@ -2326,49 +2394,54 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 	}
 
 	case MIR_INSTR_VARGS: {
-		struct mir_instr_vargs *vargs      = (struct mir_instr_vargs *)instr;
-		const u64               vi_vargs   = get_value(tctx, vargs->vargs_tmp);
-		const u64               vi_arr     = get_value(tctx, vargs->arr_tmp);
-		const struct mir_type  *vargs_type = vargs->vargs_tmp->value.type;
-		bassert(peek(vi_vargs).kind == OFFSET);
+		struct mir_instr_vargs *vargs    = (struct mir_instr_vargs *)instr;
+		const u64               vi_vargs = get_value(tctx, vargs->vargs_tmp);
+		if (sarrlenu(vargs->values)) {
+			const u64              vi_arr     = get_value(tctx, vargs->arr_tmp);
+			const struct mir_type *vargs_type = vargs->vargs_tmp->value.type;
+			bassert(peek(vi_vargs).kind == OFFSET);
 
-		// Build up array of values.
-		bassert(peek(vi_arr).kind == OFFSET);
-		const s32 original_arr_offset = peek_offset(vi_arr);
-		for (usize i = 0; i < sarrlenu(vargs->values); ++i) {
-			struct mir_instr *value = sarrpeek(vargs->values, i);
-			if (value->kind == MIR_INSTR_LOAD) {
-				enum x64_register reg = get_temporary_register(tctx, NULL, 0);
-				emit_load_to_register(tctx, value, reg);
-			} else if (value->kind == MIR_INSTR_COMPOUND) {
-				BL_UNIMPLEMENTED;
-				break;
+			// Build up array of values.
+			bassert(peek(vi_arr).kind == OFFSET);
+			const s32 original_arr_offset = peek_offset(vi_arr);
+			for (usize i = 0; i < sarrlenu(vargs->values); ++i) {
+				struct mir_instr *value = sarrpeek(vargs->values, i);
+				if (value->kind == MIR_INSTR_LOAD) {
+					enum x64_register reg = get_temporary_register(tctx, NULL, 0);
+					emit_load_to_register(tctx, value, reg);
+				} else if (value->kind == MIR_INSTR_COMPOUND) {
+					BL_UNIMPLEMENTED;
+					break;
+				}
+
+				const u64        vi_value   = get_value(tctx, value);
+				struct mir_type *value_type = value->value.type;
+				emit_mov_values(tctx, value_type, vi_arr, vi_value);
+
+				// @Hack [travis]: We reuse the same value here. The original offset is cached.
+				peek(vi_arr).offset += (s32)value_type->store_size_bytes;
+				release_value(tctx, vi_value);
 			}
 
-			const u64        vi_value   = get_value(tctx, value);
-			struct mir_type *value_type = value->value.type;
-			emit_mov_values(tctx, value_type, vi_arr, vi_value);
+			peek(vi_arr).offset = original_arr_offset;
 
-			// @Hack [travis]: We reuse the same value here. The original offset is cached.
-			peek(vi_arr).offset += (s32)value_type->store_size_bytes;
-			release_value(tctx, vi_value);
+			// Setup vargs.len
+			const struct mir_type *len_type   = mir_get_struct_elem_type(vargs_type, MIR_SLICE_LEN_INDEX);
+			const s32              len_offset = (s32)vm_get_struct_elem_offset(assembly, vargs_type, MIR_SLICE_LEN_INDEX);
+			mov_mi(tctx, RBP, peek_offset(vi_vargs) + len_offset, sarrlen(vargs->values), len_type->store_size_bytes);
+
+			// Setup vargs.ptr
+			const struct mir_type *ptr_type   = mir_get_struct_elem_type(vargs_type, MIR_SLICE_PTR_INDEX);
+			const s32              ptr_offset = (s32)vm_get_struct_elem_offset(assembly, vargs_type, MIR_SLICE_PTR_INDEX);
+			enum x64_register      reg        = get_temporary_register(tctx, NULL, 0);
+			lea_rm(tctx, reg, RBP, peek_offset(vi_arr), 8);
+			mov_mr(tctx, RBP, peek_offset(vi_vargs) + ptr_offset, reg, ptr_type->store_size_bytes);
+
+			release_value(tctx, vi_arr);
+		} else {
+			const u32 value_size = (u32)vargs->vargs_tmp->value.type->store_size_bytes;
+			emit_call_memset(tctx, vi_vargs, 0, value_size);
 		}
-
-		peek(vi_arr).offset = original_arr_offset;
-
-		// Setup vargs.len
-		const struct mir_type *len_type   = mir_get_struct_elem_type(vargs_type, MIR_SLICE_LEN_INDEX);
-		const s32              len_offset = (s32)vm_get_struct_elem_offset(assembly, vargs_type, MIR_SLICE_LEN_INDEX);
-		mov_mi(tctx, RBP, peek_offset(vi_vargs) + len_offset, sarrlen(vargs->values), len_type->store_size_bytes);
-
-		// Setup vargs.ptr
-		const struct mir_type *ptr_type   = mir_get_struct_elem_type(vargs_type, MIR_SLICE_PTR_INDEX);
-		const s32              ptr_offset = (s32)vm_get_struct_elem_offset(assembly, vargs_type, MIR_SLICE_PTR_INDEX);
-		enum x64_register      reg        = get_temporary_register(tctx, NULL, 0);
-		lea_rm(tctx, reg, RBP, peek_offset(vi_arr), 8);
-		mov_mr(tctx, RBP, peek_offset(vi_vargs) + ptr_offset, reg, ptr_type->store_size_bytes);
-
-		release_value(tctx, vi_arr);
 		release_value(tctx, vi_vargs);
 		set_value(tctx, instr, (struct x64_value){.kind = OFFSET, .offset = peek_offset(vi_vargs)});
 
@@ -2424,6 +2497,7 @@ void job(struct job_context *job_ctx) {
 	arrsetlen(tctx->patches, 0);
 	tctx->stack.alloc_value_offset = 0;
 	bl_zeromem(&tctx->stack, sizeof(tctx->stack));
+	tctx->current_fn_composit_return_dest = 0;
 
 	for (s32 i = 0; i < REGISTER_COUNT; ++i) {
 		if ((i >= RAX && i <= RDX) || (i >= R8 && i <= R15)) {

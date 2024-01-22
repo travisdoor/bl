@@ -190,7 +190,12 @@ __os_start :: fn () #entry {
 	// test_to_any();
 	// test_vargs();
 	// test_vargs2();
-	test_compound_arg();
+	// test_vargs3();
+	// test_compound_arg();
+	// test_call_polymorph();
+	// test_return_values();
+
+	test_multireturn();
 
 	print_string2("Hello!\n");
 
@@ -203,6 +208,14 @@ assert :: fn (expr: bool, loc := #call_location) {
 	if expr == false {
 		assertion_message(loc.file.len, loc.file.ptr, loc.line);
 	}
+}
+
+test_return_values :: fn () {
+	my_func :: fn () s32 {
+		return 10;
+	};
+
+	print_number(my_func());
 }
 
 test_type_info :: fn () {
@@ -240,6 +253,22 @@ test_vargs :: fn () {
 	my_func(a, b);
 }
 
+test_multireturn :: fn () {
+	my_func :: fn () string_view {
+		return "Nice!\n";
+	};
+
+	result :: my_func();
+	print_string2(result);
+}
+
+test_call_polymorph :: fn () {
+	my_func :: fn (v: ?T) {
+		print_number(v);
+	};
+	my_func(10);
+}
+
 test_compound_arg :: fn () {
 	my_func :: fn (v: []s32) {
 		loop i := 0; i < v.len; i += 1 {
@@ -265,6 +294,14 @@ test_vargs2 :: fn () {
 	b := 20;
 
 	my_func(a, b);
+}
+
+test_vargs3 :: fn () {
+	my_func :: fn (args: ...) {
+		print_number2(args.len);
+	};
+
+	my_func();
 }
 
 test_to_any :: fn () {
