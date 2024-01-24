@@ -1897,14 +1897,14 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		const s32 args_in_register = MIN(static_arrlenu(CALL_ABI), arg_num);
 		s32       arg_stack_offset = 0;
 
-		struct mir_type *ret_type             = callee_type->data.fn.ret_type;
-		const bool       does_return          = ret_type->kind != MIR_TYPE_VOID;
-		s32              ret_value_tmp_offset = -1;
+		struct mir_type *ret_type    = callee_type->data.fn.ret_type;
+		const bool       does_return = ret_type->kind != MIR_TYPE_VOID;
+		s32              ret_value_tmp_offset;
 		if (does_return && does_function_return_composit(callee_type)) { // @Performance [travis]: Generate only if result is used?
 			// We have to allocate stack memory for the return value not fitting into RAX.
 			const usize value_size = ret_type->store_size_bytes;
 			const usize padding    = next_aligned2(value_size, 16) - value_size; // @Performance [travis]: Do we need this?
-			ret_value_tmp_offset   = allocate_stack_memory(tctx, value_size + padding);
+			ret_value_tmp_offset   = -allocate_stack_memory(tctx, value_size + padding);
 
 			const enum x64_register reg = spill(tctx, CALL_ABI[0], CALL_ABI, args_in_register);
 			bassert(reg == RCX);
@@ -2054,7 +2054,6 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		// Store RAX register in case the function returns and the result is used.
 		if (does_return && call->base.ref_count > 1) {
 			if (does_function_return_composit(callee_type)) {
-				bassert(ret_value_tmp_offset != -1);
 				set_value(tctx, instr, (struct x64_value){.kind = OFFSET, .offset = ret_value_tmp_offset});
 			} else {
 				enum x64_register reg = spill(tctx, RAX, NULL, 0);

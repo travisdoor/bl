@@ -162,40 +162,40 @@ __os_start :: fn () #entry {
 		C.exit(1);
 	}
 
-	// test_global_slice();
-	// test_string();
-	// test_struct_members();
-	// test_compounds();
-	// test_function_calls();
-	// use_global_number();
-	// test_looping(10);
-	// test_array_int();
-	// test_array_ptr();
-	// test_casting();
-	// test_unop();
-	// test_conditions();
-	// test_condition_assign();
-	// test_glob_addrof();
-	// test_out_arg();
-	// test_global_ptr_to_global();
-	// test_global_compound();
-	// test_fn_ptr();
-	// test_glob_fn_ptr_in_compound();
-	// test_pass_string_to_function();
-	// test_function_calls2();
-	// test_passing_source_location();
-	// test_nested_global_compound();
-	// test_switch();
-	// test_type_info();
-	// test_to_any();
-	// test_vargs();
-	// test_vargs2();
-	// test_vargs3();
-	// test_compound_arg();
-	// test_call_polymorph();
-	// test_return_values();
-
+	test_global_slice();
+	test_string();
+	test_struct_members();
+	test_compounds();
+	test_function_calls();
+	use_global_number();
+	test_looping(10);
+	test_array_int();
+	test_array_ptr();
+	test_casting();
+	test_unop();
+	test_conditions();
+	test_condition_assign();
+	test_glob_addrof();
+	test_out_arg();
+	test_global_ptr_to_global();
+	test_global_compound();
+	test_fn_ptr();
+	test_glob_fn_ptr_in_compound();
+	test_pass_string_to_function();
+	test_function_calls2();
+	test_passing_source_location();
+	test_nested_global_compound();
+	test_switch();
+	test_type_info();
+	test_to_any();
+	test_vargs();
+	test_vargs2();
+	test_vargs3();
+	test_compound_arg();
+	test_call_polymorph();
+	test_return_values();
 	test_multireturn();
+	test_multireturn2();
 
 	print_string2("Hello!\n");
 
@@ -251,6 +251,18 @@ test_vargs :: fn () {
 	b := 20;
 
 	my_func(a, b);
+}
+
+Data :: struct { a: s32; b: s32 };
+
+test_multireturn2 :: fn () {
+	my_func :: fn () Data {
+		return Data.{ 10, 20 };
+	};
+
+	result :: my_func();
+	assert(result.a == 10);
+	assert(result.b == 20);
 }
 
 test_multireturn :: fn () {
