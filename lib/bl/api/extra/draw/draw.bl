@@ -774,14 +774,14 @@ add_rect :: fn (v: []glm.v2, colors: []glm.v4) {
 		array_push_all(&color_buffer, colors);
 	}
 	if shader_has_attribute(context.shader, ShaderAttribute.UV) {
-		array_push_all(&uv_buffer, [4]v2.{
+		array_push_all(&uv_buffer, [_]v2.{
 			v2.{ 0.f, 1.f },
 			v2.{ 1.f, 1.f },
 			v2.{ 0.f, 0.f },
 			v2.{ 1.f, 0.f }
 		});
 	}
-	array_push_all(&index_buffer, [6]u32.{
+	array_push_all(&index_buffer, [_]u32.{
 		base_index + 0,
 		base_index + 1,
 		base_index + 2,
@@ -872,6 +872,8 @@ do_render :: fn () {
 
 	gl.DrawElements(GL_TRIANGLES, auto index_buffer.len, GL_UNSIGNED_INT, null);
 	shader_attrib_disable_all(context.shader);
+
+	gl.BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	vertex_buffer.len  = 0;
 	color_buffer.len   = 0;

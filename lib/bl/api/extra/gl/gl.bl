@@ -545,14 +545,14 @@ _Gl :: struct {
 
 	ClearColor: *fn (red: f32, green: f32, blue: f32, alpha: f32);
 	Clear: *fn (mask: u32);
-	TexImage2D: *fn (target: GLenum, level: GLint, internalformat: GLint, width: GLsizei, height: GLsizei, border: GLint, format: GLenum, t: GLenum, data: *u8);
+	TexImage2D: *fn (target: GLenum, level: GLint, internalformat: GLuint, width: GLsizei, height: GLsizei, border: GLint, format: GLenum, t: GLenum, data: *u8);
 	PixelStorei: *fn (pname: GLenum, param: GLint);
 	DrawArrays: *fn (mode: GLenum, first: GLint, count: GLsizei);
 	Enable: *fn (cap: GLenum);
 	Disable: *fn (cap: GLenum);
 	GetError: *fn () GLenum;
 	BlendFunc: *fn (sfactor: GLenum, dfactor: GLenum);
-	TexParameteri: *fn (target: GLenum, pname: GLenum, param: GLint);
+	TexParameteri: *fn (target: GLenum, pname: GLenum, param: GLuint);
 	TexParameterf: *fn (target: GLenum, pname: GLenum, param: GLfloat);
 	TexSubImage2D: *fn (target: GLenum, level: GLint, xoffset: GLint, yoffset: GLint, width: GLsizei, height: GLsizei, format: GLenum, t: GLenum, data: *u8);
 	Hint: *fn (target: GLenum, mode: GLenum);
