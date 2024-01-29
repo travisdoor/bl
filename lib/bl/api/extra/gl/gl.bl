@@ -662,6 +662,7 @@ _Gl :: struct {
 	MapBuffer: *fn (target: GLenum, access: GLenum) *u8;
 	UnmapBuffer: *fn (target: GLenum) GLboolean;
 	Scissor: *fn (x: GLint, y: GLint, width: GLsizei, height: GLsizei);
+	BlitFramebuffer: *fn (srcX0: GLint, srcY0: GLint, srcX1: GLint, srcY1: GLint, dstX0: GLint, dstY0: GLint, dstX1: GLint, dstY1: GLint, mask: GLbitfield, filter: GLenum);
 }
 
 gl: _Gl;

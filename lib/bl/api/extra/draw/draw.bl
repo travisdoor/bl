@@ -422,6 +422,7 @@ flush :: fn () #inline {
 
 /// Texture channel distribution format.
 TextureFormat :: enum u8 {
+	RED = 1;
 	RGB = 3;
 	RGBA = 4;
 }
@@ -530,6 +531,7 @@ png_load_from_stream :: fn (stream: *std.Stream, out_data: **u8, out_width: *u32
 		switch color_type {
 			png.COLOR_TYPE_RGB  { (@out_format) = TextureFormat.RGB;  }
 			png.COLOR_TYPE_RGBA { (@out_format) = TextureFormat.RGBA; }
+			png.COLOR_TYPE_GRAY { (@out_format) = TextureFormat.RED;  }
 			default {
 				free(image_data);
 				return error("Unsupported color format %.", color_type);
@@ -914,6 +916,10 @@ gl_init_texture_2d :: fn (texture: *Texture, texture_data: *u8) {
 		TextureFormat.RGBA {
 			gl_format = GL_RGBA;
 			gl_internal_format = GL_RGBA;
+		}
+		TextureFormat.RED {
+			gl_format = GL_RED;
+			gl_internal_format = GL_RED;
 		}
 		default { panic("Invalid color format."); }
 	}
