@@ -196,6 +196,8 @@ __os_start :: fn () #entry {
 	test_return_values();
 	test_multireturn();
 	test_multireturn2();
+	test_multireturn3();
+	test_return_value_unroll();
 
 	print_string2("Hello!\n");
 
@@ -254,6 +256,53 @@ test_vargs :: fn () {
 }
 
 Data :: struct { a: s32; b: s32 };
+
+test_return_value_unroll :: fn () {
+	my_func :: fn () (s32, s32) {
+		return 10, 20;
+	};
+
+	a, b :: my_func();
+	assert(a == 10);
+	assert(b == 20);
+}
+
+test_multireturn3 :: fn () {
+	my_func :: fn (n: s32) Data {
+		return Data.{ n, 20 };
+	};
+
+	result :: my_func(10);
+	assert(result.a == 10);
+	assert(result.b == 20);
+
+	my_func2 :: fn (a: s32, b: s32) Data {
+		return Data.{ a, b };
+	};
+
+	result2 :: my_func2(10, 20);
+	assert(result2.a == 10);
+	assert(result2.b == 20);
+
+	my_func3 :: fn (a: s32, b: s32, c: s32) Data {
+		assert(c == 30);
+		return Data.{ a, b };
+	};
+
+	result3 :: my_func3(10, 20, 30);
+	assert(result3.a == 10);
+	assert(result3.b == 20);
+
+	my_func4 :: fn (a: s32, b: s32, c: s32, d: s32) Data {
+		assert(c == 30);
+		assert(d == 40);
+		return Data.{ a, b };
+	};
+
+	result4 :: my_func4(10, 20, 30, 40);
+	assert(result4.a == 10);
+	assert(result4.b == 20);
+}
 
 test_multireturn2 :: fn () {
 	my_func :: fn () Data {

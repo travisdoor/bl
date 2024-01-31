@@ -1172,24 +1172,29 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		sub_ri(tctx, RSP, 0, 8);
 		tctx->stack.alloc_value_offset = get_position(tctx, SECTION_TEXT) - sizeof(s32);
 
+		s32                      available_register_count = static_arrlenu(CALL_ABI);
+		const enum x64_register *available_registers      = &CALL_ABI[0];
+
 		// Here we reserve registers for all arguments passed into the function. The argument value duplication into the
 		// stack memory might introduce call to memcpy intrinsic; in such a case we need to spill original arguments.
 		s32 reg_index = 0;
 		if (does_function_return_composit(fn->type)) {
-			const enum x64_register reg = CALL_ABI[0];
+			const enum x64_register reg = available_registers[0];
 			bassert(tctx->register_table[reg] == UNUSED_REGISTER_MAP_VALUE && "Register already used?");
 			struct x64_value value    = {.kind = REGISTER_ADDRESS, .reg_off_addr.reg = reg};
 			tctx->register_table[reg] = (s32)arrlen(tctx->values);
 			arrput(tctx->values, value);
 
 			tctx->current_fn_composit_return_dest = arrlenu(tctx->values);
+			available_registers                   = &CALL_ABI[1]; // Skip RCX
+			available_register_count -= 1;
 		}
 
-		for (usize i = 0; i < sarrlenu(fn->type->data.fn.args) && reg_index < static_arrlenu(CALL_ABI); ++i) {
+		for (usize i = 0; i < sarrlenu(fn->type->data.fn.args) && reg_index < available_register_count; ++i) {
 			struct mir_arg *arg = sarrpeek(fn->type->data.fn.args, i);
 			if (isflag(arg->flags, FLAG_COMPTIME)) continue;
 
-			const enum x64_register reg = CALL_ABI[reg_index];
+			const enum x64_register reg = available_registers[reg_index];
 			bassert(tctx->register_table[reg] == UNUSED_REGISTER_MAP_VALUE && "Register already used?");
 			struct x64_value value    = {.kind = REGISTER, .reg = reg};
 			tctx->register_table[reg] = (s32)arrlen(tctx->values);
@@ -1264,18 +1269,22 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		const enum x64_type_kind type_kind = get_type_kind(arg->type);
 		const s32                index     = arg->llvm_index;
 
+		s32                      available_register_count = static_arrlenu(CALL_ABI);
+		const enum x64_register *available_registers      = &CALL_ABI[0];
+
 		if (does_function_return_composit(fn_type)) {
-			BL_UNIMPLEMENTED;
+			available_registers = &CALL_ABI[1]; // Skip RCX
+			available_register_count -= 1;
 		}
 
-		if (index < static_arrlenu(CALL_ABI)) {
+		if (index < available_register_count) {
 			enum x64_register reg = -1;
 
 			// The argument value might be previously spilled (caused by call to memcpy intrinsic).
 			const u64 vi = get_value(tctx, arg);
 			if (peek(vi).kind != REGISTER) {
 				bassert(peek(vi).kind == OFFSET);
-				reg = spill(tctx, CALL_ABI[index], NULL, 0);
+				reg = spill(tctx, available_registers[index], NULL, 0);
 				mov_rm(tctx, reg, RBP, peek_offset(vi), 8);
 			} else {
 				reg = peek_register(vi);
@@ -1888,27 +1897,40 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		const u64 vi_callee = get_value(tctx, callee);
 		const s32 arg_num   = (s32)sarrlen(call->args);
 
-		usize stack_space = MAX(4, arg_num) * 8;
+		s32                      available_register_count = static_arrlenu(CALL_ABI);
+		const enum x64_register *available_registers      = &CALL_ABI[0];
+
+		usize stack_space = MAX(available_register_count, arg_num) * 8;
 		if (!is_aligned2(stack_space, 16)) {
 			stack_space = next_aligned2(stack_space, 16);
 		}
 
+		// Allocate shadow space.
 		if (stack_space) sub_ri(tctx, RSP, stack_space, 8);
-		const s32 args_in_register = MIN(static_arrlenu(CALL_ABI), arg_num);
-		s32       arg_stack_offset = 0;
+
+		s32 args_in_register = MIN(available_register_count, arg_num); // Used increase available registers for spill.
+		s32 arg_stack_offset = 0;
 
 		struct mir_type *ret_type    = callee_type->data.fn.ret_type;
 		const bool       does_return = ret_type->kind != MIR_TYPE_VOID;
-		s32              ret_value_tmp_offset;
+
+		s32 ret_value_tmp_offset;
+
 		if (does_return && does_function_return_composit(callee_type)) { // @Performance [travis]: Generate only if result is used?
 			// We have to allocate stack memory for the return value not fitting into RAX.
+
 			const usize value_size = ret_type->store_size_bytes;
 			const usize padding    = next_aligned2(value_size, 16) - value_size; // @Performance [travis]: Do we need this?
-			ret_value_tmp_offset   = -allocate_stack_memory(tctx, value_size + padding);
 
-			const enum x64_register reg = spill(tctx, CALL_ABI[0], CALL_ABI, args_in_register);
+			// @Performance [travis]: New allocation for every such call???
+			ret_value_tmp_offset = -allocate_stack_memory(tctx, value_size + padding);
+
+			const enum x64_register reg = spill(tctx, available_registers[0], CALL_ABI, args_in_register);
 			bassert(reg == RCX);
 			lea_rm(tctx, reg, RBP, ret_value_tmp_offset, 8);
+			available_registers = &CALL_ABI[1]; // Skip RCX
+			available_register_count -= 1;
+			args_in_register += 1;
 		}
 
 		for (s32 index = 0; index < arg_num; ++index) {
@@ -1923,10 +1945,10 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			const usize              arg_size  = arg_type->store_size_bytes;
 			const enum x64_type_kind type_kind = get_type_kind(arg_type); // @Cleanup
 
-			if (index < 4) {
+			if (index < available_register_count) {
 				// To register
 				if (arg_instr->kind == MIR_INSTR_LOAD) {
-					const enum x64_register reg = spill(tctx, CALL_ABI[index], CALL_ABI, args_in_register);
+					const enum x64_register reg = spill(tctx, available_registers[index], CALL_ABI, args_in_register);
 					emit_load_to_register(tctx, arg_instr, reg);
 				} else {
 					if (arg_instr->kind == MIR_INSTR_COMPOUND) {
@@ -1938,30 +1960,30 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 					switch (kind) {
 					case OP_IMMEDIATE_NUMBER: {
-						const enum x64_register reg = spill(tctx, CALL_ABI[index], CALL_ABI, args_in_register);
+						const enum x64_register reg = spill(tctx, available_registers[index], CALL_ABI, args_in_register);
 						mov_ri(tctx, reg, peek_immediate(vi), arg_size);
 						break;
 					}
 					case OP_REGISTER_COMPOSIT:
 					case OP_REGISTER_NUMBER: {
 						if (peek_register(vi) != CALL_ABI[index]) {
-							const enum x64_register reg = spill(tctx, CALL_ABI[index], CALL_ABI, args_in_register);
+							const enum x64_register reg = spill(tctx, available_registers[index], CALL_ABI, args_in_register);
 							mov_rr(tctx, reg, peek_register(vi), arg_size);
 						}
 						break;
 					}
 					case OP_OFFSET_NUMBER: {
-						const enum x64_register reg = spill(tctx, CALL_ABI[index], CALL_ABI, args_in_register);
+						const enum x64_register reg = spill(tctx, available_registers[index], CALL_ABI, args_in_register);
 						mov_rm(tctx, reg, RBP, peek_offset(vi), arg_size);
 						break;
 					}
 					case OP_OFFSET_COMPOSIT: {
-						const enum x64_register reg = spill(tctx, CALL_ABI[index], CALL_ABI, args_in_register);
+						const enum x64_register reg = spill(tctx, available_registers[index], CALL_ABI, args_in_register);
 						lea_rm(tctx, reg, RBP, peek_offset(vi), 8);
 						break;
 					}
 					case OP_RELOCATION_NUMBER: {
-						const enum x64_register reg    = spill(tctx, CALL_ABI[index], CALL_ABI, args_in_register);
+						const enum x64_register reg    = spill(tctx, available_registers[index], CALL_ABI, args_in_register);
 						const s32               offset = peek_relocation(vi).offset;
 						mov_rm_indirect(tctx, reg, offset, arg_size);
 						const u32 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
@@ -1969,7 +1991,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 						break;
 					}
 					case OP_RELOCATION_COMPOSIT: {
-						const enum x64_register reg    = spill(tctx, CALL_ABI[index], CALL_ABI, args_in_register);
+						const enum x64_register reg    = spill(tctx, available_registers[index], CALL_ABI, args_in_register);
 						const s32               offset = peek_relocation(vi).offset;
 						lea_rm_indirect(tctx, reg, offset, 8);
 						const u32 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
@@ -2444,6 +2466,17 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		release_value(tctx, vi_vargs);
 		set_value(tctx, instr, (struct x64_value){.kind = OFFSET, .offset = peek_offset(vi_vargs)});
 
+		break;
+	}
+
+	case MIR_INSTR_UNROLL: {
+		struct mir_instr_unroll *unroll = (struct mir_instr_unroll *)instr;
+		const u64                vi_src = get_value(tctx, unroll->src);
+		bassert(peek(vi_src).kind == OFFSET);
+		struct mir_type *value_type  = mir_deref_type(unroll->src->value.type);
+		const s32        index       = unroll->index;
+		const s32        base_offset = (s32)vm_get_struct_elem_offset(assembly, value_type, index);
+		set_value(tctx, instr, (struct x64_value){.kind = OFFSET, .offset = base_offset + peek_offset(vi_src)});
 		break;
 	}
 
