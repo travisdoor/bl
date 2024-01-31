@@ -146,6 +146,7 @@ struct thread_context {
 		// Contains offset to the byte code pointing to the actual value of sub instruction used
 		// to preallocate stack in prologue, so we can allocate more memory later as needed.
 		u32 alloc_value_offset;
+		u32 free_value_offset;
 
 		u32 arg_cache_allocated_size;
 	} stack;
@@ -1212,6 +1213,25 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			emit_instr(ctx, tctx, (struct mir_instr *)block);
 		}
 
+		// Epilogue
+		usize total_allocated = get_stack_allocation_size(tctx);
+		if (total_allocated) {
+			if (!is_aligned2(total_allocated, 16)) {
+				const usize padding = next_aligned2(total_allocated, 16) - total_allocated;
+				if (padding) {
+					allocate_stack_memory(tctx, padding);
+					total_allocated += padding;
+				}
+			}
+
+			// Set stack size to free in the add instruction before the return.
+			bassert(tctx->stack.free_value_offset > 0);
+			(*(u32 *)(tctx->text + tctx->stack.free_value_offset)) = (u32)total_allocated;
+
+			tctx->stack.alloc_value_offset = 0;
+			tctx->stack.free_value_offset  = 0;
+		}
+
 		break;
 	}
 
@@ -1767,20 +1787,8 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			}
 		}
 
-		// Epilogue
-		usize total_allocated = get_stack_allocation_size(tctx);
-		if (total_allocated) {
-			if (!is_aligned2(total_allocated, 16)) {
-				const usize padding = next_aligned2(total_allocated, 16) - total_allocated;
-				if (padding) {
-					allocate_stack_memory(tctx, padding);
-					total_allocated += padding;
-				}
-			}
-
-			add_ri(tctx, RSP, total_allocated, 8);
-			tctx->stack.alloc_value_offset = 0;
-		}
+		add_ri(tctx, RSP, 0, 8);
+		tctx->stack.free_value_offset = get_position(tctx, SECTION_TEXT) - sizeof(s32);
 		pop64_r(tctx, RBP);
 		ret(tctx);
 		break;
@@ -2528,6 +2536,7 @@ void job(struct job_context *job_ctx) {
 	arrsetlen(tctx->local_patches, 0);
 	arrsetlen(tctx->patches, 0);
 	tctx->stack.alloc_value_offset = 0;
+	tctx->stack.free_value_offset  = 0;
 	bl_zeromem(&tctx->stack, sizeof(tctx->stack));
 	tctx->current_fn_composit_return_dest = 0;
 
