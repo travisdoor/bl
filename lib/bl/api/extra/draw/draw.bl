@@ -102,7 +102,7 @@ init :: fn (viewport_width: s32, viewport_height: s32) Error {
 	err = shader_init(&text_shader, SHADER_TEXT_SOURCE, "text");
 	if err { return err; }
 
-	gl_check();
+	// gl_check();
 	is_initialized = true;
 	return OK;
 }
@@ -1350,7 +1350,7 @@ prepare_atlas :: fn (font: *Font, face: *FreeType.Face) {
 	gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, auto GL_NEAREST);
 	gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, auto GL_NEAREST);
 
-	gl_check();
+	// gl_check();
 	font.atlas.handle = atlas;
 	font.atlas.width  = atlas_w;
 	font.atlas.height = atlas_h;
