@@ -69,8 +69,8 @@
 ///
 /// !!! note
 ///     Window resizing is not supported right now.
-init :: fn (viewport_width: s32, viewport_height: s32) Error {
-	gl_init();
+init :: fn (viewport_width: s32, viewport_height: s32, initialize_opengl := true) Error {
+	if initialize_opengl { gl_init(); }
 	current_gl_major_version, current_gl_minor_version :: gl_get_version_numbers();
 	if current_gl_major_version < 3 && current_gl_minor_version < 3 {
 		return error("Minimal supported OpenGL version is 3.3, current context version is %.%.", current_gl_major_version, current_gl_minor_version);
@@ -117,7 +117,7 @@ set_viewport_size :: fn (viewport_width: s32, viewport_height: s32) {
 /// Release all resources used by the module. This should be called when the module is not needed anymore.
 ///
 /// The `gl_terminate` function is called internally.
-terminate :: fn () {
+terminate :: fn (terminate_opengl := true) {
 	array_terminate(&vertex_buffer);
 	array_terminate(&color_buffer);
 	array_terminate(&uv_buffer);
@@ -128,7 +128,7 @@ terminate :: fn () {
 	shader_terminate(&text_shader);
 	font_library_terminate();
 	delete_gl_buffers();
-	gl_terminate();
+	if terminate_opengl { gl_terminate(); }
 	is_initialized = false;
 }
 
