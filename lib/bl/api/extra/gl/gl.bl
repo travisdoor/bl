@@ -83,6 +83,8 @@ GL_AUX1              : u32 : 0x040A;
 GL_AUX2              : u32 : 0x040B;
 GL_AUX3              : u32 : 0x040C;
 
+GL_NUM_EXTENSIONS    : u32 : 0x821D;
+
 GL_NEAREST : u32 : 0x2600;
 GL_LINEAR  : u32 : 0x2601;
 GL_NEAREST_MIPMAP_NEAREST :: 0x2700;
@@ -546,8 +548,6 @@ GL_DEPTH_COMPONENT32 : u32 : 0x81A7;
 
 GL_COLOR : u32 : 0x1800;
 
-GL_TEXTURE_MAX_ANISOTROPY_EXT : u32 : 0x84FE;
-
 GL_CONTEXT_COMPATIBILITY_PROFILE_BIT :: 0x00000002;
 GL_CONTEXT_CORE_PROFILE_BIT :: 0x00000001;
 GL_CONTEXT_FLAGS : u32 : 0x821E;
@@ -582,6 +582,13 @@ GL_DEBUG_TYPE_PORTABILITY: u32 : 0x824F;
 GL_DEBUG_TYPE_PUSH_GROUP: u32 : 0x8269;
 GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR: u32 : 0x824E;
 
+GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS : u32 : 0x8B4D;
+
+// EXTENSIONS
+GL_TEXTURE_MAX_ANISOTROPY_EXT     : u32 : 0x84FE;
+GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT : u32 : 0x84FF;
+GL_TEXTURE_LOD_BIAS_EXT           : u32 : 0x8501;
+
 GlDebugFn :: *fn (source: u32, type: u32, id: u32, severity: u32, length: s32, message: *C.char, userParam: *u8);
 
 // OpenGL extensions must be loaded in runtime on Windows so we can do the same even on Unix.
@@ -589,6 +596,7 @@ _Gl :: struct {
 	ClearColor: *fn (red: f32, green: f32, blue: f32, alpha: f32);
 	Clear: *fn (mask: u32);
 	TexImage2D: *fn (target: GLenum, level: GLint, internalformat: GLuint, width: GLsizei, height: GLsizei, border: GLint, format: GLenum, t: GLenum, data: *u8);
+	TexImage3D: *fn (target: GLenum, level: GLint, internalformat: GLuint, width: GLsizei, height: GLsizei, depth: GLsizei, border: GLint, format: GLenum, t: GLenum, data: *u8);
 	PixelStorei: *fn (pname: GLenum, param: GLint);
 	DrawArrays: *fn (mode: GLenum, first: GLint, count: GLsizei);
 	Enable: *fn (cap: GLenum);
@@ -611,6 +619,7 @@ _Gl :: struct {
 	BindTexture: *fn (target: GLenum, texture: GLuint);
 	DrawElements: *fn (mode: u32, count: s32, tp: u32, indices: *u8);
 	GetIntegerv: *fn (pname: GLenum, data: *GLint);
+	GetFloatv: *fn (pname: GLenum, data: *GLfloat);
 
 	// Extensions
 	CreateShader: *fn (kind: u32) u32;
@@ -681,7 +690,6 @@ _Gl :: struct {
 	DepthMask: *fn (mask: GLint);
 	DepthFunc: *fn (mask: GLenum);
 	CullFace: *fn (mode: GLenum);
-	TexImage3D: *fn (target: GLenum, level: GLint, internalformat: GLint, width: GLsizei, height: GLsizei, depth: GLsizei, border: GLint, format: GLenum, t: GLenum, pixels: *GLvoid);
 	TexSubImage3D: *fn (target: GLenum, level: GLint, xoffset: GLint, yoffset: GLint, zoffset: GLint, width: GLsizei, height: GLsizei, depth: GLsizei, format: GLenum, t: GLenum, pixels: *GLvoid);
 	TexStorage3D: *fn (target: GLenum, levels: GLsizei, internalformat: GLenum, width: GLsizei, height: GLsizei, depth: GLsizei);
 	GenerateMipmap: *fn (target: GLenum);
@@ -703,13 +711,16 @@ _Gl :: struct {
 	DrawBuffers: *fn (n: GLsizei, bufs: *GLenum);
 	ClearBufferuiv: *fn (buffer: GLenum, drawBuffer: GLint, value: *GLuint);
 	GetString: *fn (name: GLenum) *GLubyte;
+	GetStringi: *fn (name: GLenum, index: GLuint) *GLubyte;
 	MapBuffer: *fn (target: GLenum, access: GLenum) *u8;
 	UnmapBuffer: *fn (target: GLenum) GLboolean;
 	Scissor: *fn (x: GLint, y: GLint, width: GLsizei, height: GLsizei);
 	BlitFramebuffer: *fn (srcX0: GLint, srcY0: GLint, srcX1: GLint, srcY1: GLint, dstX0: GLint, dstY0: GLint, dstX1: GLint, dstY1: GLint, mask: GLbitfield, filter: GLenum);
-
 	DebugMessageCallback: *fn (callback: GlDebugFn, user_param: *u8);
 	DebugMessageControl: *fn (source: u32, type: u32, severity: u32, count: s32, ids: *u32, enabled: bool);
+	ColorMask: *fn (r: GLboolean, g: GLboolean, b: GLboolean, a: GLboolean);
+	ClearTexImage: *fn (texture: GLuint, level: GLint, format: GLenum, type: GLenum, data: *u8);
+	BindImageTexture: *fn (unit: GLuint, texture: GLuint, level: GLint, layered: GLboolean, layer: GLint, access: GLenum, format: GLenum);
 }
 
 gl: *_Gl = null;
@@ -788,11 +799,6 @@ gl_get_renderer :: fn () string_view #inline {
 	return std.ctostr(auto gl.GetString(GL_RENDERER));
 }
 
-gl_get_extensions :: fn () string_view #inline {
-	assert(gl, "OpenGL is not initialized, call gl_init first!");
-	return std.ctostr(auto gl.GetString(GL_EXTENSIONS));
-}
-
 gl_get_version_numbers :: fn () (major: s32, minor: s32) #inline {
 	assert(gl, "OpenGL is not initialized, call gl_init first!");
 	major: GLint;
@@ -800,6 +806,31 @@ gl_get_version_numbers :: fn () (major: s32, minor: s32) #inline {
 	gl.GetIntegerv(GL_MAJOR_VERSION, &major);
 	gl.GetIntegerv(GL_MINOR_VERSION, &minor);
 	return major, minor;
+}
+
+gl_get_extensions :: fn () []string_view #inline {
+	using std;
+	assert(gl, "OpenGL is not initialized, call gl_init first!");
+
+	extension_count: GLint;
+	gl.GetIntegerv(GL_NUM_EXTENSIONS, &extension_count);
+	result :: new_slice(string_view, extension_count);
+	loop i := 0; i < extension_count; i += 1 {
+		result[i] = std.ctostr(auto gl.GetStringi(GL_EXTENSIONS, auto i));
+	}
+	return result;
+}
+
+gl_has_extension :: fn (ext: string_view) bool {
+	using std;
+	assert(gl, "OpenGL is not initialized, call gl_init first!");
+	extension_count: GLint;
+	gl.GetIntegerv(GL_NUM_EXTENSIONS, &extension_count);
+	loop i := 0; i < extension_count; i += 1 {
+		name :: std.ctostr(auto gl.GetStringi(GL_EXTENSIONS, auto i));
+		if str_match(name, ext) { return true; }
+	}
+	return false;
 }
 
 #private

@@ -98,7 +98,7 @@ init :: fn (viewport_width: s32, viewport_height: s32, initialize_opengl := true
 
 	err = shader_init(&texture_shader, SHADER_TEXTURE_SOURCE, "texture");
 	if err { return err; }
-
+	
 	err = shader_init(&text_shader, SHADER_TEXT_SOURCE, "text");
 	if err { return err; }
 
@@ -441,7 +441,7 @@ Texture :: struct {
 }
 
 /// Load `png` texture from the `directory/filename`.
-texture_init :: fn (texture: *Texture, directory: string_view, filename: string_view, generate_mips := false) Error {
+texture_init :: fn (texture: *Texture, directory: string_view, filename: string_view) Error {
 	// @Incomplete: we should support custom allocators here.
 	assert(texture);
 	data: *u8;
@@ -451,7 +451,7 @@ texture_init :: fn (texture: *Texture, directory: string_view, filename: string_
 	}
 	err :: png_load_from_file(filepath, &data, &texture.width, &texture.height, &texture.bit_depth, &texture.format);
 	if err { return err; }
-	gl_init_texture_2d(texture, data, generate_mips);
+	gl_init_texture_2d(texture, data);
 	free(data);
 	return OK;
 }
@@ -898,7 +898,7 @@ delete_gl_buffers :: fn () {
 // =================================================================================================
 // Texture
 // =================================================================================================
-gl_init_texture_2d :: fn (texture: *Texture, texture_data: *u8, generate_mips := false) {
+gl_init_texture_2d :: fn (texture: *Texture, texture_data: *u8) {
 	if texture.handle != 0 {
 		gl_terminate_texture(texture);
 	}
@@ -923,21 +923,14 @@ gl_init_texture_2d :: fn (texture: *Texture, texture_data: *u8, generate_mips :=
 		}
 		default { panic("Invalid color format."); }
 	}
-	
+
 	gl.PixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 	gl.PixelStorei(GL_UNPACK_IMAGE_HEIGHT, 0);
 	gl.TexImage2D(GL_TEXTURE_2D, 0, auto gl_internal_format, auto texture.width, auto texture.height, 0, gl_format, GL_UNSIGNED_BYTE, texture_data);
-	gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, auto GL_REPEAT);
-	gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, auto GL_REPEAT);
-	
-	if generate_mips {
-		gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, auto GL_LINEAR_MIPMAP_LINEAR);
-		gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		gl.GenerateMipmap(GL_TEXTURE_2D);
-	} else {
-		gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, auto GL_LINEAR);
-		gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, auto GL_LINEAR);
-	}
+	gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, auto GL_CLAMP_TO_EDGE);
+	gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, auto GL_CLAMP_TO_EDGE);
+	gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, auto GL_LINEAR);
+	gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, auto GL_LINEAR);
 }
 
 gl_terminate_texture :: fn (texture: *Texture) {

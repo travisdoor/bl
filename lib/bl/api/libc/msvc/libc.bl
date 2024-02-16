@@ -18,7 +18,7 @@ STDIN  :: 0;
 STDOUT :: 1;
 STDERR :: 2;
 
-RAND_MAX :: 0x7fffffff;
+RAND_MAX :: 0x7fff;
 
 SIGHUP  :: 1;
 SIGINT  :: 2;

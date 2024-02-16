@@ -140,17 +140,12 @@ mat4_init_perspective :: fn (m: *mat4, fov_rad: f32, aspect: f32, near: f32, far
 mat4_init_ortho :: fn (m: *mat4, left: f32, right: f32, bottom: f32, top: f32, near: f32, far: f32) {
 	mat4_identity(m);
 
-	rl :: 1.0f / (right - left);
-	tb :: 1.0f / (top   - bottom);
-	f  ::-1.0f / (far   - near);
-
-	(@m)[0][0] = 2.0f * rl;
-	(@m)[1][1] = 2.0f * tb;
-	(@m)[2][2] = 2.0f * f;
-	(@m)[3][0] =-(right + left)   * rl;
-	(@m)[3][1] =-(top   + bottom) * tb;
-	(@m)[3][2] = (far   + near)   * f;
-	(@m)[3][3] = 1.0f;
+	(@m)[0][0] = 2.f / (right - left);
+	(@m)[1][1] = 2.f / (top - bottom);
+	(@m)[2][2] = -2.f / (far - near);
+	(@m)[3][0] = -(right + left) / (right - left);
+	(@m)[3][1] = -(top + bottom) / (top - bottom);
+	(@m)[3][2] = -(far + near) / (far - near);
 }
 
 mat4_init_look_at :: fn (m: *mat4, eye: v3, target: v3, up: v3) #inline {
