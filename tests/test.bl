@@ -198,6 +198,8 @@ __os_start :: fn () #entry {
 	test_multireturn2();
 	test_multireturn3();
 	test_return_value_unroll();
+	test_local_compound_with_relocation();
+	test_global_array();
 
 	print_string2("Hello!\n");
 
@@ -210,6 +212,29 @@ assert :: fn (expr: bool, loc := #call_location) {
 	if expr == false {
 		assertion_message(loc.file.len, loc.file.ptr, loc.line);
 	}
+}
+
+MY_ARRAY :: [_]s32.{ 10, 20, 30 };
+MY_ARRAY2: [8]u8;
+
+test_global_array :: fn () {
+	assert(MY_ARRAY[0] == 10);
+	assert(MY_ARRAY[1] == 20);
+	assert(MY_ARRAY[2] == 30);
+	assert(MY_ARRAY.len == 3);
+	assert(MY_ARRAY2.len == 8);
+	assert(MY_ARRAY2[0] == 0);
+	assert(MY_ARRAY2[1] == 0);
+	assert(MY_ARRAY2[2] == 0);
+	// assert(MY_ARRAY2.ptr);
+}
+
+test_local_compound_with_relocation :: fn () {
+	Foo :: struct { a: s32; b: string_view; };
+	foo :: Foo.{ 10, "String it is!\n" };
+	assert(foo.a == 10);
+	assert(foo.b.len == 14);
+	print_string2(foo.b);
 }
 
 test_return_values :: fn () {

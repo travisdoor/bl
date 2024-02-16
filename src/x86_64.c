@@ -64,6 +64,8 @@ hash_t MEMSET_BUILTIN_HASH = 0;
 // @Performance: internal functions can support more arguments passed through registers.
 static const enum x64_register CALL_ABI[4] = {RCX, RDX, R8, R9};
 
+static const u64 NO_VALUE = -1;
+
 enum x64_value_kind {
 	// Absolute value address.
 	ADDRESS = 0,
@@ -197,6 +199,7 @@ enum x64_type_kind {
 	X64_UNKNOWN,
 	X64_NUMBER   = 1,
 	X64_COMPOSIT = 2, // all structs
+	X64_ARRAY    = 3,
 };
 
 static inline enum x64_type_kind get_type_kind(struct mir_type *type) {
@@ -216,6 +219,9 @@ static inline enum x64_type_kind get_type_kind(struct mir_type *type) {
 	case MIR_TYPE_STRUCT:
 		return X64_COMPOSIT;
 
+	case MIR_TYPE_ARRAY:
+		return X64_ARRAY;
+
 	default:
 		str_buf_t type_name = mir_type2str(type, false);
 		babort("Unsupported type in x64 backend: %.*s.", type_name.len, type_name.ptr);
@@ -227,15 +233,22 @@ static inline enum x64_type_kind get_type_kind(struct mir_type *type) {
 
 enum op_kind {
 	// FFFF value_kind | FFFF type_kind
-	OP_IMMEDIATE_NUMBER          = (IMMEDIATE << 4) | X64_NUMBER,
-	OP_RELOCATION_NUMBER         = (RELOCATION << 4) | X64_NUMBER,
-	OP_REGISTER_NUMBER           = (REGISTER << 4) | X64_NUMBER,
-	OP_REGISTER_COMPOSIT         = (REGISTER << 4) | X64_COMPOSIT,
-	OP_OFFSET_NUMBER             = (OFFSET << 4) | X64_NUMBER,
-	OP_REGISTER_OFFSET_NUMBER    = (REGISTER_OFFSET << 4) | X64_NUMBER,
+	OP_IMMEDIATE_NUMBER = (IMMEDIATE << 4) | X64_NUMBER,
+
+	OP_REGISTER_NUMBER   = (REGISTER << 4) | X64_NUMBER,
+	OP_REGISTER_COMPOSIT = (REGISTER << 4) | X64_COMPOSIT,
+
+	OP_OFFSET_NUMBER   = (OFFSET << 4) | X64_NUMBER,
+	OP_OFFSET_COMPOSIT = (OFFSET << 4) | X64_COMPOSIT,
+	OP_OFFSET_ARRAY    = (OFFSET << 4) | X64_ARRAY,
+
+	OP_RELOCATION_NUMBER   = (RELOCATION << 4) | X64_NUMBER,
+	OP_RELOCATION_COMPOSIT = (RELOCATION << 4) | X64_COMPOSIT,
+	OP_RELOCATION_ARRAY    = (RELOCATION << 4) | X64_ARRAY,
+
+	OP_REGISTER_OFFSET_NUMBER = (REGISTER_OFFSET << 4) | X64_NUMBER,
+
 	OP_REGISTER_ADDRESS_NUMBER   = (REGISTER_ADDRESS << 4) | X64_NUMBER,
-	OP_RELOCATION_COMPOSIT       = (RELOCATION << 4) | X64_COMPOSIT,
-	OP_OFFSET_COMPOSIT           = (OFFSET << 4) | X64_COMPOSIT,
 	OP_REGISTER_ADDRESS_COMPOSIT = (REGISTER_ADDRESS << 4) | X64_COMPOSIT,
 };
 
@@ -650,44 +663,48 @@ static void emit_call_memcpy(struct thread_context *tctx, const u64 vi_dest, con
 	const enum x64_register excluded[6] = {RAX, RCX, RDX, R8, R9, R10};
 
 	// dest
-	switch (peek(vi_dest).kind) {
-	case OFFSET:
-		lea_rm(tctx, spill(tctx, RCX, excluded, static_arrlenu(excluded)), RBP, peek_offset(vi_dest), 8);
-		break;
-	case REGISTER_ADDRESS: {
-		const enum x64_register reg = peek_register(vi_dest);
-		if (reg != RCX) {
-			mov_rr(tctx, spill(tctx, RCX, excluded, static_arrlenu(excluded)), reg, 8);
+	if (vi_dest != NO_VALUE) {
+		switch (peek(vi_dest).kind) {
+		case OFFSET:
+			lea_rm(tctx, spill(tctx, RCX, excluded, static_arrlenu(excluded)), RBP, peek_offset(vi_dest), 8);
+			break;
+		case REGISTER_ADDRESS: {
+			const enum x64_register reg = peek_register(vi_dest);
+			if (reg != RCX) {
+				mov_rr(tctx, spill(tctx, RCX, excluded, static_arrlenu(excluded)), reg, 8);
+			}
+			break;
 		}
-		break;
-	}
-	default:
-		BL_UNIMPLEMENTED;
+		default:
+			BL_UNIMPLEMENTED;
+		}
 	}
 
 	// src
-	switch (peek(vi_src).kind) {
-	case RELOCATION:
-		lea_rm_indirect(tctx, spill(tctx, RDX, excluded, static_arrlenu(excluded)), 0, 8);
-		const u32 reloc_src_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
-		add_patch(tctx, peek_relocation(vi_src).hash, reloc_src_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
-		break;
-	case OFFSET:
-		lea_rm(tctx, spill(tctx, RDX, excluded, static_arrlenu(excluded)), RBP, peek_offset(vi_src), 8);
-		break;
-	case REGISTER:
-		// We don't expect memcpy to be used to copy value from gerister, however it might be used for composit
-		// types, in such a case the value in the register behaves the same as REGISTER_ADDRESS. Composit types are
-		// manipulated using pointers, not actual values.
-	case REGISTER_ADDRESS: {
-		const enum x64_register reg = peek_register(vi_src);
-		if (reg != RDX) {
-			mov_rr(tctx, spill(tctx, RDX, excluded, static_arrlenu(excluded)), reg, 8);
+	if (vi_src != NO_VALUE) {
+		switch (peek(vi_src).kind) {
+		case RELOCATION:
+			lea_rm_indirect(tctx, spill(tctx, RDX, excluded, static_arrlenu(excluded)), 0, 8);
+			const u32 reloc_src_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
+			add_patch(tctx, peek_relocation(vi_src).hash, reloc_src_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
+			break;
+		case OFFSET:
+			lea_rm(tctx, spill(tctx, RDX, excluded, static_arrlenu(excluded)), RBP, peek_offset(vi_src), 8);
+			break;
+		case REGISTER:
+			// We don't expect memcpy to be used to copy value from gerister, however it might be used for composit
+			// types, in such a case the value in the register behaves the same as REGISTER_ADDRESS. Composit types are
+			// manipulated using pointers, not actual values.
+		case REGISTER_ADDRESS: {
+			const enum x64_register reg = peek_register(vi_src);
+			if (reg != RDX) {
+				mov_rr(tctx, spill(tctx, RDX, excluded, static_arrlenu(excluded)), reg, 8);
+			}
+			break;
 		}
-		break;
-	}
-	default:
-		BL_UNIMPLEMENTED;
+		default:
+			BL_UNIMPLEMENTED;
+		}
 	}
 
 	// size
@@ -954,6 +971,13 @@ static void emit_local_compound(struct context *ctx, struct thread_context *tctx
 		case OP_REGISTER_NUMBER:
 			mov_mr(tctx, RBP, dest_value_offset, peek_register(vi), value_size);
 			break;
+		case OP_RELOCATION_COMPOSIT: {
+			// Destination goes to RCX.
+			const enum x64_register excluded[6] = {RAX, RCX, RDX, R8, R9, R10};
+			lea_rm(tctx, spill(tctx, RCX, excluded, static_arrlenu(excluded)), RBP, dest_value_offset, 8);
+			emit_call_memcpy(tctx, NO_VALUE, vi, value_size);
+			break;
+		}
 		default:
 			BL_UNIMPLEMENTED;
 		}
@@ -964,6 +988,7 @@ static void emit_local_compound(struct context *ctx, struct thread_context *tctx
 	// We don't use the output of this anywhere so far + it causes assertion in case this function is used inside
 	// `emit_naked_local_compound`, but in case we need it, it should be fixable...
 	// set_value(tctx, instr, (struct x64_value){.kind = OFFSET, .offset = peek_offset(vi_dest)});
+	release_value(tctx, vi_dest);
 }
 
 static inline void emit_naked_local_compound(struct context *ctx, struct thread_context *tctx, struct mir_instr *instr) {
@@ -1478,15 +1503,17 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 
 		struct x64_value result = {0};
 
-		bassert(peek(vi_target).kind == OFFSET);
-		const s32 target_offset = peek_offset(vi_target);
 
-		switch (target_type->kind) {
-		case MIR_TYPE_ARRAY:
+		const enum x64_type_kind target_type_kind = get_type_kind(target_type);
+		if (target_type_kind == X64_ARRAY) {
 			struct mir_type *elem_type = target_type->data.array.elem_type;
-			switch (peek(vi_index).kind) {
-			case IMMEDIATE: {
+
+			// combination: index target
+			switch (op_combined(peek(vi_index).kind, peek(vi_target).kind)) {
+			case op_combined(IMMEDIATE, OFFSET): {
 				const s32 offset = (s32)vm_get_array_elem_offset(target_type, (u32)peek_immediate(vi_index));
+				bassert(peek(vi_target).kind == OFFSET);
+				const s32 target_offset = peek_offset(vi_target);
 
 				result = (struct x64_value){
 				    .kind   = OFFSET,
@@ -1494,11 +1521,26 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 				};
 				break;
 			}
+			case op_combined(IMMEDIATE, RELOCATION): {
+				const s32         offset = (s32)vm_get_array_elem_offset(target_type, (u32)peek_immediate(vi_index));
+				enum x64_register reg    = get_temporary_register(tctx, NULL, 0);
+				lea_rm_indirect(tctx, reg, peek_relocation(vi_target).offset + offset, 8);
+				const u32 reloc_position = get_position(tctx, SECTION_TEXT) - sizeof(s32);
+				add_patch(tctx, peek_relocation(vi_target).hash, reloc_position, IMAGE_REL_AMD64_REL32, SECTION_TEXT);
 
-			case REGISTER: {
+				result = (struct x64_value){
+				    .kind             = REGISTER_ADDRESS,
+				    .reg_off_addr.reg = reg,
+				};
+				break;
+			}
+
+			case op_combined(REGISTER, OFFSET): {
 				const s32               elem_size = (s32)elem_type->store_size_bytes;
 				const enum x64_register reg       = peek_register(vi_index);
 				imul_ri(tctx, reg, reg, elem_size, 8);
+				bassert(peek(vi_target).kind == OFFSET);
+				const s32 target_offset = peek_offset(vi_target);
 
 				result = (struct x64_value){
 				    .kind                = REGISTER_OFFSET,
@@ -1507,21 +1549,21 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 				};
 				break;
 			}
+
 			default:
 				BL_UNIMPLEMENTED;
 			}
-			break;
-
-		case MIR_TYPE_DYNARR:
-		case MIR_TYPE_SLICE:
-		case MIR_TYPE_STRING:
-		case MIR_TYPE_VARGS: {
+		} else if (target_type_kind == X64_COMPOSIT) {
 			const s32        elem_ptr_offset = (s32)vm_get_struct_elem_offset(assembly, target_type, MIR_SLICE_PTR_INDEX);
 			struct mir_type *elem_type       = mir_get_struct_elem_type(target_type, MIR_SLICE_PTR_INDEX);
 			bassert(mir_is_pointer_type(elem_type));
 			const usize       elem_ptr_size = elem_type->store_size_bytes;
 			const usize       elem_size     = mir_deref_type(elem_type)->store_size_bytes;
 			enum x64_register reg           = get_temporary_register(tctx, NULL, 0);
+
+			bassert(peek(vi_target).kind == OFFSET);
+			const s32 target_offset = peek_offset(vi_target);
+
 			mov_rm(tctx, reg, RBP, target_offset + elem_ptr_offset, elem_ptr_size);
 
 			switch (peek(vi_index).kind) {
@@ -1547,10 +1589,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			default:
 				BL_UNIMPLEMENTED;
 			}
-
-			break;
-		}
-		default:
+		} else {
 			babort("Invalid elem ptr target type!");
 		}
 
