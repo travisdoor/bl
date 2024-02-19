@@ -12,11 +12,13 @@ GLshort    :: s16;
 GLsizei    :: s32;
 GLubyte    :: u8;
 GLuint     :: u32;
+GLuint64   :: u64;
 GLushort   :: u16;
 GLvoid     :: u8;
 GLchar     :: u8;
 GLintptr   :: *GLint;
 GLsizeiptr   :: *GLsizei;
+GLsync     :: *u8;
 
 GL_TRUE  :: 1;
 GL_FALSE :: 0;
@@ -28,6 +30,24 @@ GL_VENDOR     : u32 : 0x1F00;
 GL_RENDERER   : u32 : 0x1F01;
 GL_VERSION    : u32 : 0x1F02;
 GL_EXTENSIONS : u32 : 0x1F03;
+
+GL_SYNC_GPU_COMMANDS_COMPLETE : u32 : 0x9117;
+
+GL_TIMEOUT_IGNORED : u64 : 0xFFFFFFFFFFFFFFFF;
+
+GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT : u32 : 0x00000001;
+GL_ELEMENT_ARRAY_BARRIER_BIT      : u32 : 0x00000002;
+GL_UNIFORM_BARRIER_BIT            : u32 : 0x00000004;
+GL_TEXTURE_FETCH_BARRIER_BIT      : u32 : 0x00000008;
+GL_SHADER_IMAGE_ACCESS_BARRIER_BIT : u32 : 0x00000020;
+GL_COMMAND_BARRIER_BIT            : u32 : 0x00000040;
+GL_PIXEL_BUFFER_BARRIER_BIT       : u32 : 0x00000080;
+GL_TEXTURE_UPDATE_BARRIER_BIT     : u32 : 0x00000100;
+GL_BUFFER_UPDATE_BARRIER_BIT      : u32 : 0x00000200;
+GL_FRAMEBUFFER_BARRIER_BIT        : u32 : 0x00000400;
+GL_TRANSFORM_FEEDBACK_BARRIER_BIT : u32 : 0x00000800;
+GL_ATOMIC_COUNTER_BARRIER_BIT     : u32 : 0x00001000;
+GL_ALL_BARRIER_BITS               : u32 : 0xFFFFFFFF;
 
 GL_DONT_CARE                      : u32 : 0x1100;
 GL_FASTEST                        : u32 : 0x1101;
@@ -721,6 +741,12 @@ _Gl :: struct {
 	ColorMask: *fn (r: GLboolean, g: GLboolean, b: GLboolean, a: GLboolean);
 	ClearTexImage: *fn (texture: GLuint, level: GLint, format: GLenum, type: GLenum, data: *u8);
 	BindImageTexture: *fn (unit: GLuint, texture: GLuint, level: GLint, layered: GLboolean, layer: GLint, access: GLenum, format: GLenum);
+
+	FenceSync: *fn (condition: GLenum, flags: GLbitfield) GLsync;
+	WaitSync: *fn (sync: GLsync, flags: GLbitfield, timeout: GLuint64);
+	DeleteSync: *fn (sync: GLsync);
+
+	MemoryBarrier: *fn (barriers: GLbitfield);
 }
 
 gl: *_Gl = null;
