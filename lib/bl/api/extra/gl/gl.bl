@@ -162,6 +162,7 @@ GL_COLOR_BUFFER_BIT : u32 : 0x00004000;
 GL_VERTEX_SHADER    : u32 : 0x8B31;
 GL_GEOMETRY_SHADER  : u32 : 0x8DD9;
 GL_FRAGMENT_SHADER  : u32 : 0x8B30;
+GL_COMPUTE_SHADER   : u32 : 0x91B9;
 GL_COMPILE_STATUS   : u32 : 0x8B81;
 GL_INFO_LOG_LENGTH  : u32 : 0x8B84;
 GL_LINK_STATUS      : u32 : 0x8B82;
@@ -747,6 +748,8 @@ _Gl :: struct {
 	DeleteSync: *fn (sync: GLsync);
 
 	MemoryBarrier: *fn (barriers: GLbitfield);
+
+	DispatchCompute: *fn  (num_groups_x: GLuint, num_groups_y: GLuint, num_groups_z: GLuint);
 }
 
 gl: *_Gl = null;
