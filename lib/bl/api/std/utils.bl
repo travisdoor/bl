@@ -27,9 +27,9 @@
 // =================================================================================================
 
 //! # Utils
-//! 
+//!
 //! `#load "std/utils.bl"`
-//! 
+//!
 //! Set of various utility functions.
 
 // @Incomplete: use named scope!
@@ -68,7 +68,7 @@ is_flag :: fn (flags: ?T, other: T) bool #inline {
 	return (flags & other) == other;
 }
 
-/// Reads environment variable specified by `var` name. Result is empty in case no such variable was 
+/// Reads environment variable specified by `var` name. Result is empty in case no such variable was
 /// found or has no content. It's caller responsibility to delete result string.
 env_get :: fn (var: string_view) string {
 	out :: cast(*u8) C.getenv(std.strtoc(var));
@@ -83,14 +83,14 @@ env_set :: fn (var: string_view, value: string_view) #inline {
 	C.putenv(std.strtoc(tmp));
 }
 
-/// Sets seed for `std.rand` or utility function [random_number](#random_number) based on current 
+/// Sets seed for `std.rand` or utility function [random_number](#random_number) based on current
 /// system tick time.
 random_seed_time :: fn () #inline {
 	C.srand(auto os_tick_ms());
 }
 
 /// Generates random number in specified range <min, max> using standard libc rand generator.
-/// Random number generator seed is supposed to be set by :ref:`random_seed_time` or by `std.srand` 
+/// Random number generator seed is supposed to be set by :ref:`random_seed_time` or by `std.srand`
 /// call.
 random_number :: fn (min := 0, max := 1) s32 #inline {
 	return C.rand() % (max + 1 - min) + min;
@@ -226,7 +226,7 @@ utf32_to_utf8_single_char :: fn (utf32_char: u32, out_utf8_str: *string) Error {
 		tmp :: string_view.{ len = 1, ptr = auto &char };
 		std.str_append(str, tmp);
 	};
-	
+
 	if utf32_char <= 0x7F {
 		append(out_utf8_str, utf32_char);
 	} else if (utf32_char <= 0x7FF) {
@@ -274,6 +274,12 @@ reinterpret_write_any :: fn (dest: Any, value: ?T) usize #inline {
 	memcpy(dest.data, auto &value, bytes);
 	return bytes;
 }
+
+/// Can be used as replacement for C ternary operator `expr ? a : b`.
+ternary :: fn (expr: bool, a: ?T, b: T) T #inline {
+	if expr { return a; }
+	return b;
+};
 
 #private
 
