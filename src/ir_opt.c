@@ -7,7 +7,7 @@ void ir_opt_run(struct assembly *assembly) {
 	LLVMModuleRef llvm_module = assembly->llvm.module;
 
 	const bool use_asan    = assembly->target->sanitize_address;
-	const u32  hot_fns_num = arrlenu(assembly->llvm.hot_fns);
+	const u32  hot_fns_num = (u32)arrlenu(assembly->llvm.hot_fns);
 
 	if (assembly->target->opt == ASSEMBLY_OPT_DEBUG && !use_asan) {
 		if (hot_fns_num) {
